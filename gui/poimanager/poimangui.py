@@ -19,14 +19,14 @@ Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 """
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
-from PyQt4.QtGui import QFileDialog
 import pyqtgraph as pg
 import numpy as np
 import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleInferno
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
@@ -308,7 +308,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_map_ViewWidget.setAspectLocked(lock=True, ratio=1.0)
 
         # Get the colorscales and set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleInferno()
 
         self.roi_map_image.setLookupTable(my_colors.lut)
 
@@ -853,7 +853,7 @@ class PoiManagerGui(GUIBase):
         '''Load a saved ROI from file.
         '''
 
-        this_file = QFileDialog.getOpenFileName(
+        this_file = QtGui.QFileDialog.getOpenFileName(
             self._mw, str("Open ROI"), None, str("Data files (*.dat)"))
 
         self._poi_manager_logic.load_roi_from_file(filename=this_file)

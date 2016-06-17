@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import builtins
-
+from base64 import encodebytes
 
 class ExecutionResult:
     """The result of a call to run_cell
@@ -136,4 +136,57 @@ def encode_images(format_dict):
         encoded['application/pdf'] = pdfdata.decode('ascii')
 
     return encoded
+
+def getfigs(*fig_nums):
+    """Get a list of matplotlib figures by figure numbers.
+
+    If no arguments are given, all available figures are returned.  If the
+    argument list contains references to invalid figures, a warning is printed
+    but the function continues pasting further figures.
+
+    Parameters
+    ----------
+    figs : tuple
+        A tuple of ints giving the figure numbers of the figures to return.
+    """
+    from matplotlib._pylab_helpers import Gcf
+    if not fig_nums:
+        fig_managers = Gcf.get_all_fig_managers()
+        return [fm.canvas.figure for fm in fig_managers]
+    else:
+        figs = []
+        for num in fig_nums:
+            f = Gcf.figs.get(num)
+            if f is None:
+                print('Warning: figure %s not available.' % num)
+            else:
+                figs.append(f.canvas.figure)
+        return figs
+
+def setup_matplotlib(kernel):
+    import matplotlib
+    import matplotlib.pyplot
+    matplotlib.pyplot.switch_backend('module://logic.jupyterkernel.mpl.backend_inline')
+    import matplotlib.pylab as pylab
+    
+
+    from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg # analysis: ignore
+    from matplotlib._pylab_helpers import Gcf
+
+    from logic.jupyterkernel.mpl.backend_inline import InlineBackend
+
+    cfg = InlineBackend.instance()
+    matplotlib.pyplot.rcParams.update(cfg.rc)
+
+    # IPython symbols to add
+    #kernel.user_ns['figsize'] = figsize
+    # Add display and getfigs to the user's namespace
+    #kernel.user_ns['display'] = display_data
+    #kernel.user_ns['getfigs'] = getfigs
+
+    import logic.jupyterkernel.mpl.backend_inline as bi
+    bi.qudikernel = kernel
+    kernel.events.register('post_execute', bi.flush_figures)
+
+
 

@@ -256,7 +256,7 @@ class ConfocalLogic(GenericLogic):
         self._scan_counter = 0
         self._zscan = False
         self.stopRequested = False
-        self.yz_instead_of_xz_scan = False
+        self.depth_scan_dir_is_xz = True
         self.permanent_scan = False
 
 
@@ -475,7 +475,7 @@ class ConfocalLogic(GenericLogic):
         self._return_AL = np.zeros(self._return_XL.shape)
 
         if self._zscan:
-            if not self.yz_instead_of_xz_scan:
+            if self.depth_scan_dir_is_xz:
                 self._image_vert_axis = self._Z
                 # creates an image where each pixel will be [x,y,z,counts]
                 self.depth_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
@@ -483,7 +483,7 @@ class ConfocalLogic(GenericLogic):
                 self.depth_image[:,:,1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
                 z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
                 self.depth_image[:,:,2] = z_value_matrix.transpose()
-            else: # if self.xy_instead_of_xz == True
+            else: # depth scan is yz instead of xz
                 self._image_vert_axis = self._Z
                 # creats an image where each pixel will be [x,y,z,counts]
                 self.depth_image = np.zeros((len(self._image_vert_axis), len(self._Y), 4))
@@ -686,7 +686,7 @@ class ConfocalLogic(GenericLogic):
             # scan of a single line
             line_counts = self._scanning_device.scan_line(line)
             # defines trace of positions for a single return line scan
-            if not self.yz_instead_of_xz_scan:
+            if self.depth_scan_dir_is_xz:
                 return_line = np.vstack((
                     self._return_XL,
                     image[self._scan_counter,0,1] * np.ones(self._return_XL.shape),
@@ -706,7 +706,7 @@ class ConfocalLogic(GenericLogic):
             return_line_counts = self._scanning_device.scan_line(return_line)
             # updating images
             if self._zscan:
-                if not self.yz_instead_of_xz_scan:
+                if self.depth_scan_dir_is_xz:
                     self.depth_image[self._scan_counter,:,3] = line_counts
                 else:
                     self.depth_image[self._scan_counter,:,3] = line_counts
@@ -740,21 +740,17 @@ class ConfocalLogic(GenericLogic):
 
 
     def save_xy_data(self):
-        """ Save the current confocal xy data to a file.
+        """ Save the current confocal xy data to file.
 
-        The save method saves the data in """
+        Two files are created.  The first is the imagedata, which has a text-matrix of count values
+        corresponding to the pixel matrix of the image.  Only count-values are saved here.
+
+        The second file saves the full raw data with x, y, z, and counts at every pixel.
+        """
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
 
-        # data for the pure image:
-        image_data = OrderedDict()
-        image_data['Confocal pure XY scan image data without axis.\n'
-                   '# The upper left entry represents the signal at the upper '
-                   'left pixel position.\n'
-                   '# A pixel-line in the image corresponds to a row in '
-                   'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
-
-        # write the parameters:
+        # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
         parameters['X image min (micrometer)'] = self.image_x_range[0]
@@ -771,11 +767,20 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
+        # data for the text-array "image":
+        image_data = OrderedDict()
+        image_data['Confocal pure XY scan image data without axis.\n'
+                   '# The upper left entry represents the signal at the upper '
+                   'left pixel position.\n'
+                   '# A pixel-line in the image corresponds to a row '
+                   'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
+
+        # Save the image data to file
         filelabel = 'confocal_xy_imagedata'
         self._save_logic.save_data(image_data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
         #, as_xml=False, precision=None, delimiter=None)
 
-        # prepare the data in a dict or in an OrderedDict:
+        # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
         x_data = []
         y_data = []
@@ -789,11 +794,12 @@ class ConfocalLogic(GenericLogic):
                 z_data.append(entry[2])
                 counts_data.append(entry[3])
 
-        data['x values (micros)'] = x_data
-        data['y values (micros)'] = y_data
-        data['z values (micros)'] = z_data
-        data['count values (micros)'] = counts_data
+        data['x values (micron)'] = x_data
+        data['y values (micron)'] = y_data
+        data['z values (micron)'] = z_data
+        data['count values (c/s)'] = counts_data
 
+        # Save the raw data to file
         filelabel = 'confocal_xy_data'
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
         #, as_xml=False, precision=None, delimiter=None)
@@ -802,19 +808,17 @@ class ConfocalLogic(GenericLogic):
 
 
     def save_depth_data(self):
-        """ Save the current confocal depth data to a file. """
+        """ Save the current confocal depth data to file.
+
+        Two files are created.  The first is the imagedata, which has a text-matrix of count values
+        corresponding to the pixel matrix of the image.  Only count-values are saved here.
+
+        The second file saves the full raw data with x, y, z, and counts at every pixel.
+        """
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
 
-        # data for the pure image:
-        image_data = OrderedDict()
-        image_data['Confocal pure depth scan image data without axis.\n'
-                   '# The upper left entry represents the signal at the upper '
-                   'left pixel position.\n'
-                   '# A pixel-line in the image corresponds to a row in '
-                   'of entries where the Signal is in counts/s:'] = self.depth_image[:,:,3]
-
-        # write the parameters:
+        # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
         parameters['X image min (micrometer)'] = self.image_x_range[0]
@@ -832,11 +836,20 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
+        # data for the text-array "image":
+        image_data = OrderedDict()
+        image_data['Confocal pure depth scan image data without axis.\n'
+                   '# The upper left entry represents the signal at the upper '
+                   'left pixel position.\n'
+                   '# A pixel-line in the image corresponds to a row in '
+                   'of entries where the Signal is in counts/s:'] = self.depth_image[:,:,3]
+
+        # Save the image data to file
         filelabel = 'confocal_depth_imagedata'
         self._save_logic.save_data(image_data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
         #, as_xml=False, precision=None, delimiter=None)
 
-        # prepare the data in a dict or in an OrderedDict:
+        # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
         x_data = []
         y_data = []
@@ -855,6 +868,7 @@ class ConfocalLogic(GenericLogic):
         data['z values (micros)'] = z_data
         data['count values (micros)'] = counts_data
 
+        # Save the raw data to file
         filelabel = 'confocal_depth_data'
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
         #, as_xml=False, precision=None, delimiter=None)
