@@ -588,8 +588,6 @@ class ConfocalGui(GUIBase):
         self._mw.action_optimizer_settings.triggered.connect(self.menu_optimizer_settings)
         self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan_data)
         self._mw.actionSave_Depth_Scan.triggered.connect(self.save_depth_scan_data)
-        self._mw.actionSave_XY_Image_Data.triggered.connect(self.save_xy_scan_image)
-        self._mw.actionSave_Depth_Image_Data.triggered.connect(self.save_depth_scan_image)
 
         # Connect the image rotation buttons with the GUI:
         self._mw.xy_rotate_anticlockwise_PushButton.clicked.connect(self.rotate_xy_image_anticlockwise)
@@ -1808,8 +1806,23 @@ class ConfocalGui(GUIBase):
         pass
 
     def save_xy_scan_data(self):
-        """ Run the save routine from the logic to save the xy confocal pic."""
-        self._scanning_logic.save_xy_data()
+        """ Run the save routine from the logic to save the xy confocal data."""
+        cb_range = self.get_xy_cb_range()
+
+        # Percentile range is None, unless the percentile scaling is selected in GUI.
+        pcile_range = None
+        if not self._mw.xy_cb_manual_RadioButton.isChecked():
+            low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
+            pcile_range = [low_centile, high_centile]
+
+        self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range)
+
+        # TODO: find a way to produce raw image in savelogic.  For now it is saved here.
+        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
+        filename = filepath + os.sep + time.strftime('%Y%m%d-%H%M-%S_confocal_xy_scan_raw_pixel_image')
+        if self._sd.save_purePNG_checkBox.isChecked():
+            self.xy_image.save(filename + '_raw.png')
 
     def save_xy_scan_image(self):
         """ Save the image and according to that the data.
@@ -1818,33 +1831,26 @@ class ConfocalGui(GUIBase):
         picture save algorithm is situated here in confocal, since it is a very
         specific task to save the used PlotObject.
         """
-
-        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-        filename = filepath + os.sep + time.strftime('%Y%m%d-%H%M-%S_confocal_xy_scan_image')
-
-        self._mw.xy_ViewWidget.plotItem.removeItem(self.roi_xy)
-        self._mw.xy_ViewWidget.plotItem.removeItem(self.hline_xy)
-        self._mw.xy_ViewWidget.plotItem.removeItem(self.vline_xy)
-
-        exporter = pg.exporters.SVGExporter(self._mw.xy_ViewWidget.plotItem)
-        exporter.export(filename + '.svg')
-
-        if self._sd.savePNG_checkBox.isChecked():
-            exporter = pg.exporters.ImageExporter(self._mw.xy_ViewWidget.plotItem)
-            exporter.export(filename + '.png')
-
-        if self._sd.save_purePNG_checkBox.isChecked():
-            self.xy_image.save(filename + '_raw.png')
-
-        self._mw.xy_ViewWidget.plotItem.addItem(self.roi_xy)
-        self._mw.xy_ViewWidget.plotItem.addItem(self.hline_xy)
-        self._mw.xy_ViewWidget.plotItem.addItem(self.vline_xy)
-
-        self.save_xy_scan_data()
+        self.logMsg('Deprecated, use normal save method instead!', msgType='error')
 
     def save_depth_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""
-        self._scanning_logic.save_depth_data()
+        cb_range = self.get_depth_cb_range()
+
+        # Percentile range is None, unless the percentile scaling is selected in GUI.
+        pcile_range = None
+        if not self._mw.depth_cb_manual_RadioButton.isChecked():
+            low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
+            pcile_range = [low_centile, high_centile]
+
+        self._scanning_logic.save_depth_data(colorscale_range=cb_range, percentile_range=pcile_range)
+
+        # TODO: find a way to produce raw image in savelogic.  For now it is saved here.
+        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
+        filename = filepath + os.sep + time.strftime('%Y%m%d-%H%M-%S_confocal_depth_scan_raw_pixel_image')
+        if self._sd.save_purePNG_checkBox.isChecked():
+            self.depth_image.save(filename + '_raw.png')
 
     def save_depth_scan_image(self):
         """ Save the image and according to that the data.
@@ -1853,29 +1859,7 @@ class ConfocalGui(GUIBase):
         picture save algorithm is situated here in confocal, since it is a very
         specific task to save the used PlotObject.
         """
-
-        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-        filename = filepath + os.sep + time.strftime('%Y%m%d-%H%M-%S_confocal_depth_scan_image')
-
-        self._mw.depth_ViewWidget.plotItem.removeItem(self.roi_depth)
-        self._mw.depth_ViewWidget.plotItem.removeItem(self.hline_depth)
-        self._mw.depth_ViewWidget.plotItem.removeItem(self.vline_depth)
-
-        exporter = pg.exporters.SVGExporter(self._mw.depth_ViewWidget.plotItem)
-        exporter.export(filename + '.svg')
-
-        if self._sd.savePNG_checkBox.isChecked():
-            exporter = pg.exporters.ImageExporter(self._mw.depth_ViewWidget.plotItem)
-            exporter.export(filename + '.png')
-
-        if self._sd.save_purePNG_checkBox.isChecked():
-            self.depth_image.save(filename + '_raw.png')
-
-        self._mw.depth_ViewWidget.plotItem.addItem(self.roi_depth)
-        self._mw.depth_ViewWidget.plotItem.addItem(self.hline_depth)
-        self._mw.depth_ViewWidget.plotItem.addItem(self.vline_depth)
-
-        self.save_depth_scan_data()
+        self.logMsg('Deprecated, use normal save method instead!', msgType='error')
 
     def switch_hardware(self):
         """ Switches the hardware state. """
