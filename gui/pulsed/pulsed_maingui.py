@@ -1555,10 +1555,10 @@ class PulsedMeasurementGui(GUIBase):
                                                       start_col=column,stop_col=column+1)
 
     def _update_current_pulse_block_ensemble(self):
-
         length_mu = 0.0  # in microseconds
         length_bin = 0
         num_laser_pulses = 0
+        filesize_bytes = 0
         pulse_block_col = self._cfg_param_pb['pulse_block']
 
         reps_col = self._cfg_param_pb['repetition']
@@ -1612,6 +1612,28 @@ class PulsedMeasurementGui(GUIBase):
 
             length_mu = (length_bin / self._seq_gen_logic.sample_rate) * 1e6  # in microns
 
+        # get file format to determine the file size in bytes.
+        # This is just an estimate since it does not include file headers etc..
+        # FIXME: This is just a crude first try to implement this. Improvement required.
+        file_format = self._pulsed_meas_logic.get_pulser_constraints()['waveform_format']
+        if file_format == 'wfm':
+            num_ana_chnl = self._seq_gen_logic.analog_channels
+            filesize_bytes = num_ana_chnl * 5 * length_bin
+        elif file_format == 'wfmx':
+            chnl_config = self._seq_gen_logic.activation_config
+            analogue_chnl_num = [int(chnl.split('ch')[1]) for chnl in chnl_config if 'a_ch' in chnl]
+            digital_chnl_num= [int(chnl.split('ch')[1]) for chnl in chnl_config if 'd_ch' in chnl]
+            for ana_chnl in analogue_chnl_num:
+                if (ana_chnl*2-1) in digital_chnl_num or (ana_chnl*2) in digital_chnl_num:
+                    filesize_bytes += 5 * length_bin
+                else:
+                    filesize_bytes += 4 * length_bin
+        elif file_format == 'fpga':
+            filesize_bytes = length_bin
+        else:
+            filesize_bytes = 0
+
+        self._mw.curr_ensemble_size_DSpinBox.setValue(filesize_bytes/(1024**2))
         self._mw.curr_ensemble_length_DSpinBox.setValue(length_mu)
         self._mw.curr_ensemble_bins_SpinBox.setValue(length_bin)
         self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
