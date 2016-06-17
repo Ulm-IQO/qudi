@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2015-2016 Florian S. Frank florian.frank@uni-ulm.de
 Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
 Copyright (C) 2015-2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
@@ -30,7 +30,8 @@ import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleInferno
 from gui.fitsettings import FitSettingsWidget
 
 # This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator
@@ -78,6 +79,14 @@ class CrossROI(pg.ROI):
         Changed finish from parent class implementation to not disrupt user dragging detection.
         """
         super().setPos(pos, update=update, finish=finish)
+
+    def setSize(self,size, update=True,finish=True):
+        """
+        Sets the size of the ROI
+        @param bool update: whether to update the display for this call of setPos
+        @param bool finish: whether to emit sigRegionChangeFinished
+        """
+        super().setSize(size,update=update,finish=finish)
 
     def handleMoveStarted(self):
         """ Handles should always be moved by user."""
@@ -276,6 +285,7 @@ class ConfocalGui(GUIBase):
         ini_pos_y_crosshair = len(arr01) / 2
         ini_pos_z_crosshair = len(arr02) / 2
 
+
         # Load the images for xy and depth in the display:
         self.xy_image = pg.ImageItem(arr01)
         self.depth_image = pg.ImageItem(arr02)
@@ -345,15 +355,22 @@ class ConfocalGui(GUIBase):
 
         # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI(
+            # [
+            #     ini_pos_x_crosshair - len(arr01) / 40,
+            #     ini_pos_y_crosshair - len(arr01) / 40
+            # ],
             [
-                ini_pos_x_crosshair - len(arr01) / 40,
-                ini_pos_y_crosshair - len(arr01) / 40
+                ini_pos_x_crosshair - self._optimizer_logic.refocus_XY_size / 2,
+                ini_pos_y_crosshair - self._optimizer_logic.refocus_XY_size / 2
             ],
-            [len(arr01) / 20, len(arr01) / 20],
+            # [len(arr01) / 20, len(arr01) / 20],
+            [self._optimizer_logic.refocus_XY_size,self._optimizer_logic.refocus_XY_size],
             pen={'color': "F0F", 'width': 1},
             removable=True
         )
+
         self._mw.xy_ViewWidget.addItem(self.roi_xy)
+        # self.roi_xy.setSize([0.6,0.6])
 
         # create horizontal and vertical line as a crosshair in xy image:
         self.hline_xy = CrossLine(pos=self.roi_xy.pos() + self.roi_xy.size() * 0.5,
@@ -367,6 +384,7 @@ class ConfocalGui(GUIBase):
         self.roi_xy.sigUserRegionUpdate.connect(self.update_from_roi_xy)
         self.roi_xy.sigRegionChangeFinished.connect(self.roi_xy_bounds_check)
 
+
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
         self._mw.xy_ViewWidget.addItem(self.vline_xy)
@@ -374,10 +392,13 @@ class ConfocalGui(GUIBase):
         # Create Region of Interest for depth image and add to xy Image Widget:
         self.roi_depth = CrossROI(
             [
-                ini_pos_x_crosshair - len(arr02) / 20,
-                ini_pos_z_crosshair - len(arr02) / 20
+                # ini_pos_x_crosshair - len(arr02) / 20,
+                # ini_pos_z_crosshair - len(arr02) / 20
+                ini_pos_x_crosshair - self._optimizer_logic.refocus_XY_size/2,
+                ini_pos_z_crosshair - self._optimizer_logic.refocus_Z_size/2
             ],
-            [len(arr02) / 20, len(arr02) / 20],
+            # [len(arr02) / 20, len(arr02) / 20],
+            [self._optimizer_logic.refocus_XY_size,self._optimizer_logic.refocus_Z_size],
             pen={'color': "F0F", 'width': 1},
             removable=True
         )
@@ -492,6 +513,8 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(lambda: self.set_history_actions(True))
         self._scanning_logic.signal_history_event.connect(self.update_xy_cb_range)
         self._scanning_logic.signal_history_event.connect(self.update_depth_cb_range)
+        self._scanning_logic.signal_history_event.connect(self._mw.xy_ViewWidget.autoRange)
+        self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
 
         # Get initial tilt correction values
         self._mw.action_Tiltcorrection.setChecked(self._scanning_logic.TiltCorrection)
@@ -553,6 +576,8 @@ class ConfocalGui(GUIBase):
         # Connect the tracker
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
         self._optimizer_logic.signal_refocus_started.connect(self.disable_scan_actions)
+        self._optimizer_logic.signal_refocus_XY_size_changed.connect(self.update_roi_xy_size)
+        self._optimizer_logic.signal_refocus_Z_size_changed.connect(self.update_roi_depth_size)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
@@ -602,7 +627,7 @@ class ConfocalGui(GUIBase):
         #           Connect the colorbar and their actions              #
         #################################################################
         # Get the colorscale and set the LUTs
-        self.my_colors = ColorScale()
+        self.my_colors = ColorScaleInferno()
 
         self.xy_image.setLookupTable(self.my_colors.lut)
         self.depth_image.setLookupTable(self.my_colors.lut)
@@ -921,6 +946,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_clock_frequency(self._sd.clock_frequency_InputWidget.value())
         self._scanning_logic.return_slowness = self._sd.return_slowness_InputWidget.value()
         self._scanning_logic.permanent_scan = self._sd.loop_scan_CheckBox.isChecked()
+        self._scanning_logic.depth_scan_dir_is_xz = self._sd.depth_dir_x_radioButton.isChecked()
         self.fixed_aspect_ratio_xy = self._sd.fixed_aspect_xy_checkBox.isChecked()
         self.fixed_aspect_ratio_depth = self._sd.fixed_aspect_depth_checkBox.isChecked()
         self.slider_small_step = self._sd.slider_small_step_SpinBox.value()
@@ -934,6 +960,11 @@ class ConfocalGui(GUIBase):
         self._sd.clock_frequency_InputWidget.setValue(int(self._scanning_logic._clock_frequency))
         self._sd.return_slowness_InputWidget.setValue(int(self._scanning_logic.return_slowness))
         self._sd.loop_scan_CheckBox.setChecked(self._scanning_logic.permanent_scan)
+        if self._scanning_logic.depth_scan_dir_is_xz:
+            self._sd.depth_dir_x_radioButton.setChecked(True)
+        else:
+            self._sd.depth_dir_y_radioButton.setChecked(True)
+
         self._sd.fixed_aspect_xy_checkBox.setChecked(self.fixed_aspect_ratio_xy)
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
         self._sd.slider_small_step_SpinBox.setValue(int(self.slider_small_step))
@@ -960,6 +991,8 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitSettings(self._optimizer_logic.z_params)
+        self.update_roi_xy_size()
+        self.update_roi_depth_size()
 
     def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
@@ -976,6 +1009,8 @@ class ConfocalGui(GUIBase):
 
         # fit parameters
         self._osd.fit_tab.keepFitSettings(self._optimizer_logic.z_params, self._optimizer_logic.use_custom_params)
+        self.update_roi_xy_size()
+        self.update_roi_depth_size()
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
@@ -1016,9 +1051,6 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.start_scanning(zscan=True)
         self.disable_scan_actions()
 
-    def rotate_depth_scan_clicked(self):
-        self._scanning_logic.yz_instead_of_xz_scan = not self._scanning_logic.yz_instead_of_xz_scan
-
     def refocus_clicked(self):
         """ Manages what happens if the optimizer is started.
 
@@ -1047,6 +1079,7 @@ class ConfocalGui(GUIBase):
             roi_x_view = x_pos - self.roi_xy.size()[0] * 0.5
             roi_y_view = y_pos - self.roi_xy.size()[1] * 0.5
             self.roi_xy.setPos([roi_x_view, roi_y_view])
+
 
             roi_x_view = x_pos - self.roi_depth.size()[0] * 0.5
             roi_y_view = z_pos - self.roi_depth.size()[1] * 0.5
@@ -1128,6 +1161,29 @@ class ConfocalGui(GUIBase):
             roi_y_view = y - self.roi_xy.size()[1] * 0.5
 
         self.roi_xy.setPos([roi_x_view, roi_y_view])
+
+    def update_roi_xy_size(self):
+        xpos = self.roi_xy.pos()[0]
+        ypos = self.roi_xy.pos()[1]
+        xsize = self.roi_xy.size()[0]
+        ysize = self.roi_xy.size()[1]
+        xcenter = xpos+0.5*xsize
+        ycenter = ypos+0.5*ysize
+        newsize = self._optimizer_logic.refocus_XY_size
+        self.roi_xy.setSize([newsize,newsize])
+        self.roi_xy.setPos([xcenter-newsize/2,ycenter-newsize/2])
+
+    def update_roi_depth_size(self):
+        xpos = self.roi_depth.pos()[0]
+        ypos = self.roi_depth.pos()[1]
+        xsize = self.roi_depth.size()[0]
+        ysize = self.roi_depth.size()[1]
+        xcenter = xpos+0.5*xsize
+        ycenter = ypos+0.5*ysize
+        newsize_z = self._optimizer_logic.refocus_Z_size
+        newsize_xy = self._optimizer_logic.refocus_XY_size
+        self.roi_depth.setSize([newsize_xy,newsize_z])
+        self.roi_depth.setPos([xcenter-newsize_xy/2,ycenter-newsize_z/2])
 
     def update_roi_depth(self, x=None, z=None):
         """ Adjust the depth ROI position if the value has changed.
@@ -1647,6 +1703,7 @@ class ConfocalGui(GUIBase):
 
         self.roi_xy.setPos([x_value, y_value], update=True)
 
+
     def put_cursor_in_depth_scan(self):
         """Put the depth crosshair back if it is outside of the visible range. """
         view_x_min = self._scanning_logic.image_x_range[0]
@@ -1678,24 +1735,25 @@ class ConfocalGui(GUIBase):
         @param object viewbox: pyqtgraph.ViewBox object, which contains the
                                view information about the display.
         """
-        viewbox = self.xy_image.getViewBox()
-        current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
-        current_y_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
-
-        new_size_x_roi = current_x_view_range / 20
-        new_size_y_roi = current_y_view_range / 20
-
-        old_size_x_roi = self.roi_xy.size()[0]
-        old_size_y_roi = self.roi_xy.size()[1]
-
-        diff_size_x_roi = (old_size_x_roi - new_size_x_roi) * 0.5
-        diff_size_y_roi = (old_size_y_roi - new_size_y_roi) * 0.5
-
-        # Here it is really necessary not to update, otherwise you will
-        # calculate the position of the roi in a wrong way.
-        self.roi_xy.setSize([new_size_x_roi, new_size_y_roi], update=False)
-        pos = self.roi_xy.pos()
-        self.roi_xy.setPos([pos[0] + diff_size_x_roi, pos[1] + diff_size_y_roi], update=True)
+        # viewbox = self.xy_image.getViewBox()
+        # current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
+        # current_y_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+        #
+        # new_size_x_roi = current_x_view_range / 20
+        # new_size_y_roi = current_y_view_range / 20
+        #
+        # old_size_x_roi = self.roi_xy.size()[0]
+        # old_size_y_roi = self.roi_xy.size()[1]
+        #
+        # diff_size_x_roi = (old_size_x_roi - new_size_x_roi) * 0.5
+        # diff_size_y_roi = (old_size_y_roi - new_size_y_roi) * 0.5
+        #
+        # # Here it is really necessary not to update, otherwise you will
+        # # calculate the position of the roi in a wrong way.
+        # self.roi_xy.setSize([new_size_x_roi, new_size_y_roi], update=False)
+        # pos = self.roi_xy.pos()
+        # self.roi_xy.setPos([pos[0] + diff_size_x_roi, pos[1] + diff_size_y_roi], update=True)
+        pass
 
     def adjust_aspect_roi_depth(self, viewbox=None):
         """ Keep the aspect ratio of the ROI also during the zoom the same.
@@ -1704,30 +1762,32 @@ class ConfocalGui(GUIBase):
                                view information about the display.
 
         """
-        viewbox = self.depth_image.getViewBox()
-        current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
-        current_z_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+        # viewbox = self.depth_image.getViewBox()
+        # current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
+        # current_z_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+        #
+        # new_size_x_roi = current_x_view_range / 20
+        # new_size_z_roi = current_z_view_range / 20
+        #
+        # if self.fixed_aspect_ratio_depth:
+        #     if new_size_x_roi > new_size_z_roi:
+        #         new_size_z_roi = new_size_x_roi
+        #     else:
+        #         new_size_x_roi = new_size_z_roi
+        #
+        # old_size_x_roi = self.roi_depth.size()[0]
+        # old_size_z_roi = self.roi_depth.size()[1]
+        #
+        # diff_size_x_roi = (old_size_x_roi - new_size_x_roi) * 0.5
+        # diff_size_z_roi = (old_size_z_roi - new_size_z_roi) * 0.5
+        #
+        # # Here it is really necessary not to update, otherwise you will
+        # # calculate the position of the roi in a wrong way.
+        # self.roi_depth.setSize([new_size_x_roi, new_size_z_roi], update=False)
+        # pos = self.roi_depth.pos()
+        # self.roi_depth.setPos([pos[0] + diff_size_x_roi, pos[1] + diff_size_z_roi], update=True)
 
-        new_size_x_roi = current_x_view_range / 20
-        new_size_z_roi = current_z_view_range / 20
-
-        if self.fixed_aspect_ratio_depth:
-            if new_size_x_roi > new_size_z_roi:
-                new_size_z_roi = new_size_x_roi
-            else:
-                new_size_x_roi = new_size_z_roi
-
-        old_size_x_roi = self.roi_depth.size()[0]
-        old_size_z_roi = self.roi_depth.size()[1]
-
-        diff_size_x_roi = (old_size_x_roi - new_size_x_roi) * 0.5
-        diff_size_z_roi = (old_size_z_roi - new_size_z_roi) * 0.5
-
-        # Here it is really necessary not to update, otherwise you will
-        # calculate the position of the roi in a wrong way.
-        self.roi_depth.setSize([new_size_x_roi, new_size_z_roi], update=False)
-        pos = self.roi_depth.pos()
-        self.roi_depth.setPos([pos[0] + diff_size_x_roi, pos[1] + diff_size_z_roi], update=True)
+        pass
 
     def save_xy_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""

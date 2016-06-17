@@ -23,13 +23,15 @@ from traitlets import (
 # Configurable for inline backend options
 #-----------------------------------------------------------------------------
 
-class InlineBackend:
+class InlineBackend(SingletonConfigurable):
     """An object to store configuration of the inline backend."""
 
     # The typical default figure size is too large for inline use,
     # so we shrink the figure size to 6x4, and tweak fonts to
     # make that fit.
-    rc = Dict({'figure.figsize': (6.0,4.0),
+    rc = Dict({
+        # figures are
+        'figure.figsize': (9.0,6.0),
         # play nicely with white background in the Qt and notebook frontend
         'figure.facecolor': (1,1,1,0),
         'figure.edgecolor': (1,1,1,0),
@@ -40,7 +42,8 @@ class InlineBackend:
         'savefig.dpi': 72,
         # 10pt still needs a little more room on the xlabel:
         'figure.subplot.bottom' : .125
-        }, config=True,
+        },
+        config=True,
         help="""Subset of matplotlib rcParams that should be different for the
         inline backend."""
     )

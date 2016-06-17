@@ -53,10 +53,6 @@ import ast
 import traceback
 import jedi
 
-import matplotlib
-from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg # analysis: ignore
-from matplotlib._pylab_helpers import Gcf
-
 # zmq specific imports:
 import zmq
 from io import StringIO
@@ -67,8 +63,9 @@ from .builtin_trap import BuiltinTrap
 from .redirect import redirect_stdout, redirect_stderr
 from .stream import QZMQStream
 from .helpers import *
+from .events import EventManager, available_events
 
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtCore
 QtCore.Signal = QtCore.pyqtSignal
 
 
@@ -86,8 +83,20 @@ class QZMQHeartbeat(QtCore.QObject):
                 raise
 
 class QZMQKernel(QtCore.QObject):
-    
+
     sigShutdownFinished = QtCore.Signal(str)
+
+    supported_mime = (
+        'text/plain',
+        'text/html',
+        'text/markdown',
+        'text/latex',
+        'application/json',
+        'application/javascript',
+        'image/png',
+        'image/jpeg',
+        'image/svg+xml'
+        )
 
     def __init__(self, config=None):
         super().__init__()
@@ -114,7 +123,7 @@ class QZMQKernel(QtCore.QObject):
                 'stdin_port'        : 0,
                 'transport'         : 'tcp'
             }
-     
+
         self.hb_thread = QtCore.QThread()
         self.hb_thread.setObjectName(self.engine_id)
         self.connection = config["transport"] + "://" + config["ip"]
@@ -153,15 +162,15 @@ class QZMQKernel(QtCore.QObject):
         self.config["shell_port"] = self.bind(self.shell_socket, self.connection, self.config["shell_port"])
         self.shell_stream = QZMQStream(self.shell_socket)
         self.shell_stream.sigMsgRecvd.connect(self.shell_handler)
-     
+
         logging.info( "Config: %s" % json.dumps(self.config))
         logging.info( "Starting loops...")
-     
+
         self.heartbeat_handler = QZMQHeartbeat(self.heartbeat_socket)
         self.heartbeat_handler.moveToThread(self.hb_thread)
         self.heartbeat_stream.sigMsgRecvd.connect(self.heartbeat_handler.beat)
         self.hb_thread.start()
-     
+
         self.init_exec_env()
         logging.info( "Ready! Listening...")
 
@@ -169,12 +178,14 @@ class QZMQKernel(QtCore.QObject):
         self.execution_count = 1
         self.ast_node_interactivity = 'last_expr'
         self.compile = CachingCompiler()
-        self.ast_transformers = []
+        self.events = EventManager(self, available_events)
+        self.ast_transformers = list()
+        self.displaydata = list()
         self.displayhook = DisplayHook()
         self.display_trap = DisplayTrap(self.displayhook)
         self.builtin_trap = BuiltinTrap()
+        setup_matplotlib(self)
 
-    # Utility functions:
     @QtCore.pyqtSlot()
     def shutdown(self):
         self.iopub_stream.close()
@@ -188,7 +199,7 @@ class QZMQKernel(QtCore.QObject):
         self.control_socket.close()
         self.heartbeat_socket.close()
         self.hb_thread.quit()
-        self.sigShutdownFinished.emit(self.engine_id,)
+        self.sigShutdownFinished.emit(self.engine_id)
 
     def msg_id(self):
         """ Return a new uuid for message id """
@@ -244,36 +255,20 @@ class QZMQKernel(QtCore.QObject):
         logging.debug( "send parts: %s" % parts)
         stream.socket.send_multipart(parts)
 
-    def display_data(self, msg, mimetype, thing):
+    def display_data(self, mimetype, fmt_dict, metadata=None):
 
-        #format = InteractiveShell.instance().display_formatter.format
-        #format_dict, md_dict = format(obj, include=include, exclude=exclude)
+        #fmt_dict, md_dict = formatter(mimetype, obj)
+        dataenc = encode_images(fmt_dict)
 
-        supported_mime = (
-            'text/plain',
-            'text/html',
-            'text/markdown',
-            'text/latex',
-            'application/json',
-            'application/javascript',
-            'image/png',
-            'image/jpeg',
-            'image/svg+xml'
-            )
-        if mimetype in supported_mime:
-            
+        if mimetype in self.supported_mime:
             content = {
                 'source': '',
-                'data': {
-                    mimetype: thing
-                    },
-                'metadata': metadata
+                'data': dataenc,
+                'metadata': {}
             }
-            self.send(
-                self.iopub_stream,
-                'display_data',
-                content,
-                parent_header=msg['header'])
+            if metadata is not None:
+                content['metadata'] = metadata
+            self.displaydata.append(content)
 
     # Socket Handlers:
     def shell_handler(self, msg):
@@ -312,7 +307,7 @@ class QZMQKernel(QtCore.QObject):
         self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
 
         #capture output
-        output_objs = list()
+        self.displaydata = list()
         stream_stdout = StringIO()
         stream_stderr = StringIO()
         with redirect_stderr(stream_stderr):
@@ -358,12 +353,20 @@ class QZMQKernel(QtCore.QObject):
                 content,
                 parent_header=msg['header'])
 
+        # output data from this run
+        for content in self.displaydata:
+            self.send(
+                self.iopub_stream,
+                'display_data',
+                content,
+                parent_header=msg['header'])
+
         #tell the notebook server that we are not busy anymore
         content = {
             'execution_state': "idle",
         }
         self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
- 
+
         # publich execution result on shell channel
         metadata = {
             "dependencies_met": True,
@@ -385,7 +388,7 @@ class QZMQKernel(QtCore.QObject):
             metadata=metadata,
             parent_header=msg['header'],
             identities=identities)
- 
+
         self.execution_count += 1
 
     def shell_kernel_info(self, identities, msg):
@@ -447,17 +450,17 @@ class QZMQKernel(QtCore.QObject):
             metadata=metadata,
             parent_header=msg['header'],
             identities=identities)
- 
+
     def deserialize_wire_msg(self, wire_msg):
         """split the routing prefix and message frames from a message on the wire"""
         delim_idx = wire_msg.index(self.DELIM)
         identities = wire_msg[:delim_idx]
         m_signature = wire_msg[delim_idx + 1]
         msg_frames = wire_msg[delim_idx + 2:]
-     
+
         def jdecode(msg):
             return json.loads(msg.decode('ascii'))
-     
+
         m = {}
         m['header']        = jdecode(msg_frames[0])
         m['parent_header'] = jdecode(msg_frames[1])
@@ -466,7 +469,7 @@ class QZMQKernel(QtCore.QObject):
         check_sig = self.sign(msg_frames)
         if check_sig != m_signature:
             raise ValueError("Signatures do not match")
-     
+
         return identities, m
 
     def control_handler(self, wire_msg):
@@ -525,7 +528,7 @@ class QZMQKernel(QtCore.QObject):
 
         if (not raw_cell) or raw_cell.isspace():
             return result
-        
+
         if silent:
             store_history = False
 
@@ -536,13 +539,9 @@ class QZMQKernel(QtCore.QObject):
             result.error_before_exec = value
             return result
 
-        # Give displyhook a reference to the ExecutionResult object keeping the output
-        self.displayhook.pass_result_ref(result)
-
-        #self.events.trigger('pre_execute')
+        self.events.trigger('pre_execute')
         if not silent:
-            pass
-            #self.events.trigger('pre_run_cell')
+            self.events.trigger('pre_run_cell')
 
         # If any of our input transformation (input_transformer_manager or
         # prefilter_manager) raises an exception, we store it in this variable
@@ -598,13 +597,12 @@ class QZMQKernel(QtCore.QObject):
                     if store_history:
                         self.execution_count += 1
                     return error_before_exec(e)
-                except (OverflowError, SyntaxError, ValueError, TypeError,
-                        MemoryError) as e:
+                except (OverflowError, SyntaxError, ValueError, TypeError, MemoryError) as e:
                     self.showsyntaxerror()
                     if store_history:
                         self.execution_count += 1
                     return error_before_exec(e)
-         
+
                 # Apply AST transformations
                 try:
                     code_ast = self.transform_ast(code_ast)
@@ -613,11 +611,11 @@ class QZMQKernel(QtCore.QObject):
                     if store_history:
                         self.execution_count += 1
                     return error_before_exec(e)
-         
+
                 # Give the displayhook a reference to our ExecutionResult so it
                 # can fill in the output value.
-                #self.displayhook.exec_result = result
-         
+                self.displayhook.pass_result_ref(result)
+
                 # Execute the user code
                 interactivity = "none" if silent else self.ast_node_interactivity
                 self.run_ast_nodes(
@@ -626,15 +624,15 @@ class QZMQKernel(QtCore.QObject):
                     interactivity=interactivity,
                     compiler=compiler,
                     result=result)
-         
+
                 # Reset this so later displayed values do not modify the
                 # ExecutionResult
                 #self.displayhook.exec_result = None
-         
-                #self.events.trigger('post_execute')
+                self.displayhook.pass_result_ref(None)
+
+                self.events.trigger('post_execute')
                 if not silent:
-                    pass
-                    #self.events.trigger('post_run_cell')
+                    self.events.trigger('post_run_cell')
 
         if store_history:
             # Write output to the database. Does nothing unless
@@ -643,20 +641,17 @@ class QZMQKernel(QtCore.QObject):
             # Each cell is a *single* input, regardless of how many lines it has
             self.execution_count += 1
 
-        # Pass none to DisplayHook, so it does not touch the result from this cell
-        # any more
-        self.displayhook.pass_result_ref(None)
         return result
-    
+
     def transform_ast(self, node):
         """Apply the AST transformations from self.ast_transformers
-        
+
         Parameters
         ----------
         node : ast.Node
           The root node to be transformed. Typically called with the ast.Module
           produced by parsing user input.
-        
+
         Returns
         -------
         An ast.Node corresponding to the node it was called with. Note that it
@@ -674,11 +669,11 @@ class QZMQKernel(QtCore.QObject):
             except Exception:
                 warn("AST transformer %r threw an error. It will be unregistered." % transformer)
                 self.ast_transformers.remove(transformer)
-        
+
         if self.ast_transformers:
             ast.fix_missing_locations(node)
         return node
-                
+
 
     def run_ast_nodes(self, nodelist, cell_name, interactivity='last_expr',
                         compiler=compile, result=None):
@@ -831,10 +826,10 @@ class QZMQKernel(QtCore.QObject):
 
     def _get_exc_info(self, exc_tuple=None):
         """get exc_info from a given tuple, sys.exc_info() or sys.last_type etc.
-        
+
         Ensures sys.last_type,value,traceback hold the exc_info we found,
         from whichever source.
-        
+
         raises ValueError if none of these contain any information
         """
         if exc_tuple is None:
@@ -846,10 +841,10 @@ class QZMQKernel(QtCore.QObject):
             if hasattr(sys, 'last_type'):
                 etype, value, tb = sys.last_type, sys.last_value, \
                                    sys.last_traceback
-        
+
         if etype is None:
             raise ValueError("No exception to find")
-        
+
         # Now store the exception info in sys.last_type etc.
         # WARNING: these variables are somewhat deprecated and not
         # necessarily safe to use in a threaded environment, but tools
@@ -858,9 +853,9 @@ class QZMQKernel(QtCore.QObject):
         sys.last_type = etype
         sys.last_value = value
         sys.last_traceback = tb
-        
+
         return etype, value, tb
-    
+
     def get_exception_only(self, exc_tuple=None):
         """
         Return as a string (ending with a newline) the exception that
@@ -913,7 +908,7 @@ if __name__ == '__main__':
     logging.info( "Reading config file '%s'..." % sys.argv[1])
 
     config = json.loads("".join(open(sys.argv[1]).readlines()))
-    
+
     app = QtCore.QCoreApplication(sys.argv)
     kernel = QZMQKernel(config)
     kernel.sigShutdownFinished.connect(app.quit)
