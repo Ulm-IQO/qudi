@@ -28,7 +28,10 @@ from core.util.mutex import Mutex
 from core.util.numpyhelpers import numpy_to_b, numpy_from_b
 from collections import OrderedDict
 from copy import copy
+from datetime import datetime
 import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 
 class ConfocalHistoryEntry(QtCore.QObject):
@@ -754,14 +757,21 @@ class ConfocalLogic(GenericLogic):
             raise e
 
 
-    def save_xy_data(self):
+    def save_xy_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal xy data to file.
 
         Two files are created.  The first is the imagedata, which has a text-matrix of count values
         corresponding to the pixel matrix of the image.  Only count-values are saved here.
 
         The second file saves the full raw data with x, y, z, and counts at every pixel.
+
+        A figure is also saved.
+
+        @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
+
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
+        save_time = datetime.now()
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
 
@@ -790,9 +800,34 @@ class ConfocalLogic(GenericLogic):
                    '# A pixel-line in the image corresponds to a row '
                    'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
 
-        # Save the image data to file
-        filelabel = 'confocal_xy_imagedata'
-        self._save_logic.save_data(image_data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        # Prepare a figure to be saved
+        figure_data = self.xy_image[:,:,3]
+        image_extent = [self.image_x_range[0],
+                        self.image_x_range[1],
+                        self.image_y_range[0],
+                        self.image_y_range[1]
+                        ]
+        axes = ['X', 'Y']
+        crosshair_pos = [self.get_position()[0], self.get_position()[1]]
+
+        fig = self.draw_figure(data=figure_data,
+                               image_extent=image_extent,
+                               scan_axis=axes,
+                               cbar_range=colorscale_range,
+                               percentile_range=percentile_range,
+                               crosshair_pos=crosshair_pos
+                               )
+
+        # Save the image data and figure
+        filelabel = 'confocal_xy_image'
+        self._save_logic.save_data(image_data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   as_text=True,
+                                   timestamp=save_time,
+                                   plotfig=fig
+                                   )
         #, as_xml=False, precision=None, delimiter=None)
 
         # prepare the full raw data in an OrderedDict:
@@ -816,13 +851,18 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_xy_data'
-        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   as_text=True,
+                                   timestamp=save_time
+                                   )
         #, as_xml=False, precision=None, delimiter=None)
 
         self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
-
-    def save_depth_data(self):
+    def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
 
         Two files are created.  The first is the imagedata, which has a text-matrix of count values
@@ -830,12 +870,14 @@ class ConfocalLogic(GenericLogic):
 
         The second file saves the full raw data with x, y, z, and counts at every pixel.
         """
+        save_time = datetime.now()
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
 
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
+        # TODO: This needs to check whether the scan was XZ or YZ direction
         parameters['X image min (micrometer)'] = self.image_x_range[0]
         parameters['X image max (micrometer)'] = self.image_x_range[1]
         parameters['X image range (micrometer)'] = self.image_x_range[1] - self.image_x_range[0]
@@ -859,9 +901,42 @@ class ConfocalLogic(GenericLogic):
                    '# A pixel-line in the image corresponds to a row in '
                    'of entries where the Signal is in counts/s:'] = self.depth_image[:,:,3]
 
-        # Save the image data to file
-        filelabel = 'confocal_depth_imagedata'
-        self._save_logic.save_data(image_data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        # Prepare a figure to be saved
+        figure_data = self.depth_image[:,:,3]
+
+        if self.depth_scan_dir_is_xz:
+            horizontal_range = [self.image_x_range[0], self.image_x_range[1]]
+            axes = ['X', 'Z']
+            crosshair_pos = [self.get_position()[0], self.get_position()[2]]
+        else:
+            horizontal_range = [self.image_y_range[0], self.image_y_range[1]]
+            axes = ['Y', 'Z']
+            crosshair_pos = [self.get_position()[1], self.get_position()[2]]
+
+        image_extent = [horizontal_range[0],
+                        horizontal_range[1],
+                        self.image_z_range[0],
+                        self.image_z_range[1]
+                        ]
+
+        fig = self.draw_figure(data=figure_data,
+                               image_extent=image_extent,
+                               scan_axis=axes,
+                               cbar_range=colorscale_range,
+                               percentile_range=percentile_range,
+                               crosshair_pos=crosshair_pos
+                               )
+
+        # Save the image data and figure
+        filelabel = 'confocal_xy_image'
+        self._save_logic.save_data(image_data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   as_text=True,
+                                   timestamp=save_time,
+                                   plotfig=fig
+                                   )
         #, as_xml=False, precision=None, delimiter=None)
 
         # prepare the full raw data in an OrderedDict:
@@ -885,11 +960,129 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_depth_data'
-        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   as_text=True,
+                                   timestamp=save_time
+                                   )
         #, as_xml=False, precision=None, delimiter=None)
 
         self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
+    def draw_figure(self, data, image_extent, scan_axis=['X', 'Y'], cbar_range=None, percentile_range=None,  crosshair_pos=None):
+        """ Create a 2-D color map figure of the scan image.
+
+        @param: array data: The NxM array of count values from a scan with NxM pixels.
+
+        @param: list image_extent: The scan range in the form [hor_min, hor_max, ver_min, ver_max]
+
+        @param: list axes: Names of the horizontal and vertical axes in the image
+
+        @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  If not supplied then a default of
+                                 data_min to data_max will be used.
+
+        @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
+
+        @param: list crosshair_pos: (optional) crosshair position as [hor, vert] in the chosen image axes.
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+
+        # If no colorbar range was given, take full range of data
+        if cbar_range is None:
+            cbar_range = [np.min(data), np.max(data)]
+
+        # Scale color values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_count = 0
+        image_data = data
+        draw_cb_range = np.array(cbar_range)
+
+        while draw_cb_range[1] > 1000:
+            image_data = image_data/1000
+            draw_cb_range = draw_cb_range/1000
+            prefix_count = prefix_count + 1
+
+        c_prefix = prefix[prefix_count]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        # Create image plot
+        cfimage = ax.imshow(image_data,
+                            cmap=plt.get_cmap('inferno'), # reference the right place in qd
+                            origin="lower",
+                            vmin=draw_cb_range[0],
+                            vmax=draw_cb_range[1],
+                            interpolation='none',
+                            extent=image_extent
+                            )
+
+        ax.set_aspect(1)
+        ax.set_xlabel(scan_axis[0] + ' position (um)')
+        ax.set_ylabel(scan_axis[1] + ' position (um)')
+        ax.spines['bottom'].set_position(('outward', 10))
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.get_xaxis().tick_bottom()
+        ax.get_yaxis().tick_left()
+
+        # draw the crosshair position if defined
+        if crosshair_pos is not None:
+            trans_xmark = mpl.transforms.blended_transform_factory(
+                ax.transData,
+                ax.transAxes)
+
+            trans_ymark = mpl.transforms.blended_transform_factory(
+                ax.transAxes,
+                ax.transData)
+
+            ax.annotate('', xy=(crosshair_pos[0], 0), xytext=(crosshair_pos[0], -0.01), xycoords=trans_xmark,
+                        arrowprops=dict(facecolor='#17becf', shrink=0.05),
+                        )
+
+            ax.annotate('', xy=(0, crosshair_pos[1]), xytext=(-0.01, crosshair_pos[1]), xycoords=trans_ymark,
+                        arrowprops=dict(facecolor='#17becf', shrink=0.05),
+                        )
+
+        # Draw the colorbar
+        cbar = plt.colorbar(cfimage, shrink=0.8)#, fraction=0.046, pad=0.08, shrink=0.75)
+        cbar.set_label('Fluorescence (' + c_prefix + 'c/s)')
+
+        # remove ticks from colorbar for cleaner image
+        cbar.ax.tick_params(which=u'both', length=0)
+
+        # If we have percentile information, draw that to the figure
+        if percentile_range is not None:
+            cbar.ax.annotate(str(percentile_range[0]),
+                             xy=(-0.3, 0.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate(str(percentile_range[1]),
+                             xy=(-0.3, 1.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate('(percentile)',
+                             xy=(-0.3, 0.5),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+
+        return fig
 
     def set_tilt_point1(self):
         """ Gets the first reference point for tilt correction."""

@@ -64,9 +64,7 @@ class SaveLogic(GenericLogic):
                     'xtick.color': '0.3',
                     'ytick.color': '0.3',
                     'axes.labelcolor': 'black',
-                    'xtick.labelsize': '14',
-                    'ytick.labelsize': '14',
-                    'axes.labelsize': '14',
+                    'font.size': '14',
                     'lines.linewidth': '2',
                     'figure.figsize': '12, 6',
                     'lines.markeredgewidth': '0',
@@ -74,7 +72,8 @@ class SaveLogic(GenericLogic):
                     'axes.spines.right': True,
                     'axes.spines.top': True,
                     'xtick.minor.visible': True,
-                    'ytick.minor.visible': True
+                    'ytick.minor.visible': True,
+                    'savefig.dpi': '180'
                     }
 
     def __init__(self, manager, name, config, **kwargs):
@@ -401,8 +400,10 @@ class SaveLogic(GenericLogic):
 
         # Save thumbnail figure of plot
         if plotfig is not None:
-            fig_fname = os.path.join(filepath, filename)[:-4] + '_plot.png'
-            plotfig.savefig(fig_fname)
+            fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
+            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+            plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
+            plotfig.savefig(fig_fname_vector, bbox_inches='tight', pad_inches=0.05)
 
     def save_1d_trace_as_text(self, trace_data, trace_name, opened_file=None,
                               filepath=None, filename=None, precision=':.3f'):
