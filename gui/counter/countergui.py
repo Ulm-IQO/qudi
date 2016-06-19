@@ -102,8 +102,7 @@ class CounterGui(GUIBase):
         self._pw.setLabel('bottom', 'Time', units='s')
 
         # Create an empty plot curve to be filled later, set its pen
-        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1,
-                                       style=QtCore.Qt.DotLine),
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
                                        symbol='o',
                                        symbolPen=palette.c1,
                                        symbolBrush=palette.c1,
@@ -118,8 +117,7 @@ class CounterGui(GUIBase):
         #       logic.  There needs to be a much better way to do this!
         if hasattr(self._counting_logic._counting_device, '_photon_source2'):
             if self._counting_logic._counting_device._photon_source2 is not None:
-                self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c3,
-                                               style=QtCore.Qt.DotLine),
+                self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
                                                symbol='s',
                                                symbolPen=palette.c3,
                                                symbolBrush=palette.c3,
@@ -131,7 +129,10 @@ class CounterGui(GUIBase):
                 self._pw.addItem(self._curve4)
 
         # setting the x axis length correctly
-        self._pw.setXRange(0, self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency())
+        self._pw.setXRange(
+            0,
+            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
+        )
 
         #####################
         # Setting default parameters
@@ -179,19 +180,26 @@ class CounterGui(GUIBase):
         """
 
         if self._counting_logic.getState() == 'locked':
-            self._mw.count_value_Label.setText('{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1]))
-            self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(0, self._counting_logic.get_count_length()) / self._counting_logic.get_count_frequency())
-            self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(0, self._counting_logic.get_count_length()) / self._counting_logic.get_count_frequency())
+            self._mw.count_value_Label.setText(
+                '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1])
+            )
 
-            # TODO: This is pretty bad, to directly inquire about the HW device from the GUI via the
-            #       logic.  There needs to be a much better way to do this!
+            x_vals = (np.arange(0, self._counting_logic.get_count_length())
+                      / self._counting_logic.get_count_frequency()
+                      )
+
+            self._curve1.setData(y=self._counting_logic.countdata, x=x_vals)
+            self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=x_vals)
+
+            # TODO: This is pretty bad, to directly inquire about the HW device from the GUI via
+            #       the logic.  There needs to be a much better way to do this!
             if hasattr(self._counting_logic._counting_device, '_photon_source2'):
                 if self._counting_logic._counting_device._photon_source2 is not None:
                     self._curve3.setData(y=self._counting_logic.countdata2,
-                                         x=np.arange(0, self._counting_logic.get_count_length()) / self._counting_logic.get_count_frequency()
+                                         x=x_vals
                                          )
                     self._curve4.setData(y=self._counting_logic.countdata_smoothed2,
-                                         x=np.arange(0, self._counting_logic.get_count_length()) / self._counting_logic.get_count_frequency()
+                                         x=x_vals
                                          )
 
         if self._counting_logic.get_saving_state():
@@ -237,20 +245,29 @@ class CounterGui(GUIBase):
         """
 #        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counting_logic.set_count_length(self._mw.count_length_SpinBox.value())
-        self._pw.setXRange(0, self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency())
+        self._pw.setXRange(
+            0,
+            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
+        )
 
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
 #        print ('count_frequency_changed: {0:d}'.format(self._mw.count_freq_SpinBox.value()))
         self._counting_logic.set_count_frequency(self._mw.count_freq_SpinBox.value())
-        self._pw.setXRange(0, self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency())
+        self._pw.setXRange(
+            0,
+            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
+        )
 
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
         """
         self._counting_logic.set_counting_samples(samples=self._mw.oversampling_SpinBox.value())
-        self._pw.setXRange(0, self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency())
+        self._pw.setXRange(
+            0,
+            self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
+        )
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -265,8 +282,12 @@ class CounterGui(GUIBase):
         self._mw.slow_counter_parameters_DockWidget.setFloating(False)
 
         # Arrange docks widgets
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.counter_trace_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_parameters_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
+                               self._mw.counter_trace_DockWidget
+                               )
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
+                               self._mw.slow_counter_parameters_DockWidget
+                               )
 
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
