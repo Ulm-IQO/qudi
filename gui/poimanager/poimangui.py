@@ -34,6 +34,7 @@ from gui.colordefs import QudiPalette as palette
 
 
 class PoiMark(pg.CircleROI):
+
     """ Creates a circle as a marker.
 
         @param int[2] pos: (length-2 sequence) The position of the ROI’s origin.
@@ -266,7 +267,6 @@ class PoiManagerGui(GUIBase):
         self._redraw_sample_shift()
         self._redraw_poi_markers()
 
-
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the POI Manager GUI.
 
@@ -327,24 +327,37 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Load image in the display
-        self.x_shift_plot = pg.ScatterPlotItem([0], [0], symbol='o', pen=palette.c1, brush=palette.c1)
-        self.y_shift_plot = pg.ScatterPlotItem([0], [0], symbol='s', pen=palette.c2, brush=palette.c2)
-        self.z_shift_plot = pg.ScatterPlotItem([0], [0], symbol='t', pen=palette.c3, brush=palette.c3)
+        self.x_shift_plot = pg.PlotDataItem([0], [0],
+                                            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+                                            symbol='o',
+                                            symbolPen=palette.c1,
+                                            symbolBrush=palette.c1,
+                                            symbolSize=5,
+                                            name='x'
+                                            )
+        self.y_shift_plot = pg.PlotDataItem([0], [0],
+                                            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+                                            symbol='s',
+                                            symbolPen=palette.c2,
+                                            symbolBrush=palette.c2,
+                                            symbolSize=5,
+                                            name='y'
+                                            )
+        self.z_shift_plot = pg.PlotDataItem([0], [0],
+                                            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                                            symbol='t',
+                                            symbolPen=palette.c3,
+                                            symbolBrush=palette.c3,
+                                            symbolSize=5,
+                                            name='z'
+                                            )
 
-        # It seems there is a bug with legends for ScatterPlotItem.
-        # as a workaround, here are three plotCurveItems to populate the legend.
-        self.x_legend_plot = pg.PlotCurveItem([0], [0], pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine), name='x')
-        self.y_legend_plot = pg.PlotCurveItem([0], [0], pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine), name='y')
-        self.z_legend_plot = pg.PlotCurveItem([0], [0], pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine), name='z')
         self._mw.sample_shift_ViewWidget.addLegend()
 
         # Add the plot to the ViewWidget defined in the UI file
         self._mw.sample_shift_ViewWidget.addItem(self.x_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.y_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.z_shift_plot)
-        self._mw.sample_shift_ViewWidget.addItem(self.x_legend_plot)
-        self._mw.sample_shift_ViewWidget.addItem(self.y_legend_plot)
-        self._mw.sample_shift_ViewWidget.addItem(self.z_legend_plot)
 
         # Label axes
         self._mw.sample_shift_ViewWidget.setLabel('bottom', 'Time', units='s')
@@ -509,7 +522,6 @@ class PoiManagerGui(GUIBase):
         and higherst value in the image or predefined ranges. Note that you can
         invert the colorbar if the lower border is bigger then the higher one.
         """
-
 
         cb_min, cb_max = self.determine_cb_range()
 
@@ -792,9 +804,6 @@ class PoiManagerGui(GUIBase):
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
-        self.x_legend_plot.setData(time_shift_data, x_shift_data)
-        self.y_legend_plot.setData(time_shift_data, y_shift_data)
-        self.z_legend_plot.setData(time_shift_data, z_shift_data)
 
         self._redraw_clocktime_ticks()
 
@@ -965,7 +974,7 @@ class PoiManagerGui(GUIBase):
         # Get the thresholds from the user-chosen color bar range
         cb_min, cb_max = self.determine_cb_range()
 
-        this_min_threshold = cb_min + 0.3*(cb_max - cb_min)
+        this_min_threshold = cb_min + 0.3 * (cb_max - cb_min)
         this_max_threshold = cb_max
 
         self._poi_manager_logic.autofind_pois(neighborhood_size=1, min_threshold=this_min_threshold, max_threshold=this_max_threshold)
