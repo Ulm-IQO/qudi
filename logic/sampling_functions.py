@@ -144,7 +144,7 @@ class SamplingFunctions():
 
     def _dc(self, time_arr, parameters):
         amp = parameters['amplitude1']
-        result_arr = np.full(len(time_arr), amp)
+        result_arr = np.full(len(time_arr), amp, dtype='float64')
         return result_arr
 
     def _sin(self, time_arr, parameters):
