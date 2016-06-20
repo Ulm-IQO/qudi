@@ -68,7 +68,7 @@ class SaveLogic(GenericLogic):
                     'lines.linewidth': '2',
                     'figure.figsize': '12, 6',
                     'lines.markeredgewidth': '0',
-                    'lines.markersize': '7',
+                    'lines.markersize': '5',
                     'axes.spines.right': True,
                     'axes.spines.top': True,
                     'xtick.minor.visible': True,
