@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 - 2016 Christoph Müller cmueller2603@gmail.com
 Copyright (C) 2015 - 2016 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2016 Lachlan J. Rogers <lachlan.j.rogers@quantum.diamonds>
 """
 
 from logic.generic_logic import GenericLogic
@@ -30,7 +31,9 @@ import time
 import datetime
 import matplotlib.pyplot as plt
 
+
 class ODMRLogic(GenericLogic):
+
     """This is the Logic class for ODMR."""
     _modclass = 'odmrlogic'
     _modtype = 'logic'
@@ -40,7 +43,7 @@ class ODMRLogic(GenericLogic):
            'microwave1': 'mwsourceinterface',
            'savelogic': 'SaveLogic',
            'taskrunner': 'TaskRunner'
-            }
+           }
     _out = {'odmrlogic': 'ODMRLogic'}
 
     sigNextLine = QtCore.Signal()
@@ -61,7 +64,7 @@ class ODMRLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
         # number of lines in the matrix plot
@@ -69,7 +72,6 @@ class ODMRLogic(GenericLogic):
         self.threadlock = Mutex()
         self.stopRequested = False
         self._clear_odmr_plots = False
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -104,8 +106,8 @@ class ODMRLogic(GenericLogic):
             ('Double Lorentzian with fixed splitting', self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)),
             ('N14', self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)),
             ('N15', self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)),
-            ('Double Gaussian', self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)) 
-            ])
+            ('Double Gaussian', self._fit_logic.make_multiplegaussian_model(no_of_gauss=2))
+        ])
         self.use_custom_params = {
             'Lorentzian': False,
             'Double Lorentzian': False,
@@ -113,24 +115,24 @@ class ODMRLogic(GenericLogic):
             'N14': False,
             'N15': False,
             'Double Gaussian': False
-            }
+        }
         # set the prefix, which determines the representation in the viewboxes
         # for the frequencies,  one can choose from the dict obtainable from
         # self.get_unit_prefix_dict(). That is mainly used to save the fitted
         # values with the appropriated magnitude.
         self._freq_prefix = 'M'
 
-        self.mw_frequency = 2870e6  #in Hz
-        self.mw_power = -30.        #in dBm
-        self.mw_start = 2800e6      #in Hz
-        self.mw_stop = 2950e6       #in Hz
-        self.mw_step = 2e6          #in Hz
+        self.mw_frequency = 2870e6  # in Hz
+        self.mw_power = -30.        # in dBm
+        self.mw_start = 2800e6      # in Hz
+        self.mw_stop = 2950e6       # in Hz
+        self.mw_step = 2e6          # in Hz
 
-        self.run_time = 10          #in s
-        self.elapsed_time = 0       #in s
+        self.run_time = 10          # in s
+        self.elapsed_time = 0       # in s
         self.current_fit_function = 'No Fit'
 
-        self.safeRawData = False #flag for saving raw data
+        self.safeRawData = False  # flag for saving raw data
 
         # load parameters stored in app state store
         if 'MW_trigger_source' in self._statusVariables:
@@ -157,8 +159,8 @@ class ODMRLogic(GenericLogic):
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
         # Initalize the ODMR plot and matrix image
-        self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step)
-        self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step/10.)
+        self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
+        self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step / 10.)
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
 
@@ -194,7 +196,7 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self._clock_frequency = int(clock_frequency)
-        #checks if scanner is still running
+        # checks if scanner is still running
         if self.getState() == 'locked':
             return -1
         else:
@@ -220,19 +222,19 @@ class ODMRLogic(GenericLogic):
         self.elapsed_time = 0
         self.sigOdmrElapsedTimeChanged.emit()
 
-        self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step)
-        self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step/10.)
+        self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
+        self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step / 10.)
 
         if self.safeRawData:
             # All that is necesarry fo saving of raw data:
-            #length of req list
-            self._mw_frequency_list_length=int(self._mw_frequency_list.shape[0])
+            # length of req list
+            self._mw_frequency_list_length = int(self._mw_frequency_list.shape[0])
             # time for one line
-            self._ODMR_line_time= self._mw_frequency_list_length /  self._clock_frequency
+            self._ODMR_line_time = self._mw_frequency_list_length / self._clock_frequency
             # amout of lines done during run_time
-            self._ODMR_line_count= self.run_time / self._ODMR_line_time
-            #list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
-            self.ODMR_raw_data = np.full((self._mw_frequency_list_length , self._ODMR_line_count),-1)
+            self._ODMR_line_count = self.run_time / self._ODMR_line_time
+            # list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
+            self.ODMR_raw_data = np.full((self._mw_frequency_list_length, self._ODMR_line_count), -1)
             self.logMsg('Raw data saving...', msgType='status', importance=5)
         else:
             self.logMsg('Raw data NOT saved', msgType='status', importance=5)
@@ -248,10 +250,9 @@ class ODMRLogic(GenericLogic):
         self._initialize_ODMR_matrix()
         self.sigNextLine.emit()
 
-
     def continue_odmr_scan(self):
         """ """
-        self._StartTime = time.time()-self.elapsed_time
+        self._StartTime = time.time() - self.elapsed_time
         self.start_odmr()
         return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
 
@@ -261,7 +262,6 @@ class ODMRLogic(GenericLogic):
             self._mw_device.list_on()
 
         self.sigNextLine.emit()
-
 
     def stop_odmr_scan(self):
         """ Stop the ODMR scan.
@@ -326,7 +326,7 @@ class ODMRLogic(GenericLogic):
         curr_num_lines = np.shape(self.ODMR_plot_xy)[0]
         if curr_num_lines > self.number_of_lines:
 
-            self.ODMR_plot_xy = np.vstack((new_counts, self.ODMR_plot_xy[:self.number_of_lines-1, :]))
+            self.ODMR_plot_xy = np.vstack((new_counts, self.ODMR_plot_xy[:self.number_of_lines - 1, :]))
 
             # It is very necessary that the matrix will be updated BEFORE the
             # axes are adjusted, otherwise, there the display will not fit with
@@ -335,7 +335,7 @@ class ODMRLogic(GenericLogic):
             self.sigODMRMatrixAxesChanged.emit()
         elif np.shape(self.ODMR_plot_xy)[0] < self.number_of_lines:
             new_matrix = np.zeros((self.number_of_lines, len(self._mw_frequency_list)))
-            new_matrix[1:curr_num_lines+1, :] = self.ODMR_plot_xy
+            new_matrix[1:curr_num_lines + 1, :] = self.ODMR_plot_xy
             new_matrix[0, :] = new_counts
             self.ODMR_plot_xy = new_matrix
 
@@ -355,14 +355,14 @@ class ODMRLogic(GenericLogic):
         self.elapsed_time = time.time() - self._StartTime
         self.sigOdmrElapsedTimeChanged.emit()
         if self.elapsed_time >= self.run_time:
-            self.do_fit(fit_function = self.current_fit_function)
+            self.do_fit(fit_function=self.current_fit_function)
             self.stopRequested = True
             self.sigOdmrFinished.emit()
 
         self.sigOdmrPlotUpdated.emit()
         self.sigNextLine.emit()
 
-    def set_power(self, power = None):
+    def set_power(self, power=None):
         """ Forwarding the desired new power from the GUI to the MW source.
 
         @param float power: power set at the GUI
@@ -375,7 +375,6 @@ class ODMRLogic(GenericLogic):
             error_code = self._mw_device.set_power(power)
             return error_code
 
-
     def get_power(self):
         """ Getting the current power from the MW source.
 
@@ -383,7 +382,6 @@ class ODMRLogic(GenericLogic):
         """
         power = self._mw_device.get_power()
         return power
-
 
     def set_frequency(self, frequency=None):
         """ Forwarding the desired new frequency from the GUI to the MW source.
@@ -400,7 +398,7 @@ class ODMRLogic(GenericLogic):
         if self.getState() == 'locked':
             return -1
         else:
-            error_code = self._mw_device.set_frequency(frequency) #times 1e6 is now done in gui!!
+            error_code = self._mw_device.set_frequency(frequency)  # times 1e6 is now done in gui!!
             return error_code
 
     def get_frequency(self):
@@ -408,7 +406,7 @@ class ODMRLogic(GenericLogic):
 
         @return float: current frequency of the MW source
         """
-        frequency = self._mw_device.get_frequency() #divided by 1e6 is now done in gui!!
+        frequency = self._mw_device.get_frequency()  # divided by 1e6 is now done in gui!!
         return frequency
 
     def MW_on(self):
@@ -467,8 +465,8 @@ class ODMRLogic(GenericLogic):
         # CONVENTION:
         # For a good display of the fit parameter, the GUI will assume that the
         # keys in the param_dict are written like:
-        #       <what ever comes here>_value = float/int
-        #       <what ever comes here>_error = float/int
+        #       <what ever comes here>_value = float / int
+        #       <what ever comes here>_error = float / int
         #       <what ever comes here>_unit = str
         # Then the GUI can better separate. However that is not obligatory since
         # it will otherwise display just everything.
@@ -483,7 +481,7 @@ class ODMRLogic(GenericLogic):
 
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
-            self.sigOdmrPlotUpdated.emit()  #ist das hier nötig?
+            self.sigOdmrPlotUpdated.emit()  # ist das hier nötig?
 
         elif self.fit_function == 'Lorentzian':
 
@@ -492,26 +490,26 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            cont = cont / (-1 * np.pi * result.params['sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont_err = np.sqrt(
-                (cont/result.params['amplitude'].value * result.params['amplitude'].stderr)**2
-                 + (cont/result.params['sigma'].value * result.params['sigma'].stderr)**2
-                 + (cont/result.params['c'].value * result.params['c'].stderr)**2 )
+                (cont / result.params['amplitude'].value * result.params['amplitude'].stderr) ** 2
+                + (cont / result.params['sigma'].value * result.params['sigma'].stderr) ** 2
+                + (cont / result.params['c'].value * result.params['c'].stderr) ** 2)
             param_dict = OrderedDict([
                 ('Frequency', {
-                    'value': np.round(result.params['center'].value/freq_norm, 3),
-                    'error': np.round(result.params['center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['center'].value / freq_norm, 3),
+                    'error': np.round(result.params['center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth', {
-                    'value': np.round(result.params['fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast', {
-                    'value': np.round(cont*100, 3),
-                    'error': np.round(cont_err*100,3),
-                    'unit' : '%'})
-                ])
+                    'value': np.round(cont * 100, 3),
+                    'error': np.round(cont_err * 100, 3),
+                    'unit': '%'})
+            ])
             self.fit_result = self._create_formatted_output(param_dict)
 
         elif self.fit_function == 'Double Lorentzian':
@@ -521,55 +519,55 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = cont0 / (-1 * np.pi * result.params['lorentz0_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                (cont0/result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr)**2
-                 + (cont0/result.params['lorentz0_sigma'].value *result.params['lorentz0_sigma'].stderr)**2
-                 + (cont0/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
+                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = cont1 / (-1 * np.pi * result.params['lorentz1_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                (cont1 / result.params['lorentz1_amplitude'].value *result.params['lorentz1_amplitude'].stderr)**2
-                 + (cont1/result.params['lorentz1_sigma'].value *result.params['lorentz1_sigma'].stderr)**2
-                 + (cont1/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
+                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             # create the proper param_dict with the values:
             param_dict = OrderedDict([
                 ('Freq. 0', {
-                    'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz0_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz0_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth 0', {
-                    'value': np.round(result.params['lorentz0_fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz0_fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz0_fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz0_fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast 0', {
-                    'value': np.round(cont0*100, 3),
-                    'error': np.round(cont0_err*100, 3),
-                    'unit' : '%'}),
+                    'value': np.round(cont0 * 100, 3),
+                    'error': np.round(cont0_err * 100, 3),
+                    'unit': '%'}),
                 ('Freq. 1', {
-                    'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz1_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz1_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth 1', {
-                    'value': np.round(result.params['lorentz1_fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz1_fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz1_fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz1_fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast 1', {
-                    'value': np.round(cont1*100, 3),
-                    'error': np.round(cont1_err*100, 3),
-                    'unit' : '%'})
-                ])
+                    'value': np.round(cont1 * 100, 3),
+                    'error': np.round(cont1_err * 100, 3),
+                    'unit': '%'})
+            ])
             self.fit_result = self._create_formatted_output(param_dict)
 
-        elif self.fit_function =='Double Lorentzian with fixed splitting':
+        elif self.fit_function == 'Double Lorentzian with fixed splitting':
             p = Parameters()
 
-            #TODO: insert this in gui config of ODMR
-            splitting_from_gui_config = 3.03 #in MHz
+            # TODO: insert this in gui config of ODMR
+            splitting_from_gui_config = 3.03  # in MHz
 
             estimate = self._fit_logic.estimate_doublelorentz(self._mw_frequency_list, self.ODMR_plot_y)
             error = estimate[0]
@@ -593,48 +591,48 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = cont0 / (-1 * np.pi * result.params['lorentz0_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                (cont0/result.params['lorentz0_amplitude'].value *result.params['lorentz0_amplitude'].stderr)**2
-                 + (cont0/result.params['lorentz0_sigma'].value *result.params['lorentz0_sigma'].stderr)**2
-                 + (cont0/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
+                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = cont1 / (-1 * np.pi * result.params['lorentz1_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                (cont1/result.params['lorentz1_amplitude'].value *result.params['lorentz1_amplitude'].stderr)**2
-                 + (cont1/result.params['lorentz1_sigma'].value *result.params['lorentz1_sigma'].stderr)**2
-                 + (cont1/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
+                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             # create the proper param_dict with the values:
             param_dict = OrderedDict([
                 ('Freq. 0', {
-                    'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz0_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz0_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Freq. 1', {
-                    'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz1_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz1_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth 0', {
-                    'value': np.round(result.params['lorentz0_fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz0_fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz0_fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz0_fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth 1', {
-                    'value': np.round(result.params['lorentz1_fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz1_fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz1_fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz1_fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast 0', {
-                    'value': np.round(cont0*100, 3),
-                    'error': np.round(cont0_err*100, 3),
-                    'unit' : '%'}),
+                    'value': np.round(cont0 * 100, 3),
+                    'error': np.round(cont0_err * 100, 3),
+                    'unit': '%'}),
                 ('Contrast 1', {
-                    'value': np.round(cont1*100, 3),
-                    'error': np.round(cont1_err*100, 3),
-                    'unit' : '%'})
-                ])
+                    'value': np.round(cont1 * 100, 3),
+                    'error': np.round(cont1_err * 100, 3),
+                    'unit': '%'})
+            ])
             self.fit_result = self._create_formatted_output(param_dict)
 
         elif self.fit_function == 'N14':
@@ -643,56 +641,56 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = cont0 / (-1 * np.pi * result.params['lorentz0_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                (cont0/result.params['lorentz0_amplitude'].value *result.params['lorentz0_amplitude'].stderr)**2
-                 + (cont0/result.params['lorentz0_sigma'].value *result.params['lorentz0_sigma'].stderr)**2
-                 + (cont0/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
+                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = cont1 / (-1 * np.pi * result.params['lorentz1_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                (cont1/result.params['lorentz1_amplitude'].value *result.params['lorentz1_amplitude'].stderr)**2
-                 + (cont1/result.params['lorentz1_sigma'].value *result.params['lorentz1_sigma'].stderr)**2
-                 + (cont1/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
+                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont2 = result.params['lorentz2_amplitude'].value
-            cont2 = cont2/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)
+            cont2 = cont2 / (-1 * np.pi * result.params['lorentz2_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont2_err = np.sqrt(
-                (cont2/result.params['lorentz1_amplitude'].value *result.params['lorentz1_amplitude'].stderr)**2
-                 + (cont2/result.params['lorentz1_sigma'].value *result.params['lorentz1_sigma'].stderr)**2
-                 + (cont2/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont2 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
+                + (cont2 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
+                + (cont2 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             # create the proper param_dict with the values:
             param_dict = OrderedDict([
                 ('Freq. 0', {
-                    'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz0_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz0_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Freq. 1', {
-                    'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz1_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz1_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Freq. 2', {
-                    'value': np.round(result.params['lorentz2_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz2_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz2_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz2_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast 0', {
-                    'value': np.round(cont0*100, 3),
-                    'error': np.round(cont0_err*100, 3),
-                    'unit' : '%'}),
+                    'value': np.round(cont0 * 100, 3),
+                    'error': np.round(cont0_err * 100, 3),
+                    'unit': '%'}),
                 ('Contrast 1', {
-                    'value': np.round(cont1*100, 3),
-                    'error': np.round(cont1_err*100, 3),
-                    'unit' : '%'}),
+                    'value': np.round(cont1 * 100, 3),
+                    'error': np.round(cont1_err * 100, 3),
+                    'unit': '%'}),
                 ('Contrast 2', {
-                    'value': np.round(cont2*100, 3),
-                    'error': np.round(cont2_err*100, 3),
-                    'unit' : '%'})
-                ])
+                    'value': np.round(cont2 * 100, 3),
+                    'error': np.round(cont2_err * 100, 3),
+                    'unit': '%'})
+            ])
             self.fit_result = self._create_formatted_output(param_dict)
 
         elif self.fit_function == 'N15':
@@ -701,40 +699,40 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = cont0 / (-1 * np.pi * result.params['lorentz0_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                (cont0/result.params['lorentz0_amplitude'].value *result.params['lorentz0_amplitude'].stderr)**2
-                 + (cont0/result.params['lorentz0_sigma'].value *result.params['lorentz0_sigma'].stderr)**2
-                 + (cont0/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
+                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = cont1 / (-1 * np.pi * result.params['lorentz1_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                (cont1/result.params['lorentz1_amplitude'].value *result.params['lorentz1_amplitude'].stderr)**2
-                 + (cont1/result.params['lorentz1_sigma'].value *result.params['lorentz1_sigma'].stderr)**2
-                 + (cont1/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
+                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             # create the proper param_dict with the values:
             param_dict = OrderedDict([
                 ('Freq. 0', {
-                    'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz0_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz0_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Freq. 1', {
-                    'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['lorentz1_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['lorentz1_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast 0', {
-                    'value': np.round(cont0*100, 3),
-                    'error': np.round(cont0_err*100, 3),
-                    'unit' : '%'}),
+                    'value': np.round(cont0 * 100, 3),
+                    'error': np.round(cont0_err * 100, 3),
+                    'unit': '%'}),
                 ('Contrast 1', {
-                    'value': np.round(cont1*100, 3),
-                    'error': np.round(cont1_err*100, 3),
-                    'unit' : '%'})
-                ])
+                    'value': np.round(cont1 * 100, 3),
+                    'error': np.round(cont1_err * 100, 3),
+                    'unit': '%'})
+            ])
             self.fit_result = self._create_formatted_output(param_dict)
 
         elif self.fit_function == 'Double Gaussian':
@@ -743,46 +741,46 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont0 = result.params['gaussian0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['gaussian0_sigma'].value*result.params['c'].value)
+            cont0 = cont0 / (-1 * np.pi * result.params['gaussian0_sigma'].value * result.params['c'].value)
             cont0_err = np.sqrt(
-                (cont0/result.params['gaussian0_amplitude'].value * result.params['gaussian0_amplitude'].stderr)**2
-                 + (cont0/result.params['gaussian0_sigma'].value * result.params['gaussian0_sigma'].stderr)**2
-                 + (cont0/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont0 / result.params['gaussian0_amplitude'].value * result.params['gaussian0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['gaussian0_sigma'].value * result.params['gaussian0_sigma'].stderr) ** 2
+                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont1 = result.params['gaussian1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['gaussian1_sigma'].value*result.params['c'].value)
+            cont1 = cont1 / (-1 * np.pi * result.params['gaussian1_sigma'].value * result.params['c'].value)
             cont1_err = np.sqrt(
-                (cont1/result.params['gaussian1_amplitude'].value * result.params['gaussian1_amplitude'].stderr)**2
-                 + (cont1/result.params['gaussian1_sigma'].value * result.params['gaussian1_sigma'].stderr)**2
-                 + (cont1/result.params['c'].value *result.params['c'].stderr)**2 )
+                (cont1 / result.params['gaussian1_amplitude'].value * result.params['gaussian1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['gaussian1_sigma'].value * result.params['gaussian1_sigma'].stderr) ** 2
+                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             # create the proper param_dict with the values:
             param_dict = OrderedDict([
                 ('Freq. 0', {
-                    'value': np.round(result.params['gaussian0_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['gaussian0_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['gaussian0_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['gaussian0_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Freq. 1', {
-                    'value': np.round(result.params['gaussian1_center'].value/freq_norm, 3),
-                    'error': np.round(result.params['gaussian1_center'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['gaussian1_center'].value / freq_norm, 3),
+                    'error': np.round(result.params['gaussian1_center'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth 0', {
-                    'value': np.round(result.params['gaussian0_fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['gaussian0_fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['gaussian0_fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['gaussian0_fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Linewidth 1', {
-                    'value': np.round(result.params['gaussian1_fwhm'].value/freq_norm, 3),
-                    'error': np.round(result.params['gaussian1_fwhm'].stderr/freq_norm, 2),
-                    'unit' : '{0}Hz'.format(self._freq_prefix)}),
+                    'value': np.round(result.params['gaussian1_fwhm'].value / freq_norm, 3),
+                    'error': np.round(result.params['gaussian1_fwhm'].stderr / freq_norm, 2),
+                    'unit': '{0}Hz'.format(self._freq_prefix)}),
                 ('Contrast 0', {
-                    'value': np.round(cont0*100, 3),
-                    'error': np.round(cont0_err*100, 3),
-                    'unit' : '%'}),
+                    'value': np.round(cont0 * 100, 3),
+                    'error': np.round(cont0_err * 100, 3),
+                    'unit': '%'}),
                 ('Contrast 1', {
-                    'value': np.round(cont1*100, 3),
-                    'error': np.round(cont1_err*100, 3),
-                    'unit' : '%'})
-                ])
+                    'value': np.round(cont1 * 100, 3),
+                    'error': np.round(cont1_err * 100, 3),
+                    'unit': '%'})
+            ])
             self.fit_result = self._create_formatted_output(param_dict)
         else:
             self.logMsg('The Fit Function "{0}" is not implemented to be used in '
@@ -815,7 +813,6 @@ class ODMRLogic(GenericLogic):
                     param_dict[entry]['unit'])
         return output_str
 
-
     def save_ODMR_Data(self, tag=None, timestamp=None):
         """ Saves the current ODMR data to a file."""
 
@@ -846,7 +843,7 @@ class ODMRLogic(GenericLogic):
         matrix_data = self.ODMR_plot_xy  # the data in the matrix plot
         data['frequency values (Hz)'] = freq_data
         data['count data'] = count_data
-        data2['count data'] = matrix_data  #saves the raw data used in the matrix NOT all only the size of the matrix
+        data2['count data'] = matrix_data  # saves the raw data used in the matrix NOT all only the size of the matrix
 
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.mw_power
@@ -886,7 +883,7 @@ class ODMRLogic(GenericLogic):
 
         if self.safeRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
-            data3['count data'] = raw_data  #saves the raw data, ALL of it so keep an eye on performance
+            data3['count data'] = raw_data  # saves the raw data, ALL of it so keep an eye on performance
             self._save_logic.save_data(
                 data3,
                 filepath3,
@@ -914,8 +911,8 @@ class ODMRLogic(GenericLogic):
 
         # Rescale counts data with SI prefix
         while np.max(count_data) > 1000:
-            count_data = count_data/1000
-            fit_count_vals = fit_count_vals/1000
+            count_data = count_data / 1000
+            fit_count_vals = fit_count_vals / 1000
             prefix_index = prefix_index + 1
 
         counts_prefix = prefix[prefix_index]
@@ -924,8 +921,8 @@ class ODMRLogic(GenericLogic):
         prefix_index = 0
 
         while np.max(freq_data) > 1000:
-            freq_data = freq_data/1000
-            fit_freq_vals = fit_freq_vals/1000
+            freq_data = freq_data / 1000
+            fit_freq_vals = fit_freq_vals / 1000
             prefix_index = prefix_index + 1
 
         mw_prefix = prefix[prefix_index]
@@ -946,7 +943,7 @@ class ODMRLogic(GenericLogic):
         ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
 
         ax_matrix.imshow(self.ODMR_plot_xy,
-                         cmap=plt.get_cmap('inferno'), # reference the right place in qd
+                         cmap=plt.get_cmap('inferno'),  # reference the right place in qd
                          origin='bottom',
                          extent=[np.min(freq_data), np.max(freq_data), 0, self.number_of_lines],
                          aspect='auto',
@@ -958,8 +955,8 @@ class ODMRLogic(GenericLogic):
         return fig
 
     def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power,
-                                runtime, fit_function='Lorentzian',
-                                save_after_meas=True, name_tag=''):
+                                 runtime, fit_function='Lorentzian',
+                                 save_after_meas=True, name_tag=''):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
 
