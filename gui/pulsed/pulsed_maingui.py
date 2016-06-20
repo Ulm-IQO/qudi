@@ -2459,7 +2459,7 @@ class PulsedMeasurementGui(GUIBase):
         if 'ana_param_second_plot_y_axis_unit_LineEdit' in self._statusVariables:
             self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'])
 
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(self._pulsed_meas_logic.laser_trigger_delay__s*1e9)
+        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(self._pulsed_meas_logic.laser_trigger_delay_s*1e9)
         # configure a bit the laser trigger delay spinbox:
         self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setSingleStep(10)  # in ns
         self.update_analysis_settings()
