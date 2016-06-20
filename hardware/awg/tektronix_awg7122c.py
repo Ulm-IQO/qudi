@@ -55,7 +55,7 @@ class AWG7122C(Base, PulserInterface):
             self.ip_address = config['awg_IP_address']
         else:
             self.logMsg('No IP address parameter "awg_IP_address" found in '
-                        'the config for the AWG5002C! Correct that!',
+                        'the config for the AWG7122C! Correct that!',
                         msgType='error')
 
         if 'awg_port' in config.keys():
@@ -68,7 +68,7 @@ class AWG7122C(Base, PulserInterface):
             self.sample_rate = config['default_sample_rate']
         else:
             self.logMsg('No parameter "default_sample_rate" found in the '
-                        'config for the AWG5002C! The maximum sample rate is '
+                        'config for the AWG7122C! The maximum sample rate is '
                         'used instead.', msgType='warning')
             self.sample_rate = self.get_constraints()['sample_rate'][1]
 
@@ -76,14 +76,14 @@ class AWG7122C(Base, PulserInterface):
             self.ftp_path = config['awg_ftp_path']
         else:
             self.logMsg('No parameter "awg_ftp_path" found in the config for '
-                        'the AWG5002C! State the FTP folder of this device!',
+                        'the AWG7122C! State the FTP folder of this device!',
                         msgType='error')
 
         if 'timeout' in config.keys():
             self._timeout = config['timeout']
         else:
             self.logMsg('No parameter "timeout" found in the config for '
-                        'the AWG5002C! Take a default value of 10s.',
+                        'the AWG7122C! Take a default value of 10s.',
                         msgType='error')
             self._timeout = 10
 

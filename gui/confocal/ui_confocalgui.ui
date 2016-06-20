@@ -37,8 +37,6 @@
     </property>
     <addaction name="actionSave_XY_Scan"/>
     <addaction name="actionSave_Depth_Scan"/>
-    <addaction name="actionSave_XY_Image_Data"/>
-    <addaction name="actionSave_Depth_Image_Data"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
     <addaction name="actionClose"/>
@@ -1879,7 +1877,7 @@
      <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
-    <string>&amp;Save XY Data</string>
+    <string>&amp;Save XY scan</string>
    </property>
   </action>
   <action name="actionSave_configuration">
@@ -1921,7 +1919,10 @@
      <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
-    <string>Save &amp;XZ Data</string>
+    <string>Save &amp;Depth scan</string>
+   </property>
+   <property name="toolTip">
+    <string>Save Depth Data</string>
    </property>
   </action>
   <action name="action_optimizer_settings">
@@ -1931,24 +1932,6 @@
    </property>
    <property name="text">
     <string>O&amp;ptimizer Settings</string>
-   </property>
-  </action>
-  <action name="actionSave_XY_Image_Data">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save XY &amp;Image+Data</string>
-   </property>
-  </action>
-  <action name="actionSave_Depth_Image_Data">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save XZ Image+&amp;Data</string>
    </property>
   </action>
   <action name="action_zoom">

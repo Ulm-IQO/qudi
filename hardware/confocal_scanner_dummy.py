@@ -354,7 +354,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             x_data,y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
             for i in range(self._num_points):
                 count_data += self.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data[0]),
+                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data),
                               *(self._points_z[i]))))
         else:
             x_data,y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])

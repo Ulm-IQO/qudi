@@ -22,6 +22,7 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
+from cycler import cycler
 import os
 import sys
 import inspect
@@ -41,14 +42,39 @@ class FunctionImplementationError(Exception):
 class SaveLogic(GenericLogic):
 
     """
-    UNSTABLE: Alexander Stark
     A general class which saves all kinds of data in a general sense.
     """
+
     _modclass = 'savelogic'
     _modtype = 'logic'
 
     # declare connectors
     _out = {'savelogic': 'SaveLogic'}
+
+    # Matplotlib style definition for saving plots
+    mpl_qd_style = {'axes.prop_cycle': cycler('color', ['#1f17f4',
+                                                        '#ffa40e',
+                                                        '#ff3487',
+                                                        '#008b00',
+                                                        '#17becf',
+                                                        '#850085'
+                                                        ]
+                                              ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
+                    'axes.edgecolor': '0.3',
+                    'xtick.color': '0.3',
+                    'ytick.color': '0.3',
+                    'axes.labelcolor': 'black',
+                    'font.size': '14',
+                    'lines.linewidth': '2',
+                    'figure.figsize': '12, 6',
+                    'lines.markeredgewidth': '0',
+                    'lines.markersize': '5',
+                    'axes.spines.right': True,
+                    'axes.spines.top': True,
+                    'xtick.minor.visible': True,
+                    'ytick.minor.visible': True,
+                    'savefig.dpi': '180'
+                    }
 
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation,
@@ -111,266 +137,273 @@ class SaveLogic(GenericLogic):
 
     def save_data(self, data, filepath, parameters=None, filename=None,
                   filelabel=None, timestamp=None, as_text=True, as_xml=False,
-                  precision=':.3f', delimiter='\t'):
-            """ General save routine for data.
+                  precision=':.3f', delimiter='\t', plotfig=None):
+        """ General save routine for data.
 
-            @param dict or OrderedDict data:
-                                      Any dictonary with a keyword of the data
-                                      and a corresponding list, where the data
-                                      are situated. E.g. like:
+        @param dict or OrderedDict data:
+                                  Any dictonary with a keyword of the data
+                                  and a corresponding list, where the data
+                                  are situated. E.g. like:
 
-                         data = {'Frequency (MHz)':[1,2,4,5,6]}
-                         data = {'Frequency':[1,2,4,5,6],'Counts':[234,894,743,423,235]}
-                         data = {'Frequency (MHz),Counts':[ [1,234],[2,894],...[30,504] ]}
+                     data = {'Frequency (MHz)':[1,2,4,5,6]}
+                     data = {'Frequency':[1,2,4,5,6],'Counts':[234,894,743,423,235]}
+                     data = {'Frequency (MHz),Counts':[ [1,234],[2,894],...[30,504] ]}
 
-            @param string filepath: The path to the directory, where the data
-                                      will be saved.
-                                      If filepath is corrupt, the saving routine
-                                      will retrieve the basic filepath for the
-                                      data from the inherited base module
-                                      'get_data_dir' and saves the data in the
-                                      directory .../UNSPECIFIED_<module_name>/
-            @param dict or OrderedDict parameters:
-                                      optional, a dictionary
-                                      with all parameters you want to pass to
-                                      the saving routine.
-            @parem string filename: optional, if you really want to fix an own
-                                    filename. BUT THIS IS NOT RECOMMENDED! If
-                                    passed the whole file will have the name
+        @param string filepath: The path to the directory, where the data
+                                  will be saved.
+                                  If filepath is corrupt, the saving routine
+                                  will retrieve the basic filepath for the
+                                  data from the inherited base module
+                                  'get_data_dir' and saves the data in the
+                                  directory .../UNSPECIFIED_<module_name>/
+        @param dict or OrderedDict parameters:
+                                  optional, a dictionary
+                                  with all parameters you want to pass to
+                                  the saving routine.
+        @parem string filename: optional, if you really want to fix an own
+                                filename. BUT THIS IS NOT RECOMMENDED! If
+                                passed the whole file will have the name
 
-                                        <filename>
+                                    <filename>
 
-                                    If nothing is specified the save logic will
-                                    generate a filename either based on the
-                                    class, from which this method was called,
-                                    or it will use the passed filelabel if that
-                                    is speficied.
-                                    Keep in mind that you have also to specify
-                                    the ending of the filename!
-            @parem string filelabel: optional, if filelabel is set and no
-                                     filename was specified, the savelogic will
-                                     create a name which looks like
+                                If nothing is specified the save logic will
+                                generate a filename either based on the
+                                class, from which this method was called,
+                                or it will use the passed filelabel if that
+                                is speficied.
+                                Keep in mind that you have also to specify
+                                the ending of the filename!
+        @parem string filelabel: optional, if filelabel is set and no
+                                 filename was specified, the savelogic will
+                                 create a name which looks like
 
-                                         YYYY-MM-DD_HHh-MMm-SSs_<filelabel>.dat
+                                     YYYY-MM-DD_HHh-MMm-SSs_<filelabel>.dat
 
-                                    The timestamp will be created at runtime if
-                                    no user defined timestamp was passed.
-            @param datetime timestamp: optional, a datetime.datetime object,
-                                       which saves the timestamp in a general
-                                       way. Create a datetime.datetime.now()
-                                       object from the module datetime if you
-                                       want to fix the timestamp for the
-                                       filename. The filename will like in the
-                                       description of the filelabel parameter.
-                                       Be careful if you pass a filename and a
-                                       timestamp, because then the timestamp
-                                       will be not considered.
-            @param bool as_text: specify how the saved data are saved to file.
-            @param bool as_xml: specify how the saved data are saved to file.
+                                The timestamp will be created at runtime if
+                                no user defined timestamp was passed.
+        @param datetime timestamp: optional, a datetime.datetime object,
+                                   which saves the timestamp in a general
+                                   way. Create a datetime.datetime.now()
+                                   object from the module datetime if you
+                                   want to fix the timestamp for the
+                                   filename. The filename will like in the
+                                   description of the filelabel parameter.
+                                   Be careful if you pass a filename and a
+                                   timestamp, because then the timestamp
+                                   will be not considered.
+        @param bool as_text: specify how the saved data are saved to file.
+        @param bool as_xml: specify how the saved data are saved to file.
 
-            @param int precision: optional, specifies the number of digits
-                                  after the comma for the saving precision. All
-                                  number, which follows afterwards are cut off.
-                                  A c-like format should be used.
-                                  For 'precision=3' a number like
-                                       '323.423842' is saved as '323.423'.
-                                       Default is precision = 3.
+        @param int precision: optional, specifies the number of digits
+                              after the comma for the saving precision. All
+                              number, which follows afterwards are cut off.
+                              A c-like format should be used.
+                              For 'precision=3' a number like
+                                   '323.423842' is saved as '323.423'.
+                                   Default is precision = 3.
 
-            @param string delimiter: optional, insert here the delimiter, like
-                                     \n for new line,  \t for tab, , for a
-                                     comma, ect.
+        @param string delimiter: optional, insert here the delimiter, like
+                                 \n for new line,  \t for tab, , for a
+                                 comma, ect.
 
-            This method should be called from the modules and it will call all
-            the needed methods for the saving routine. This module guarentees
-            that if the passing of the data is correct, the data are saved
-            always.
+        This method should be called from the modules and it will call all
+        the needed methods for the saving routine. This module guarentees
+        that if the passing of the data is correct, the data are saved
+        always.
 
-            1D data
-            =======
-            1D data should be passed in a dictionary where the data trace
-            should be assigned to one identifier like
+        1D data
+        =======
+        1D data should be passed in a dictionary where the data trace
+        should be assigned to one identifier like
 
-                {'<identifier>':[list of values]}
-                {'Numbers of counts':[1.4, 4.2, 5, 2.0, 5.9 , ... , 9.5, 6.4]}
+            {'<identifier>':[list of values]}
+            {'Numbers of counts':[1.4, 4.2, 5, 2.0, 5.9 , ... , 9.5, 6.4]}
 
-            You can also pass as much 1D arrays as you want:
-                {'Frequency (MHz)':list1, 'signal':list2, 'correlations': list3, ...}
-
-
-
-            2D data
-            =======
-            2D data should be passed in a dictionary where the matrix like data
-            should be assigned to one identifier like
-
-                {'<identifier>':[[1,2,3],[4,5,6],[7,8,9]]}
-
-            which will result in:
-                <identifier>
-                1   2   3
-                4   5   6
-                7   8   9
-
-            3-X data
-            ========
-            There is no specific implementation to save 3D or higher dimension
-            data arrays. If you split the N-dimensional data in N one
-            dimensional data traces, which have a length of M (see last example
-            in 1D data) then the savelogic will handle them. If the save logic
-            cannot identify the passed data as 1D or 2D data, the data will be
-            saved in a raw fashion.
+        You can also pass as much 1D arrays as you want:
+            {'Frequency (MHz)':list1, 'signal':list2, 'correlations': list3, ...}
 
 
-            YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE
-            SAVED TIME TRACE/MATRIX.
-            """
 
-            try:
-                frm = inspect.stack()[1]    # try to trace back the functioncall to
-                                            # the class which was calling it.
-                mod = inspect.getmodule(frm[0])  # this will get the object, which
-                                                 # called the save_data function.
-                module_name = mod.__name__.split('.')[-1]  # that will extract the
-                                                           # name of the class.
-            except:
-                # Sometimes it is not possible to get the object which called the save_data function (such as when calling this from the console).
-                module_name = 'NaN'
+        2D data
+        =======
+        2D data should be passed in a dictionary where the matrix like data
+        should be assigned to one identifier like
 
-            # check whether the given directory path does exist. If not, the
-            # file will be saved anyway in the unspecified directory.
+            {'<identifier>':[[1,2,3],[4,5,6],[7,8,9]]}
 
-            if not os.path.exists(filepath):
-                filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
-                self.logMsg('No Module name specified! Please correct this! '
-                            'Data are saved in the \'UNSPECIFIED_<module_name>\' folder.',
-                            msgType='warning', importance=7)
+        which will result in:
+            <identifier>
+            1   2   3
+            4   5   6
+            7   8   9
 
-            # Produce a filename tag from the active POI name
-            if self.active_poi_name == '':
-                poi_tag = ''
+        3-X data
+        ========
+        There is no specific implementation to save 3D or higher dimension
+        data arrays. If you split the N-dimensional data in N one
+        dimensional data traces, which have a length of M (see last example
+        in 1D data) then the savelogic will handle them. If the save logic
+        cannot identify the passed data as 1D or 2D data, the data will be
+        saved in a raw fashion.
+
+
+        YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE
+        SAVED TIME TRACE/MATRIX.
+        """
+
+        try:
+            frm = inspect.stack()[1]    # try to trace back the functioncall to
+                                        # the class which was calling it.
+            mod = inspect.getmodule(frm[0])  # this will get the object, which
+                                             # called the save_data function.
+            module_name = mod.__name__.split('.')[-1]  # that will extract the
+                                                       # name of the class.
+        except:
+            # Sometimes it is not possible to get the object which called the save_data function (such as when calling this from the console).
+            module_name = 'NaN'
+
+        # check whether the given directory path does exist. If not, the
+        # file will be saved anyway in the unspecified directory.
+
+        if not os.path.exists(filepath):
+            filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
+            self.logMsg('No Module name specified! Please correct this! '
+                        'Data are saved in the \'UNSPECIFIED_<module_name>\' folder.',
+                        msgType='warning', importance=7)
+
+        # Produce a filename tag from the active POI name
+        if self.active_poi_name == '':
+            poi_tag = ''
+        else:
+            poi_tag = '_' + self.active_poi_name.replace(" ", "_")
+
+        # create a unique name for the file, if no name was passed:
+        if filename is None:
+            # use the timestamp if that is specified:
+            if timestamp is not None:
+                # use the filelabel if that is specified:
+                if filelabel is None:
+                    filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
+                else:
+                    filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
             else:
-                poi_tag = '_' + self.active_poi_name.replace(" ", "_")
-
-            # create a unique name for the file, if no name was passed:
-            if filename is None:
-                # use the timestamp if that is specified:
-                if timestamp is not None:
-                    # use the filelabel if that is specified:
-                    if filelabel is None:
-                        filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
-                    else:
-                        filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
+                # use the filelabel if that is specified:
+                if filelabel is None:
+                    filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
                 else:
-                    # use the filelabel if that is specified:
-                    if filelabel is None:
-                        filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
-                    else:
-                        filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
+                    filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
 
-            # open the file
-            textfile = open(os.path.join(filepath, filename), 'w')
+        # open the file
+        textfile = open(os.path.join(filepath, filename), 'w')
 
-            # write the paramters if specified:
-            textfile.write('# Saved Data from the class ' + module_name + ' on '
-                           + time.strftime('%d.%m.%Y at %Hh%Mm%Ss.\n')
-                           )
-            textfile.write('#\n')
-            textfile.write('# Parameters:\n')
-            textfile.write('# ===========\n')
-            textfile.write('#\n')
+        # write the paramters if specified:
+        textfile.write('# Saved Data from the class ' + module_name + ' on '
+                       + time.strftime('%d.%m.%Y at %Hh%Mm%Ss.\n')
+                       )
+        textfile.write('#\n')
+        textfile.write('# Parameters:\n')
+        textfile.write('# ===========\n')
+        textfile.write('#\n')
 
-            # Include the active POI name (if not empty) as a parameter in the header
-            if self.active_poi_name != '':
-                textfile.write('# Measured at POI: ' + self.active_poi_name + '\n')
+        # Include the active POI name (if not empty) as a parameter in the header
+        if self.active_poi_name != '':
+            textfile.write('# Measured at POI: ' + self.active_poi_name + '\n')
 
-            if parameters is not None:
+        if parameters is not None:
 
-                # check whether the format for the parameters have a dict type:
-                if type(parameters) is dict or OrderedDict:
-                    for entry in parameters:
-                        textfile.write('# ' + str(entry) + ':' + delimiter + str(parameters[entry]) + '\n')
+            # check whether the format for the parameters have a dict type:
+            if type(parameters) is dict or OrderedDict:
+                for entry in parameters:
+                    textfile.write('# ' + str(entry) + ':' + delimiter + str(parameters[entry]) + '\n')
 
-                # make a hardcore string convertion and try to save the
-                # parameters directly:
-                else:
-                    self.logMsg('The parameters are not passed as a dictionary! '
-                                'The SaveLogic will try to save the paramters '
-                                'directely.', msgType='error', importance=9)
-                    textfile.write('# not specified parameters: ' + str(parameters) + '\n')
+            # make a hardcore string convertion and try to save the
+            # parameters directly:
+            else:
+                self.logMsg('The parameters are not passed as a dictionary! '
+                            'The SaveLogic will try to save the paramters '
+                            'directely.', msgType='error', importance=9)
+                textfile.write('# not specified parameters: ' + str(parameters) + '\n')
 
-            textfile.write('#\n')
-            textfile.write('# Data:\n')
-            textfile.write('# =====\n')
-            # check the input data:
+        textfile.write('#\n')
+        textfile.write('# Data:\n')
+        textfile.write('# =====\n')
+        # check the input data:
 
-            # go through each data in t
-            if len(data) == 1:
-                key_name = list(data.keys())[0]
+        # go through each data in t
+        if len(data) == 1:
+            key_name = list(data.keys())[0]
 
-                # check whether the data is only a 1d trace
-                if len(np.shape(data[key_name])) == 1:
+            # check whether the data is only a 1d trace
+            if len(np.shape(data[key_name])) == 1:
 
-                    self.save_1d_trace_as_text(trace_data=data[key_name],
-                                               trace_name=key_name,
-                                               opened_file=textfile,
-                                               precision=precision)
+                self.save_1d_trace_as_text(trace_data=data[key_name],
+                                           trace_name=key_name,
+                                           opened_file=textfile,
+                                           precision=precision)
 
-                # check whether the data is only a 2d array
-                elif len(np.shape(data[key_name])) == 2:
+            # check whether the data is only a 2d array
+            elif len(np.shape(data[key_name])) == 2:
 
-                    key_name_array = key_name.split(',')
+                key_name_array = key_name.split(',')
 
-                    self.save_2d_points_as_text(trace_data=data[key_name],
-                                                trace_name=key_name_array,
-                                                opened_file=textfile,
-                                                precision=precision,
-                                                delimiter=delimiter)
-                elif len(np.shape(data[key_name])) == 3:
+                self.save_2d_points_as_text(trace_data=data[key_name],
+                                            trace_name=key_name_array,
+                                            opened_file=textfile,
+                                            precision=precision,
+                                            delimiter=delimiter)
+            elif len(np.shape(data[key_name])) == 3:
 
-                    self.logMsg('Savelogic has no implementation for 3 '
-                                'dimensional arrays. The data is saved in a '
-                                'raw fashion.', msgType='warning', importance=7)
-                    textfile.write(str(data[key_name]))
-
-                else:
-
-                    self.logMsg('Savelogic has no implementation for 4 '
-                                'dimensional arrays. The data is saved in a '
-                                'raw fashion.', msgType='warning', importance=7)
-                    textfile.write(+str(data[key_name]))
+                self.logMsg('Savelogic has no implementation for 3 '
+                            'dimensional arrays. The data is saved in a '
+                            'raw fashion.', msgType='warning', importance=7)
+                textfile.write(str(data[key_name]))
 
             else:
-                key_list = list(data)
 
-                trace_1d_flag = True
+                self.logMsg('Savelogic has no implementation for 4 '
+                            'dimensional arrays. The data is saved in a '
+                            'raw fashion.', msgType='warning', importance=7)
+                textfile.write(+str(data[key_name]))
 
-                data_traces = []
+        else:
+            key_list = list(data)
+
+            trace_1d_flag = True
+
+            data_traces = []
+            for entry in key_list:
+                data_traces.append(data[entry])
+                if len(np.shape(data[entry])) > 1:
+                    trace_1d_flag = False
+
+            if trace_1d_flag:
+
+                self.save_N_1d_traces_as_text(trace_data=data_traces,
+                                              trace_name=key_list,
+                                              opened_file=textfile,
+                                              precision=precision,
+                                              delimiter=delimiter)
+            else:
+                # go through each passed element again and treat them as
+                # independant, i.e. each element is saved in an extra file.
+                # That is an recursive procedure:
+
                 for entry in key_list:
-                    data_traces.append(data[entry])
-                    if len(np.shape(data[entry])) > 1:
-                        trace_1d_flag = False
+                    self.save_data(data={entry: data[entry]},
+                                   filepath=filepath,
+                                   parameters=parameters,
+                                   filename=filename[:-4] + '_' + entry + '.dat',
+                                   as_text=True, as_xml=False,
+                                   precision=precision, delimiter=delimiter)
 
-                if trace_1d_flag:
+        textfile.close()
 
-                    self.save_N_1d_traces_as_text(trace_data=data_traces,
-                                                  trace_name=key_list,
-                                                  opened_file=textfile,
-                                                  precision=precision,
-                                                  delimiter=delimiter)
-                else:
-                    # go through each passed element again and treat them as
-                    # independant, i.e. each element is saved in an extra file.
-                    # That is an recursive procedure:
-
-                    for entry in key_list:
-                        self.save_data(data={entry: data[entry]},
-                                       filepath=filepath,
-                                       parameters=parameters,
-                                       filename=filename[:-4] + '_' + entry + '.dat',
-                                       as_text=True, as_xml=False,
-                                       precision=precision, delimiter=delimiter)
-
-            textfile.close()
+        # Save thumbnail figure of plot
+        if plotfig is not None:
+            fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
+            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+            plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
+            plotfig.savefig(fig_fname_vector, bbox_inches='tight', pad_inches=0.05)
 
     def save_1d_trace_as_text(self, trace_data, trace_name, opened_file=None,
                               filepath=None, filename=None, precision=':.3f'):

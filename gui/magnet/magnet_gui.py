@@ -28,7 +28,7 @@ import datetime
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colormaps import ColorScaleInferno
+from gui.colordefs import ColorScaleInferno
 
 
 class MagnetMainWindow(QtGui.QMainWindow):

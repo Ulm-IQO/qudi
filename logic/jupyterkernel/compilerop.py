@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Compiler tools with improved interactive support.
 
 Provides compilation machinery similar to codeop, but with caching support so

@@ -28,7 +28,7 @@ import os
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colormaps import ColorScaleInferno
+from gui.colordefs import ColorScaleInferno
 
 
 class VoltScanMainWindow(QtGui.QMainWindow):

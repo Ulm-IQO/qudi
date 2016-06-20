@@ -25,7 +25,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 import visa
 
-class EdwardsPump(Base):
+class EdwardsVacuumController(Base):
     """
     This module implements communication with the Edwards turbopump and 
     vacuum equipment.
@@ -169,16 +169,16 @@ class EdwardsPump(Base):
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
+        Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
 
     def activation(self, e):
         config = self.getConfiguration()
-        self.connect(config['interface'])
+        self.connect_tic(config['interface'])
 
     def deactivation(self, e):
-        self.disconnect()
+        self.disconnect_tic()
 
-  def connect(self, interface):
+    def connect_tic(self, interface):
         """ Connect to Instrument.
         
             @param str interface: visa interface identifier
@@ -188,12 +188,18 @@ class EdwardsPump(Base):
         try:
             # connect to instrument via VISA
             self.rm = visa.ResourceManager()
-            self.inst = self.rm.open_resource(interface, baud_rate=9600, term_chars='\r', send_end=True)
+            self.inst = self.rm.open_resource(
+                interface,
+                baud_rate=9600,
+                read_termination='\r',
+                write_termination='\r',
+                send_end=True
+            )
         except visa.VisaIOError as e:
             self.logExc()
             return False
 
-    def disconnect(self):
+    def disconnect_tic(self):
         """ 
         Close connection to instrument.
         """
@@ -233,13 +239,13 @@ class EdwardsPump(Base):
         if param == '=V{}'.format(register):
             values = value.split(';')
             parsed = {
-                'state': self.PUMP_STATE[int(values[0])],
+                'value': float(values[0]),
                 'alert': self.ALERT_ID[int(values[1]) ],
                 'priority': self.PRIORITY[int(values[2])]
             }
             return parsed
         else:
-            return
+            return {}
 
     def _get_gauge(self, gauge):
          g = self.inst.ask('?V{}'.format(gauge))
@@ -282,4 +288,3 @@ class EdwardsPump(Base):
 
     def get_gauge3(self):
         return self._get_gauge(915)
- 

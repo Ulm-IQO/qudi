@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>524</width>
-    <height>259</height>
+    <width>664</width>
+    <height>609</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -91,15 +91,15 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>98</width>
-            <height>300</height>
+            <width>608</width>
+            <height>456</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
             <widget class="QLabel" name="aboutText_2">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;QuDi is developed by the Institute for Quantum Optics at Ulm University.  &lt;br/&gt;&lt;/p&gt;&lt;p&gt;Kay D. Jahnke&lt;/p&gt;&lt;p&gt;Jan M. Binder&lt;/p&gt;&lt;p&gt;Alex Stark&lt;/p&gt;&lt;p&gt;Christoph Müller&lt;/p&gt;&lt;p&gt;Thomas Unden&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;QuDi is developed by the Institute for Quantum Optics at Ulm University. &lt;br/&gt;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Kay D. Jahnke&lt;/p&gt;&lt;p&gt;Jan M. Binder&lt;/p&gt;&lt;p&gt;Alex Stark&lt;/p&gt;&lt;p&gt;Lachlan J, Rogers&lt;/p&gt;&lt;p&gt;Nikolas Tomek&lt;/p&gt;&lt;p&gt;Florian S. Frank&lt;/p&gt;&lt;p&gt;Mathias Metsch&lt;/p&gt;&lt;p&gt;Christoph Müller&lt;/p&gt;&lt;p&gt;Simon Schmitt&lt;/p&gt;&lt;p&gt;Thomas Unden&lt;/p&gt;&lt;p&gt;Jochen Scheuer&lt;/p&gt;&lt;p&gt;Ou Wang&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;External Contributors:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Tobias Gehring, DTU Copenhagen&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
@@ -127,15 +127,136 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>468</width>
-            <height>168</height>
+            <width>124</width>
+            <height>6116</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
             <widget class="QLabel" name="aboutText_3">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;QuDi is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.&lt;/p&gt;&lt;p&gt;QuDi is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.&lt;/p&gt;&lt;p&gt;You should have received a copy of the GNU General Public License along with QuDi. If not, see &lt;a href=&quot;http://www.gnu.org/licenses/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#00ffff;&quot;&gt;http://www.gnu.org/licenses/&lt;/span&gt;&lt;/a&gt;.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;
+&lt;head/&gt;
+&lt;body&gt;
+&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
+QuDi is free software: you can redistribute it and/or modify it under the terms &lt;br/&gt;
+of the GNU General Public License as published by the Free Software Foundation,&lt;br/&gt;
+either version 3 of the License, or (at your option) any later version.
+&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
+QuDi is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;&lt;br/&gt;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.&lt;br/&gt;
+See the GNU General Public License for more details.&lt;br/&gt;
+&lt;/span&gt;
+&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
+You should have received a copy of the GNU General Public License along with QuDi.&lt;br/&gt;
+If not, see
+&lt;/span&gt;
+&lt;a href=&quot;http://www.gnu.org/licenses/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#00ffff;&quot;&gt;http://www.gnu.org/licenses/&lt;/span&gt;&lt;/a&gt;.&lt;br/&gt;
+&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;
+QuDi is derived in parts from ACQ4, so here is its license:&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
+Permission is hereby granted, free of charge, to any person obtaining a copy &lt;br/&gt;
+of this software and associated documentation files (the &amp;quot;Software&amp;quot;), to deal &lt;br/&gt;
+in the Software without restriction, including without limitation the rights &lt;br/&gt;
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell &lt;br/&gt;
+copies of the Software, and to permit persons to whom the Software is &lt;br/&gt;
+furnished to do so, subject to the following conditions: &lt;br/&gt;
+&lt;br/&gt;
+The above copyright notice and this permission notice shall be included in all &lt;br/&gt;
+copies or substantial portions of the Software. &lt;br/&gt;
+&lt;br/&gt;
+THE SOFTWARE IS PROVIDED &amp;quot;AS IS&amp;quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR &lt;br/&gt;
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, &lt;br/&gt;
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE &lt;br/&gt;
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER &lt;br/&gt;
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, &lt;br/&gt;
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE &lt;br/&gt;
+SOFTWARE.&lt;br/&gt;
+&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; font-family:'monospace'; text-decoration: underline;&quot;&gt;
+Parts of QuDi are derived from IPython, which is licensed as follows:
+&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
+&lt;br/&gt;
+This project is licensed under the terms of the Modified BSD License &lt;br/&gt;
+(also known as New or Revised or 3-Clause BSD), as follows: &lt;br/&gt;
+&lt;br/&gt;
+- Copyright (c) 2015, IPython Development Team &lt;br/&gt;
+&lt;br/&gt;
+All rights reserved. &lt;br/&gt;
+&lt;br/&gt;
+Redistribution and use in source and binary forms, with or without &lt;br/&gt;
+modification, are permitted provided that the following conditions are met: &lt;br/&gt;
+&lt;br/&gt;
+Redistributions of source code must retain the above copyright notice, this &lt;br/&gt;
+list of conditions and the following disclaimer. &lt;br/&gt;
+&lt;br/&gt;
+Redistributions in binary form must reproduce the above copyright notice, this &lt;br/&gt;
+list of conditions and the following disclaimer in the documentation and/or &lt;br/&gt;
+other materials provided with the distribution. &lt;br/&gt;
+&lt;br/&gt;
+Neither the name of the IPython Development Team nor the names of its &lt;br/&gt;
+contributors may be used to endorse or promote products derived from this &lt;br/&gt;
+software without specific prior written permission. &lt;br/&gt;
+&lt;br/&gt;
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &amp;quot;AS IS&amp;quot; AND &lt;br/&gt;
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED &lt;br/&gt;
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE &lt;br/&gt;
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE &lt;br/&gt;
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL &lt;br/&gt;
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR &lt;br/&gt;
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER &lt;br/&gt;
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, &lt;br/&gt;
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE &lt;br/&gt;
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. &lt;br/&gt;
+&lt;br/&gt;
+About the IPython Development Team &lt;br/&gt;
+&lt;br/&gt;
+The IPython Development Team is the set of all contributors to the IPython project. &lt;br/&gt;
+This includes all of the IPython subprojects. &lt;br/&gt;&lt;br/&gt;The core team that coordinates development on GitHub can be found here: &lt;br/&gt;
+&lt;/span&gt;
+&lt;a href=&quot;https://github.com/ipython/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#2980b9;&quot;&gt;https://github.com/ipython/&lt;/span&gt;&lt;/a&gt;
+&lt;span style=&quot; font-family:'monospace';&quot;&gt;.&lt;br/&gt;&lt;br/&gt;&lt;/span&gt;
+&lt;span style=&quot; font-family:'monospace'; text-decoration: underline;&quot;&gt;
+Parts of QuDi are derived from SciPy, which is licensed as follows:
+&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
+Copyright (c) 2001, 2002 Enthought, Inc. &lt;br/&gt;
+All rights reserved. &lt;br/&gt;
+&lt;br/&gt;
+Copyright (c) 2003-2016 SciPy Developers. &lt;br/&gt;
+All rights reserved. &lt;br/&gt;
+&lt;br/&gt;
+Redistribution and use in source and binary forms, with or without &lt;br/&gt;
+modification, are permitted provided that the following conditions are met: &lt;br/&gt;
+&lt;br/&gt;
+a. Redistributions of source code must retain the above copyright notice, &lt;br/&gt;
+this list of conditions and the following disclaimer. &lt;br/&gt;
+b. Redistributions in binary form must reproduce the above copyright &lt;br/&gt;
+notice, this list of conditions and the following disclaimer in the &lt;br/&gt;
+documentation and/or other materials provided with the distribution. &lt;br/&gt;
+c. Neither the name of Enthought nor the names of the SciPy Developers &lt;br/&gt;
+may be used to endorse or promote products derived from this software &lt;br/&gt;
+without specific prior written permission. &lt;br/&gt;
+&lt;br/&gt;
+&lt;br/&gt;
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &amp;quot;AS IS&amp;quot; &lt;br/&gt;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE &lt;br/&gt;
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE &lt;br/&gt;
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS &lt;br/&gt;
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, &lt;br/&gt;
+OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF &lt;br/&gt;
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS &lt;br/&gt;
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN &lt;br/&gt;
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) &lt;br/&gt;
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF &lt;br/&gt;
+THE POSSIBILITY OF SUCH DAMAGE.&lt;br/&gt;
+&lt;br/&gt;
+&lt;/span&gt;&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
