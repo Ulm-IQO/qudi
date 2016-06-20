@@ -18,10 +18,10 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2016
     Jan Binder <jan-git@nlogn.org>
-Copyright (C) 2015 
-    Florian S. Frank florian.frank@uni-ulm.de
-    Alexander Stark alexander.stark@uni-ulm.de
-    Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
+    Lachlan J. Rogers <lachlan.j.rogers@quantum.diamonds>
+Copyright (C) 2015
+    Florian S. Frank <florian.frank@uni-ulm.de>
+    Alexander Stark <alexander.stark@uni-ulm.de>
 """
 import numpy as np
 import pyqtgraph as pg
@@ -1139,4 +1139,25 @@ class QudiPalette():
     c5 = cyan
 
     purple = pg.mkColor(133, 0, 133)
+    c6 = purple
+
+
+class QudiPalettePale():
+
+    blue = pg.mkColor(102, 94, 252)
+    c1 = blue
+
+    orange = pg.mkColor(255, 175, 43)
+    c2 = orange
+
+    magenta = pg.mkColor(255, 81, 152)
+    c3 = magenta
+
+    green = pg.mkColor(0, 179, 0)
+    c4 = green
+
+    cyan = pg.mkColor(59, 217, 233)
+    c5 = cyan
+
+    purple = pg.mkColor(188, 0, 188)
     c6 = purple

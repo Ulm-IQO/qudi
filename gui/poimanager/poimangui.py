@@ -27,7 +27,7 @@ import os
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
-from gui.colordefs import QudiPalette as palette
+from gui.colordefs import QudiPalettePale as palette
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
