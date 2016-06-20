@@ -150,14 +150,14 @@ class SamplingFunctions():
     def _sin(self, time_arr, parameters):
         amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
-        phase = 180*np.pi * parameters['phase1']
+        phase = np.pi * parameters['phase1'] / 180
         result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
         return result_arr
 
     def _cos(self, time_arr, parameters):
         amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
-        phase = 180*np.pi * parameters['phase1']
+        phase = np.pi * parameters['phase1'] / 180
         result_arr = amp * np.cos(2*np.pi * freq * time_arr + phase)
         return result_arr
 
@@ -166,8 +166,8 @@ class SamplingFunctions():
         amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
-        phase1 = 180*np.pi * parameters['phase1']
-        phase2 = 180*np.pi * parameters['phase2']
+        phase1 = np.pi * parameters['phase1'] / 180
+        phase2 = np.pi * parameters['phase2'] / 180
         result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1)
         result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
         return result_arr
@@ -179,9 +179,9 @@ class SamplingFunctions():
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         freq3 = parameters['frequency3']
-        phase1 = 180*np.pi * parameters['phase1']
-        phase2 = 180*np.pi * parameters['phase2']
-        phase3 = 180*np.pi * parameters['phase3']
+        phase1 = np.pi * parameters['phase1'] / 180
+        phase2 = np.pi * parameters['phase2'] / 180
+        phase3 = np.pi * parameters['phase3'] / 180
         result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1)
         result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
         result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
@@ -190,7 +190,7 @@ class SamplingFunctions():
     def _singauss(self, time_arr, parameters):
         amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
-        phase = 180*np.pi * parameters['phase1']
+        phase = np.pi * parameters['phase1'] / 180
         length_s = time_arr[-1]-time_arr[0]
         sigma = length_s / 6
         mu = time_arr[time_arr.size//2]
@@ -200,7 +200,7 @@ class SamplingFunctions():
     def _cosgauss(self, time_arr, parameters):
         amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
-        phase = 180*np.pi * parameters['phase1']
+        phase = np.pi * parameters['phase1'] / 180
         length_s = time_arr[-1]-time_arr[0]
         sigma = length_s / 6
         mu = time_arr[time_arr.size//2]
@@ -212,8 +212,8 @@ class SamplingFunctions():
         amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
-        phase1 = 180*np.pi * parameters['phase1']
-        phase2 = 180*np.pi * parameters['phase2']
+        phase1 = np.pi * parameters['phase1'] / 180
+        phase2 = np.pi * parameters['phase2'] / 180
         length_s = time_arr[-1]-time_arr[0]
         sigma = length_s / 6
         mu = time_arr[time_arr.size//2]
@@ -227,9 +227,9 @@ class SamplingFunctions():
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         freq3 = parameters['frequency3']
-        phase1 = 180*np.pi * parameters['phase1']
-        phase2 = 180*np.pi * parameters['phase2']
-        phase3 = 180*np.pi * parameters['phase3']
+        phase1 = np.pi * parameters['phase1'] / 180
+        phase2 = np.pi * parameters['phase2'] / 180
+        phase3 = np.pi * parameters['phase3'] / 180
         length_s = time_arr[-1]-time_arr[0]
         sigma = length_s / 6
         mu = time_arr[time_arr.size//2]
