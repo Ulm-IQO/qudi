@@ -127,6 +127,7 @@ class CounterLogic(GenericLogic):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
+        self.stopCount()
         return
 
     def set_counting_samples(self, samples = 1):
