@@ -1,11 +1,36 @@
 # -*- coding: utf-8 -*-
+"""
+Qt-based IPython/jupyter kernel
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
+
+Parts of this file are
+Copyright (C) 2008-2011  The IPython Development Team
+
+Distributed under the terms of the BSD License.  The full license is in
+the file document documentation/BSDLicense_IPython.md,
+distributed as part of this software.
+"""
+
 import sys
 import builtins
 from base64 import encodebytes
 
 class ExecutionResult:
-    """The result of a call to run_cell
-    Stores information about what took place.
+    """The result of a call to run_cell. Stores information about what took place.
     """
     def __init__(self):
         self.execution_count = None
@@ -29,13 +54,17 @@ class ExecutionResult:
 
 
 class DisplayHook:
-    """A simple displayhook that publishes the object's repr over a ZeroMQ
-    socket."""
+    """A simple displayhook that publishes the object's repr over a ZeroMQ socket.
+    """
 
     def __init__(self):
         self.result = None
 
     def __call__(self, obj):
+        """Be callable, catch objects that should be displayed.
+
+          @param obj: object to be displayed
+        """
         if obj is None:
             return
 
@@ -46,7 +75,10 @@ class DisplayHook:
             self.result.result.append(repr(obj))
 
     def pass_result_ref(self, result):
-        """ Set reference to result container for current cell """
+        """ Set reference to result container for current cell
+        
+          @param result: reference to ExecutionResult
+        """
         self.result = result
 
 
@@ -69,7 +101,11 @@ def cursor_pos_to_lc(text, cursor_pos):
     return linenr, cursor_pos
 
 def softspace(f, newvalue):
-    """Copied from code.py, to remove the dependency"""
+    """Try setting softspace on stream.
+    
+      @param f: stream
+      @param: newvalue: value to set softspace to
+    """
 
     oldvalue = 0
     try:
@@ -88,16 +124,10 @@ def encode_images(format_dict):
 
     Perhaps this should be handled in json_clean itself?
 
-    Parameters
-    ----------
-
-    format_dict : dict
+    @param dict format_dict:
         A dictionary of display data keyed by mime-type
 
-    Returns
-    -------
-
-    format_dict : dict
+    @return dict format_dict:
         A copy of the same dictionary,
         but binary image data ('image/png', 'image/jpeg' or 'application/pdf')
         is base64-encoded.
@@ -144,9 +174,7 @@ def getfigs(*fig_nums):
     argument list contains references to invalid figures, a warning is printed
     but the function continues pasting further figures.
 
-    Parameters
-    ----------
-    figs : tuple
+    @param tuple figs:
         A tuple of ints giving the figure numbers of the figures to return.
     """
     from matplotlib._pylab_helpers import Gcf
@@ -164,6 +192,10 @@ def getfigs(*fig_nums):
         return figs
 
 def setup_matplotlib(kernel):
+    """ Prepare matplotlib inline backend for use
+    
+      @param kernel: reference to the kernel using the backend
+    """
     import matplotlib
     import matplotlib.pyplot
     matplotlib.pyplot.switch_backend('module://logic.jupyterkernel.mpl.backend_inline')

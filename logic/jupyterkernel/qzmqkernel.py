@@ -2,6 +2,19 @@
 """
 Qt-based IPython/jupyter kernel
 
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
 ------------------------------------------------------------------------------
 based on simple_kernel.py (https://github.com/dsblank/simple_kernel)
 by Doug Blank <doug.blank@gmail.com>
@@ -20,19 +33,6 @@ Distributed under the terms of the BSD License.  The full license is in
 the file document documentation/BSDLicense_IPython.md,
 distributed as part of this software.
 ------------------------------------------------------------------------------
-
-QuDi is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-QuDi is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 """
@@ -70,19 +70,26 @@ QtCore.Signal = QtCore.pyqtSignal
 
 
 class QZMQHeartbeat(QtCore.QObject):
-    def __init__(self, zmqsocket):
+    """ Echo Messages on a ZMQ stream. """
+    def __init__(self, stream):
         super().__init__()
-        self.socket = zmqsocket
+        self.stream = stream
+        self.stream.sigMsgRecvd.connect(self.beat)
 
     def beat(self, msg):
+        """ Send a message back.
+
+          @param msg: messae to be sent back
+        """
         logging.debug( "HB: %s" % msg)
         try:
-            self.socket.send(msg)
+            self.stream.socket.send(msg)
         except zmq.ZMQError as e:
             if e.errno != errno.EINTR:
                 raise
 
 class QZMQKernel(QtCore.QObject):
+    """ A Qt-based embeddable kernel for Jupyter. """
 
     sigShutdownFinished = QtCore.Signal(str)
 
@@ -135,7 +142,7 @@ class QZMQKernel(QtCore.QObject):
         logging.info('New Kernel {}'.format(self.engine_id))
 
     @QtCore.pyqtSlot()
-    def connect(self):
+    def connect_kernel(self):
         # Heartbeat:
         self.ctx = zmq.Context()
         self.heartbeat_socket = self.ctx.socket(zmq.REP)
@@ -166,9 +173,8 @@ class QZMQKernel(QtCore.QObject):
         logging.info( "Config: %s" % json.dumps(self.config))
         logging.info( "Starting loops...")
 
-        self.heartbeat_handler = QZMQHeartbeat(self.heartbeat_socket)
+        self.heartbeat_handler = QZMQHeartbeat(self.heartbeat_stream)
         self.heartbeat_handler.moveToThread(self.hb_thread)
-        self.heartbeat_stream.sigMsgRecvd.connect(self.heartbeat_handler.beat)
         self.hb_thread.start()
 
         self.init_exec_env()
@@ -912,8 +918,7 @@ if __name__ == '__main__':
     app = QtCore.QCoreApplication(sys.argv)
     kernel = QZMQKernel(config)
     kernel.sigShutdownFinished.connect(app.quit)
-    #kernel.connect()
-    QtCore.QMetaObject.invokeMethod(kernel, 'connect')
+    QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
     logging.info( "GO!")
     app.exec_()
     logging.info("Done.")
