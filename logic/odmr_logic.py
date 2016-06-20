@@ -813,7 +813,7 @@ class ODMRLogic(GenericLogic):
                     param_dict[entry]['unit'])
         return output_str
 
-    def save_ODMR_Data(self, tag=None, timestamp=None):
+    def save_ODMR_Data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
 
         # three paths to save the raw data (if desired), the odmr scan data and
@@ -822,8 +822,7 @@ class ODMRLogic(GenericLogic):
         filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
         filepath3 = self._save_logic.get_path_for_module(module_name='ODMR')
 
-        if timestamp is None:
-            timestamp = datetime.datetime.now()
+        timestamp = datetime.datetime.now()
 
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_ODMR_data'
@@ -860,7 +859,9 @@ class ODMRLogic(GenericLogic):
             parameters['Fit result {}'.format(i)] = line
             i += 1
 
-        fig = self.draw_figure()
+        fig = self.draw_figure(cbar_range=colorscale_range,
+                               percentile_range=percentile_range
+                               )
 
         self._save_logic.save_data(
             data,
@@ -896,8 +897,14 @@ class ODMRLogic(GenericLogic):
         else:
             self.logMsg('Raw data is NOT saved', msgType='status', importance=7)
 
-    def draw_figure(self):
+    def draw_figure(self, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
+
+        @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  
+                                 If not supplied then a default of data_min to data_max 
+                                 will be used.
+
+        @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
@@ -905,6 +912,14 @@ class ODMRLogic(GenericLogic):
         count_data = self.ODMR_plot_y
         fit_freq_vals = self.ODMR_fit_x
         fit_count_vals = self.ODMR_fit_y
+        matrix_data = self.ODMR_plot_xy
+
+        # If no colorbar range was given, take full range of data
+        if cbar_range is None:
+            cbar_range = [np.min(matrix_data), np.max(matrix_data)]
+
+        # Convert cbar_range to numpy array for division in the SI prefix calculation
+        cbar_range = np.array(cbar_range)
 
         prefix = ['', 'k', 'M', 'G', 'T']
         prefix_index = 0
@@ -927,11 +942,21 @@ class ODMRLogic(GenericLogic):
 
         mw_prefix = prefix[prefix_index]
 
+        # Rescale matrix counts data with SI prefix
+        prefix_index = 0
+
+        while np.max(matrix_data) > 1000:
+            matrix_data = matrix_data / 1000
+            cbar_range = cbar_range / 1000
+            prefix_index = prefix_index + 1
+
+        cbar_prefix = prefix[prefix_index]
+
         # Use qudi style
         plt.style.use(self._save_logic.mpl_qd_style)
 
         # Create figure
-        fig, (ax_mean, ax_matrix) = plt.subplots(2, 1)
+        fig, (ax_mean, ax_matrix) = plt.subplots(nrows=2, ncols=1)
 
         ax_mean.plot(freq_data, count_data, linestyle=':', linewidth=0.5)
 
@@ -942,15 +967,58 @@ class ODMRLogic(GenericLogic):
         ax_mean.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
         ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
 
-        ax_matrix.imshow(self.ODMR_plot_xy,
-                         cmap=plt.get_cmap('inferno'),  # reference the right place in qd
-                         origin='bottom',
-                         extent=[np.min(freq_data), np.max(freq_data), 0, self.number_of_lines],
-                         aspect='auto',
-                         interpolation='nearest')
+        matrixplot = ax_matrix.imshow(matrix_data,
+                                      cmap=plt.get_cmap('inferno'),  # reference the right place in qd
+                                      origin='lower',
+                                      vmin=cbar_range[0],
+                                      vmax=cbar_range[1],
+                                      extent=[np.min(freq_data),
+                                              np.max(freq_data),
+                                              0,
+                                              self.number_of_lines
+                                              ],
+                                      aspect='auto',
+                                      interpolation='nearest')
 
         ax_matrix.set_xlabel('Frequency (' + mw_prefix + 'Hz)')
         ax_matrix.set_ylabel('Scan #')
+
+        # Adjust subplots to make room for colorbar
+        fig.subplots_adjust(right=0.8)
+
+        # Add colorbar axis to figure
+        cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+
+        # Draw colorbar
+        cbar = fig.colorbar(matrixplot, cax=cbar_ax)
+        cbar.set_label('Fluorescence (' + cbar_prefix + 'c/s)')
+
+        # remove ticks from colorbar for cleaner image
+        cbar.ax.tick_params(which=u'both', length=0)
+
+        # If we have percentile information, draw that to the figure
+        if percentile_range is not None:
+            cbar.ax.annotate(str(percentile_range[0]),
+                             xy=(-0.3, 0.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate(str(percentile_range[1]),
+                             xy=(-0.3, 1.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate('(percentile)',
+                             xy=(-0.3, 0.5),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
 
         return fig
 
