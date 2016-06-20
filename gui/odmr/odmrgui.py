@@ -32,6 +32,7 @@ import os
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
+from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
 
 
@@ -128,13 +129,21 @@ class ODMRGui(GUIBase):
                 self._odmr_logic.number_of_lines
             ))
 
+        self.odmr_image = pg.PlotDataItem(
+            self._odmr_logic.ODMR_plot_x,
+            self._odmr_logic.ODMR_plot_y,
+            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c1,
+            symbolBrush=palette.c1,
+            symbolSize=7
+        )
 
-        self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,
-                                          self._odmr_logic.ODMR_plot_y)
-
-        self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,
-                                              self._odmr_logic.ODMR_fit_y,
-                                              pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
+        self.odmr_fit_image = pg.PlotDataItem(
+            self._odmr_logic.ODMR_fit_x,
+            self._odmr_logic.ODMR_fit_y,
+            pen=pg.mkPen(palette.c2)
+        )
 
         # set the prefix, which determines the representation in the viewboxes
         # for the frequencies,  one can choose from the dict obtainable from
@@ -350,8 +359,7 @@ class ODMRGui(GUIBase):
             self.odmr_fit_image.setData(
                 self._odmr_logic.ODMR_fit_x,
                 self._odmr_logic.ODMR_fit_y,
-                pen=QtGui.QPen(QtGui.QColor(255,0,255,255)
-                ))
+            )
         else:
             if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
