@@ -341,7 +341,6 @@ class ConfocalLogic(GenericLogic):
         for state in reversed(self.history):
             self._statusVariables['history_{}'.format(histindex)] = state.serialize()
             histindex += 1
-        self._scanning_device.reset_hardware()
         return 0
 
 
