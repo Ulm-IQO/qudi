@@ -27,7 +27,7 @@ import os
 from pyqtgraph.Qt import QtCore, QtGui, uic
 
 from gui.guibase import GUIBase
-from gui.colordefs import QudiPalette as palette
+from gui.colordefs import QudiPalettePale as palette
 
 
 class CounterMainWindow(QtGui.QMainWindow):

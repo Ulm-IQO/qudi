@@ -32,7 +32,7 @@ import os
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
-from gui.colordefs import QudiPalette as palette
+from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
 
 # This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator
