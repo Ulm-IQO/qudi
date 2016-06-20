@@ -28,6 +28,7 @@ import numpy as np
 from lmfit import Parameters
 import time
 import datetime
+import matplotlib.pyplot as plt
 
 class ODMRLogic(GenericLogic):
     """This is the Logic class for ODMR."""
@@ -862,6 +863,27 @@ class ODMRLogic(GenericLogic):
             parameters['Fit result {}'.format(i)] = line
             i += 1
 
+        fig = self.draw_figure()
+
+        self._save_logic.save_data(
+            data,
+            filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            timestamp=timestamp,
+            plotfig=fig,
+            as_text=True)
+
+        self._save_logic.save_data(
+            data2,
+            filepath2,
+            parameters=parameters,
+            filelabel=filelabel2,
+            timestamp=timestamp,
+            as_text=True)
+
+        self.logMsg('ODMR data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+
         if self.safeRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
             data3['count data'] = raw_data  #saves the raw data, ALL of it so keep an eye on performance
@@ -877,24 +899,63 @@ class ODMRLogic(GenericLogic):
         else:
             self.logMsg('Raw data is NOT saved', msgType='status', importance=7)
 
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            timestamp=timestamp,
-            as_text=True)
+    def draw_figure(self):
+        """ Draw the summary figure to save with the data.
 
-        self._save_logic.save_data(
-            data2,
-            filepath2,
-            parameters=parameters,
-            filelabel=filelabel2,
-            timestamp=timestamp,
-            as_text=True)
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        freq_data = self.ODMR_plot_x
+        count_data = self.ODMR_plot_y
+        fit_freq_vals = self.ODMR_fit_x
+        fit_count_vals = self.ODMR_fit_y
 
-        self.logMsg('ODMR data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        prefix = ['', 'k', 'M', 'G', 'T']
+        prefix_index = 0
 
+        # Rescale counts data with SI prefix
+        while np.max(count_data) > 1000:
+            count_data = count_data/1000
+            fit_count_vals = fit_count_vals/1000
+            prefix_index = prefix_index + 1
+
+        counts_prefix = prefix[prefix_index]
+
+        # Rescale frequency data with SI prefix
+        prefix_index = 0
+
+        while np.max(freq_data) > 1000:
+            freq_data = freq_data/1000
+            fit_freq_vals = fit_freq_vals/1000
+            prefix_index = prefix_index + 1
+
+        mw_prefix = prefix[prefix_index]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, (ax_mean, ax_matrix) = plt.subplots(2, 1)
+
+        ax_mean.plot(freq_data, count_data, linestyle=':', linewidth=0.5)
+
+        # Do not include fit curve if there is no fit calculated.
+        if max(fit_count_vals) > 0:
+            ax_mean.plot(fit_freq_vals, fit_count_vals, marker='None')
+
+        ax_mean.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
+        ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
+
+        ax_matrix.imshow(self.ODMR_plot_xy,
+                         cmap=plt.get_cmap('inferno'), # reference the right place in qd
+                         origin='bottom',
+                         extent=[np.min(freq_data), np.max(freq_data), 0, self.number_of_lines],
+                         aspect='auto',
+                         interpolation='nearest')
+
+        ax_matrix.set_xlabel('Frequency (' + mw_prefix + 'Hz)')
+        ax_matrix.set_ylabel('Scan #')
+
+        return fig
 
     def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power,
                                 runtime, fit_function='Lorentzian',
