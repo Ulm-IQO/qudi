@@ -485,7 +485,7 @@ class SamplesWriteMethods():
                                  xmlns="http://www.tektronix.com")
         DataDescription = ET.SubElement(DataSets, 'DataDescription')
         NumberSamples = ET.SubElement(DataDescription, 'NumberSamples')
-        NumberSamples.text = str(number_of_samples)
+        NumberSamples.text = str(int(number_of_samples))
         SamplesType = ET.SubElement(DataDescription, 'SamplesType')
         SamplesType.text = 'AWGWaveformSample'
         MarkersIncluded = ET.SubElement(DataDescription, 'MarkersIncluded')
