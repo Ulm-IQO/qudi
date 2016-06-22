@@ -130,7 +130,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self._bins = 200
         self._data_index = 0
 
-        self._recent_data_window = [0, 0]
+        self._recent_wavelength_window = [0, 0]
         self.counts_vs_wavelength = []
 
         self._xmin = 650
@@ -239,7 +239,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
             self.data_index = 0
 
-            self._recent_data_window = [0, 0]
+            self._recent_wavelength_window = [0, 0]
             self.counts_vs_wavelength = []
 
             self.rawhisto=np.zeros(self._bins)
@@ -287,22 +287,23 @@ class WavemeterLoggerLogic(GenericLogic):
             self.sig_data_updated.emit()
             return
 
-        # The end of the recent data window is the time of the latest wavelength data
-        latest_wavelength_time = self._wavelength_data[-1][0]
+        # The end of the recent_wavelength_window is the time of the latest wavelength data
+        self._recent_wavelength_window[1] = self._wavelength_data[-1][0]
 
         # (speed-up) We only need to worry about "recent" counts, because as the count data gets very long all the
         # earlier points will already be attached to wavelength values.
-        count_recentness = 10000  # TODO: calculate this from count_freq and wavemeter refresh rate
+        count_recentness = 100  # TODO: calculate this from count_freq and wavemeter refresh rate
         wavelength_recentness = np.min([5, len(self._wavelength_data)])  # TODO: Does this depend on things, or do we loop fast enough to get every wavelength value?
 
         recent_counts = np.array(self._counter_logic._data_to_save[-count_recentness:])
         recent_wavelengths = np.array(self._wavelength_data[-wavelength_recentness:])
 
-        # end of recent_data_window is index of recent_counts at the latest_wavelength_time
-        self._recent_data_window[1] = np.searchsorted(recent_counts[:,0], latest_wavelength_time)
+        # The latest counts are those recorded during the recent_wavelength_window
+        count_idx = [0,0]
+        count_idx[0] = np.searchsorted(recent_counts[:,0], self._recent_wavelength_window[0])
+        count_idx[1] = np.searchsorted(recent_counts[:,0], self._recent_wavelength_window[1])
 
-        # The latest counts are all the data values in the recent_data_window
-        latest_counts = recent_counts[self._recent_data_window[0]:self._recent_data_window[1]]
+        latest_counts = recent_counts[count_idx[0]:count_idx[1]]
 
         # Interpolate to obtain wavelength values at the times of each count
         interpolated_wavelengths = np.interp(latest_counts[:,0],
@@ -316,8 +317,8 @@ class WavemeterLoggerLogic(GenericLogic):
         # Add this latest data to the list of counts vs wavelength
         self.counts_vs_wavelength += latest_counts.tolist()
 
-        # The start of the recent data window for the next round will be the index after the window for this round.
-        self._recent_data_window[0] = self._recent_data_window[1]
+        # The start of the recent data window for the next round will be the end of this one.
+        self._recent_wavelength_window[0] = self._recent_wavelength_window[1]
 
         # Signal that data has been updated
         self.sig_data_updated.emit()
