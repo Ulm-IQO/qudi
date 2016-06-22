@@ -20,15 +20,15 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 Copyright (C) 2015 Lachlan J. Rogers <lachlan.j.rogers@quantum.diamonds>
 """
 
-from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
-import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.exporters
-import time
 import datetime
 import os
+
+from pyqtgraph.Qt import QtCore, QtGui, uic
+
+from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
+
 
 class WavemeterLogWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -133,20 +133,29 @@ class WavemeterLogGui(GUIBase):
         self._mw.show()
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
-        self._curve1.setPen({'color': '0F0', 'width': 2})
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+                                       symbol='o',
+                                       symbolPen=palette.c1,
+                                       symbolBrush=palette.c1,
+                                       symbolSize=3
+                                       )
 
-        self._curve2 = pg.PlotCurveItem()
-        self._curve2.setPen({'color': 'F00', 'width': 1})
-        self._right_axis.addItem(self._curve2)
+        self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       )
 
-        self._curve3 = pg.PlotCurveItem()
-        self._curve3.setPen({'color': '00A', 'width': 0.2})
-        self._top_axis.addItem(self._curve3)
+        self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c6, style=QtCore.Qt.DotLine),
+                                       symbol=None,
+                                       )
 
-        self._curve4 = pg.PlotCurveItem()
-        self._curve4.setPen({'color': 'F0F', 'width': 1})
+        self._curve4 = pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                                       symbol=None,
+                                       )
+
+        self._pw.addItem(self._curve1)
         self._pw.addItem(self._curve4)
+        self._right_axis.addItem(self._curve2)
+        self._top_axis.addItem(self._curve3)
 
         self._save_PNG = True
 
