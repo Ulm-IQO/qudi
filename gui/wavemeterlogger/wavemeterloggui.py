@@ -187,7 +187,11 @@ class WavemeterLogGui(GUIBase):
         x_axis = self._wm_logger_logic.histogram_axis
         x_axis_hz = 3.0e17 / (x_axis) - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
 
-        self._curve1.setData(y=self._wm_logger_logic.histogram, x=x_axis)
+        #self._curve1.setData(y=self._wm_logger_logic.histogram, x=x_axis)
+        plotdata = self._wm_logger_logic.counts_vs_wavelength
+        self._curve1.setData(x=[entry[0] for entry in plotdata],
+                             y=[entry[1] for entry in plotdata]
+                             )
         self._curve2.setData(y=self._wm_logger_logic.sumhisto, x=x_axis)
         self._curve3.setData(y=self._wm_logger_logic.histogram, x=x_axis_hz)
         self._curve4.setData(y=self._wm_logger_logic.envelope_histogram, x=x_axis)
