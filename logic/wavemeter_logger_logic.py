@@ -292,7 +292,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         # (speed-up) We only need to worry about "recent" counts, because as the count data gets very long all the
         # earlier points will already be attached to wavelength values.
-        count_recentness = 100  # TODO: calculate this from count_freq and wavemeter refresh rate
+        count_recentness = 10000  # TODO: calculate this from count_freq and wavemeter refresh rate
         wavelength_recentness = np.min([5, len(self._wavelength_data)])  # TODO: Does this depend on things, or do we loop fast enough to get every wavelength value?
 
         recent_counts = np.array(self._counter_logic._data_to_save[-count_recentness:])
@@ -316,6 +316,9 @@ class WavemeterLoggerLogic(GenericLogic):
         # Add this latest data to the list of counts vs wavelength
         self.counts_vs_wavelength += latest_counts.tolist()
 
+        # The start of the recent data window for the next round will be the index after the window for this round.
+        self._recent_data_window[0] = self._recent_data_window[1]
+
         # Signal that data has been updated
         self.sig_data_updated.emit()
 
@@ -324,10 +327,6 @@ class WavemeterLoggerLogic(GenericLogic):
 
         if self.getState() == 'running':
             self.sig_update_histogram_next.emit(False)
-
-
-
-
 
     def _update_histogram(self, complete_histogram):
         """ Calculate new points for the histogram.
