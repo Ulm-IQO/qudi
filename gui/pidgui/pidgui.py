@@ -108,13 +108,26 @@ class PIDGui(GUIBase):
         self.plot2.setXLink(self.plot1)
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self.plot1.plot()
-        self._curve1.setPen('g')
-        self._curve3 = self.plot1.plot()
-        self._curve3.setPen('b', width=2)
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+                                       symbol='o',
+                                       symbolPen=palette.c1,
+                                       symbolBrush=palette.c1,
+                                       symbolSize=3
+                                       )
 
-        self._curve2 = pg.PlotCurveItem()
-        self._curve2.setPen('r', width=4)
+        self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c2),
+                                       symbol=None
+                                       )
+
+        self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                                       symbol='o',
+                                       symbolPen=palette.c3,
+                                       symbolBrush=palette.c3,
+                                       symbolSize=3
+                                       )
+
+        self.plot1.addItem(self._curve1)
+        self.plot1.addItem(self._curve3)
         self.plot2.addItem(self._curve2)
 
         self.updateViews()
