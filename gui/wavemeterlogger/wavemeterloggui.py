@@ -21,6 +21,8 @@ Copyright (C) 2015 Lachlan J. Rogers <lachlan.j.rogers@quantum.diamonds>
 """
 
 import pyqtgraph as pg
+
+import pyqtgraph.exporters
 import datetime
 import os
 
@@ -133,11 +135,12 @@ class WavemeterLogGui(GUIBase):
         self._mw.show()
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                       symbol='o',
-                                       symbolPen=palette.c1,
-                                       symbolBrush=palette.c1,
-                                       symbolSize=3
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1),#, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       #symbol='o',
+                                       #symbolPen=palette.c1,
+                                       #symbolBrush=palette.c1,
+                                       #symbolSize=3
                                        )
 
         self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
@@ -197,11 +200,11 @@ class WavemeterLogGui(GUIBase):
         x_axis_hz = 3.0e17 / (x_axis) - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
 
         #self._curve1.setData(y=self._wm_logger_logic.histogram, x=x_axis)
-        plotdata = self._wm_logger_logic.counts_vs_wavelength
-        self._curve1.setData(x=[entry[0] for entry in plotdata],
+        plotdata = self._wm_logger_logic.counts_with_wavelength
+        self._curve1.setData(x=[entry[2] for entry in plotdata],
                              y=[entry[1] for entry in plotdata]
                              )
-        self._curve2.setData(y=self._wm_logger_logic.sumhisto, x=x_axis)
+        self._curve2.setData(y=self._wm_logger_logic.histogram, x=x_axis)
         self._curve3.setData(y=self._wm_logger_logic.histogram, x=x_axis_hz)
         self._curve4.setData(y=self._wm_logger_logic.envelope_histogram, x=x_axis)
 
