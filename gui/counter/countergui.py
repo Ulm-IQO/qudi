@@ -102,11 +102,12 @@ class CounterGui(GUIBase):
         self._pw.setLabel('bottom', 'Time', units='s')
 
         # Create an empty plot curve to be filled later, set its pen
-        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                       symbol='o',
-                                       symbolPen=palette.c1,
-                                       symbolBrush=palette.c1,
-                                       symbolSize=5
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1),#, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       #symbol='o',
+                                       #symbolPen=palette.c1,
+                                       #symbolBrush=palette.c1,
+                                       #symbolSize=5
                                        )
         self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None)
 
