@@ -112,7 +112,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self._gpib_connection.ask(':FREQ:MODE?') == 'LIST':
+        if self._gpib_connection.ask(':FREQ:MODE?') != 'CW':
             self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write(':OUTP OFF')
         self._gpib_connection.write('*WAI')
@@ -225,7 +225,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
-        self._gpib_connection.write(':TRIG1:SLOP NEG')
+        self._gpib_connection.write(':TRIG1:SLOP POS')
         self._gpib_connection.write(':LIST:MODE STEP')
         self._gpib_connection.write('*WAI')
 
@@ -247,6 +247,56 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write(':ABOR:LIST')
         self._gpib_connection.write('*WAI')
         return 0
+
+    def set_sweep(self, start, stop, step, power=None):
+        """
+
+        @param start:
+        @param stop:
+        @param step:
+        @param power:
+        @return:
+        """
+        self._gpib_connection.write(':SOUR:POW ' + str(power))
+        self._gpib_connection.write('*WAI')
+
+        self._gpib_connection.write(':SWE:MODE STEP')
+        self._gpib_connection.write(':SOUR:FREQ:STAR ' + str(start-step))
+        self._gpib_connection.write(':SOUR:FREQ:STOP ' + str(stop))
+        self._gpib_connection.write(':SOUR:SWE:SPAC LIN')
+        self._gpib_connection.write(':SOUR:SWE:STEP ' + str(step))
+        self._gpib_connection.write(':TRIG1:SWE:SOUR EXT')
+        self._gpib_connection.write(':TRIG1:SLOP POS')
+        self._gpib_connection.write('*WAI')
+        n = int(np.round(float(self._gpib_connection.ask(':SWE:FREQ:POIN?'))))
+        # print(n)
+        # if n != len(self._mw_frequency_list):
+        #     return -1
+        return n - 1
+
+
+    def reset_sweep(self):#
+        """ Reset of MW List Mode position to start from first given frequency
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connection.write(':ABOR:SWE')
+        self._gpib_connection.write('*WAI')
+        return 0
+
+    def sweep_on(self):
+        """ Switches on the list mode.
+
+        @return int: error code (1: ready, 0:not ready, -1:error)
+        """
+        self._gpib_connection.write(':FREQ:MODE SWE')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':OUTP ON')
+        self._gpib_connection.write('*WAI')
+        # If there are timeout  problems after this command, update the smiq
+        # firmware to > 5.90 as there was a problem with excessive wait times
+        # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
+        return int(self._gpib_connection.ask('*OPC?'))
 
     def list_on(self):
         """ Switches on the list mode.
