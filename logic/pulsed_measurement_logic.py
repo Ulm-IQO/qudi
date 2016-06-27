@@ -777,7 +777,7 @@ class PulsedMeasurementLogic(GenericLogic):
             fit_result = 'No Fit'
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
-        elif fit_function == 'Sine' or 'Cos_FixedPhase':
+        elif fit_function == 'Sine' or fit_function == 'Cos_FixedPhase':
             update_dict = {}
             if fit_function == 'Cos_FixedPhase':
                 update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
