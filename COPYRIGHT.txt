@@ -1,0 +1,3 @@
+Copyright 2015-2016
+
+Jan M. Binder <...>
