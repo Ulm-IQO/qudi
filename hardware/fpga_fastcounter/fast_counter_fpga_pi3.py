@@ -37,8 +37,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     ## declare connectors
     _out = {'fastcounter': 'FastCounterInterface'}
 
-    signal_get_data_next = QtCore.Signal()
-
     def __init__(self, manager, name, config = {}, **kwargs):
         callback_dict = {'onactivate': self.activation,
                          'ondeactivate': self.deactivation}
@@ -102,7 +100,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         self.configure(self._bin_width*1e-9,self._record_length*1e-9,self._number_of_gates)
 
-        self.count_data = None
+        self.count_data = np.zeros([self._number_of_gates,
+                                    self._record_length], dtype='int32')
 
         self.timer = None
         self.timer_interval_s = 1
@@ -112,9 +111,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         self.statusvar = 0
 
         self.threadlock = Mutex()
-
-        self.signal_get_data_next.connect(self._get_data_next,
-                                          QtCore.Qt.QueuedConnection)
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
@@ -210,20 +206,17 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def start_measure(self):
         """ Start the fast counter. """
 
-        self.lock()
-
         # set timer
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
         self.timer.setInterval(int(1000. * self.timer_interval_s))
         self.timer.timeout.connect(self._get_data_next)
 
-        self.count_data = np.zeros([self._number_of_gates,
-                                    self._record_length], dtype='int32')
+        self.count_data = np.zeros([self._number_of_gates, self._record_length], dtype='int32')
+        self.lock()
         self.pulsed.start()
         self.timer.start()
         self.statusvar = 2
-        self.signal_get_data_next.emit()
         return 0
 
     def stop_measure(self):
@@ -244,7 +237,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         Fast counter must be initially in the run state to make it pause.
         """
-
+        print('PAUSED FAST COUNTER')
         self.stop_measure()
         self.statusvar = 3
         return 0
@@ -255,8 +248,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         If fast counter is in pause state, then fast counter will be continued.
         """
         # exit the pause state in the FPGA
-
-        self.signal_get_data_next.emit()
+        print('CONTINUED FAST COUNTER')
         self.statusvar = 2
         return 0
 
@@ -281,7 +273,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
-
         return self.count_data
 
     def get_status(self):
