@@ -183,7 +183,8 @@ Parts of QuDi are derived from IPython, which is licensed as follows:
 This project is licensed under the terms of the Modified BSD License &lt;br/&gt;
 (also known as New or Revised or 3-Clause BSD), as follows: &lt;br/&gt;
 &lt;br/&gt;
-- Copyright (c) 2015, IPython Development Team &lt;br/&gt;
+- Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 &lt;br/&gt;
 All rights reserved. &lt;br/&gt;
 &lt;br/&gt;
