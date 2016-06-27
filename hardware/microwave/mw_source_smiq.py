@@ -238,7 +238,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
         return 0
 
-    def set_sweep(self, start, stop, step, power=None):
+    def set_sweep(self, start, stop, step, power):
         """
 
         @param start:

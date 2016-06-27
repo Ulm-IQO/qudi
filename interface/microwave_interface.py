@@ -23,6 +23,7 @@ Copyright (C) 2015 Alexander Stark alexander.stark.uni-ulm.de
 
 from core.util.customexceptions import InterfaceImplementationError
 
+
 class MicrowaveInterface():
     """This is the Interface class to define the controls for the simple
     microwave hardware.
@@ -30,7 +31,6 @@ class MicrowaveInterface():
 
     _modclass = 'MicrowaveInterface'
     _modtype = 'interface'
-
 
     def on(self):
         """ Switches on any preconfigured microwave output.
@@ -125,11 +125,28 @@ class MicrowaveInterface():
         raise InterfaceImplementationError('MicrowaveInterface>list_on')
         return -1
 
-    def set_sweep(self, frequency_start=None, frequency_stop=None, frequency_delta=None):
+    def sweep_on(self):
+        """ Switches on the sweep mode.
+
+        @return int: error code (0:OK, -1:error)
         """
+        raise InterfaceImplementationError('MicrowaveInterface>sweep_on')
+        return -1
+
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_sweep')
         return -1
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        raise InterfaceImplementationError('MicrowaveInterface>sweep_reset')
+        return -1
+
 
     def sweep_pos(self, frequency=None):
         """
