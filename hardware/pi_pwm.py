@@ -134,3 +134,14 @@ class PiPWM(Base, ProcessControlInterface):
 
     def getControlLimits(self):
         return (-100, 100)
+
+
+class PiPWMHalf(PiPWM):
+    def __init__(self, manager, name, config = {}, **kwargs):
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        PiPWM.__init__(self, manager, name, **kwargs)
+        #locking for thread safety
+        self.threadlock = Mutex()
+
+    def getControlLimits(self):
+        return (0, 100)

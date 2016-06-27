@@ -77,6 +77,11 @@ class PulserInterface():
         constraints['sample_rate'] = {'min': 0.0, 'max': 0.0,
                                       'step': 0.0, 'unit': 'Samples/s'}
 
+        # The file formats are hardware specific. The sequence_generator_logic will need this
+        # information to choose the proper output format for waveform and sequence files.
+        constraints['waveform_format'] = 'wfm'
+        constraints['sequence_format'] = 'seq'
+
         # the stepsize will be determined by the DAC in combination with the
         # maximal output amplitude (in Vpp):
         constraints['a_ch_amplitude'] = {'min': 0.0, 'max': 0.0,
@@ -550,50 +555,4 @@ a
         @return: bool, True for yes, False for no.
         """
         raise InterfaceImplementationError('PulserInterface>has_sequence_mode')
-        return -1
-
-    def write_samples_to_file(self, name, analog_samples, digital_samples,
-                              total_number_of_samples, is_first_chunk, is_last_chunk):
-        """
-        Appends a sampled chunk of a whole waveform to a file. Create the file
-        if it is the first chunk.
-        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
-        that the whole ensemble is written as a whole in one big chunk.
-
-        @param str name: represents the name of the sampled ensemble
-        @param numpy.ndarray analog_samples: float32 numpy ndarray, contains the samples for the
-                                             analog channels that are to be written by this
-                                             function call.
-        @param numpy.ndarray digital_samples: bool numpy ndarray, contains the samples for the
-                                              digital channels that are to be written by this
-                                              function call.
-        @param int total_number_of_samples: int, The total number of samples in the entire waveform.
-                                        Has to be known it advance.
-        @param bool is_first_chunk: bool, indicates if the current chunk is the
-                               first write to this file.
-        @param bool is_last_chunk: indicates if the current chunk is the last
-                              write to this file.
-
-        @return list: the list contains the string names of the created files for the passed
-                      presampled arrays
-        """
-        raise InterfaceImplementationError('PulserInterface>write_samples_to_file')
-        return -1
-
-    def write_seq_to_file(self, name, sequence_param):
-        """ Write a sequence to file.
-
-        @param str name: name of the sequence to be created
-        @param list sequence_param: a list of dict, which contains all the information, which
-                                    parameters are to be taken to create a sequence. The dict will
-                                    have at least the entry
-                                        {'ensemble': [<list_of_sampled_ensemble_name>] }
-                                    All other parameters, which can be used in the sequence are
-                                    determined in the get_constraints method in the category
-                                    'sequence_param'.
-
-        In order to write sequence files a completely new method with respect to
-        write_samples_to_file is needed.
-        """
-        raise InterfaceImplementationError('PulserInterface>write_seq_to_file')
         return -1
