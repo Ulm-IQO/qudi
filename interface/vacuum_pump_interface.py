@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Interface file for lasers where current and power can be set.
+Interface file for vacuum turbopumps with prepumps and pressure sensors.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,11 +36,14 @@ class VacuumPumpInterface:
     def get_pump_powers(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
-    def get_pump_statea(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-
     def get_pump_states(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
+    def set_pump_states(self, states):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
     def get_system_state(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def set_system_state(self, state):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
