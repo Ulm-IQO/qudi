@@ -168,6 +168,10 @@ class PulsedMeasurementGui(GUIBase):
     _modclass = 'PulsedMeasurementGui'
     _modtype = 'gui'
 
+    sigUploadToDevice = QtCore.Signal(str)
+    sigLoadToChannel = QtCore.Signal(str)
+    sigSampleEnsemble = QtCore.Signal(str, bool, bool)
+
     ## declare connectors
     _in = {'sequencegeneratorlogic': 'SequenceGeneratorLogic',
             'savelogic': 'SaveLogic',
@@ -455,6 +459,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_activation_config_ComboBox.currentIndexChanged.connect(
             self.generator_activation_config_changed)
 
+        # connect signal for file upload and loading of pulser device
+        self.sigSampleEnsemble.connect(self._seq_gen_logic.sample_pulse_block_ensemble)
+        self.sigUploadToDevice.connect(self._pulsed_meas_logic.upload_asset)
+        self.sigLoadToChannel.connect(self._pulsed_meas_logic.load_asset)
+
         # set them to maximum or minimum
         self._mw.curr_block_bins_SpinBox.setMaximum(2**31 -1)
         self._mw.curr_block_laserpulses_SpinBox.setMaximum(2**31 -1)
@@ -499,6 +508,11 @@ class PulsedMeasurementGui(GUIBase):
         # connect update signals of the sequence_generator_logic
         self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
         self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
+        self._seq_gen_logic.sigSampleEnsembleComplete.connect(self.sample_ensemble_finished)
+
+        # connect update signals of the pulsed_measurement_logic
+        self._pulsed_meas_logic.sigUploadAssetComplete.connect(self.upload_to_device_finished)
+        self._pulsed_meas_logic.sigLoadAssetComplete.connect(self.load_into_channel_finished)
 
         # Definition of this parameter. See fore more explanation in file
         # sampling_functions.py
@@ -798,28 +812,62 @@ class PulsedMeasurementGui(GUIBase):
         """
         This method is called when the user clicks on "sample"
         """
+        # disable the "sample ensemble" button until the sampling process is finished.
+        if self._mw.sample_ensemble_PushButton.isEnabled():
+            self._mw.sample_ensemble_PushButton.setEnabled(False)
+        # Also disable the "upload" and "load" buttons to prevent loading of a previously sampled
+        # file.
+        if self._mw.upload_to_device_PushButton.isEnabled():
+            self._mw.upload_to_device_PushButton.setEnabled(False)
+        if self._mw.load_channel_PushButton.isEnabled():
+            self._mw.load_channel_PushButton.setEnabled(False)
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
         # Sample the ensemble via logic module
-        self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name=ensemble_name,
-                                                        write_to_file=True,
-                                                        chunkwise=self._write_chunkwise)
+        self.sigSampleEnsemble.emit(ensemble_name, True, self._write_chunkwise)
+        return
+
+    def sample_ensemble_finished(self):
+        """
+        Reenables the "sample ensemble" button once the sampling process is finished.
+        """
+        if not self._mw.sample_ensemble_PushButton.isEnabled():
+            self._mw.sample_ensemble_PushButton.setEnabled(True)
+        if not self._mw.upload_to_device_PushButton.isEnabled():
+            self._mw.upload_to_device_PushButton.setEnabled(True)
+        if not self._mw.load_channel_PushButton.isEnabled():
+            self._mw.load_channel_PushButton.setEnabled(True)
         return
 
     def upload_to_device_clicked(self):
         """
         This method is called when the user clicks on "upload to device"
         """
+        # disable the "upload to device" button until the upload process is finished.
+        if self._mw.upload_to_device_PushButton.isEnabled():
+            self._mw.upload_to_device_PushButton.setEnabled(False)
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
-        # Upload the ensemble waveform via logic module
-        self._pulsed_meas_logic.upload_asset(ensemble_name)
+        # Upload the ensemble waveform via logic module.
+        self.sigUploadToDevice.emit(ensemble_name)
+        return
+
+    def upload_to_device_finished(self):
+        """
+        Reenables the "upload to device" button once the upload process is finished.
+        """
+        if not self._mw.upload_to_device_PushButton.isEnabled():
+            self._mw.upload_to_device_PushButton.setEnabled(True)
         return
 
     def load_into_channel_clicked(self):
         """
         This method is called when the user clicks on "load to channel"
         """
+        # disable the "load to channel" button until the load process is finished.
+        if self._mw.load_channel_PushButton.isEnabled():
+            self._mw.load_channel_PushButton.setEnabled(False)
+
         # Get the asset name to be uploaded from the ComboBox
         asset_name = self._mw.upload_ensemble_ComboBox.currentText()
 
@@ -848,7 +896,15 @@ class PulsedMeasurementGui(GUIBase):
             self.pulser_sample_rate_changed()
 
         # Load asset into channles via logic module
-        self._pulsed_meas_logic.load_asset(asset_name)
+        self.sigLoadToChannel.emit(asset_name)
+        return
+
+    def load_into_channel_finished(self):
+        """
+        Reenables the "load to channel" button once the load process is finished.
+        """
+        if not self._mw.load_channel_PushButton.isEnabled():
+            self._mw.load_channel_PushButton.setEnabled(True)
         return
 
     def update_block_list(self):
