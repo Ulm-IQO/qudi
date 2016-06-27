@@ -18,9 +18,9 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Derived from the pyPL project (https://github.com/kaseyrussell/pyPL)
-Copyright 2010 Kasey Russell ( email: krussell _at_ post.harvard.edu )
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from core.base import Base
