@@ -64,6 +64,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     signal_ensemble_list_updated = QtCore.Signal()
     signal_sequence_list_updated = QtCore.Signal()
     sigLoadedAssetUpdated = QtCore.Signal()
+    sigSampleEnsembleComplete = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -688,6 +689,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
                         'whole: "{0}" sec'.format(str(int(np.rint(time.time() - start_time)))),
                         msgType='status')
+            self.sigSampleEnsembleComplete.emit()
             # return the sample arrays for write_to_file was set to FALSE
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
@@ -695,6 +697,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # chunkwise.
             self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" '
                         'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            self.sigSampleEnsembleComplete.emit()
             return [], [], created_files, offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
@@ -711,7 +714,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
                         'whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))),
                         msgType='status')
-
+            self.sigSampleEnsembleComplete.emit()
             return [], [], created_files, offset_bin
 
     def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):

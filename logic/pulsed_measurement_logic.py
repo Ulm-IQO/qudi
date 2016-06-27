@@ -52,6 +52,8 @@ class PulsedMeasurementLogic(GenericLogic):
     sigPulseAnalysisUpdated = QtCore.Signal()
     sigMeasuringErrorUpdated = QtCore.Signal()
     sigLoadedAssetUpdated = QtCore.Signal()
+    sigUploadAssetComplete = QtCore.Signal()
+    sigLoadAssetComplete = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -428,6 +430,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @param asset_name: string, name of the ensemble/sequence to upload
         """
         err = self._pulse_generator_device.upload_asset(asset_name)
+        self.sigUploadAssetComplete.emit()
         return err
 
     def upload_sequence(self, seq_name):
@@ -439,9 +442,10 @@ class PulsedMeasurementLogic(GenericLogic):
         current_sequence = self.get_pulse_sequence(seq_name)
 
         for ensemble_name in current_sequence.get_sampled_ensembles():
-            self.upload_asset(ensemble_name)
+            self._pulse_generator_device.upload_asset(ensemble_name)
 
-        self.upload_asset(seq_name)
+        self._pulse_generator_device.upload_asset(seq_name)
+        self.sigUploadAssetComplete.emit()
 
     def has_sequence_mode(self):
         """ Retrieve from the hardware, whether sequence mode is present or not.
@@ -471,6 +475,7 @@ class PulsedMeasurementLogic(GenericLogic):
         err = self._pulse_generator_device.load_asset(asset_name, load_dict)
         # set the loaded_asset_name variable.
         self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
+        self.sigLoadAssetComplete.emit()
         return err
 
     ############################################################################
