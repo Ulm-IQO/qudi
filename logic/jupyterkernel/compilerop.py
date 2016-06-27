@@ -16,7 +16,8 @@ Authors
 # weird problems (often with third-party tools).
 
 #-----------------------------------------------------------------------------
-#  Copyright (C) 2010-2011 The IPython Development Team.
+#  Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 #
 #  Distributed under the terms of the BSD License.
 #
