@@ -1,3 +1,6 @@
 Copyright 2015-2016
 
 Jan M. Binder <...>
+Alex Stark
+Jochen Scheuer
+Lachlan J. Rogers  <lachlan.j.rogers@quantum.diamonds>
