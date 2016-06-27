@@ -168,6 +168,28 @@ class EdwardsVacuumController(Base):
         7: 'Braking'
     }
 
+    PUMP_TYPE = {
+        0: 'No pump',
+        1: 'EXDC pump',
+        3: 'EXT75DX pump',
+        4: 'Ext255DX',
+        8: 'Mains backing pump',
+        9: 'Serial pump (temporary)',
+        10: 'nEXT-485',
+        11: 'nExt-232',
+        99: 'not yet identified'
+    }
+
+    GENERAL_STATE = {
+        0: 'Off',
+        1: 'Off, turning on',
+        2: 'On, turning off to shutdown',
+        3: 'On, turning off normal',
+        4: 'On'
+    }
+
+    
+
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
@@ -261,7 +283,7 @@ class EdwardsVacuumController(Base):
         p1 = self._get_gauge(913)['value']
         p2 = self._get_gauge(914)['value']
         p3 = self._get_gauge(915)['value']
-        return [p1, p2, p3]
+        return {'gauge1': p1, 'gauge2': p2, 'gauge3': p3}
    
     def get_turbo_status(self):
         return self._get_pstate(904)
@@ -289,3 +311,33 @@ class EdwardsVacuumController(Base):
 
     def get_gauge3(self):
         return self._get_gauge(915)
+
+    def get_extra_info(self):
+        return 'Controller: {}\nTurbo: {}\nBacking: {}'.format(
+            self.inst.ask('?S902'),
+            self.inst.ask('?S904'),
+            self.inst.ask('?S910'))
+
+    def get_pump_speeds(self):
+        return {'turbo': self.get_turbo_speed()['value'], 'backing': self.get_backing_speed()['value']}
+        
+    def get_pump_powers(self):
+        return {'turbo': self.get_turbo_power()['value'], 'backing': self.get_backing_power()['value']}
+
+    def get_pump_states(self):
+        return {'turbo': self.get_turbo_status()['state'], 'backing': self.get_backing_status()['state']}
+
+    def set_pump_states(self, states):
+        new_state = {}
+        if 'turbo' in states:
+            reply = self.inst.ask('!C904 {}'.format(1 if states['turbo'] else 0))
+
+        if 'backing' in states:
+            reply = self.inst.ask('!C910 {}'.format(1 if states['backing'] else 0))
+        return new_state
+
+    def get_system_state(self):
+        return self.inst.ask('?V933')
+
+    def set_system_state(self, state):
+        return self.inst.ask('!C933 {}'.format(1 if state else 0))
