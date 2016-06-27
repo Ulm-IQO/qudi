@@ -35,7 +35,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
     # declare connectors
     _out = {'mwsourceanritsu': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config = {}, **kwargs):
+    def __init__(self, manager, name, config={}, **kwargs):
         c_dict = {'onactivate': self.activation,
                   'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, c_dict)
@@ -128,7 +128,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if power != None:
+        if power is not None:
             self._gpib_connection.write(':POW {:f}'.format(power))
             return 0
         else:
@@ -150,7 +150,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if freq != None:
+        if freq is not None:
             self._gpib_connection.write(':FREQ {:f}'.format(freq))
             return 0
         else:
