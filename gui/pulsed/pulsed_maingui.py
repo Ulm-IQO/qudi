@@ -874,6 +874,9 @@ class PulsedMeasurementGui(GUIBase):
         # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
         # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
 
+        # stop the pulser hardware output if it is running
+        self._pulsed_meas_logic.pulse_generator_off()
+
         # configure pulser with the same settings that were chosen during ensemble generation.
         # This information is stored in the ensemble object.
         asset_obj = self._seq_gen_logic.get_saved_asset(asset_name)
@@ -1644,6 +1647,8 @@ class PulsedMeasurementGui(GUIBase):
                     # (no double counting)
                     laser_on = False
                     for elem in block_obj.element_list:
+                        if laser_index >= len(elem.digital_high):
+                            break
                         if elem.digital_high[laser_index] and not laser_on:
                             num_laser_pulses_block += 1
                             laser_on = True
@@ -1658,6 +1663,8 @@ class PulsedMeasurementGui(GUIBase):
                     # (no double counting)
                     laser_on = False
                     for elem in block_obj.element_list:
+                        if laser_index >= len(elem.pulse_function):
+                            break
                         if elem.pulse_function[laser_index] == 'DC' and not laser_on:
                             num_laser_pulses_block += 1
                             laser_on = True
