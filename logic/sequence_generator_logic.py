@@ -590,7 +590,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
             filename_list = [f for f in os.listdir(self.waveform_dir) if
-                             f.startswith(ensemble_name + '_Ch')]
+                             f.startswith(ensemble_name + '_ch')]
             # delete all filenames in the list
             for file in filename_list:
                 os.remove(os.path.join(self.waveform_dir, file))

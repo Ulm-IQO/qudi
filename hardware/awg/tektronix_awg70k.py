@@ -397,6 +397,7 @@ class AWG70K(Base, PulserInterface):
                     '{1}'.format(asset_name, filename), msgType='status')
 
         # load files in AWG workspace
+        timeout = self.soc.gettimeout()
         self.soc.settimeout(None)
         for asset in filename:
             file_path  = os.path.join(self.ftp_root_directory, self.asset_directory, asset)
@@ -405,7 +406,7 @@ class AWG70K(Base, PulserInterface):
             else:
                 self.tell('MMEM:OPEN "%s"\n' % file_path)
             self.ask('*OPC?\n')
-        self.soc.settimeout(3)
+        self.soc.settimeout(timeout)
 
         # simply use the channel association of the filenames if no load_dict is given
         if load_dict == {}:
