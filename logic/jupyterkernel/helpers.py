@@ -18,7 +18,8 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
-Parts of this file are
+Parts of this file are 
+Copyright (C) 2008-2011  The IPython Development Team
 
 Distributed under the terms of the BSD License.  The full license is in
 the file document documentation/BSDLicense_IPython.md,

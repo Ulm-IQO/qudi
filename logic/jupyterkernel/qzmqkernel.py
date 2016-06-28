@@ -25,13 +25,17 @@ Parts of this file were taken from
 https://github.com/ipython/ipython/blob/master/IPython/core/interactiveshell.py
 which carries the following attributions:
 
-Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
-top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+Copyright (C) 2001 Janko Hauser <jhauser@zscout.de>
+Copyright (C) 2001-2007 Fernando Perez. <fperez@colorado.edu>
+Copyright (C) 2008-2011  The IPython Development Team
 
 Distributed under the terms of the BSD License.  The full license is in
 the file document documentation/BSDLicense_IPython.md,
 distributed as part of this software.
 ------------------------------------------------------------------------------
+
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
 """
 
