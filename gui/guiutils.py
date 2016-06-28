@@ -18,9 +18,6 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-    Florian S. Frank florian.frank@uni-ulm.de
-    Alexander Stark alexander.stark@uni-ulm.de
-    Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 import pyqtgraph as pg
