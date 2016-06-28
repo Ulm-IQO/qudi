@@ -1,0 +1,13 @@
+Copyright 2015-2016
+
+Jan M. Binder <jan.binder@uni-ulm.de>
+Alexander Stark <alexander.stark@uni-ulm.de>
+Jochen Scheuer <jochen.scheuer@uni-ulm.de>
+Lachlan J. Rogers  <lachlan.j.rogers@quantum.diamonds>
+Florian Frank <florian.frank@uni-ulm.de>
+Kay D. Jahnke  <kay.jahnke@alumni.uni-ulm.de>
+Ou Wang <ou.wang@uni-ulm.de>
+Nikolas Tomek <nikolas.tomek@uni-ulm.de>
+Simon Schmitt <simon.schmitt@uni-ulm.de>
+Thomas Unden <thomas.unden@uni-ulm.de>
+Christoph Mueller <christoph-1.mueller@uni-ulm.de>

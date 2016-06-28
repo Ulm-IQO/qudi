@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-
 """
-Interface file to use processes.
+Interface for logging small amounts of time series data to some place.
+First use case is Influxdb.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,24 +19,19 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+from core.util.customexceptions import *
+from enum import Enum
 
-from core.util.customexceptions import InterfaceImplementationError
-
-
-class ProcessInterface():
-    """ A very simple interface to measure a single value.
-        Used for PID controll.
-    """
-
-    _modtype = 'ProcessInterface'
+class DataLoggerInterface:
+    _modtype = 'DataLoggerInterface'
     _modclass = 'interface'
 
-    def getProcessValue(self):
-        """ Return a measured value """
-        raise InterfaceImplementationError('ProcessInterface->getProcessValue')
-        return -1
+    def get_log_channels(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
-    def getProcessUnit(self):
-        """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
-        raise InterfaceImplementationError('ProcessInterface->getProcessUnit')
-        return -1
+    def set_log_channels(self, channelspec):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def log_to_channel(self, channel, value):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+

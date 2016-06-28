@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import time
@@ -297,21 +297,21 @@ class AWG7122C(Base, PulserInterface):
         # for the different configurations can be customary chosen.
 
         activation_config = OrderedDict()
-        activation_config['All'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
+        activation_config['All'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         # Usage of channel 1 only:
-        activation_config['A1_M1_M2'] = ['a_ch2', 'd_ch1', 'd_ch2']
+        activation_config['A1_M1_M2'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of channel 2 only:
-        activation_config['A2_M3_M4'] = ['a_ch3', 'd_ch3', 'd_ch4']
+        activation_config['A2_M3_M4'] = ['a_ch2', 'd_ch3', 'd_ch4']
         # Usage of Interleave configuration with digital channels:
         activation_config['Interleave_M1_M2'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of Interleave configuration only:
         activation_config['Interleave_only'] = ['a_ch1']
         # usage of two analog channels only:
-        activation_config['Two_Analog'] = ['a_ch2', 'a_ch3']
+        activation_config['Two_Analog'] = ['a_ch1', 'a_ch2']
         # Usage of one analog channel without digital channel
-        activation_config['Analog1'] = ['a_ch2']
+        activation_config['Analog1'] = ['a_ch1']
         # Usage of one analog channel without digital channel
-        activation_config['Analog2'] = ['a_ch3']
+        activation_config['Analog2'] = ['a_ch2']
 
         constraints['activation_config'] = activation_config
 
@@ -461,17 +461,16 @@ class AWG7122C(Base, PulserInterface):
             for file in file_list:
 
                 if file == asset_name + '_ch1.wfm':
-
+                    #load into workspace
                     self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name +'_ch1', asset_name + '_ch1.wfm'))
-
-                    self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name + '_ch1.wfm'))
-
+                    #load into channel
+                    self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch1'))
+                    print("Ch1 loaded",asset_name)
                     filename.append(file)
                 elif file == asset_name + '_ch2.wfm':
                     self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch2', asset_name + '_ch2.wfm'))
-
-                    self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name + '_ch2.wfm'))
-
+                    self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset_name + '_ch2'))
+                    print("Ch2 loaded",asset_name)
                     filename.append(file)
 
             if load_dict == {} and filename == []:
@@ -479,8 +478,10 @@ class AWG7122C(Base, PulserInterface):
                             'that!\nCommand will be ignored.', msgType='warning')
 
         for channel_num in list(load_dict):
-            file_name = str(load_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
-            self.tell('SOUR{0}:FUNC:USER "{1}/{2}"\n'.format(channel_num, path, file_name))
+            print("in load dict")
+            #asset_name = str(load_dict[channel_num])
+            #self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch{0}'.format(int(channel_num)), asset_name + '_ch{0}.wfm'.format(int(channel_num))))
+            #self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch{0}'.format(int(channel_num))))
 
         if len(list(load_dict)) > 0:
             self.current_loaded_asset = asset_name
