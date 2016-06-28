@@ -15,10 +15,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay D. Jahnke
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 Copyright (c) 2016 Christoph Müller  cmueller2603@gmail.com
 Copyright (c) 2016 Florian Frank  florian.frank@uni-ulm.de
-Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 """
 
 from logic.generic_logic import GenericLogic
