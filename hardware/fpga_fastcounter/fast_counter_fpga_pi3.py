@@ -214,6 +214,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         self.count_data = np.zeros([self._number_of_gates, self._record_length], dtype='int32')
         self.lock()
+        self.pulsed.clear()
         self.pulsed.start()
         self.timer.start()
         self.statusvar = 2
