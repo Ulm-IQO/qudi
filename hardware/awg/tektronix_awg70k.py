@@ -130,13 +130,15 @@ class AWG70K(Base, PulserInterface):
         self.soc = socket(AF_INET, SOCK_STREAM)
         self.soc.settimeout(3)
         self.soc.connect((self.ip_address, self.port))
+
         self.ftp = FTP(self.ip_address)
         self.ftp.login()
         self.ftp.cwd(self.asset_directory)
 
         self.input_buffer = int(2 * 1024)
-
         self.connected = True
+
+        self._init_loaded_asset()
 
 
     def deactivation(self, e):
@@ -1038,6 +1040,40 @@ class AWG70K(Base, PulserInterface):
         """
         self.tell('*RST\n')
         return 0
+
+    def _init_loaded_asset(self):
+        """
+        Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
+        """
+        ch1_asset = self.ask('SOUR1:CASS?\n').replace('"','')
+        ch2_asset = self.ask('SOUR2:CASS?\n').replace('"','')
+        if ch1_asset:
+            tmp = ch1_asset.split('_ch')
+            if len(tmp) != 2:
+                self.logMsg('Handling of asset names with "_ch" inside the name is not handled '
+                            'properly yet.', msgType='error')
+            else:
+                ch1_asset = tmp[0]
+        if ch2_asset:
+            tmp = ch2_asset.split('_ch')
+            if len(tmp) != 2:
+                self.logMsg('Handling of asset names with "_ch" inside the name is not handled '
+                            'properly yet.', msgType='error')
+            else:
+                ch2_asset = tmp[0]
+        if ch1_asset and ch2_asset and ch1_asset == ch2_asset:
+            self.current_loaded_asset = ch1_asset
+        elif ch1_asset and not ch2_asset:
+            self.current_loaded_asset = ch1_asset
+        elif ch2_asset and not ch1_asset:
+            self.current_loaded_asset = ch2_asset
+        elif not ch1_asset and not ch2_asset:
+            self.current_loaded_asset = None
+        else:
+            self.logMsg('Strange mismatch of loaded assets in AWG70k. This case is not covered '
+                        'yet.', msgType='warning')
+            self.current_loaded_asset = None
+        return
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.

@@ -2833,11 +2833,13 @@ class PulsedMeasurementGui(GUIBase):
             # get currently loaded asset for the parameters
             asset_name = self._pulsed_meas_logic.loaded_asset_name
             asset_obj = self._seq_gen_logic.get_saved_asset(asset_name)
-            if asset_obj is None:
-                self.logMsg('Error while trying to run pulsed measurement. '
-                            'No asset is loaded onto the pulse generator. Aborting run.',
-                            msgType='error')
-                return
+            if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked() or \
+                not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+                if asset_obj is None:
+                    self.logMsg('Error while trying to run pulsed measurement. '
+                                'No asset is loaded onto the pulse generator. Aborting run.',
+                                msgType='error')
+                    return
             # infer number of laser pulses from the currently loaded asset if needed.
             # If they have been manually set in the GUI the changes are already in the logic.
             if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked():
