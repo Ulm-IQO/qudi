@@ -231,7 +231,7 @@ class PulseExtractionLogic(GenericLogic):
             laser_data = self._gated_extraction(raw_data)
         else:
             laser_data = self._ungated_extraction(raw_data, num_of_lasers)
-        return laser_data, raw_data, self.is_counter_gated
+        return laser_data.astype(dtype=int), raw_data.astype(dtype=int), self.is_counter_gated
 
 
     def _check_if_counter_gated(self):

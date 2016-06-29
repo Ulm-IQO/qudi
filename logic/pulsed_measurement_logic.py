@@ -756,11 +756,8 @@ class PulsedMeasurementLogic(GenericLogic):
             filelabel = 'laser_pulses'
 
         # prepare the data in a dict or in an OrderedDict:
-        temp_arr = np.empty([self.laser_data.shape[1], self.laser_data.shape[0]+1])
-        temp_arr[:,1:] = self.laser_data.transpose()
-        temp_arr[:,0] = np.arange(0, self.laser_data.shape[1]*self.fast_counter_binwidth, self.fast_counter_binwidth)
         data = OrderedDict()
-        data = {'Time (ns), Signal (counts)': temp_arr}
+        data = {'Signal (counts)': self.laser_data.transpose()}
 
         # write the parameters:
         parameters = OrderedDict()
@@ -769,7 +766,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+                                   as_text=True, precision=':')#, as_xml=False, precision=None, delimiter=None)
 
         #####################################################################
         ####                Save measurement data                        ####
