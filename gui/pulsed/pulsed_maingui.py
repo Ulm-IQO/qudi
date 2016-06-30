@@ -2912,7 +2912,7 @@ class PulsedMeasurementGui(GUIBase):
         """Fits the current data"""
         self._mw.fit_param_results_TextBrowser.clear()
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
-        fit_x, fit_y, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
+        fit_x, fit_y, fit_result, param_dict = self._pulsed_meas_logic.do_fit(current_fit_function)
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
         self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
         return
@@ -3087,7 +3087,7 @@ class PulsedMeasurementGui(GUIBase):
         xaxis_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
         xaxis_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
         num_of_lasers = self._pulsed_meas_logic.number_of_lasers
-        xaxis_ticks_list = np.arange(xaxis_start,xaxis_start+(xaxis_incr*num_of_lasers), xaxis_incr)
+        xaxis_ticks_list = np.linspace(xaxis_start, xaxis_start+(xaxis_incr*(num_of_lasers-1)), num_of_lasers)
         self._pulsed_meas_logic.set_measurement_ticks_list(xaxis_ticks_list)
 
     def ext_mw_params_changed(self):
