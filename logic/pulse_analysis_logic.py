@@ -50,9 +50,6 @@ class PulseAnalysisLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
-        self.fit_result = ([])
-
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -77,6 +74,16 @@ class PulseAnalysisLogic(GenericLogic):
                          explanation can be found in method activation.
         """
         pass
+
+    def set_old_raw_data(self, raw_data):
+        """
+        This method will set the old raw data inside the pulse extraction logic to be added to the
+        new data set.
+        @param raw_data: numpy ndarray, the raw count data from the fast counter. Must be same
+                        dimension as the new data to be recorded.
+        """
+        self._pulse_extraction_logic.old_raw_data = raw_data
+        return
 
 
     def _analyze_data(self, norm_start_bin, norm_end_bin, signal_start_bin,

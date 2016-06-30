@@ -55,6 +55,8 @@ class PulseExtractionLogic(GenericLogic):
 
         self.is_counter_gated = False
         self.conv_std_dev = 5
+        self.old_raw_data = None    # This is used to pause and continue a measurement.
+                                    # Is added to the new data.
 
 
     def activation(self, e):
@@ -224,6 +226,9 @@ class PulseExtractionLogic(GenericLogic):
         # poll data from the fast counting device, netobtain is needed for
         # getting numpy array over network
         raw_data = netobtain(self._fast_counter_device.get_data_trace())
+        if self.old_raw_data is not None:
+            #if raw_data.shape == self.old_raw_data.shape:
+            raw_data = np.add(raw_data, self.old_raw_data)
 
         # call appropriate laser extraction method depending on if the fast
         # counter is gated or not.
