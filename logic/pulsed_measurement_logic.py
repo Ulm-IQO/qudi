@@ -889,6 +889,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return float array pulsed_fit_x: Array containing the x-values of the fit
         @return float array pulsed_fit_y: Array containing the y-values of the fit
         @return str array pulsed_fit_result: String containing the fit parameters displayed in a nice form
+        @return dict param_dict: a dictionary containing the fit result
         """
         # compute x-axis for fit:
         x_start = self.signal_plot_x[0]
@@ -902,7 +903,7 @@ class PulsedMeasurementLogic(GenericLogic):
             pulsed_fit_x = []
             pulsed_fit_y = []
             fit_result = 'No Fit'
-            return pulsed_fit_x, pulsed_fit_y, fit_result
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
 
         elif fit_function == 'Sine' or fit_function == 'Cos_FixedPhase':
             update_dict = {}
@@ -935,7 +936,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
             fit_result = self._create_formatted_output(param_dict)
 
-            return pulsed_fit_x, pulsed_fit_y, fit_result
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
 
         elif fit_function == 'Lorentian (neg)':
 
@@ -959,7 +960,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
             fit_result = self._create_formatted_output(param_dict)
 
-            return pulsed_fit_x, pulsed_fit_y, fit_result
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
 
 
         elif fit_function == 'Lorentian (pos)':
@@ -990,7 +991,7 @@ class PulsedMeasurementLogic(GenericLogic):
             #                     + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
             #                     + 'contrast : ' + str(np.abs(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3))*100) + '[%]'
             #                     )
-            return pulsed_fit_x, pulsed_fit_y, fit_result
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
 
         elif fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x,
@@ -1036,7 +1037,7 @@ class PulsedMeasurementLogic(GenericLogic):
             #                     + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
             #                     + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
             #                     )
-            return pulsed_fit_x, pulsed_fit_y, fit_result
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
 
         elif fit_function =='N15':
             result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x,
@@ -1071,19 +1072,19 @@ class PulsedMeasurementLogic(GenericLogic):
             #                     + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
             #                     + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
             #                     )
-            return pulsed_fit_x, pulsed_fit_y, fit_result
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
 
         elif fit_function =='Stretched Exponential':
             fit_result = ('Stretched Exponential not yet implemented')
-            return pulsed_fit_x, pulsed_fit_x, fit_result
+            return pulsed_fit_x, pulsed_fit_x, fit_result, param_dict
 
         elif fit_function =='Exponential':
             fit_result = ('Exponential not yet implemented')
-            return pulsed_fit_x, pulsed_fit_x, fit_result
+            return pulsed_fit_x, pulsed_fit_x, fit_result, param_dict
 
         elif fit_function =='XY8':
             fit_result = ('XY8 not yet implemented')
-            return pulsed_fit_x, pulsed_fit_x, fit_result
+            return pulsed_fit_x, pulsed_fit_x, fit_result, param_dict
 
     def _create_formatted_output(self, param_dict):
         """ Display a parameter set nicely.
