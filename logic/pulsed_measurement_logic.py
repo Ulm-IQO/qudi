@@ -84,6 +84,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = 100e-6
         self.laser_length_s = 3.e-6
         self.loaded_asset_name = None
+        self.alternating = False
 
         # Pulse generator parameters
         self.current_channel_config_name = None
@@ -114,6 +115,8 @@ class PulsedMeasurementLogic(GenericLogic):
         # plot data
         self.signal_plot_x = None
         self.signal_plot_y = None
+        self.alt1_signal_y = None
+        self.alt2_signal_y = None
         self.measuring_error_plot_x = None
         self.measuring_error_plot_y = None
         self.laser_plot_x = None
@@ -177,6 +180,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sample_rate = self._statusVariables['sample_rate']
         if 'timer_interval' in self._statusVariables:
             self.timer_interval = self._statusVariables['timer_interval']
+        if 'alternating' in self._statusVariables:
+            self.alternating = self._statusVariables['alternating']
 
         # Check and configure pulse generator
         avail_activation_configs = self.get_pulser_constraints()['activation_config']
@@ -232,6 +237,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['current_channel_config_name'] = self.current_channel_config_name
         self._statusVariables['sample_rate'] = self.sample_rate
         self._statusVariables['timer_interval'] = self.timer_interval
+        self._statusVariables['alternating'] = self.alternating
 
     ############################################################################
     # Fast counter control methods
@@ -303,6 +309,24 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.stop_measure()
+        self.update_fast_counter_status()
+        return error_code
+
+    def fast_counter_pause(self):
+        """Switching off the fast counter
+
+        @return int: error code (0:OK, -1:error)
+        """
+        error_code = self._fast_counter_device.pause_measure()
+        self.update_fast_counter_status()
+        return error_code
+
+    def fast_counter_continue(self):
+        """Switching off the fast counter
+
+        @return int: error code (0:OK, -1:error)
+        """
+        error_code = self._fast_counter_device.continue_measure()
         self.update_fast_counter_status()
         return error_code
     ############################################################################
@@ -546,6 +570,10 @@ class PulsedMeasurementLogic(GenericLogic):
             # analyze pulses and get data points for signal plot
             self.signal_plot_y,self.laser_data,self.raw_data,self.measuring_error,self.is_gated = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
 
+            if self.alternating:
+                self.alt1_signal_y = self.signal_plot_y[::2]
+                self.alt2_signal_y = self.signal_plot_y[1::2]
+
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
             self.elapsed_time_str = ''
@@ -622,7 +650,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 #pausing the timer
                 self.analysis_timer.stop()
 
-                self.fast_counter_off()
+                self.fast_counter_pause()
                 self.pulse_generator_off()
 
                 if self.use_ext_microwave:
@@ -643,7 +671,7 @@ class PulsedMeasurementLogic(GenericLogic):
             if self.use_ext_microwave:
                 self.microwave_on()
 
-            self.fast_counter_on()
+            self.fast_counter_continue()
             self.pulse_generator_on()
 
             #unpausing the timer

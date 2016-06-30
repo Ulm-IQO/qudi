@@ -2634,6 +2634,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.toggle_external_mw_source_editor)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
         self._mw.ana_param_laserpulse_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
+        self._mw.ana_param_alternating_CheckBox.stateChanged.connect(self.analysis_alternating_changed)
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
@@ -2664,7 +2665,6 @@ class PulsedMeasurementGui(GUIBase):
         self._statusVariables['ana_param_laserpulse_defined_CheckBox'] = self._mw.ana_param_laserpulse_defined_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_first_CheckBox'] = self._mw.ana_param_ignore_first_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_last_CheckBox'] = self._mw.ana_param_ignore_last_CheckBox.isChecked()
-        self._statusVariables['ana_param_alternating_CheckBox'] = self._mw.ana_param_alternating_CheckBox.isChecked()
         self._statusVariables['ana_param_errorbars_CheckBox'] = self._mw.ana_param_errorbars_CheckBox.isChecked()
         self._statusVariables['second_plot_ComboBox_text'] = self._mw.second_plot_ComboBox.currentText()
 
@@ -2719,6 +2719,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_laser_length_SpinBox.setValue(self._pulsed_meas_logic.laser_length_s*1e9)
 
         # ignore and alternating checkboxes
+        self._mw.ana_param_alternating_CheckBox.setChecked(self._pulsed_meas_logic.alternating)
+
         if 'ana_param_ignore_first_CheckBox' in self._statusVariables:
             self._mw.ana_param_ignore_first_CheckBox.setChecked(
                 self._statusVariables['ana_param_ignore_first_CheckBox'])
@@ -2729,11 +2731,6 @@ class PulsedMeasurementGui(GUIBase):
                 self._statusVariables['ana_param_ignore_last_CheckBox'])
         else:
             self._mw.ana_param_ignore_last_CheckBox.setChecked(False)
-        if 'ana_param_alternating_CheckBox' in self._statusVariables:
-            self._mw.ana_param_alternating_CheckBox.setChecked(
-                self._statusVariables['ana_param_alternating_CheckBox'])
-        else:
-            self._mw.ana_param_alternating_CheckBox.setChecked(False)
 
         # define own x-axis checkbox
         if 'ana_param_x_axis_defined_CheckBox' in self._statusVariables:
@@ -3069,6 +3066,14 @@ class PulsedMeasurementGui(GUIBase):
         """ This method handles the analysis timing"""
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self._pulsed_meas_logic.set_timer_interval(timer_interval)
+
+    def analysis_alternating_changed(self):
+        """
+        Is called whenever the "alternating" CheckBox is clicked
+        """
+        alternating = self._mw.ana_param_alternating_CheckBox.isChecked()
+        self._pulsed_meas_logic.alternating = alternating
+        return
 
     def analysis_fc_binning_changed(self):
         """
