@@ -26,6 +26,7 @@ User and code documentation about Qudi is located at http://qosvn2.physik.uni-ul
 ## Collaboration
 Feel free to register and add issues to our trac at http://qosvn2.physik.uni-ulm.de/trac/qudi .
 and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
+
 The code in pull requests should be clean, PEP8-compliant and commented, as with every academic institution in Germany,
 our resources in the area of software development are quite limited.
 
