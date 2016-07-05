@@ -113,4 +113,6 @@ def messageHandler(msgType, msg):
 if 'PyQt4' in sys.modules:
     pg.QtCore.qInstallMsgHandler(messageHandler)
 else:
-    pg.QtCore.qInstallMessageHandler(messageHandler)
+    def qt5_messageHandler(msgType, context, msg):
+        messageHandler(msgType, msg)
+    pg.QtCore.qInstallMessageHandler(qt5_messageHandler)
