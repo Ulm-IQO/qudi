@@ -18,30 +18,31 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-
-
 from pyqtgraph.Qt import QtCore
 from urllib.parse import urlparse
 from rpyc.utils.server import ThreadedServer
+from rpyc.utils.authenticators import SSLAuthenticator
+import ssl
 from .util.models import DictTableModel, ListTableModel
 import rpyc
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
-import socket
 
 
 class RemoteObjectManager(QtCore.QObject):
     """ This shares modules with other computers and is resonsible
         for obtaining modules shared by other computer.
     """
-    def __init__(self, manager):
+    def __init__(self, manager, hostname, port, certfile=None, keyfile=None):
         """ Handle sharing and getting shared modules.
         """
         super().__init__()
-        self.hostname = socket.gethostname()
+        self.host = hostname
+        self.port = port
+        self.certfile = certfile
+        self.keyfile = keyfile
         self.tm = manager.tm
         self.logger = manager.logger
         self.manager = manager
-        #self.logger.logMsg('Nameserver is: {0}'.format(self.nameserver._pyroUri), msgType='status')
         self.remoteModules = ListTableModel()
         self.remoteModules.headers[0] = 'Remote Modules'
         self.sharedModules = DictTableModel()
@@ -96,24 +97,31 @@ class RemoteObjectManager(QtCore.QObject):
                         return None
         return RemoteModuleService
 
-    def refresNameserver(self):
-        """ Find name server
-        """
-        #self.nameserver = Pyro4.locateNS()
-        pass
-
-    def createServer(self, port):
+    def createServer(self):
         """ Start the rpyc modules server on a given port.
 
           @param int port: port where the server should be running
         """
         thread = self.tm.newThread('rpyc-server')
-        self.server = RPyCServer(self.makeRemoteService(), port)
+        if self.certfile is not None and self.keyfile is not None:
+            self.server = RPyCServer(
+                self.makeRemoteService(),
+                self.host,
+                self.port,
+                keyfile=self.keyfile,
+                certfile=self.certfile)
+        else:
+            if self.host != 'localhost':
+                self.logger.logMsg(
+                    'Remote connection not secured! Use a certificate!',
+                    msgType='warning')
+            self.server = RPyCServer(self.makeRemoteService(), self.host, self.port)
         self.server.moveToThread(thread)
         thread.started.connect(self.server.run)
         thread.start()
-        #self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
-        self.logger.logMsg('Started module server at {0} on port {1}'.format(self.hostname, port), msgType='status')
+        self.logger.logMsg(
+            'Started module server at {0} on port {1}'
+            ''.format(self.host, self.port), msgType='status')
 
     def stopServer(self):
         """ Stop the remote module server.
@@ -150,7 +158,7 @@ class RemoteObjectManager(QtCore.QObject):
         """
         parsed = urlparse(url)
         name = parsed.path.replace('/', '')
-        return self.getRemoteModule(parsed.hostname, parsed.port, name)
+        return self.getRemoteModule(parsed.host, parsed.port, name)
 
     def getRemoteModule(self, host, port, name):
         """ Get a remote module via its host, port and name.
@@ -169,25 +177,52 @@ class RemoteObjectManager(QtCore.QObject):
 class RPyCServer(QtCore.QObject):
     """ Contains a RPyC server that serves modules to remote computers. Runs in a QThread.
     """
-    def __init__(self, serviceClass, port):
+    def __init__(self, serviceClass, host, port, certfile=None, keyfile=None):
         """ 
           @param class serviceClass: class that represents an RPyC service
           @param int port: port that hte RPyC server should listen on
         """
         super().__init__()
         self.serviceClass = serviceClass
+        self.host = host
         self.port = port
+        self.certfile = certfile
+        self.keyfile = keyfile
 
     def run(self):
         """ Start the RPyC server
         """
-        self.server = ThreadedServer(self.serviceClass, port = self.port, protocol_config = {'allow_all_attrs': True })
+        if self.certfile is not None and self.keyfile is not None:
+            authenticator = SSLAuthenticator(self.certfile, self.keyfile)
+            self.server = ThreadedServer(
+                self.serviceClass,
+                hostname=self.host,
+                port=self.port,
+                protocol_config={'allow_all_attrs': True},
+                authenticator=authenticator,
+                cert_reqs=ssl.CERT_REQUIRED,
+                ciphers='EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH',
+                ssl_version=ssl.PROTOCOL_TLSv1_2)
+        else:
+            self.server = ThreadedServer(
+                self.serviceClass,
+                hostname=self.host,
+                port=self.port,
+                protocol_config={'allow_all_attrs': True})
         self.server.start()
 
 class RemoteModule:
     """ This class represents a module on a remote computer and holds a reference to it.
     """
-    def __init__(self, host, port, name):
-        self.connection = rpyc.connect(host, port, config={'allow_all_attrs': True})
+    def __init__(self, host, port, name, certfile=None, keyfile=None):
+        if certfile is not None and keyfile is not None:
+            self.connection = rpyc.ssl_connect(
+                host,
+                port=port,
+                config={'allow_all_attrs': True},
+                certfile=certfile,
+                keyfile=keyfile)
+        else:
+            self.connection = rpyc.connect(host, port, config={'allow_all_attrs': True})
         self.module = self.connection.root.getModule(name)
         self.name = name
