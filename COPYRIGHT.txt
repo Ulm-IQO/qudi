@@ -1,6 +1,6 @@
 Copyright 2015-2016
 
-Jan M. Binder <jan.binder@uni-ulm.de>
+Jan M. Binder <jan-git@nlogn.org>
 Alexander Stark <alexander.stark@uni-ulm.de>
 Jochen Scheuer <jochen.scheuer@uni-ulm.de>
 Lachlan J. Rogers  <lachlan.j.rogers@quantum.diamonds>
