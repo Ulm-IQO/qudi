@@ -2833,11 +2833,13 @@ class PulsedMeasurementGui(GUIBase):
             # get currently loaded asset for the parameters
             asset_name = self._pulsed_meas_logic.loaded_asset_name
             asset_obj = self._seq_gen_logic.get_saved_asset(asset_name)
-            if asset_obj is None:
-                self.logMsg('Error while trying to run pulsed measurement. '
-                            'No asset is loaded onto the pulse generator. Aborting run.',
-                            msgType='error')
-                return
+            if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked() or \
+                not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+                if asset_obj is None:
+                    self.logMsg('Error while trying to run pulsed measurement. '
+                                'No asset is loaded onto the pulse generator. Aborting run.',
+                                msgType='error')
+                    return
             # infer number of laser pulses from the currently loaded asset if needed.
             # If they have been manually set in the GUI the changes are already in the logic.
             if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked():
@@ -2910,7 +2912,7 @@ class PulsedMeasurementGui(GUIBase):
         """Fits the current data"""
         self._mw.fit_param_results_TextBrowser.clear()
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
-        fit_x, fit_y, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
+        fit_x, fit_y, fit_result, param_dict = self._pulsed_meas_logic.do_fit(current_fit_function)
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
         self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
         return
@@ -3085,7 +3087,7 @@ class PulsedMeasurementGui(GUIBase):
         xaxis_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
         xaxis_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
         num_of_lasers = self._pulsed_meas_logic.number_of_lasers
-        xaxis_ticks_list = np.arange(xaxis_start,xaxis_start+(xaxis_incr*num_of_lasers), xaxis_incr)
+        xaxis_ticks_list = np.linspace(xaxis_start, xaxis_start+(xaxis_incr*(num_of_lasers-1)), num_of_lasers)
         self._pulsed_meas_logic.set_measurement_ticks_list(xaxis_ticks_list)
 
     def ext_mw_params_changed(self):
