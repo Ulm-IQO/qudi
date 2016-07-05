@@ -75,7 +75,7 @@ class Logger(QtCore.QObject):
         path = os.path.dirname(__file__)
         self.manager = manager
         self.msgCount = 0
-        self.logCount=0
+        self.logCount = 0
         self.logFile = None
         
         # Start a new temp log file, destroying anything left over from the 
