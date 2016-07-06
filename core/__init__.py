@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
 Derived form ACQ4:
 Copyright 2010  Luke Campagnola
@@ -112,4 +113,6 @@ def messageHandler(msgType, msg):
 if 'PyQt4' in sys.modules:
     pg.QtCore.qInstallMsgHandler(messageHandler)
 else:
-    pg.QtCore.qInstallMessageHandler(messageHandler)
+    def qt5_messageHandler(msgType, context, msg):
+        messageHandler(msgType, msg)
+    pg.QtCore.qInstallMessageHandler(qt5_messageHandler)

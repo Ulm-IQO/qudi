@@ -15,20 +15,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder <jan.binder@uni-ulm.de>
-Copyright (C) 2015 Thomas Unden <thomas.unden@uni-ulm.de>
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
-from collections import OrderedDict
 import thirdparty.stuttgart_counter.TimeTagger as tt
 from core.base import Base
-from core.util.mutex import Mutex
-from pyqtgraph.Qt import QtCore
 import os
 
-import time
 
 class FastCounterFGAPiP3(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
@@ -36,8 +32,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
     ## declare connectors
     _out = {'fastcounter': 'FastCounterInterface'}
-
-    signal_get_data_next = QtCore.Signal()
 
     def __init__(self, manager, name, config = {}, **kwargs):
         callback_dict = {'onactivate': self.activation,
@@ -94,27 +88,13 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         tt._Tagger_setBitfilePath(bitfilepath)
         del bitfilepath, thirdpartypath
 
-        self.tt = tt
-
         self._number_of_gates = int(100)
         self._bin_width = 1
         self._record_length = int(4000)
 
         self.configure(self._bin_width*1e-9,self._record_length*1e-9,self._number_of_gates)
 
-        self.count_data = None
-
-        self.timer = None
-        self.timer_interval_s = 1
-
-        # self.stopRequested = False
-
         self.statusvar = 0
-
-        self.threadlock = Mutex()
-
-        self.signal_get_data_next.connect(self._get_data_next,
-                                          QtCore.Qt.QueuedConnection)
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
@@ -168,7 +148,10 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
-        pass
+        if self.getState() == 'locked':
+            self.pulsed.stop()
+        self.pulsed.clear()
+        self.pulsed = None
 
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
 
@@ -186,7 +169,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
                     gate_length_s: the actual set gate length in seconds
                     number_of_gates: the number of gated, which are accepted
         """
-
         self._number_of_gates = number_of_gates
         self._bin_width = bin_width_s * 1e9
         self._record_length = int(record_length_s / bin_width_s)
@@ -202,40 +184,19 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         )
         return (bin_width_s, record_length_s, number_of_gates)
 
-    def _get_data_next(self):
-        """ Read new count_data and add to existing count_data. """
-        with self.threadlock:
-            self.count_data = np.add(self.count_data, self.pulsed.getData())
-
     def start_measure(self):
         """ Start the fast counter. """
-
         self.lock()
-
-        # set timer
-        self.timer = QtCore.QTimer()
-        self.timer.setSingleShot(False)
-        self.timer.setInterval(int(1000. * self.timer_interval_s))
-        self.timer.timeout.connect(self._get_data_next)
-
-        self.count_data = np.zeros([self._number_of_gates,
-                                    self._record_length], dtype='int32')
+        self.pulsed.clear()
         self.pulsed.start()
-        self.timer.start()
         self.statusvar = 2
-        self.signal_get_data_next.emit()
         return 0
 
     def stop_measure(self):
         """ Stop the fast counter. """
-
-        with self.threadlock:
-            if self.getState() == 'locked':
-                self.timer.stop()
-                self.timer.timeout.disconnect()
-                self.timer = None
-                self.pulsed.stop()
-                self.unlock()
+        if self.getState() == 'locked':
+            self.pulsed.stop()
+            self.unlock()
         self.statusvar = 1
         return 0
 
@@ -244,9 +205,9 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         Fast counter must be initially in the run state to make it pause.
         """
-
-        self.stop_measure()
-        self.statusvar = 3
+        if self.getState() == 'locked':
+            self.pulsed.stop()
+            self.statusvar = 3
         return 0
 
     def continue_measure(self):
@@ -254,10 +215,9 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         If fast counter is in pause state, then fast counter will be continued.
         """
-        # exit the pause state in the FPGA
-
-        self.signal_get_data_next.emit()
-        self.statusvar = 2
+        if self.getState() == 'locked':
+            self.pulsed.start()
+            self.statusvar = 2
         return 0
 
     def is_gated(self):
@@ -266,7 +226,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         Boolean return value indicates if the fast counter is a gated counter
         (TRUE) or not (FALSE).
         """
-
         return True
 
     def get_data_trace(self):
@@ -281,8 +240,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
+        return np.array(self.pulsed.getData(), dtype='int64')
 
-        return self.count_data
 
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
@@ -298,6 +257,5 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds. """
-
         width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
