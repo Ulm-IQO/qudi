@@ -16,12 +16,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
-Copyright (C) 2015 Alexander Stark alexander.stark.uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from core.util.customexceptions import InterfaceImplementationError
+
 
 class MicrowaveInterface():
     """This is the Interface class to define the controls for the simple
@@ -30,7 +30,6 @@ class MicrowaveInterface():
 
     _modclass = 'MicrowaveInterface'
     _modtype = 'interface'
-
 
     def on(self):
         """ Switches on any preconfigured microwave output.
@@ -125,11 +124,28 @@ class MicrowaveInterface():
         raise InterfaceImplementationError('MicrowaveInterface>list_on')
         return -1
 
-    def set_sweep(self, frequency_start=None, frequency_stop=None, frequency_delta=None):
+    def sweep_on(self):
+        """ Switches on the sweep mode.
+
+        @return int: error code (0:OK, -1:error)
         """
+        raise InterfaceImplementationError('MicrowaveInterface>sweep_on')
+        return -1
+
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_sweep')
         return -1
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        raise InterfaceImplementationError('MicrowaveInterface>sweep_reset')
+        return -1
+
 
     def sweep_pos(self, frequency=None):
         """

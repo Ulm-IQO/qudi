@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import numpy as np
@@ -1448,10 +1448,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         @return int: error code (0:OK, -1:error)
         """
 
-        return self.set_up_clock(clock_frequency = clock_frequency,
-                                 clock_channel = clock_channel,
-                                 scanner = True,
-                                 idle=True)
+        return self.set_up_clock(
+            clock_frequency=clock_frequency,
+            clock_channel=clock_channel,
+            scanner=True,
+            idle=False)
 
 
     def set_up_odmr(self, counter_channel=None, photon_source=None,
@@ -1506,7 +1507,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
                 self._scanner_counter_channel,  # use this counter channel
                 'Counting Task',                # name to assing to it
                 0,                              # Expected minimum count value
-                self._max_counts/2./self._scanner_clock_frequency,# Expected
+                self._max_counts/self._scanner_clock_frequency,# Expected
                                                                   # maximum
                                                                   # count value
                 daq.DAQmx_Val_Ticks,            # units of width measurement,
@@ -1565,8 +1566,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         # set timing for odmr count task to the number of pixel.
         daq.DAQmxCfgImplicitTiming(
                 self._scanner_counter_daq_task, # define task
-                daq.DAQmx_Val_FiniteSamps,      # only a limited number of counts
-                2*self._odmr_length)            # count twice for each voltage
+                daq.DAQmx_Val_ContSamps,      # only a limited number of counts
+                2*(self._odmr_length + 1))     # count twice for each voltage
                                                 # +1 for starting this task.
                                                 # This first pulse will start
                                                 # the count task.
@@ -1608,42 +1609,44 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         # check if length setup is correct, if not, adjust.
 #        if self._odmr_length != length:
         self.set_odmr_length(length)
-
+        #print('start')
         # start the scanner counting task that acquires counts synchroneously
         daq.DAQmxStartTask(self._scanner_counter_daq_task)
         daq.DAQmxStartTask(self._scanner_clock_daq_task)
-
-        # wait for the scanner counter to finish
-        daq.DAQmxWaitUntilTaskDone(
-                self._scanner_counter_daq_task,     # define task
-                self._RWTimeout*2*self._odmr_length)# maximal timeout for the
-                                                    # counter times the positions
+        #print('wait1')
 
         # wait for the scanner clock to finish
         daq.DAQmxWaitUntilTaskDone(
                 self._scanner_clock_daq_task,     # define task
                 self._RWTimeout*2*self._odmr_length)# maximal timeout for the
                                                     # counter times the positions
+        #print('wait2')
+        # wait for the scanner counter to finish
+        #daq.DAQmxWaitUntilTaskDone(
+        #        self._scanner_fcounter_daq_task,     # define task
+        #        self._RWTimeout*2*self._odmr_length)# maximal timeout for the
+                                                    # counter times the positions
 
         # count data will be written here
-        self._odmr_data = np.empty((2*self._odmr_length,), dtype=np.uint32)
+        self._odmr_data = np.full((2*self._odmr_length+1,), 222, dtype=np.uint32)
 
         #number of samples which were read will be stored here
         n_read_samples = daq.int32()
-
+        #print('read')
         # actually read the counted photons
         daq.DAQmxReadCounterU32(
                 self._scanner_counter_daq_task, # read from this task
-                2*self._odmr_length,            # Read number of double the
+                2*self._odmr_length+1,            # Read number of double the
                                                 # number of samples
                 self._RWTimeout,                # Maximal timeout for the read
                                                 # process
                 self._odmr_data,                # write into this array
-                2*self._odmr_length,            # length of array to write into
+                2*self._odmr_length+1,          # length of array to write into
                 daq.byref(n_read_samples),      # number of samples which were
                                                 # actually read
                 None)                           # Reserved for future use. Pass
                                                 # NULL(here None) to this parameter
+        #print(len(self._odmr_data), self._odmr_data)
         # stop the counter task
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
         daq.DAQmxStopTask(self._scanner_clock_daq_task)
@@ -1654,8 +1657,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         # add upp adjoint pixels to also get the counts from the low time of
         # the clock:
-        self._real_data = self._odmr_data[::2]
-        self._real_data += self._odmr_data[1::2]
+        self._real_data = self._odmr_data[:-1:2]
+        self._real_data += self._odmr_data[1:-1:2]
 
         # self.unlock()
 

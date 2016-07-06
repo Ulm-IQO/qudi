@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
 Derived form ACQ4:
 Copyright 2010  Luke Campagnola
@@ -33,6 +34,7 @@ import atexit
 import weakref
 import importlib
 import threading
+import socket
 
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.reload as reload
@@ -103,9 +105,9 @@ class Manager(QtCore.QObject):
 
         self.hasGui = True
         self.currentDir = None
-        self.remoteServer = True
         self.baseDir = None
         self.alreadyQuit = False
+        self.remoteServer = True
 
         opts = []
         try:
@@ -184,11 +186,30 @@ class Manager(QtCore.QObject):
                 else:
                     remotePort = 12345
                     print('Remote port is the standard ', remotePort)
-                self.rm = RemoteObjectManager(self)
-                self.rm.createServer(remotePort)
+                serveraddress = 'localhost'
+                if 'serveraddress' in self.tree['global']:
+                    serveraddress = self.tree['global']['serveraddress']
+                else:
+                    # bind to all available interfaces
+                    serveraddress = ''
+                if 'certfile' in self.tree['global']:
+                    certfile = self.tree['global']['certfile']
+                else:
+                    certfile = None
+                if 'keyfile' in self.tree['global']:
+                    keyfile = self.tree['global']['keyfile']
+                else:
+                    keyfile = None
+                self.rm = RemoteObjectManager(
+                    self,
+                    serveraddress,
+                    remotePort,
+                    certfile=certfile,
+                    keyfile=keyfile)
+                self.rm.createServer()
             except:
                 self.remoteServer = False
-                printExc('Remote server could not be started.')
+                self.logger.logExc('Remote server could not be started.')
 
             self.logger.logMsg('QuDi started.', importance=9)
 
@@ -349,9 +370,17 @@ class Manager(QtCore.QObject):
 
                         elif m == 'stylesheet' and self.hasGui:
                             self.tree['global']['stylesheet'] = cfg['global']['stylesheet']
-                            stylesheetpath = os.path.join(self.getMainDir(), 'artwork', 'styles', 'application', cfg['global']['stylesheet'])
+                            stylesheetpath = os.path.join(
+                                self.getMainDir(),
+                                'artwork',
+                                'styles',
+                                'application',
+                                cfg['global']['stylesheet'])
                             if not os.path.isfile(stylesheetpath):
-                                self.logger.print_logMsg("Stylesheet not found at {0}".format(stylesheetpath), importance=6, msgType='warning')
+                                self.logger.print_logMsg(
+                                    "Stylesheet not found at {0}".format(stylesheetpath),
+                                    importance=6,
+                                    msgType='warning')
                                 continue
                             stylesheetfile = open(stylesheetpath)
                             stylesheet = stylesheetfile.read()
@@ -817,8 +846,12 @@ class Manager(QtCore.QObject):
             
         """
         if self.tree['loaded'][base][key].getState() != 'deactivated' and (
-                ( base in self.tree['defined'] and key in self.tree['defined'][base]  and 'remote' in self.tree['defined'][base][key] and self.remoteServer)
-                or (base in self.tree['start'] and  key in self.tree['start'][base])) :
+                ( base in self.tree['defined']
+                    and key in self.tree['defined'][base]
+                    and 'remote' in self.tree['defined'][base][key]
+                    and self.remoteServer)
+                or (base in self.tree['start']
+                    and  key in self.tree['start'][base])) :
             return
         if self.tree['loaded'][base][key].getState() != 'deactivated':
             self.logger.logMsg('{0} module {1} not deactivated anymore'.format(base, key),

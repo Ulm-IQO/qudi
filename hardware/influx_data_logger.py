@@ -20,13 +20,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-from interface.process_interface import ProcessInterface
+from interface.data_logger_interface import DataLoggerInterface
 
 from pyqtgraph.Qt import QtCore
 from influxdb import InfluxDBClient
 
-class InfluxDataClient(Base, ProcessInterface):
-    _modclass = 'InfluxDataClient'
+class InfluxLogger(Base, DataLoggerInterface):
+    _modclass = 'InfluxLogger'
     _modtype = 'hardware'
 
     ## declare connectors
@@ -35,6 +35,7 @@ class InfluxDataClient(Base, ProcessInterface):
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
+        self.log_channels = {}
         
     def activation(self, e):
         config = self.getConfiguration()
@@ -73,14 +74,27 @@ class InfluxDataClient(Base, ProcessInterface):
     def connect_db(self):
         self.conn = InfluxDBClient(self.host, self.port, self.user, self.pw, self.dbname)
 
-    def getProcessValue(self):
-        """ Return a measured value """
-        q = 'SELECT last({}) FROM {} WHERE (time > now() - 10m AND {})'.format(self.field, self.series, self.cr)
-        #print(q)
-        res = self.conn.query(q)
-        return list(res[('{}'.format(self.series), None)])[0]['last']
+    def get_log_channels(self):
+        return self.log_channels
 
-    def getProcessUnit(self):
-        """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
-        return '°C', ' degrees Celsius'
+    def set_log_channels(self, channelspec):
+        for name, spec in channelspec.items():
+            if spec is None and name in self.log_channels:
+                self.log_channels.pop(name)
+            elif name in self.log_channels:
+            else:
+                if :
+
+            
+
+    def log_to_channel(self, channel, values):
+        if channel in self.log_channels.keys() and len(values) == len(self.log_channels[channel][values]):
+            conn.write_points(format_data(channel, values, channeltags))
+
+    def format_data(self, channel_name, values, tags):
+        return [{
+             'measurement': channel_name,
+             'fields': values,
+             'tags': tags
+            }]
 
