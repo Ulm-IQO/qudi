@@ -75,7 +75,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self.rm = visa.ResourceManager()
         try:
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+                                                          timeout=self._gpib_timeout*1000)
         except:
             self.logMsg('This is MWanritsu: could not connect to the GPIB '
                         'address >>{}<<.'.format(self._gpib_address),
@@ -201,13 +201,15 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         self._gpib_connection.write(':LIST:TYPE FREQ')
         self._gpib_connection.write(':LIST:IND 0')
-        s = ''
+
+        s = ' {0:f},'.format(freq[0])
         for f in freq[:-1]:
             s += ' {0:f},'.format(f)
         s += ' {0:f}'.format(freq[-1])
+        print(s)
         self._gpib_connection.write(':LIST:FREQ' + s)
         self._gpib_connection.write(':LIST:STAR 0')
-        self._gpib_connection.write(':LIST:STOP {0:d}'.format( (len(freq)-1) ))
+        self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(freq)))
         self._gpib_connection.write(':LIST:MODE MAN')
         self._gpib_connection.write(':LIST:IND {0:d}'.format(start_pos))
         self._gpib_connection.write('*WAI')
@@ -248,4 +250,36 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
         self._gpib_connection.write(':TRIG:SOUR '+source)
         self._gpib_connection.write(':TRIG:SLOP '+pol)
+        self._gpib_connection.write('*WAI')
+
+
+    def set_sweep(self, start, stop, step, power):
+        """
+
+        @param start:
+        @param stop:
+        @param step:
+        @param power:
+        @return:
+        """
+        self._gpib_connection.write('SWEEP:GENERATION:STEPPED')
+        self._gpib_connection.write(':FREQ:START {}'.format(start-step))
+        self._gpib_connection.write(':FREQ:STOP {}'.format(stop))
+        self._gpib_connection.write(':SWEEP:FREQ:STEP {}'.format(step))
+
+    def reset_sweep(self):
+        """ Reset of MW List Mode position to start from first given frequency
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connection.write(':ABORT')
+        self._gpib_connection.write('*WAI')
+
+    def sweep_on(self):
+        """ Switches on the list mode.
+
+        @return int: error code (1: ready, 0:not ready, -1:error)
+        """
+        self._gpib_connection.write(':FREQ:MODE SWEEP')
+        self._gpib_connection.write(':OUTP ON')
         self._gpib_connection.write('*WAI')
