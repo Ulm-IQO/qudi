@@ -15,9 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay D. Jahnke kay.jahnke@alumni.uni-ulm.de
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from logic.generic_logic import GenericLogic
@@ -26,7 +25,7 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 import time
-import datetime
+import matplotlib.pyplot as plt
 
 class CounterLogic(GenericLogic):
     """ This logic module gathers data from a hardware counting device.
@@ -127,6 +126,7 @@ class CounterLogic(GenericLogic):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
+        self.stopCount()
         return
 
     def set_counting_samples(self, samples = 1):
@@ -289,11 +289,55 @@ class CounterLogic(GenericLogic):
                 data = {'Time (s),Signal 1 (counts/s),Signal 2 (counts/s)': self._data_to_save}
 
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
-            self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+
+            fig = self.draw_figure(data=np.array(self._data_to_save))
+
+            self._save_logic.save_data(data,
+                                       filepath,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       as_text=True,
+                                       plotfig = fig
+                                       )
             #, as_xml=False, precision=None, delimiter=None)
             self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
         return self._data_to_save, parameters
+
+    def draw_figure(self, data):
+        """ Draw figure to save with data file.
+
+        @param: nparray data: a numpy array containing counts vs time
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        # TODO: Draw plot for second APD if it is connected
+
+        count_data = data[:,1]
+        time_data = data[:,0]
+
+        # Scale count values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_index = 0
+
+        while np.max(count_data) > 1000:
+            count_data = count_data/1000
+            prefix_index = prefix_index + 1
+
+        counts_prefix = prefix[prefix_index]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        ax.plot(time_data, count_data, linestyle=':', linewidth=0.5)
+
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
+
+        return fig
 
     def set_counting_mode(self, mode='continuous'):
         """Set the counting mode, to change between continuous and gated counting.

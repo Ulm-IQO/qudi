@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
 Derived form ACQ4:
 Copyright 2010  Luke Campagnola
@@ -74,7 +75,7 @@ class Logger(QtCore.QObject):
         path = os.path.dirname(__file__)
         self.manager = manager
         self.msgCount = 0
-        self.logCount=0
+        self.logCount = 0
         self.logFile = None
         
         # Start a new temp log file, destroying anything left over from the 

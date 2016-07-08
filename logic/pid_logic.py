@@ -16,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 - 2016 Jan M. Binder  <jan.binder@uni-ulm.de>
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from logic.generic_logic import GenericLogic
@@ -26,7 +27,6 @@ from collections import OrderedDict
 import numpy as np
 import time
 import datetime
-import statistics
 
 class PIDLogic(GenericLogic):
     """
@@ -70,7 +70,6 @@ class PIDLogic(GenericLogic):
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()
-        self.smoothpv = np.zeros(5)
 
         config = self.getConfiguration()
         if 'timestep' in config:
@@ -114,7 +113,7 @@ class PIDLogic(GenericLogic):
         self.savingState = False
         self.enable = False
         self.integrated = 0
-        self.countdown = 5
+        self.countdown = 2
 
         self.sigNextStep.emit()
 
@@ -136,9 +135,7 @@ class PIDLogic(GenericLogic):
              The D term is NOT low-pass filtered.
              This function should be called once every TS seconds.
         """
-        self.smoothpv = np.roll(self.smoothpv, -1)
-        self.smoothpv[-1] = self._process.getProcessValue()
-        pv = statistics.mean(self.smoothpv)
+        pv = self._process.getProcessValue()
 
         if self.countdown > 0:
             self.countdown -= 1
@@ -152,10 +149,6 @@ class PIDLogic(GenericLogic):
         if (self.enable):
             delta = self.setpoint - pv
             self.integrated += delta 
-            if self.integrated > 100:
-                self.integrated = 100
-            if self.integrated < -100:
-                self.integrated = -100
             ## Calculate PID controller:
             self.P = self.kP * delta
             self.I = self.kI * self.timestep * self.integrated

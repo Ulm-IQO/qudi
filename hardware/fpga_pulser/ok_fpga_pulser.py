@@ -15,8 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
-Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from core.base import Base
@@ -132,6 +132,12 @@ class OkFpgaPulser(Base, PulserInterface):
         # limitations if interleave was selected.
         constraints['sample_rate'] = {'min': 500e6, 'max': 950e6,
                                       'step': 450e6, 'unit': 'Samples/s'}
+
+        # The file formats are hardware specific. The sequence_generator_logic will need this
+        # information to choose the proper output format for waveform and sequence files.
+        constraints['waveform_format'] = 'fpga'
+        constraints['sequence_format'] = None
+
         # the stepsize will be determined by the DAC in combination with the
         # maximal output amplitude (in Vpp):
         constraints['a_ch_amplitude'] = {'min': 0, 'max': 0,
@@ -636,89 +642,6 @@ a
         @return: bool, True for y   es, False for no.
         """
         return False
-
-    def write_samples_to_file(self, name, analog_samples,
-                             digital_samples, total_number_of_samples,
-                             is_first_chunk, is_last_chunk):
-        """
-        Appends a sampled chunk of a whole waveform to a file. Create the file
-        if it is the first chunk.
-        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
-        that the whole ensemble is written as a whole in one big chunk.
-
-        @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
-                                       samples for the analog channels that
-                                       are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
-                                      for the digital channels that
-                                      are to be written by this function call.
-        @param total_number_of_samples: int, The total number of samples in the entire waveform.
-                                        Has to be known it advance.
-        @param is_first_chunk: bool, indicates if the current chunk is the
-                               first write to this file.
-        @param is_last_chunk: bool, indicates if the current chunk is the last
-                              write to this file.
-
-        @return list: the list contains the string names of the created files for the passed
-                      presampled arrays
-        """
-
-        # record the name of the created files
-        created_files = []
-
-        chunk_length_bins = digital_samples.shape[1]
-        channel_number = digital_samples.shape[0]
-        if channel_number != 8:
-            self.logMsg('FPGA pulse generator needs 8 digital channels. {0} is not allowed!'.format(channel_number), msgType='error')
-            return -1
-
-        # encode channels into FPGA samples (bytes)
-        # check if the sequence length is an integer multiple of 32 bins
-        if is_last_chunk and (total_number_of_samples % 32 != 0):
-            # calculate number of zero timeslots to append
-            number_of_zeros = 32 - (total_number_of_samples % 32)
-            encoded_samples = np.zeros(chunk_length_bins+number_of_zeros, dtype='uint8')
-            self.logMsg('FPGA pulse sequence length is no integer multiple of 32 samples. '
-                        'Appending {0} zero-samples to the sequence.'.format(number_of_zeros), msgType='warning')
-        else:
-            encoded_samples = np.zeros(chunk_length_bins, dtype='uint8')
-
-        for channel in range(channel_number):
-            encoded_samples[:chunk_length_bins] += (2**channel)*np.uint8(digital_samples[channel])
-
-        del digital_samples # no longer needed
-
-        # append samples to file
-
-        filename = name + '.fpga'
-        created_files.append(filename)
-
-        filepath = os.path.join(self.host_waveform_directory, filename)
-        with open(filepath, 'wb') as fpgafile:
-            fpgafile.write(encoded_samples)
-
-        return created_files
-
-    def write_seq_to_file(self, name, sequence_param):
-        """ Write a sequence to file.
-
-        @param str name: name of the sequence to be created
-        @param list sequence_param: a list of dict, which contains all the information, which
-                                    parameters are to be taken to create a sequence. The dict will
-                                    have at least the entry
-                                        {'ensemble': [<list_of_sampled_ensemble_name>] }
-                                    All other parameters, which can be used in the sequence are
-                                    determined in the get_constraints method in the category
-                                    'sequence_param'.
-
-        In order to write sequence files a completely new method with respect to
-        write_samples_to_file is needed.
-        """
-
-        self.logMsg('The FPGA pulsing device does not have a sequence capability!\n'
-                    'Method call will be ignored.', msgType='warning')
-        return
 
     def _connect_fpga(self):
         # connect to FPGA by serial number

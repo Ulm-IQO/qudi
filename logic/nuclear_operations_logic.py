@@ -16,11 +16,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import numpy as np
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtCore
 import time
 from collections import OrderedDict
 
@@ -113,7 +114,8 @@ class NuclearOperationsLogic(GenericLogic):
 
         self.current_meas_point = self.x_axis_start
         self.current_meas_index = 0
-        self.num_of_meas_runs = 0     # How often the measurement was repeated.
+        self.num_of_current_meas_runs = 0
+        self.num_of_meas_runs   = 1 # How often the measurement should be repeated.
         self.elapsed_time = 0
         self.start_time = 0
         self.optimize_period = 200
@@ -230,19 +232,28 @@ class NuclearOperationsLogic(GenericLogic):
         self._meas_param = OrderedDict()
 
 
-    def start_nuclear_meas(self):
+    def start_nuclear_meas(self, continue_meas=False):
         """ Start the nuclear operation measurement. """
 
-        # prepare here everything for a measurement and go to the measurement
-        # loop.
-        self.prepare_measurement()
+        if not continue_meas:
+            # prepare here everything for a measurement and go to the measurement
+            # loop.
+            self.prepare_measurement_protocols()
+
+            self.initialize_x_axis()
+            self.initialize_y_axis()
+
+        # load the measurement sequence:
+        self._load_measurement_seq(self.current_meas_asset_name)
+        self._pulser_on()
+        self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_power)
+        self.mw_on()
 
         self.sigMeasStarted.emit()
         self.sigNextMeasPoint.emit()
-        pass
-
 
     def _meas_point_loop(self):
+
         """ Run this loop continuously until the an abort criterium is reached. """
         if self._stop_requested:
             with self.threadlock:
@@ -270,9 +281,28 @@ class NuclearOperationsLogic(GenericLogic):
             self._pulser_on()
             self.do_optimize_odmr_freq()
 
+            # use the new measured frequencies for the microwave:
+
+            if self.mw_on_odmr_peak == 0:
+                self.mw_cw_freq = self.odmr_meas_freq0
+            elif self.mw_on_odmr_peak == 1:
+                self.mw_cw_freq = self.odmr_meas_freq1
+            elif self.mw_on_odmr_peak == 2:
+                self.mw_cw_freq = self.odmr_meas_freq2
+            else:
+                self.logMsg('The maximum number of odmr can only be 3, '
+                            'therfore only the peaks with number 0, 1 or 2 can '
+                            'be selected but an number of "{0}" was set. '
+                            'Measurement stopped!'.format(self.mw_on_odmr_peak))
+                self.stop_nuclear_meas()
+                self.sigNextMeasPoint.emit()
+                return
+
+            self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_power)
             # establish the previous measurement conditions
             self.mw_on()
             self._load_measurement_seq(current_meas_asset)
+            self._pulser_on()
 
         # if stop request was done already here, do not perform the current
         # measurement but jump to the switch off procedure at the top of this
@@ -281,9 +311,13 @@ class NuclearOperationsLogic(GenericLogic):
             self.sigNextMeasPoint.emit()
             return
 
+        # this routine will return a desired measurement value and the
+        # measurement parameters, which belong to it.
         curr_meas_points, meas_param = self._get_meas_point()
 
-        self._set_meas_point(self.current_meas_index, self.num_of_meas_runs, curr_meas_points, meas_param)
+        # this routine will handle the saving and storing of the measurement
+        # results:
+        self._set_meas_point(self.current_meas_index, self.num_of_current_meas_runs, curr_meas_points, meas_param)
 
         # increment the measurement index or set it back to zero if it exceed
         # the maximal number of x axis measurement points. The measurement index
@@ -293,7 +327,7 @@ class NuclearOperationsLogic(GenericLogic):
 
             # If the next measurement run begins, add a new matrix line to the
             # self.y_axis_matrix
-            self.num_of_meas_runs += 1
+            self.num_of_current_meas_runs += 1
 
             new_row = np.zeros(self.x_axis_num_points)
 
@@ -304,6 +338,17 @@ class NuclearOperationsLogic(GenericLogic):
 
         else:
             self.current_meas_index += 1
+
+        if self.num_of_current_meas_runs < self.num_of_meas_runs:
+
+            # take the next measurement index from the x axis as the current
+            # measurement point:
+            self.current_meas_point = self.x_axis_list[self.current_meas_index]
+
+            # adjust the measurement protocol with the new current_meas_point
+            self.adjust_measurement(self.current_meas_asset_name)
+        else:
+            self.stop_nuclear_meas()
 
         self.sigNextMeasPoint.emit()
 
@@ -318,6 +363,8 @@ class NuclearOperationsLogic(GenericLogic):
         @return:
         """
 
+        # one matrix contains all the measured values, the other one contains
+        # all the parameters for the specified measurement point:
         self.y_axis_matrix[num_of_meas_runs, meas_index] = meas_points
         self.parameter_matrix[num_of_meas_runs, meas_index] = meas_param
 
@@ -343,7 +390,7 @@ class NuclearOperationsLogic(GenericLogic):
         self._gc_logic.set_counting_samples(self.gc_number_of_samples)
         self._gc_logic.startCount()
 
-        # wait until the gated counter is done:
+        # wait until the gated counter is done or available to start:
         while self._counter_logic.getState() == 'locked' or not self._stop_requested:
             time.sleep(1)
 
@@ -372,15 +419,12 @@ class NuclearOperationsLogic(GenericLogic):
                 self._stop_requested = True
         return 0
 
-
-
     def get_fit_functions(self):
         """ Returns all fit methods, which are currently implemented for that module.
 
         @return list: with string entries denoting the names of the fit.
         """
         return ['No Fit', 'pos. Lorentzian', 'neg. Lorentzian', 'pos. Gaussian']
-
 
     def do_fit(self, fit_function=None):
         """ Performs the chosen fit on the measured data.
@@ -408,8 +452,8 @@ class NuclearOperationsLogic(GenericLogic):
         return [1, 2, 3]
 
 
-    def prepare_measurement(self, meas_type):
-        """ Prepare and create all measurement sequences for the specified
+    def prepare_measurement_protocols(self, meas_type):
+        """ Prepare and create all measurement protocols for the specified
             measurement type
 
         @param str meas_type: a measurement type from the list get_meas_type_list
@@ -417,8 +461,10 @@ class NuclearOperationsLogic(GenericLogic):
         self._create_laser_on()
         self._create_pulsed_odmr()
 
+        #FIXME: Move this creation routine to the tasks!
+
         if meas_type == 'Nuclear_Rabi':
-                #FIXME: Move this creation routine to the tasks!
+
             # generate:
             self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
                                                           rf_length_ns=self.current_meas_point*1e9,
@@ -657,11 +703,11 @@ class NuclearOperationsLogic(GenericLogic):
 
         # make the odmr around the peak which is used for the mw drive:
 
-        if self.mw_on_odmr_peak == 1:
+        if self.mw_on_odmr_peak == 0:
             center_freq = self.odmr_meas_freq0
-        if self.mw_on_odmr_peak == 2:
+        if self.mw_on_odmr_peak == 1:
             center_freq = self.odmr_meas_freq1
-        if self.mw_on_odmr_peak == 3:
+        if self.mw_on_odmr_peak == 2:
             center_freq = self.odmr_meas_freq2
 
         start_freq = center_freq - self.odmr_meas_freq_range/2
@@ -688,14 +734,16 @@ class NuclearOperationsLogic(GenericLogic):
 
 
     def mw_on(self):
-        pass
+        """ Start the microwave device. """
+        self._odmr_logic.MW_on()
 
     def mw_off(self):
-        pass
+        """ Stop the microwave device. """
+        self.MW_off()
 
     def set_mw_on_odmr_freq(self, freq, power):
-        """ Set the microwave on a the specified freq with the specified power.
+        """ Set the microwave on a the specified freq with the specified power. """
 
-        """
-        pass
+        self.set_frequency(freq)
+        self.set_power(power)
 

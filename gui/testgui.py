@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 # Test gui (test)
 
@@ -36,7 +37,7 @@ class TestGui(GUIBase):
           @param dict config: configuration dictionary
           @param dict kwargs: further optional arguments
         """
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(
                     manager,
                     name,
@@ -66,12 +67,19 @@ class TestGui(GUIBase):
         self.cwdget.setLayout(self.layout)
         self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
+        
+    def deactivation(self, e):
+        """
+          @param object e: Fysom state change
+        """
+        pass
 
     def handleButton(self):
         """Change style of buttons.
         """
-        self.button.setStyleSheet('QPushButton {background-color:'
-                                ' #A3C1DA; color: red;}')
+        self.button.setStyleSheet(
+            'QPushButton {background-color:'
+            ' #A3C1DA; color: red;}')
 
     def handleButtonError(self):
         """ Produce an exception for testing.

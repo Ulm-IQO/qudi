@@ -17,11 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 from lmfit.models import Model
-
+import numpy as np
+from lmfit import Parameters
+import math
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -59,10 +63,21 @@ def make_constant_model(self, prefix=None):
 
         return offset + 0.0 * x
 
-    if prefix is not None:
-        model = Model(constant_function, prefix=prefix)
-    else:
+    if prefix is None:
         model = Model(constant_function)
+    else:
+        if not isinstance(prefix,str):
+            self.logMsg('Given prefix in constant model is no string. Deleting prefix.',
+                                msgType='error')
+        try:
+            model = Model(constant_function, prefix=prefix)
+        except:
+            self.logMsg('Creating the constant model failed. '
+                        'The prefix might not be a valid string'
+                        'The prefix was deleted',
+                        msgType='error')
+            model = Model(constant_function)
+
     params = model.make_params()
 
     return model, params
@@ -167,11 +182,97 @@ def make_linear_model(self):
         return x
     
     slope, slope_param = self.make_slope_model()
-    constant_x, constant_x_param = self.make_constant_model(prefix='x_')
-    constant_y, constant_y_param = self.make_constant_model(prefix='y_')
+    constant, constant_param = self.make_constant_model()
 
-    model = slope * (Model(linear_function)+ constant_x) +constant_y
+    model = slope * Model(linear_function) + constant
     params = model.make_params()
 
     return model, params
+
+def estimate_linear(self, x_axis=None, data=None, params=None):
+    """
+    This method provides a estimation of a initial values
+     for a linear function.
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary
+            which can be set
+
+    @return: tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
     
+    error = 0
+    # check if parameters make sense
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+    try:
+        """
+        #calculate the parameters using Least-squares estimation of linear
+        #regression
+        """
+        a_1 = 0
+        a_2 = 0
+        x_mean = x_axis.mean()
+        data_mean = data.mean()
+        for i in range(0,len(x_axis)):
+            a_1+=(x_axis[i]-x_mean)*(data[i]-data_mean)
+            a_2+=np.power(x_axis[i]-x_mean,2)
+        slope = a_1/a_2
+        intercept = data_mean - slope*x_mean
+        params['offset'].value = intercept
+        params['slope'].value = slope
+    except:
+        self.logMsg('The linear fit did not work.',
+                    msgType='warning')
+        params['slope'].value = 0
+        params['offset'].value = 0
+        
+    return error, params
+
+def make_linear_fit(self, axis=None, data=None, add_parameters=None):
+    """ This method performes a linear fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[] data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    linear, params = self.make_linear_model()
+
+    error, params = self.estimate_linear(axis, data, params)
+
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = linear.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The linear fit did not work.lmfit result '
+                    'message: {}'.format(str(result.message)),
+                    msgType='warning')
+        result = linear.fit(data, x=axis, params=params)
+
+    return result

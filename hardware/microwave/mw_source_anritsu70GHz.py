@@ -16,8 +16,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Thomas Unden thomas.unden@uni-ulm.de
+Parts of this file were developed from a PI3diamond module which is
 Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
+
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import visa
@@ -91,7 +94,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._gpib_connection.write('RF0')
 
         return 0
@@ -101,7 +103,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-
         return float(self._gpib_connection.ask('OL0'))
 
     def set_power(self, power=None):
@@ -111,8 +112,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
-        if power != None:
+        if power is not None:
             self._gpib_connection.write('RF0 L0 {:f} DM RF1'.format(power))
             return 0
         else:
@@ -123,7 +123,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-
         return float(self._gpib_connection.ask('OF0'))
 
     def set_frequency(self, freq=None):
@@ -133,8 +132,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
-        if freq != None:
+        if freq is not None:
             self._gpib_connection.write('RF0 F0 {:f} HZ RF1'.format(freq))
             return 0
         else: return -1
@@ -159,7 +157,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
             error = self.set_power(power)
         else:
             return -1
-
         return error
 
     def set_list(self, freq=None, power=None):
@@ -199,7 +196,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._gpib_connection.write('ELI0')
         self._gpib_connection.write('*WAI')
 
@@ -211,7 +207,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         pass
 
 

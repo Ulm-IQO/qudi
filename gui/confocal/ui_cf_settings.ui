@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>305</width>
-    <height>395</height>
+    <width>310</width>
+    <height>425</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -199,6 +199,50 @@
     </layout>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_9">
+     <item>
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>Depth scan direction</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="depth_dir_x_radioButton">
+       <property name="text">
+        <string>XZ</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="depth_dir_y_radioButton">
+       <property name="text">
+        <string>YZ</string>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_10">
      <item>
       <widget class="QLabel" name="label_7">
@@ -372,50 +416,6 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_7">
-     <item>
-      <widget class="QLabel" name="label_9">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Save ImageScene also as png file</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="savePNG_checkBox">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_8">
      <item>
       <widget class="QLabel" name="label_10">
@@ -428,7 +428,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Save pure Image as png</string>
+        <string>Also save data as raw pixel image (png)</string>
        </property>
       </widget>
      </item>
@@ -483,18 +483,12 @@
     </widget>
    </item>
   </layout>
-  <zorder>line</zorder>
-  <zorder>hardware_switch</zorder>
-  <zorder>buttonBox</zorder>
-  <zorder>layoutWidget</zorder>
-  <zorder>label_7</zorder>
  </widget>
  <tabstops>
   <tabstop>clock_frequency_InputWidget</tabstop>
   <tabstop>return_slowness_InputWidget</tabstop>
   <tabstop>loop_scan_CheckBox</tabstop>
   <tabstop>fixed_aspect_depth_checkBox</tabstop>
-  <tabstop>savePNG_checkBox</tabstop>
   <tabstop>save_purePNG_checkBox</tabstop>
   <tabstop>hardware_switch</tabstop>
   <tabstop>buttonBox</tabstop>
