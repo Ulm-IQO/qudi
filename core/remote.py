@@ -158,7 +158,7 @@ class RemoteObjectManager(QtCore.QObject):
         """
         parsed = urlparse(url)
         name = parsed.path.replace('/', '')
-        return self.getRemoteModule(parsed.host, parsed.port, name)
+        return self.getRemoteModule(parsed.hostname, parsed.port, name)
 
     def getRemoteModule(self, host, port, name):
         """ Get a remote module via its host, port and name.
