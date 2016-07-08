@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Compiler tools with improved interactive support.
 
 Provides compilation machinery similar to codeop, but with caching support so
@@ -15,7 +16,7 @@ Authors
 # weird problems (often with third-party tools).
 
 #-----------------------------------------------------------------------------
-#  Copyright (C) 2010-2011 The IPython Development Team.
+# Copyright (C) 2010-2011 The IPython Development Team.
 #
 #  Distributed under the terms of the BSD License.
 #

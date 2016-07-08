@@ -16,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import os
@@ -27,11 +28,8 @@ import numpy as np
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-import hdf5storage
-
 from core.base import Base
 from interface.pulser_interface import PulserInterface
-from hardware.awg.WFMX_header import WFMX_header
 
 class AWG70K(Base, PulserInterface):
     """ UNSTABLE: Nikolas
@@ -61,16 +59,10 @@ class AWG70K(Base, PulserInterface):
             self.logMsg('This is AWG: Did not find >>awg_port<< in '
                         'configuration.', msgType='error')
 
-        self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
-        if 'use_matlab_format' in config.keys():
-            self.current_sample_mode = self.sample_mode['matlab']
-        else:
-            self.current_sample_mode = self.sample_mode['wfmx-file']
-
         self.sample_rate = 25e9
 
-        self.amplitude_list = {1: 0.5, 2: 0.5}      # for each analog channel one value, the pp-voltage
-        self.offset_list = {1: 0, 2: 0} # for each analog channel one value, the offset voltage
+        self.amplitude_list = {'a_ch1': 0.5, 'a_ch2': 0.5}      # for each analog channel one value, the pp-voltage
+        self.offset_list = {'a_ch1': 0, 'a_ch2': 0} # for each analog channel one value, the offset voltage
 
         self.current_loaded_asset = None
         self.is_output_enabled = True
@@ -113,8 +105,6 @@ class AWG70K(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
-        self._temp_folder = self._get_dir_for_name('temporary_files')
-
         self.active_channel = {'a_ch1': False, 'a_ch2': False,
                                'd_ch1': False, 'd_ch2': False,
                                'd_ch3': False, 'd_ch4': False}
@@ -140,13 +130,15 @@ class AWG70K(Base, PulserInterface):
         self.soc = socket(AF_INET, SOCK_STREAM)
         self.soc.settimeout(3)
         self.soc.connect((self.ip_address, self.port))
+
         self.ftp = FTP(self.ip_address)
         self.ftp.login()
         self.ftp.cwd(self.asset_directory)
 
         self.input_buffer = int(2 * 1024)
-
         self.connected = True
+
+        self._init_loaded_asset()
 
 
     def deactivation(self, e):
@@ -209,6 +201,11 @@ class AWG70K(Base, PulserInterface):
         # limitations if interleave was selected.
         constraints['sample_rate'] = {'min': 1.5e3, 'max': 25.0e9,
                                       'step': 1, 'unit': 'Samples/s'}
+
+        # The file formats are hardware specific. The sequence_generator_logic will need this
+        # information to choose the proper output format for waveform and sequence files.
+        constraints['waveform_format'] = 'wfmx'
+        constraints['sequence_format'] = 'seqx'
 
         # the stepsize will be determined by the DAC in combination with the
         # maximal output amplitude (in Vpp):
@@ -286,167 +283,6 @@ class AWG70K(Base, PulserInterface):
 
         return constraints
 
-    #FIXME: hdf5storage package is inefficient regarding memory usage and speed.
-    #       Better dont use it for now until a better package is found. Use .WFMX instead.
-    #       Once a better solution is found a case differentiation has to be implemented.
-    def write_samples_to_file(self, name, analog_samples,
-                             digital_samples, total_number_of_samples,
-                             is_first_chunk, is_last_chunk):
-        """
-        Appends a sampled chunk of a whole waveform to a file. Create the file
-        if it is the first chunk.
-        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
-        that the whole ensemble is written as a whole in one big chunk.
-
-        @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
-                                       samples for the analog channels that
-                                       are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
-                                      for the digital channels that
-                                      are to be written by this function call.
-        @param total_number_of_samples: int, The total number of samples in the
-                                        entire waveform. Has to be known it advance.
-        @param is_first_chunk: bool, indicates if the current chunk is the
-                               first write to this file.
-        @param is_last_chunk: bool, indicates if the current chunk is the last
-                              write to this file.
-
-        @return list: the list contains the string names of the created files for the passed
-                      presampled arrays
-        """
-
-        # record the name of the created files
-        created_files = []
-
-        # The overhead of the write process in bytes.
-        # Making this value bigger will result in a faster write process
-        # but consumes more memory
-        write_overhead_bytes = 1024*1024*256 # 256 MB
-        # The overhead of the write process in number of samples
-        write_overhead = write_overhead_bytes//4
-
-        if self.current_sample_mode != self.sample_mode['wfmx-file']:
-            self.logMsg('Sample mode for this device not supported.'
-                        'Using WFMX instead.',
-                        msgType='warning')
-
-        # if it is the first chunk, create the .WFMX file with header.
-        if is_first_chunk:
-            for channel_number in range(analog_samples.shape[0]):
-                # create header
-                header_obj = WFMX_header(self.sample_rate,
-                                         self.amplitude_list[channel_number+1],
-                                         0,
-                                         int(total_number_of_samples),
-                                         temp_dir=self._temp_folder)
-
-                header_obj.create_xml_file()
-                temp_file = os.path.join(self._temp_folder, 'header.xml')
-                with open(temp_file, 'r') as header:
-                    header_lines = header.readlines()
-                os.remove(temp_file)
-                # create .WFMX-file for each channel.
-                filename = name + '_Ch' + str(channel_number + 1) + '.WFMX'
-                created_files.append(filename)
-
-                filepath = os.path.join(self.host_waveform_directory, filename)
-
-                with open(filepath, 'wb') as wfmxfile:
-                    # write header
-                    for line in header_lines:
-                        wfmxfile.write(bytes(line, 'UTF-8'))
-
-        # append analog samples to the .WFMX files of each channel. Write
-        # digital samples in temporary files.
-        for channel_number in range(analog_samples.shape[0]):
-            # append analog samples chunk to .WFMX file
-            filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
-            with open(filepath, 'ab') as wfmxfile:
-                # append analog samples in binary format. One sample is 4
-                # bytes (np.float32). Write in chunks if array is very big to
-                # avoid large temporary copys in memory
-                number_of_full_chunks = int(analog_samples.shape[1]//write_overhead)
-                for i in range(number_of_full_chunks):
-                    start_ind = i*write_overhead
-                    stop_ind = (i+1)*write_overhead
-                    wfmxfile.write(analog_samples[channel_number][start_ind:stop_ind])
-                # write rest
-                rest_start_ind = number_of_full_chunks*write_overhead
-                wfmxfile.write(analog_samples[channel_number][rest_start_ind:])
-
-            # create the byte values corresponding to the marker states
-            # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
-            # and write them into a temporary file
-            filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
-            with open(filepath, 'ab') as tmpfile:
-                if digital_samples.shape[0] <= (2*channel_number):
-                    # no digital channels to write for this analog channel
-                    pass
-                elif digital_samples.shape[0] == (2*channel_number + 1):
-                    # one digital channels to write for this analog channel
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*write_overhead
-                        stop_ind = (i+1)*write_overhead
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
-                        tmpfile.write(digital_samples[2*channel_number][start_ind:stop_ind])
-                    # write rest of digital samples
-                    rest_start_ind = number_of_full_chunks*write_overhead
-                    tmpfile.write(digital_samples[2*channel_number][rest_start_ind:])
-                elif digital_samples.shape[0] >= (2*channel_number + 2):
-                    # two digital channels to write for this analog channel
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*write_overhead
-                        stop_ind = (i+1)*write_overhead
-                        temp_markers = np.add(np.left_shift(digital_samples[2*channel_number + 1][start_ind:stop_ind].astype('uint8'),1), digital_samples[2*channel_number][start_ind:stop_ind])
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
-                        tmpfile.write(temp_markers)
-                    # write rest of digital samples
-                    rest_start_ind = number_of_full_chunks*write_overhead
-                    temp_markers = np.add(np.left_shift(digital_samples[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digital_samples[2*channel_number][rest_start_ind:])
-                    tmpfile.write(temp_markers)
-
-        # append the digital sample tmp file to the .WFMX file and delete the
-        # .tmp files if it was the last chunk to write.
-        if is_last_chunk:
-            for channel_number in range(analog_samples.shape[0]):
-                tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
-                wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
-                with open(wfmx_filepath, 'ab') as wfmxfile:
-                    with open(tmp_filepath, 'rb') as tmpfile:
-                        # read and write files in max. write_overhead_bytes chunks to reduce
-                        # memory usage
-                        while True:
-                            tmp_data = tmpfile.read(write_overhead_bytes)
-                            if not tmp_data:
-                                break
-                            wfmxfile.write(tmp_data)
-                # delete tmp file
-                os.remove(tmp_filepath)
-        return created_files
-
-    def write_seq_to_file(self, name, sequence_param):
-        """ Write a sequence to file.
-
-        @param str name: name of the sequence to be created
-        @param list sequence_param: a list of dict, which contains all the information, which
-                                    parameters are to be taken to create a sequence. The dict will
-                                    have at least the entry
-                                        {'name': [<list_of_sampled_file_names>] }
-                                    All other parameters, which can be used in the sequence are
-                                    determined in the get_constraints method in the category
-                                    'sequence_param'.
-
-        In order to write sequence files a completely new method with respect to
-        write_samples_to_file is needed.
-        """
-
-        self.logMsg('The AWG70k pulsing device does not have a sequence capability!\n'
-                    'Method call will be ignored.', msgType='warning')
-        return
-
     def pulser_on(self):
         """ Switches the pulsing device on.
 
@@ -494,9 +330,9 @@ class AWG70K(Base, PulserInterface):
         filelist = self._get_filenames_on_host()
         upload_names = []
         for filename in filelist:
-            is_wfmx = filename.endswith('.WFMX')
+            is_wfmx = filename.endswith('.wfmx')
             is_mat = filename.endswith(asset_name+'.mat')
-            if is_wfmx and (asset_name + '_Ch') in filename:
+            if is_wfmx and (asset_name + '_ch') in filename:
                 upload_names.append(filename)
             elif is_mat:
                 upload_names.append(filename)
@@ -517,12 +353,12 @@ class AWG70K(Base, PulserInterface):
                                 available channel numbers and items being the
                                 name of the already sampled
                                 waveform/sequence files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
+                                Examples:   {1: rabi_ch1, 2: rabi_ch2}
+                                            {1: rabi_ch2, 2: rabi_ch1}
                                 This parameter is optional. If none is given
                                 then the channel association is invoked from
                                 the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
+                                i.e. the filename appendix (_ch1, _ch2 etc.)
 
         @return int: error code (0:OK, -1:error)
 
@@ -539,9 +375,9 @@ class AWG70K(Base, PulserInterface):
         for file in file_list:
             if file == asset_name+'.mat':
                 filename.append(file)
-            elif file == asset_name+'_Ch1.WFMX':
+            elif file == asset_name+'_ch1.wfmx':
                 filename.append(file)
-            elif file == asset_name+'_Ch2.WFMX':
+            elif file == asset_name+'_ch2.wfmx':
                 filename.append(file)
 
         # Check if something could be found
@@ -564,6 +400,8 @@ class AWG70K(Base, PulserInterface):
                     '{1}'.format(asset_name, filename), msgType='status')
 
         # load files in AWG workspace
+        timeout = self.soc.gettimeout()
+        self.soc.settimeout(None)
         for asset in filename:
             file_path  = os.path.join(self.ftp_root_directory, self.asset_directory, asset)
             if asset.endswith('.mat'):
@@ -571,14 +409,15 @@ class AWG70K(Base, PulserInterface):
             else:
                 self.tell('MMEM:OPEN "%s"\n' % file_path)
             self.ask('*OPC?\n')
+        self.soc.settimeout(timeout)
 
         # simply use the channel association of the filenames if no load_dict is given
         if load_dict == {}:
             for asset in filename:
                 # load waveforms into channels
-                name = asset_name + '_Ch1'
+                name = asset_name + '_ch1'
                 self.tell('SOUR1:CASS:WAV "%s"\n' % name)
-                name = asset_name + '_Ch2'
+                name = asset_name + '_ch2'
                 self.tell('SOUR2:CASS:WAV "%s"\n' % name)
                 self.current_loaded_asset = asset_name
                 # self.soc.settimeout(3)
@@ -753,10 +592,40 @@ class AWG70K(Base, PulserInterface):
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
-        #If you want to check the input use the constraints:
+        #Check the inputs by using the constraints:
         constraints = self.get_constraints()
+        # amplitude sanity check
+        for chnl in amplitude:
+            if amplitude[chnl] < constraints['a_ch_amplitude']['min']:
+                amplitude[chnl] = constraints['a_ch_amplitude']['min']
+                self.logMsg('Minimum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to min value.'
+                    ''.format(chnl, constraints['a_ch_amplitude']['min'], amplitude[chnl]),
+                    msgType='warning')
+            elif amplitude[chnl] > constraints['a_ch_amplitude']['max']:
+                amplitude[chnl] = constraints['a_ch_amplitude']['max']
+                self.logMsg('Maximum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to max value.'
+                    ''.format(chnl, constraints['a_ch_amplitude']['max'], amplitude[chnl]),
+                    msgType='warning')
+
+        # offset sanity check
+        for chnl in offset:
+            if offset[chnl] < constraints['a_ch_offset']['min']:
+                offset[chnl] = constraints['a_ch_offset']['min']
+                self.logMsg('Minimum offset for channel "{0}" is {1}. '
+                            'Requested offset of {2}V was ignored and instead set to min value.'
+                            ''.format(chnl, constraints['a_ch_offset']['min'], offset[chnl]),
+                            msgType='warning')
+            elif offset[chnl] > constraints['a_ch_offset']['max']:
+                offset[chnl] = constraints['a_ch_offset']['max']
+                self.logMsg('Maximum offset for channel "{0}" is {1}. '
+                            'Requested offset of {2}V was ignored and instead set to max value.'
+                            ''.format(chnl, constraints['a_ch_offset']['max'], offset[chnl]),
+                            msgType='warning')
 
         for a_ch in amplitude:
+
             self.amplitude_list[a_ch] = amplitude[a_ch]
             #FIXME: Tell the device the proper amplitude:
             # self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
@@ -965,7 +834,7 @@ class AWG70K(Base, PulserInterface):
         ch2_marker = 0
         for channel in self.active_channel:
             if self.active_channel[channel]:
-                if ('d_ch1' in channel) or ('d_ch1' in channel):
+                if ('d_ch1' in channel) or ('d_ch2' in channel):
                         ch1_marker += 1
                 if ('d_ch3' in channel) or ('d_ch4' in channel):
                         ch2_marker += 1
@@ -1000,7 +869,7 @@ class AWG70K(Base, PulserInterface):
         uploaded_files = self._get_filenames_on_device()
         name_list = []
         for filename in uploaded_files:
-            if fnmatch(filename, '*_Ch?.WFMX'):
+            if fnmatch(filename, '*_ch?.wfmx'):
                 asset_name = filename.rsplit('_', 1)[0]
                 if asset_name not in name_list:
                     name_list.append(asset_name)
@@ -1022,7 +891,7 @@ class AWG70K(Base, PulserInterface):
         # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for filename in file_list:
-            if fnmatch(filename, '*_Ch?.WFMX'):
+            if fnmatch(filename, '*_ch?.wfmx'):
                 asset_name = filename.rsplit('_', 1)[0]
                 if asset_name not in saved_assets:
                     saved_assets.append(asset_name)
@@ -1053,7 +922,7 @@ class AWG70K(Base, PulserInterface):
         # determine files to delete
         for name in asset_name:
             for filename in uploaded_files:
-                if fnmatch(filename, name+'_Ch?.WFMX') or fnmatch(filename, name+'.mat'):
+                if fnmatch(filename, name+'_ch?.wfmx') or fnmatch(filename, name+'.mat'):
                     files_to_delete.append(filename)
 
         # delete files
@@ -1172,6 +1041,40 @@ class AWG70K(Base, PulserInterface):
         self.tell('*RST\n')
         return 0
 
+    def _init_loaded_asset(self):
+        """
+        Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
+        """
+        ch1_asset = self.ask('SOUR1:CASS?\n').replace('"','')
+        ch2_asset = self.ask('SOUR2:CASS?\n').replace('"','')
+        if ch1_asset:
+            tmp = ch1_asset.split('_ch')
+            if len(tmp) != 2:
+                self.logMsg('Handling of asset names with "_ch" inside the name is not handled '
+                            'properly yet.', msgType='error')
+            else:
+                ch1_asset = tmp[0]
+        if ch2_asset:
+            tmp = ch2_asset.split('_ch')
+            if len(tmp) != 2:
+                self.logMsg('Handling of asset names with "_ch" inside the name is not handled '
+                            'properly yet.', msgType='error')
+            else:
+                ch2_asset = tmp[0]
+        if ch1_asset and ch2_asset and ch1_asset == ch2_asset:
+            self.current_loaded_asset = ch1_asset
+        elif ch1_asset and not ch2_asset:
+            self.current_loaded_asset = ch1_asset
+        elif ch2_asset and not ch1_asset:
+            self.current_loaded_asset = ch2_asset
+        elif not ch1_asset and not ch2_asset:
+            self.current_loaded_asset = None
+        else:
+            self.logMsg('Strange mismatch of loaded assets in AWG70k. This case is not covered '
+                        'yet.', msgType='warning')
+            self.current_loaded_asset = None
+        return
+
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
 
@@ -1214,7 +1117,7 @@ class AWG70K(Base, PulserInterface):
                     actual_filename = size_filename.split(' ', 1)[1].lstrip()
                     file_list.append(actual_filename)
             for filename in file_list:
-                if (filename.endswith('.WFMX') or filename.endswith('.mat')):
+                if (filename.endswith('.wfmx') or filename.endswith('.mat')):
                     if filename not in filename_list:
                         filename_list.append(filename)
         return filename_list
@@ -1224,5 +1127,5 @@ class AWG70K(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat'))]
         return filename_list

@@ -16,10 +16,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
 import numpy as np
@@ -108,13 +110,38 @@ class PIDGui(GUIBase):
         self.plot2.setXLink(self.plot1)
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self.plot1.plot()
-        self._curve1.setPen('g')
-        self._curve3 = self.plot1.plot()
-        self._curve3.setPen('b', width=2)
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1),#, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       #symbol='o',
+                                       #symbolPen=palette.c1,
+                                       #symbolBrush=palette.c1,
+                                       #symbolSize=3
+                                       )
 
-        self._curve2 = pg.PlotCurveItem()
-        self._curve2.setPen('r', width=4)
+        self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c2),
+                                       symbol=None
+                                       )
+
+        self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c3),#, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       #symbol='o',
+                                       #symbolPen=palette.c3,
+                                       #symbolBrush=palette.c3,
+                                       #symbolSize=3
+                                       )
+
+#        self._curve1 = pg.PlotCurveItem()
+#        self._curve1.setPen(palette.c1)
+
+#        self._curve3 = pg.PlotCurveItem()
+#        self._curve3.setPen(palette.c2)
+
+#        self._curve2 = pg.PlotCurveItem()
+#        self._curve2.setPen(palette.c3)
+
+
+        self.plot1.addItem(self._curve1)
+        self.plot1.addItem(self._curve3)
         self.plot2.addItem(self._curve2)
 
         self.updateViews()

@@ -16,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import os
@@ -27,7 +28,8 @@ from pyqtgraph.Qt import QtCore, QtGui, uic
 import datetime
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colordefs import ColorScaleInferno
 
 
 class MagnetMainWindow(QtGui.QMainWindow):
@@ -212,7 +214,7 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_GraphicsView.addItem(self._2d_alignment_ImageItem)
 
         # Get the colorscales at set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleInferno()
 
         self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
 

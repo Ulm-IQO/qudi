@@ -15,8 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
-Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import numpy as np
@@ -354,7 +354,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             x_data,y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
             for i in range(self._num_points):
                 count_data += self.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data[0]),
+                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data),
                               *(self._points_z[i]))))
         else:
             x_data,y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])

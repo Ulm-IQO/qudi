@@ -16,10 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 
-    Florian S. Frank florian.frank@uni-ulm.de
-    Alexander Stark alexander.stark@uni-ulm.de
-    Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import pyqtgraph as pg
@@ -108,28 +106,4 @@ class ColorBar(pg.GraphicsObject):
         Get the position, width and hight of the displayed object.
         """
         return pg.QtCore.QRectF(self.pic.boundingRect())
-
-
-
-class ColorScale(object):
-    # Define the color map that goes from dark blue to bright red
-    COLORS = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                        [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                        [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255]
-                      ], dtype=np.ubyte)
-
-    COLORS_INV = COLORS[::-1]
-
-    def __init__(self):
-        
-        color_positions = np.linspace(0.0, 1.0, num=len(self.COLORS) )
-
-        self.colormap = pg.ColorMap( color_positions, self.COLORS )
-        self.cmap_normed = pg.ColorMap( color_positions, self.COLORS_INV/255 )
-        
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap().
-        # Return an RGB(A) lookup table (ndarray). Insert starting and stopping
-        # value and the number of points in the returned lookup table:
-        self.lut = self.colormap.getLookupTable(0, 1, 2000)
 

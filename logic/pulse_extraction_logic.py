@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from logic.generic_logic import GenericLogic
@@ -230,7 +231,7 @@ class PulseExtractionLogic(GenericLogic):
             laser_data = self._gated_extraction(raw_data)
         else:
             laser_data = self._ungated_extraction(raw_data, num_of_lasers)
-        return laser_data, raw_data, self.is_counter_gated
+        return laser_data.astype(dtype=int), raw_data.astype(dtype=int), self.is_counter_gated
 
 
     def _check_if_counter_gated(self):

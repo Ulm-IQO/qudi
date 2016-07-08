@@ -15,8 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
-Copyright (C) 2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 #from PyQt4 import QtCore, QtGui
@@ -27,7 +27,8 @@ import os
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colordefs import ColorScaleInferno
 
 
 class VoltScanMainWindow(QtGui.QMainWindow):
@@ -115,7 +116,7 @@ class VoltScanGui(GUIBase):
 
 
         # Get the colorscales at set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleInferno()
 
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 

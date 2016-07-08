@@ -15,12 +15,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-# ----------------------------------------------------------------------------
-# QuDi imports
-# ----------------------------------------------------------------------------
-
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
@@ -35,14 +32,8 @@ import logging
 # The QuDi logic module
 #-----------------------------------------------------------------------------
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)s: %(message)s',
-    datefmt='%Y-%m-%d %I:%M:%S %p',
-    level=logging.DEBUG)
-
 class QudiKernelLogic(GenericLogic):
-    """ Logic module providing a Jupyer-compatible kernel connected via ZMQ.
-    """
+    """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
     _out = {'kernel': 'QudiKernelLogic'}
@@ -68,6 +59,11 @@ class QudiKernelLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)s: %(message)s',
+            datefmt='%Y-%m-%d %I:%M:%S %p',
+            level=logging.DEBUG)
+
         self.kernellist = dict()
         self.modules = set()
         self._manager.sigModulesChanged.connect(self.updateModuleList)
@@ -93,7 +89,7 @@ class QudiKernelLogic(GenericLogic):
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
-        kernel.user_ns.update({
+        kernel.user_global_ns.update({
             'pg': pg,
             'np': np,
             'config': self._manager.tree['defined'],
@@ -101,9 +97,7 @@ class QudiKernelLogic(GenericLogic):
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
-        QtCore.QMetaObject.invokeMethod(kernel, 'connect')
-        #QtCore.QTimer.singleShot(0, kernel.connect)
-        #kernel.connect()
+        QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
         self.logMsg('Finished starting Kernel {}'.format(kernel.engine_id), msgType="status")
         self.sigStartKernel.emit(kernel.engine_id)
@@ -117,7 +111,6 @@ class QudiKernelLogic(GenericLogic):
         self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
-        #QtCore.QTimer.singleShot(0, kernel.shutdown)
         
     def cleanupKernel(self, kernelid, external=None):
         """Remove kernel reference and tell rpyc client for that kernel to exit.
@@ -145,8 +138,8 @@ class QudiKernelLogic(GenericLogic):
                 newNamespace[module] = self._manager.tree['loaded'][base][module]
         discard = self.modules - currentModules
         for kernel in self.kernellist:
-            self.kernellist[kernel].user_ns.update(newNamespace)
+            self.kernellist[kernel].user_global_ns.update(newNamespace)
         for module in discard:
             for kernel in self.kernellist:
-                self.kernellist[kernel].user_ns.pop(module, None)
+                self.kernellist[kernel].user_global_ns.pop(module, None)
         self.modules = currentModules

@@ -1,12 +1,29 @@
-"""
-A context manager for managing things injected into :mod:`__builtin__`.
+# -*- coding: utf-8 -*-
+""" A context manager for managing things injected into __builtin__.
 
-Authors:
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-* Brian Granger
-* Fernando Perez
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+
 #-----------------------------------------------------------------------------
+#  Authors:
+#
+#  * Brian Granger
+#  * Fernando Perez
+#
 #  Copyright (C) 2010-2011  The IPython Development Team.
 #
 #  Distributed under the terms of the BSD License.
@@ -33,7 +50,7 @@ HideBuiltin = __HideBuiltin()
 
 
 class BuiltinTrap:
-
+    """ Protect builtins from code in some environment. """
     def __init__(self):
         self._orig_builtins = {}
         # We define this to track if a single BuiltinTrap is nested.
@@ -45,6 +62,7 @@ class BuiltinTrap:
                               'quit': HideBuiltin,
                               }
     def __enter__(self):
+        """ Enter a code segment that should not chane builtins """
         if self._nested_level == 0:
             self.activate()
         self._nested_level += 1
@@ -52,6 +70,12 @@ class BuiltinTrap:
         return self
 
     def __exit__(self, type, value, traceback):
+        """ Leave a code segment that should not change builtins
+        
+          @param type:
+          @prarm value:
+          @param traceback:
+        """
         if self._nested_level == 1:
             self.deactivate()
         self._nested_level -= 1

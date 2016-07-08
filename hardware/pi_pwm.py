@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder <jan.binder@uni-ulm.de>
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from core.base import Base
@@ -134,3 +135,14 @@ class PiPWM(Base, ProcessControlInterface):
 
     def getControlLimits(self):
         return (-100, 100)
+
+
+class PiPWMHalf(PiPWM):
+    def __init__(self, manager, name, config = {}, **kwargs):
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        PiPWM.__init__(self, manager, name, **kwargs)
+        #locking for thread safety
+        self.threadlock = Mutex()
+
+    def getControlLimits(self):
+        return (0, 100)

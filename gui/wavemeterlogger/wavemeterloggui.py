@@ -16,19 +16,21 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
-Copyright (C) 2015 Lachlan J. Rogers <lachlan.j.rogers@quantum.diamonds>
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
-import numpy as np
 import pyqtgraph as pg
+
 import pyqtgraph.exporters
-import time
 import datetime
 import os
+
+from pyqtgraph.Qt import QtCore, QtGui, uic
+
+from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
+
 
 class WavemeterLogWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -133,20 +135,30 @@ class WavemeterLogGui(GUIBase):
         self._mw.show()
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
-        self._curve1.setPen({'color': '0F0', 'width': 2})
+        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1),#, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       #symbol='o',
+                                       #symbolPen=palette.c1,
+                                       #symbolBrush=palette.c1,
+                                       #symbolSize=3
+                                       )
 
-        self._curve2 = pg.PlotCurveItem()
-        self._curve2.setPen({'color': 'F00', 'width': 1})
-        self._right_axis.addItem(self._curve2)
+        self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+                                       symbol=None
+                                       )
 
-        self._curve3 = pg.PlotCurveItem()
-        self._curve3.setPen({'color': '00A', 'width': 0.2})
-        self._top_axis.addItem(self._curve3)
+        self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c6, style=QtCore.Qt.DotLine),
+                                       symbol=None,
+                                       )
 
-        self._curve4 = pg.PlotCurveItem()
-        self._curve4.setPen({'color': 'F0F', 'width': 1})
+        self._curve4 = pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                                       symbol=None,
+                                       )
+
+        self._pw.addItem(self._curve1)
         self._pw.addItem(self._curve4)
+        self._right_axis.addItem(self._curve2)
+        self._top_axis.addItem(self._curve3)
 
         self._save_PNG = True
 
@@ -187,8 +199,12 @@ class WavemeterLogGui(GUIBase):
         x_axis = self._wm_logger_logic.histogram_axis
         x_axis_hz = 3.0e17 / (x_axis) - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
 
-        self._curve1.setData(y=self._wm_logger_logic.histogram, x=x_axis)
-        self._curve2.setData(y=self._wm_logger_logic.sumhisto, x=x_axis)
+        #self._curve1.setData(y=self._wm_logger_logic.histogram, x=x_axis)
+        plotdata = self._wm_logger_logic.counts_with_wavelength
+        self._curve1.setData(x=[entry[2] for entry in plotdata],
+                             y=[entry[1] for entry in plotdata]
+                             )
+        self._curve2.setData(y=self._wm_logger_logic.histogram, x=x_axis)
         self._curve3.setData(y=self._wm_logger_logic.histogram, x=x_axis_hz)
         self._curve4.setData(y=self._wm_logger_logic.envelope_histogram, x=x_axis)
 

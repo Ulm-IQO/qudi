@@ -16,9 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015-2016 Florian S. Frank florian.frank@uni-ulm.de
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
-Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from pyqtgraph.Qt import QtCore, QtGui
@@ -49,7 +48,7 @@ class FitSettingsWidget(QtGui.QWidget):
 
         self.widgets = {}
         n = 2
-        for name in parameters:
+        for name, param in parameters.items():
             self.widgets[name+"_label"] = parameterNameLabel = QtGui.QLabel(str(name))
             self.widgets[name+'_value'] = valueSpinbox =  SpinBox()
             self.widgets[name+'_min'] = minimumSpinbox = SpinBox()
@@ -68,12 +67,12 @@ class FitSettingsWidget(QtGui.QWidget):
             maximumSpinbox.setSingleStep(0.01)
             maximumSpinbox.setMaximum(np.inf)
             maximumSpinbox.setMinimum(-np.inf)
-            if not parameters[str(name)].value == None:
-                valueSpinbox.setValue(parameters[str(name)].value)
-                minimumSpinbox.setValue(parameters[str(name)].min)
-                minimumSpinbox.setValue(parameters[str(name)].max)
-                expressionLineEdit.setText(parameters[str(name)].expr)
-                varyCheckbox.setChecked(parameters[str(name)].vary)
+            if param.value is not None:
+                valueSpinbox.setValue(param.value)
+                minimumSpinbox.setValue(param.min)
+                minimumSpinbox.setValue(param.max)
+                expressionLineEdit.setText(param.expr)
+                varyCheckbox.setChecked(param.vary)
             
             self._Layout.addWidget(parameterNameLabel, n, 0)
             self._Layout.addWidget(valueSpinbox, n, 1)
@@ -86,23 +85,23 @@ class FitSettingsWidget(QtGui.QWidget):
     def updateFitSettings(self, parameters):
         """ Updates the fit parameters with the new values from the settings window
         """
-        for name in parameters:
-            parameters[name].value = self.widgets[name+'_value'].value()
-            parameters[name].min = self.widgets[name+'_min'].value()
-            parameters[name].max = self.widgets[name+'_max'].value()
-            parameters[name].expr = str(self.widgets[name+'_expr'].displayText())
-            parameters[name].vary = self.widgets[name+'_vary'].checkState()
+        for name, param in parameters.items():
+            param.value = self.widgets[name+'_value'].value()
+            param.min = self.widgets[name+'_min'].value()
+            param.max = self.widgets[name+'_max'].value()
+            param.expr = str(self.widgets[name+'_expr'].displayText())
+            param.vary = self.widgets[name+'_vary'].checkState()
         return self.custom_params_checkbox.isChecked()
 
     def keepFitSettings(self, parameters, use_custom_parameters):
         """ Keeps the old fit settings
         """
-        for name in parameters:
-            if not parameters[name].value == None:
-                self.widgets[name+'_value'].setValue(parameters[name].value)
-                self.widgets[name+'_min'].setValue(parameters[name].min)
-                self.widgets[name+'_max'].setValue(parameters[name].max)
-                self.widgets[name+'_expr'].setText(parameters[name].expr)
-                self.widgets[name+'_vary'].setChecked(parameters[name].vary)
+        for name, param in parameters.items():
+            if parameters[name].value is not None:
+                self.widgets[name+'_value'].setValue(param.value)
+                self.widgets[name+'_min'].setValue(param.min)
+                self.widgets[name+'_max'].setValue(param.max)
+                self.widgets[name+'_expr'].setText(param.expr)
+                self.widgets[name+'_vary'].setChecked(param.vary)
         self.custom_params_checkbox.setChecked(use_custom_parameters)
 

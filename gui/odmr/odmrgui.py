@@ -15,10 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015-2016 Florian S. Frank florian.frank@uni-ulm.de
-Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
-Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
-Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 
@@ -30,7 +28,10 @@ import datetime
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colordefs import ColorScaleInferno
+from gui.colordefs import QudiPalettePale as palette
+from gui.fitsettings import FitSettingsWidget
 
 
 class ODMRMainWindow(QtGui.QMainWindow):
@@ -69,17 +70,13 @@ class ODMRGui(GUIBase):
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
-        super().__init__(manager,
-                         name,
-                         config,
-                         c_dict)
+        super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.', msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -122,24 +119,34 @@ class ODMRGui(GUIBase):
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
-                                                     0,
-                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
-                                                     self._odmr_logic.number_of_lines))
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                self._odmr_logic.mw_start,
+                0,
+                self._odmr_logic.mw_stop - self._odmr_logic.mw_start,
+                self._odmr_logic.number_of_lines
+            ))
 
+        self.odmr_image = pg.PlotDataItem(
+            self._odmr_logic.ODMR_plot_x,
+            self._odmr_logic.ODMR_plot_y,
+            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c1,
+            symbolBrush=palette.c1,
+            symbolSize=7
+        )
 
-        self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,
-                                          self._odmr_logic.ODMR_plot_y)
-
-        self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,
-                                              self._odmr_logic.ODMR_fit_y,
-                                              pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
+        self.odmr_fit_image = pg.PlotDataItem(
+            self._odmr_logic.ODMR_fit_x,
+            self._odmr_logic.ODMR_fit_y,
+            pen=pg.mkPen(palette.c2)
+        )
 
         # set the prefix, which determines the representation in the viewboxes
         # for the frequencies,  one can choose from the dict obtainable from
         # self.get_unit_prefix_dict():
         self._freq_prefix = 'M'
-
 
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -160,7 +167,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Get the colorscales at set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleInferno()
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
         # Set the state button as ready button as default setting.
@@ -205,8 +212,17 @@ class ODMRGui(GUIBase):
         self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.mw_power)
         self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
+
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
+        self._sd.fit_tabs = {}
+        for name, model in self._odmr_logic.fit_models.items():
+            try:
+                self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
+            except:
+                self.logExc('Could not load fitmodel {}'.format(name), msgType='warning')
+            else:
+                self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
 
         # Update the inputed/displayed numbers if return key is hit:
 
@@ -235,11 +251,9 @@ class ODMRGui(GUIBase):
         ########################################################################
 
         # Connect the RadioButtons and connect to the events if they are clicked:
-        # self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
-        # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_resume_odmr.toggled.connect(self.resume_odmr)
-        self._mw.action_Save.triggered.connect(self.save_plots_and_data)
+        self._mw.action_Save.triggered.connect(self.save_data)
 
         # react on an axis change in the logic by adapting the display:
         self._odmr_logic.sigODMRMatrixAxesChanged.connect(self.update_matrix_axes)
@@ -257,7 +271,6 @@ class ODMRGui(GUIBase):
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
-        # self._odmr_logic.sigOdmrFinished.connect(self._mw.idle_StateWidget.click)
         self._odmr_logic.sigOdmrFinished.connect(self.odmr_stopped)
         # Combo Widget
         self._mw.mode_ComboBox.activated[str].connect(self.mw_stop)
@@ -279,33 +292,11 @@ class ODMRGui(GUIBase):
         self._mw.close()
         return 0
 
-
     def show(self):
         """Make window visible and put it above all other windows. """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
-
-#     def idle_clicked(self):
-#         """ Stopp the scan if the state has switched to idle. """
-#         self._odmr_logic.stop_odmr_scan()
-#         self._sd.matrix_lines_SpinBox.setReadOnly(False)
-# #        self._odmr_logic.kill_odmr()
-#
-#
-#     def run_clicked(self, enabled):
-#         """ Manages what happens if odmr scan is started.
-#
-#         @param bool enabled: start scan if that is possible
-#         """
-#
-#         #Firstly stop any scan that might be in progress
-#         self._odmr_logic.stop_odmr_scan()
-# #        self._odmr_logic.kill_odmr()
-#         #Then if enabled. start a new odmr scan.
-#         if enabled:
-#             self._odmr_logic.start_odmr_scan()
-#             self._sd.matrix_lines_SpinBox.setReadOnly(True)
 
     def run_stop(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
@@ -358,105 +349,78 @@ class ODMRGui(GUIBase):
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,
-                                self._odmr_logic.ODMR_plot_y)
+        self.odmr_image.setData(
+            self._odmr_logic.ODMR_plot_x,
+            self._odmr_logic.ODMR_plot_y)
 
         if not self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
-            self.odmr_fit_image.setData(self._odmr_logic.ODMR_fit_x,
-                                        self._odmr_logic.ODMR_fit_y,
-                                        pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+            self.odmr_fit_image.setData(
+                self._odmr_logic.ODMR_fit_x,
+                self._odmr_logic.ODMR_fit_y,
+            )
         else:
             if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
-#        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
-#                                                     0,
-#                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,self._odmr_logic.number_of_lines))
-#        self.refresh_odmr_colorbar()
-
         odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
 
-        # If "Centiles" is checked, adjust colour scaling automatically to
-        # centiles. Otherwise, take user-defined values:
-        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
-            high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
-
-            if np.isclose(low_centile, 0.0):
-                low_centile = 0.0
-
-            # mask the array in order to mark the values which are zeros with
-            # True, the rest with False:
-            masked_image = np.ma.masked_equal(odmr_image_data, 0.0)
-            # The power of the masked array are that one can still use all numpy
-            # functionality like .mean() .max() , ... on the array and the
-            # masked value will be automatically excluded.
-
-            # compress the 2D masked array to a 1D array where the zero values
-            # are excluded:
-            if len(masked_image.compressed()) == 0:
-                cb_min = np.percentile(odmr_image_data, low_centile)
-                cb_max = np.percentile(odmr_image_data, high_centile)
-            else:
-                cb_min = np.percentile(masked_image.compressed(), low_centile)
-                cb_max = np.percentile(masked_image.compressed(), high_centile)
-
-        else:
-            cb_min = self._mw.odmr_cb_min_SpinBox.value()
-            cb_max = self._mw.odmr_cb_max_SpinBox.value()
+        cb_range = self.get_matrix_cb_range()
 
         # Now update image with new color scale, and update colorbar
         self.odmr_matrix_image.setImage(image=odmr_image_data,
-                                        levels=(cb_min, cb_max))
+                                        levels=(cb_range[0], cb_range[1])
+                                        )
         self.refresh_odmr_colorbar()
 
     def update_matrix_axes(self):
         """ Adjust the x and y axes in the image according to the input. """
 
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
-                                                     0,
-                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
-                                                     self._odmr_logic.number_of_lines))
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                self._odmr_logic.mw_start,
+                0,
+                self._odmr_logic.mw_stop - self._odmr_logic.mw_start,
+                self._odmr_logic.number_of_lines
+            ))
 
 
     def refresh_odmr_colorbar(self):
-        """ Update the colorbar to a new scaling."""
+        """ Update the colorbar to a new scaling.
+        
+        Calls the refresh method from colorbar.
+        """
+        
+        cb_range = self.get_matrix_cb_range()
+        self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
 
-        # If "Centiles" is checked, adjust colour scaling automatically to
-        # centiles. Otherwise, take user-defined values.
+        self._mw.odmr_cb_PlotWidget.update()  # TODO: Is this necessary?  It is not in refresh_xy_colorbar in confocal gui
 
-        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
-            high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
+    def get_matrix_cb_range(self):
+        """ Determines the cb_min and cb_max values for the matrix plot
+        """
+        matrix_image = self.odmr_matrix_image.image
 
-            if np.isclose(low_centile, 0.0):
-                low_centile = 0.0
-
-            # mask the array in order to mark the values which are zeros with
-            # True, the rest with False:
-            masked_image = np.ma.masked_equal(self.odmr_matrix_image.image, 0.0)
-            # The power of the masked array are that one can still use all numpy
-            # functionality like .mean() .max() , ... on the array and the
-            # masked value will be automatically excluded.
-
-            # compress the 2D masked array to a 1D array where the zero values
-            # are excluded:
-            if len(masked_image.compressed()) == 0:
-                cb_min = np.percentile(self.odmr_matrix_image.image, low_centile)
-                cb_max = np.percentile(self.odmr_matrix_image.image, high_centile)
-            else:
-                cb_min = np.percentile(masked_image.compressed(), low_centile)
-                cb_max = np.percentile(masked_image.compressed(), high_centile)
-
-        else:
+        # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
+        if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.max(matrix_image) == 0.0:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
             cb_max = self._mw.odmr_cb_max_SpinBox.value()
 
-        self.odmr_cb.refresh_colorbar(cb_min, cb_max)
-        self._mw.odmr_cb_PlotWidget.update()
+        # Otherwise, calculate cb range from percentiles.
+        else:
+            # Exclude any zeros (which are typically due to unfinished scan)
+            matrix_image_nonzero = matrix_image[np.nonzero(matrix_image)]
+
+            # Read centile range
+            low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
+            high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
+
+            cb_min = np.percentile(matrix_image_nonzero, low_centile)
+            cb_max = np.percentile(matrix_image_nonzero, high_centile)
+
+        cb_range = [cb_min, cb_max]
+        return cb_range
 
     def refresh_elapsedtime(self):
         """ Show current elapsed measurement time """
@@ -467,6 +431,19 @@ class ODMRGui(GUIBase):
         self._odmr_logic.number_of_lines = self._sd.matrix_lines_SpinBox.value()
         self._odmr_logic.set_clock_frequency(self._sd.clock_frequency_DoubleSpinBox.value())
         self._odmr_logic.safeRawData = self._sd.save_raw_data_CheckBox.isChecked()
+        for name, tab in self._sd.fit_tabs.items():
+            self._odmr_logic.use_custom_params[name] = tab.updateFitSettings(
+                self._odmr_logic.fit_models[name][1])
+
+    def reject_settings(self):
+        """ Keep the old settings and restores the old settings in the gui. """
+        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
+        self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
+        self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
+        for name, tab in self._sd.fit_tabs.items():
+            tab.keepFitSettings(
+                self._odmr_logic.fit_models[name][1],
+                self._odmr_logic.use_custom_params[name])
 
     def update_fit_variable(self, txt):
         """ Set current fit function """
@@ -499,13 +476,6 @@ class ODMRGui(GUIBase):
         @return:
         """
         pass
-
-
-    def reject_settings(self):
-        """ Keep the old settings and restores the old settings in the gui. """
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
-        self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
-        self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
 
     def mw_stop(self, txt):
         """ Stop frequency sweep and change to CW of off"""
@@ -550,23 +520,16 @@ class ODMRGui(GUIBase):
         """ Change time after which microwave sweep is stopped """
         self._odmr_logic.run_time = self._mw.runtime_DoubleSpinBox.value()
 
-    def save_plots_and_data(self):
+    def save_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
-        timestamp = datetime.datetime.now()
         filetag = self._mw.save_tag_LineEdit.text()
-        filepath = self._save_logic.get_path_for_module(module_name='ODMR')
-        if len(filetag) > 0:
-            filename = os.path.join(filepath, '{}_{}_ODMR'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
-        else:
-            filename = os.path.join(filepath, '{}_ODMR'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+        cb_range = self.get_matrix_cb_range()
 
-        exporter_graph = pg.exporters.SVGExporter(self._mw.odmr_PlotWidget.plotItem.scene())
-        #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
-        exporter_graph.export(filename + '_sum' + '.svg')
+        # Percentile range is None, unless the percentile scaling is selected in GUI.
+        pcile_range = None
+        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
+            high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
+            pcile_range = [low_centile, high_centile]
 
-        exporter_matrix = pg.exporters.SVGExporter(self._mw.odmr_matrix_PlotWidget.plotItem.scene())
-        #exporter_matrix = pg.exporters.ImageExporter(self._mw.odmr_matrix_PlotWidget.plotItem)
-        exporter_matrix.export(filename + '_matrix' + '.svg')
-
-        # self._save_logic.
-        self._odmr_logic.save_ODMR_Data(filetag, timestamp)
+        self._odmr_logic.save_ODMR_Data(filetag, colorscale_range=cb_range, percentile_range=pcile_range)

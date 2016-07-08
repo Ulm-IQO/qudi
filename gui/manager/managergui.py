@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.d
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from gui.guibase import GUIBase
@@ -129,7 +130,8 @@ class ManagerGui(GUIBase):
         self._mw.threadWidget.threadListView.setModel(self._manager.tm)
         # remote widget
         self._mw.remoteWidget.hostLabel.setText('URL:')
-        self._mw.remoteWidget.portLabel.setText('rpyc://{0}:{1}/'.format(self._manager.rm.hostname, self._manager.rm.server.port))
+        self._mw.remoteWidget.portLabel.setText(
+            'rpyc://{0}:{1}/'.format(self._manager.rm.host, self._manager.rm.server.port))
         self._mw.remoteWidget.remoteModuleListView.setModel(self._manager.rm.remoteModules)
         self._mw.remoteWidget.sharedModuleListView.setModel(self._manager.rm.sharedModules)
 

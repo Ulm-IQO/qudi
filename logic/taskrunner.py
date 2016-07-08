@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from logic.generic_logic import GenericLogic
@@ -169,7 +170,9 @@ class TaskRunner(GenericLogic):
                 ref = dict()
                 for moddef, mod in t['needsmodules'].items():
                     if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
-                        self._manager.startModule('logic', mod)
+                        success = self._manager.startModule('logic', mod)
+                        if success < 0:
+                            raise Exception('Loading module {} failed.'.format(mod))
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
                 # print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])

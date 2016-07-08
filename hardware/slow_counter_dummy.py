@@ -15,9 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay D. Jahnke <kay.jahnke@alumni.uni-ulm.de>
-Copyright (C) 2015 Jan Binder <jan.binder@uni-ulm.de>
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import numpy as np
@@ -28,7 +27,9 @@ import time
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
 
-class SlowCounterDummy(Base,SlowCounterInterface):
+
+class SlowCounterDummy(Base, SlowCounterInterface):
+
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
@@ -88,7 +89,6 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         else:
             self._photon_source2 = None
 
-
         if 'count_distribution' in config.keys():
             self.dist = config['count_distribution']
         else:
@@ -101,7 +101,6 @@ class SlowCounterDummy(Base,SlowCounterInterface):
                         'the default distribution "{0}".'.format(self.dist),
                         msgType='warning')
 
-
         # possibilities are:
         # dark_bright_gaussian, uniform, exponential, single_poisson,
         # dark_bright_poisson, single_gaussian
@@ -111,15 +110,14 @@ class SlowCounterDummy(Base,SlowCounterInterface):
             self.mean_signal = 250
             self.contrast = 0.2
         else:
-            self.mean_signal = 260*1000
+            self.mean_signal = 260 * 1000
             self.contrast = 0.3
 
+        self.mean_signal2 = self.mean_signal - self.contrast * self.mean_signal
+        self.noise_amplitude = self.mean_signal * 0.1
 
-        self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
-        self.noise_amplitude = self.mean_signal*0.1
-
-        self.life_time_bright = 0.08 # 80 millisecond
-        self.life_time_dark    = 0.04 # 40 milliseconds
+        self.life_time_bright = 0.08  # 80 millisecond
+        self.life_time_dark = 0.04  # 40 milliseconds
 
         # needed for the life time simulation
         self.current_dec_time = self.life_time_bright
@@ -134,7 +132,7 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         """
         pass
 
-    def set_up_clock(self, clock_frequency = None, clock_channel = None):
+    def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of the clock
@@ -143,7 +141,7 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if clock_frequency != None:
+        if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
         self.logMsg('slowcounterdummy>set_up_clock',
@@ -153,13 +151,12 @@ class SlowCounterDummy(Base,SlowCounterInterface):
 
         return 0
 
-
     def set_up_counter(self,
-                       counter_channel = None,
-                       photon_source = None,
+                       counter_channel=None,
+                       photon_source=None,
                        counter_channel2=None,
                        photon_source2=None,
-                       clock_channel = None,
+                       clock_channel=None,
                        counter_buffer=None):
         """ Configures the actual counter with a given clock.
 
@@ -177,7 +174,6 @@ class SlowCounterDummy(Base,SlowCounterInterface):
 
         return 0
 
-
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
 
@@ -186,20 +182,39 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         @return float: the photon counts per second
         """
 
+        count_data_1 = self._simulate_counts(samples)
 
-        if samples == None:
+        count_data = count_data_1
+
+        if self._photon_source2 is not None:
+            count_data_2 = self._simulate_counts(samples) + self.mean_signal
+            count_data = np.array([count_data_1, count_data_2])
+
+        time.sleep(1. / self._clock_frequency * samples)
+
+        return count_data
+
+    def _simulate_counts(self, samples=None):
+        """ Simulate counts signal from an APD.  This can be called for each dummy counter channel.
+
+        @param int samples: if defined, number of samples to read in one go
+
+        @return float: the photon counts per second
+        """
+
+        if samples is None:
             samples = int(self._samples_number)
         else:
             samples = int(samples)
 
-        timestep = 1./self._clock_frequency*samples
+        timestep = 1. / self._clock_frequency * samples
 
-        count_data = np.empty([2,samples], dtype=np.uint32) # count data will be written here in the NumPy array
+        count_data = np.empty([samples], dtype=np.uint32)  # count data will be written here in the NumPy array
 
         for i in range(samples):
 
             if self.dist == 'single_gaussian':
-                count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude/2)
+                count_data[i] = np.random.normal(self.mean_signal, self.noise_amplitude / 2)
 
             elif self.dist == 'dark_bright_gaussian':
 
@@ -209,23 +224,23 @@ class SlowCounterDummy(Base,SlowCounterInterface):
                     if self.curr_state_b:
                         self.curr_state_b = False
                         self.current_dec_time = np.random.exponential(self.life_time_dark)
-                        count_data[0][i] = np.random.poisson(self.mean_signal)
+                        count_data[i] = np.random.poisson(self.mean_signal)
                     else:
                         self.curr_state_b = True
                         self.current_dec_time = np.random.exponential(self.life_time_bright)
                     self.total_time = 0.0
 
-                count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude)*self.curr_state_b + \
-                                   np.random.normal(self.mean_signal2, self.noise_amplitude)*(1-self.curr_state_b)
+                count_data[i] = np.random.normal(self.mean_signal, self.noise_amplitude) * self.curr_state_b + \
+                                   np.random.normal(self.mean_signal2, self.noise_amplitude) * (1-self.curr_state_b)
 
             elif self.dist == 'uniform':
-                count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
+                count_data[i] = self.mean_signal + random.uniform(-self.noise_amplitude / 2, self.noise_amplitude / 2)
 
             elif self.dist == 'exponential':
-                count_data[0][i] = np.random.exponential(self.mean_signal)
+                count_data[i] = np.random.exponential(self.mean_signal)
 
             elif self.dist == 'single_poisson':
-                count_data[0][i] = np.random.poisson(self.mean_signal)
+                count_data[i] = np.random.poisson(self.mean_signal)
 
             elif self.dist == 'dark_bright_poisson':
                 self.total_time = self.total_time + timestep
@@ -234,23 +249,17 @@ class SlowCounterDummy(Base,SlowCounterInterface):
                     if self.curr_state_b:
                         self.curr_state_b = False
                         self.current_dec_time = np.random.exponential(self.life_time_dark)
-                        count_data[0][i] = np.random.poisson(self.mean_signal)
+                        count_data[i] = np.random.poisson(self.mean_signal)
                     else:
                         self.curr_state_b = True
                         self.current_dec_time = np.random.exponential(self.life_time_bright)
                     self.total_time = 0.0
 
-                count_data[0][i] = np.random.poisson(self.mean_signal)*self.curr_state_b + np.random.poisson(self.mean_signal2)*(1-self.curr_state_b)
+                count_data[i] = np.random.poisson(self.mean_signal)*self.curr_state_b + np.random.poisson(self.mean_signal2)*(1-self.curr_state_b)
 
             else:
                 # make uniform as default
                 count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
-
-        if self._photon_source2 is not None:
-            for i in range(samples):
-                count_data[1][i] = random.uniform(0, 1e5)
-
-        time.sleep(1./self._clock_frequency*samples)
 
         return count_data
 

@@ -16,10 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay D. Jahnke
-Copyright (C) 2015 Alexander Stark
-Copyright (C) 2015 Jan M. Binder
-Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from logic.generic_logic import GenericLogic
@@ -29,6 +27,8 @@ from collections import OrderedDict
 import numpy as np
 import time
 import datetime
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 class HardwarePull(QtCore.QObject):
     """ Helper class for running the hardware communication in a separate thread. """
@@ -129,6 +129,10 @@ class WavemeterLoggerLogic(GenericLogic):
         self._acqusition_start_time = 0
         self._bins = 200
         self._data_index = 0
+
+        self._recent_wavelength_window = [0, 0]
+        self.counts_with_wavelength = []
+
         self._xmin = 650
         self._xmax = 750
         # internal min and max wavelength determined by the measured wavelength
@@ -157,7 +161,8 @@ class WavemeterLoggerLogic(GenericLogic):
         self.histogram = np.zeros(self.histogram_axis.shape)
         self.envelope_histogram = np.zeros(self.histogram_axis.shape)
 
-        self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
+        #self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
+        self.sig_update_histogram_next.connect(self._attach_counts_to_wavelength, QtCore.Qt.QueuedConnection)
 
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
@@ -233,6 +238,10 @@ class WavemeterLoggerLogic(GenericLogic):
 
 
             self.data_index = 0
+
+            self._recent_wavelength_window = [0, 0]
+            self.counts_with_wavelength = []
+
             self.rawhisto=np.zeros(self._bins)
             self.sumhisto=np.ones(self._bins)*1.0e-10
             self.intern_xmax = -1.0
@@ -264,7 +273,75 @@ class WavemeterLoggerLogic(GenericLogic):
 
         return 0
 
+    def _attach_counts_to_wavelength(self, complete_histogram):
+        """ Interpolate a wavelength value for each photon count value.  This process assumes that the wavelength
+        is varying smoothly and fairly continuously, which is sensible for most measurement conditions.
+
+        Recent count values are those recorded AFTER the previous stitch operation, but BEFORE the most recent
+        wavelength value (do not extrapolate beyond the current wavelength information).
+        """
+
+        # If there is not yet any wavelength data, then wait and signal next loop
+        if len(self._wavelength_data) == 0:
+            time.sleep(self._logic_update_timing * 1e-3)
+            self.sig_data_updated.emit()
+            return
+
+        # The end of the recent_wavelength_window is the time of the latest wavelength data
+        self._recent_wavelength_window[1] = self._wavelength_data[-1][0]
+
+        # (speed-up) We only need to worry about "recent" counts, because as the count data gets very long all the
+        # earlier points will already be attached to wavelength values.
+        count_recentness = 100  # TODO: calculate this from count_freq and wavemeter refresh rate
+        wavelength_recentness = np.min([5, len(self._wavelength_data)])  # TODO: Does this depend on things, or do we loop fast enough to get every wavelength value?
+
+        recent_counts = np.array(self._counter_logic._data_to_save[-count_recentness:])
+        recent_wavelengths = np.array(self._wavelength_data[-wavelength_recentness:])
+
+        # The latest counts are those recorded during the recent_wavelength_window
+        count_idx = [0,0]
+        count_idx[0] = np.searchsorted(recent_counts[:,0], self._recent_wavelength_window[0])
+        count_idx[1] = np.searchsorted(recent_counts[:,0], self._recent_wavelength_window[1])
+
+        latest_counts = recent_counts[count_idx[0]:count_idx[1]]
+
+        # Interpolate to obtain wavelength values at the times of each count
+        interpolated_wavelengths = np.interp(latest_counts[:,0],
+                                             xp=recent_wavelengths[:,0],
+                                             fp=recent_wavelengths[:,1]
+                                             )
+
+        # Stitch interpolated wavelength into latest counts array
+        latest_stitched_data = np.insert(latest_counts, 2, values=interpolated_wavelengths, axis=1)
+
+        # Add this latest data to the list of counts vs wavelength
+        self.counts_with_wavelength += latest_stitched_data.tolist()
+
+        # The start of the recent data window for the next round will be the end of this one.
+        self._recent_wavelength_window[0] = self._recent_wavelength_window[1]
+
+        # Run the old update histogram method to keep duplicate data
+        self._update_histogram(complete_histogram)
+
+        # Signal that data has been updated
+        self.sig_data_updated.emit()
+
+        # Wait and repeat if measurement is ongoing
+        time.sleep(self._logic_update_timing * 1e-3)
+
+        if self.getState() == 'running':
+            self.sig_update_histogram_next.emit(False)
+
     def _update_histogram(self, complete_histogram):
+        """ Calculate new points for the histogram.
+
+        @param bool complete_histogram: should the complete histogram be recalculated, or just the most recent data?
+        @return:
+        """
+
+        # If things like num_of_bins have changed, then recalculate the complete histogram
+        # Note: The histogram may be recalculated (bins changed, etc) from the stitched data.  There is no need to
+        # recompute the interpolation for the stitched data.
         if complete_histogram:
             count_window = len(self._counter_logic._data_to_save)
             self._data_index = 0
@@ -285,7 +362,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         temp = np.array(self._counter_logic._data_to_save[-count_window:])
 
-        # only do something, if there is data to work with
+        # only do something if there is wavelength data to work with
         if len(self._wavelength_data)>0:
 
             for i in self._wavelength_data[self._data_index:]:
@@ -320,13 +397,6 @@ class WavemeterLoggerLogic(GenericLogic):
 
             # the plot data is the summed counts divided by the occurence of the respective bins
             self.histogram=self.rawhisto/self.sumhisto
-
-        time.sleep(self._logic_update_timing*1e-3)
-
-        self.sig_data_updated.emit()
-
-        if self.getState() == 'running':
-            self.sig_update_histogram_next.emit(False)
 
 
     def save_data(self, timestamp = None):
@@ -382,7 +452,6 @@ class WavemeterLoggerLogic(GenericLogic):
 
         filelabel = 'wavemeter_log_counts'
 
-
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data = {'Time (s),Signal (counts/s)':self._counter_logic._data_to_save}
@@ -404,4 +473,79 @@ class WavemeterLoggerLogic(GenericLogic):
         self.logMsg('Laser Scan saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
 
+        filelabel = 'wavemeter_log_counts_with_wavelength'
+
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)': np.array(self.counts_with_wavelength)}
+
+        fig = self.draw_figure()
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                     time.localtime(self._acqusition_start_time))
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp,
+                                   as_text=True,
+                                   plotfig=fig,
+                                   precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
         return 0
+
+    def draw_figure(self):
+        """ Draw figure to save with data file.
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        # TODO: Draw plot for second APD if it is connected
+
+        wavelength_data = [entry[2] for entry in self.counts_with_wavelength]
+        count_data = np.array([entry[1] for entry in self.counts_with_wavelength])
+
+        # Index of max counts, to use to position "0" of frequency-shift axis
+        count_max_index = count_data.argmax()
+
+        # Scale count values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_index = 0
+
+        while np.max(count_data) > 1000:
+            count_data = count_data / 1000
+            prefix_index = prefix_index + 1
+
+        counts_prefix = prefix[prefix_index]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5)
+
+        ax.set_xlabel('wavelength (nm)')
+        ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
+
+        x_formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        ax.xaxis.set_major_formatter(x_formatter)
+
+        ax2 = ax.twiny()
+
+        nm_xlim = ax.get_xlim()
+        ghz_at_max_counts = self.nm_to_ghz(wavelength_data[count_max_index])
+        ghz_min = self.nm_to_ghz(nm_xlim[0]) - ghz_at_max_counts
+        ghz_max = self.nm_to_ghz(nm_xlim[1]) - ghz_at_max_counts
+
+        ax2.set_xlim(ghz_min, ghz_max)
+        ax2.set_xlabel('Shift (GHz)')
+
+        plt.show()
+
+        return fig
+
+    def nm_to_ghz(self, wavelength):
+        return 3e8 / wavelength
