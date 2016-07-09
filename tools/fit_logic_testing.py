@@ -1258,7 +1258,7 @@ class FitLogic():
                 if data_level[i] <= data_level.std():
                     break
             print(i)
-            try:            
+            try:
                 data_level_log = np.log(data_level[0:i])
                 linear_result = self.make_linear_fit(axis=x_axis[0:i], data=data_level_log, add_parameters=None)
                 plt.plot(x_axis[0:i], data_level_log, 'ob')
@@ -1284,7 +1284,7 @@ class FitLogic():
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_bareexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
-            params['lifetime'].value = 1 + abs(np.random.normal(0,25))       
+            params['lifetime'].value = 1 + abs(np.random.normal(0,25))
             print('\n''lifetime',
                       params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
@@ -1342,8 +1342,8 @@ class FitLogic():
             stepsize = x_axis[1] - x_axis[0]  # for frequency axis
             freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
             fourier_power = (fourier * fourier.conj()).real
-            
-            
+
+
             plt.plot(freq[:int(len(freq) / 2)],
                       fourier_power[:int(len(freq) / 2)], '-or')
             plt.xlim(0, 0.5)
@@ -1382,17 +1382,17 @@ class FitLogic():
             params['lifetime'].value =1 + abs(np.random.normal(0,30))
             params['offset'].value = 1 + abs(np.random.normal(0, 20))
             print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
-                      params['lifetime'].value,'\n', 'offset', 
+                      params['lifetime'].value,'\n', 'offset',
                          params['offset'].value,'\n', 'beta',
-                             params['beta'].value)            
+                             params['beta'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
                           + 1.5* np.random.normal(size=x_axis.shape))
             
-            result = self.make_stretchedexponentialdecay_fit(axis=x_axis, 
-                                                             data=data_noisy, 
+            result = self.make_stretchedexponentialdecay_fit(axis=x_axis,
+                                                             data=data_noisy,
                                                              add_parameters=None)
-                    
-            data = data_noisy            
+
+            data = data_noisy
             #calculation of offset
             offset = data[-max(1,int(len(x_axis)/10)):].mean()
             if data[0]<data[-1]:
@@ -1404,8 +1404,8 @@ class FitLogic():
             
             amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-data_sub[-max(1,int(len(x_axis)/10)):].std()
             data_level = data_sub/amplitude
-            
-            a = 0    
+
+            a = 0
             b = len(data_sub)
             for i in range(0,len(data_sub)):
                 if data_level[i]>=1:
@@ -1414,10 +1414,10 @@ class FitLogic():
                     b=i
                     break
             print(a,b)
-        
-            try:        
+
+            try:
                 double_lg_data = np.log(-np.log(data_level[a:b]))
-        
+
                 #linear fit, see linearmethods.py
                 X=np.log(x_axis[a:b])
                 linear_result = self.make_linear_fit(axis=X, data=double_lg_data,
@@ -1489,4 +1489,6 @@ test.bareexponentialdecay_testing()
 #test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
 #test.linear_testing()
+#test.linear_testing()
+#test.doublecompressedexponentialdecay_testing()
 
