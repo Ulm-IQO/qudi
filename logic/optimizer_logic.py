@@ -429,16 +429,16 @@ class OptimizerLogic(GenericLogic):
         # z-fit
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
-            adjusted_param = Parameters()
-            # TODO: in the following line the seed value should be 0 instead of 1, but this hits a bug in fit_logic.
-            adjusted_param.add('c', 1, True, -self.z_refocus_line.max(), self.z_refocus_line.max(), None)
+            adjusted_param = {}
+            adjusted_param['c'] = {'value': 1e-12, 'min': -self.z_refocus_line.max(), 'max': self.z_refocus_line.max()}
             result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=adjusted_param)
         else:
             if self.use_custom_params:
                 result = self._fit_logic.make_gaussian_fit(
                     axis=self._zimage_Z_values + self._calc_dz(x=self.optim_pos_x, y=self.optim_pos_y),
                     data=self.z_refocus_line,
-                    add_parameters=self.z_params)
+                    # Todo: It is required that the changed parameters are given as a dictionary
+                    add_parameters={})
             else:
                 result = self._fit_logic.make_gaussian_fit(
                     axis=self._zimage_Z_values + self._calc_dz(x=self.optim_pos_x, y=self.optim_pos_y),

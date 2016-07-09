@@ -493,8 +493,6 @@ class ODMRLogic(GenericLogic):
             'data': self.ODMR_plot_y,
             'add_parameters': None
         }
-        if self.fit_function != 'No Fit' and self.use_custom_params[self.fit_function]:
-            kwargs['add_parameters'] = self.fit_models[self.fit_function][1]
 
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
@@ -581,10 +579,10 @@ class ODMRLogic(GenericLogic):
             self.fit_result = self._create_formatted_output(param_dict)
 
         elif self.fit_function == 'Double Lorentzian with fixed splitting':
-            p = Parameters()
+            additional_parameters = {}
 
             # TODO: insert this in gui config of ODMR
-            splitting_from_gui_config = 3.03  # in MHz
+            splitting_from_gui_config = 5.0  # in MHz
 
             estimate = self._fit_logic.estimate_doublelorentz(self._mw_frequency_list, self.ODMR_plot_y)
             error = estimate[0]
@@ -597,12 +595,12 @@ class ODMRLogic(GenericLogic):
             offset = estimate[7]
 
             if lorentz0_center < lorentz1_center:
-                p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{:+f}'.format(splitting_from_gui_config)}
             else:
                 splitting_from_gui_config *= -1
-                p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{:+f}'.format(splitting_from_gui_config)}
 
-            kwargs['add_parameters'] = p
+            kwargs['add_parameters'] = additional_parameters
             result = self._fit_logic.make_doublelorentzian_fit(**kwargs)
             fitted_function, params = self.fit_models[self.fit_function]
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
