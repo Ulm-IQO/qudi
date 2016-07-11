@@ -55,7 +55,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
@@ -100,7 +99,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._gpib_connection.write(':OUTP ON')
         return 0
 
@@ -110,7 +108,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._gpib_connection.write(':OUTP OFF')
         self._gpib_connection.write(':MODE CW')
         return 0
@@ -205,9 +202,9 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         FreqString = ' '
         for f in freq[:-1]:
             FreqString += '{:f},'.format(f)
-        FreqString += '{:f}'.freq(-1)
+        FreqString += '{:f}'.format(freq(-1))
         self._gpib_connection.write(':LIST:FREQ' + FreqString)
-        self._gpib_connection.write(':LIST:POW'  + (' {:f},'.format(power * len(freq[:-1]))))
+        self._gpib_connection.write(':LIST:POW' + (' {:f},'.format(power * len(freq[:-1]))))
         self._gpib_connection.write(':LIST:DWEL' + (' {:f},'.format(0.3 * len(freq[:-1]))))
         # ask crashes on Gigatronics, so we have to omit the sanity check
         self._gpib_connection.write(':LIST:PREC 1')
