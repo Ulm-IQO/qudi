@@ -115,8 +115,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # plot data
         self.signal_plot_x = None
         self.signal_plot_y = None
-        self.alt1_signal_y = None
-        self.alt2_signal_y = None
+        self.signal_plot_y2 = None
         self.measuring_error_plot_x = None
         self.measuring_error_plot_y = None
         self.laser_plot_x = None
@@ -552,6 +551,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.analysis_timer.timeout.connect(self._pulsed_analysis_loop)
 
                 self.lock()
+                self.elapsed_time = 0.0
                 self.start_time = time.time()
                 self.analysis_timer.start()
         return
@@ -568,11 +568,15 @@ class PulsedMeasurementLogic(GenericLogic):
             norm_end = self.norm_start_bin + self.norm_width_bin
 
             # analyze pulses and get data points for signal plot
-            self.signal_plot_y,self.laser_data,self.raw_data,self.measuring_error,self.is_gated = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
+            tmp_signal,self.laser_data,self.raw_data,tmp_error,self.is_gated = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
 
             if self.alternating:
-                self.alt1_signal_y = self.signal_plot_y[::2]
-                self.alt2_signal_y = self.signal_plot_y[1::2]
+                self.signal_plot_y = tmp_signal[::2]
+                self.signal_plot_y2 = tmp_signal[1::2]
+                self.measuring_error = tmp_error[::2]
+            else:
+                self.signal_plot_y = tmp_signal
+                self.measuring_error = tmp_error
 
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
@@ -751,6 +755,7 @@ class PulsedMeasurementLogic(GenericLogic):
         '''
         self.signal_plot_x = self.measurement_ticks_list
         self.signal_plot_y = np.zeros(len(self.measurement_ticks_list))
+        self.signal_plot_y2 = np.zeros(len(self.measurement_ticks_list))
         return
 
     def _initialize_laser_plot(self):
@@ -806,7 +811,12 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Tau (ns), Signal (normalized)':np.array([self.signal_plot_x, self.signal_plot_y]).transpose()}
+        if self.alternating:
+            data = {'Tau (ns), Signal (norm.), Signal2 (norm.)': np.array(
+                [self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2]).transpose()}
+        else:
+            data = {'Tau (ns), Signal (norm.)': np.array(
+                [self.signal_plot_x, self.signal_plot_y]).transpose()}
 
         # write the parameters:
         parameters = OrderedDict()
@@ -817,10 +827,8 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Normalization start (bin)'] = self.norm_start_bin
         parameters['Normalization width (bins)'] = self.norm_width_bin
 
-
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
+                                   timestamp=timestamp, as_text=True, precision=':.6f')
 
         #####################################################################
         ####                Save raw data timetrace                      ####
@@ -837,6 +845,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # write the parameters:
         parameters = OrderedDict()
         parameters['Is counter gated?'] = self.fast_counter_gated
+        parameters['Is alternating?'] = self.alternating
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
