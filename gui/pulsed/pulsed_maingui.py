@@ -2587,6 +2587,10 @@ class PulsedMeasurementGui(GUIBase):
                                             self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        if self._pulsed_meas_logic.alternating:
+            self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
@@ -2943,6 +2947,9 @@ class PulsedMeasurementGui(GUIBase):
         # dealing with the actual signal
         self.signal_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
                                   y=self._pulsed_meas_logic.signal_plot_y)
+        if self._pulsed_meas_logic.alternating:
+            self.signal_image2.setData(x=self._pulsed_meas_logic.signal_plot_x,
+                                       y=self._pulsed_meas_logic.signal_plot_y2, pen='g')
         self.change_second_plot()
         return
 
@@ -3072,7 +3079,17 @@ class PulsedMeasurementGui(GUIBase):
         Is called whenever the "alternating" CheckBox is clicked
         """
         alternating = self._mw.ana_param_alternating_CheckBox.isChecked()
+        # add/remove data set in plot widget
+        if alternating and not self._pulsed_meas_logic.alternating:
+            self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
+        if not alternating and self._pulsed_meas_logic.alternating:
+            self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
+        # Set flag in logic
         self._pulsed_meas_logic.alternating = alternating
+        # recalculate measurement ticks
+        self.analysis_xaxis_changed()
         return
 
     def analysis_fc_binning_changed(self):
@@ -3091,7 +3108,10 @@ class PulsedMeasurementGui(GUIBase):
         """
         xaxis_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
         xaxis_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
-        num_of_lasers = self._pulsed_meas_logic.number_of_lasers
+        if self._pulsed_meas_logic.alternating:
+            num_of_lasers = self._pulsed_meas_logic.number_of_lasers//2
+        else:
+            num_of_lasers = self._pulsed_meas_logic.number_of_lasers
         xaxis_ticks_list = np.linspace(xaxis_start, xaxis_start+(xaxis_incr*(num_of_lasers-1)), num_of_lasers)
         self._pulsed_meas_logic.set_measurement_ticks_list(xaxis_ticks_list)
 

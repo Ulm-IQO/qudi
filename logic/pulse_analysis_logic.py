@@ -144,9 +144,13 @@ class PulseAnalysisLogic(GenericLogic):
 
         @return: float measuring_error: Computed error
         """
-
-        #with respect to gaußian error 'evolution'
-        measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
+        if reference_area == 0.:
+            measuring_error = 0.
+        elif signal_area == 0.:
+            measuring_error = 0.
+        else:
+            #with respect to gaußian error 'evolution'
+            measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
 
         return measuring_error
 
