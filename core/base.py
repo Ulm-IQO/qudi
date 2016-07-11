@@ -65,8 +65,8 @@ class Base(QtCore.QObject, Fysom):
         QtCore.QObject.__init__(self)
 
         default_callbacks = {
-            'onactivate': self.default_activate,
-            'ondeactivate': self.default_deactivate}
+            'onactivate': self.on_activate,
+            'ondeactivate': self.on_deactivate}
         default_callbacks.update(callbacks)
 
         # State machine definition
@@ -117,19 +117,23 @@ class Base(QtCore.QObject, Fysom):
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
-    def default_activate(self, e):
-        """ The default activation callback gives an error if not overwritten.
+    def on_activate(self, e):
+        """ Method called when module is activated. If not overridden
+            this method returns an error.
 
             @param object e: Fysom state change descriptor
         """
-        self.logMsg('Please implement and specify the activation method for {0}.'.format(self.__class__.__name__), msgType='error')
+        self.logMsg('Please implement and specify the activation method for '
+                '{0}.'.format(self.__class__.__name__), msgType='error')
 
-    def default_deactivate(self,e ):
-        """ The default deactivation callback gives an error if not overwritten.
+    def on_deactivate(self, e):
+        """ Method called when module is deactivated. If not overridden
+            this method returns an error.
 
             @param object e: Fysom state change descriptor
         """
-        self.logMsg('Please implement and specify the deactivation method {0}.'.format(self.__class__.__name__), msgType='error')
+        self.logMsg('Please implement and specify the deactivation method '
+                '{0}.'.format(self.__class__.__name__), msgType='error')
 
     # Do not replace these in subclasses
     def onchangestate(self, e):
