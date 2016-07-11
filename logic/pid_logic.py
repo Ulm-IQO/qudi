@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from logic.generic_logic import GenericLogic
+from interface.pid_controller_interface import PIDControllerInterface
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
@@ -28,7 +29,7 @@ import numpy as np
 import time
 import datetime
 
-class PIDLogic(GenericLogic):
+class PIDLogic(GenericLogic, PIDControllerInterface):
     """
     Controll a process via software PID.
     """
@@ -135,11 +136,11 @@ class PIDLogic(GenericLogic):
              The D term is NOT low-pass filtered.
              This function should be called once every TS seconds.
         """
-        pv = self._process.getProcessValue()
+        self.pv = self._process.getProcessValue()
 
         if self.countdown > 0:
             self.countdown -= 1
-            self.previousdelta = self.setpoint - pv
+            self.previousdelta = self.setpoint - self.pv
             print('Countdown: ', self.countdown)
         elif self.countdown == 0:
             self.countdown = -1
@@ -147,7 +148,7 @@ class PIDLogic(GenericLogic):
             self.enable = True
         
         if (self.enable):
-            delta = self.setpoint - pv
+            delta = self.setpoint - self.pv
             self.integrated += delta 
             ## Calculate PID controller:
             self.P = self.kP * delta
@@ -165,7 +166,7 @@ class PIDLogic(GenericLogic):
                 self.cv = limits[0]
 
             self.history = np.roll(self.history, -1, axis=1)
-            self.history[0, -1] = pv
+            self.history[0, -1] = self.pv
             self.history[1, -1] = self.cv
             self.history[2, -1] = self.setpoint
             self.sigNewValue.emit(self.cv)
@@ -188,6 +189,7 @@ class PIDLogic(GenericLogic):
         self.countdown = 2
 
     def stopLoop(self):
+        self.countdown = -1
         self.enable = False
 
     def getSavingState(self):
@@ -199,9 +201,6 @@ class PIDLogic(GenericLogic):
     def saveData(self):
         pass
 
-    def getControlLimits(self):
-        return self._control.getControlLimits()
-
     def setSetpoint(self, newSetpoint):
         self.setpoint = newSetpoint
 
@@ -209,11 +208,53 @@ class PIDLogic(GenericLogic):
         self.bufferLength = newBufferLength
         self.history = np.zeros([3, self.bufferLength])
 
-    def setManualValue(self, newManualValue):
-        self.manualvalue = newManualValue
+    def get_kp(self):
+        return self.kP
+
+    def set_kp(self, kp):
+        self.kP = kp
+
+    def get_ki(self):
+        return self.kI
+
+    def set_ki(self, ki):
+        self.kI = ki
+
+    def get_kd(self):
+        return self.kD
+
+    def set_kd(self, kd):
+        self.kD = kd
+
+    def get_setpoint(self):
+        return self.setpoint
+
+    def set_setpoint(self, setpoint):
+        self.setpoint = setpoint
+
+    def get_manual_value(self):
+        return self.manualvalue
+        
+    def set_manual_value(self, manualvalue):
+        self.manualvalue = manualvalue
         limits = self._control.getControlLimits()
         if (self.manualvalue > limits[1]):
             self.manualvalue = limits[1]
         if (self.manualvalue < limits[0]):
             self.manualvalue = limits[0]
+
+    def get_enabled(self):
+        return self.enable
+
+    def set_enabled(self, enabled):
+        if enabled and not self.enable and self.countdown == -1:
+            self.startLoop()
+        if not enabled and self.enable:
+            self.stopLoop()
+
+    def get_control_limits(self):
+        return self._control.getControlLimits()
+    
+    def set_control_limits(self, limits):
+        pass
 

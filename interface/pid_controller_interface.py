@@ -21,54 +21,49 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.util.customexceptions import *
 from enum import Enum
 
-class VacuumPumpInterface:
-    _modtype = 'PumpInterface'
+class PIDControllerInterface:
+    _modtype = 'PIDControllerInterface'
     _modclass = 'interface'
 
-    def get_extra_info(self):
-        """ Present extra information about pump controller/device.
+    def get_kp(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def set_kp(self, kp):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def get_ki(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def set_ki(self, ki):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def get_kd(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def set_kd(self, kd):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def get_setpoint(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def set_setpoint(self, setpoint):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def get_manual_value(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
         
-          @return str: arbitrary information about pump, like model nr, hardware version, firmware version
-        """
+    def set_manual_value(self, manualvalue):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
-    def get_pressures(self):
-        """All available pressures in Pascal.
-
-          @return dict: dict of gauge name and pressure
-        """
+    def get_enabled(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
-    def get_pump_speeds(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-        
-    def get_pump_powers(self):
-        """ All available pump powers in watts.
-
-          @return dict: dict of pump name and pump power
-        """
+    def set_enabled(self, enabled):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
-    def get_pump_states(self):
-        """All available pump states.
-
-          @return dict: dict of pump name and pump state
-        """
+    def get_control_limits(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-
-    def set_pump_states(self, states):
-        """Control the pump state.
-          @param dict states: dict of pump name and desired state
-        """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-
-    def get_system_state(self):
-        """Get overall system state.
-        """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-
-    def set_system_state(self, state):
-        """Control the system state.
-        """
+    
+    def set_control_limits(self, limits):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 

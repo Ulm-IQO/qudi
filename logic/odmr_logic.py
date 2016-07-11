@@ -90,6 +90,12 @@ class ODMRLogic(GenericLogic):
         self._save_logic = self.connector['in']['savelogic']['object']
         self._taskrunner = self.connector['in']['taskrunner']['object']
 
+        config = self.getConfiguration()
+        if 'scanmode' in config and ('sweep' in config['scanmode'] or 'SWEEP' in config['scanmode']):
+            self.scanmode = 'SWEEP'
+        else:
+            self.scanmode = 'LIST'
+
         # FIXME: that is not a general default parameter!!!
         # default parameters for NV ODMR
         self.MW_trigger_source = 'EXT'
@@ -134,10 +140,6 @@ class ODMRLogic(GenericLogic):
         self.safeRawData = False  # flag for saving raw data
 
         # load parameters stored in app state store
-        if 'MW_trigger_source' in self._statusVariables:
-            self.MW_trigger_source = self._statusVariables['MW_trigger_source']
-        if 'MW_trigger_pol' in self._statusVariables:
-            self.MW_trigger_pol = self._statusVariables['MW_trigger_pol']
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
         if 'mw_frequency' in self._statusVariables:
@@ -176,8 +178,6 @@ class ODMRLogic(GenericLogic):
                          explanation can be found in method activation.
         """
         # save parameters stored in app state store
-        self._statusVariables['MW_trigger_source'] = self.MW_trigger_source
-        self._statusVariables['MW_trigger_pol'] = self.MW_trigger_pol
         self._statusVariables['clock_frequency'] = self._clock_frequency
         self._statusVariables['mw_frequency'] = self.mw_frequency
         self._statusVariables['mw_power'] = self.mw_power
@@ -239,11 +239,19 @@ class ODMRLogic(GenericLogic):
             self.logMsg('Raw data NOT saved', msgType='status', importance=5)
 
         self.start_odmr()
-        return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
+        if self.scanmode == 'SWEEP':
+            n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
+            return_val = n - len(self._mw_frequency_list)
+        else:
+            return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
+
         if return_val != 0:
             self.stopRequested = True
         else:
-            self._mw_device.list_on()
+            if self.scanmode == 'SWEEP':
+                self._mw_device.sweep_on()
+            else:
+                self._mw_device.list_on()
 
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
@@ -253,12 +261,19 @@ class ODMRLogic(GenericLogic):
         """ """
         self._StartTime = time.time() - self.elapsed_time
         self.start_odmr()
-        return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
+        if self.scanmode == 'SWEEP':
+            n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
+            return_val = n - len(self._mw_frequency_list)
+        else:
+            return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
 
         if return_val != 0:
             self.stopRequested = True
         else:
-            self._mw_device.list_on()
+            if self.scanmode == 'SWEEP':
+                self._mw_device.sweep_on()
+            else:
+                self._mw_device.list_on()
 
         self.sigNextLine.emit()
 
@@ -307,8 +322,10 @@ class ODMRLogic(GenericLogic):
                 return
 
         # reset position so every line starts from the same frequency
-        self._mw_device.reset_listpos()
-
+        if self.scanmode == 'SWEEP':
+            self._mw_device.reset_sweep()
+        else:
+            self._mw_device.reset_listpos()
         new_counts = self._odmr_counter.count_odmr(length=len(self._mw_frequency_list))
 
         # if during the scan a clearing of the ODMR plots is needed:
@@ -429,6 +446,7 @@ class ODMRLogic(GenericLogic):
 
         @return list: with string entries denoting the names of the fit.
         """
+
         models = list(self.fit_models.keys())
         models.insert(0, 'No Fit')
         return models
@@ -475,8 +493,6 @@ class ODMRLogic(GenericLogic):
             'data': self.ODMR_plot_y,
             'add_parameters': None
         }
-        if self.fit_function != 'No Fit' and self.use_custom_params[self.fit_function]:
-            kwargs['add_parameters'] = self.fit_models[self.fit_function][1]
 
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
@@ -489,7 +505,7 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont = result.params['amplitude'].value
-            cont = cont / (-1 * np.pi * result.params['sigma'].value * result.params['c'].value)
+            cont /= (-1 * np.pi * result.params['sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont_err = np.sqrt(
                 (cont / result.params['amplitude'].value * result.params['amplitude'].stderr) ** 2
@@ -518,7 +534,7 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
             cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0 / (-1 * np.pi * result.params['lorentz0_sigma'].value * result.params['c'].value)
+            cont0 /= (-1 * np.pi * result.params['lorentz0_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
                 (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
@@ -526,7 +542,7 @@ class ODMRLogic(GenericLogic):
                 + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
             cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1 / (-1 * np.pi * result.params['lorentz1_sigma'].value * result.params['c'].value)
+            cont1 /= (-1 * np.pi * result.params['lorentz1_sigma'].value * result.params['c'].value)
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
                 (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
@@ -563,10 +579,10 @@ class ODMRLogic(GenericLogic):
             self.fit_result = self._create_formatted_output(param_dict)
 
         elif self.fit_function == 'Double Lorentzian with fixed splitting':
-            p = Parameters()
+            additional_parameters = {}
 
             # TODO: insert this in gui config of ODMR
-            splitting_from_gui_config = 3.03  # in MHz
+            splitting_from_gui_config = 5.0  # in MHz
 
             estimate = self._fit_logic.estimate_doublelorentz(self._mw_frequency_list, self.ODMR_plot_y)
             error = estimate[0]
@@ -579,12 +595,12 @@ class ODMRLogic(GenericLogic):
             offset = estimate[7]
 
             if lorentz0_center < lorentz1_center:
-                p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{:+f}'.format(splitting_from_gui_config)}
             else:
                 splitting_from_gui_config *= -1
-                p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{:+f}'.format(splitting_from_gui_config)}
 
-            kwargs['add_parameters'] = p
+            kwargs['add_parameters'] = additional_parameters
             result = self._fit_logic.make_doublelorentzian_fit(**kwargs)
             fitted_function, params = self.fit_models[self.fit_function]
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)

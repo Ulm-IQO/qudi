@@ -59,11 +59,7 @@ class PIDGui(GUIBase):
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
+        super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.', msgType='status')
 
@@ -99,10 +95,18 @@ class PIDGui(GUIBase):
         self._pw = self._mw.trace_PlotWidget
 
         self.plot1 = self._pw.plotItem
-        self.plot1.setLabel('left', 'Process Value', units='unit', color='#00ff00')
+        self.plot1.setLabel(
+            'left',
+            '<font color={}>Process Value</font> and <font color={}>Setpoint</font>'.format(
+                palette.c1.name(),
+                palette.c2.name()),
+             units='unit')
         self.plot1.setLabel('bottom', 'Time', units='s')
         self.plot1.showAxis('right')
-        self.plot1.getAxis('right').setLabel('Control Value', units='unit', color='#ff0000')
+        self.plot1.getAxis('right').setLabel(
+            'Control Value',
+            units='unit',
+            color=palette.c3.name())
 
         self.plot2 = pg.ViewBox()
         self.plot1.scene().addItem(self.plot2)
@@ -152,26 +156,26 @@ class PIDGui(GUIBase):
 
         #####################
         # Setting default parameters
-        self._mw.P_DoubleSpinBox.setValue( self._pid_logic.kP )
-        self._mw.I_DoubleSpinBox.setValue( self._pid_logic.kI )
-        self._mw.D_DoubleSpinBox.setValue( self._pid_logic.kD )
-        self._mw.setpointDoubleSpinBox.setValue( self._pid_logic.setpoint )
-        self._mw.manualDoubleSpinBox.setValue( self._pid_logic.manualvalue )
+        self._mw.P_DoubleSpinBox.setValue(self._pid_logic.get_kp())
+        self._mw.I_DoubleSpinBox.setValue(self._pid_logic.get_ki())
+        self._mw.D_DoubleSpinBox.setValue(self._pid_logic.get_kd())
+        self._mw.setpointDoubleSpinBox.setValue(self._pid_logic.get_setpoint())
+        self._mw.manualDoubleSpinBox.setValue(self._pid_logic.get_manual_value())
 
         # make correct button state
-        self._mw.start_control_Action.setChecked(self._pid_logic.enable or self._pid_logic.countdown >= 0)
+        self._mw.start_control_Action.setChecked(self._pid_logic.get_enabled() or self._pid_logic.countdown >= 0)
 
         #####################
         # Connecting user interactions
         self._mw.start_control_Action.triggered.connect(self.start_clicked)
         self._mw.record_control_Action.triggered.connect(self.save_clicked)
 
-        self._mw.P_DoubleSpinBox.valueChanged.connect( self.kPChanged )
-        self._mw.I_DoubleSpinBox.valueChanged.connect( self.kIChanged )
-        self._mw.D_DoubleSpinBox.valueChanged.connect( self.kDChanged )
+        self._mw.P_DoubleSpinBox.valueChanged.connect(self.kPChanged)
+        self._mw.I_DoubleSpinBox.valueChanged.connect(self.kIChanged)
+        self._mw.D_DoubleSpinBox.valueChanged.connect(self.kDChanged)
 
-        self._mw.setpointDoubleSpinBox.valueChanged.connect( self._pid_logic.setSetpoint )
-        self._mw.manualDoubleSpinBox.valueChanged.connect( self._pid_logic.setManualValue )
+        self._mw.setpointDoubleSpinBox.valueChanged.connect(self._pid_logic.set_setpoint)
+        self._mw.manualDoubleSpinBox.valueChanged.connect(self._pid_logic.set_manual_value)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -203,10 +207,19 @@ class PIDGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
 
-        if self._pid_logic.enable:
-            self._mw.process_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[0, -1]))
-            self._mw.control_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[1, -1]))
-            self._mw.setpoint_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[2, -1]))
+        if self._pid_logic.get_enabled():
+            self._mw.process_value_Label.setText(
+                '<font color={}>{:,.3f}</font>'.format(
+                palette.c1.name(),
+                self._pid_logic.history[0, -1]))
+            self._mw.control_value_Label.setText(
+                '<font color={}>{:,.3f}</font>'.format(
+                palette.c3.name(),
+                self._pid_logic.history[1, -1]))
+            self._mw.setpoint_value_Label.setText(
+                '<font color={}>{:,.3f}</font>'.format(
+                palette.c2.name(),
+                self._pid_logic.history[2, -1]))
             self._mw.labelkP.setText('{0:,.6f}'.format(self._pid_logic.P))
             self._mw.labelkI.setText('{0:,.6f}'.format(self._pid_logic.I))
             self._mw.labelkD.setText('{0:,.6f}'.format(self._pid_logic.D))
@@ -263,13 +276,13 @@ class PIDGui(GUIBase):
             self._pid_logic.startSaving()
 
     def kPChanged(self):
-        self._pid_logic.kP = self._mw.P_DoubleSpinBox.value()
+        self._pid_logic.set_kp(self._mw.P_DoubleSpinBox.value())
 
     def kIChanged(self):
-        self._pid_logic.kI = self._mw.I_DoubleSpinBox.value()
+        self._pid_logic.set_ki(self._mw.I_DoubleSpinBox.value())
 
     def kDChanged(self):
-        self._pid_logic.kD = self._mw.D_DoubleSpinBox.value()
+        self._pid_logic.set_kd(self._mw.D_DoubleSpinBox.value())
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
