@@ -94,6 +94,30 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.close()
         self.rm.close()
 
+    def get_limits(self):
+        """ Right now, this is for Anritsu MG37022A with Option 4 only."""
+        limits = {
+            'frequency': {
+                'min': 10*10e6 ,
+                'max': 20*10e9
+                },
+            'power': {
+                'min': -105,
+                'max': 18:
+                },
+            'list': {
+                'minstep': 0.001,
+                'maxstep': 20*10e9,
+                'maxentries': 10001
+                },
+            'sweep': {
+                'minstep': 0.001,
+                'maxstep': 20*10e9,
+                'maxentries': 10001
+                }
+            }
+        return limits
+
     def on(self):
         """ Switches on any preconfigured microwave output.
 
