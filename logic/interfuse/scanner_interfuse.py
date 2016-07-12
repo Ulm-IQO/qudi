@@ -162,8 +162,13 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
 
         @return float[]: current position in (x, y, z, a).
         """
+        position = self._scanning_device.get_position()         # not tested atm
+        if self._tiltcorrection:
+            position[2] = position[2]-self._calc_dz(position[0],position[1])
+            return position
+        else:
+            return position
 
-        return self._scanning_device.get_position()
 
     def set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.
@@ -184,6 +189,8 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
 
+        if self._tiltcorrection:
+            line_path[:][2] = line_path[:][2] + self._calc_dz(line_path[:][0],line_path[:][1])
         self._scanning_device.scan_line(line_path)
 
     def close_scanner(self):
