@@ -103,7 +103,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
                 },
             'power': {
                 'min': -105,
-                'max': 18:
+                'max': 18
                 },
             'list': {
                 'minstep': 0.001,
