@@ -2587,6 +2587,10 @@ class PulsedMeasurementGui(GUIBase):
                                             self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        if self._pulsed_meas_logic.alternating:
+            self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
@@ -2634,6 +2638,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.toggle_external_mw_source_editor)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
         self._mw.ana_param_laserpulse_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
+        self._mw.ana_param_alternating_CheckBox.stateChanged.connect(self.analysis_alternating_changed)
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
@@ -2664,7 +2669,6 @@ class PulsedMeasurementGui(GUIBase):
         self._statusVariables['ana_param_laserpulse_defined_CheckBox'] = self._mw.ana_param_laserpulse_defined_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_first_CheckBox'] = self._mw.ana_param_ignore_first_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_last_CheckBox'] = self._mw.ana_param_ignore_last_CheckBox.isChecked()
-        self._statusVariables['ana_param_alternating_CheckBox'] = self._mw.ana_param_alternating_CheckBox.isChecked()
         self._statusVariables['ana_param_errorbars_CheckBox'] = self._mw.ana_param_errorbars_CheckBox.isChecked()
         self._statusVariables['second_plot_ComboBox_text'] = self._mw.second_plot_ComboBox.currentText()
 
@@ -2719,6 +2723,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_laser_length_SpinBox.setValue(self._pulsed_meas_logic.laser_length_s*1e9)
 
         # ignore and alternating checkboxes
+        self._mw.ana_param_alternating_CheckBox.setChecked(self._pulsed_meas_logic.alternating)
+
         if 'ana_param_ignore_first_CheckBox' in self._statusVariables:
             self._mw.ana_param_ignore_first_CheckBox.setChecked(
                 self._statusVariables['ana_param_ignore_first_CheckBox'])
@@ -2729,11 +2735,6 @@ class PulsedMeasurementGui(GUIBase):
                 self._statusVariables['ana_param_ignore_last_CheckBox'])
         else:
             self._mw.ana_param_ignore_last_CheckBox.setChecked(False)
-        if 'ana_param_alternating_CheckBox' in self._statusVariables:
-            self._mw.ana_param_alternating_CheckBox.setChecked(
-                self._statusVariables['ana_param_alternating_CheckBox'])
-        else:
-            self._mw.ana_param_alternating_CheckBox.setChecked(False)
 
         # define own x-axis checkbox
         if 'ana_param_x_axis_defined_CheckBox' in self._statusVariables:
@@ -2946,6 +2947,9 @@ class PulsedMeasurementGui(GUIBase):
         # dealing with the actual signal
         self.signal_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
                                   y=self._pulsed_meas_logic.signal_plot_y)
+        if self._pulsed_meas_logic.alternating:
+            self.signal_image2.setData(x=self._pulsed_meas_logic.signal_plot_x,
+                                       y=self._pulsed_meas_logic.signal_plot_y2, pen='g')
         self.change_second_plot()
         return
 
@@ -3070,6 +3074,24 @@ class PulsedMeasurementGui(GUIBase):
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self._pulsed_meas_logic.set_timer_interval(timer_interval)
 
+    def analysis_alternating_changed(self):
+        """
+        Is called whenever the "alternating" CheckBox is clicked
+        """
+        alternating = self._mw.ana_param_alternating_CheckBox.isChecked()
+        # add/remove data set in plot widget
+        if alternating and not self._pulsed_meas_logic.alternating:
+            self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
+        if not alternating and self._pulsed_meas_logic.alternating:
+            self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
+        # Set flag in logic
+        self._pulsed_meas_logic.alternating = alternating
+        # recalculate measurement ticks
+        self.analysis_xaxis_changed()
+        return
+
     def analysis_fc_binning_changed(self):
         """
         If a new binning value is selected, apply the change to the logic.
@@ -3086,7 +3108,10 @@ class PulsedMeasurementGui(GUIBase):
         """
         xaxis_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
         xaxis_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
-        num_of_lasers = self._pulsed_meas_logic.number_of_lasers
+        if self._pulsed_meas_logic.alternating:
+            num_of_lasers = self._pulsed_meas_logic.number_of_lasers//2
+        else:
+            num_of_lasers = self._pulsed_meas_logic.number_of_lasers
         xaxis_ticks_list = np.linspace(xaxis_start, xaxis_start+(xaxis_incr*(num_of_lasers-1)), num_of_lasers)
         self._pulsed_meas_logic.set_measurement_ticks_list(xaxis_ticks_list)
 
