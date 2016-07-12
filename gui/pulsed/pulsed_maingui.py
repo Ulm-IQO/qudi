@@ -33,6 +33,7 @@ import datetime
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
+from core.util.units import get_unit_prefix_dict
 from .qradiobutton_custom import CustomQRadioButton
 
 from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
@@ -1094,7 +1095,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data*self.get_unit_prefix_dict()[unit_prefix]
+            return data * get_unit_prefix_dict()[unit_prefix]
         return data
 
     def set_element_in_block_table(self, row, column, value):
@@ -1121,7 +1122,7 @@ class PulsedMeasurementGui(GUIBase):
             if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
                 unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
                 # access the method defined in base for unit prefix:
-                value = value/self.get_unit_prefix_dict()[unit_prefix]
+                value = value / get_unit_prefix_dict()[unit_prefix]
             model.setData(model.index(row,column), value, access)
         else:
             self.logMsg('The cell ({0},{1}) in block table could not be '
@@ -3789,7 +3790,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data * self.get_unit_prefix_dict()[unit_prefix]
+            return data * get_unit_prefix_dict()[unit_prefix]
 
         return data
 
