@@ -27,6 +27,8 @@ from collections import OrderedDict
 import numpy as np
 import time
 import datetime
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 class HardwarePull(QtCore.QObject):
     """ Helper class for running the hardware communication in a separate thread. """
@@ -129,7 +131,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self._data_index = 0
 
         self._recent_wavelength_window = [0, 0]
-        self.counts_vs_wavelength = []
+        self.counts_with_wavelength = []
 
         self._xmin = 650
         self._xmax = 750
@@ -238,7 +240,7 @@ class WavemeterLoggerLogic(GenericLogic):
             self.data_index = 0
 
             self._recent_wavelength_window = [0, 0]
-            self.counts_vs_wavelength = []
+            self.counts_with_wavelength = []
 
             self.rawhisto=np.zeros(self._bins)
             self.sumhisto=np.ones(self._bins)*1.0e-10
@@ -271,7 +273,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         return 0
 
-    def _attach_counts_to_wavelength(self):
+    def _attach_counts_to_wavelength(self, complete_histogram):
         """ Interpolate a wavelength value for each photon count value.  This process assumes that the wavelength
         is varying smoothly and fairly continuously, which is sensible for most measurement conditions.
 
@@ -309,14 +311,17 @@ class WavemeterLoggerLogic(GenericLogic):
                                              fp=recent_wavelengths[:,1]
                                              )
 
-        # Replace time data with interpolated wavelengths for latest counts
-        latest_counts[:,0] = interpolated_wavelengths
+        # Stitch interpolated wavelength into latest counts array
+        latest_stitched_data = np.insert(latest_counts, 2, values=interpolated_wavelengths, axis=1)
 
         # Add this latest data to the list of counts vs wavelength
-        self.counts_vs_wavelength += latest_counts.tolist()
+        self.counts_with_wavelength += latest_stitched_data.tolist()
 
         # The start of the recent data window for the next round will be the end of this one.
         self._recent_wavelength_window[0] = self._recent_wavelength_window[1]
+
+        # Run the old update histogram method to keep duplicate data
+        self._update_histogram(complete_histogram)
 
         # Signal that data has been updated
         self.sig_data_updated.emit()
@@ -393,13 +398,6 @@ class WavemeterLoggerLogic(GenericLogic):
             # the plot data is the summed counts divided by the occurence of the respective bins
             self.histogram=self.rawhisto/self.sumhisto
 
-        time.sleep(self._logic_update_timing*1e-3)
-
-        self.sig_data_updated.emit()
-
-        if self.getState() == 'running':
-            self.sig_update_histogram_next.emit(False)
-
 
     def save_data(self, timestamp = None):
         """ Save the counter trace data and writes it to a file.
@@ -454,7 +452,6 @@ class WavemeterLoggerLogic(GenericLogic):
 
         filelabel = 'wavemeter_log_counts'
 
-
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data = {'Time (s),Signal (counts/s)':self._counter_logic._data_to_save}
@@ -476,4 +473,79 @@ class WavemeterLoggerLogic(GenericLogic):
         self.logMsg('Laser Scan saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
 
+        filelabel = 'wavemeter_log_counts_with_wavelength'
+
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)': np.array(self.counts_with_wavelength)}
+
+        fig = self.draw_figure()
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                     time.localtime(self._acqusition_start_time))
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp,
+                                   as_text=True,
+                                   plotfig=fig,
+                                   precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
         return 0
+
+    def draw_figure(self):
+        """ Draw figure to save with data file.
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        # TODO: Draw plot for second APD if it is connected
+
+        wavelength_data = [entry[2] for entry in self.counts_with_wavelength]
+        count_data = np.array([entry[1] for entry in self.counts_with_wavelength])
+
+        # Index of max counts, to use to position "0" of frequency-shift axis
+        count_max_index = count_data.argmax()
+
+        # Scale count values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_index = 0
+
+        while np.max(count_data) > 1000:
+            count_data = count_data / 1000
+            prefix_index = prefix_index + 1
+
+        counts_prefix = prefix[prefix_index]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5)
+
+        ax.set_xlabel('wavelength (nm)')
+        ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
+
+        x_formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        ax.xaxis.set_major_formatter(x_formatter)
+
+        ax2 = ax.twiny()
+
+        nm_xlim = ax.get_xlim()
+        ghz_at_max_counts = self.nm_to_ghz(wavelength_data[count_max_index])
+        ghz_min = self.nm_to_ghz(nm_xlim[0]) - ghz_at_max_counts
+        ghz_max = self.nm_to_ghz(nm_xlim[1]) - ghz_at_max_counts
+
+        ax2.set_xlim(ghz_min, ghz_max)
+        ax2.set_xlabel('Shift (GHz)')
+
+        plt.show()
+
+        return fig
+
+    def nm_to_ghz(self, wavelength):
+        return 3e8 / wavelength
