@@ -30,7 +30,7 @@ import datetime
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
-
+from core.util.units import get_unit_prefix_dict
 
 class MagnetMainWindow(QtGui.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -104,16 +104,16 @@ class MagnetGui(GUIBase):
 
         # set the prefix, which determines the representation in the viewboxes
         # for the linear translations. It can be chosen from the dict obtainable
-        # from self.get_unit_prefix_dict():
+        # from get_unit_prefix_dict():
         self._lin_trans_unit_prefix = 'm'
         if 'lin_trans_unit_prefix' in config.keys():
 
-            if config['lin_trans_unit_prefix'] in self.get_unit_prefix_dict():
+            if config['lin_trans_unit_prefix'] in get_unit_prefix_dict():
                 self._lin_trans_unit_prefix = config['lin_trans_unit_prefix']
             else:
                 self.logMsg('The parameter "lin_trans_unit_prefix" is either '
                             'not specified in the config or the unit prefix '
-                            'is not in the self.get_unit_prefix_dict() '
+                            'is not in the get_unit_prefix_dict() '
                             'dictionary! Take the default prefix "{0}" '
                             'instead.'.format(self._lin_trans_unit_prefix),
                             msgType='warning')
@@ -123,12 +123,12 @@ class MagnetGui(GUIBase):
         self._rot_trans_unit_prefix = ''
         if 'rot_trans_unit_prefix' in config.keys():
 
-            if config['rot_trans_unit_prefix'] in self.get_unit_prefix_dict():
+            if config['rot_trans_unit_prefix'] in get_unit_prefix_dict():
                 self._rot_trans_unit_prefix = config['rot_trans_unit_prefix']
             else:
                 self.logMsg('The parameter "rot_trans_unit_prefix" is either '
                             'not specified in the config or the unit prefix '
-                            'is not in the self.get_unit_prefix_dict() '
+                            'is not in the get_unit_prefix_dict() '
                             'dictionary! Take the default prefix "{0}" '
                             'instead.'.format(self._rot_trans_unit_prefix),
                             'instead.'.format(self._rot_trans_unit_prefix),
@@ -422,9 +422,9 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setDecimals(3)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
 
@@ -485,9 +485,9 @@ class MagnetGui(GUIBase):
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
@@ -608,9 +608,9 @@ class MagnetGui(GUIBase):
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
@@ -701,10 +701,10 @@ class MagnetGui(GUIBase):
             # everything smoother but not actually affect the displayed number:
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
                 max_step_slider = 1e-9
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
                 max_step_slider = 1e-6
             actual_pos = (constraints[axis_label]['pos_min']+ slider_val * max_step_slider)
             ref_dspinbox.setValue(actual_pos/norm)
@@ -749,10 +749,10 @@ class MagnetGui(GUIBase):
             # everything smoother but not actually affect the displayed number:
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
                 max_step_slider = 1e-9
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
                 max_step_slider = 1e-6
 
             slider_val = abs(viewbox_val*norm - constraints[axis_label]['pos_min'])/max_step_slider
@@ -779,9 +779,9 @@ class MagnetGui(GUIBase):
         dspinbox = self.get_ref_move_rel_DoubleSpinBox(axis_label)
 
         if constraints[axis_label]['unit'] == 'm':
-            norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
-            norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
         movement = dspinbox.value()*norm * direction
 
@@ -806,9 +806,9 @@ class MagnetGui(GUIBase):
             for label in constraints:
 
                 if constraints[label]['unit'] == 'm':
-                    norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                    norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
                 else:
-                    norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                    norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
                 move_abs[label] = self.get_ref_move_abs_DoubleSpinBox(label).value()*norm
 
@@ -890,9 +890,9 @@ class MagnetGui(GUIBase):
             dspinbox_pos_ref = self.get_ref_curr_pos_DoubleSpinBox(axis_label)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_pos_ref.setValue(curr_pos[axis_label]/norm)
 
@@ -958,17 +958,17 @@ class MagnetGui(GUIBase):
 
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
         if constraints[axis0_name]['unit'] == 'm':
-            norm1 = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm1 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
-            norm1 = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm1 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
         axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()*norm1
         axis0_step =  self._mw.align_2d_axes0_step_DSpinBox.value()*norm1
 
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
         if constraints[axis1_name]['unit'] == 'm':
-            norm2 = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm2 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
-            norm2 = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm2 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
         axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()*norm2
         axis1_step =  self._mw.align_2d_axes1_step_DSpinBox.value()*norm2
 
@@ -1025,11 +1025,11 @@ class MagnetGui(GUIBase):
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
 
         if constraints[axis0_name]['unit'] == 'm':
-            norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
                                                  constraints[axis0_name]['unit'])
         else:
-            norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
                                                  constraints[axis0_name]['unit'])
 
@@ -1068,11 +1068,11 @@ class MagnetGui(GUIBase):
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
 
         if constraints[axis1_name]['unit'] == 'm':
-            norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
                                                  constraints[axis1_name]['unit'])
         else:
-            norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
                                                  constraints[axis1_name]['unit'])
 
