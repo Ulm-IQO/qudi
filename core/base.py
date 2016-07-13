@@ -22,6 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from pyqtgraph.Qt import QtCore
 from fysom import Fysom # provides a final state machine
 from collections import OrderedDict
+
+import numpy as np
 import os
 import sys
 import traceback
@@ -121,7 +123,7 @@ class Base(QtCore.QObject, Fysom):
         """ Method called when module is activated. If not overridden
             this method returns an error.
 
-            @param object e: Fysom state change descriptor
+        @param object e: Fysom state change descriptor
         """
         self.logMsg('Please implement and specify the activation method for '
                 '{0}.'.format(self.__class__.__name__), msgType='error')
@@ -130,7 +132,7 @@ class Base(QtCore.QObject, Fysom):
         """ Method called when module is deactivated. If not overridden
             this method returns an error.
 
-            @param object e: Fysom state change descriptor
+        @param object e: Fysom state change descriptor
         """
         self.logMsg('Please implement and specify the deactivation method '
                 '{0}.'.format(self.__class__.__name__), msgType='error')
@@ -139,14 +141,14 @@ class Base(QtCore.QObject, Fysom):
     def onchangestate(self, e):
         """ Fysom callback for state transition.
 
-          @param object e: Fysom state transition description
+        @param object e: Fysom state transition description
         """
         self.sigStateChanged.emit(e)
 
     def getStatusVariables(self):
         """ Return a dict of variable names and their content representing the module state for saving.
 
-          @return dict: variable names and contents.
+        @return dict: variable names and contents.
 
         """
         return self._statusVariables
@@ -240,13 +242,3 @@ class Base(QtCore.QObject, Fysom):
         """
         return os.path.abspath(os.path.expanduser('~'))
 
-    def get_unit_prefix_dict(self):
-        """ Return the dictionary, which assigns the prefix of a unit to its
-            proper order of magnitude.
-        @return dict: keys are string prefix and items are magnitude values.
-        """
-
-        unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
-                            'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
-                            'T':1e12, 'P':1e15}
-        return unit_prefix_dict
