@@ -19,21 +19,35 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
+
+
 def get_unit_prefix_dict():
     """ Return the dictionary, which assigns the prefix of a unit to its
         proper order of magnitude.
     @return dict: keys are string prefix and items are magnitude values.
     """
 
-    unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
-                        'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
-                        'T':1e12, 'P':1e15}
+    unit_prefix_dict = {
+        'f': 1e-15,
+        'p': 1e-12,
+        'n': 1e-9,
+        'micro': 1e-6,
+        'm': 1e-3,
+        '': 1,
+        'k': 1e3,
+        'M': 1e6,
+        'G': 1e9,
+        'T': 1e12,
+        'P': 1e15
+        }
     return unit_prefix_dict
+
 
 def create_formatted_output(param_dict, default_digits=5):
     """ Display a parameter set nicely.
 
-    @param dict param: dictionary with entries being again dictionaries
+    @param dict param_dict: dictionary with entries being again dictionaries
                        with two needed keywords 'value' and 'unit' and one
                        optional keyword 'error'. Add the proper items to the
                        specified keywords.
@@ -72,7 +86,7 @@ def create_formatted_output(param_dict, default_digits=5):
                                                     param_dict[entry]['value'],
                                                     param_dict[entry]['unit'])
         else:
-            value, error, digit = self.round_value_to_error(param_dict[entry]['value'], param_dict[entry]['error'])
+            value, error, digit = round_value_to_error(param_dict[entry]['value'], param_dict[entry]['error'])
 
             # check if the error is so big that the rounded value will
             # become just zero. In that case, output at least 5 digits of
@@ -115,6 +129,7 @@ def create_formatted_output(param_dict, default_digits=5):
                                                                              param_dict[entry]['unit'],
                                                                              digit)
     return output_str
+
 
 def round_value_to_error(value, error):
     """ The scientifically correct way of rounding a value according to an error.
@@ -175,10 +190,10 @@ def round_value_to_error(value, error):
 
     # check if error is zero, since that is an invalid input!
     if np.isclose(error, 0.0) or np.isnan(error):
-        self.logMsg('Cannot round to the error, since either a zero error '
-                    'value was passed for the number {0}, or the error is '
-                    'NaN: Error value: {1}. '.format(value, error),
-                    msgType='warning')
+        #self.logMsg('Cannot round to the error, since either a zero error '
+        #            'value was passed for the number {0}, or the error is '
+        #            'NaN: Error value: {1}. '.format(value, error),
+        #            msgType='warning')
 
         # set the round digit to float precision
         round_digit = -12
@@ -196,12 +211,11 @@ def round_value_to_error(value, error):
         round_digit = -(int(log_val))
         first_err_digit = str(np.round(error, round_digit))[0]
 
-    if first_err_digit== '1' or first_err_digit == '2':
-        round_digit = round_digit + 1
+    if first_err_digit == '1' or first_err_digit == '2':
+        round_digit += 1
 
     # I do not why the round routine in numpy produces sometimes an long
     # series of numbers, even after rounding. The internal round routine
     # works marvellous, therefore this is take as the proper output:
 
     return round(value, round_digit), round(error, round_digit), round_digit
-
