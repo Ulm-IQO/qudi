@@ -4063,13 +4063,13 @@ class PulsedMeasurementGui(GUIBase):
 
         # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
         # pulse plot
-        exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
-        exporter.export(filename+'.svg')
-
-        # auxiliary plot
-        if 'None' not in self._mw.second_plot_ComboBox.currentText():
-            exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
-            exporter_aux.export(filename + '_aux' + '.svg')
+        # exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
+        # exporter.export(filename+'.svg')
+        #
+        # # auxiliary plot
+        # if 'None' not in self._mw.second_plot_ComboBox.currentText():
+        #     exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
+        #     exporter_aux.export(filename + '_aux' + '.svg')
 
         self._pulsed_meas_logic._save_data(filetag, timestamp)
 
