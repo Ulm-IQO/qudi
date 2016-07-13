@@ -76,6 +76,30 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         pass
 
+    def get_limits(self):
+        """Dummy limits"""
+        limits = {
+            'frequency': {
+                'min': 100 * 10e3,
+                'max': 50 * 10e9
+                },
+            'power': {
+                'min': -120,
+                'max': 30
+                },
+            'list': {
+                'minstep': 1,
+                'maxstep': 10 * 10e9,
+                'maxentries': 5000
+                },
+            'sweep': {
+                'minstep': 0.1,
+                'maxstep': 10 * 10e9,
+                'maxentries': 10 * 10e9
+                }
+            }
+        return limits
+
     def on(self):
         """ Switches on any preconfigured microwave output.
 
