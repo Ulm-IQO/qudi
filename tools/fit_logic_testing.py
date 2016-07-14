@@ -257,16 +257,16 @@ class FitLogic():
 
             # integral of data corresponds to sqrt(2) * Amplitude * Sigma
             function = InterpolatedUnivariateSpline(x, data_level, k=1)
-            Integral = function.integral(x[0], x[-1])
+            integrated_area = function.integral(x[0], x[-1])
 
-#            lorentz0_sigma = abs(Integral /
+#            lorentz0_sigma = abs(integrated_area /
 #                                 (np.pi * amplitude) )
 #
 #            lorentz0_amplitude = -1*abs(amplitude*np.pi*lorentz0_sigma)
 
 #            minimum_level = 36500
 
-            sigma = abs(Integral /(minimum_level/np.pi ) )
+            sigma = abs(integrated_area /(minimum_level/np.pi ) )
 #            sigma = 600000
 
             amplitude = -1*abs(minimum_level*np.pi*sigma)
@@ -394,6 +394,7 @@ class FitLogic():
 
 
         def N14_testing2(self):
+            """ Old fit version.  """
 
             # Create/load data for fitting
             # ============================
