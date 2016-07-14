@@ -1289,7 +1289,7 @@ class FitLogic():
             """ Double poissonian fit with read in data.
             Second version of double poissonian fit."""
 
-            print_info = False
+            print_info = True
 
             # Usually, we have at first a data trace, from which we need to
             # obtain the histogram. You can just take any 1D trace for the
@@ -1389,15 +1389,8 @@ class FitLogic():
                                                  make_prints=False)
 
             error = search_res[0]
-
-            sigma0_argleft = search_res[1]
-            dip0_arg = search_res[2]
-            sigma0_argright = search_res[3]
-
-            sigma1_argleft = search_res[4]
-            dip1_arg = search_res[5]
-            sigma1_argright = search_res[6]
-
+            sigma0_argleft, dip0_arg, sigma0_argright = search_res[1:4]
+            sigma1_argleft, dip1_arg, sigma1_argright = search_res[4:7]
 
             plt.figure()
             plt.plot(x_axis_interpol, data_smooth, label='smoothed data')
@@ -1411,14 +1404,19 @@ class FitLogic():
             plt.show()
 
             if print_info:
-                print('search_res', search_res, 'left_peak', x_axis_interpol[dip0_arg], 'right_peak', x_axis_interpol[dip1_arg])
+                print('search_res', search_res,
+                      'left_peak', x_axis_interpol[dip0_arg],
+                      'dip0_arg', dip0_arg,
+                      'right_peak', x_axis_interpol[dip1_arg],
+                      'dip1_arg', dip1_arg)
+
 
             # set the initial values for the fit:
             params['poissonian0_mu'].value = x_axis_interpol[dip0_arg]
-            params['poissonian0_amplitude'].value = (interpol_hist[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]) )
+            params['poissonian0_amplitude'].value = (interpol_hist[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
 
             params['poissonian1_mu'].value = x_axis_interpol[dip1_arg]
-            params['poissonian1_amplitude'].value = ( interpol_hist[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]) )
+            params['poissonian1_amplitude'].value = ( interpol_hist[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
 
             # REMEMBER: the fit will be still performed on the original data!!!
             #           The previous treatment of the data was just to find the
