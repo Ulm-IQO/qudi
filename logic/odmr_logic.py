@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
+from core.util.units import get_unit_prefix_dict
 from collections import OrderedDict
 import numpy as np
 from lmfit import Parameters
@@ -474,7 +475,7 @@ class ODMRLogic(GenericLogic):
         # normalize the frequencies according to the chosen text representation.
         # Those values will be converted to a readable string representation,
         # and not used for further processing!
-        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        freq_norm = get_unit_prefix_dict()[self._freq_prefix]
 
         # write all needed parameters (not rounded!) in this dict:
         param_dict = OrderedDict()

@@ -33,6 +33,7 @@ import datetime
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
+from core.util.units import get_unit_prefix_dict
 from .qradiobutton_custom import CustomQRadioButton
 
 from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
@@ -1094,7 +1095,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data*self.get_unit_prefix_dict()[unit_prefix]
+            return data * get_unit_prefix_dict()[unit_prefix]
         return data
 
     def set_element_in_block_table(self, row, column, value):
@@ -1121,7 +1122,7 @@ class PulsedMeasurementGui(GUIBase):
             if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
                 unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
                 # access the method defined in base for unit prefix:
-                value = value/self.get_unit_prefix_dict()[unit_prefix]
+                value = value / get_unit_prefix_dict()[unit_prefix]
             model.setData(model.index(row,column), value, access)
         else:
             self.logMsg('The cell ({0},{1}) in block table could not be '
@@ -3789,7 +3790,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data * self.get_unit_prefix_dict()[unit_prefix]
+            return data * get_unit_prefix_dict()[unit_prefix]
 
         return data
 
@@ -4063,13 +4064,13 @@ class PulsedMeasurementGui(GUIBase):
 
         # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
         # pulse plot
-        exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
-        exporter.export(filename+'.svg')
-
-        # auxiliary plot
-        if 'None' not in self._mw.second_plot_ComboBox.currentText():
-            exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
-            exporter_aux.export(filename + '_aux' + '.svg')
+        # exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
+        # exporter.export(filename+'.svg')
+        #
+        # # auxiliary plot
+        # if 'None' not in self._mw.second_plot_ComboBox.currentText():
+        #     exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
+        #     exporter_aux.export(filename + '_aux' + '.svg')
 
         self._pulsed_meas_logic._save_data(filetag, timestamp)
 
