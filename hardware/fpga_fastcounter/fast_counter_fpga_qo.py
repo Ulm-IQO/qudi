@@ -89,6 +89,14 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                         'default.'.format(self._fpga_type),
                         msgType='warning')
 
+        if 'chnl_switching_voltage' in config.keys():
+            self._switching_voltage = config['chnl_switching_voltage']
+        else:
+            self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5,
+                                       8: 0.5}
+            self.logMsg('No parameter "chnl_switching_voltage" specified in the config!\n'
+                        'Setting all channel thresholds to 500mV', msgType='warning')
+
         # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
         # c dll which was wrapped with SWIG for Windows type systems to be
         # accessed with python 3.4. You have to ensure to use the python 3.4
@@ -115,6 +123,10 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._internal_clock_hz = 950e6 # that is a fixed number, 950MHz
         # connect to the FPGA module
         self._connect()
+        # configure DAC for threshold voltages
+        self._reset_dac()
+        self._activate_dac_ref()
+        self._set_dac_voltages()
 
     def deactivation(self, e):
         """ Deactivate the FPGA.
@@ -161,6 +173,35 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             self._fpga.UpdateWireIns()
             self.statusvar = 0
         return 0
+
+    def _set_dac_voltages(self):
+        """
+        """
+        dac_sma_mapping = {1: 1, 2: 5, 3: 2, 4: 6, 5: 3, 6: 7, 7: 4, 8: 8}
+        set_voltage_cmd = 0x03000000
+        for dac_chnl in range(8):
+            sma_chnl = dac_sma_mapping[dac_chnl+1]
+            dac_value = int(np.rint(4096*self._switching_voltage[sma_chnl]/(2.5*2)))
+            if dac_value > 4095:
+                dac_value = 4095
+            elif dac_value < 0:
+                dac_value = 0
+            tmp_cmd = set_voltage_cmd + (dac_chnl << 20) + (dac_value << 8)
+            self._fpga.SetWireInValue(0x01, tmp_cmd)
+            self._fpga.UpdateWireIns()
+            self._fpga.ActivateTriggerIn(0x40, 0)
+
+    def _activate_dac_ref(self):
+        """
+        """
+        self._fpga.SetWireInValue(0x01, 0x08000001)
+        self._fpga.UpdateWireIns()
+        self._fpga.ActivateTriggerIn(0x40, 0)
+
+    def _reset_dac(self):
+        """
+        """
+        self._fpga.ActivateTriggerIn(0x40, 31)
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
