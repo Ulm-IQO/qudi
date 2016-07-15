@@ -45,12 +45,12 @@ The lorentzian has the following general form:
 
                                  _                       _
                             A   |           sigma         |
-    L(x; A, x_0, sigma) = ----- |  ---------------------- |
+    f(x; A, x_0, sigma) = ----- |  ---------------------- |
                             pi  |_ (x_0 - x)^2 + sigma^2 _|
 
 which can be redefined with
                  !      2
-    L(x=x_0) = I = -----------
+    f(x=x_0) = I = -----------
                     pi * sigma
 
 
@@ -59,6 +59,10 @@ which can be redefined with
     L(x; I, x_0, sigma) =   I * |  --------------------------  |
                                 |_ (x_0 - x)^2 + (sigma/2)^2  _|
 
+
+Note that the fitting algorithm is using the equation f(x; A, x_0, sigma) and
+not L(x; I, x_0, sigma), therefore all the parameters are defined according to
+f(x; A, x_0, sigma).
 
 """
 
@@ -105,7 +109,7 @@ def estimate_lorentz(self,x_axis=None,data=None):
         elif len(np.shape(var))!=1:
             self.logMsg('Given parameter is no one dimensional array.',
                         msgType='error')
-    #set paraameters
+    #set parameters
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
@@ -113,9 +117,10 @@ def estimate_lorentz(self,x_axis=None,data=None):
     data_min = data_level.min()
     data_max = data_level.max()
 
-    #estimate sigma
+    # estimate sigma
     numerical_integral = (np.sum(data_level) *
                           (abs(x_axis[-1] - x_axis[0])) / len(x_axis))
+
 
     if data_max > abs(data_min):
         try:
@@ -134,6 +139,8 @@ def estimate_lorentz(self,x_axis=None,data=None):
 
     sigma = numerical_integral / (np.pi * amplitude_median)
     amplitude = amplitude_median * np.pi * sigma
+
+    amplitude = -1 *abs(amplitude_median * np.pi * sigma)
 
     return error, amplitude, x_zero, sigma, offset
 
@@ -565,7 +572,7 @@ def estimate_N14(self, x_axis=None, data=None):
 
     sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:
-    # sigma = abs(Integral /(np.pi * minimum_level) )
+    # sigma = abs(integrated_area /(np.pi * minimum_level) )
 
     amplitude = -1*abs(minimum_level*np.pi*sigma)
 
@@ -577,6 +584,9 @@ def estimate_N14(self, x_axis=None, data=None):
     linewidth = sigma
     minimal_linewidth = (x_axis[1]-x_axis[0])/4
     maximal_linewidth = x_axis[-1]-x_axis[0]
+
+    # The linewidth of all the lorentzians are set to be the same! that is a
+    # physical constraint for the N14 fitting.
 
     #            (Name,                  Value,          Vary, Min,             Max,           Expr)
     parameters.add('lorentz0_amplitude', value=amplitude,                                                  max=-1e-6)
