@@ -32,7 +32,7 @@ from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
-from core.util.units import get_unit_prefix_dict
+from core.util import units
 
 class ODMRMainWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -145,7 +145,7 @@ class ODMRGui(GUIBase):
 
         # set the prefix, which determines the representation in the viewboxes
         # for the frequencies,  one can choose from the dict obtainable from
-        # get_unit_prefix_dict():
+        # units.get_unit_prefix_dict():
         self._freq_prefix = 'M'
 
         # Add the display item to the xy and xz VieWidget, which was defined in
@@ -203,7 +203,7 @@ class ODMRGui(GUIBase):
         ########################################################################
 
         # Take the default values from logic:
-        freq_norm = get_unit_prefix_dict()[self._freq_prefix]
+        freq_norm = units.get_unit_prefix_dict()[self._freq_prefix]
 
         self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.mw_frequency/freq_norm)
         self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start/freq_norm)
@@ -388,10 +388,10 @@ class ODMRGui(GUIBase):
 
     def refresh_odmr_colorbar(self):
         """ Update the colorbar to a new scaling.
-        
+
         Calls the refresh method from colorbar.
         """
-        
+
         cb_range = self.get_matrix_cb_range()
         self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
 
@@ -451,7 +451,7 @@ class ODMRGui(GUIBase):
 
     def update_fit(self):
         """ Do the configured fit and show it in the sum plot """
-        self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
+        fit_param, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
         self.refresh_plot()
 
         # check which Fit method is used and remove or add again the
@@ -465,7 +465,29 @@ class ODMRGui(GUIBase):
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
         self._mw.odmr_fit_results_DisplayWidget.clear()
-        self._mw.odmr_fit_results_DisplayWidget.setPlainText(str(self._odmr_logic.fit_result))
+
+        # Since the display of the fit parameters is desired e.g. in MHz, adapt
+        # the passed parameter dict for further custom display.
+        for param in fit_param:
+            if fit_param[param]['unit'] == 'Hz':
+
+                freq_prefix = self._freq_prefix
+
+                # safety check, if the prefix is really in the unit_prefix_dict
+                if freq_prefix not in units.get_unit_prefix_dict():
+                    freq_prefix = ''
+                norm = units.get_unit_prefix_dict()[freq_prefix]
+
+                fit_param[param]['unit'] = '{0}{1}'.format(self._freq_prefix, fit_param[param]['unit'])
+                fit_param[param]['value'] = fit_param[param]['value']/norm
+
+                if 'error' in fit_param[param]:
+                    fit_param[param]['error'] = fit_param[param]['error']/norm
+
+
+        formated_results = units.create_formatted_output(fit_param)
+
+        self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
 
     def _format_param_dict(self, param_dict):
         """ Create from the passed param_dict a proper display of the parameters.
@@ -493,22 +515,22 @@ class ODMRGui(GUIBase):
 
     def change_frequency(self):
         """ Change CW frequency of microwave source """
-        freq_norm = get_unit_prefix_dict()[self._freq_prefix]
+        freq_norm = units.get_unit_prefix_dict()[self._freq_prefix]
         self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value()*freq_norm)
 
     def change_start_freq(self):
         """ Change start frequency of frequency sweep """
-        freq_norm = get_unit_prefix_dict()[self._freq_prefix]
+        freq_norm = units.get_unit_prefix_dict()[self._freq_prefix]
         self._odmr_logic.mw_start = self._mw.start_freq_DoubleSpinBox.value()*freq_norm
 
     def change_step_freq(self):
         """ Change step size in which frequency is changed """
-        freq_norm = get_unit_prefix_dict()[self._freq_prefix]
+        freq_norm = units.get_unit_prefix_dict()[self._freq_prefix]
         self._odmr_logic.mw_step = self._mw.step_freq_DoubleSpinBox.value()*freq_norm
 
     def change_stop_freq(self):
         """ Change end of frequency sweep """
-        freq_norm = get_unit_prefix_dict()[self._freq_prefix]
+        freq_norm = units.get_unit_prefix_dict()[self._freq_prefix]
         self._odmr_logic.mw_stop = self._mw.stop_freq_DoubleSpinBox.value()*freq_norm
 
     def change_power(self):
