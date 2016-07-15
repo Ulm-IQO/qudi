@@ -38,21 +38,18 @@ class SlowCounterDummy(Base, SlowCounterInterface):
     # connectors
     _out = {'counter': 'SlowCounterInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-
-        Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
+    def __init__(self, configuration, **kwargs):
+        super().__init__(configuration=configuration, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
-        for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
+        for key in configuration.keys():
+            self.logMsg('{}: {}'.format(key, configuration[key]),
                         msgType='status')
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Fysom.event object from Fysom class.
@@ -124,7 +121,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         self.curr_state_b = True
         self.total_time = 0.0
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

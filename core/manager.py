@@ -63,19 +63,19 @@ class Manager(QtCore.QObject):
       @signal sigManagerQuit: the manager is quitting
       @signal sigManagerShow: show whatever part of the GUI is important
       """
-      
 
-    # Prepare Signal declarations for Qt: Allows Python to interface with Qt 
+
+    # Prepare Signal declarations for Qt: Allows Python to interface with Qt
     # signal and slot delivery mechanisms.
     sigConfigChanged = QtCore.Signal()
-    sigModulesChanged = QtCore.Signal() 
+    sigModulesChanged = QtCore.Signal()
     sigModuleHasQuit = QtCore.Signal(object)
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object, bool)
     sigShowManager = QtCore.Signal()
-    
-    def __init__(self, configFile=None, argv=None):
+
+    def __init__(self, configFile=None, argv=None, **kwargs):
         """Constructor for QuDi main management class
 
           @param string configFile: path to configuration file
@@ -88,18 +88,18 @@ class Manager(QtCore.QObject):
         self.tree['start'] = OrderedDict()
         self.tree['defined'] = OrderedDict()
         self.tree['loaded'] = OrderedDict()
-        
+
         self.tree['defined']['hardware'] = OrderedDict()
         self.tree['loaded']['hardware'] = OrderedDict()
-        
+
         self.tree['start']['gui'] = OrderedDict()
         self.tree['defined']['gui'] = OrderedDict()
         self.tree['loaded']['gui'] = OrderedDict()
-        
+
         self.tree['start']['logic'] = OrderedDict()
         self.tree['defined']['logic'] = OrderedDict()
         self.tree['loaded']['logic'] = OrderedDict()
-        
+
         self.tree['global'] = OrderedDict()
         self.tree['global']['startup'] = list()
 
@@ -116,7 +116,7 @@ class Manager(QtCore.QObject):
             LOG = Logger(self)
             #print(LOG)
             self.logger = LOG
-            
+
             # Command Line parameters
             if argv is not None:
                 try:
@@ -137,9 +137,9 @@ class Manager(QtCore.QObject):
         -s --storagedir=   Storage directory to use
         -g --no-gui         Do not load manager module
     """)
-            
+
             # Initialize parent class QObject
-            QtCore.QObject.__init__(self)
+            super().__init__(**kwargs)
 
             # Thread management
             self.tm = ThreadManager()
@@ -148,7 +148,7 @@ class Manager(QtCore.QObject):
 
             # Task runner
             self.tr = None
-            
+
             # Handle command line options
             loadModules = []
             setStorageDir = None
@@ -177,7 +177,7 @@ class Manager(QtCore.QObject):
                 configFile = self._getConfigFile()
             self.configDir = os.path.dirname(configFile)
             self.readConfig(configFile)
-            
+
             # Create remote module server
             try:
                 if 'serverport' in self.tree['global']:
@@ -249,15 +249,15 @@ class Manager(QtCore.QObject):
 
     def getMainDir(self):
         """Returns the absolut path to the directory of the main software.
-        
+
              @return string: path to the main tree of the software
-        
-        """ 
+
+        """
         return os.path.abspath( os.path.join( os.path.dirname(__file__), ".." ) )
 
     def _getConfigFile(self):
         """ Search all the default locations to find a configuration file.
-          
+
           @return sting: path to configuration file
         """
         path = self.getMainDir()
@@ -281,7 +281,7 @@ class Manager(QtCore.QObject):
         if os.path.isfile(cf):
             return cf
         raise Exception('Could not find config file {0} in: {1}'.format(filename, os.path.join(path, 'config')))
- 
+
     def _appDataDir(self):
         """Get the system specific application data directory.
 
@@ -297,7 +297,7 @@ class Manager(QtCore.QObject):
         else:
             return os.path.expanduser('~/.local/qudi')
 
-            
+
     def readConfig(self, configFile):
         """Read configuration file and sort entries into categories.
 
@@ -306,14 +306,14 @@ class Manager(QtCore.QObject):
         print("============= Starting Manager configuration from {0} =================".format(configFile) )
         self.logger.logMsg("Starting Manager configuration from {0}".format(configFile) )
         cfg = configfile.readConfigFile(configFile)
-            
+
         # Read modules, devices, and stylesheet out of config
         self.configure(cfg)
 
         self.configFile = configFile
         print("\n============= Manager configuration complete =================\n")
         self.logger.logMsg('Manager configuration complete.')
-        
+
     def configure(self, cfg):
         """Sort modules from configuration into categories
 
@@ -324,10 +324,10 @@ class Manager(QtCore.QObject):
           Startup modules can be logic or gui and are loaded
           directly on 'startup'.
           'global' contains settings for the whole application.
-          hardware, logic and gui contain configuration of and 
+          hardware, logic and gui contain configuration of and
           for loadable modules.
         """
-        
+
         for key in cfg:
             try:
                 # hardware
@@ -335,7 +335,7 @@ class Manager(QtCore.QObject):
                     for m in cfg['hardware']:
                         if 'module.Class' in cfg['hardware'][m]:
                             self.tree['defined']['hardware'][m] = cfg['hardware'][m]
-                        else: 
+                        else:
                             self.logger.print_logMsg("    --> Ignoring device {0} -- no module specified".format(m))
 
                 # logic
@@ -345,7 +345,7 @@ class Manager(QtCore.QObject):
                             self.tree['defined']['logic'][m] = cfg['logic'][m]
                         else:
                             self.logger.print_logMsg("    --> Ignoring logic {0} -- no module specified".format(m) )
-                        
+
                 # GUI
                 elif key == 'gui' and self.hasGui:
                     for m in cfg['gui']:
@@ -388,7 +388,7 @@ class Manager(QtCore.QObject):
                             self.gui.setStyleSheet(stylesheet)
                         else:
                             self.tree['global'][m] = cfg['global'][m]
-                
+
                 # Copy in any other configurations.
                 # dicts are extended, all others are overwritten.
                 else:
@@ -420,7 +420,7 @@ class Manager(QtCore.QObject):
                 if os.path.isfile(fileName):
                     return configfile.readConfigFile(fileName)
                 else:
-                    if missingOk: 
+                    if missingOk:
                         return {}
                     else:
                         raise Exception('Config file {0} not found.'.format(fileName) )
@@ -437,12 +437,12 @@ class Manager(QtCore.QObject):
             if not os.path.exists(dirName):
                 os.makedirs(dirName)
             configfile.writeConfigFile(data, fileName)
-    
+
     def configFileName(self, name):
         """Get the full path of a configuration file from its filename.
 
           @param string name: filename of file in configuration directory
-          
+
           @return string: full path to file
         """
         with self.lock:
@@ -450,7 +450,7 @@ class Manager(QtCore.QObject):
 
     def saveConfig(self, filename):
         """Save configuration to a file.
-            
+
           @param str filename: path where the config flie should be saved
         """
         saveconfig = OrderedDict()
@@ -480,7 +480,7 @@ class Manager(QtCore.QObject):
 
     def reloadConfigPart(self, base, mod):
         """Reread the configuration file and update the internal configuration of module
-        
+
         @params str modname: name of module where config file should be reloaded.
         """
         configFile = self._getConfigFile()
@@ -503,25 +503,25 @@ class Manager(QtCore.QObject):
 
           @return object: the loaded python module
         """
-        
+
         self.logger.print_logMsg('Loading module ".{0}.{1}"'.format(baseName, module) )
         if baseName not in ['hardware', 'logic', 'gui']:
             raise Exception('You are trying to cheat the '
                             'system with some category {0}'.format(baseName) )
-        
+
         # load the python module
         mod = importlib.__import__('{0}.{1}'.format(baseName, module), fromlist=['*'])
         # print('refcnt:', sys.getrefcount(mod))
         return mod
- 
-    def configureModule(self, moduleObject, baseName, className, instanceName, 
+
+    def configureModule(self, moduleObject, baseName, className, instanceName,
                         configuration = {} ):
         """Instantiate an object from the class that makes up a QuDi module
            from a loaded python module object.
 
           @param object moduleObject: loaded python module
           @param string baseName: module base package (hardware, logic or gui)
-          @param string className: name of the class we want an object from 
+          @param string className: name of the class we want an object from
                                  (same as module name usually)
           @param string instanceName: unique name thet the QuDi module instance
                                  was given in the configuration
@@ -542,20 +542,21 @@ class Manager(QtCore.QObject):
             else:
                 raise Exception('You are trying to cheat the system with some '
                                 'category {0}'.format(baseName) )
-        
+
         if configuration is None:
             configuration = {}
 
         # get class from module by name
         print( moduleObject, className)
         modclass = getattr(moduleObject, className)
-        
+
         #FIXME: Check if the class we just obtained has the right inheritance
         if not issubclass(modclass, Base):
             raise Exception('Bad inheritance, for instance %s from %s.%s.' % (instanceName, baseName, className))
 
-        # Create object from class (Manager, Name, config)
-        instance = modclass(self, instanceName, configuration)
+        # Create object from class
+        instance = modclass(manager=self, name=instanceName,
+                configuration=configuration)
 
         # Connect to log
         instance.sigLogMessage.connect(self.logger.queuedLogMsg)
@@ -566,14 +567,14 @@ class Manager(QtCore.QObject):
             else:
                 raise Exception('We checked this already, there is no way that '
                                 'we should get base class {0} here'.format(baseName))
-        
+
         self.sigModulesChanged.emit()
         return instance
 
     def connectModule(self, base, mkey):
         """ Connects the given module in mkey to main object with the help of base.
-        
-          @param string base: module base package (hardware, logic or gui)  
+
+          @param string base: module base package (hardware, logic or gui)
           @param string mkey: module which you want to connect
 
           @return int: 0 on success, -1 on failure
@@ -656,7 +657,7 @@ class Manager(QtCore.QObject):
                     ''.format(destmod, mkey, thismodule['module.Class']),
                     msgType='error')
                 continue
-                
+
             # Connect to hardware module
             elif destmod in self.tree['loaded']['hardware']:
                 destbase = 'hardware'
@@ -683,7 +684,7 @@ class Manager(QtCore.QObject):
                 self.logger.logMsg(
                     'OUT connector {} not declared in module {}.{} '
                     'but connected to IN connector {} of module {}'
-                    ''.format(destcon, destbase, destmod, c, thismodule['module.Class']), 
+                    ''.format(destcon, destbase, destmod, c, thismodule['module.Class']),
                     msgType='error')
                 continue
             if not isinstance(outputs[destcon], OrderedDict):
@@ -721,10 +722,10 @@ class Manager(QtCore.QObject):
 
     def loadConfigureModule(self, base, key):
         """Loads the configuration Module in key with the help of base class.
-          
-          @param string base: module base package (hardware, logic or gui)  
+
+          @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be loaded
-          
+
           @return int: 0 on success, -1 on fatal error, 1 on error
         """
         if 'module.Class' in self.tree['defined'][base][key]:
@@ -775,10 +776,10 @@ class Manager(QtCore.QObject):
 
     def reloadConfigureModule(self, base, key):
         """Reloads the configuration module in key with the help of base class.
-          
+
           @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be loaded
-          
+
           @return int: 0 on success, -1 on failure
         """
         if 'remote' in self.tree['defined'][base][key]:
@@ -840,10 +841,10 @@ class Manager(QtCore.QObject):
     @QtCore.pyqtSlot(str, str)
     def activateModule(self, base, key):
         """Activated the module given in key with the help of base class.
-          
-          @param string base: module base package (hardware, logic or gui)  
+
+          @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be activated.
-            
+
         """
         if self.tree['loaded'][base][key].getState() != 'deactivated' and (
                 ( base in self.tree['defined']
@@ -873,10 +874,10 @@ class Manager(QtCore.QObject):
     @QtCore.pyqtSlot(str, str)
     def deactivateModule(self, base, key):
         """Activated the module given in key with the help of base class.
-          
-          @param string base: module base package (hardware, logic or gui)  
+
+          @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be activated.
-            
+
         """
         self.logger.logMsg('Deactivating {0}.{1}'.format(base, key), msgType='status')
         if not self.tree['loaded'][base][key].getState() in ('idle', 'running'):
@@ -905,7 +906,7 @@ class Manager(QtCore.QObject):
             self.logger.logMsg('{0} module {1}: no such base'.format(base, key), msgType='error')
             return None
         if key not in self.tree['loaded'][base]:
-            self.logger.logMsg('{0} module {1}: no such module defined'.format(base, key), msgType='error')            
+            self.logger.logMsg('{0} module {1}: no such module defined'.format(base, key), msgType='error')
             return None
         for mbase in self.tree['loaded']:
             for mkey in self.tree['loaded'][mbase]:
@@ -935,12 +936,12 @@ class Manager(QtCore.QObject):
             self.logger.logMsg('{0} module {1}: no such base'.format(base, key), msgType='error')
             return None
         if key not in self.tree['defined'][base]:
-            self.logger.logMsg('{0} module {1}: no such module defined'.format(base, key), msgType='error')            
+            self.logger.logMsg('{0} module {1}: no such module defined'.format(base, key), msgType='error')
             return None
         if 'connect' not in self.tree['defined'][base][key]:
             return dict()
         if not isinstance(self.tree['defined'][base][key]['connect'], OrderedDict):
-            self.logger.logMsg('{0} module {1}: connect is not a dictionary'.format(base, key), msgType='error')            
+            self.logger.logMsg('{0} module {1}: connect is not a dictionary'.format(base, key), msgType='error')
             return None
         connections = self.tree['defined'][base][key]['connect']
         deplist = set()
@@ -1138,7 +1139,7 @@ class Manager(QtCore.QObject):
 
     def getStatusDir(self):
         """ Get the directory where the app state is saved, create it if necessary.
-            
+
           @return str: path of application status directory
         """
         appStatusDir = os.path.join(self.configDir, 'app_status')
@@ -1164,7 +1165,7 @@ class Manager(QtCore.QObject):
 
     def loadStatusVariables(self, base, module):
         """ If a status variable file exists for a module, load it into a dictionary.
-            
+
           @param str base: the module category
           @param str module: the unique mduel name
 
@@ -1199,39 +1200,39 @@ class Manager(QtCore.QObject):
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 
-    # Staticmethods are used to group functions which have some logical 
-    # connection with a class but they They behave like plain functions except 
-    # that you can call them from an instance or the class. Methods covered 
+    # Staticmethods are used to group functions which have some logical
+    # connection with a class but they They behave like plain functions except
+    # that you can call them from an instance or the class. Methods covered
     # with static decorators are an organization/stylistic feature in python.
     @staticmethod
     def toposort(deps, cost=None):
         """Topological sort. Arguments are:
-        
+
           @param dict deps: Dictionary describing dependencies where a:[b,c]
                             means "a depends on b and c"
           @param dict cost: Optional dictionary of per-node cost values. This
-                            will be used to sort independent graph branches by 
-                            total cost. 
-                
+                            will be used to sort independent graph branches by
+                            total cost.
+
         Examples::
 
             # Sort the following graph:
-            # 
+            #
             #   B ──┬─────> C <── D
-            #       │       │       
+            #       │       │
             #   E <─┴─> A <─┘
-            #     
+            #
             deps = {'a': ['b', 'c'], 'c': ['b', 'd'], 'e': ['b']}
             toposort(deps)
             => ['b', 'e', 'd', 'c', 'a']
-            
-            # This example is underspecified; there are several orders that 
-            # correctly satisfy the graph. However, we may use the 'cost' 
+
+            # This example is underspecified; there are several orders that
+            # correctly satisfy the graph. However, we may use the 'cost'
             # argument to impose more constraints on the sort order.
-            
+
             # Let each node have the following cost:
             cost = {'a': 0, 'b': 0, 'c': 1, 'e': 1, 'd': 3}
-            
+
             # Then the total cost of following any node is its own cost plus
             # the cost of all nodes that follow it:
             #   A = cost[a]
@@ -1239,7 +1240,7 @@ class Manager(QtCore.QObject):
             #   C = cost[c] + cost[a]
             #   D = cost[d] + cost[c] + cost[a]
             #   E = cost[e]
-            # If we sort independent branches such that the highest cost comes 
+            # If we sort independent branches such that the highest cost comes
             # first, the output is:
             toposort(deps, cost=cost)
             => ['d', 'b', 'c', 'e', 'a']
@@ -1261,7 +1262,7 @@ class Manager(QtCore.QObject):
             for n in order[::-1]:
                 for n2 in deps.get(n, []):
                     allDeps[n2] |= allDeps.get(n, set())
-                    
+
             totalCost = {n: sum([cost.get(x, 0) for x in allDeps[n]]) for n in allDeps}
             key = lambda x: totalCost.get(x, 0)
 
@@ -1270,16 +1271,16 @@ class Manager(QtCore.QObject):
         while len(deps) > 0:
             # find all nodes with no remaining dependencies
             ready = [k for k in deps if len(deps[k]) == 0]
-            
+
             # If no nodes are ready, then there must be a cycle in the graph
             if len(ready) == 0:
                 print(deps, deps0)
                 raise Exception('Cannot resolve requested device configure/start order.')
-            
+
             # sort by branch cost
             if key is not None:
                 ready.sort(key=key, reverse=True)
-            
+
             # add the highest-cost node to the order, then remove it from the
             # entire set of dependencies
             order.append(ready[0])
@@ -1289,9 +1290,9 @@ class Manager(QtCore.QObject):
                     v.remove(ready[0])
                 except ValueError:
                     pass
-        
+
         return order
-        
+
     def registerTaskRunner(self, reference):
         """ Register/deregister/replace a task runner object.
 

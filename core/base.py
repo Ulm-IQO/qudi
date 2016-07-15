@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom # provides a final state machine
+from .FysomAdapter import Fysom # provides a final state machine
 from collections import OrderedDict
 
 import numpy as np
@@ -52,7 +52,8 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, configuration={}, callbacks={}, **kwargs):
+    def __init__(self, manager, name, configuration={}, callbacks={},
+            **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
@@ -63,8 +64,6 @@ class Base(QtCore.QObject, Fysom):
 
         """
 
-        # Qt signal/slot capabilities
-        QtCore.QObject.__init__(self)
 
         default_callbacks = {
             'onactivate': self.on_activate,
@@ -98,7 +97,7 @@ class Base(QtCore.QObject, Fysom):
         }
 
         # Initialise state machine:
-        Fysom.__init__(self, _baseStateList)
+        super().__init__(cfg=_baseStateList, **kwargs)
 
         # add connection base
         self.connector = OrderedDict()
@@ -118,6 +117,15 @@ class Base(QtCore.QObject, Fysom):
         self._configuration = configuration
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
+
+    def __getattr__(self, name):
+        # this is a workaround since otherwise only __getattr__ of QObject
+        # is called
+        try:
+            return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+            pass
+        return Fysom.__getattr__(self, name)
 
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden

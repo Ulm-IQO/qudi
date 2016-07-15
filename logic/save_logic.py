@@ -76,10 +76,8 @@ class SaveLogic(GenericLogic):
                     'savefig.dpi': '180'
                     }
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, configuration, **kwargs):
+        super().__init__(configuration=configuration, **kwargs)
 
         # locking for thread safety
         self.lock = Mutex()
@@ -99,15 +97,15 @@ class SaveLogic(GenericLogic):
         # directory was not found in the config:
         if 'linux' in sys.platform or sys.platform == 'darwin':
             self.os_system = 'unix'
-            if 'unix_data_directory' in config.keys():
-                self.data_dir = config['unix_data_directory']
+            if 'unix_data_directory' in configuration.keys():
+                self.data_dir = configuration['unix_data_directory']
             else:
                 self.data_dir = self.default_unix_data_dir
 
         elif 'win32' in sys.platform or 'AMD64' in sys.platform:
             self.os_system = 'win'
-            if 'win_data_directory' in config.keys():
-                self.data_dir = config['win_data_directory']
+            if 'win_data_directory' in configuration.keys():
+                self.data_dir = configuration['win_data_directory']
             else:
                 self.data_dir = self.default_win_data_dir
         else:
@@ -115,11 +113,11 @@ class SaveLogic(GenericLogic):
                         msgType='error')
 
         # checking for the right configuration
-        for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
+        for key in configuration.keys():
+            self.logMsg('{}: {}'.format(key, configuration[key]),
                         msgType='status')
 
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
 
         @param object e: Event class object from Fysom.
@@ -132,7 +130,7 @@ class SaveLogic(GenericLogic):
         """
         pass
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         pass
 
     def save_data(self, data, filepath, parameters=None, filename=None,

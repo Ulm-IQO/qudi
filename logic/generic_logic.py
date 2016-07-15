@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.base import Base
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom
 from core.util.models import DictTableModel
 
 class GenericLogic(Base):
@@ -32,7 +31,7 @@ class GenericLogic(Base):
     _modtype = 'logic'
     _tasks = DictTableModel()
 
-    def __init__(self, manager, name, configuration, callbacks, **kwargs):
+    def __init__(self, **kwargs):
         """ Initialzize a logic module.
 
           @param object manager: Manager object that has instantiated this object
@@ -41,7 +40,7 @@ class GenericLogic(Base):
           @param dict callbacks: dict of callback functions for Fysom state machine
           @param dict kwargs: dict of additional arguments
         """
-        super().__init__(manager, name, configuration, callbacks, **kwargs)
+        super().__init__(**kwargs)
         self.taskLock = Mutex()
 
     def getModuleThread(self):
