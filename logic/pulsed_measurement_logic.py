@@ -877,7 +877,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return list of strings with all available fit functions
 
         """
-        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
+        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Decaying Sine', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
                 'N15', 'Stretched Exponential', 'Exponential', 'XY8']
 
 
@@ -934,6 +934,39 @@ class PulsedMeasurementLogic(GenericLogic):
                                    'error': np.round(result.params['phase'].stderr/np.pi *180, 2),
                                    'unit' : '°'}
 
+            fit_result = self._create_formatted_output(param_dict)
+
+            return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
+
+        elif fit_function == 'Decaying Sine':
+            update_dict = {}
+
+            result = self._fit_logic.make_sineexponentialdecay_fit(axis=self.signal_plot_x,
+                                                   data=self.signal_plot_y,
+                                                   add_parameters=update_dict)
+            sineexp, params = self._fit_logic.make_sineexponentialdecay_model()
+            pulsed_fit_y = sineexp.eval(x=pulsed_fit_x, params=result.params)
+
+            param_dict['Contrast'] = {'value': np.round(np.abs(2*result.params['amplitude'].value*100), 2),
+                                      'error': np.round(2 * result.params['amplitude'].stderr*100, 2),
+                                      'unit' : '%'}
+            param_dict['Frequency'] = {'value': np.round(result.params['frequency'].value/1e6, 3),
+                                       'error': np.round(result.params['frequency'].stderr/1e6, 3),
+                                       'unit' : 'MHz'}
+            # use proper error propagation formula:
+            error_per = 1/(result.params['frequency'].value/1e9)**2 * result.params['frequency'].stderr/1e9
+            param_dict['Period'] = {'value': np.round(1/(result.params['frequency'].value/1e9), 2),
+                                    'error': np.round(error_per, 2),
+                                    'unit' : 'ns'}
+            param_dict['Offset'] = {'value': np.round(result.params['offset'].value, 3),
+                                    'error': np.round(result.params['offset'].stderr, 2),
+                                    'unit' : 'norm. signal'}
+            param_dict['Phase'] = {'value': np.round(result.params['phase'].value/np.pi *180, 3),
+                                   'error': np.round(result.params['phase'].stderr/np.pi *180, 2),
+                                   'unit' : '°'}
+            param_dict['Decay'] = {'value': np.round(result.params['lifetime'].value, 3),
+                                   'error': np.round(result.params['lifetime'].stderr, 2),
+                                   'unit' : 'ns'}
             fit_result = self._create_formatted_output(param_dict)
 
             return pulsed_fit_x, pulsed_fit_y, fit_result, param_dict
