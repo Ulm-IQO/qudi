@@ -216,6 +216,39 @@ def round_value_to_error(value, error):
 
     # I do not why the round routine in numpy produces sometimes an long
     # series of numbers, even after rounding. The internal round routine
-    # works marvellous, therefore this is take as the proper output:
+    # works marvelous, therefore this is taken as the proper output:
 
     return round(value, round_digit), round(error, round_digit), round_digit
+
+
+def is_number(test_value):
+    """ Check whether passed value is a number
+
+    @return: bool, True if the passed value is a number, otherwise false.
+    """
+    return is_integer(test_value) or is_float(test_value) or is_complex(test_value)
+
+def is_integer(test_value):
+    """ Check all available integer representations.
+
+    @return: bool, True if the passed value is a integer, otherwise false.
+    """
+
+    return type(test_value) in [np.int, np.int8, np.int16, np.int32, np.int64,
+                          np.uint, np.uint8, np.uint16, np.uint32, np.uint64]
+
+def is_float(test_value):
+    """ Check all available float representations.
+
+    @return: bool, True if the passed value is a float, otherwise false.
+    """
+    return type(test_value) in [np.float, np.float16, np.float32, np.float64]
+
+def is_complex(test_value):
+    """ Check all available complex representations.
+
+    @return: bool, True if the passed value is a complex value, otherwise false.
+    """
+
+    return type(test_value) in [np.complex, np.complex64, np.complex128]
+

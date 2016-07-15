@@ -32,6 +32,7 @@ from scipy.interpolate import splrep, sproot, splev
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
 import scipy
+import matplotlib
 import matplotlib.pylab as plt
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
@@ -48,7 +49,7 @@ import statsmodels.api as sm
 #import peakutils
 #from peakutils.plot import plot as pplot
 
-
+#matplotlib.rcParams.update({'font.size': 12})
 
 class FitLogic():
         """
@@ -256,16 +257,16 @@ class FitLogic():
 
             # integral of data corresponds to sqrt(2) * Amplitude * Sigma
             function = InterpolatedUnivariateSpline(x, data_level, k=1)
-            Integral = function.integral(x[0], x[-1])
+            integrated_area = function.integral(x[0], x[-1])
 
-#            lorentz0_sigma = abs(Integral /
+#            lorentz0_sigma = abs(integrated_area /
 #                                 (np.pi * amplitude) )
 #
 #            lorentz0_amplitude = -1*abs(amplitude*np.pi*lorentz0_sigma)
 
 #            minimum_level = 36500
 
-            sigma = abs(Integral /(minimum_level/np.pi ) )
+            sigma = abs(integrated_area /(minimum_level/np.pi ) )
 #            sigma = 600000
 
             amplitude = -1*abs(minimum_level*np.pi*sigma)
@@ -393,6 +394,7 @@ class FitLogic():
 
 
         def N14_testing2(self):
+            """ Old fit version.  """
 
             # Create/load data for fitting
             # ============================
@@ -1285,6 +1287,160 @@ class FitLogic():
 
 
         def double_poissonian_testing(self):
+            """ Double poissonian fit with read in data.
+            Second version of double poissonian fit."""
+
+            print_info = True
+
+            # Usually, we have at first a data trace, from which we need to
+            # obtain the histogram. You can just take any 1D trace for the
+            # calculation!
+            path = os.path.abspath(r'C:\Users\astark\Desktop\test_poisson\150902_21h58m_Rabi_171p0_micro-s_Trace.asc')
+            trace_data = np.loadtxt(path)
+
+            # Pretreatment of the data:
+
+            # In the end, the fit should be almost independant of the bin width
+            # in the histogram!
+            bin_width = 1   # should be varied reasonably, i.e. always in
+                            # multiples of 2 [1, 2, 4, 8, 16, ...]. The fit
+                            # should be tested for all these binwidths!
+            num_of_bins = int((trace_data.max() - trace_data.min())/bin_width)
+            hist, bin_edges = np.histogram(trace_data, bins=num_of_bins)
+
+            # the actual x-axis in the histogram must have one data point less
+            # then the number of bin edges in the histogram
+            x_axis = bin_edges[:-1]
+
+            if print_info:
+                print('hist',len(hist),'bin_edges',len(bin_edges))
+
+            plt.figure()
+            plt.plot(trace_data, label='Data trace')
+            plt.xlabel('number of points in trace')
+            plt.ylabel('counts')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+
+            plt.figure()
+            plt.plot(x_axis, hist, label='raw histogram with bin_width={0}'.format(bin_width))
+            plt.xlabel('counts')
+            plt.ylabel('occurences')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            # if you what to display the histogram in a nice way with matplotlib:
+#            n, bins, patches = plt.hist(trace_data, num_of_bins)
+#            n, bins, patches = plt.hist(trace_data, len(bin_edges)-1)
+#            plt.show()
+
+
+            # Create the model and parameter object of the double poissonian:
+            mod_final, params = self.make_poissonian_model(no_of_functions=2)
+
+            #TODO: make the filter an extra function shared and usable for
+            #      other functions.
+            # Calculate here also an interpolation factor, which will be based
+            # on the given data set. If the convolution later on has more
+            # points, then the fit has a higher chance to be successful.
+            # The interpol_factor multiplies the number of points.
+            if len(x_axis) < 20.:
+                len_x = 5
+                interpol_factor = 8
+            elif len(x_axis) >= 100.:
+                len_x = 10
+                interpol_factor = 1
+            else:
+                if len(x_axis) < 60:
+                    interpol_factor = 4
+                else:
+                    interpol_factor = 2
+                len_x = int(len(x_axis) / 10.) + 1
+
+            if print_info:
+                print('interpol_factor', interpol_factor, 'len(x_axis)', len(x_axis))
+
+            # Create the interpolation function, based on the data:
+            function = InterpolatedUnivariateSpline(x_axis, hist, k=1)
+            # adjust the x_axis to that:
+            x_axis_interpol = np.linspace(x_axis[0],x_axis[-1],len(x_axis)*interpol_factor)
+            # create actually the interpolated data:
+            interpol_hist = function(x_axis_interpol)
+
+            # Use a gaussian function to convolve with the data, to smooth the
+            # datatrace. Then the peak search algorithm performs much better.
+            gaus = gaussian(len_x, len_x)
+            data_smooth = filters.convolve1d(interpol_hist, gaus / gaus.sum(), mode='mirror')
+
+            # perform the peak search algorithm, use the peak search algorithm
+            # which is also applied to the data, which had a dip.
+            threshold_fraction=0.4
+            minimal_threshold=0.1
+            sigma_threshold_fraction=0.2
+
+            search_res = self._search_double_dip(x_axis_interpol,
+                                                 data_smooth * (-1),
+                                                 threshold_fraction,
+                                                 minimal_threshold,
+                                                 sigma_threshold_fraction,
+                                                 make_prints=False)
+
+            error = search_res[0]
+            sigma0_argleft, dip0_arg, sigma0_argright = search_res[1:4]
+            sigma1_argleft, dip1_arg, sigma1_argright = search_res[4:7]
+
+            plt.figure()
+            plt.plot(x_axis_interpol, data_smooth, label='smoothed data')
+            plt.plot(x_axis_interpol, interpol_hist, label='interpolated data')
+            plt.xlabel('counts')
+            plt.ylabel('occurences')
+            plt.axvline(x=x_axis_interpol[dip0_arg],color='r', label='left_peak_estimate')
+            plt.axvline(x=x_axis_interpol[dip1_arg],color='m', label='right_peak_estimate')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            if print_info:
+                print('search_res', search_res,
+                      'left_peak', x_axis_interpol[dip0_arg],
+                      'dip0_arg', dip0_arg,
+                      'right_peak', x_axis_interpol[dip1_arg],
+                      'dip1_arg', dip1_arg)
+
+
+            # set the initial values for the fit:
+            params['poissonian0_mu'].value = x_axis_interpol[dip0_arg]
+            params['poissonian0_amplitude'].value = (interpol_hist[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
+
+            params['poissonian1_mu'].value = x_axis_interpol[dip1_arg]
+            params['poissonian1_amplitude'].value = ( interpol_hist[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
+
+            # REMEMBER: the fit will be still performed on the original data!!!
+            #           The previous treatment of the data was just to find the
+            #           initial values!
+            result = mod_final.fit(hist, x=x_axis, params=params)
+            print(result.fit_report())
+
+            # to total result in the end:
+            plt.figure()
+            plt.plot(x_axis, hist, '-b', label='original data')
+            plt.plot(x_axis, data_smooth, '-g', linewidth=2.0, label='smoothed interpolated data')
+            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
+            plt.plot(x_axis, result.best_fit,'-r',linewidth=2.0, label='best fit')
+            plt.xlabel('counts')
+            plt.ylabel('occurences')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+        def double_poissonian_testing2(self):
+            """ Testing of double poissonian with self created data.
+            First version of double poissonian fit."""
+
             start=100
             stop=300
             num_points=int((stop-start)+1)*100
@@ -1320,6 +1476,7 @@ class FitLogic():
 
             except:
                 print('exception')
+
 
         def poissonian_testing(self):
             start=0
@@ -1694,7 +1851,7 @@ class FitLogic():
 plt.rcParams['figure.figsize'] = (10,5)
 
 test=FitLogic()
-test.N14_testing()
+#test.N14_testing()
 #test.N14_testing2()
 #test.N15_testing()
 #test.oneD_testing()
@@ -1709,7 +1866,7 @@ test.N14_testing()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
-#test.double_poissonian_testing()
+test.double_poissonian_testing()
 # test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
