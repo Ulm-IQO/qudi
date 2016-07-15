@@ -58,7 +58,9 @@ def create_formatted_output(param_dict, default_digits=5):
     @param int default_digits: optional, the default digits will be taken,
                                if the rounding procedure was not successful
                                at all. That will ensure at least that not
-                               all the digits are displayed.
+                               all the digits are displayed. The default digits
+                               are add to the first non-zero digit of the value.
+                               According to that the error will be displayed.
 
     @return str: a string, which is nicely formatted.
 
@@ -94,7 +96,8 @@ def create_formatted_output(param_dict, default_digits=5):
             # some sort of a display:
             if np.isclose(value, 0.0) or np.isnan(error) or np.isclose(error, 0.0):
 
-                # catch the rare case, when the value is almost exact zero:
+                # catch the rare case, when the value is almost exact zero now
+                # in both cases, before and after the rounding routine:
                 if np.isclose(param_dict[entry]['value'], 0.0):
 
                     if np.isnan(error) or np.isclose(error, 0.0):
@@ -112,10 +115,15 @@ def create_formatted_output(param_dict, default_digits=5):
                         value = param_dict[entry]['value']
                         error = param_dict[entry]['error']
                 else:
-                    # just output the specified default_digits of the value
-                    # if fit was not working properly:
-                    digit = -(int(np.log10(abs(param_dict[entry]['value'])))-default_digits)
-                    value = param_dict[entry]['value']
+                    if np.isinf(param_dict[entry]['value']):
+                        value = param_dict[entry]['value']
+                        digit = 0
+
+                    else:
+                        # just output the specified default_digits of the value
+                        # if fit was not working properly:
+                        digit = -(int(np.log10(abs(param_dict[entry]['value'])))-default_digits)
+                        value = param_dict[entry]['value']
 
             if digit < 0:
                 output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
@@ -189,7 +197,7 @@ def round_value_to_error(value, error):
     """
 
     # check if error is zero, since that is an invalid input!
-    if np.isclose(error, 0.0) or np.isnan(error):
+    if np.isclose(error, 0.0) or np.isnan(error) or np.isinf(error):
         #self.logMsg('Cannot round to the error, since either a zero error '
         #            'value was passed for the number {0}, or the error is '
         #            'NaN: Error value: {1}. '.format(value, error),
