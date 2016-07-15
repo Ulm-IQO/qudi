@@ -56,19 +56,18 @@ class ManagerGui(GUIBase):
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """Create an instance of the module.
 
           @param object manager:
           @param str name:
           @param dict config:
         """
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+        super().__init__(**kwargs)
         self.modlist = list()
         self.modules = set()
 
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Activation method called on change to active state.
 
         @param object e: Fysom.event object from Fysom class.
@@ -141,7 +140,7 @@ class ManagerGui(GUIBase):
         #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
-    def deactivation(self,e):
+    def on_deactivate(self,e):
         """Close window and remove connections.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

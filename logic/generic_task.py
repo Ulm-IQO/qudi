@@ -23,11 +23,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom
+from core.FysomAdapter import Fysom
 
 class TaskResult(QtCore.QObject):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.data = None
         self.success = None
 
@@ -39,7 +39,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
     """ This class represents a task in a module that can be safely executed by checking preconditions
         and pausing other tasks that are being executed as well.
         The task can also be paused, given that the preconditions for pausing are met.
-        
+
         State diagram for InterruptableTask:
 
         stopped -> starting -----------> running ---------> finishing -*
@@ -70,14 +70,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
     pauseTasks = {}
     requiredModules = []
 
-    def __init__(self, name, runner, references, config):
+    def __init__(self, name, runner, references, config, **kwargs):
         """ Create an Interruptable task.
           @param str name: unique task name
           @param object runner: reference to the TaskRunner managing this task
           @param dict references: a dictionary of all required modules
           @param dict config: configuration dictionary
         """
-        QtCore.QObject.__init__(self)
         default_callbacks = {
                 'onrun': self._start,
                 'onpause': self._pause,
@@ -101,7 +100,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             ],
             'callbacks': default_callbacks
         }
-        Fysom.__init__(self, _stateDict)
+        super().__init__(cfg=_stateDict, **kwargs)
         self.lock = Mutex()
         self.name = name
         self.interruptable = False
@@ -124,7 +123,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigStateChanged.emit(e)
 
     def _start(self, e):
-        """  
+        """
           @param object e: Fysom state transition description
 
           @return bool: True if task was started, False otherwise
@@ -152,7 +151,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         except Exception as e:
             self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
-    
+
     def _doTaskStep(self):
         """ Check for state transitions to pause or stop and execute one step of the task work function.
         """
@@ -172,9 +171,9 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
             self.finish()
             self.sigDoFinish.emit()
-                
+
     def _pause(self, e):
-        """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step. 
+        """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step.
         """
         pass
 
@@ -189,7 +188,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         except Exception as e:
             self.runner.logExc('Exception while pausing task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
-        
+
     def _resume(self, e):
         """ Trigger resuming action.
         """
@@ -234,7 +233,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 return False
         for task in self.pauseTasks:
             if not (isinstance(self.pauseTasks[task], InterruptibleTask)
-                    and ( 
+                    and (
                         self.pauseTasks[task].can('pause')
                         or self.pauseTasks[task].isstate('stopped')
                     )):
@@ -245,9 +244,9 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkExtraStartPrerequisites(self):
-        """ If your task has extra prerequisites that are not covered by 
-            checking if a certain task can be paused, overwrite this function 
-            when sub-classing. 
+        """ If your task has extra prerequisites that are not covered by
+            checking if a certain task can be paused, overwrite this function
+            when sub-classing.
 
         @return bool: return True if task can be started, False otherwise
         """
@@ -384,4 +383,4 @@ class PrePostTask(QtCore.QObject, Fysom):
             self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
 
         self.sigPostExecFinish.emit()
-        
+

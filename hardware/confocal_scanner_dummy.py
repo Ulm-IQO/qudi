@@ -37,22 +37,19 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     _in = {'fitlogic': 'FitLogic'}
     _out = {'confocalscanner': 'ConfocalScannerInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, configuration, **kwargs):
+        super().__init__(configuration=configuration, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
-        for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
+        for key in configuration.keys():
+            self.logMsg('{}: {}'.format(key, configuration[key]),
                         msgType='status')
 
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
+        if 'clock_frequency' in configuration.keys():
+            self._clock_frequency = configuration['clock_frequency']
         else:
             self._clock_frequency = 100
             self.logMsg('No clock_frequency configured taking 100 Hz instead.',
@@ -69,7 +66,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -132,7 +129,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # offset
         self._points_z[:, 3] = 0
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate properly the confocal scanner dummy.
 
         @param object e: Event class object from Fysom. A more detailed
