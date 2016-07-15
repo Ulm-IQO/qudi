@@ -89,13 +89,10 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                         'default.'.format(self._fpga_type),
                         msgType='warning')
 
-        if 'chnl_switching_voltage' in config.keys():
-            self._switching_voltage = config['chnl_switching_voltage']
-        else:
-            self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5,
-                                       8: 0.5}
-            self.logMsg('No parameter "chnl_switching_voltage" specified in the config!\n'
-                        'Setting all channel thresholds to 500mV', msgType='warning')
+        self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5}
+        for key in config.keys():
+            if 'threshV_ch' in key:
+                self._switching_voltage[int(key[-1])] = config[key]
 
         # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
         # c dll which was wrapped with SWIG for Windows type systems to be
@@ -205,6 +202,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
+
 
         @return dict: dict with keys being the constraint names as string and
                       items are the definition for the constaints.
@@ -317,7 +315,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # initialize the read buffer for the USB transfer.
         # one timebin of the data to read is 32 bit wide and the data is
         # transferred in bytes.
-
         if self.statusvar != 2:
             self.logMsg('The FPGA is currently not running! The current status '
                         'is: "{0}". The running status would be 2. Start the '

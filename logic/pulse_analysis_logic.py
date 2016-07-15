@@ -100,11 +100,10 @@ class PulseAnalysisLogic(GenericLogic):
         @return: float array signal_data: Array with the computed signal
         @return: float array laser_data: Array with the laser data
         @return: float array raw_data: Array with the raw data
-        @return: bool is_gated: True if gated counter, otherwise ungated counter
         """
 
         # acquire data from the pulse extraction logic
-        laser_data, raw_data, is_gated = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
+        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
 
         # Initialize the signal and normalization mean data arrays
         reference_mean = np.zeros(num_of_lasers, dtype=float)
@@ -132,7 +131,7 @@ class PulseAnalysisLogic(GenericLogic):
 
             measuring_error[jj] = self.calculate_measuring_error(signal_area[jj], reference_area[jj])
 
-        return signal_data, laser_data, raw_data, measuring_error, is_gated
+        return signal_data, laser_data, raw_data, measuring_error
 
 
 
