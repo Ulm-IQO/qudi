@@ -3928,10 +3928,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='ns')
 
-
-        # prepare the combobox:
-        self.num_of_lasers_changed()
-
         self._mw.extract_param_ana_window_start_SpinBox.setValue(self._pulsed_meas_logic.signal_start_bin)
         self._mw.extract_param_ana_window_width_SpinBox.setValue(self._pulsed_meas_logic.signal_width_bin)
         self._mw.extract_param_ref_window_start_SpinBox.setValue(self._pulsed_meas_logic.norm_start_bin)

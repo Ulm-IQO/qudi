@@ -28,6 +28,7 @@ import core.util.numpyhelpers as nphelp
 import numpy as np
 import time
 import datetime
+import matplotlib.pyplot as plt
 
 class PulsedMeasurementLogic(GenericLogic):
     """unstable: Nikolas Tomek
@@ -568,7 +569,7 @@ class PulsedMeasurementLogic(GenericLogic):
             norm_end = self.norm_start_bin + self.norm_width_bin
 
             # analyze pulses and get data points for signal plot
-            tmp_signal,self.laser_data,self.raw_data,tmp_error,self.is_gated = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
+            tmp_signal,self.laser_data,self.raw_data,tmp_error = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
 
             if self.alternating:
                 self.signal_plot_y = tmp_signal[::2]
@@ -605,7 +606,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         if self.raw_laser_pulse:
 
-            if self.is_gated:
+            if self.fast_counter_gated:
                 if laser_num > 0:
                     self.laser_plot_y = self.raw_data[laser_num-1]
                 else:
@@ -827,8 +828,20 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Normalization start (bin)'] = self.norm_start_bin
         parameters['Normalization width (bins)'] = self.norm_width_bin
 
+        # Prepare the figure to save as a "data thumbnail"
+        plt.style.use(self._save_logic.mpl_qd_style)
+        fig, ax1 = plt.subplots()
+        ax1.plot(self.signal_plot_x, self.signal_plot_y)
+        if self.alternating:
+            ax1.plot(self.signal_plot_x, self.signal_plot_y2)
+        ax1.set_xlabel('x-axis')
+        ax1.set_ylabel('norm. sig (a.u.)')
+        # ax1.set_xlim(self.plot_domain)
+        # ax1.set_ylim(self.plot_range)
+        fig.tight_layout()
+
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':.6f')
+                                   timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6f')
 
         #####################################################################
         ####                Save raw data timetrace                      ####
