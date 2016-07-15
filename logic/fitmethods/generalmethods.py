@@ -56,26 +56,26 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
                 parameters.add(para)
             if 'min' in update_dict[para]:
                 parameters[para].min = update_dict[para]['min']
-    
+
             if 'max' in update_dict[para]:
                 parameters[para].max = update_dict[para]['max']
-    
+
             if 'vary' in update_dict[para]:
                 parameters[para].vary = update_dict[para]['vary']
-    
+
             if 'expr' in update_dict[para]:
                 parameters[para].expr = update_dict[para]['expr']
-                
+
             if 'value' in update_dict[para]:
                 if parameters[para].min is not None:
                     if (parameters[para].min > update_dict[para]['value']):
-                        parameters[para].min = update_dict[para]['value'] 
+                        parameters[para].min = update_dict[para]['value']
                         parameters[para].value = update_dict[para]['value']
                 if parameters[para].max is not None:
                     if (parameters[para].max < update_dict[para]['value']):
-                        parameters[para].max = update_dict[para]['value']                    
+                        parameters[para].max = update_dict[para]['value']
                         parameters[para].value = update_dict[para]['value']
-                else:        
+                else:
                     parameters[para].value = update_dict[para]['value']
         return parameters
 
@@ -196,7 +196,9 @@ def _search_end_of_dip(self, direction, data, peak_arg, start_arg, end_arg, sigm
     return sigma_threshold,sigma_arg
 
 
-def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_threshold=0.01, sigma_threshold_fraction=0.3, make_prints=False):
+def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
+                       minimal_threshold=0.01, sigma_threshold_fraction=0.3,
+                       make_prints=False):
     """ This method searches for a double dip. There are three values which can be set in order to adjust
     the search. A threshold which defines when  a minimum is a dip,
     this threshold is then lowered if no dip can be found until the
@@ -383,8 +385,8 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_thres
                                  make_prints= make_prints)
 
     return error, sigma0_argleft, dip0_arg, sigma0_argright, sigma1_argleft, dip1_arg, sigma1_argright
-    
-    
+
+
 ############################################################################
 #                                                                          #
 #             Additional routines with Lorentzian-like filter              #
