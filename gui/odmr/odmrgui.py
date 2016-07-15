@@ -26,6 +26,8 @@ import pyqtgraph.exporters
 import numpy as np
 import datetime
 import os
+from collections import OrderedDict
+import copy
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -451,8 +453,10 @@ class ODMRGui(GUIBase):
 
     def update_fit(self):
         """ Do the configured fit and show it in the sum plot """
-        fit_param, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
+        fit_param_dump, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
         self.refresh_plot()
+
+        fit_param = copy.deepcopy(fit_param_dump)
 
         # check which Fit method is used and remove or add again the
         # odmr_fit_image, check also whether a odmr_fit_image already exists.

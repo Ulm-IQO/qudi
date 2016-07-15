@@ -105,7 +105,9 @@ class ODMRLogic(GenericLogic):
         self._odmrscan_counter = 0
         self._clock_frequency = 200     # in Hz
         self.fit_function = 'No Fit'
-        # self.fit_result = ''
+
+        self._fit_param = None
+        self._fit_result = None
 
         self.fit_models = OrderedDict([
             ('Lorentzian', self._fit_logic.make_lorentzian_model()),
@@ -226,6 +228,8 @@ class ODMRLogic(GenericLogic):
 
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
         self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step / 10.)
+        self._fit_param = None
+        self._fit_result = None
 
         if self.safeRawData:
             # All that is necesarry fo saving of raw data:
@@ -305,7 +309,7 @@ class ODMRLogic(GenericLogic):
         """¨Set the option to clear the curret ODMR plot.
 
         The clear operation has to be performed within the method
-        _scan_ODMR_line. This method just sets the tag for that. """
+        _scan_ODMR_line. This method just sets the flag for that. """
         self._clear_odmr_plots = True
 
     def _scan_ODMR_line(self):
@@ -815,6 +819,9 @@ class ODMRLogic(GenericLogic):
         #FIXME: Check whether this signal is really necessary here.
         self.sigOdmrPlotUpdated.emit()
 
+        self._fit_param = param_dict
+        self._fit_result = result
+
         return param_dict, result
 
     def save_ODMR_Data(self, tag=None, colorscale_range=None, percentile_range=None):
@@ -858,10 +865,13 @@ class ODMRLogic(GenericLogic):
         parameters['Number of matrix lines (#)'] = self.number_of_lines
         parameters['Fit function'] = self.current_fit_function
 
-        i = 0
-        for line in self.fit_result.splitlines():
-            parameters['Fit result {}'.format(i)] = line
-            i += 1
+
+        # add all fit parameter to the saved data:
+        if self._fit_param is not None:
+            for param in self._fit_param:
+                for entry in self._fit_param[param]:
+                    name = '{0}_{1}'.format(param, entry)
+                    parameters[name] = self._fit_param[param][entry]
 
         fig = self.draw_figure(cbar_range=colorscale_range,
                                percentile_range=percentile_range
