@@ -26,7 +26,6 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 import time
 import traceback
 import sys
-import os
 import logging
 
 import pyqtgraph.debug as pgdebug
@@ -86,6 +85,8 @@ def info(msg, *args, **kwargs):
 def debug(msg, *args, **kwargs):
     logger.debug(msg, *args, **kwargs)
 
+def exception(msg, *args, **kwargs):
+    logger.exception(msg, *args, **kwargs)
 
 class QtLogFormatter(logging.Formatter):
     def processEntry(self, entry):

@@ -25,6 +25,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
@@ -306,7 +307,7 @@ class LaserScannerLogic(GenericLogic):
 
     def _generate_ramp(self, voltage1, voltage2, speed):
         """Generate a ramp vrom voltage1 to voltage2 that
-        satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the 
+        satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the
         ramp is just linear.
 
         @param float voltage1: voltage at start of ramp.
@@ -413,12 +414,12 @@ class LaserScannerLogic(GenericLogic):
             self._scanning_device.close_scanner()
             self._scanning_device.close_scanner_clock()
         except Exception as e:
-            self.logExc('Could not even close the scanner, giving up.', msgType='error')
+            logger.exception('Could not even close the scanner, giving up.')
             raise e
         try:
             self._scanning_device.unlock()
         except Exception as e:
-            self.logExc('Could not unlock scanning device.', msgType='error')
+            logger.exception('Could not unlock scanning device.')
 
         return 0
 
