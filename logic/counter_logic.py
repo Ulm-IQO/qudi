@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
@@ -463,7 +464,8 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    self.logExc('Could not even close the hardware, giving up.', msgType='error')
+                    logger.exception('Could not even close the hardware,'
+                            ' giving up.')
                     raise e
                 finally:
                     # switch the state variable off again
@@ -617,8 +619,8 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    self.logExc('Could not even close the hardware, giving up.',
-                                msgType='error')
+                    logger.exception('Could not even close the '
+                            'hardware, giving up.')
                     raise e
                 finally:
                     # switch the state variable off again

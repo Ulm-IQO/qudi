@@ -84,6 +84,7 @@ class CounterGui(GUIBase):
                          had happened.
         """
 
+        raise Exception("test")
         self._counting_logic = self.connector['in']['counterlogic1']['object']
 
         #####################

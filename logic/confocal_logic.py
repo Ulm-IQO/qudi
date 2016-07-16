@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from core.util.mutex import Mutex
 from core.util.numpyhelpers import numpy_to_b, numpy_from_b
 from collections import OrderedDict
@@ -565,12 +566,12 @@ class ConfocalLogic(GenericLogic):
             self._scanning_device.close_scanner()
             self._scanning_device.close_scanner_clock()
         except Exception as e:
-            self.logExc('Could not even close the scanner, giving up.', msgType='error')
+            logger.exception('Could not even close the scanner, giving up.')
             raise e
         try:
             self._scanning_device.unlock()
         except Exception as e:
-            self.logExc('Could not unlock scanning device.', msgType='error')
+            logger.exception('Could not unlock scanning device.')
 
         return 0
 

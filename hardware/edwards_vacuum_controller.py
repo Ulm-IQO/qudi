@@ -22,13 +22,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
+import core.logger as logger
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 import visa
 
 class EdwardsVacuumController(Base):
     """
-    This module implements communication with the Edwards turbopump and 
+    This module implements communication with the Edwards turbopump and
     vacuum equipment.
     """
     _modclass = 'edwards_pump'
@@ -95,7 +96,7 @@ class EdwardsVacuumController(Base):
         46: 'Brownout/Short',
         47: 'Service due'
     }
-    
+
     GAS_TYPE = {
         0: 'Nitrogen',
         1: 'Helium',
@@ -104,8 +105,8 @@ class EdwardsVacuumController(Base):
         4: 'Neon',
         5: 'Krypton',
         6: 'Voltage'
-    }    
-    
+    }
+
     GAUGE_TYPE = {
         0 : 'Unknown Device',
         1 : 'No Device',
@@ -134,7 +135,7 @@ class EdwardsVacuumController(Base):
         24: 'USER',
         25: 'ASG'
     }
-    
+
     GAUGE_STATE = {
         0:  'Gauge Not connected',
         1:  'Gauge Connected',
@@ -150,7 +151,7 @@ class EdwardsVacuumController(Base):
         11: 'On',
         12: 'Inhibited'
     }
-    
+
     GAUGE_UNIT = {
         66: 'Voltage',
         59: 'Pressure',
@@ -188,7 +189,7 @@ class EdwardsVacuumController(Base):
         4: 'On'
     }
 
-    
+
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -203,7 +204,7 @@ class EdwardsVacuumController(Base):
 
     def connect_tic(self, interface):
         """ Connect to Instrument.
-        
+
             @param str interface: visa interface identifier
 
             @return bool: connection success
@@ -219,11 +220,11 @@ class EdwardsVacuumController(Base):
                 send_end=True
             )
         except visa.VisaIOError as e:
-            self.logExc()
+            logger.exception("")
             return False
 
     def disconnect_tic(self):
-        """ 
+        """
         Close connection to instrument.
         """
         self.inst.close()
@@ -284,7 +285,7 @@ class EdwardsVacuumController(Base):
         p2 = self._get_gauge(914)['value']
         p3 = self._get_gauge(915)['value']
         return {'gauge1': p1, 'gauge2': p2, 'gauge3': p3}
-   
+
     def get_turbo_status(self):
         return self._get_pstate(904)
 
@@ -296,10 +297,10 @@ class EdwardsVacuumController(Base):
 
     def get_backing_status(self):
         return self._get_pstate(910)
-    
+
     def get_backing_speed(self):
         return self._get_pval(911)
- 
+
     def get_backing_power(self):
         return self._get_pval(912)
 
@@ -320,7 +321,7 @@ class EdwardsVacuumController(Base):
 
     def get_pump_speeds(self):
         return {'turbo': self.get_turbo_speed()['value'], 'backing': self.get_backing_speed()['value']}
-        
+
     def get_pump_powers(self):
         return {'turbo': self.get_turbo_power()['value'], 'backing': self.get_backing_power()['value']}
 

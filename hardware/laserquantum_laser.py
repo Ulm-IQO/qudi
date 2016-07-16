@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
+import core.logger as logger
 from interface.simple_laser_interface import *
 from enum import Enum
 import visa
@@ -83,7 +84,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
                 send_end=True)
             self.inst.timeout = 50
         except visa.VisaIOError as e:
-            self.logExc()
+            logger.exception("")
             return False
         else:
             return True

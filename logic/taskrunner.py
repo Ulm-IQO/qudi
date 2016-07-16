@@ -25,6 +25,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.models import ListTableModel
 import logic.generic_task as gt
 import importlib
+import core.logger
 
 class TaskListTableModel(ListTableModel):
     """ An extension of the ListTableModel for keeping a task list in a TaskRunner.
@@ -183,8 +184,9 @@ class TaskRunner(GenericLogic):
                     self.model.append(t)
                 else:
                     self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
-            except Exception as e:
-                self.logExc('Error while importing module for task {}'.format(t['name']), msgType='error')
+            except:
+                core.logger.exception('Error while importing module for '
+                        'task {}'.format(t['name']))
         self.sigCheckTasks.emit()
 
     def registerTask(self, task):
@@ -423,7 +425,8 @@ class TaskRunner(GenericLogic):
                             self.logMsg('This pausetask {} failed while resuming after stop: {}'.format(ptask, task['name']), msgType='error')
                             return False
             except:
-                self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                core.logger.exception('This pausetask {} failed while '
+                        'preparing: {}'.format(ptask, task['name']))
                 return False
         return True
 
@@ -454,7 +457,8 @@ class TaskRunner(GenericLogic):
                             self.logMsg('This preposttask {} failed while postrunning in: {}'.format(pptask, task['name']), msgType='error')
                             return False
             except:
-                self.logExc('This preposttask {} failed while postrunning in: {}'.format(pptask, task['name']), msgType='error')
+                core.logger.exception('This preposttask {} failed while '
+                        'postrunning in: {}'.format(pptask, task['name']))
                 return False
         return True
 
@@ -487,7 +491,8 @@ class TaskRunner(GenericLogic):
                             self.logMsg('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
                             return False
             except:
-                self.logExc('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                core.logger.exception('This preposttask {} failed while '
+                        'preparing: {}'.format(pptask, task['name']))
                 return False
 
     def pausePauseTasks(self, ref):
@@ -519,7 +524,8 @@ class TaskRunner(GenericLogic):
                             self.logMsg('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
                             return False
             except:
-                self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                core.logger.exception('This pausetask {} failed while '
+                        'preparing: {}'.format(ptask, task['name']))
                 return False
         return True
 
