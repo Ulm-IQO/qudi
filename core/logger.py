@@ -59,17 +59,86 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     """
     pgdebug.printExc(msg, indent, prefix)
 
+LEVEL_THREAD = 25
+LEVEL_USER = 22
+LOGGER_NAME = 'qudi'
+
+logger = logging.getLogger(LOGGER_NAME)
+
+def critical(msg, *args, **kwargs):
+    logger.critical(msg, *args, **kwargs)
+
+def error(msg, *args, **kwargs):
+    logger.error(msg, *args, **kwargs)
+
+def warning(msg, *args, **kwargs):
+    logger.warning(msg, *args, **kwargs)
+
+def thread(msg, *args, **kwargs):
+    logger.log(LEVEL_THREAD, msg, *args, **kwargs)
+
+def user(msg, *args, **kwargs):
+    logger.log(LEVEL_USER, msg, *args, **kwargs)
+
+def info(msg, *args, **kwargs):
+    logger.info(msg, *args, **kwargs)
+
+def debug(msg, *args, **kwargs):
+    logger.debug(msg, *args, **kwargs)
+
 
 class QtLogFormatter(logging.Formatter):
+    def processEntry(self, entry):
+        """Convert excpetion into serializable form.
+
+            @param dict entry: log file entry
+        """
+        ## pre-processing common to saveEntry and displayEntry
+        ## convert exc_info to serializable dictionary
+        if entry.get('exception', None) is not None:
+            exc_info = entry.pop('exception')
+            entry['exception'] = self.exceptionToDict(*exc_info,
+                                        topTraceback=entry.get('traceback', []))
+        else:
+            entry['exception'] = None
+
+    def exceptionToDict(self, exType, exc, tb, topTraceback):
+        """Convert exception object to dictionary.
+
+          @param exType: exception type
+          @param exc: exception object
+          @param tb: traceback object
+          @param topTraceback: ??
+
+          @return dict: dictionary containing traceback and exception information
+        """
+        excDict = {}
+        excDict['message'] = traceback.format_exception(exType, exc, tb)[-1][:-1]
+        excDict['traceback'] = topTraceback + traceback.format_exception(exType, exc, tb)[:-1]
+        if hasattr(exc, 'docs'):
+            if len(exc.docs) > 0:
+                excDict['docs'] = exc.docs
+        if hasattr(exc, 'reasons'):
+            if len(exc.reasons) > 0:
+                excDict['reasons'] = exc.reasons
+        if hasattr(exc, 'kwargs'):
+            for k in exc.kwargs:
+                excDict[k] = exc.kwargs[k]
+        if hasattr(exc, 'oldExc'):
+            excDict['oldExc'] = self.exceptionToDict(*exc.oldExc, topTraceback=[])
+        return excDict
+
     def format(self, record):
-        return {
+        entry = {
             'message': record.msg,
             'timestamp': self.formatTime(record, datefmt="%Y-%m-%d %H:%M:%S"),
             'importance': 5,
-            'msgType': 'status', #record.levelno, #todo convert to string
-            #'exception': exception,
+            'msgType': record.levelname,
+            'exception': record.exc_info,
             'id': 1, # message count: remove?
             }
+        self.processEntry(entry)
+        return entry
 
 
 class QtLogHandler(logging.Handler):
@@ -95,17 +164,35 @@ class Logger(QtCore.QObject):
                                  belongs to.
         """
         super().__init__(**kwargs)
-        path = os.path.dirname(__file__)
         self.manager = manager
         self.msgCount = 0
         self.logCount = 0
         self.logFile = None
 
-        logger = logging.getLogger('testlogger')
-        ## add Qt log handler
+        # initialize logger
+        logging.basicConfig(format="%(message)s", level=logging.INFO)
+        logger = logging.getLogger(LOGGER_NAME)
+        logging.addLevelName(logging.CRITICAL, 'critical')
+        logging.addLevelName(logging.ERROR, 'error')
+        logging.addLevelName(logging.WARNING, 'warning')
+        logging.addLevelName(LEVEL_THREAD, 'thread')
+        logging.addLevelName(LEVEL_USER, 'user')
+        logging.addLevelName(logging.INFO, 'status')
+        logging.addLevelName(logging.DEBUG, 'debug')
+        logging.addLevelName(logging.NOTSET, 'not set')
+        logger.setLevel(logging.INFO)
+
+        # add Qt log handler
         self._qt_log_handler = QtLogHandler(self)
         logger.addHandler(self._qt_log_handler)
-        ## TODO add file logger
+        # add file logger
+        self._rotating_file_handler = logging.handlers.RotatingFileHandler(
+            'qudi.log', backupCount=5)
+        self._rotating_file_handler.setFormatter(logging.Formatter(
+            "%(levelname)s %(asctime)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"))
+        self._rotating_file_handler.doRollover()
+        logger.addHandler(self._rotating_file_handler)
 
         # Start a new temp log file, destroying anything left over from the
         # last session.
@@ -127,9 +214,10 @@ class Logger(QtCore.QObject):
         if not blockLogging:
             try:
                 blockLogging = True
+                ex_type, ex_value, ex_traceback = args
+                error('Unexpected error: ', exc_info=args)
                 self.logMsg('Unexpected error: ', exception=args,
                             msgType='error')
-                ex_type, ex_value, ex_traceback = args
                 print(ex_type)
                 if ex_type == KeyboardInterrupt:
                     self.manager.quit()
