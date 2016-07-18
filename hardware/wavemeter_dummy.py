@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 from pyqtgraph.Qt import QtCore
 
+import core.logger as logger
 from core.base import Base
 from interface.wavemeter_interface import WavemeterInterface
 from core.util.mutex import Mutex
@@ -97,9 +98,8 @@ class WavemeterDummy(Base, WavemeterInterface):
             self._measurement_timing = config['measurement_timing']
         else:
             self._measurement_timing = 10.
-            self.logMsg('No measurement_timing configured, '
-                        'using {} instead.'.format(self._measurement_timing),
-                        msgType='warning')
+            logger.warning('No measurement_timing configured, '
+                    'using {} instead.'.format(self._measurement_timing))
 
     def activation(self, e):
 
@@ -135,14 +135,12 @@ class WavemeterDummy(Base, WavemeterInterface):
 
         # first check its status
         if self.getState() == 'running':
-            self.logMsg('Wavemeter busy',
-                        msgType='error')
+            logger.error('Wavemeter busy')
             return -1
 
         self.run()
         # actually start the wavemeter
-        self.logMsg('starting Wavemeter',
-                    msgType='warning')
+        logger.error('starting Wavemeter')
 
         # start the measuring thread
         self.sig_handle_timer.emit(True)
@@ -156,8 +154,8 @@ class WavemeterDummy(Base, WavemeterInterface):
         """
         # check status just for a sanity check
         if self.getState() == 'idle' or self.getState() == 'deactivated':
-            self.logMsg('Wavemeter was already stopped, stopping it anyway!',
-                        msgType='warning')
+            logger.warning('Wavemeter was already stopped, stopping it '
+                    'anyway!')
         else:
             # stop the measurement thread
             self.sig_handle_timer.emit(False)
@@ -165,8 +163,7 @@ class WavemeterDummy(Base, WavemeterInterface):
             self.stop()
 
         # Stop the actual wavemeter measurement
-        self.logMsg('stopping Wavemeter',
-                    msgType='warning')
+        logger.warning('stopping Wavemeter')
 
         return 0
 
