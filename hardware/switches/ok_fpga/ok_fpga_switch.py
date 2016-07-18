@@ -19,6 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import core.logger as logger
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
@@ -48,11 +50,11 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.fp.OpenBySerial(self.fp.GetDeviceListSerial(0))
         self.fp.ConfigureFPGA(os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'switch_top.bit'))
         if not self.fp.IsFrontPanelEnabled():
-            self.logMsg('ERROR: FrontPanel is not enabled in FPGA switch!', msgType='error')
+            logger.error('FrontPanel is not enabled in FPGA switch!')
             return
         else:
             self.reset()
-            self.logMsg('FPGA connected')
+            logger.info('FPGA connected')
 
     def deactivation(self, e):
         pass
@@ -68,7 +70,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.fp.SetWireInValue(0x06, 0)
         self.fp.SetWireInValue(0x07, 0)
         self.fp.UpdateWireIns()
-        self.logMsg('FPGA switch reset')
+        logger.info('FPGA switch reset')
 
     def getNumberOfSwitches(self):
         """ There are 8 TTL channels on the OK FPGA.

@@ -19,6 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import core.logger as logger
 from core.base import Base
 from interface.process_control_interface import ProcessControlInterface
 from collections import OrderedDict
@@ -33,11 +35,11 @@ class PiPWM(Base, ProcessControlInterface):
 
     ## declare connectors
     _out = {'pwm': 'ProcessControlInterface'}
-    
+
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
-        
+
         #locking for thread safety
         self.threadlock = Mutex()
 
@@ -48,7 +50,7 @@ class PiPWM(Base, ProcessControlInterface):
             channel = config['channel']
         else:
             channel = 0
-            self.logMsg('PWN channel not set, using 0', msgType='warning')
+            logger.warning('PWN channel not set, using 0')
 
         # pin mapping
         if channel == 0:
@@ -74,7 +76,7 @@ class PiPWM(Base, ProcessControlInterface):
             self.freq = config['frequency']
         else:
             self.freq = 100
-            self.logMsg('Frequency not set, using 100Hz.', msgType='warning')
+            logger.warning('Frequency not set, using 100Hz.')
         self.setupPins()
         self.startPWM()
 
@@ -113,7 +115,7 @@ class PiPWM(Base, ProcessControlInterface):
         GPIO.output(self.inbpin, False)
         GPIO.output(self.fanpin, False)
 
-    def changeDutyCycle(self, duty):        
+    def changeDutyCycle(self, duty):
         self.dutycycle = 0
         if duty >= 0:
             GPIO.output(self.inapin, True)
@@ -126,10 +128,10 @@ class PiPWM(Base, ProcessControlInterface):
     def setControlValue(self, value):
         with self.threadlock:
             self.changeDutyCycle(value)
-    
+
     def getControlValue(self):
         return self.dutycycle
-    
+
     def getControlUnit(self):
         return ('%', 'percent')
 
