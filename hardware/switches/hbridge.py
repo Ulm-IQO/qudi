@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
+import core.logger as logger
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
@@ -115,13 +116,15 @@ class HBridge(Base, SwitchInterface):
                     if answer != 'P{0}=1'.format(coilnr):
                         return False
                     time.sleep(self.getSwitchTime(switchNumber))
-                    self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+                    logger.info('{0} switch {1}: On'.format(
+                        self._name, switchNumber))
                 except:
                     return False
                 return True
         else:
-            self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
-    
+            logger.error('You are trying to use non-existing output no {0}'
+                    ''.format(coilnr))
+
     def switchOff(self, switchNumber):
         """ Retract coil ore move motor.
 
@@ -137,12 +140,14 @@ class HBridge(Base, SwitchInterface):
                     if answer != 'P{0}=0'.format(coilnr):
                         return False
                     time.sleep(self.getSwitchTime(switchNumber))
-                    self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+                    logger.info('{0} switch {1}: Off'.format(
+                        self._name, switchNumber))
                 except:
                     return False
                 return True
         else:
-            self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
+            logger.error('You are trying to use non-existing output no {0}'
+                    ''.format(coilnr))
 
     def getSwitchTime(self, switchNumber):
         """ Give switching time for switch.
