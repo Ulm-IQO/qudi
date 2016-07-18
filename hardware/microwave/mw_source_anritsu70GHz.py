@@ -26,6 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
+import core.logger as logger
 from interface.microwave_interface import MicrowaveInterface
 
 
@@ -50,16 +51,16 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('This is MWanritsu70GHz: did not find >>gpib_address<< '
-                        'in configration.', msgType='error')
+            logger.error('This is MWanritsu70GHz: did not find '
+                    '>>gpib_address<<  in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg('This is MWanritsu70GHz: did not find >>gpib_timeout<< '
-                        'in configration. I will set it to 10 seconds.',
-                        msgType='error')
+            logger.warning('This is MWanritsu70GHz: did not find '
+                    '>>gpib_timeout<< in configration. I will set it to '
+                    '10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -67,13 +68,11 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            self.logMsg('This is MWanritsu70GHz: could not connect to the GPIB '
-                        'address >>{}<<.'.format(self._gpib_address),
-                        msgType='error')
+            log.error('This is MWanritsu70GHz: could not connect to the GPIB '
+                      'address >>{}<<.'.format(self._gpib_address))
             raise
 
-        self.logMsg('MWanritsu70GHz initialised and connected to hardware.',
-                    msgType='status')
+        logger.info('MWanritsu70GHz initialised and connected to hardware.')
 
     def deactivation(self,e=None):
         self._gpib_connection.close()

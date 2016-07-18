@@ -23,6 +23,7 @@ Copyright (c) 2016 Florian Frank  florian.frank@uni-ulm.de
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from core.util.mutex import Mutex
 from lmfit import Parameters
 import numpy as np
@@ -62,13 +63,11 @@ class OptimizerLogic(GenericLogic):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
         # setting standard parameter for refocus
         self.refocus_XY_size = 0.6
@@ -191,11 +190,10 @@ class OptimizerLogic(GenericLogic):
 
         # Check the supplied optimization sequence only contains 'XY' and 'Z'
         if len(set(self.optimization_sequence).difference({'XY', 'Z'})) > 0:
-            self.logMsg('Requested optimization sequence contains unknown steps. '
-                        'Please provide a sequence containing only \'XY\' and \'Z\' strings. '
-                        'The default [\'XY\', \'Z\'] will be used.',
-                        msgType='error'
-                        )
+            logger.error('Requested optimization sequence contains unknown '
+                    'steps. Please provide a sequence containing only \'XY\' '
+                    'and \'Z\' strings. The default [\'XY\', \'Z\'] will be '
+                    'used.')
             self.optimization_sequence = ['XY', 'Z']
 
     def set_clock_frequency(self, clock_frequency):
@@ -331,7 +329,7 @@ class OptimizerLogic(GenericLogic):
             time.sleep(self.hw_settle_time)
 
         except Exception:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            logger.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
 
     def _refocus_xy_line(self):
@@ -374,7 +372,7 @@ class OptimizerLogic(GenericLogic):
             self._scanning_device.scan_line(return_line)
 
         except Exception:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            logger.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._signal_scan_next_xy_line.emit()
 
@@ -398,8 +396,7 @@ class OptimizerLogic(GenericLogic):
         # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
-            self.logMsg('error in 2D Gaussian Fit.',
-                        msgType='error')
+            logger.error('error in 2D Gaussian Fit.')
             print('2D gaussian fit not successfull')
             self.optim_pos_x = self._initial_pos_x
             self.optim_pos_y = self._initial_pos_y
@@ -446,8 +443,7 @@ class OptimizerLogic(GenericLogic):
         self.z_params = result.params
 
         if result.success is False:
-            self.logMsg('error in 1D Gaussian Fit.',
-                        msgType='error')
+            logger.error('error in 1D Gaussian Fit.')
             self.optim_pos_z = self._initial_pos_z
             # interrupt here?
         else:  # move to new position
@@ -482,10 +478,14 @@ class OptimizerLogic(GenericLogic):
         self.kill_scanner()
         self.unlock()
 
-        self.logMsg('Optimised from ({0:.3f},{1:.3f},{2:.3f}) to local maximum at ({3:.3f},{4:.3f},{5:.3f}).'.format(
-            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z,
-            self.optim_pos_x, self.optim_pos_y, self.optim_pos_z),
-            msgType='status')
+        logger.info('Optimised from ({0:.3f},{1:.3f},{2:.3f}) to local '
+                'maximum at ({3:.3f},{4:.3f},{5:.3f}).'.format(
+                    self._initial_pos_x,
+                    self._initial_pos_y,
+                    self._initial_pos_z,
+                    self.optim_pos_x,
+                    self.optim_pos_y,
+                    self.optim_pos_z))
 
         # Signal that the optimization has finished, and "return" the optimal position along with caller_tag
         self.signal_refocus_finished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
@@ -511,7 +511,7 @@ class OptimizerLogic(GenericLogic):
         try:
             line_counts = self._scanning_device.scan_line(line)
         except Exception:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            logger.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._signal_scan_next_xy_line.emit()
 
@@ -529,7 +529,7 @@ class OptimizerLogic(GenericLogic):
             try:
                 line_bg = self._scanning_device.scan_line(line_bg)
             except Exception:
-                self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+                logger.error('The scan went wrong, killing the scanner.')
                 self.stop_refocus()
                 self._signal_scan_next_xy_line.emit()
 

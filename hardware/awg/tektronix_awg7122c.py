@@ -28,7 +28,7 @@ import os
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-
+import core.logger as logger
 from core.base import Base
 from interface.pulser_interface import PulserInterface
 
@@ -54,37 +54,34 @@ class AWG7122C(Base, PulserInterface):
         if 'awg_IP_address' in config.keys():
             self.ip_address = config['awg_IP_address']
         else:
-            self.logMsg('No IP address parameter "awg_IP_address" found in '
-                        'the config for the AWG7122C! Correct that!',
-                        msgType='error')
+            logger.error('No IP address parameter "awg_IP_address" found in '
+                    'the config for the AWG7122C! Correct that!')
 
         if 'awg_port' in config.keys():
             self.port = config['awg_port']
         else:
-            self.logMsg('No port parameter "awg_port" found in the config for '
-                        'the AWG5002C! Correct that!', msgType='error')
+            logger.error('No port parameter "awg_port" found in the config '
+                    'for the AWG5002C! Correct that!')
 
         if 'default_sample_rate' in config.keys():
             self.sample_rate = config['default_sample_rate']
         else:
-            self.logMsg('No parameter "default_sample_rate" found in the '
-                        'config for the AWG7122C! The maximum sample rate is '
-                        'used instead.', msgType='warning')
+            logger.warning('No parameter "default_sample_rate" found in the '
+                    'config for the AWG7122C! The maximum sample rate is '
+                    'used instead.')
             self.sample_rate = self.get_constraints()['sample_rate'][1]
 
         if 'awg_ftp_path' in config.keys():
             self.ftp_path = config['awg_ftp_path']
         else:
-            self.logMsg('No parameter "awg_ftp_path" found in the config for '
-                        'the AWG7122C! State the FTP folder of this device!',
-                        msgType='error')
+            logger.error('No parameter "awg_ftp_path" found in the config '
+                    'for the AWG7122C! State the FTP folder of this device!')
 
         if 'timeout' in config.keys():
             self._timeout = config['timeout']
         else:
-            self.logMsg('No parameter "timeout" found in the config for '
-                        'the AWG7122C! Take a default value of 10s.',
-                        msgType='error')
+            logger.warning('No parameter "timeout" found in the config for '
+                    'the AWG7122C! Take a default value of 10s.')
             self._timeout = 10
 
         self.connected = False
@@ -101,20 +98,18 @@ class AWG7122C(Base, PulserInterface):
             if not os.path.exists(self.pulsed_file_dir):
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.logMsg('The directory defined in parameter '
-                            '"pulsed_file_dir" in the config for '
-                            'SequenceGeneratorLogic class does not exist!\n'
-                            'The default home directory\n{0}\n will be taken '
-                            'instead.'.format(self.pulsed_file_dir),
-                            msgType='warning')
+                logger.warning('The directory defined in parameter '
+                        '"pulsed_file_dir" in the config for '
+                        'SequenceGeneratorLogic class does not exist!\n'
+                        'The default home directory\n{0}\n will be taken '
+                        'instead.'.format(self.pulsed_file_dir))
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.logMsg('No parameter "pulsed_file_dir" was specified in the '
-                        'config for SequenceGeneratorLogic as directory for '
-                        'the pulsed files!\nThe default home directory\n{0}\n'
-                        'will be taken instead.'.format(self.pulsed_file_dir),
-                        msgType='warning')
+            logger.warning('No parameter "pulsed_file_dir" was specified in '
+                    'the config for SequenceGeneratorLogic as directory for '
+                    'the pulsed files!\nThe default home directory\n{0}\n'
+                    'will be taken instead.'.format(self.pulsed_file_dir))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
@@ -372,8 +367,8 @@ class AWG7122C(Base, PulserInterface):
         """
 
         if asset_name is None:
-            self.logMsg('No asset name provided for upload!\nCorrect '
-                        'that!\nCommand will be ignored.', msgType='warning')
+            logger.warning('No asset name provided for upload!\nCorrect '
+                    'that!\nCommand will be ignored.')
             return -1
 
         # at first delete all the name, which might lead to confusions in the
@@ -474,8 +469,8 @@ class AWG7122C(Base, PulserInterface):
                     filename.append(file)
 
             if load_dict == {} and filename == []:
-                self.logMsg('No file and channel provided for load!\nCorrect '
-                            'that!\nCommand will be ignored.', msgType='warning')
+                logger.warning('No file and channel provided for load!\n'
+                        'Correct that!\nCommand will be ignored.')
 
         for channel_num in list(load_dict):
             print("in load dict")
@@ -500,9 +495,9 @@ class AWG7122C(Base, PulserInterface):
         #
         # # Check if something could be found
         # if len(filename) == 0:
-        #     self.logMsg('No files associated with asset {0} were found on AWG7122c.'
-        #                 'Load to channels failed!'.format(asset_name),
-        #                 msgType='error')        #         if asset.split("_")[-1][:3] == 'ch1':
+        #     logger.error('No files associated with asset {0} were found on AWG7122c.'
+        #                 'Load to channels failed!'.format(asset_name)
+        #                 )        #         if asset.split("_")[-1][:3] == 'ch1':
         #             self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset[:-4]))
         #         if asset.split("_")[-1][:3] == 'ch2':
         #             self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset[:-4]))
@@ -511,16 +506,16 @@ class AWG7122C(Base, PulserInterface):
         #     for channel in load_dict:
         #     return -1
         #
-        # self.logMsg('The following files associated with the asset {0} were found on AWG7122c:\n'
-        #             '"{1}"'.format(asset_name, filename), msgType='status')
+        # logger.info('The following files associated with the asset {0} were found on AWG7122c:\n'
+        #             '"{1}"'.format(asset_name, filename))
         #
         # # load files in AWG Waveform list
         # for asset in filename:
         #     if asset.endswith('.wfm'):
         #         self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
         #     else:
-        #         self.logMsg('Could not load asset {0} to AWG7122c:\n'
-        #             '"{1}"'.format(asset_name, filename), msgType='error')
+        #         logger.error('Could not load asset {0} to AWG7122c:\n'
+        #             '"{1}"'.format(asset_name, filename))
         #
         # file_path = self.ftp_path + self.get_asset_dir_on_device()
         # # simply use the channel association of the filenames if no load_dict is given
@@ -687,24 +682,22 @@ class AWG7122C(Base, PulserInterface):
                    (a_ch >= 0):
                     amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
                 else:
-                    self.logMsg('The device does not have that much analog '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(a_ch,
-                                                                  self._get_num_a_ch()),
-                            msgType='warning')
+                    logger.warning('The device does not have that much '
+                            'analog channels! A channel number "{0}" was '
+                            'passed, but only "{1}" channels are available!\n'
+                            'Command will be ignored.'.format(
+                                a_ch, self._get_num_a_ch()))
 
             for a_ch in offset:
                 if (a_ch <= self._get_num_a_ch()) and \
                    (a_ch >= 0):
                     off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
                 else:
-                    self.logMsg('The device does not have that much analog '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(a_ch,
-                                                                  self._get_num_a_ch()),
-                            msgType='warning')
+                    logger.warning('The device does not have that much '
+                            'analog channels! A channel number "{0}" was '
+                            'passed, but only "{1}" channels are available!\n'
+                            'Command will be ignored.'.format(
+                                a_ch, self._get_num_a_ch()))
 
         return amp, off
 
@@ -748,14 +741,14 @@ class AWG7122C(Base, PulserInterface):
                 if amplitude[a_ch] < constraints['a_ch_amplitude']['min'] or \
                    amplitude[a_ch] > constraints['a_ch_amplitude']['max']:
 
-                    self.logMsg('Not possible to set for analog channel {0} '
-                                'the amplitude value {1}Vpp, since it is not '
-                                'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(a_ch,
-                                                     amplitude[a_ch],
-                                                     constraints['a_ch_amplitude']['min'],
-                                                     constraints['a_ch_amplitude']['max']),
-                                msgType='warning')
+                    logger.warning('Not possible to set for analog channel '
+                            '{0} the amplitude value {1}Vpp, since it is not '
+                            'within the interval [{2},{3}]! Command will '
+                            'be ignored.'.format(
+                                a_ch,
+                                amplitude[a_ch],
+                                constraints['a_ch_amplitude']['min'],
+                                constraints['a_ch_amplitude']['max']))
                 else:
 
                     self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch,
@@ -763,12 +756,12 @@ class AWG7122C(Base, PulserInterface):
 
 
             else:
-                self.logMsg('The device does not support that much analog '
-                            'channels! A channel number "{0}" was passed, but '
-                            'only "{1}" channels are available!\nCommand will '
-                            'be ignored.'.format(a_ch,
-                                                 self._get_num_a_ch()),
-                            msgType='warning')
+                logger.warning('The device does not support that much analog '
+                        'channels! A channel number "{0}" was passed, but '
+                        'only "{1}" channels are available!\nCommand will '
+                        'be ignored.'.format(
+                            a_ch,
+                            self._get_num_a_ch()))
 
         for a_ch in offset:
             if (a_ch <= self._get_num_a_ch()) and \
@@ -777,25 +770,23 @@ class AWG7122C(Base, PulserInterface):
                 if offset[a_ch] < constraints['a_ch_offset']['min'] or \
                    offset[a_ch] > constraints['a_ch_offset']['max']:
 
-                    self.logMsg('Not possible to set for analog channel {0} '
-                                'the offset value {1}V, since it is not '
-                                'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(a_ch,
-                                                     offset[a_ch],
-                                                     constraints['a_ch_offset']['min'],
-                                                     constraints['a_ch_offset']['max']),
-                                msgType='warning')
+                    logger.warning('Not possible to set for analog channel '
+                            '{0} the offset value {1}V, since it is not '
+                            'within the interval [{2},{3}]! Command will '
+                            'be ignored.'.format(
+                                a_ch,
+                                offset[a_ch],
+                                constraints['a_ch_offset']['min'],
+                                constraints['a_ch_offset']['max']))
                 else:
                     self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch,
                                                                     offset[a_ch]))
 
             else:
-                self.logMsg('The device does not support that much analog '
-                            'channels! A channel number "{0}" was passed, but '
-                            'only "{1}" channels are available!\nCommand will '
-                            'be ignored.'.format(a_ch,
-                                                 self._get_num_a_ch()),
-                            msgType='warning')
+                logger.warning('The device does not support that much analog '
+                        'channels! A channel number "{0}" was passed, but '
+                        'only "{1}" channels are available!\nCommand will '
+                        'be ignored.'.format(a_ch, self._get_num_a_ch()))
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
@@ -861,12 +852,11 @@ class AWG7122C(Base, PulserInterface):
                     else:
                         low_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch-2))))
                 else:
-                    self.logMsg('The device does not have that much digital '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(d_ch,
-                                                                  self._get_num_d_ch()),
-                                msgType='warning')
+                    logger.warning('The device does not have that much '
+                            'digital channels! A channel number "{0}" was '
+                            'passed, but only "{1}" channels are available!\n'
+                            'Command will be ignored.'.format(
+                                d_ch, self._get_num_d_ch()))
 
             for d_ch in high:
 
@@ -882,12 +872,12 @@ class AWG7122C(Base, PulserInterface):
                     else:
                         high_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch-2))))
                 else:
-                    self.logMsg('The device does not have that much digital '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(d_ch,
-                                                                  self._get_num_d_ch()),
-                                msgType='warning')
+                    logger.warning('The device does not have that much '
+                            'digital channels! A channel number "{0}" was '
+                            'passed, but only "{1}" channels are available!\n'
+                            'Command will be ignored.'.format(
+                                d_ch,
+                                self._get_num_d_ch()))
 
         return low_val, high_val
 
@@ -954,12 +944,13 @@ class AWG7122C(Base, PulserInterface):
                             active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan-1))))
 
                     else:
-                        self.logMsg('The device does not support that much analog '
-                                    'channels! A channel number "{0}" was passed, '
-                                    'but only "{1}" channels are available!\n'
-                                    'Command will be ignored.'.format(ana_chan,
-                                                                      self._get_num_a_ch()),
-                                    msgType='warning')
+                        logger.warning('The device does not support that '
+                                'many analog channels! A channel number '
+                                '"{0}" was passed, but only "{1}" channels '
+                                'are available!\n'
+                                'Command will be ignored.'.format(
+                                    ana_chan,
+                                    self._get_num_a_ch()))
                 elif 'd_ch' in channel:
 
                     digi_chan = int(channel[4:])
@@ -972,12 +963,13 @@ class AWG7122C(Base, PulserInterface):
 
 
                     else:
-                        self.logMsg('The device does not support that much digital '
-                                    'channels! A channel number "{0}" was passed, '
-                                    'but only "{1}" channels are available!\n'
-                                    'Command will be ignored.'.format(digi_chan,
-                                                                      self._get_num_d_ch()),
-                                    msgType='warning')
+                        logger.warning('The device does not support that '
+                                'many digital channels! A channel number '
+                                '"{0}" was passed, but only "{1}" channels '
+                                'are available!\n'
+                                'Command will be ignored.'.format(
+                                    digi_chan,
+                                    self._get_num_d_ch()))
 
         return active_ch
 
@@ -1032,12 +1024,12 @@ class AWG7122C(Base, PulserInterface):
                         self.tell('OUTPUT{0}:STATE {1}'.format(chan-1, state))
             else:
 
-                # self.logMsg('The device does not support that much analog '
+                # logger.warning('The device does not support that much analog '
                 #             'channels! A channel number "{0}" was passed, but '
                 #             'only "{1}" channels are available!\nCommand will '
                 #             'be ignored.'.format(chan,
-                #                                  self._get_num_a_ch()),
-                #             msgType='warning')
+                #                                  self._get_num_a_ch())
+                #             )
 
                 # adjust the DAC resolution accordingly
                 # if ch[channel]:
@@ -1054,9 +1046,9 @@ class AWG7122C(Base, PulserInterface):
                     self.tell('OUTPUT{0}:STATE {1}'.format(chan - 1, state))
 
         # if d_ch != {}:
-        #     self.logMsg('Digital Channel of the AWG5000 series will always be '
-        #                 'active. This configuration cannot be changed.',
-        #                 msgType='status')
+        #     logger.info('Digital Channel of the AWG5000 series will always be '
+        #                 'active. This configuration cannot be changed.'
+        #                 )
 
         return self.get_active_channels(ch=list(ch))
 
@@ -1157,8 +1149,8 @@ class AWG7122C(Base, PulserInterface):
             try:
                 ftp.cwd(dir_path)
             except:
-                self.logMsg('Desired directory {0} not found on AWG device.\n'
-                            'Create new.'.format(dir_path), msgType='status')
+                logger.info('Desired directory {0} not found on AWG device.\n'
+                        'Create new.'.format(dir_path))
                 ftp.mkd(dir_path)
 
         self.asset_directory = dir_path
@@ -1197,8 +1189,7 @@ class AWG7122C(Base, PulserInterface):
         elif state == True:
             self.tell('AWGControl:INTerleave:STAT 1\n')
         else:
-            self.logMsg('Interleave mode can not be set to desired state!\n'
-                        , msgType='warning')
+            logger.warning('Interleave mode cannot be set to desired state!')
 
         return self.get_interleave()
 
@@ -1220,8 +1211,8 @@ class AWG7122C(Base, PulserInterface):
             self.interleave=False
             return False
         else:
-            self.logMsg('State of interleave mode neither 1 nor 0. Returning false.\n',
-                        msgType='warning')
+            logger.warning('State of interleave mode neither 1 nor 0. '
+                    'Returning false.')
             return None
 
     # works
@@ -1263,11 +1254,10 @@ class AWG7122C(Base, PulserInterface):
             message = self.soc.recv(self.input_buffer)  # receive an answer
             message = message.decode('UTF-8')  # decode bytes into a python str
         except OSError:
-            self.logMsg('Most propably timeout was reached during querying '
-                        'the AWG7122 Series device with the question:\n'
-                        '{0}\n'
-                        'The question text must be wrong.'.format(question),
-                        msgType='error')
+            logger.error('Most propably timeout was reached during querying '
+                    'the AWG7122 Series device with the question:\n'
+                    '{0}\n'
+                    'The question text must be wrong.'.format(question))
             message = str(-1)
 
         message = message.replace('\n', '')  # cut away the characters\r and \n.

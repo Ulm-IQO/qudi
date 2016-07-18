@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
@@ -62,12 +63,11 @@ class PulsedMeasurementLogic(GenericLogic):
         GenericLogic.__init__(self, manager, name, config, state_actions,
                               **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key,config[key]))
 
         # microwave parameters
         self.use_ext_microwave = False
@@ -379,9 +379,11 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         avail_activation_configs = self.get_pulser_constraints()['activation_config']
         if activation_config_name not in avail_activation_configs:
-            self.logMsg('Chosen activation_config "{0}" is not available in the pulser constraints. '
-                        'Please select one of the following activation_configs:\n{1}'.format(
-                        activation_config_name, list(avail_activation_configs)), msgType='error')
+            logger.error('Chosen activation_config "{0}" is not available in '
+                    'the pulser constraints. Please select one of the '
+                    'following activation_configs:\n{1}'.format(
+                        activation_config_name,
+                        list(avail_activation_configs)))
             return -1
         config_to_set = avail_activation_configs[activation_config_name]
         channel_activation = self.get_active_channels()
@@ -711,11 +713,11 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         int_num = int(num_of_lasers)
         if int_num < 1:
-            self.logMsg('Invalid number of laser pulses set in the '
-                        'pulsed_measurement_logic! A value of {0} was provided '
-                        'but an interger value in the range [1,inf) is '
-                        'expected! Set number_of_pulses to '
-                        '1.'.format(int_num), msgType='error')
+            logger.error('Invalid number of laser pulses set in the '
+                    'pulsed_measurement_logic! A value of {0} was provided '
+                    'but an interger value in the range [1,inf) is '
+                    'expected! Set number_of_pulses to '
+                    '1.'.format(int_num))
             self.number_of_lasers = 1
         else:
             self.number_of_lasers = int_num
@@ -733,8 +735,9 @@ class PulsedMeasurementLogic(GenericLogic):
         if laser_length_s > 0.:
             self.laser_length_s = laser_length_s
         else:
-            self.logMsg('Invalid laser length. Tried to set a value of {0}s. Setting laser length '
-                        'to 3000ns instead.'.format(laser_length_s), msgType='error')
+            logger.error('Invalid laser length. Tried to set a value of {0}s.'
+                    ' Setting laser length to 3000ns instead.'.format(
+                        laser_length_s))
             self.laser_length_s = 3e-6
 
         if self.fast_counter_gated:

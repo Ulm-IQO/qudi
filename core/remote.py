@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from urllib.parse import urlparse
 from rpyc.utils.server import ThreadedServer
 from rpyc.utils.authenticators import SSLAuthenticator
@@ -55,7 +56,6 @@ class RemoteObjectManager(QtCore.QObject):
             """ An RPyC service that has a module list.
             """
             modules = self.sharedModules
-            logMsg = self.logger.logMsg
             _manager = self.manager
 
             @staticmethod
@@ -66,13 +66,13 @@ class RemoteObjectManager(QtCore.QObject):
                 """ code that runs when a connection is created
                     (to init the service, if needed)
                 """
-                self.logMsg('Client connected!')
+                logger.info('Client connected!')
 
             def on_disconnect(self):
                 """ code that runs when the connection has already closed
                     (to finalize the service, if needed)
                 """
-                self.logMsg('Client disconnected!')
+                logger.info('Client disconnected!')
 
             def exposed_getModule(self, name):
                 """ Return reference to a module in the shared module list.
@@ -93,7 +93,8 @@ class RemoteObjectManager(QtCore.QObject):
                     if name in self.modules.storage:
                         return self.modules.storage[name]
                     else:
-                        self.logMsg('Client requested a module that is not shared.', msgType='error')
+                        logger.error('Client requested a module that is not '
+                                'shared.')
                         return None
         return RemoteModuleService
 
@@ -112,16 +113,14 @@ class RemoteObjectManager(QtCore.QObject):
                 certfile=self.certfile)
         else:
             if self.host != 'localhost':
-                self.logger.logMsg(
-                    'Remote connection not secured! Use a certificate!',
-                    msgType='warning')
+                logger.warning('Remote connection not secured! Use a '
+                        'certificate!')
             self.server = RPyCServer(self.makeRemoteService(), self.host, self.port)
         self.server.moveToThread(thread)
         thread.started.connect(self.server.run)
         thread.start()
-        self.logger.logMsg(
-            'Started module server at {0} on port {1}'
-            ''.format(self.host, self.port), msgType='status')
+        logger.info('Started module server at {0} on port {1}'
+                ''.format(self.host, self.port))
 
     def stopServer(self):
         """ Stop the remote module server.
@@ -136,24 +135,24 @@ class RemoteObjectManager(QtCore.QObject):
           @param object obj: a reference to the module
         """
         if name in self.sharedModules.storage:
-            self.logger.logMsg('Module {0} already shared.'.format(name), msgType='warning')
+            logger.warning('Module {0} already shared.'.format(name))
         self.sharedModules.add(name, obj)
-        self.logger.logMsg('Shared module {0}.'.format(name), msgType='status')
+        logger.info('Shared module {0}.'.format(name))
 
     def unshareModule(self, name):
         """ Remove a module from the shared module list.
-            
+
           @param str name: unique name of the module that should not be accessible any more
         """
         if name in self.sharedModules.storage:
-            self.logger.logMsg('Module {0} was not shared.'.format(name), msgType='error')
+            logger.error('Module {0} was not shared.'.format(name))
         self.sharedModules.pop(name)
 
     def getRemoteModuleUrl(self, url):
         """ Get a remote module via its URL.
 
           @param str url: URL pointing to a module hosted b a remote server
-          
+
           @return object: remote module
         """
         parsed = urlparse(url)
@@ -178,7 +177,7 @@ class RPyCServer(QtCore.QObject):
     """ Contains a RPyC server that serves modules to remote computers. Runs in a QThread.
     """
     def __init__(self, serviceClass, host, port, certfile=None, keyfile=None):
-        """ 
+        """
           @param class serviceClass: class that represents an RPyC service
           @param int port: port that hte RPyC server should listen on
         """

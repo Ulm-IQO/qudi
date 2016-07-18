@@ -25,6 +25,7 @@ import numpy as np
 import time
 import os
 
+import core.logger as logger
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -228,13 +229,11 @@ class PoiManagerGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
     def initUI(self, e=None):
         """ Initializes the overall GUI, and establishes the connectors.

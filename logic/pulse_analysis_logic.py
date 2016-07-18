@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import core.logger as logger
 from logic.generic_logic import GenericLogic
 import numpy as np
 
@@ -42,13 +43,11 @@ class PulseAnalysisLogic(GenericLogic):
         GenericLogic.__init__(self, manager, name, config, state_actions,
                               **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key,config[key]))
 
 
     def activation(self, e):

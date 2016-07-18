@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
+import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 import core.logger as logger
@@ -246,11 +247,11 @@ class ConfocalLogic(GenericLogic):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]), msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
 
         #locking for thread safety
@@ -442,7 +443,8 @@ class ConfocalLogic(GenericLogic):
 
         # Checks if the x-start and x-end value are ok
         if x2 < x1:
-            self.logMsg('x1 must be smaller than x2, but they are ({0:.3f},{1:.3f}).'.format(x1, x2), msgType='error')
+            logger.error('x1 must be smaller than x2, but they are ({0:.3f},'
+                    '{1:.3f}).'.format(x1, x2))
             return -1
 
         if self._zscan:
@@ -451,7 +453,8 @@ class ConfocalLogic(GenericLogic):
             self._X = np.linspace(x1, x2, self.xy_resolution)
             # Checks if the z-start and z-end value are ok
             if z2 < z1:
-                self.logMsg('z1 must be smaller than z2, but they are ({0:.3f},{1:.3f}).'.format(z1, z2), msgType='error')
+                logger.error('z1 must be smaller than z2, but they are '
+                        '({0:.3f},{1:.3f}).'.format(z1, z2))
                 return -1
             # creates an array of evenly spaced numbers over the interval
             # z1, z2 and the spacing is equal to z_resolution
@@ -459,7 +462,8 @@ class ConfocalLogic(GenericLogic):
         else:
             # Checks if the y-start and y-end value are ok
             if y2 < y1:
-                self.logMsg('y1 must be smaller than y2, but they are ({0:.3f},{1:.3f}).'.format(y1, y2), msgType='error')
+                logger.error('y1 must be smaller than y2, but they are '
+                        '({0:.3f},{1:.3f}).'.format(y1, y2))
                 return -1
 
             # prevents distorion of the image
@@ -749,7 +753,7 @@ class ConfocalLogic(GenericLogic):
             self.signal_scan_lines_next.emit()
 
         except Exception as e:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            logger.critical('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
             raise e
@@ -858,7 +862,7 @@ class ConfocalLogic(GenericLogic):
                                    )
         #, as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        logger.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
     def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
@@ -967,7 +971,7 @@ class ConfocalLogic(GenericLogic):
                                    )
         #, as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        logger.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
     def draw_figure(self, data, image_extent, scan_axis=['X', 'Y'], cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.

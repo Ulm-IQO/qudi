@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import core.logger as logger
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
@@ -58,13 +59,11 @@ class SimpleDataGui(GUIBase):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
-        self.logMsg('The following configuration was found.', msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
-
+            logger.info('{}: {}'.format(key,config[key]))
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.

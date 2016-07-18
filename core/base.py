@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from fysom import Fysom # provides a final state machine
 from collections import OrderedDict
 
@@ -125,8 +126,8 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        self.logMsg('Please implement and specify the activation method for '
-                '{0}.'.format(self.__class__.__name__), msgType='error')
+        logger.warning('Please implement and specify the activation method '
+                'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
         """ Method called when module is deactivated. If not overridden
@@ -134,8 +135,8 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        self.logMsg('Please implement and specify the deactivation method '
-                '{0}.'.format(self.__class__.__name__), msgType='error')
+        logger.warning('Please implement and specify the deactivation method '
+                '{0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
     def onchangestate(self, e):
@@ -160,7 +161,9 @@ class Base(QtCore.QObject, Fysom):
 
         """
         if not isinstance(variableDict, (dict, OrderedDict)):
-            self.logMsg('Did not pass a dict or OrderedDict to setStatusVariables in {0}.'.format(self.__class__.__name__), msgType='error')
+            logger.error('Did not pass a dict or OrderedDict to '
+                    'setStatusVariables in {0}.'.format(
+                        self.__class__.__name__))
             return
         self._statusVariables = variableDict
 
@@ -228,12 +231,7 @@ class Base(QtCore.QObject, Fysom):
 
         """
         mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
-        self.logMsg('Filepath of the main tree was called', msgType='status',
-                    importance=0)
-
         return mainpath
- #            print("PAth of Managerfile: ", os.path.abspath(__file__))
-
 
     def get_home_dir(self):
         """ Returns the path to the home directory, which should definitely

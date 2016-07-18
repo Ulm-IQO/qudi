@@ -21,6 +21,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import core.logger as logger
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
@@ -121,8 +123,7 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
-                self.logMsg('Given parameter is no one dimensional array.',
-                            msgType='error')
+                logger.error('Given parameter is no one dimensional array.')
 
     mod_final, params = self.make_poissonian_model()
 
@@ -136,11 +137,10 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The poissonian fit did not work. Check if a poisson '
-                    'distribution is needed or a normal approximation can be'
-                    'used. For values above 10 a normal/ gaussian distribution'
-                    ' is a good approximation.',
-                    msgType='warning')
+        logger.warning('The poissonian fit did not work. Check if a poisson '
+                'distribution is needed or a normal approximation can be'
+                'used. For values above 10 a normal/ gaussian distribution'
+                ' is a good approximation.')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -165,12 +165,10 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     parameters = [x_axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     # a gaussian filter is appropriate due to the well approximation of poisson
@@ -203,8 +201,7 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
-                self.logMsg('Given parameter is no one dimensional array.',
-                            msgType='error')
+                logger.error('Given parameter is no one dimensional array.')
 
     mod_final, params = self.make_poissonian_model(no_of_functions=2)
 
@@ -218,11 +215,10 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The double poissonian fit did not work. Check if a poisson '
-                    'distribution is needed or a normal approximation can be'
-                    'used. For values above 10 a normal/ gaussian distribution'
-                    ' is a good approximation.',
-                    msgType='warning')
+        logger.warning('The double poissonian fit did not work. Check if a '
+                'poisson distribution is needed or a normal approximation '
+                'can be used. For values above 10 a normal/ gaussian '
+                'distribution is a good approximation.')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -262,16 +258,13 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     #TODO: make the filter an extra function shared and usable for other functions.

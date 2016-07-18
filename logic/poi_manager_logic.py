@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
+import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
@@ -64,8 +65,7 @@ class PoI(object):
 
         if point is not None:
             if len(point) != 3:
-                self.logMsg('Given position does not contain 3 dimensions.',
-                            msgType='error')
+                logger.error('Given position does not contain 3 dimensions.')
             # Store the time in the history log as seconds since 1970, rather than as a datetime object.
             creation_time_sec = (self._creation_time - datetime.datetime.utcfromtimestamp(0)).total_seconds()
             self._position_time_trace.append(
@@ -85,8 +85,7 @@ class PoI(object):
 
         if coords is not None:  # FIXME: Futurewarning fired here.
             if len(coords) != 3:
-                self.logMsg('Given position does not contain 3 dimensions.',
-                            msgType='error')
+                logger.error('Given position does not contain 3 dimensions.')
             self._coords_in_sample = [coords[0], coords[1], coords[2]]
 
     def add_position_to_trace(self, position=[]):
@@ -120,8 +119,7 @@ class PoI(object):
         @return int: error code (0:OK, -1:error)
         """
         if self._name is 'crosshair' or self._name is 'sample':
-            #            self.logMsg('You can not change the name of the crosshair.',
-            #                        msgType='error')
+            #            logger.error('You can not change the name of the crosshair.')
             return -1
         if name is not None:
             self._name = name
@@ -190,13 +188,11 @@ class PoiManagerLogic(GenericLogic):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
         self.roi_name = ''
         self.track_point_list = dict()
@@ -240,7 +236,7 @@ class PoiManagerLogic(GenericLogic):
         self._confocal_logic.signal_change_position.connect(self.user_move_deactivates_poi)
 
         self.testing()
-        
+
         # Initialise the roi_map_data (xy confocal image)
         self.roi_map_data = self._confocal_logic.xy_image
 
@@ -342,14 +338,14 @@ class PoiManagerLogic(GenericLogic):
 
         if poikey is not None and poikey in self.track_point_list.keys():
             if poikey is 'crosshair' or poikey is 'sample':
-                self.logMsg('You cannot delete the crosshair or sample.', msgType='warning')
+                logger.warning('You cannot delete the crosshair or sample.')
                 return -1
             del self.track_point_list[poikey]
             self.signal_poi_updated.emit()
             return 0
         else:
-            self.logMsg('X. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('X. The given POI ({}) does not exist.'.format(
+                poikey))
             return -1
 
     def optimise_poi(self, poikey=None):
@@ -369,8 +365,8 @@ class PoiManagerLogic(GenericLogic):
             self._optimizer_logic.start_refocus(initial_pos=self.get_poi_position(poikey=poikey), caller_tag='poimanager')
             return 0
         else:
-            self.logMsg('Z. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('Z. The given POI ({}) does not exist.'.format(
+                poikey))
             return -1
 
     def go_to_poi(self, poikey=None):
@@ -385,8 +381,8 @@ class PoiManagerLogic(GenericLogic):
             x, y, z = self.get_poi_position(poikey=poikey)
             self._confocal_logic.set_position('poimanager', x=x, y=y, z=z)
         else:
-            self.logMsg('F. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('F. The given POI ({}) does not exist.'.format(
+                poikey))
             return -1
 
         # This is now the active POI to send to save logic for naming in any saved filenames.
@@ -409,8 +405,8 @@ class PoiManagerLogic(GenericLogic):
             return sample_pos + poi_coords
 
         else:
-            self.logMsg('G. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('G. The given POI ({}) does not exist.'.format(
+                poikey))
             return [-1., -1., -1.]
 
     def set_new_position(self, poikey=None, point=None):
@@ -426,8 +422,7 @@ class PoiManagerLogic(GenericLogic):
 
         if poikey is not None and poikey in self.track_point_list.keys():
             if len(point) != 3:
-                self.logMsg('Length of set poi is not 3.',
-                            msgType='error')
+                logger.error('Length of set poi is not 3.')
                 return -1
             sample_shift = point - self.get_poi_position(poikey=poikey)
             sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
@@ -435,8 +430,7 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             return self.track_point_list[poikey].add_position_to_trace(position=point)
 
-        self.logMsg('J. The given POI ({}) does not exist.'.format(poikey),
-                    msgType='error')
+        logger.error('J. The given POI ({}) does not exist.'.format(poikey))
         return -1
 
     def move_coords(self, poikey=None, point=None):
@@ -447,8 +441,7 @@ class PoiManagerLogic(GenericLogic):
 
         if poikey is not None and poikey in self.track_point_list.keys():
             if len(point) != 3:
-                self.logMsg('Length of set poi is not 3.',
-                            msgType='error')
+                logger.error('Length of set poi is not 3.')
                 return -1
             this_poi = self.track_point_list[poikey]
             return_val = this_poi.add_position_to_trace(position=point)
@@ -463,8 +456,7 @@ class PoiManagerLogic(GenericLogic):
 
             return return_val
 
-        self.logMsg('J. The given POI ({}) does not exist.'.format(poikey),
-                    msgType='error')
+        logger.error('J. The given POI ({}) does not exist.'.format(poikey))
         return -1
 
     def rename_poi(self, poikey=None, name=None, emit_change=True):
@@ -490,8 +482,8 @@ class PoiManagerLogic(GenericLogic):
             return success
 
         else:
-            self.logMsg('AAAThe given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('AAAThe given POI ({}) does not exist.'.format(
+                poikey))
             return -1
 
     def delete_last_point(self, poikey=None):
@@ -507,8 +499,8 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             return self.track_point_list[poikey].delete_last_point()
         else:
-            self.logMsg('C. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('C. The given POI ({}) does not exist.'.format(
+                poikey))
             return -1
 
     def get_trace(self, poikey=None):
@@ -522,8 +514,8 @@ class PoiManagerLogic(GenericLogic):
         if poikey is not None and poikey in self.track_point_list.keys():
             return self.track_point_list[poikey].get_trace()
         else:
-            self.logMsg('C. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('C. The given POI ({}) does not exist.'.format(
+                poikey))
             return [-1., -1., -1, -1]
 
     def set_current_poi(self, poikey=None):
@@ -538,8 +530,8 @@ class PoiManagerLogic(GenericLogic):
             self._current_poi_key = poikey
             return 0
         else:
-            self.logMsg('B. The given POI ({}) does not exist.'.format(poikey),
-                        msgType='error')
+            logger.error('B. The given POI ({}) does not exist.'.format(
+                poikey))
             return -1
 
     def start_periodic_refocus(self, duration=None, poikey=None):
@@ -553,13 +545,13 @@ class PoiManagerLogic(GenericLogic):
         if duration is not None:
             self.timer_duration = duration
         else:
-            self.logMsg('No timer duration given, using {} s.'.format(self.timer_duration),
-                        msgType='warning')
+            logger.warning('No timer duration given, using {} s.'.format(
+                self.timer_duration))
 
         if poikey is not None and poikey in self.track_point_list.keys():
             self._current_poi_key = poikey
 
-        self.logMsg('Periodic refocus on {}.'.format(self._current_poi_key), msgType='status')
+        logger.info('Periodic refocus on {}.'.format(self._current_poi_key))
 
         self.timer_step = 0
         self.timer = QtCore.QTimer()
@@ -577,8 +569,8 @@ class PoiManagerLogic(GenericLogic):
         if duration is not None:
             self.timer_duration = duration
         else:
-            self.logMsg('No timer duration given, using {} s.'.format(self.timer_duration),
-                        msgType='warning')
+            logger.warning('No timer duration given, using {} s.'.format(
+                self.timer_duration))
 
     def _periodic_refocus_loop(self):
         """ This is the looped function that does the actual periodic refocus.
@@ -598,8 +590,7 @@ class PoiManagerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         if self.timer is None:
-            self.logMsg('No timer to stop.',
-                        msgType='warning')
+            logger.warning('No timer to stop.')
             return -1
         self.timer.stop()
         self.timer = None
@@ -619,7 +610,7 @@ class PoiManagerLogic(GenericLogic):
         # do anything with sample position.
         if caller_tag == 'confocalgui':
             self.track_point_list['crosshair'].add_position_to_trace(position=optimized_position)
-    
+
         # If the refocus was initiated here by poimanager, then update POI and sample
         elif caller_tag == 'poimanager':
 
@@ -646,12 +637,14 @@ class PoiManagerLogic(GenericLogic):
                     self.go_to_poi(poikey=self._current_poi_key)
                 return 0
             else:
-                self.logMsg('W. The given POI ({}) does not exist.'.format(self._current_poi_key),
-                            msgType='error')
+                logger.error('W. The given POI ({}) does not exist.'.format(
+                    self._current_poi_key))
                 return -1
 
         else:
-            self.logMsg('Unknown caller_tag for the optimizer.  POI Manager does not know what to do with optimized position, and has done nothing.', msgType='error')
+            logger.error('Unknown caller_tag for the optimizer. POI Manager '
+                    'does not know what to do with optimized position, and '
+                    'has done nothing.')
 
     def reset_roi(self):
 
@@ -731,8 +724,7 @@ class PoiManagerLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, filelabel=self.roi_name, as_text=True)
 
-        self.logMsg('ROI saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        logger.debug('ROI saved to:\n{0}'.format(filepath))
 
         return 0
 
@@ -754,7 +746,7 @@ class PoiManagerLogic(GenericLogic):
                 self.rename_poi(poikey=this_poi_key, name=saved_poi_name, emit_change=False)
 
         roifile.close()
-        
+
         # Now that all the POIs are created, emit the signal for other things (ie gui) to update
         self.signal_poi_updated.emit()
 
@@ -895,9 +887,9 @@ class PoiManagerLogic(GenericLogic):
         pixels_per_micron = np.max([x_pixels, y_pixels]) / np.max([x_range_microns, y_range_microns])
         # The neighborhood in pixels is nbhd_size * pixels_per_um, but it must be 1 or greater
         neighborhood_pix = int(np.max([math.ceil(pixels_per_micron * neighborhood_size), 1]))
-        
+
         data = self.roi_map_data[:, :, 3]
-        
+
         data_max = filters.maximum_filter(data, neighborhood_pix)
         maxima = (data == data_max)
         data_min = filters.minimum_filter(data, 3*neighborhood_pix)
@@ -906,7 +898,7 @@ class PoiManagerLogic(GenericLogic):
 
         labeled, num_objects = ndimage.label(maxima)
         xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects+1)))
-        
+
         for count, pix_pos in enumerate(xy):
             poi_pos = self.roi_map_data[pix_pos[0], pix_pos[1], :][0:3]
             this_poi_key = self.add_poi(position = poi_pos, emit_change=False)
