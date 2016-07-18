@@ -144,9 +144,7 @@ class Manager(QtCore.QObject):
 
             # Thread management
             self.tm = ThreadManager()
-            self.tm.sigLogMessage.connect(self.logger.queuedLogMsg)
-            logger.thread('Main thread is {0}'.format(
-                threading.get_ident()))
+            logger.thread('Main thread is {0}'.format(threading.get_ident()))
 
             # Task runner
             self.tr = None
@@ -565,9 +563,6 @@ class Manager(QtCore.QObject):
 
         # Create object from class (Manager, Name, config)
         instance = modclass(self, instanceName, configuration)
-
-        # Connect to log
-        instance.sigLogMessage.connect(self.logger.queuedLogMsg)
 
         with self.lock:
             if baseName in ['hardware', 'logic', 'gui']:
