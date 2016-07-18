@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from pyqtgraph.Qt import QtCore
+import core.logger as logger
 from collections import OrderedDict
 from .util.mutex import Mutex
 
@@ -41,7 +42,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @return QThread: new thred, none if failed
         """
-        self.threadLog('Creating thread: \"{0}\".'.format(name))
+        logger.thread('Creating thread: \"{0}\".'.format(name))
         with self.lock:
             if 'name' in self._threads:
                 return None
@@ -58,10 +59,11 @@ class ThreadManager(QtCore.QAbstractTableModel):
           @param str name: unique thread name
         """
         if name in self._threads:
-            self.threadLog('Quitting thread {0}.'.format(name))
+            logger.thread('Quitting thread {0}.'.format(name))
             self._threads[name].thread.quit()
         else:
-            self.threadLog('You tried quitting a nonexistent thread {0}.'.format(name))
+            logger.thread('You tried quitting a nonexistent thread {0}.'
+                    ''.format(name))
 
     def joinThread(self, name, time=None):
         """Stop event loop of QThread.
@@ -70,20 +72,21 @@ class ThreadManager(QtCore.QAbstractTableModel):
           @param int time: timeout for waiting in msec
         """
         if name in self._threads:
-            self.threadLog('Waiting for thread {0} to end.'.format(name))
+            logger.thread('Waiting for thread {0} to end.'.format(name))
             if time is None:
                 self._threads[name].thread.wait()
             else:
                 self._threads[name].thread.wait(time)
         else:
-            self.threadLog('You tried waiting for a nonexistent thread {0}.'.format(name))
+            logger.thread('You tried waiting for a nonexistent thread {0}.'
+                    ''.format(name))
 
     def cleanupThread(self, name):
         """Remove thread from thread list if it is not running anymore.
-          
+
           @param str name: unique thread name
         """
-        self.threadLog('Cleaning up thread {0}.'.format(name))
+        logger.thread('Cleaning up thread {0}.'.format(name))
         if 'name' in self._threads and not self._threads[name].thread.isRunning():
             with self.lock:
                 row = self.getItemNumberByKey(name)
@@ -94,7 +97,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
     def quitAllThreads(self):
         """Stop event loop of all QThreads.
         """
-        self.threadLog('Quit all threads')
+        logger.thread('Quit all threads.')
         for name in self._threads:
             self._threads[name].thread.quit()
 
@@ -176,7 +179,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
-        
+
           @param int section: number of the column to get header data for
           @param Qt.Orientation: orientation of header (horizontal or vertical)
           @param ItemDataRole: role for which to get data
@@ -209,7 +212,7 @@ class ThreadItem(QtCore.QObject):
         self.thread.setObjectName(name)
         self.name = name
         self.thread.finished.connect(self.myThreadHasQuit)
-        
+
     def myThreadHasQuit(self):
         """ Signal handler for quitting thread.
             Re-emits signal containing the unique thread name.

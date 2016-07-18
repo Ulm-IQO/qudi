@@ -25,6 +25,7 @@ import pyqtgraph as pg
 import os
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
+import core.logger as logger
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
@@ -64,13 +65,11 @@ class CounterGui(GUIBase):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -84,7 +83,6 @@ class CounterGui(GUIBase):
                          had happened.
         """
 
-        raise Exception("test")
         self._counting_logic = self.connector['in']['counterlogic1']['object']
 
         #####################

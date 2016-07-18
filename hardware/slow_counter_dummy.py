@@ -25,6 +25,7 @@ import random
 import time
 
 from core.base import Base
+import core.logger as logger
 from interface.slow_counter_interface import SlowCounterInterface
 
 
@@ -44,13 +45,11 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
         Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -70,19 +69,17 @@ class SlowCounterDummy(Base, SlowCounterInterface):
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency = 100
-            self.logMsg('No parameter "clock_frequency" configured in Slow '
-                        'Counter Dummy, taking the default value of {0} Hz '
-                        'instead.'.format(self._clock_frequency),
-                        msgType='warning')
+            logger.warning('No parameter "clock_frequency" configured in '
+                    'Slow Counter Dummy, taking the default value of {0} Hz '
+                    'instead.'.format(self._clock_frequency))
 
         if 'samples_number' in config.keys():
             self._samples_number = config['samples_number']
         else:
             self._samples_number = 10
-            self.logMsg('No parameter "samples_number" configured in Slow '
+            logger.warning('No parameter "samples_number" configured in Slow '
                         'Counter Dummy, taking the default value of {0} '
-                        'instead.'.format(self._samples_number),
-                        msgType='warning')
+                        'instead.'.format(self._samples_number))
 
         if 'photon_source2' in config.keys():
             self._photon_source2 = 1
@@ -93,13 +90,12 @@ class SlowCounterDummy(Base, SlowCounterInterface):
             self.dist = config['count_distribution']
         else:
             self.dist = 'dark_bright_gaussian'
-            self.logMsg('No parameter "count_distribution" given in the '
+            logger.warning('No parameter "count_distribution" given in the '
                         'configuration for the Slow Counter Dummy. Possible '
                         'distributions are "dark_bright_gaussian", "uniform", '
                         '"exponential", "single_poisson", '
                         '"dark_bright_poisson" and "single_gaussian". Taking '
-                        'the default distribution "{0}".'.format(self.dist),
-                        msgType='warning')
+                        'the default distribution "{0}".'.format(self.dist))
 
         # possibilities are:
         # dark_bright_gaussian, uniform, exponential, single_poisson,
@@ -144,8 +140,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
-        self.logMsg('slowcounterdummy>set_up_clock',
-                    msgType='warning')
+        logger.warning('slowcounterdummy>set_up_clock')
 
         time.sleep(0.1)
 
@@ -167,8 +162,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('slowcounterdummy>set_up_counter',
-                    msgType='warning')
+        logger.warning('slowcounterdummy>set_up_counter')
 
         time.sleep(0.1)
 
@@ -269,8 +263,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('slowcounterdummy>close_counter',
-                    msgType='warning')
+        logger.warning('slowcounterdummy>close_counter')
         return 0
 
     def close_clock(self,power=0):
@@ -279,6 +272,5 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('slowcounterdummy>close_clock',
-                    msgType='warning')
+        logger.warning('slowcounterdummy>close_clock')
         return 0

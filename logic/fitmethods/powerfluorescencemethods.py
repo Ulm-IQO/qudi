@@ -20,6 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import core.logger as logger
 import numpy as np
 from lmfit.models import Model, LinearModel
 from lmfit import Parameters
@@ -58,12 +60,12 @@ def make_powerfluorescence_model(self):
         @param x: variable variable - Excitation pwer
         @param I_saturation: Saturation Intensity
         @param P_saturation: Saturation power
-    
+
         @return: powerfluorescence function: for using it as a model
         """
-    
+
         return I_saturation * (x / (x + P_saturation))
-        
+
     mod_sat = Model(powerfluorescence_function)
 
     model = mod_sat + LinearModel()
@@ -98,8 +100,7 @@ def make_powerfluorescence_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The 1D gaussian fit did not work.',
-                    msgType='warning')
+        logger.warning('The 1D gaussian fit did not work.')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -124,16 +125,13 @@ def estimate_powerfluorescence(self, x_axis=None, data=None, params=None):
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     #TODO: some estimated values should be input here

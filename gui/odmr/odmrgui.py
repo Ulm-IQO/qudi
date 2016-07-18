@@ -29,6 +29,7 @@ import os
 from collections import OrderedDict
 import copy
 
+import core.logger as logger
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -74,11 +75,11 @@ class ODMRGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        logger.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
+            logger.info('{}: {}'.format(key,config[key]))
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.

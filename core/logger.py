@@ -58,8 +58,8 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     """
     pgdebug.printExc(msg, indent, prefix)
 
-LEVEL_THREAD = 25
-LEVEL_USER = 22
+LEVEL_STATUS = 25
+LEVEL_THREAD = 24
 LOGGER_NAME = 'qudi'
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -76,8 +76,8 @@ def warning(msg, *args, **kwargs):
 def thread(msg, *args, **kwargs):
     logger.log(LEVEL_THREAD, msg, *args, **kwargs)
 
-def user(msg, *args, **kwargs):
-    logger.log(LEVEL_USER, msg, *args, **kwargs)
+def status(msg, *args, **kwargs):
+    logger.log(LEVEL_STATUS, msg, *args, **kwargs)
 
 def info(msg, *args, **kwargs):
     logger.info(msg, *args, **kwargs)
@@ -171,20 +171,26 @@ class Logger(QtCore.QObject):
         self.logFile = None
 
         # initialize logger
-        logging.basicConfig(format="%(message)s", level=logging.INFO)
+        logging.basicConfig(format="%(message)s", level=LEVEL_STATUS)
         logger = logging.getLogger(LOGGER_NAME)
         logging.addLevelName(logging.CRITICAL, 'critical')
         logging.addLevelName(logging.ERROR, 'error')
         logging.addLevelName(logging.WARNING, 'warning')
+        logging.addLevelName(LEVEL_STATUS, 'status')
         logging.addLevelName(LEVEL_THREAD, 'thread')
-        logging.addLevelName(LEVEL_USER, 'user')
         logging.addLevelName(logging.INFO, 'status')
         logging.addLevelName(logging.DEBUG, 'debug')
         logging.addLevelName(logging.NOTSET, 'not set')
         logger.setLevel(logging.INFO)
 
+        # stream handler
+        #streamhandler = logging.StreamHandler(stream=sys.stdout)
+        #streamhandler.setFormatter(logging.Formatter("%(message)s"))
+        #streamhandler.setLevel(LEVEL_STATUS)
+        #logger.addHandler(streamhandler)
         # add Qt log handler
         self._qt_log_handler = QtLogHandler(self)
+        self._qt_log_handler.setLevel(logging.INFO)
         logger.addHandler(self._qt_log_handler)
         # add file logger
         self._rotating_file_handler = logging.handlers.RotatingFileHandler(

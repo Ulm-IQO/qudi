@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 from logic.generic_logic import GenericLogic
+import core.logger as logger
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
@@ -37,12 +38,12 @@ class QudiKernelLogic(GenericLogic):
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
     _out = {'kernel': 'QudiKernelLogic'}
-    
+
     sigStartKernel = QtCore.Signal(str)
     sigStopKernel = QtCore.Signal(int)
     def __init__(self, manager, name, config, **kwargs):
         """ Create logic object
-          
+
           @param object manager: reference to module Manager
           @param str name: unique module name
           @param dict config: configuration in a dict
@@ -76,7 +77,7 @@ class QudiKernelLogic(GenericLogic):
         """
         for kernel in self.kernellist:
             self.stopKernel(kernel)
-            
+
     def startKernel(self, config, external=None):
         """Start a qudi inprocess jupyter kernel.
           @param dict config: connection information for kernel
@@ -85,7 +86,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        self.logMsg('Start {}'.format(realconfig), msgType="status")
+        logger.info('Start {}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -96,10 +97,10 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
+        logger.info('Kernel is {}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
-        self.logMsg('Finished starting Kernel {}'.format(kernel.engine_id), msgType="status")
+        logger.info('Finished starting Kernel {}'.format(kernel.engine_id))
         self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
@@ -108,23 +109,23 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
+        logger.info('Stopping {}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
-        
+
     def cleanupKernel(self, kernelid, external=None):
         """Remove kernel reference and tell rpyc client for that kernel to exit.
 
           @param str kernelid: uuid of kernel reference to remove
           @param callable external: reference to rpyc client exit function
         """
-        self.logMsg('Cleanup kernel {}'.format(kernelid), msgType="status")
+        logger.info('Cleanup kernel {}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:
                 external.exit()
             except:
-                self.logMsg('External qudikernel starter did not exit', msgType="warning")
+                logger.warning('External qudikernel starter did not exit')
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace,

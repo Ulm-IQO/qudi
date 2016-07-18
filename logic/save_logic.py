@@ -19,6 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import core.logger as logger
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
@@ -84,8 +86,7 @@ class SaveLogic(GenericLogic):
         # locking for thread safety
         self.lock = Mutex()
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        logger.info('The following configuration was found.')
 
         # name of active POI, default to empty string
         self.active_poi_name = ''
@@ -111,13 +112,11 @@ class SaveLogic(GenericLogic):
             else:
                 self.data_dir = self.default_win_data_dir
         else:
-            self.logMsg('Identify the operating system.',
-                        msgType='error')
+            logger.error('Identify the operating system.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            logger.info('{}: {}'.format(key, config[key]))
 
     def activation(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
@@ -267,9 +266,9 @@ class SaveLogic(GenericLogic):
 
         if not os.path.exists(filepath):
             filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
-            self.logMsg('No Module name specified! Please correct this! '
-                        'Data are saved in the \'UNSPECIFIED_<module_name>\' folder.',
-                        msgType='warning', importance=7)
+            logger.warning('No Module name specified! Please correct this! '
+                    'Data are saved in the \'UNSPECIFIED_<module_name>\' '
+                    'folder.')
 
         # Produce a filename tag from the active POI name
         if self.active_poi_name == '':
@@ -319,9 +318,9 @@ class SaveLogic(GenericLogic):
             # make a hardcore string convertion and try to save the
             # parameters directly:
             else:
-                self.logMsg('The parameters are not passed as a dictionary! '
-                            'The SaveLogic will try to save the paramters '
-                            'directely.', msgType='error', importance=9)
+                logger.error('The parameters are not passed as a dictionary! '
+                        'The SaveLogic will try to save the parameters '
+                        'directly.')
                 textfile.write('# not specified parameters: ' + str(parameters) + '\n')
 
         textfile.write('#\n')
@@ -353,16 +352,16 @@ class SaveLogic(GenericLogic):
                                             delimiter=delimiter)
             elif len(np.shape(data[key_name])) == 3:
 
-                self.logMsg('Savelogic has no implementation for 3 '
-                            'dimensional arrays. The data is saved in a '
-                            'raw fashion.', msgType='warning', importance=7)
+                logger.warning('Savelogic has no implementation for 3 '
+                        'dimensional arrays. The data is saved in a '
+                        'raw fashion.')
                 textfile.write(str(data[key_name]))
 
             else:
 
-                self.logMsg('Savelogic has no implementation for 4 '
-                            'dimensional arrays. The data is saved in a '
-                            'raw fashion.', msgType='warning', importance=7)
+                logger.warning('Savelogic has no implementation for 4 '
+                        'dimensional arrays. The data is saved in a '
+                        'raw fashion.')
                 textfile.write(+str(data[key_name]))
 
         else:
@@ -603,19 +602,17 @@ class SaveLogic(GenericLogic):
                 elif self.os_system == 'win':
                     self.data_dir = self.default_win_data_dir
                 else:
-                    self.logMsg('Identify the operating system.',
-                                msgType='error')
+                    logger.error('Identify the operating system.')
 
                 # Check if the default directory does exist. If yes, there is
                 # no need to create it, since it will overwrite the existing
                 # data there.
                 if not os.path.exists(self.data_dir):
                     os.makedirs(self.data_dir)
-                    self.logMsg('The specified Data Directory in the config '
-                                'file does not exist. Using default for {0} '
-                                'system instead. The directory\n{1} was '
-                                'created'.format(self.os_system, self.data_dir),
-                                msgType='status', importance=3)
+                    logger.warning('The specified Data Directory in the '
+                            'config file does not exist. Using default for '
+                            '{0} system instead. The directory\n{1} was '
+                            'created'.format(self.os_system, self.data_dir))
 
         # That is now the current directory:
         current_dir = os.path.join(self.data_dir, time.strftime("%Y"), time.strftime("%m"))
@@ -634,8 +631,8 @@ class SaveLogic(GenericLogic):
 
         if not folder_exists:
             current_dir = os.path.join(current_dir, time.strftime("%Y%m%d"))
-            self.logMsg('Creating directory for today\'s data in \n' + current_dir,
-                        msgType='status', importance=5)
+            logger.info('Creating directory for today\'s data in \n'
+                    '{0}'.format(current_dir))
 
             # The exist_ok=True is necessary here to prevent Error 17 "File Exists"
             # Details at http://stackoverflow.com/questions/12468022/python-fileexists-error-when-making-directory
@@ -658,9 +655,9 @@ class SaveLogic(GenericLogic):
 
         """
         if module_name is None:
-            self.logMsg('No Module name specified! Please correct this! Data '
-                        'are saved in the \'UNSPECIFIED_<module_name>\' folder.',
-                        msgType='warning', importance=7)
+            logger.warning('No Module name specified! Please correct this! '
+                    'Data is saved in the \'UNSPECIFIED_<module_name>\' '
+                    'folder.')
 
             frm = inspect.stack()[1]    # try to trace back the functioncall to
                                         # the class which was calling it.
