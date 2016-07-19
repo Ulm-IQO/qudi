@@ -18,8 +18,12 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+
+
+import logging
+logger = logging.getLogger(__name__)
+
 from pyqtgraph.Qt import QtCore
-import core.logger as logger
 from urllib.parse import urlparse
 from rpyc.utils.server import ThreadedServer
 from rpyc.utils.authenticators import SSLAuthenticator
@@ -42,7 +46,6 @@ class RemoteObjectManager(QtCore.QObject):
         self.certfile = certfile
         self.keyfile = keyfile
         self.tm = manager.tm
-        self.logger = manager.logger
         self.manager = manager
         self.remoteModules = ListTableModel()
         self.remoteModules.headers[0] = 'Remote Modules'

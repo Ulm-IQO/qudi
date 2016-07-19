@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-import core.logger as logger
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 import visa
@@ -220,7 +219,7 @@ class EdwardsVacuumController(Base):
                 send_end=True
             )
         except visa.VisaIOError as e:
-            logger.exception("")
+            self.log.exception("")
             return False
 
     def disconnect_tic(self):

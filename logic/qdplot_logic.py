@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
@@ -100,11 +99,11 @@ class QdplotLogic(GenericLogic):
         """Set the data to plot
         """
         if x is None:
-            logger.error('No x-values provided, cannot set plot data.')
+            self.log.error('No x-values provided, cannot set plot data.')
             return -1
 
         if y is None:
-            logger.error('No y-values provided, cannot set plot data.')
+            self.log.error('No y-values provided, cannot set plot data.')
             return -1
 
         self.indep_vals = x
@@ -229,4 +228,4 @@ class QdplotLogic(GenericLogic):
                                    as_text=True,
                                    plotfig=fig
                                    )
-        logger.debug('Data saved to:\n{0}'.format(filepath))
+        self.log.debug('Data saved to:\n{0}'.format(filepath))

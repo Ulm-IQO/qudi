@@ -27,7 +27,6 @@ from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
 from collections import OrderedDict
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 
 
@@ -61,11 +60,11 @@ class TraceAnalysisLogic(GenericLogic):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key, config[key]))
+            self.log.info('{}: {}'.format(key, config[key]))
 
         self.hist_data = None
         self._hist_num_bins = None
@@ -278,7 +277,7 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, param_dict
         else:
 
-            # logger.debug((self.calculate_threshold(self.hist_data)))
+            # self.log.debug((self.calculate_threshold(self.hist_data)))
 
             # shift x axis to middle of bin
             axis = self.hist_data[0][:-1]+(self.hist_data[0][1]-self.hist_data[0][0])/2.
@@ -324,7 +323,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         model, params = self._fit_logic.make_gaussian_model()
         if len(axis) < len(params):
-            logger.warning('Fit could not be performed because number of '
+            self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points.')
             return self.do_no_fit()
 
@@ -382,7 +381,7 @@ class TraceAnalysisLogic(GenericLogic):
     def do_doublegaussian_fit(self, axis, data):
         model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
         if len(axis) < len(params):
-            logger.warning('Fit could not be performed because number of '
+            self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points')
             return self.do_no_fit()
 
@@ -436,7 +435,7 @@ class TraceAnalysisLogic(GenericLogic):
     def do_doublepossonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
         if len(axis) < len(params):
-            logger.warning('Fit could not be performed because number of '
+            self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points')
             return self.do_no_fit()
 
@@ -471,7 +470,7 @@ class TraceAnalysisLogic(GenericLogic):
     def do_possonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model()
         if len(axis) < len(params):
-            logger.error('Fit could not be performed because number of '
+            self.log.error('Fit could not be performed because number of '
                     'parameters is smaller than data points')
             return self.do_no_fit()
         else:

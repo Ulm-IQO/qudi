@@ -30,7 +30,6 @@ import ctypes   # is a foreign function library for Python. It provides C
 
 from interface.wavemeter_interface import WavemeterInterface
 from core.base import Base
-import core.logger as logger
 from core.util.mutex import Mutex
 
 
@@ -114,7 +113,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             self._measurement_timing=config['measurement_timing']
         else:
             self._measurement_timing = 10.
-            logger.warning('No measurement_timing configured, '\
+            self.log.warning('No measurement_timing configured, '\
                         'using {} instead.'.format(self._measurement_timing))
 
 
@@ -127,7 +126,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             self._wavemeterdll = ctypes.windll.LoadLibrary('wlmData.dll')
 
         except:
-            logger.critical('There is no Wavemeter installed on this '
+            self.log.critical('There is no Wavemeter installed on this '
                     'Computer.\nPlease install a High Finesse Wavemeter and '
                     'try again.')
 
@@ -186,7 +185,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             del self._wavemeterdll
             return 0
         except:
-            logger.error('Could not unload the wlmData.dll of the wavemeter.')
+            self.log.error('Could not unload the wlmData.dll of the '
+                    'wavemeter.')
 
 
     #############################################
@@ -209,7 +209,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
         # first check its status
         if self.getState() == 'running':
-            logger.error('Wavemeter busy')
+            self.log.error('Wavemeter busy')
             return -1
 
 
@@ -229,7 +229,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         # check status just for a sanity check
         if self.getState() == 'idle':
-            logger.warning('Wavemeter was already stopped, stopping it '
+            self.log.warning('Wavemeter was already stopped, stopping it '
                     'anyway!')
         else:
             # stop the measurement thread

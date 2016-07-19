@@ -19,7 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 from logic.generic_logic import GenericLogic
-import core.logger as logger
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
@@ -86,7 +85,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        logger.info('Start {}'.format(realconfig))
+        self.log.info('Start {}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -97,10 +96,10 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        logger.info('Kernel is {}'.format(kernel.engine_id))
+        self.log.info('Kernel is {}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
-        logger.info('Finished starting Kernel {}'.format(kernel.engine_id))
+        self.log.info('Finished starting Kernel {}'.format(kernel.engine_id))
         self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
@@ -109,7 +108,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        logger.info('Stopping {}'.format(realkernelid))
+        self.log.info('Stopping {}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
 
@@ -119,13 +118,13 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel reference to remove
           @param callable external: reference to rpyc client exit function
         """
-        logger.info('Cleanup kernel {}'.format(kernelid))
+        self.log.info('Cleanup kernel {}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:
                 external.exit()
             except:
-                logger.warning('External qudikernel starter did not exit')
+                self.log.warning('External qudikernel starter did not exit')
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace,

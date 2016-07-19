@@ -23,9 +23,11 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-import traceback
-import sys
+
 import logging
+import logging.handlers
+import sys
+import traceback
 
 import pyqtgraph.debug as pgdebug
 from pyqtgraph.Qt import QtCore
@@ -33,9 +35,6 @@ from pyqtgraph.Qt import QtCore
 ## install global exception handler for others to hook into.
 import pyqtgraph.exceptionHandling as exceptionHandling
 exceptionHandling.setTracebackClearing(True)
-
-global LOG
-LOG = None
 
 global blockLogging
 blockLogging = False
@@ -57,33 +56,13 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
 
 LEVEL_STATUS = 25
 LEVEL_THREAD = 24
-LOGGER_NAME = 'qudi'
 
-logger = logging.getLogger(LOGGER_NAME)
+class Logger(logging.Logger):
+    def thread(self, msg, *args, **kwargs):
+        self.log(LEVEL_THREAD, msg, *args, **kwargs)
 
-def critical(msg, *args, **kwargs):
-    logger.critical(msg, *args, **kwargs)
-
-def error(msg, *args, **kwargs):
-    logger.error(msg, *args, **kwargs)
-
-def warning(msg, *args, **kwargs):
-    logger.warning(msg, *args, **kwargs)
-
-def thread(msg, *args, **kwargs):
-    logger.log(LEVEL_THREAD, msg, *args, **kwargs)
-
-def status(msg, *args, **kwargs):
-    logger.log(LEVEL_STATUS, msg, *args, **kwargs)
-
-def info(msg, *args, **kwargs):
-    logger.info(msg, *args, **kwargs)
-
-def debug(msg, *args, **kwargs):
-    logger.debug(msg, *args, **kwargs)
-
-def exception(msg, *args, **kwargs):
-    logger.exception(msg, *args, **kwargs)
+    def status(self, msg, *args, **kwargs):
+        self.log(LEVEL_STATUS, msg, *args, **kwargs)
 
 class QtLogFormatter(logging.Formatter):
     def processEntry(self, entry):
@@ -139,85 +118,79 @@ class QtLogFormatter(logging.Formatter):
         return entry
 
 
-class QtLogHandler(logging.Handler):
-    def __init__(self, logger, **kwargs):
-        super().__init__(**kwargs)
+class QtLogHandler(QtCore.QObject, logging.Handler):
+    sigLoggedMessage = QtCore.Signal(object)
+
+    def __init__(self, parent=None, level=0):
+        QtCore.QObject.__init__(self, parent)
+        logging.Handler.__init__(self, level)
         self.setFormatter(QtLogFormatter())
-        self._logger = logger
 
     def emit(self, record):
         record = self.format(record)
-        if record: self._logger.sigLoggedMessage.emit(record)
+        if record: self.sigLoggedMessage.emit(record)
 
 
-class Logger(QtCore.QObject):
-    """Class that does all the log handling in QuDi."""
+def initialize_logger():
+    logging.setLoggerClass(Logger)
 
-    sigLoggedMessage = QtCore.Signal(object)
+    # initialize logger
+    logging.basicConfig(format="%(message)s", level=LEVEL_STATUS)
+    logging.addLevelName(logging.CRITICAL, 'critical')
+    logging.addLevelName(logging.ERROR, 'error')
+    logging.addLevelName(logging.WARNING, 'warning')
+    logging.addLevelName(LEVEL_STATUS, 'status')
+    logging.addLevelName(LEVEL_THREAD, 'thread')
+    logging.addLevelName(logging.INFO, 'info')
+    logging.addLevelName(logging.DEBUG, 'debug')
+    logging.addLevelName(logging.NOTSET, 'not set')
+    logging.captureWarnings(True)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    # set level of stream handler which logs to stderr
+    logger.handlers[0].setLevel(LEVEL_STATUS)
 
-    def __init__(self, manager, **kwargs):
-        """Create a logger instance for a manager object.
+    # add file logger (inherits level)
+    rotating_file_handler = logging.handlers.RotatingFileHandler(
+        'qudi.log', backupCount=5)
+    rotating_file_handler.setFormatter(logging.Formatter(
+        "%(levelname)s %(asctime)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"))
+    rotating_file_handler.doRollover()
+    logger.addHandler(rotating_file_handler)
 
-          @param object manager: instance of the Manager class that this
-                                 logger belongs to.
-        """
-        super().__init__(**kwargs)
-        self.manager = manager
+    # add Qt log handler
+    qt_log_handler = QtLogHandler()
+    qt_log_handler.setLevel(logging.INFO)
+    logger.addHandler(qt_log_handler)
 
-        # initialize logger
-        logging.basicConfig(format="%(message)s", level=LEVEL_STATUS)
-        logger = logging.getLogger(LOGGER_NAME)
-        logging.addLevelName(logging.CRITICAL, 'critical')
-        logging.addLevelName(logging.ERROR, 'error')
-        logging.addLevelName(logging.WARNING, 'warning')
-        logging.addLevelName(LEVEL_STATUS, 'status')
-        logging.addLevelName(LEVEL_THREAD, 'thread')
-        logging.addLevelName(logging.INFO, 'status')
-        logging.addLevelName(logging.DEBUG, 'debug')
-        logging.addLevelName(logging.NOTSET, 'not set')
-        logger.setLevel(logging.INFO)
+    # exception handler
+    exceptionHandling.register(exceptionCallback)
 
-        # stream handler
-        #streamhandler = logging.StreamHandler(stream=sys.stdout)
-        #streamhandler.setFormatter(logging.Formatter("%(message)s"))
-        #streamhandler.setLevel(LEVEL_STATUS)
-        #logger.addHandler(streamhandler)
-        # add Qt log handler
-        self._qt_log_handler = QtLogHandler(self)
-        self._qt_log_handler.setLevel(logging.INFO)
-        logger.addHandler(self._qt_log_handler)
-        # add file logger
-        self._rotating_file_handler = logging.handlers.RotatingFileHandler(
-            'qudi.log', backupCount=5)
-        self._rotating_file_handler.setFormatter(logging.Formatter(
-            "%(levelname)s %(asctime)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"))
-        self._rotating_file_handler.doRollover()
-        logger.addHandler(self._rotating_file_handler)
 
-    def exceptionCallback(self, *args):
-        """Exception logging function.
+def exceptionCallback(self, *args):
+    """Exception logging function.
 
-          @param list args: contents of exception (typt, value, backtrace)
-        """
-        # Called whenever there is an unhandled exception.
-        # unhandled exceptions generate an error message by default, but this
-        # can be overridden.
-        global blockLogging
-        # If an error occurs *while* trying to log another exception, disable
-        # any further logging to prevent recursion.
-        if not blockLogging:
-            try:
-                blockLogging = True
-                ex_type, ex_value, ex_traceback = args
-                error('Unexpected error: ', exc_info=args)
-                self.logMsg('Unexpected error: ', exception=args,
-                            msgType='error')
-                print(ex_type)
-                if ex_type == KeyboardInterrupt:
-                    self.manager.quit()
-            except:
-                print('Error: Exception could no be logged.')
-                original_excepthook(*sys.exc_info())
-            finally:
-                blockLogging = False
+      @param list args: contents of exception (type, value, backtrace)
+    """
+    # Called whenever there is an unhandled exception.
+    # unhandled exceptions generate an error message by default, but this
+    # can be overridden.
+    global blockLogging
+    # If an error occurs *while* trying to log another exception, disable
+    # any further logging to prevent recursion.
+    if not blockLogging:
+        try:
+            blockLogging = True
+            print(len(args))
+            print(args)
+            ex_type, ex_value, ex_traceback = args
+            logging.getLogger().error('Unexpected error: ', exc_info=args)
+            print(ex_type)
+            if ex_type == KeyboardInterrupt:
+                self.manager.quit()
+        except:
+            print('Error: Exception could no be logged.')
+            original_excepthook(*sys.exc_info())
+        finally:
+            blockLogging = False

@@ -19,8 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import logging
 from pyqtgraph.Qt import QtCore
-import core.logger as logger
 from fysom import Fysom # provides a final state machine
 from collections import OrderedDict
 
@@ -115,6 +115,14 @@ class Base(QtCore.QObject, Fysom):
         self._configuration = configuration
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
+
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__))
 
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden

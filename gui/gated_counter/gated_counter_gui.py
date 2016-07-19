@@ -24,7 +24,6 @@ import os
 import numpy as np
 from collections import OrderedDict
 
-import core.logger as logger
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from pyqtgraph import PlotCurveItem
@@ -63,11 +62,11 @@ class GatedCounterGui(GUIBase):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -407,7 +406,7 @@ class GatedCounterGui(GUIBase):
 
         # check if error is zero, since that is an invalid input!
         if np.isclose(error, 0.0) or np.isnan(error):
-            logger.warning('Cannot round to the error, since either a zero '
+            self.log.warning('Cannot round to the error, since either a zero '
                     'error value was passed for the number {0}, or the '
                     'error is NaN: Error value: {1}. '.format(value, error))
 

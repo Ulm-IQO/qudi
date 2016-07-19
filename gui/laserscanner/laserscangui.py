@@ -20,7 +20,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
@@ -61,11 +60,11 @@ class LaserScanningGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
 
     def initUI(self, e=None):
@@ -230,7 +229,7 @@ class LaserScanningGui(GUIBase):
             self._mw.binSpinBox.setEnabled(False)
             self.recalculate_histogram()
         else:
-            logger.error('Cannot scan, since a scan is alredy running')
+            self.log.error('Cannot scan, since a scan is alredy running')
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.

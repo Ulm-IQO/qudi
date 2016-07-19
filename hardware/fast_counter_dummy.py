@@ -26,7 +26,6 @@ import numpy as np
 from pyqtgraph.Qt import QtGui
 
 from core.base import Base
-import core.logger as logger
 from interface.fast_counter_interface import FastCounterInterface
 
 
@@ -49,17 +48,17 @@ class FastCounterDummy(Base, FastCounterInterface):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         if 'gated' in config.keys():
             self._gated = config['gated']
         else:
             self._gated = False
-            logger.warning('No parameter "gated" was specified in the '
+            self.log.warning('No parameter "gated" was specified in the '
                         'config. The default configuration gated={0} will be '
                         'taken instead.'.format(self._gated))
 
@@ -67,9 +66,9 @@ class FastCounterDummy(Base, FastCounterInterface):
             self._choose_trace = config['choose_trace']
         else:
             self._choose_trace = False
-            logger.warning('No parameter "choose_trace" was specified in the '
-                        'config. The default configuration choose_trace={0} '
-                        'will be taken instead.'.format(self._choose_trace))
+            self.log.warning('No parameter "choose_trace" was specified in '
+                    'the config. The default configuration choose_trace={0} '
+                    'will be taken instead.'.format(self._choose_trace))
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.

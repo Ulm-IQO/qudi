@@ -19,7 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtGui, uic
 import pyqtgraph as pg
@@ -54,11 +53,11 @@ class SpectrometerGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key, config[key]))
+            self.log.info('{}: {}'.format(key, config[key]))
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.

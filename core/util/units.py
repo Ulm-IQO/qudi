@@ -198,10 +198,9 @@ def round_value_to_error(value, error):
 
     # check if error is zero, since that is an invalid input!
     if np.isclose(error, 0.0) or np.isnan(error) or np.isinf(error):
-        #self.logMsg('Cannot round to the error, since either a zero error '
+        #logger.warning('Cannot round to the error, since either a zero error '
         #            'value was passed for the number {0}, or the error is '
-        #            'NaN: Error value: {1}. '.format(value, error),
-        #            msgType='warning')
+        #            'NaN: Error value: {1}. '.format(value, error))
 
         # set the round digit to float precision
         round_digit = -12

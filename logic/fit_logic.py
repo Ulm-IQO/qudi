@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -111,9 +110,9 @@ class FitLogic(GenericLogic):
                                     if not str(method).split('_')[1] in self.oneD_fit_methods:
                                         self.oneD_fit_methods[str(method).split('_')[1]] = []
                 except:
-                    logger.error('It was not possible to import element {} '
+                    self.log.error('It was not possible to import element {} '
                             'into FitLogic.'.format(method))
-        logger.warning('Methods were included to FitLogic, but only if '
+        self.log.warning('Methods were included to FitLogic, but only if '
                 'naming is right: check the doxygen documentation '
                 'if you added a new method and it does not show.')
 

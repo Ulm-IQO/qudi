@@ -24,7 +24,6 @@ import visa
 import time
 
 from core.base import Base
-import core.logger as logger
 from interface.motor_interface import MotorInterface
 
 class MotorStagePI(Base, MotorInterface):
@@ -74,12 +73,12 @@ class MotorStagePI(Base, MotorInterface):
         if 'com_port_pi_xyz' in config.keys():
             self._com_port_pi_xyz = config['com_port_pi_xyz']
         else:
-            logger.error('No parameter "com_port_pi_xyz" found in config.\n'
+            self.log.error('No parameter "com_port_pi_xyz" found in config.\n'
                     'Cannot connect to motorized stage!')
         if 'com_port_rot' in config.keys():
             self._com_port_rot = config['com_port_rot']
         else:
-            logger.error('No parameter "com_port_rot" found in config.\n'
+            self.log.error('No parameter "com_port_rot" found in config.\n'
                     'Cannot connect to motorized stage!')
 
         # get the the right baud rates from config
@@ -87,14 +86,14 @@ class MotorStagePI(Base, MotorInterface):
             self._pi_xyz_baud_rate = config['pi_xyz_baud_rate']
         else:
             self._pi_xyz_baud_rate = 9600
-            logger.warning('No parameter "pi_xyz_baud_rate" found in '
+            self.log.warning('No parameter "pi_xyz_baud_rate" found in '
                     'config!\nTaking the baud rate {0} '
                         'instead.'.format(self._pi_xyz_baud_rate))
         if 'rot_baud_rate' in config.keys():
             self._rot_baud_rate = config['rot_baud_rate']
         else:
             self._rot_baud_rate = 9600
-            logger.warning('No parameter "rot_baud_rate" found in config!\n'
+            self.log.warning('No parameter "rot_baud_rate" found in config!\n'
                     'Taking the baud rate {0} '
                     'instead.'.format(self._rot_baud_rate))
 
@@ -103,14 +102,15 @@ class MotorStagePI(Base, MotorInterface):
             self._pi_xyz_timeout = config['pi_xyz_timeout']
         else:
             self._pi_xyz_timeout = 1000    # timeouts are given in millisecond in new pyvisa version
-            logger.warning('No parameter "pi_xyz_timeout" found in config!\n'
+            self.log.warning('No parameter "pi_xyz_timeout" found in '
+                    'config!\n'
                     'Setting the timeout to {0} '
                     'instead.'.format(self._pi_xyz_timeout))
         if 'rot_timeout' in config.keys():
             self._rot_timeout = config['rot_timeout']
         else:
             self._rot_timeout = 5000     #TIMEOUT shorter?
-            logger.warning('No parameter "rot_timeout" found in config!\n'
+            self.log.warning('No parameter "rot_timeout" found in config!\n'
                     'Setting the timeout to {0} '
                     'instead.'.format(self._rot_timeout))
 
@@ -119,14 +119,14 @@ class MotorStagePI(Base, MotorInterface):
             self._pi_xyz_term_char = config['pi_xyz_term_char']
         else:
             self._pi_xyz_term_char = '\n'
-            logger.warning('No parameter "pi_xyz_term_char" found in '
+            self.log.warning('No parameter "pi_xyz_term_char" found in '
                     'config!\nTaking the term_char {0} '
                     'instead.'.format(self._pi_xyz_term_char))
         if 'rot_term_char' in config.keys():
             self._rot_term_char = config['rot_term_char']
         else:
             self._rot_term_char = '\n'     #TIMEOUT shorter?
-            logger.warning('No parameter "rot_term_char" found in config!\n'
+            self.log.warning('No parameter "rot_term_char" found in config!\n'
                     'Taking the term_char {0} '
                     'instead.'.format(self._rot_term_char))
 
@@ -145,37 +145,37 @@ class MotorStagePI(Base, MotorInterface):
             self._min_x = config['pi_x_min'] * 10000.
         else:
             self._min_x = -100. * 10000.
-            logger.warning('No parameter "pi_x_min" found in config!\n'
+            self.log.warning('No parameter "pi_x_min" found in config!\n'
                     'Taking -100mm instead.')
         if 'pi_x_max' in config.keys():
             self._max_x = config['pi_x_max'] * 10000.
         else:
             self._max_x = 100. * 10000.
-            logger.warning('No parameter "pi_x_max" found in config!\n'
+            self.log.warning('No parameter "pi_x_max" found in config!\n'
                     'Taking 100mm instead.')
         if 'pi_y_min' in config.keys():
             self._min_y = config['pi_y_min'] * 10000.
         else:
             self._min_y = -100. * 10000.
-            logger.warning('No parameter "pi_y_min" found in config!\n'
+            self.log.warning('No parameter "pi_y_min" found in config!\n'
                     'Taking -100mm instead.')
         if 'pi_y_max' in config.keys():
             self._max_y = config['pi_y_max'] * 10000.
         else:
             self._max_y = 100. * 10000.
-            logger.warning('No parameter "pi_y_max" found in config!\n'
+            self.log.warning('No parameter "pi_y_max" found in config!\n'
                     'Taking 100mm instead.')
         if 'pi_z_min' in config.keys():
             self._min_z = config['pi_z_min'] * 10000.
         else:
             self._min_z = -100. * 10000.
-            logger.warning('No parameter "pi_z_min" found in config!\n'
+            self.log.warning('No parameter "pi_z_min" found in config!\n'
                     'Taking -100mm instead.')
         if 'pi_z_max' in config.keys():
             self._max_z = config['pi_z_max'] * 10000.
         else:
             self._max_z = 100. * 10000.
-            logger.warning('No parameter "pi_z_max" found in config!\n'
+            self.log.warning('No parameter "pi_z_max" found in config!\n'
                     'Taking 100mm instead.')
 
         # get the MicroStepSize value for the rotation stage
@@ -183,7 +183,7 @@ class MotorStagePI(Base, MotorInterface):
             self._MicroStepSize = config['rot_microstepsize']
         else:
             self._MicroStepSize = 0.000234375
-            logger.warning('No parameter "rot_microstepsize" found in '
+            self.log.warning('No parameter "rot_microstepsize" found in '
                     'config!\nTaking the MicroStepSize {0} '
                     'instead.'.format(self._MicroStepSize))
 
@@ -369,7 +369,7 @@ class MotorStagePI(Base, MotorInterface):
         """
         constraints = self.get_constraints()
         if move > constraints[axis]['pos_max'] or move < constraints[axis]['pos_min']:
-            logger.warning('Cannot make the movement of the axis "{0}"'
+            self.log.warning('Cannot make the movement of the axis "{0}"'
                     'since the border [{1},{2}] '
                     'would be crossed! Ignore '
                     'command!'.format(axis,

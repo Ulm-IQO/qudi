@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
-import core.logger as logger
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
@@ -151,7 +150,7 @@ class FlipMirror(Base, SwitchInterface):
                 if answer != 'OK1':
                     return False
                 time.sleep(self.getSwitchTime(switchNumber))
-                logger.info('{0} switch {1}: On'.format(
+                self.log.info('{0} switch {1}: On'.format(
                     self._name, switchNumber))
             except:
                 return False
@@ -170,7 +169,7 @@ class FlipMirror(Base, SwitchInterface):
                 if answer != 'OK1':
                     return False
                 time.sleep(self.getSwitchTime(switchNumber))
-                logger.info('{0} switch {1}: Off'.format(
+                self.log.info('{0} switch {1}: Off'.format(
                     self._name, switchNumber))
             except:
                 return False

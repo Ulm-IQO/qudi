@@ -29,7 +29,6 @@ import pyqtgraph.exporters
 import datetime
 from collections import OrderedDict
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 
 
@@ -123,11 +122,11 @@ class MagnetLogic(GenericLogic):
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
         self.curr_2d_pathway_mode = 'snake-wise'    # choose that as default
@@ -432,25 +431,25 @@ class MagnetLogic(GenericLogic):
 
         #FIXME: create these path modes:
         if self.curr_2d_pathway_mode == 'spiral-in':
-            logger.error('The pathway creation method "{0}" through the '
+            self.log.error('The pathway creation method "{0}" through the '
                     'matrix is not implemented yet!\nReturn an empty '
                     'patharray.'.format(self.curr_2d_pathway_mode))
             return [], []
 
         elif self.curr_2d_pathway_mode == 'spiral-out':
-            logger.error('The pathway creation method "{0}" through the '
+            self.log.error('The pathway creation method "{0}" through the '
                     'matrix is not implemented yet!\nReturn an empty '
                     'patharray.'.format(self.curr_2d_pathway_mode))
             return [], []
 
         elif self.curr_2d_pathway_mode == 'diagonal-snake-wise':
-            logger.error('The pathway creation method "{0}" through the '
+            self.log.error('The pathway creation method "{0}" through the '
                     'matrix is not implemented yet!\nReturn an empty '
                     'patharray.'.format(self.current_2d_pathway_mode))
             return [], []
 
         elif self.curr_2d_pathway_mode == 'selected-points':
-            logger.error('The pathway creation method "{0}" through the '
+            self.log.error('The pathway creation method "{0}" through the '
                     'matrix is not implemented yet!\nReturn an empty '
                     'patharray.'.format(self.current_2d_pathway_mode))
             return [], []
@@ -873,7 +872,7 @@ class MagnetLogic(GenericLogic):
         self._pathway_index = 0
         self._stop_measurement_time = datetime.datetime.now()
 
-        logger.info('Alignment Complete!')
+        self.log.info('Alignment Complete!')
 
         pass
 
@@ -950,7 +949,7 @@ class MagnetLogic(GenericLogic):
             self._2D_data_matrix[index_array] = meas_val
             self._2D_add_data_matrix[index_array] = add_meas_val
 
-            # logger.debug('Data "{0}", saved at intex "{1}"'.format(meas_val, index_array))
+            # self.log.debug('Data "{0}", saved at intex "{1}"'.format(meas_val, index_array))
 
             self.sig2DMatrixChanged.emit()
 
@@ -960,7 +959,7 @@ class MagnetLogic(GenericLogic):
             #FIXME: Implement the 3D save
             self.sig3DMatrixChanged.emit()
         else:
-            logger.error('The measurement point "{0}" could not be set in '
+            self.log.error('The measurement point "{0}" could not be set in '
                     'the _set_meas_point routine, since either a 1D, a 2D or '
                     'a 3D index array was expected, but an index array "{1}" '
                     'was given in the passed back_map. Correct the '
@@ -1100,7 +1099,7 @@ class MagnetLogic(GenericLogic):
                 low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq_Freq. 1']['value']*1e6
                 low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq_Freq. 1']['value']*1e6
             else:
-                logger.error('No previous saved lower odmr freq found in '
+                self.log.error('No previous saved lower odmr freq found in '
                         'ODMR alignment data! Cannot do the ODMR Alignment!')
 
             if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('high_freq_Frequency') is not None:
@@ -1110,7 +1109,7 @@ class MagnetLogic(GenericLogic):
                 high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq_Freq. 1']['value']*1e6
                 high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq_Freq. 1']['value']*1e6
             else:
-                logger.error('No previous saved higher odmr freq found in '
+                self.log.error('No previous saved higher odmr freq found in '
                         'ODMR alignment data! Cannot do the ODMR Alignment!')
 
             # only if there was a non zero movement, the if make sense to
@@ -1321,7 +1320,7 @@ class MagnetLogic(GenericLogic):
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True)
 
-        logger.debug('Magnet 2D data saved to:\n{0}'.format(filepath))
+        self.log.debug('Magnet 2D data saved to:\n{0}'.format(filepath))
 
         # prepare the data in a dict or in an OrderedDict:
         add_data = OrderedDict()
@@ -1378,7 +1377,7 @@ class MagnetLogic(GenericLogic):
         if not np.isclose(0, checktime) and checktime>0:
             self._checktime = checktime
         else:
-            logger.warning('Could not set a new value for checktime, since '
+            self.log.warning('Could not set a new value for checktime, since '
                     'the passed value "{0}" is either zero or negative!\n'
                     'Choose a proper checktime value in seconds, the old '
                     'value will be kept!')

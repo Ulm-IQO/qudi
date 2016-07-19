@@ -23,7 +23,8 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 
-import core.logger as logger
+import logging
+logger = logging.getLogger(__name__)
 from lmfit.models import Model
 import numpy as np
 from lmfit import Parameters

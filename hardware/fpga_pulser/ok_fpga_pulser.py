@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-import core.logger as logger
 from core.util.mutex import Mutex
 from interface.pulser_interface import PulserInterface
 import thirdparty.opal_kelly.ok64 as ok
@@ -55,7 +54,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                logger.warning('The directory defined in parameter '
+                self.log.warning('The directory defined in parameter '
                             '"pulsed_file_dir" in the config for '
                             'SequenceGeneratorLogic class does not exist!\n'
                             'The default home directory\n{0}\n will be taken '
@@ -63,16 +62,16 @@ class OkFpgaPulser(Base, PulserInterface):
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            logger.warning('No parameter "pulsed_file_dir" was specified in '
-                    'the config for SequenceGeneratorLogic as directory for '
-                    'the pulsed files!\nThe default home directory\n{0}\n'
+            self.log.warning('No parameter "pulsed_file_dir" was specified '
+                    'in the config for SequenceGeneratorLogic as directory '
+                    'for the pulsed files!\nThe default home directory\n{0}\n'
                     'will be taken instead.'.format(self.pulsed_file_dir))
 
         if 'fpga_serial' in config.keys():
             self.fpga_serial = config['fpga_serial']
         else:
             self.fpga_serial = ''
-            logger.error('No parameter "fpga_serial" was specified in the '
+            self.log.error('No parameter "fpga_serial" was specified in the '
                         'config for FPGA pulse generator.')
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
@@ -214,13 +213,13 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         # ignore if no asset_name is given
         if asset_name is None:
-            logger.warning('"upload_asset" called with asset_name = None.')
+            self.log.warning('"upload_asset" called with asset_name = None.')
             return 0
 
         # check if asset exists
         saved_assets = self.get_saved_asset_names()
         if asset_name not in saved_assets:
-            logger.error('No asset with name "{0}" found for FPGA pulser.\n'
+            self.log.error('No asset with name "{0}" found for FPGA pulser.\n'
                     '"upload_asset" call ignored.'.format(asset_name))
             return -1
 
@@ -273,7 +272,7 @@ class OkFpgaPulser(Base, PulserInterface):
             self.fpga.UpdateWireIns()
             # check if the memory readout works.
             if flags == 0:
-                logger.info('Upload of the asset "{0}" to FPGA was '
+                self.log.info('Upload of the asset "{0}" to FPGA was '
                         'successful.\nUpload attempts needed: {1}'.format(
                             asset_name, loop_count))
                 break
@@ -302,7 +301,7 @@ class OkFpgaPulser(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        logger.info('FPGA pulser has no own storage capability.\n'
+        self.log.info('FPGA pulser has no own storage capability.\n'
                     '"load_asset" call ignored.')
         return 0
 
@@ -357,13 +356,13 @@ class OkFpgaPulser(Base, PulserInterface):
         elif sample_rate == 500e6:
             bitfile_path = os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'pulsegen_8chnl_500MHz.bit')
         else:
-            logger.error('Setting "{0}" as sample rate for FPGA pulse '
+            self.log.error('Setting "{0}" as sample rate for FPGA pulse '
                     'generator is not allowed. Use 950e6 or 500e6 instead.')
             return -1
 
         self.sample_rate = sample_rate
         self.fpga.ConfigureFPGA(bitfile_path)
-        logger.info('FPGA pulse generator configured with {}'.format(
+        self.log.info('FPGA pulse generator configured with {}'.format(
             bitfile_path))
         return 0
 
@@ -477,7 +476,7 @@ class OkFpgaPulser(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
-        logger.warning('FPGA pulse generator logic level cannot be '
+        self.log.warning('FPGA pulse generator logic level cannot be '
                 'adjusted!')
         return 0
 
@@ -654,12 +653,12 @@ a
         # Check connection
         if not self.fpga.IsFrontPanelEnabled():
             self.current_status = -1
-            logger.error('ERROR: FrontPanel is not enabled in FPGA pulse '
+            self.log.error('ERROR: FrontPanel is not enabled in FPGA pulse '
                     'generator!')
             return -1
         else:
             self.current_status = 0
-            logger.info('FPGA pulse generator connected')
+            self.log.info('FPGA pulse generator connected')
             return 0
 
     def _disconnect_fpga(self):

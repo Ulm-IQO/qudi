@@ -19,7 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
+import logging
+import core.logger
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 try:
@@ -112,7 +113,9 @@ class ManagerGui(GUIBase):
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         # Log widget
-        self._manager.logger.sigLoggedMessage.connect(self.handleLogEntry)
+        for loghandler in logging.getLogger().handlers:
+            if isinstance(loghandler, core.logger.QtLogHandler):
+                loghandler.sigLoggedMessage.connect(self.handleLogEntry)
         # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
@@ -192,7 +195,7 @@ class ManagerGui(GUIBase):
         """ Create an IPython kernel manager and kernel.
             Add modules to its namespace.
         """
-        logger.thread('IPy activation in thread {0}'.format(
+        self.log.thread('IPy activation in thread {0}'.format(
             threading.get_ident()))
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
@@ -206,9 +209,9 @@ class ManagerGui(GUIBase):
             })
         self.updateIPythonModuleList()
         self.kernel.gui = 'qt4'
-        logger.info('IPython has kernel {0}'.format(
+        self.log.info('IPython has kernel {0}'.format(
             self.kernel_manager.has_kernel))
-        logger.info('IPython kernel alive {0}'.format(
+        self.log.info('IPython kernel alive {0}'.format(
             self.kernel_manager.is_alive()))
         self._manager.sigModulesChanged.connect(self.updateIPythonModuleList)
 
@@ -242,7 +245,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        logger.thread('IPy deactivation'.format(threading.get_ident()))
+        self.log.thread('IPy deactivation'.format(threading.get_ident()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):

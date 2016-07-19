@@ -26,7 +26,6 @@ import numpy as np
 import os
 
 from collections import OrderedDict
-import core.logger as logger
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -63,11 +62,11 @@ class VoltScanGui(GUIBase):
                     config,
                     c_dict)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
     def deactivation(self, e):
         """ Reverse steps of activation

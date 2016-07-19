@@ -31,7 +31,6 @@ import inspect
 import itertools
 import datetime
 
-import core.logger as logger
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
 from core.util.units import get_unit_prefix_dict
@@ -184,11 +183,11 @@ class PulsedMeasurementGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -1124,7 +1123,7 @@ class PulsedMeasurementGui(GUIBase):
                 value = value / get_unit_prefix_dict()[unit_prefix]
             model.setData(model.index(row,column), value, access)
         else:
-            logger.warning('The cell ({0},{1}) in block table could not be '
+            self.log.warning('The cell ({0},{1}) in block table could not be '
                         'assigned with the value="{2}", since the type "{3}" '
                         'of the cell from the delegated type differs from '
                         '"{4}" of the value!\nPrevious value will be '
@@ -1199,9 +1198,10 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|f4, '
             else:
-                logger.error('Type definition not found in the block table.'
+                self.log.error('Type definition not found in the block table.'
                             '\nType is neither a string, integer or float. '
-                            'Include that type in the get_pulse_block_table method!')
+                            'Include that type in the get_pulse_block_table '
+                            'method!')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]
@@ -1263,18 +1263,22 @@ class PulsedMeasurementGui(GUIBase):
                     config_to_set = config
                     break
             if config_to_set is None:
-                logger.error('Mismatch in number of channels between block to load and chosen '
-                            'activation_config. Need {0} digital and {1} analogue channels. '
-                            'Could not find a matching activation_config.'
-                            ''.format(block.digital_channels, block.analog_channels))
+                self.log.error('Mismatch in number of channels between block '
+                        'to load and chosen activation_config. Need {0} '
+                        'digital and {1} analogue channels. Could not find a '
+                        'matching activation_config.'.format(
+                            block.digital_channels, block.analog_channels))
                 return -1
             # find index of the config inside the ComboBox
             index_to_set = self._mw.gen_activation_config_ComboBox.findText(config_to_set)
             self._mw.gen_activation_config_ComboBox.setCurrentIndex(index_to_set)
-            logger.error('Mismatch in number of channels between block to load and chosen '
-                        'activation_config. Need {0} digital and {1} analogue channels. '
-                        'The following activation_config was chosen: "{2}"'
-                        ''.format(block.digital_channels, block.analog_channels, config_to_set))
+            self.log.error('Mismatch in number of channels between block to '
+                    'load and chosen activation_config. Need {0} digital '
+                    'and {1} analogue channels. The following '
+                    'activation_config was chosen: "{2}"'.format(
+                        block.digital_channels,
+                        block.analog_channels,
+                        config_to_set))
 
             # get currently active activation_config.
             current_config = activation_config[config_to_set]
@@ -1372,7 +1376,7 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Block object."""
         objectname = self._mw.curr_block_name_LineEdit.text()
         if objectname == '':
-            logger.warning('No Name for Pulse_Block specified. Generation '
+            self.log.warning('No Name for Pulse_Block specified. Generation '
                         'aborted!')
             return
         self.generate_pulse_block_object(objectname, self.get_pulse_block_table())
@@ -1741,12 +1745,12 @@ class PulsedMeasurementGui(GUIBase):
         if type(data) == type(value):
             model.setData(model.index(row,column), value, access)
         else:
-            logger.warning('The cell ({0},{1}) in block organizer table could not be '
-                        'assigned with the value="{2}", since the type "{3}" '
-                        'of the cell from the delegated type differs from '
-                        '"{4}" of the value!\nPrevious value will be '
-                        'kept.'.format(row, column, value, type(data),
-                                       type(value)))
+            self.log.warning('The cell ({0},{1}) in block organizer table '
+                    'could not be assigned with the value="{2}", since the '
+                    'type "{3}" of the cell from the delegated type differs '
+                    'from "{4}" of the value!\nPrevious value will be '
+                    'kept.'.format(row, column, value, type(data),
+                        type(value)))
 
     def get_organizer_table(self):
         """ Convert organizer table data to numpy array.
@@ -1769,9 +1773,11 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|f4, '
             else:
-                logger.error('Type definition not found in the organizer table.'
-                            '\nType is neither a string, integer or float. '
-                            'Include that type in the get_organizer_table method!')
+                self.log.error('Type definition not found in the organizer '
+                        'table.'
+                        '\nType is neither a string, integer or float. '
+                        'Include that type in the get_organizer_table '
+                        'method!')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]
@@ -1894,10 +1900,10 @@ class PulsedMeasurementGui(GUIBase):
             if config_name_to_set is not None:
                 index = self._mw.gen_activation_config_ComboBox.findText(config_name_to_set)
                 self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
-            logger.info(
-                'Current generator channel activation config did not match the activation '
-                'config of the Pulse_Block_Ensemble to load. Changed config to "{0}".'
-                ''.format(config_name_to_set))
+            self.log.info('Current generator channel activation config '
+                    'did not match the activation config of the '
+                    'Pulse_Block_Ensemble to load. Changed config to "{0}".'
+                    ''.format(config_name_to_set))
 
         # set the sample rate to the one defined in the loaded ensemble
         current_sample_rate = self._seq_gen_logic.sample_rate
@@ -1905,9 +1911,10 @@ class PulsedMeasurementGui(GUIBase):
         if current_sample_rate != sample_rate_to_set:
             self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate_to_set/1e6)
             self.generator_sample_rate_changed()
-            logger.info('Current generator sample rate did not match the sample rate of the '
-                        'Pulse_Block_Ensemble to load. Changed the sample rate to {0}Hz.'
-                        ''.format(sample_rate_to_set))
+            self.log.info('Current generator sample rate did not match the '
+                    'sample rate of the Pulse_Block_Ensemble to load. '
+                    'Changed the sample rate to {0}Hz.'
+                    ''.format(sample_rate_to_set))
 
         # set the laser channel to the one defined in the loaded ensemble
         current_laser_channel = self._seq_gen_logic.laser_channel
@@ -1915,10 +1922,10 @@ class PulsedMeasurementGui(GUIBase):
         if current_laser_channel != laser_channel_to_set and laser_channel_to_set is not None:
             index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel_to_set)
             self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
-            logger.info(
-                'Current generator laser channel did not match the laser channel of the '
-                'Pulse_Block_Ensemble to load. Changed the laser channel to "{0}".'
-                ''.format(laser_channel_to_set))
+            self.log.info('Current generator laser channel did not match the '
+                    'laser channel of the Pulse_Block_Ensemble to load. '
+                    'Changed the laser channel to "{0}".'
+                    ''.format(laser_channel_to_set))
 
         self.block_organizer_clear_table()  # clear the block organizer table
         rows = len(ensemble.block_list)  # get amout of rows needed for display
@@ -2027,7 +2034,7 @@ class PulsedMeasurementGui(GUIBase):
 
         objectname = self._mw.curr_ensemble_name_LineEdit.text()
         if objectname == '':
-            logger.warning('No Name for Pulse_Block_Ensemble specified. '
+            self.log.warning('No Name for Pulse_Block_Ensemble specified. '
                         'Generation aborted!')
             return
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
@@ -2228,7 +2235,7 @@ class PulsedMeasurementGui(GUIBase):
                 default_value = inspected.parameters[param_name].default
 
                 if default_value is inspect._empty:
-                    logger.error('The method "{0}" in the logic has an '
+                    self.log.error('The method "{0}" in the logic has an '
                                 'argument "{1}" without a default value!\n'
                                 'Assign a default value to that, otherwise a '
                                 'type estimation is not possible!\n'
@@ -2245,12 +2252,12 @@ class PulsedMeasurementGui(GUIBase):
                 elif type(default_value) is str:
                     view_obj = self._create_QLineEdit(groupBox, default_value)
                 else:
-                    logger.error('The method "{0}" in the logic has an '
-                                'argument "{1}" with is not of the valid types'
-                                'str, float int or bool!\n'
-                                'Choose one of those default values! Creation '
-                                'of the viewbox '
-                                'aborted.'.format(method.__name__, param_name))
+                    self.log.error('The method "{0}" in the logic has an '
+                            'argument "{1}" with is not of the valid types'
+                            'str, float int or bool!\n'
+                            'Choose one of those default values! Creation '
+                            'of the viewbox aborted.'.format(
+                                method.__name__, param_name))
 
                 obj_list.append(view_obj)
                 gridLayout.addWidget(label_obj, 0, index, 1, 1)
@@ -2440,9 +2447,9 @@ class PulsedMeasurementGui(GUIBase):
                     parameters[index] = object.text()
                     ensemble_name = object.text()
                 else:
-                    logger.error('Not possible to get the value from the '
-                                'viewbox, since it does not have one of the'
-                                'possible access methods!')
+                    self.log.error('Not possible to get the value from the '
+                            'viewbox, since it does not have one of the'
+                            'possible access methods!')
 
             # the * operator unpacks the list
             ref_logic_gen(*parameters)
@@ -2829,8 +2836,9 @@ class PulsedMeasurementGui(GUIBase):
             if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked() or \
                 not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
                 if asset_obj is None:
-                    logger.error('Error while trying to run pulsed measurement. '
-                                'No asset is loaded onto the pulse generator. Aborting run.')
+                    self.log.error('Error while trying to run pulsed '
+                            'measurement. No asset is loaded onto the '
+                            'pulse generator. Aborting run.')
                     return
             # infer number of laser pulses from the currently loaded asset if needed.
             # If they have been manually set in the GUI the changes are already in the logic.
@@ -2848,8 +2856,9 @@ class PulsedMeasurementGui(GUIBase):
                 if asset_obj.measurement_ticks_list is not None:
                     meas_ticks_list = asset_obj.measurement_ticks_list
                 else:
-                    logger.error('Error while trying to run pulsed measurement. '
-                                'No measurement ticks defined in asset. Aborting run.')
+                    self.log.error('Error while trying to run pulsed '
+                            'measurement. No measurement ticks defined '
+                            'in asset. Aborting run.')
                     return
                 self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
 
@@ -3277,11 +3286,13 @@ class PulsedMeasurementGui(GUIBase):
             elif type(seq_param_hardware[entry]['min']) == float:
                 dict_def = float_def
             else:
-                logger.error('The configuration dict for sequence parameter could not be created, '
-                            'since the keyword "min" in the parameter {0} does not correspond to '
-                            'type of "bool", "int" nor "float" but has a type {1}. Cannot handle '
-                            'that, therefore this parameter is '
-                            'neglected.'.format(entry, type(seq_param_hardware[entry]['min'])))
+                self.log.error('The configuration dict for sequence '
+                        'parameter could not be created, since the keyword '
+                        '"min" in the parameter {0} does not correspond to '
+                        'type of "bool", "int" nor "float" but has a type '
+                        '{1}. Cannot handle that, therefore this parameter '
+                        'is neglected.'.format(
+                            entry, type(seq_param_hardware[entry]['min'])))
                 dict_def = {}
 
             # go through the dict_def and replace all given entries by the sequence parameter
@@ -3573,7 +3584,8 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Sequence object."""
         objectname = self._mw.curr_seq_name_LineEdit.text()
         if objectname == '':
-            logger.warning('No Name for Pulse_Sequence specified. Generation aborted!')
+            self.log.warning('No Name for Pulse_Sequence specified. '
+                    'Generation aborted!')
             return
         rotating_frame = self._mw.curr_seq_rot_frame_CheckBox.isChecked()
 
@@ -3802,11 +3814,12 @@ class PulsedMeasurementGui(GUIBase):
         if type(data) == type(value):
             model.setData(model.index(row, column), value, access)
         else:
-            logger.warning('The cell ({0},{1}) in pulse sequence table could not be assigned with '
-                        'the value="{2}", since the type "{3}" of the cell of the delegated '
-                        'column differs from the type "{4}" of the value!\n'
-                        'Previous value will be kept.'.format(row, column, value, type(data),
-                                                              type(value)))
+            self.log.warning('The cell ({0},{1}) in pulse sequence table '
+                    'could not be assigned with the value="{2}", since the '
+                    'type "{3}" of the cell of the delegated column differs '
+                    'from the type "{4}" of the value!\n'
+                    'Previous value will be kept.'.format(
+                        row, column, value, type(data), type(value)))
         return
 
     def get_sequence_table(self):
@@ -3829,9 +3842,10 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|float, '
             else:
-                logger.error('Type definition not found in the sequence table.'
-                            '\nType is neither a string, integer or float. '
-                            'Include that type in the get_sequence_table method!')
+                self.log.error('Type definition not found in the sequence '
+                        'table.'
+                        '\nType is neither a string, integer or float. '
+                        'Include that type in the get_sequence_table method!')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]

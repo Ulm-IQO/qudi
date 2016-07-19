@@ -34,7 +34,6 @@ which can be obtained directly from
 from collections import OrderedDict
 
 from core.base import Base
-import core.logger as logger
 from ctypes import c_long, c_buffer, c_float, windll, pointer
 from interface.motor_interface import MotorInterface
 import os
@@ -822,7 +821,7 @@ class APTStage(Base, MotorInterface):
                                                           'win64',
                                                           'APT.dll')
         else:
-            logger.error('Unknown platform, cannot load the Thorlabs dll.')
+            self.log.error('Unknown platform, cannot load the Thorlabs dll.')
 
         # Read HW from config
         config = self.getConfiguration()
@@ -830,18 +829,18 @@ class APTStage(Base, MotorInterface):
         if 'motor_type_serial_label' in config.keys():
             self._motor_type_serial_label = config['motor_type_serial_label']
         else:
-            logger.error('Motor Hardware-controller-type, serial-number and '
-                        'label for x axis not found in the configuration.\n'
-                        'This numbers are essential, without them no proper '
-                        'communication can be established!\n'
-                        'The Hardware-controller-type depends on the used '
-                        'microcontroller, Serial number can be found at the '
-                        'back of the Step Motor controller and a label for '
-                        'each axis has to be chosen like:\n'
-                        '[("<hw_type>", <serial_num>, "<axis_label>"), '
-                        '("<hw_type>", <serial_num>, "<axis_label>"), ...]\n'
-                        'and assigned to the attribute '
-                        'motor_serial_number_label.')
+            self.log.error('Motor Hardware-controller-type, serial-number '
+                    'and label for x axis not found in the configuration.\n'
+                    'This numbers are essential, without them no proper '
+                    'communication can be established!\n'
+                    'The Hardware-controller-type depends on the used '
+                    'microcontroller, Serial number can be found at the '
+                    'back of the Step Motor controller and a label for '
+                    'each axis has to be chosen like:\n'
+                    '[("<hw_type>", <serial_num>, "<axis_label>"), '
+                    '("<hw_type>", <serial_num>, "<axis_label>"), ...]\n'
+                    'and assigned to the attribute '
+                    'motor_serial_number_label.')
 
         # here are all the references to the different axis are stored:
         self._axis_dict = OrderedDict()
@@ -869,7 +868,7 @@ class APTStage(Base, MotorInterface):
                 self._axis_dict[label].initializeHardwareDevice()
 
             else:
-                logger.error('The following label "{0}" cannot be found in '
+                self.log.error('The following label "{0}" cannot be found in '
                         'the constraints method!\nCheck whether label '
                         'coincide with the label given in the config!\n'
                         'Restart the program!')
@@ -936,11 +935,11 @@ class APTStage(Base, MotorInterface):
                 if  (curr_pos + move > constraints[label_axis]['pos_max'] ) or\
                     (curr_pos + move < constraints[label_axis]['pos_min']):
 
-                    logger.warning('Cannot make further relative movement of '
-                            'the axis "{0}" since the motor is at position '
-                            '{1} and with the step of {2} it would exceed '
-                            'the allowed border [{3},{4}]! Movement is '
-                            'ignored!'.format(
+                    self.log.warning('Cannot make further relative movement '
+                            'of the axis "{0}" since the motor is at '
+                            'position {1} and with the step of {2} it would '
+                            'exceed the allowed border [{3},{4}]! Movement '
+                            'is ignored!'.format(
                                         label_axis,
                                         move,
                                         curr_pos,
@@ -970,14 +969,14 @@ class APTStage(Base, MotorInterface):
                 if  (desired_pos > constraints[label_axis]['pos_max'] ) or\
                     (desired_pos < constraints[label_axis]['pos_min']):
 
-                    logger.warning('Cannot make absolute movement of the axis'
-                                '"{0}" to position {1}, since it exceeds the '
-                                'limts [{2},{3}]. Movement is '
-                                'ignored!'.format(
-                                        label_axis,
-                                        desired_pos,
-                                        constraints[label_axis]['pos_min'],
-                                        constraints[label_axis]['pos_max']))
+                    self.log.warning('Cannot make absolute movement of the '
+                            'axis "{0}" to position {1}, since it exceeds '
+                            'the limts [{2},{3}]. Movement is ignored!'
+                            ''.format(
+                                label_axis,
+                                desired_pos,
+                                constraints[label_axis]['pos_min'],
+                                constraints[label_axis]['pos_max']))
                 else:
                     self._save_pos({label_axis:desired_pos})
                     self._axis_dict[label_axis].move_abs(desired_pos)
@@ -989,7 +988,7 @@ class APTStage(Base, MotorInterface):
         for label_axis in self._axis_dict:
             self._axis_dict[label_axis].abort()
 
-        logger.warning('Movement of all the axis aborted! Stage stopped.')
+        self.log.warning('Movement of all the axis aborted! Stage stopped.')
 
     def get_pos(self, param_list=None):
         """ Gets current position of the stage arms
@@ -1097,7 +1096,7 @@ class APTStage(Base, MotorInterface):
 
         if not os.path.exists(magnet_path):
             os.makedirs(magnet_path)
-            logger.info('Magnet dump was created in:\n'
+            self.log.info('Magnet dump was created in:\n'
                         '{}'.format(magnet_path))
         return magnet_path
 
@@ -1144,9 +1143,9 @@ class APTStage(Base, MotorInterface):
                 if  (desired_vel > constraints[label_axis]['vel_max'] ) or\
                     (desired_vel < constraints[label_axis]['vel_min']):
 
-                    logger.warning('Cannot set velocity of the axis "{0}" to '
-                            'the desired velocity of "{1}", since it exceeds '
-                            'the limts [{2},{3}] ! Command is '
+                    self.log.warning('Cannot set velocity of the axis "{0}" '
+                            'to the desired velocity of "{1}", since it '
+                            'exceeds the limts [{2},{3}] ! Command is '
                             'ignored!'.format(
                                         label_axis,
                                         desired_vel,

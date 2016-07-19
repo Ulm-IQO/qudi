@@ -23,6 +23,9 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 import sys
 import gc
@@ -44,8 +47,7 @@ from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from collections import OrderedDict
 import pyqtgraph as pg
-import core.logger as logger
-from .logger import Logger, LOG, printExc
+from .logger import printExc
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
 from .base import Base
@@ -112,12 +114,6 @@ class Manager(QtCore.QObject):
 
         opts = []
         try:
-            # Logging
-            global LOG
-            LOG = Logger(self)
-            #print(LOG)
-            self.logger = LOG
-
             # Command Line parameters
             if argv is not None:
                 try:

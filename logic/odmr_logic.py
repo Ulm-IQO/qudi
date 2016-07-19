@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
-import core.logger as logger
 from core.util.mutex import Mutex
 from core.util.units import get_unit_prefix_dict
 from collections import OrderedDict
@@ -60,11 +59,11 @@ class ODMRLogic(GenericLogic):
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key, config[key]))
+            self.log.info('{}: {}'.format(key, config[key]))
 
         # number of lines in the matrix plot
         self.number_of_lines = 50
@@ -240,9 +239,9 @@ class ODMRLogic(GenericLogic):
             self._ODMR_line_count = self.run_time / self._ODMR_line_time
             # list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
             self.ODMR_raw_data = np.full((self._mw_frequency_list_length, self._ODMR_line_count), -1)
-            logger.info('Raw data saving...')
+            self.log.info('Raw data saving...')
         else:
-            logger.info('Raw data NOT saved.')
+            self.log.info('Raw data NOT saved.')
 
         self.start_odmr()
         if self.scanmode == 'SWEEP':
@@ -801,9 +800,9 @@ class ODMRLogic(GenericLogic):
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
         else:
-            logger.warning('The Fit Function "{0}" is not implemented to be '
-                    'used in the ODMR Logic. Correct that! Fit Call will be '
-                    'skipped and Fit Function will be set to '
+            self.log.warning('The Fit Function "{0}" is not implemented to '
+                    'be used in the ODMR Logic. Correct that! Fit Call will '
+                    'be skipped and Fit Function will be set to '
                     '"No Fit".'.format(fit_function))
             self.fit_function = 'No Fit'
 
@@ -893,7 +892,7 @@ class ODMRLogic(GenericLogic):
             timestamp=timestamp,
             as_text=True)
 
-        logger.info('ODMR data saved to:\n{0}'.format(filepath))
+        self.log.info('ODMR data saved to:\n{0}'.format(filepath))
 
         if self.safeRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
@@ -906,9 +905,9 @@ class ODMRLogic(GenericLogic):
                 timestamp=timestamp,
                 as_text=True)
 
-            logger.info('Raw data succesfully saved.')
+            self.log.info('Raw data succesfully saved.')
         else:
-            logger.info('Raw data is NOT saved')
+            self.log.info('Raw data is NOT saved')
 
     def draw_figure(self, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
