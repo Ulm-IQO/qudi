@@ -182,11 +182,8 @@ def _exceptionCallback(manager, *args):
     if not blockLogging:
         try:
             blockLogging = True
-            print(len(args))
-            print(args)
             ex_type, ex_value, ex_traceback = args
             logging.getLogger().error('Unexpected error: ', exc_info=args)
-            print(ex_type)
             if ex_type == KeyboardInterrupt:
                 manager.quit()
         except:
