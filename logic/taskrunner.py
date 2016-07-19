@@ -25,7 +25,6 @@ from pyqtgraph.Qt import QtCore
 from core.util.models import ListTableModel
 import logic.generic_task as gt
 import importlib
-import core.logger as logger
 
 class TaskListTableModel(ListTableModel):
     """ An extension of the ListTableModel for keeping a task list in a TaskRunner.
@@ -140,7 +139,7 @@ class TaskRunner(GenericLogic):
             t['name'] = task
             # print('tsk:', task)
             if not 'module' in config['tasks'][task]:
-                logger.error('No module given for task {}'.format(task))
+                self.log.error('No module given for task {}'.format(task))
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
@@ -182,10 +181,10 @@ class TaskRunner(GenericLogic):
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:
-                    logger.error('Not a subclass of allowd task classes {}'
+                    self.log.error('Not a subclass of allowd task classes {}'
                             ''.format(task))
             except:
-                logger.exception('Error while importing module for '
+                self.log.exception('Error while importing module for '
                         'task {}'.format(t['name']))
         self.sigCheckTasks.emit()
 
@@ -215,7 +214,7 @@ class TaskRunner(GenericLogic):
             task['needsmodules'] = {}
             task['config'] = {}
         except:
-            logger.error('Cannot register task, not a writeable dict.')
+            self.log.error('Cannot register task, not a writeable dict.')
             return False
 
         checklist = ('ok', 'object', 'name')
@@ -227,7 +226,7 @@ class TaskRunner(GenericLogic):
             ):
             self.model.append(t)
         else:
-            logger.error('Not a subclass of allowd task classes {}'.format(
+            self.log.error('Not a subclass of allowd task classes {}'.format(
                 task))
             return False
         return True
@@ -296,7 +295,7 @@ class TaskRunner(GenericLogic):
         """
         # print('runner', QtCore.QThread.currentThreadId())
         if not task['ok']:
-            logger.error('Task {} did not pass all checks for required '
+            self.log.error('Task {} did not pass all checks for required '
                     'tasks and modules and cannot be run'.format(
                         task['name']))
             return
@@ -309,7 +308,7 @@ class TaskRunner(GenericLogic):
         elif task['object'].can('postrun'):
             task['object'].postrun()
         else:
-            logger.error('Task cannot be run: {}'.format(task.name))
+            self.log.error('Task cannot be run: {}'.format(task.name))
 
     def pauseTaskByIndex(self, index):
         """ Try pausing a task identified by its list index.
@@ -336,7 +335,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('pause'):
             task['object'].pause()
         else:
-            logger.error('Task cannot be paused:  {}'.format(task['name']))
+            self.log.error('Task cannot be paused:  {}'.format(task['name']))
 
     def stopTaskByIndex(self, index):
         """ Try stopping a task identified by its list index.
@@ -359,7 +358,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('finish'):
             task['object'].finish()
         else:
-            logger.error('Task cannot be stopped: {}'.format(task['name']))
+            self.log.error('Task cannot be stopped: {}'.format(task['name']))
 
     def getTaskByName(self, taskname):
         """ Get task dictionary for a given task name.
@@ -424,12 +423,12 @@ class TaskRunner(GenericLogic):
                         elif t['object'].isstate('stopped'):
                             pass
                         else:
-                            logger.error('Pausetask {} failed while resuming '
-                                    'after stop: {}'.format(
+                            self.log.error('Pausetask {} failed while '
+                                    'resuming after stop: {}'.format(
                                         ptask, task['name']))
                             return False
             except:
-                logger.exception('This pausetask {} failed while '
+                self.log.exception('This pausetask {} failed while '
                         'preparing: {}'.format(ptask, task['name']))
                 return False
         return True
@@ -458,12 +457,12 @@ class TaskRunner(GenericLogic):
                         if t['object'].can('postrun'):
                             t['object'].postrun()
                         else:
-                            logger.error('Preposttask {} failed while '
+                            self.log.error('Preposttask {} failed while '
                                     'postrunning in: {}'.format(
                                         pptask, task['name']))
                             return False
             except:
-                logger.exception('This preposttask {} failed while '
+                self.log.exception('This preposttask {} failed while '
                         'postrunning in: {}'.format(pptask, task['name']))
                 return False
         return True
@@ -494,12 +493,12 @@ class TaskRunner(GenericLogic):
                         elif  t['object'].isstate('paused'):
                             pass
                         else:
-                            logger.error('Preposttask {} failed while '
+                            self.log.error('Preposttask {} failed while '
                                     'preparing: {}'.format(
                                         pptask, task['name']))
                             return False
             except:
-                logger.exception('This preposttask {} failed while '
+                self.log.exception('This preposttask {} failed while '
                         'preparing: {}'.format(pptask, task['name']))
                 return False
 
@@ -529,12 +528,12 @@ class TaskRunner(GenericLogic):
                         elif t['object'].isstate('stopped') or t['object'].isstate('paused'):
                             pass
                         else:
-                            logger.error('Pausetask {} failed while '
+                            self.log.error('Pausetask {} failed while '
                                     'preparing: {}'.format(
                                         ptask, task['name']))
                             return False
             except:
-                logger.exception('This pausetask {} failed while '
+                self.log.exception('This pausetask {} failed while '
                         'preparing: {}'.format(ptask, task['name']))
                 return False
         return True

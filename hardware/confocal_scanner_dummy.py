@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import time
 
-import core.logger as logger
 from core.base import Base
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
@@ -44,17 +43,17 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                          'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key, config[key]))
+            self.log.info('{}: {}'.format(key, config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
         else:
             self._clock_frequency = 100
-            logger.warning('No clock_frequency configured taking 100 Hz '
+            self.log.warning('No clock_frequency configured taking 100 Hz '
                     'instead.')
 
 
@@ -145,7 +144,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        logger.warning('Scanning Device will be reset.')
+        self.log.warning('Scanning Device will be reset.')
         return 0
 
     def get_position_range(self):
@@ -166,21 +165,23 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
-            logger.error('Given range is no array type.')
+            self.log.error('Given range is no array type.')
             return -1
 
         if len(myrange) != 4:
-            logger.error('Given range should have dimension 4, but has {0:d} '
-                    'instead.'.format(len(myrange)))
+            self.log.error('Given range should have dimension 4, but has '
+                    '{0:d} instead.'.format(len(myrange)))
             return -1
 
         for pos in myrange:
             if len(pos) != 2:
-                logger.error('Given range limit {1:d} should have dimension '
-                        '2, but has {0:d} instead.'.format(len(pos), pos))
+                self.log.error('Given range limit {1:d} should have '
+                        'dimension 2, but has {0:d} instead.'.format(
+                            len(pos),
+                            pos))
                 return -1
             if pos[0]>pos[1]:
-                logger.error('Given range limit {0:d} has the wrong '
+                self.log.error('Given range limit {0:d} has the wrong '
                         'order.'.format(pos))
                 return -1
 
@@ -197,21 +198,21 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
-            logger.error('Given range is no array type.')
+            self.log.error('Given range is no array type.')
             return -1
 
         if len(myrange) != 2:
-            logger.error('Given range should have dimension 2, but has {0:d} '
-                    'instead.'.format(len(myrange)))
+            self.log.error('Given range should have dimension 2, but has '
+                    '{0:d} instead.'.format(len(myrange)))
             return -1
 
         if myrange[0]>myrange[1]:
-            logger.error('Given range limit {0:d} has the wrong '
+            self.log.error('Given range limit {0:d} has the wrong '
                     'order.'.format(myrange))
             return -1
 
         if self.getState() == 'locked':
-            logger.error('A Scanner is already running, close this one '
+            self.log.error('A Scanner is already running, close this one '
                     'first.')
             return -1
 
@@ -234,7 +235,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         if clock_frequency != None:
             self._clock_frequency = float(clock_frequency)
 
-        logger.warning('ConfocalScannerDummy>set_up_scanner_clock')
+        self.log.warning('ConfocalScannerDummy>set_up_scanner_clock')
 
         time.sleep(0.2)
 
@@ -257,10 +258,10 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        logger.debug('ConfocalScannerDummy>set_up_scanner')
+        self.log.debug('ConfocalScannerDummy>set_up_scanner')
 
         #if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
-        #    logger.error('Another scanner is already running, close this one first.')
+        #    self.log.error('Another scanner is already running, close this one first.')
         #    return -1
 
         time.sleep(0.2)
@@ -280,7 +281,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         if self.getState() == 'locked':
-            logger.error('A Scanner is already running, close this one '
+            self.log.error('A Scanner is already running, close this one '
                     'first.')
             return -1
 
@@ -308,7 +309,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         self._line_length = length
 
-#        logger.debug('ConfocalScannerInterfaceDummy>set_up_line')
+#        self.log.debug('ConfocalScannerInterfaceDummy>set_up_line')
 
         return 0
 
@@ -323,13 +324,13 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         #if self.getState() == 'locked':
-        #    logger.error('A scan_line is already running, close this one first.')
+        #    self.log.error('A scan_line is already running, close this one first.')
         #    return -1
         #
         #self.lock()
 
         if not isinstance(line_path, (frozenset, list, set, tuple, np.ndarray, )):
-            logger.error('Given voltage list is no array type.')
+            self.log.error('Given voltage list is no array type.')
             return np.array([-1.])
 
         if np.shape(line_path)[1] != self._line_length:
@@ -358,7 +359,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         time.sleep(self._line_length*1./self._clock_frequency)
         time.sleep(self._line_length*1./self._clock_frequency)
 
-#        logger.warning('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length))
+#        self.log.warning('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length))
 
         #self.unlock()
 
@@ -373,7 +374,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        logger.debug('ConfocalScannerDummy>close_scanner')
+        self.log.debug('ConfocalScannerDummy>close_scanner')
 
         self._scanner_counter_daq_task = None
 
@@ -385,7 +386,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        logger.debug('ConfocalScannerDummy>close_scanner_clock')
+        self.log.debug('ConfocalScannerDummy>close_scanner_clock')
         return 0
 
 ############################################################################
@@ -420,12 +421,12 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         #FIXME: Check for 2D matrix
         if not isinstance( x_data_tuple,(frozenset, list, set, tuple,
                             np.ndarray)):
-            logger.error('Given range of axes is no array type.')
+            self.log.error('Given range of axes is no array type.')
 
         parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
         for var in parameters:
             if not isinstance(var,(float,int)):
-                logger.error('Given range of parameter is no float or int.')
+                self.log.error('Given range of parameter is no float or int.')
 
         (x, y) = x_data_tuple
         x_zero = float(x_zero)
@@ -458,14 +459,14 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         # check if parameters make sense
         if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given range of axis is no array type.')
+            self.log.error('Given range of axis is no array type.')
 
 
         parameters=[amplitude,x_zero,sigma,offset]
         for var in parameters:
             if not isinstance(var,(float,int)):
                 print('error',var)
-                logger.error('Given range of parameter is no float or int.')
+                self.log.error('Given range of parameter is no float or int.')
         gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
         return gaussian
 

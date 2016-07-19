@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import core.logger as logger
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model, LinearModel
 from lmfit import Parameters

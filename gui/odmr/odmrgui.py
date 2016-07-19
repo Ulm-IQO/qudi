@@ -29,7 +29,6 @@ import os
 from collections import OrderedDict
 import copy
 
-import core.logger as logger
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -75,11 +74,11 @@ class ODMRGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -223,7 +222,7 @@ class ODMRGui(GUIBase):
             try:
                 self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
             except:
-                self.logExc('Could not load fitmodel {}'.format(name), msgType='warning')
+                self.log.warning('Could not load fitmodel {}'.format(name))
             else:
                 self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
 

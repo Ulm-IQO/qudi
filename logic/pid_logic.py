@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_logic import GenericLogic
 from interface.pid_controller_interface import PIDControllerInterface
 from pyqtgraph.Qt import QtCore
-import core.logger as logger
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
@@ -53,11 +52,11 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -78,7 +77,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.timestep = config['timestep']
         else:
             self.timestep = 0.1
-            logger.warning('No time step configured, using 100ms.')
+            self.log.warning('No time step configured, using 100ms.')
 
         # load parameters stored in app state store
         if 'kP' in self._statusVariables:

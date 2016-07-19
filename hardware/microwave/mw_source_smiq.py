@@ -27,7 +27,6 @@ import visa
 import numpy as np
 
 from core.base import Base
-import core.logger as logger
 from interface.microwave_interface import MicrowaveInterface
 
 
@@ -62,14 +61,14 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            logger.error('This is MWSMIQ: did not find >>gpib_address<< in '
+            self.log.error('This is MWSMIQ: did not find >>gpib_address<< in '
                         'configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
             self._gpib_timeout = 10*1000
-            logger.error('This is MWSMIQ: did not find >>gpib_timeout<< in '
+            self.log.error('This is MWSMIQ: did not find >>gpib_timeout<< in '
                         'configration. I will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
@@ -78,11 +77,11 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            logger.error('This is MWSMIQ: could not connect to the GPIB '
+            self.log.error('This is MWSMIQ: could not connect to the GPIB '
                     'address >>{}<<.'.format(self._gpib_address))
             raise
 
-        logger.info('MWSMIQ initialised and connected to hardware.')
+        self.log.info('MWSMIQ initialised and connected to hardware.')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
 
     def deactivation(self, e):
@@ -127,7 +126,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         elif self.model == 'SMIQ06ATE':
             pass
         else:
-            logger.warning('Model string unknown, hardware limits may be '
+            self.log.warning('Model string unknown, hardware limits may be '
                     'wrong.')
         limits = {
             'frequency': {

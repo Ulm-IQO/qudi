@@ -23,7 +23,14 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-print('Loading QuDi...')
+
+# install logging facility
+from .logger import initialize_logger
+initialize_logger()
+import logging
+logger = logging.getLogger(__name__)
+logger.status('Loading QuDi...')
+
 if __package__ is None:
     import core
     __package__ = 'core'
@@ -34,12 +41,12 @@ from pyqtgraph.Qt import QtCore
 
 from .manager import Manager
 from .parentpoller import ParentPollerWindows, ParentPollerUnix
-from . import logger
 import numpy as np
 import pyqtgraph as pg
 import core.util.helpers as helpers
 import sys
 import os
+
 
 
 class AppWatchdog(QtCore.QObject):
@@ -144,7 +151,7 @@ try:
     from zmq.eventloop import ioloop
     ioloop.install()
 except:
-    print('Preparing ZMQ failed, probasbly no IPython possible!')
+    logger.error('Preparing ZMQ failed, probably no IPython possible!')
 
 # Disable garbage collector to improve stability.
 # (see pyqtgraph.util.garbage_collector in the doc for more information)

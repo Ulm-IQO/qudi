@@ -19,10 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
-import core.logger as logger
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
@@ -70,11 +68,11 @@ class CounterLogic(GenericLogic):
         #locking for thread safety
         self.threadlock = Mutex()
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self._count_length = 300
         self._count_frequency = 50
@@ -301,7 +299,7 @@ class CounterLogic(GenericLogic):
                                        plotfig = fig
                                        )
             #, as_xml=False, precision=None, delimiter=None)
-            logger.debug('Counter Trace saved to:\n{0}'.format(filepath))
+            self.log.debug('Counter Trace saved to:\n{0}'.format(filepath))
 
         return self._data_to_save, parameters
 
@@ -361,7 +359,7 @@ class CounterLogic(GenericLogic):
         elif self._counting_mode == 'finite-gated':
             self._startCount_finite_gated()
         else:
-            logger.error('Unknown counting mode, can not start the counter.')
+            self.log.error('Unknown counting mode, cannot start the counter.')
 
     def _startCount_continuous(self):
         """Prepare to start counting change state and start counting 'loop'."""
@@ -463,7 +461,7 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    logger.exception('Could not even close the hardware,'
+                    self.log.exception('Could not even close the hardware,'
                             ' giving up.')
                     raise e
                 finally:
@@ -478,7 +476,7 @@ class CounterLogic(GenericLogic):
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
 
         except Exception as e:
-            logger.error('The counting went wrong, killing the counter.')
+            self.log.error('The counting went wrong, killing the counter.')
             self.stopCount()
             self.sigCountContinuousNext.emit()
             raise e
@@ -555,8 +553,8 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()#gated
                     self._counting_device.close_clock()#gated
                 except Exception as e:
-                    logger.error('Could not even close the hardware, giving '
-                            'up.')
+                    self.log.error('Could not even close the hardware, '
+                            'giving up.')
                     raise e
                 finally:
                     # switch the state variable off again
@@ -570,7 +568,7 @@ class CounterLogic(GenericLogic):
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)#gated
 
         except Exception as e:
-            logger.error('The counting went wrong, killing the counter.')
+            self.log.error('The counting went wrong, killing the counter.')
             self.stopCount()
             self.sigCountContinuousNext.emit()
             raise e
@@ -619,7 +617,7 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    logger.exception('Could not even close the '
+                    self.log.exception('Could not even close the '
                             'hardware, giving up.')
                     raise e
                 finally:
@@ -635,7 +633,7 @@ class CounterLogic(GenericLogic):
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
 
         except Exception as e:
-            logger.error('The counting went wrong, killing the counter.')
+            self.log.error('The counting went wrong, killing the counter.')
             self.stopCount()
             self.sigCountFiniteGatedNext.emit()
             raise e
@@ -651,8 +649,8 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
         else:
-            #logger.debug(('len(self.rawdata[0]):', len(self.rawdata[0])))
-            #logger.debug(('self._already_counted_samples', self._already_counted_samples))
+            #self.log.debug(('len(self.rawdata[0]):', len(self.rawdata[0])))
+            #self.log.debug(('self._already_counted_samples', self._already_counted_samples))
 
             # replace the first part of the array with the new data:
             self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
@@ -660,7 +658,7 @@ class CounterLogic(GenericLogic):
             self.countdata=np.roll(self.countdata, -len(self.rawdata[0]))
             # increment the index counter:
             self._already_counted_samples += len(self.rawdata[0])
-            # logger.debug(('already_counted_samples:',self._already_counted_samples))
+            # self.log.debug(('already_counted_samples:',self._already_counted_samples))
 
         # remember the new count data in circular array
         # self.countdata[0:len(self.rawdata)] = np.average(self.rawdata[0])
@@ -732,7 +730,7 @@ class CounterLogic(GenericLogic):
                                    filelabel=filelabel, as_text=True)
 
         #, as_xml=False, precision=None, delimiter=None)
-        logger.debug('Current Counter Trace saved to:\n'
+        self.log.debug('Current Counter Trace saved to:\n'
                     '{0}'.format(filepath))
 
 

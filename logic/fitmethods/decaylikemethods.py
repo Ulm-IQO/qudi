@@ -20,7 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters

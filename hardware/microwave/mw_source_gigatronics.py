@@ -27,7 +27,6 @@ import visa
 import numpy as np
 
 from core.base import Base
-import core.logger as logger
 from interface.microwave_interface import MicrowaveInterface
 
 
@@ -61,14 +60,14 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            logger.error('This is MWgigatronics: did not find '
+            self.log.error('This is MWgigatronics: did not find '
                     '>>gpib_address<< in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            logger.error('This is MWgigatronics: did not find '
+            self.log.error('This is MWgigatronics: did not find '
                     '>>gpib_timeout<< in configration. I will set it to '
                     '10 seconds.')
 
@@ -78,11 +77,11 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            logger.error('This is MWgigatronics: could not connect to the '
+            self.log.error('This is MWgigatronics: could not connect to the '
                     'GPIB address >>{}<<.'.format(self._gpib_address))
             raise
 
-        logger.info('MWgigatronics initialised and connected to hardware.')
+        self.log.info('MWgigatronics initialised and connected to hardware.')
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.

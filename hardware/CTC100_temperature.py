@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-import core.logger as logger
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 import visa
@@ -59,7 +58,7 @@ class CTC100(Base):
             self.rm = visa.ResourceManager()
             self.inst = self.rm.open_resource(interface, baud_rate=9600, term_chars='\n', send_end=True)
         except visa.VisaIOError as e:
-            logger.exception("")
+            self.log.exception("")
             return False
         else:
             return True

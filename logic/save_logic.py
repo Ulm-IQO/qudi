@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
@@ -86,7 +85,7 @@ class SaveLogic(GenericLogic):
         # locking for thread safety
         self.lock = Mutex()
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # name of active POI, default to empty string
         self.active_poi_name = ''
@@ -112,11 +111,11 @@ class SaveLogic(GenericLogic):
             else:
                 self.data_dir = self.default_win_data_dir
         else:
-            logger.error('Identify the operating system.')
+            self.log.error('Identify the operating system.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key, config[key]))
+            self.log.info('{}: {}'.format(key, config[key]))
 
     def activation(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
@@ -266,7 +265,7 @@ class SaveLogic(GenericLogic):
 
         if not os.path.exists(filepath):
             filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
-            logger.warning('No Module name specified! Please correct this! '
+            self.log.warning('No Module name specified! Please correct this! '
                     'Data are saved in the \'UNSPECIFIED_<module_name>\' '
                     'folder.')
 
@@ -318,7 +317,7 @@ class SaveLogic(GenericLogic):
             # make a hardcore string convertion and try to save the
             # parameters directly:
             else:
-                logger.error('The parameters are not passed as a dictionary! '
+                self.log.error('The parameters are not passed as a dictionary! '
                         'The SaveLogic will try to save the parameters '
                         'directly.')
                 textfile.write('# not specified parameters: ' + str(parameters) + '\n')
@@ -352,14 +351,14 @@ class SaveLogic(GenericLogic):
                                             delimiter=delimiter)
             elif len(np.shape(data[key_name])) == 3:
 
-                logger.warning('Savelogic has no implementation for 3 '
+                self.log.warning('Savelogic has no implementation for 3 '
                         'dimensional arrays. The data is saved in a '
                         'raw fashion.')
                 textfile.write(str(data[key_name]))
 
             else:
 
-                logger.warning('Savelogic has no implementation for 4 '
+                self.log.warning('Savelogic has no implementation for 4 '
                         'dimensional arrays. The data is saved in a '
                         'raw fashion.')
                 textfile.write(+str(data[key_name]))
@@ -602,14 +601,14 @@ class SaveLogic(GenericLogic):
                 elif self.os_system == 'win':
                     self.data_dir = self.default_win_data_dir
                 else:
-                    logger.error('Identify the operating system.')
+                    self.log.error('Identify the operating system.')
 
                 # Check if the default directory does exist. If yes, there is
                 # no need to create it, since it will overwrite the existing
                 # data there.
                 if not os.path.exists(self.data_dir):
                     os.makedirs(self.data_dir)
-                    logger.warning('The specified Data Directory in the '
+                    self.log.warning('The specified Data Directory in the '
                             'config file does not exist. Using default for '
                             '{0} system instead. The directory\n{1} was '
                             'created'.format(self.os_system, self.data_dir))
@@ -631,7 +630,7 @@ class SaveLogic(GenericLogic):
 
         if not folder_exists:
             current_dir = os.path.join(current_dir, time.strftime("%Y%m%d"))
-            logger.info('Creating directory for today\'s data in \n'
+            self.log.info('Creating directory for today\'s data in \n'
                     '{0}'.format(current_dir))
 
             # The exist_ok=True is necessary here to prevent Error 17 "File Exists"
@@ -655,7 +654,7 @@ class SaveLogic(GenericLogic):
 
         """
         if module_name is None:
-            logger.warning('No Module name specified! Please correct this! '
+            self.log.warning('No Module name specified! Please correct this! '
                     'Data is saved in the \'UNSPECIFIED_<module_name>\' '
                     'folder.')
 

@@ -29,7 +29,6 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
-import core.logger as logger
 from interface.pulser_interface import PulserInterface
 
 class AWG70K(Base, PulserInterface):
@@ -51,13 +50,13 @@ class AWG70K(Base, PulserInterface):
         if 'awg_IP_address' in config.keys():
             self.ip_address = config['awg_IP_address']
         else:
-            logger.error('This is AWG: Did not find >>awg_IP_address<< in '
+            self.log.error('This is AWG: Did not find >>awg_IP_address<< in '
                          'configuration.')
 
         if 'awg_port' in config.keys():
             self.port = config['awg_port']
         else:
-            logger.error('This is AWG: Did not find >>awg_port<< in '
+            self.log.error('This is AWG: Did not find >>awg_port<< in '
                          'configuration.')
 
         self.sample_rate = 25e9
@@ -79,7 +78,7 @@ class AWG70K(Base, PulserInterface):
 
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                logger.warning('The directory defined in parameter '
+                self.log.warning('The directory defined in parameter '
                         '"pulsed_file_dir" in the config for '
                         'SequenceGeneratorLogic class does not exist!\n'
                         'The default home directory\n{0}\n will be taken '
@@ -87,7 +86,7 @@ class AWG70K(Base, PulserInterface):
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            logger.warning('No parameter "pulsed_file_dir" was specified in '
+            self.log.warning('No parameter "pulsed_file_dir" was specified in '
                     'the config for SequenceGeneratorLogic as directory for '
                     'the pulsed files!\nThe default home directory\n{0}\n'
                     'will be taken instead.'.format(self.pulsed_file_dir))
@@ -96,8 +95,8 @@ class AWG70K(Base, PulserInterface):
             self.ftp_root_directory = config['ftp_root_dir']
         else:
             self.ftp_root_directory = 'C:\\inetpub\\ftproot'
-            logger.warning('No parameter "ftp_root_dir" was specified in the '
-                    'config for tektronix_awg70k as directory for '
+            self.log.warning('No parameter "ftp_root_dir" was specified in '
+                    'the config for tektronix_awg70k as directory for '
                     'the FTP server root on the AWG!\nThe default root '
                     'directory\n{0}\nwill be taken instead.'.format(
                         self.ftp_root_directory))
@@ -318,7 +317,7 @@ class AWG70K(Base, PulserInterface):
         """
         # check input
         if asset_name is None:
-            logger.warning('No asset name provided for upload!\nCorrect '
+            self.log.warning('No asset name provided for upload!\nCorrect '
                     'that!\nCommand will be ignored.')
             return -1
 
@@ -381,7 +380,7 @@ class AWG70K(Base, PulserInterface):
 
         # Check if something could be found
         if len(filename) == 0:
-            logger.error('No files associated with asset "{0}" were found '
+            self.log.error('No files associated with asset "{0}" were found '
                     'on AWG70k. Load to channels failed!'.format(asset_name))
             return -1
 
@@ -389,12 +388,12 @@ class AWG70K(Base, PulserInterface):
         tmp = filename[0].rsplit('.',1)[1]
         for name in filename:
             if not name.endswith(tmp):
-                logger.error('Multiple file formats associated with the '
+                self.log.error('Multiple file formats associated with the '
                         'asset "{0}" were found on AWG70k. Load to channels '
                         'failed!'.format(asset_name))
                 return -1
 
-        logger.info('The following files associated with the asset "{0}" '
+        self.log.info('The following files associated with the asset "{0}" '
                 'were found on AWG70k:\n'
                 '{1}'.format(asset_name, filename))
 
@@ -597,22 +596,26 @@ class AWG70K(Base, PulserInterface):
         for chnl in amplitude:
             if amplitude[chnl] < constraints['a_ch_amplitude']['min']:
                 amplitude[chnl] = constraints['a_ch_amplitude']['min']
-                logger.warning('Minimum Vpp for channel "{0}" is {1}. '
-                    'Requested Vpp of {2}V was ignored and instead set to min value.'
-                    ''.format(chnl, constraints['a_ch_amplitude']['min'],
+                self.log.warning('Minimum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to '
+                    'min value'.format(
+                        chnl,
+                        constraints['a_ch_amplitude']['min'],
                         amplitude[chnl]))
             elif amplitude[chnl] > constraints['a_ch_amplitude']['max']:
                 amplitude[chnl] = constraints['a_ch_amplitude']['max']
-                logger.warning('Maximum Vpp for channel "{0}" is {1}. '
-                    'Requested Vpp of {2}V was ignored and instead set to max value.'
-                    ''.format(chnl, constraints['a_ch_amplitude']['max'],
+                self.log.warning('Maximum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to '
+                    'max value.'.format(
+                        chnl,
+                        constraints['a_ch_amplitude']['max'],
                         amplitude[chnl]))
 
         # offset sanity check
         for chnl in offset:
             if offset[chnl] < constraints['a_ch_offset']['min']:
                 offset[chnl] = constraints['a_ch_offset']['min']
-                logger.warning('Minimum offset for channel "{0}" is {1}. '
+                self.log.warning('Minimum offset for channel "{0}" is {1}. '
                         'Requested offset of {2}V was ignored and instead '
                         'set to min value.'.format(
                             chnl,
@@ -620,7 +623,7 @@ class AWG70K(Base, PulserInterface):
                             offset[chnl]))
             elif offset[chnl] > constraints['a_ch_offset']['max']:
                 offset[chnl] = constraints['a_ch_offset']['max']
-                logger.warning('Maximum offset for channel "{0}" is {1}. '
+                self.log.warning('Maximum offset for channel "{0}" is {1}. '
                         'Requested offset of {2}V was ignored and instead '
                         'set to max value.'.format(
                             chnl,
@@ -956,8 +959,9 @@ class AWG70K(Base, PulserInterface):
             try:
                 ftp.cwd(dir_path)
             except:
-                logger.info('Desired directory {0} not found on AWG device.\n'
-                            'Create new.'.format(dir_path))
+                self.log.info('Desired directory {0} not found on AWG '
+                        'device.\n'
+                        'Create new.'.format(dir_path))
                 ftp.mkd(dir_path)
         self.asset_directory = dir_path
         return 0
@@ -1054,15 +1058,15 @@ class AWG70K(Base, PulserInterface):
         if ch1_asset:
             tmp = ch1_asset.split('_ch')
             if len(tmp) != 2:
-                logger.error('Handling of asset names with "_ch" inside the '
-                        'name is not handled properly yet.')
+                self.log.error('Handling of asset names with "_ch" inside '
+                        'the name is not handled properly yet.')
             else:
                 ch1_asset = tmp[0]
         if ch2_asset:
             tmp = ch2_asset.split('_ch')
             if len(tmp) != 2:
-                logger.error('Handling of asset names with "_ch" inside the '
-                        'name is not handled properly yet.')
+                self.log.error('Handling of asset names with "_ch" inside '
+                        'the name is not handled properly yet.')
             else:
                 ch2_asset = tmp[0]
         if ch1_asset and ch2_asset and ch1_asset == ch2_asset:
@@ -1074,7 +1078,7 @@ class AWG70K(Base, PulserInterface):
         elif not ch1_asset and not ch2_asset:
             self.current_loaded_asset = None
         else:
-            logger.warning('Strange mismatch of loaded assets in AWG70k. '
+            self.log.warning('Strange mismatch of loaded assets in AWG70k. '
                     'This case is not covered yet.')
             self.current_loaded_asset = None
         return

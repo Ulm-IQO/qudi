@@ -19,8 +19,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 from pyqtgraph.Qt import QtCore
-import core.logger as logger
 from collections import OrderedDict
 from .util.mutex import Mutex
 
@@ -28,8 +30,6 @@ from .util.mutex import Mutex
 class ThreadManager(QtCore.QAbstractTableModel):
     """ This class keeps track of all the QThreads that are needed somewhere.
     """
-    sigLogMessage = QtCore.Signal(object)
-
     def __init__(self):
         super().__init__()
         self._threads = OrderedDict()
@@ -121,17 +121,6 @@ class ThreadManager(QtCore.QAbstractTableModel):
             newkey = next(it)
             i += 1
         return i
-
-
-    def threadLog(self, msg, **kwargs):
-        """Log a message with message type thread and importance 3.
-
-          @param str msg: the log message
-          @param dict kwargs: named parameters for logMsg
-        """
-        kwargs['importance'] = 3
-        kwargs['msgType'] = 'thread'
-        self.sigLogMessage.emit((msg, kwargs))
 
     def rowCount(self, parent = QtCore.QModelIndex()):
         """ Gives the number of threads registered.

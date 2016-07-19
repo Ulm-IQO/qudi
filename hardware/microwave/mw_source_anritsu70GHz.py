@@ -26,7 +26,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
-import core.logger as logger
 from interface.microwave_interface import MicrowaveInterface
 
 
@@ -51,14 +50,14 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            logger.error('This is MWanritsu70GHz: did not find '
+            self.log.error('This is MWanritsu70GHz: did not find '
                     '>>gpib_address<<  in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            logger.warning('This is MWanritsu70GHz: did not find '
+            self.log.warning('This is MWanritsu70GHz: did not find '
                     '>>gpib_timeout<< in configration. I will set it to '
                     '10 seconds.')
 
@@ -72,7 +71,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
                       'address >>{}<<.'.format(self._gpib_address))
             raise
 
-        logger.info('MWanritsu70GHz initialised and connected to hardware.')
+        self.log.info('MWanritsu70GHz initialised and connected to hardware.')
 
     def deactivation(self,e=None):
         self._gpib_connection.close()

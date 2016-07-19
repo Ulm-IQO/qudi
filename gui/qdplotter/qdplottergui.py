@@ -27,7 +27,6 @@ import os
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
 
-import core.logger as logger
 from gui.guibase import GUIBase
 
 
@@ -65,11 +64,11 @@ class QdplotterGui(GUIBase):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key, config[key]))
+            self.log.info('{}: {}'.format(key, config[key]))
 
 
     def initUI(self, e=None):

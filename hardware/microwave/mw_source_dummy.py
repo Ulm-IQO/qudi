@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 
 from core.base import Base
-import core.logger as logger
 from interface.microwave_interface import MicrowaveInterface
 
 
@@ -43,17 +42,17 @@ class MicrowaveDummy(Base, MicrowaveInterface):
                          'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info("{}: {}".format(key,config[key]))
+            self.log.info("{}: {}".format(key,config[key]))
 
         # trying to load the visa connection
         try:
             import visa
         except:
-            logger.error('No visa connection installed. Please install '
+            self.log.error('No visa connection installed. Please install '
                     'pyvisa.')
 
     def activation(self, e):
@@ -106,7 +105,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        logger.warning('MicrowaveDummy>on')
+        self.log.warning('MicrowaveDummy>on')
         return 0
 
     def off(self):
@@ -114,7 +113,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        logger.warning('MicrowaveDummy>off')
+        self.log.warning('MicrowaveDummy>off')
         return 0
 
     def get_power(self):
@@ -122,7 +121,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        logger.warning('MicrowaveDummy>get_power')
+        self.log.warning('MicrowaveDummy>get_power')
         return random.uniform(-10, 10)
 
     def set_power(self,power=None):
@@ -132,7 +131,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        logger.warning('MicrowaveDummy>set_power, power: {0:f}'.format(power))
+        self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(
+            power))
         return 0
 
 
@@ -141,7 +141,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        logger.warning('MicrowaveDummy>get_frequency')
+        self.log.warning('MicrowaveDummy>get_frequency')
         return random.uniform(0, 1e6)
 
     def set_frequency(self, freq=None):
@@ -151,7 +151,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        logger.warning('MicrowaveDummy>set_frequency, frequency: '
+        self.log.warning('MicrowaveDummy>set_frequency, frequency: '
                     '{0:f}'.format(freq))
         return 0
 
@@ -166,7 +166,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        logger.warning('MicrowaveDummy>set_cw, frequency: {0:f}, power '
+        self.log.warning('MicrowaveDummy>set_cw, frequency: {0:f}, power '
                     '{0:f}:'.format(freq, power))
         return 0
 
@@ -179,7 +179,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        logger.warning('MicrowaveDummy>set_list,\nfrequency (Hz): {0}\n'
+        self.log.warning('MicrowaveDummy>set_list,\nfrequency (Hz): {0}\n'
                     'power (dBm): {1}'.format(freq, power))
         return 0
 
@@ -188,7 +188,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # logger.warning('MicrowaveDummy>reset_listpos')
+        # self.log.warning('MicrowaveDummy>reset_listpos')
         return 0
 
     def list_on(self):
@@ -196,7 +196,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        logger.warning('MicrowaveDummy>list_on')
+        self.log.warning('MicrowaveDummy>list_on')
         return 0
 
     def set_ex_trigger(self, source, pol):

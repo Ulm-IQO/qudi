@@ -19,7 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
@@ -46,11 +45,11 @@ class PulseExtractionLogic(GenericLogic):
         GenericLogic.__init__(self, manager, name, config, state_actions,
                               **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self.is_counter_gated = False
         self.conv_std_dev = 5

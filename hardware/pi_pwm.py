@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import core.logger as logger
 from core.base import Base
 from interface.process_control_interface import ProcessControlInterface
 from collections import OrderedDict
@@ -50,7 +49,7 @@ class PiPWM(Base, ProcessControlInterface):
             channel = config['channel']
         else:
             channel = 0
-            logger.warning('PWN channel not set, using 0')
+            self.log.warning('PWN channel not set, using 0')
 
         # pin mapping
         if channel == 0:
@@ -76,7 +75,7 @@ class PiPWM(Base, ProcessControlInterface):
             self.freq = config['frequency']
         else:
             self.freq = 100
-            logger.warning('Frequency not set, using 100Hz.')
+            self.log.warning('Frequency not set, using 100Hz.')
         self.setupPins()
         self.startPWM()
 

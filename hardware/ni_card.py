@@ -25,7 +25,6 @@ import re
 
 import PyDAQmx as daq
 
-import core.logger as logger
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.odmr_counter_interface import ODMRCounterInterface
@@ -192,7 +191,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         if 'scanner_ao_channels' in config.keys():
             self._scanner_ao_channels=config['scanner_ao_channels']
         else:
-            logger.error('No "scanner_ao_channels" found in the '
+            self.log.error('No "scanner_ao_channels" found in the '
                     'configuration!\n'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card, otherwise you cannot control the '
@@ -201,21 +200,21 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         if 'odmr_trigger_channel' in config.keys():
             self._odmr_trigger_channel=config['odmr_trigger_channel']
         else:
-            logger.error('No parameter "odmr_trigger_channel" found in '
+            self.log.error('No parameter "odmr_trigger_channel" found in '
                     'configuration!\nAssign to that parameter an '
                     'appropriated channel from your NI Card!')
 
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
         else:
-            logger.error('No parameter "clock_channel" configured.'
+            self.log.error('No parameter "clock_channel" configured.'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
 
         if 'counter_channel' in config.keys():
             self._counter_channel=config['counter_channel']
         else:
-            logger.error('No parameter "counter_channel" configured.\n'
+            self.log.error('No parameter "counter_channel" configured.\n'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
 
@@ -223,21 +222,22 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             self._counter_channel2 = config['counter_channel2']
         else:
             self._counter_channel2 = None
-            logger.warning('No parameter "counter_channel2" configured.\n'
+            self.log.warning('No parameter "counter_channel2" configured.\n'
                     'If you want to use a second counter channel, then you '
                     'have to specify that channel on your NI Card!')
 
         if 'scanner_clock_channel' in config.keys():
             self._scanner_clock_channel=config['scanner_clock_channel']
         else:
-            logger.error('No parameter "scanner_clock_channel" configured.\n'
+            self.log.error('No parameter "scanner_clock_channel" '
+                    'configured.\n'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
 
         if 'scanner_counter_channel' in config.keys():
             self._scanner_counter_channel=config['scanner_counter_channel']
         else:
-            logger.error('No parameter "scanner_counter_channel" '
+            self.log.error('No parameter "scanner_counter_channel" '
                     'configured.\n'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
@@ -245,7 +245,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         if 'photon_source' in config.keys():
             self._photon_source=config['photon_source']
         else:
-            logger.error('No parameter "photon_source" configured.\n'
+            self.log.error('No parameter "photon_source" configured.\n'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
 
@@ -253,7 +253,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             self._photon_source2 = config['photon_source2']
         else:
             self._photon_source2 = None
-            logger.warning('No parameter "photon_source2" configured.\n'
+            self.log.warning('No parameter "photon_source2" configured.\n'
                     'If you want to use a second photon source, then you '
                     'have to specify that channel on your NI Card!')
 
@@ -261,15 +261,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency = self._clock_frequency_default
-            logger.warning('No clock_frequency configured taking 100 Hz '
+            self.log.warning('No clock_frequency configured taking 100 Hz '
                     'instead.')
 
         if 'gate_in_channel' in config.keys():
             self._gate_in_channel = config['gate_in_channel']
         else:
-            logger.error('No parameter "gate_in_channel" configured. Choose '
-                    'the proper channel on your NI Card and assign it to '
-                    'that parameter!')
+            self.log.error('No parameter "gate_in_channel" configured. '
+                    'Choose the proper channel on your NI Card and assign it '
+                    'to that parameter!')
 
         if 'counting_edge_rising' in config.keys():
             if config['counting_edge_rising']:
@@ -277,7 +277,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             else:
                 self._counting_edge = daq.DAQmx_Val_Falling
         else:
-            logger.warning('No parameter "counting_edge_rising" configured.\n'
+            self.log.warning('No parameter "counting_edge_rising" '
+                    'configured.\n'
                     'Set this parameter either to True (rising edge) or to '
                     'False (falling edge).\nTaking the default value '
                     '{0}'.format(self._counting_edge_default))
@@ -287,15 +288,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             self._scanner_clock_frequency=config['scanner_clock_frequency']
         else:
             self._scanner_clock_frequency =self._scanner_clock_frequency_default
-            logger.warning('No scanner_clock_frequency configured taking '
+            self.log.warning('No scanner_clock_frequency configured taking '
                         '100 Hz instead.')
 
         if 'samples_number' in config.keys():
             self._samples_number = config['samples_number']
         else:
             self._samples_number = self._samples_number_default
-            logger.warning('No parameter "samples_number" configured taking '
-                    'the default value "{0}" instead.'.format(
+            self.log.warning('No parameter "samples_number" configured '
+                    'taking the default value "{0}" instead.'.format(
                         self._samples_number_default))
             self._samples_number = self._samples_number_default
 
@@ -304,52 +305,52 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
                 self._position_range[0] = [float(config['x_range'][0]),
                                            float(config['x_range'][1])]
             else:
-                logger.warning('Configuration ({}) of x_range incorrect, '
+                self.log.warning('Configuration ({}) of x_range incorrect, '
                         'taking [0,100] instead.'.format(
                             config['x_range']))
         else:
-            logger.warning('No x_range configured taking [0,100] instead.')
+            self.log.warning('No x_range configured taking [0,100] instead.')
 
         if 'y_range' in config.keys():
             if float(config['y_range'][0]) < float(config['y_range'][1]):
                 self._position_range[1] = [float(config['y_range'][0]),
                                            float(config['y_range'][1])]
             else:
-                logger.warning('Configuration ({}) of y_range incorrect, '
+                self.log.warning('Configuration ({}) of y_range incorrect, '
                         'taking [0,100] instead.'.format(config['y_range']))
         else:
-            logger.warning('No y_range configured taking [0,100] instead.')
+            self.log.warning('No y_range configured taking [0,100] instead.')
 
         if 'z_range' in config.keys():
             if float(config['z_range'][0]) < float(config['z_range'][1]):
                 self._position_range[2] = [float(config['z_range'][0]),
                                            float(config['z_range'][1])]
             else:
-                logger.warning('Configuration ({}) of z_range incorrect, '
+                self.log.warning('Configuration ({}) of z_range incorrect, '
                         'taking [0,100] instead.'.format(config['z_range']))
         else:
-            logger.warning('No z_range configured taking [0,100] instead.')
+            self.log.warning('No z_range configured taking [0,100] instead.')
 
         if 'a_range' in config.keys():
             if float(config['a_range'][0]) < float(config['a_range'][1]):
                 self._position_range[3] = [float(config['a_range'][0]),
                                            float(config['a_range'][1])]
             else:
-                logger.warning('Configuration ({}) of a_range incorrect, '
+                self.log.warning('Configuration ({}) of a_range incorrect, '
                         'taking [0,100] instead.'.format(config['a_range']))
         else:
-            logger.warning('No a_range configured taking [0,100] instead.')
+            self.log.warning('No a_range configured taking [0,100] instead.')
 
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
                 self._voltage_range = [float(config['voltage_range'][0]),
                                        float(config['voltage_range'][1])]
             else:
-                logger.warning('Configuration ({}) of voltage_range '
+                self.log.warning('Configuration ({}) of voltage_range '
                         'incorrect, taking [-10,10] instead.'.format(
                             config['voltage_range']))
         else:
-            logger.warning('No voltage_range configured taking [-10,10] '
+            self.log.warning('No voltage_range configured taking [-10,10] '
                     'instead.')
 
         # Analoque output is always needed and it does not interfere with the
@@ -386,13 +387,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if not scanner and self._clock_daq_task is not None:
-            logger.error('Another counter clock is already running, close '
+            self.log.error('Another counter clock is already running, close '
                     'this one first.')
             return -1
 
 
         if scanner and self._scanner_clock_daq_task is not None:
-            logger.error('Another scanner clock is already running, close '
+            self.log.error('Another scanner clock is already running, close '
                     'this one first.')
             return -1
 
@@ -430,7 +431,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         # only one clock channel pair.
         if self._scanner_clock_channel == self._clock_channel:
             if not ((self._clock_daq_task is None) and (self._scanner_clock_daq_task is None)):
-                logger.error('Only one clock channel is available!\n'
+                self.log.error('Only one clock channel is available!\n'
                         'Another clock is already running, close this one '
                         'first in order to use it for your purpose!')
                 return -1
@@ -509,12 +510,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._clock_daq_task is None and clock_channel is None:
-            logger.error('No clock running, call set_up_clock before '
+            self.log.error('No clock running, call set_up_clock before '
                     'starting the counter.')
             return -1
         if self._counter_daq_task is not None:
-            logger.error('Another counter is already running, close this one '
-                        'first.')
+            self.log.error('Another counter is already running, close this '
+                    'one first.')
             return -1
 
 
@@ -683,7 +684,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._counter_daq_task is None:
-            logger.error('No counter running, call set_up_counter before '
+            self.log.error('No counter running, call set_up_counter before '
                     'reading it.')
             #in case of error return a lot of -1
             return np.ones((samples,), dtype=np.uint32) * -1.
@@ -811,11 +812,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
         if match:
             device = match.group('device')
-            logger.warning('NI Device "{}" will be reset.'.format(device))
+            self.log.warning('NI Device "{}" will be reset.'.format(device))
             daq.DAQmxResetDevice(device)
             return 0
         else:
-            logger.error('Did not find device name in {}.'.format(
+            self.log.error('Did not find device name in {}.'.format(
                 self._clock_channel))
             return -1
 
@@ -843,21 +844,22 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
-            logger.error('Given range is no array type.')
+            self.log.error('Given range is no array type.')
             return -1
 
         if len(myrange) != 4:
-            logger.error('Given range should have dimension 4, but has {0:d} '
+            self.log.error('Given range should have dimension 4, but has {0:d} '
                     'instead.'.format(len(myrange)))
             return -1
 
         for pos in myrange:
             if len(pos) != 2:
-                logger.error('Given range limit {1:d} should have dimension '
-                        '2, but has {0:d} instead.'.format(len(pos),pos))
+                self.log.error('Given range limit {1:d} should have '
+                        'dimension 2, but has {0:d} instead.'.format(
+                            len(pos),pos))
                 return -1
             if pos[0]>pos[1]:
-                logger.error('Given range limit {0:d} has the wrong order.'
+                self.log.error('Given range limit {0:d} has the wrong order.'
                         ''.format(pos))
                 return -1
 
@@ -874,21 +876,21 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
-            logger.error('Given range is no array type.')
+            self.log.error('Given range is no array type.')
             return -1
 
         if len(myrange) != 2:
-            logger.error('Given range should have dimension 2, but has {0:d} '
-                        'instead.'.format(len(myrange)))
+            self.log.error('Given range should have dimension 2, but has '
+                    '{0:d} instead.'.format(len(myrange)))
             return -1
 
         if myrange[0]>myrange[1]:
-            logger.error('Given range limit {0:d} has the '
+            self.log.error('Given range limit {0:d} has the '
                         'wrong order.'.format(myrange))
             return -1
 
         #if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
-        #    logger.error('A Scanner is already running, close this one first.')
+        #    self.log.error('A Scanner is already running, close this one first.')
         #    return -1
 
         self._voltage_range = myrange
@@ -902,7 +904,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         #if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
-        #    logger.error('A Scanner is already running, close this one first.')
+        #    self.log.error('A Scanner is already running, close this one first.')
         #    return -1
 
         # If an analoque task is already running, kill that one first
@@ -979,11 +981,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._scanner_clock_daq_task is None and clock_channel is None:
-            logger.error('No clock running, call set_up_clock before '
+            self.log.error('No clock running, call set_up_clock before '
                     'starting the counter.')
             return -1
         #if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
-        #    logger.error('Another scanner is already running, close this one '
+        #    self.log.error('Another scanner is already running, close this one '
         #                'first.')
         #    return -1
 
@@ -1072,35 +1074,35 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self.getState() == 'locked':
-            logger.error('Another scan_line is already running, close this '
+            self.log.error('Another scan_line is already running, close this '
                     'one first.')
             return -1
 
         if x is not None:
             if x < self._position_range[0][0] or x > self._position_range[0][1]:
-                logger.error('You want to set x out of range: {0:f}.'.format(
-                    x))
+                self.log.error('You want to set x out of range: {0:f}.'
+                        ''.format(x))
                 return -1
             self._current_position[0] = np.float(x)
 
         if y is not None:
             if y < self._position_range[1][0] or y > self._position_range[1][1]:
-                logger.error('You want to set y out of range: {0:f}.'.format(
-                    y))
+                self.log.error('You want to set y out of range: {0:f}.'
+                        ''.format(y))
                 return -1
             self._current_position[1] = np.float(y)
 
         if z is not None:
             if z < self._position_range[2][0] or z > self._position_range[2][1]:
-                logger.error('You want to set z out of range: {0:f}.'.format(
-                    z))
+                self.log.error('You want to set z out of range: {0:f}.'
+                        ''.format(z))
                 return -1
             self._current_position[2] = np.float(z)
 
         if a is not None:
             if a < self._position_range[3][0] or a > self._position_range[3][1]:
-                logger.error('You want to set a out of range: {0:f}.'.format(
-                    a))
+                self.log.error('You want to set a out of range: {0:f}.'
+                        ''.format(a))
                 return -1
             self._current_position[3] = np.float(a)
 
@@ -1162,7 +1164,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray, ) ):
-            logger.error('Given position list is no array type.')
+            self.log.error('Given position list is no array type.')
             return np.array([-1.,-1.,-1.,-1.])
 
         # Calculate the voltages from the positions, their ranges and stack
@@ -1186,7 +1188,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
                     + self._voltage_range[0] ) )
 
         if volts.min() < self._voltage_range[0] or volts.max() > self._voltage_range[1]:
-            logger.error('Voltages exceed the limit, the positions have to '
+            self.log.error('Voltages exceed the limit, the positions have to '
                     'be adjusted to stay in the given range.')
             return np.array([-1.,-1.,-1.,-1.])
 
@@ -1213,7 +1215,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._scanner_counter_daq_task is None:
-            logger.error('No counter is running, cannot scan a line '
+            self.log.error('No counter is running, cannot scan a line '
                     'without one.')
             return -1
 
@@ -1298,19 +1300,19 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         #if self.getState() == 'locked':
-        #    logger.error('Another scan_line is already running, close this '
+        #    self.log.error('Another scan_line is already running, close this '
         #                'one first.')
         #    #FIXME: Here you just return -1 and below you return np.array([-1.])
         #    #Is there a difference? If not make consistent.
         #    return -1
 
         if self._scanner_counter_daq_task is None:
-            logger.error('No counter is running, cannot scan a line without '
+            self.log.error('No counter is running, cannot scan a line without '
                     'one.')
             return np.array([-1.])
 
         if not isinstance( line_path, (frozenset, list, set, tuple, np.ndarray, ) ):
-            logger.error('Given line_path list is not array type.')
+            self.log.error('Given line_path list is not array type.')
             return np.array([-1.])
 
         #self.lock() # lock this thread so others cannot call
@@ -1457,11 +1459,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._scanner_clock_daq_task is None and clock_channel is None:
-            logger.error('No clock running, call set_up_clock before '
+            self.log.error('No clock running, call set_up_clock before '
                     'starting the counter.')
             return -1
         if self._scanner_counter_daq_task is not None:
-            logger.error('Another counter is already running, close this '
+            self.log.error('Another counter is already running, close this '
                     'one first.')
             return -1
 
@@ -1532,7 +1534,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._scanner_counter_daq_task is None:
-            logger.error('No counter is running, cannot do ODMR without one.')
+            self.log.error('No counter is running, cannot do ODMR without '
+                    'one.')
             return -1
 
         self._odmr_length = length
@@ -1578,14 +1581,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         #if self.getState() == 'locked':
-        #    logger.error('Another scan_line is already running, close this '
+        #    self.log.error('Another scan_line is already running, close this '
         #                'one first.')
         #    return np.array([-1.])
 
 
         if self._scanner_counter_daq_task is None:
-            logger.error('No counter is running, cannot scan a line without '
-                    'one.')
+            self.log.error('No counter is running, cannot scan a line '
+                    'without one.')
             return np.array([-1.])
 
         #self.lock()
@@ -1728,7 +1731,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         """
 
         if self._gated_counter_daq_task is not None:
-            logger.error('Another gated counter is already running, close '
+            self.log.error('Another gated counter is already running, close '
                     'this one first.')
             return -1
 
@@ -1801,7 +1804,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             daq.DAQmxStartTask(self._gated_counter_daq_task)
             return 0
         else:
-            logger.error('Cannot start Gated Counter Task since it is not'
+            self.log.error('Cannot start Gated Counter Task since it is not'
                         'configured!\n'
                         'Run the set_up_gated_counter routine.')
             return -1
@@ -1877,7 +1880,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             daq.DAQmxStopTask(self._gated_counter_daq_task)
             return 0
         else:
-            logger.error('Cannot stop Gated Counter Task since it is not '
+            self.log.error('Cannot stop Gated Counter Task since it is not '
                         'running!\n'
                         'Start the Gated Counter Task before you '
                         'can actually stop it!')
@@ -1942,16 +1945,16 @@ class NICard2(NICard):
         if 'photon_source' in config.keys():
             self._photon_source=config['photon_source']
         else:
-            logger.error('No parameter "photon_source" configured.\n'
+            self.log.error('No parameter "photon_source" configured.\n'
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
 
         if 'gate_in_channel' in config.keys():
             self._gate_in_channel = config['gate_in_channel']
         else:
-            logger.error('No parameter "gate_in_channel" configured. Choose '
-                    'the proper channel on your NI Card and assign it to '
-                    'that parameter!')
+            self.log.error('No parameter "gate_in_channel" configured. '
+                    'Choose the proper channel on your NI Card and assign it '
+                    'to that parameter!')
 
         if 'counting_edge_rising' in config.keys():
             if config['counting_edge_rising']:
@@ -1959,7 +1962,8 @@ class NICard2(NICard):
             else:
                 self._counting_edge = daq.DAQmx_Val_Falling
         else:
-            logger.warning('No parameter "counting_edge_rising" configured.\n'
+            self.log.warning('No parameter "counting_edge_rising" '
+                    'configured.\n'
                     'Set this parameter either to True (rising edge) or to '
                     'False (falling edge).\nTaking the default value '
                     '{0}'.format(self._counting_edge_default))
@@ -1969,8 +1973,8 @@ class NICard2(NICard):
             self._samples_number = config['samples_number']
         else:
             self._samples_number = self._samples_number_default
-            logger.warning('No parameter "samples_number" configured taking '
-                    'the default value "{0}" instead.'.format(
+            self.log.warning('No parameter "samples_number" configured '
+                    'taking the default value "{0}" instead.'.format(
                         self._samples_number_default))
             self._samples_number = self._samples_number_default
 

@@ -20,7 +20,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger as logger
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
@@ -115,7 +114,7 @@ class WavemeterLoggerLogic(GenericLogic):
             self._logic_acquisition_timing = config['logic_acquisition_timing']
         else:
             self._logic_acquisition_timing = 20.
-            logger.warning('No logic_acquisition_timing configured, '
+            self.log.warning('No logic_acquisition_timing configured, '
                     'using {} instead.'.format(
                         self._logic_acquisition_timing))
 
@@ -123,7 +122,7 @@ class WavemeterLoggerLogic(GenericLogic):
             self._logic_update_timing = config['logic_update_timing']
         else:
             self._logic_update_timing = 100.
-            logger.warning('No logic_update_timing configured, '
+            self.log.warning('No logic_update_timing configured, '
                     'using {} instead.'.format(self._logic_update_timing))
 
         self._acqusition_start_time = 0
@@ -345,7 +344,7 @@ class WavemeterLoggerLogic(GenericLogic):
         if complete_histogram:
             count_window = len(self._counter_logic._data_to_save)
             self._data_index = 0
-            logger.info('Recalcutating Laser Scanning Histogram for: '
+            self.log.info('Recalcutating Laser Scanning Histogram for: '
                     '{0:d} counts and {1:d} wavelength.'.format(
                         count_window,
                         len(self._wavelength_data)))
@@ -467,7 +466,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
 
 
-        logger.debug('Laser Scan saved to:\n{0}'.format(filepath))
+        self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
         filelabel = 'wavemeter_log_counts_with_wavelength'
 

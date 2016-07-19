@@ -27,7 +27,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #Not written modules:
 #TODO: get_status
 
-import core.logger as logger
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
 import time
@@ -161,11 +160,11 @@ class FastComtec(Base, FastCounterInterface):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        logger.info('The following configuration was found.')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            logger.info('{}: {}'.format(key,config[key]))
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self.GATED = False
         self.MINIMAL_BINWIDTH = 0.25e-9    # in seconds per bin
@@ -293,7 +292,7 @@ class FastComtec(Base, FastCounterInterface):
     #     if status.started == 1:
     #         return 2
     #     else:
-    #         logger.error('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)))
+    #         self.log.error('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)))
     #         return -1
 
     def start_measure(self):
