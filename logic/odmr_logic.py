@@ -458,42 +458,60 @@ class ODMRLogic(GenericLogic):
         models.insert(0, 'No Fit')
         return models
 
-    def do_fit(self, fit_function=None):
+    def do_fit(self, fit_function=None, x_data=None, y_data=None,
+               fit_granularity_fact=10):
         """Performs the chosen fit on the measured data.
 
-        @param string fit_function: name of the chosen fit function
+        @param str fit_function: name of the chosen fit function
+        @param array x_data: optional, 1D np.array or 1D list with the x values.
+                             If None is passed then the module x values are
+                             taken.
+        @param array y_data: optional, 1D np.array or 1D list with the y values.
+                             If None is passed then the module y values are
+                             taken. If passed, then it should have the same size
+                             as x_data.
+        @param float fit_granularity_fact: optional, set a multiple of the
+                                           length of the input data. For
+                                            fit_granularity_fact = 10
+                                           ten times more datapoints are used
+                                           for the fit display, then for the
+                                           used x_data.
 
-        @return: param_dict, result
-            dict param_dict: a dictionary with the relevant fit parameters, i.e.
-                             the result of the fit. Each entry is again a dict
-                             with three entries,
-                                    {'value': ... , 'error': ...., 'unit': '...'}
-                             The values and the errors are always saved in SI
-                             units!
+        @return: tuple (fit_x, fit_y, param_dict, fit_result)
+            np.array fit_x: 1D array containing the x values of the fit
+            np.array fit_y: 1D array containing the y values of the fit
+            OrderedDict param_dict: a dictionary with the relevant fit
+                                    parameters, i.e. the result of the fit. Each
+                                    entry is again a dict with three entries,
+                                        {'value': ... , 'error': ...., 'unit': '...'}
+                                    The values and the errors are always saved
+                                    in SI units!
 
-            result lmfit.model.ModelResult:
+            lmfit.model.ModelResult fit_result:
                             the result object of lmfit. If additional
                             information is needed from the fit, then they can be
                             obtained from this object. If no fit is performed
                             then result is set to None.
-
-                      param_dict, result
         """
-        self.fit_function = fit_function
-        # You have to know during implementation, how many parameters you are
-        # expecting. That can of course be retrieved from the model of the fit
-        # like:
-        #   model, params = self._fit_logic.make_lorentzian_model()
 
-        # specify here, locally for the ODMR module, which parameters you assign
-        # to which values.
+        self.fit_function = fit_function
 
         # write all needed parameters (not rounded!) in this dict:
         param_dict = OrderedDict()
         result = None
 
-        kwargs = {'axis': self._mw_frequency_list,
-                  'data': self.ODMR_plot_y,
+        # Set the instance variable as the data set if nothing is passed.
+        if x_data is None:
+            x_data = self._mw_frequency_list
+        if y_data is None:
+            y_data = self.ODMR_plot_y
+
+        self.ODMR_fit_x = np.linspace(start=x_data[0], stop=x_data[-1],
+                                      num=int(len(x_data)*fit_granularity_fact))
+
+        # set the keyword arguments, which will be passed to the fit.
+        kwargs = {'axis': x_data,
+                  'data': y_data,
                   'add_parameters': None}
 
         if self.fit_function == 'Lorentzian':
@@ -822,7 +840,7 @@ class ODMRLogic(GenericLogic):
         self._fit_param = param_dict
         self._fit_result = result
 
-        return param_dict, result
+        return self.ODMR_fit_x, self.ODMR_fit_y, param_dict, result
 
     def save_ODMR_Data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
