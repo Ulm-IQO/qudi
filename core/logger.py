@@ -168,7 +168,7 @@ def initialize_logger():
     exceptionHandling.register(exceptionCallback)
 
 
-def exceptionCallback(self, *args):
+def exceptionCallback(*args):
     """Exception logging function.
 
       @param list args: contents of exception (type, value, backtrace)
