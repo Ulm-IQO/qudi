@@ -28,9 +28,11 @@ import logging
 import logging.handlers
 import sys
 import traceback
+import functools
 
 import pyqtgraph.debug as pgdebug
 from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtGui
 
 ## install global exception handler for others to hook into.
 import pyqtgraph.exceptionHandling as exceptionHandling
@@ -108,7 +110,7 @@ class QtLogFormatter(logging.Formatter):
     def format(self, record):
         entry = {
                 'name': record.name,
-                'message': record.msg,
+                'message': record.message,
                 'timestamp': self.formatTime(record,
                     datefmt="%Y-%m-%d %H:%M:%S"),
                 'level': record.levelname,
@@ -164,11 +166,9 @@ def initialize_logger():
     qt_log_handler.setLevel(logging.INFO)
     logger.addHandler(qt_log_handler)
 
-    # exception handler
-    exceptionHandling.register(exceptionCallback)
 
 
-def exceptionCallback(*args):
+def _exceptionCallback(manager, *args):
     """Exception logging function.
 
       @param list args: contents of exception (type, value, backtrace)
@@ -188,9 +188,14 @@ def exceptionCallback(*args):
             logging.getLogger().error('Unexpected error: ', exc_info=args)
             print(ex_type)
             if ex_type == KeyboardInterrupt:
-                self.manager.quit()
+                manager.quit()
         except:
             print('Error: Exception could no be logged.')
             original_excepthook(*sys.exc_info())
         finally:
             blockLogging = False
+
+def register_exception_callback(manager):
+    # exception handler
+    exceptionHandling.register(functools.partial(_exceptionCallback, manager))
+
