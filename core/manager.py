@@ -139,6 +139,7 @@ class Manager(QtCore.QObject):
             # Initialize parent class QObject
             QtCore.QObject.__init__(self)
 
+            # Register exception handler
             register_exception_callback(self)
 
             # Thread management
