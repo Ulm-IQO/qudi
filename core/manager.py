@@ -48,7 +48,7 @@ from .util.mutex import Mutex   # Mutex provides access serialization between th
 from collections import OrderedDict
 import pyqtgraph as pg
 from .logger import printExc
-from .logger import register_exception_callback
+from .logger import register_exception_handler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
 from .base import Base
@@ -140,7 +140,7 @@ class Manager(QtCore.QObject):
             QtCore.QObject.__init__(self)
 
             # Register exception handler
-            register_exception_callback(self)
+            register_exception_handler(self)
 
             # Thread management
             self.tm = ThreadManager()
