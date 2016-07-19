@@ -453,9 +453,11 @@ class ODMRGui(GUIBase):
 
     def update_fit(self):
         """ Do the configured fit and show it in the sum plot """
-        fit_param_dump, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
+        x_data_fit, y_data_fit, fit_param_dump, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
         self.refresh_plot()
 
+        # One need to copy the whole fit param dict, otherwise it will be
+        # altered and changed.
         fit_param = copy.deepcopy(fit_param_dump)
 
         # check which Fit method is used and remove or add again the
