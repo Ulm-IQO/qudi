@@ -107,13 +107,13 @@ class QtLogFormatter(logging.Formatter):
 
     def format(self, record):
         entry = {
-            'message': record.msg,
-            'timestamp': self.formatTime(record, datefmt="%Y-%m-%d %H:%M:%S"),
-            'importance': 5,
-            'msgType': record.levelname,
-            'exception': record.exc_info,
-            'id': 1, # message count: remove?
-            }
+                'name': record.name,
+                'message': record.msg,
+                'timestamp': self.formatTime(record,
+                    datefmt="%Y-%m-%d %H:%M:%S"),
+                'level': record.levelname,
+                'exception': record.exc_info
+        }
         self.processEntry(entry)
         return entry
 
@@ -139,7 +139,7 @@ def initialize_logger():
     logging.addLevelName(logging.CRITICAL, 'critical')
     logging.addLevelName(logging.ERROR, 'error')
     logging.addLevelName(logging.WARNING, 'warning')
-    logging.addLevelName(LEVEL_STATUS, 'status')
+    logging.addLevelName(LEVEL_STATUS, 'info')
     logging.addLevelName(LEVEL_THREAD, 'thread')
     logging.addLevelName(logging.INFO, 'info')
     logging.addLevelName(logging.DEBUG, 'debug')

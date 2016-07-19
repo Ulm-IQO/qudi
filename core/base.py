@@ -122,7 +122,7 @@ class Base(QtCore.QObject, Fysom):
         Returns a logger object
         """
         return logging.getLogger("{0}.{1}".format(
-            self.__module__,self.__class__))
+            self.__module__,self.__class__.__name__))
 
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden

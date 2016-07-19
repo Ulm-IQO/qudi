@@ -24,12 +24,6 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 """
 
 from pyqtgraph.Qt import QtGui, QtCore, uic
-from pyqtgraph import FileDialog
-import pyqtgraph.configfile as configfile
-from core.util.mutex import Mutex
-import numpy as np
-import weakref
-import re
 import os
 
 import sys
@@ -41,17 +35,18 @@ if 'PyQt5' in sys.modules:
 class LogModel(QtCore.QAbstractTableModel):
     """ This is a Qt model that represents the log for dislpay in a QTableView.
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
         """ Set up the model.
         """
-        super().__init__()
-        self.header = ['Id', 'Time', 'Type', '!', 'Message']
+        super().__init__(**kwargs)
+        self.header = ['Name', 'Time', 'Level', 'Message']
         self.fgColor = {
-            'user':     QtGui.QColor('#F1F'),
             'thread':   QtGui.QColor('#11F'),
+            'info':     QtGui.QColor('#1F1'),
             'status':   QtGui.QColor('#1F1'),
             'warning':  QtGui.QColor('#F90'),
-            'error':    QtGui.QColor('#F11')
+            'error':    QtGui.QColor('#F11'),
+            'critical': QtGui.QColor('#F11')
         }
         self.entries = list()
 
@@ -76,10 +71,12 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return Qt.ItemFlags: actins allowed fotr this cell
         """
-        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable | \
+                QtCore.Qt.ItemIsEditable
 
     def data(self, index,  role):
-        """ Get data from model for a given cell. Data can have a role that affects display.
+        """ Get data from model for a given cell. Data can have a role that
+            affects display.
 
           @param QModelIndex index: cell for which data is requested
           @param ItemDataRole role: role for which data is requested
@@ -102,7 +99,8 @@ class LogModel(QtCore.QAbstractTableModel):
             return None
 
     def setData(self, index, value, role = QtCore.Qt.EditRole):
-        """ Set data in model for a given cell. Data can have a role that affects display.
+        """ Set data in model for a given cell. Data can have a role that
+            affects display.
 
           @param QModelIndex index: cell for which data is requested
           @param QVariant value: data tht is set in the cell
@@ -117,7 +115,7 @@ class LogModel(QtCore.QAbstractTableModel):
                 print(e)
                 return False
             topleft = self.createIndex(index.row(), 0)
-            bottomright = self.createIndex(index.row(), 4)
+            bottomright = self.createIndex(index.row(), 3)
             self.dataChanged.emit(topleft, bottomright)
             return True
 
@@ -130,7 +128,7 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
           """
-        if section < 0 and section > 3:
+        if section < 0 and section > len(self.header)-1:
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -148,10 +146,10 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return bool: True if insertion succeeded, False otherwise
         """
-        iself.beginInsertRows(parent, row, row + count - 1)
+        self.beginInsertRows(parent, row, row + count - 1)
         insertion = list()
-        for i in range(count):
-            insertion.append([None, None, None, None, None])
+        for ii in range(count):
+            insertion.append([None, None, None, None])
         self.entries[row:row] = insertion
         self.endInsertRows()
         return True
@@ -169,7 +167,8 @@ class LogModel(QtCore.QAbstractTableModel):
     def addRows(self, row, data, parent = QtCore.QModelIndex()):
         """ Add a log entries to model.
           @param int row: row before which to insert log entry
-          @param list data: log entries in list format (list of lists of 5 elements)
+          @param list data: log entries in list format (list of lists of
+                            4 elements)
           @param QModelIndex parent: parent model index
 
           @return bool: True if adding entry succeede, False otherwise
@@ -179,7 +178,7 @@ class LogModel(QtCore.QAbstractTableModel):
         self.entries[row:row] = data
         self.endInsertRows()
         topleft = self.createIndex(row, 0)
-        bottomright = self.createIndex(row, 4)
+        bottomright = self.createIndex(row, 3)
         self.dataChanged.emit(topleft, bottomright)
         return True
 
@@ -208,53 +207,48 @@ class LogFilter(QtGui.QSortFilterProxyModel):
           @param QObject parent: parent object of filter
         """
         super().__init__(parent)
-        self.minImportance = 5
-        self.showTypes = ['user', 'thread', 'status', 'warning', 'error']
+        self.show_levels = ['thread', 'info', 'warning', 'error',
+                'critical']
 
     def filterAcceptsRow(self, sourceRow, sourceParent):
-        """ Determine wheter row (log entry) hould be shown.
+        """ Determine wheter row (log entry) should be shown.
 
-          @param QModelIndex sourceRow: the row in the source model that we need to judege
+          @param QModelIndex sourceRow: the row in the source model that we
+                 need to judege
           @param QModelIndex sourceParent: parent model index
 
-          @return bool: True if row (log entry) should be shown, False otherwise
+          @return bool: True if row (log entry) should be shown, False
+                        otherwise
         """
-        indexMessageType = self.sourceModel().index(sourceRow, 2)
-        messageType = self.sourceModel().data(indexMessageType, QtCore.Qt.DisplayRole)
-        indexMessageImportance = self.sourceModel().index(sourceRow, 3)
-        messageImportance = self.sourceModel().data(indexMessageImportance, QtCore.Qt.DisplayRole)
-        if messageImportance is None or messageType is None:
+        indexLevel = self.sourceModel().index(sourceRow, 2)
+        level = self.sourceModel().data(indexLevel,
+                QtCore.Qt.DisplayRole)
+        if level is None:
             return False
-        return int(messageImportance) >= self.minImportance and messageType in self.showTypes
+        return level in self.show_levels
 
     def lessThan(self, left, right):
         """ Comparison function for sorting rows (log entries)
 
-          @param QModelIndex left: index pointing to the first cell for comparison
-          @param QModelIndex right: index pointing to the second cell for comparison
+          @param QModelIndex left: index pointing to the first cell for
+                             comparison
+          @param QModelIndex right: index pointing to the second cell for
+                             comparison
 
           @return bool: result of comparison left data < right data
         """
-        leftData = self.sourceModel().data(self.sourceModel().index(left.row(), 0), QtCore.Qt.DisplayRole)
-        rightData = self.sourceModel().data(self.sourceModel().index(right.row(), 0), QtCore.Qt.DisplayRole)
+        leftData = self.sourceModel().data(self.sourceModel().index(
+            left.row(), 0), QtCore.Qt.DisplayRole)
+        rightData = self.sourceModel().data(self.sourceModel().index(
+            right.row(), 0), QtCore.Qt.DisplayRole)
         return leftData < rightData
 
-    def setImportance(self, minImportance):
-        """ Set the minimum importance value for which messages are shown by the filter.
-
-          @param int minImportance: a whole number between 0 and 9 giving thi minimal
-            importnce from which a message is shown
-        """
-        if minImportance >= 0 and minImportance <= 9:
-            self.minImportance = minImportance
-            self.invalidateFilter()
-
-    def setTypes(self, showTypes):
+    def setLevels(self, levels):
         """ Set which types of messages are shown through the filter.
 
-          @param list(str) showTypes: list of all message types that should e shown
+          @param list(str) levels: list of all levels that should be shown
         """
-        self.showTypes = showTypes
+        self.show_levels = levels
         self.invalidateFilter()
 
 
@@ -313,10 +307,10 @@ class LogWidget(QtGui.QWidget):
                     QtGui.QHeaderView.ResizeToContents)
 
         # connect signals
-        self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
+        self.sigDisplayEntry.connect(self.displayEntry,
+                QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
         self.filterTree.itemChanged.connect(self.setCheckStates)
-        self.importanceSlider.valueChanged.connect(self.filtersChanged)
 
     def setStylesheet(self, logStyleSheet):
         """
@@ -340,7 +334,8 @@ class LogWidget(QtGui.QWidget):
         """
         ## All incoming messages begin here
         ## for thread-safetyness:
-        isGuiThread = QtCore.QThread.currentThread() == QtCore.QCoreApplication.instance().thread()
+        isGuiThread = QtCore.QThread.currentThread(
+                ) == QtCore.QCoreApplication.instance().thread()
         if not isGuiThread:
             self.sigAddEntry.emit(entry)
             return
@@ -354,7 +349,7 @@ class LogWidget(QtGui.QWidget):
                 text += '\n' + entry['exception']['message']
             for line in entry['exception']['traceback']:
                 text += '\n' + str(line)
-        logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], text ]
+        logEntry = [entry['name'], entry['timestamp'], entry['level'], text]
         self.model.addRow(self.model.rowCount(), logEntry)
         self.output.scrollToBottom()
 
@@ -369,7 +364,8 @@ class LogWidget(QtGui.QWidget):
         """ Set how many log entries will be stored by the model before
             discarding old entries when new entries are added.
 
-          @param int length: maximum number of log entries to be stored in model
+          @param int length: maximum number of log entries to be stored in
+                             model
         """
         if length > 0:
             self.logLength = length
@@ -386,19 +382,15 @@ class LogWidget(QtGui.QWidget):
                     item.child(i).setCheckState(0, QtCore.Qt.Checked)
         elif item.parent() == self.filterTree.topLevelItem(1):
             if not item.checkState(0):
-                self.filterTree.topLevelItem(1).setCheckState(0, QtCore.Qt.Unchecked)
+                self.filterTree.topLevelItem(1).setCheckState(0,
+                        QtCore.Qt.Unchecked)
 
-        typeFilter = []
-        for i in range(self.filterTree.topLevelItem(1).childCount()):
-            child = self.filterTree.topLevelItem(1).child(i)
-            if self.filterTree.topLevelItem(1).checkState(0) or child.checkState(0):
+        levelFilter = []
+        for ii in range(self.filterTree.topLevelItem(1).childCount()):
+            child = self.filterTree.topLevelItem(1).child(ii)
+            if self.filterTree.topLevelItem(1).checkState(0) \
+                    or child.checkState(0):
                 text = child.text(0)
-                typeFilter.append(str(text))
-        #print(typeFilter)
-        self.filtermodel.setTypes(typeFilter)
-
-    def filtersChanged(self):
-        """ This function is called to update the filter list when the log filters have been changed.
-        """
-        self.filtermodel.setImportance(self.importanceSlider.value())
+                levelFilter.append(str(text))
+        self.filtermodel.setLevels(levelFilter)
 

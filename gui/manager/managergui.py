@@ -183,12 +183,13 @@ class ManagerGui(GUIBase):
         self._about.show()
 
     def handleLogEntry(self, entry):
-        """ Forward log entry to log widget and show an error popup if it is an error message.
+        """ Forward log entry to log widget and show an error popup if it is
+            an error message.
 
             @param dict entry: Log entry
         """
         self._mw.logwidget.addEntry(entry)
-        if entry['msgType'] == 'error':
+        if entry['level'] == 'error' or entry['level'] == 'critical':
             self.errorDialog.show(entry)
 
     def startIPython(self):
