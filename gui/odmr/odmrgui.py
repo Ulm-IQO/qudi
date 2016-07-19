@@ -264,6 +264,7 @@ class ODMRGui(GUIBase):
         self._mw.clear_odmr_PushButton.clicked.connect(self.clear_odmr_plots_clicked)
 
         self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
+        self._odmr_logic.sigOdmrFitUpdated.connect(self.refresh_plot_fit)
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
         self._odmr_logic.sigOdmrElapsedTimeChanged.connect(self.refresh_elapsedtime)
         # connect settings signals
@@ -351,15 +352,15 @@ class ODMRGui(GUIBase):
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.odmr_image.setData(
-            self._odmr_logic.ODMR_plot_x,
-            self._odmr_logic.ODMR_plot_y)
+        self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,
+                                self._odmr_logic.ODMR_plot_y)
+
+    def refresh_plot_fit(self):
+        """ Refresh the xy fit plot image. """
 
         if not self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
-            self.odmr_fit_image.setData(
-                self._odmr_logic.ODMR_fit_x,
-                self._odmr_logic.ODMR_fit_y,
-            )
+            self.odmr_fit_image.setData(x=self._odmr_logic.ODMR_fit_x,
+                                        y=self._odmr_logic.ODMR_fit_y)
         else:
             if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
@@ -453,12 +454,13 @@ class ODMRGui(GUIBase):
 
     def update_fit(self):
         """ Do the configured fit and show it in the sum plot """
-        x_data_fit, y_data_fit, fit_param_dump, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
-        self.refresh_plot()
+        x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
+        # The fit signal was already emitted in the logic, so there is no need
+        # to set the fit data
 
         # One need to copy the whole fit param dict, otherwise it will be
         # altered and changed.
-        fit_param = copy.deepcopy(fit_param_dump)
+        fit_param = copy.deepcopy(fit_param)
 
         # check which Fit method is used and remove or add again the
         # odmr_fit_image, check also whether a odmr_fit_image already exists.
@@ -475,21 +477,26 @@ class ODMRGui(GUIBase):
         # Since the display of the fit parameters is desired e.g. in MHz, adapt
         # the passed parameter dict for further custom display.
         for param in fit_param:
+
+            unit = fit_param[param]['unit']
+            norm = 1.0
+
+            # Insert here all custom display of the parameters:
             if fit_param[param]['unit'] == 'Hz':
 
                 freq_prefix = self._freq_prefix
-
                 # safety check, if the prefix is really in the unit_prefix_dict
-                if freq_prefix not in units.get_unit_prefix_dict():
+                if self._freq_prefix not in units.get_unit_prefix_dict():
                     freq_prefix = ''
+
                 norm = units.get_unit_prefix_dict()[freq_prefix]
+                unit = '{0}{1}'.format(freq_prefix, fit_param[param]['unit'])
 
-                fit_param[param]['unit'] = '{0}{1}'.format(self._freq_prefix, fit_param[param]['unit'])
-                fit_param[param]['value'] = fit_param[param]['value']/norm
+            fit_param[param]['unit'] = unit
+            fit_param[param]['value'] = fit_param[param]['value']/norm
 
-                if 'error' in fit_param[param]:
-                    fit_param[param]['error'] = fit_param[param]['error']/norm
-
+            if 'error' in fit_param[param]:
+                fit_param[param]['error'] = fit_param[param]['error']/norm
 
         formated_results = units.create_formatted_output(fit_param)
 

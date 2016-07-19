@@ -48,6 +48,7 @@ class ODMRLogic(GenericLogic):
 
     sigNextLine = QtCore.Signal()
     sigOdmrPlotUpdated = QtCore.Signal()
+    sigOdmrFitUpdated = QtCore.Signal()
     sigOdmrMatrixUpdated = QtCore.Signal()
     sigOdmrFinished = QtCore.Signal()
     sigOdmrElapsedTimeChanged = QtCore.Signal()
@@ -106,7 +107,7 @@ class ODMRLogic(GenericLogic):
         self._clock_frequency = 200     # in Hz
         self.fit_function = 'No Fit'
 
-        self._fit_param = None
+        self._fit_param = dict()
         self._fit_result = None
 
         self.fit_models = OrderedDict([
@@ -228,7 +229,7 @@ class ODMRLogic(GenericLogic):
 
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
         self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step / 10.)
-        self._fit_param = None
+        self._fit_param = dict()
         self._fit_result = None
 
         if self.safeRawData:
@@ -532,7 +533,7 @@ class ODMRLogic(GenericLogic):
                 + (cont / result.params['c'].value * result.params['c'].stderr)**2)
 
             param_dict['Contrast'] = {'value': cont*100,
-                                      'error': cont_err * 100,
+                                      'error': cont_err*100,
                                       'unit': '%'}
 
             param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
@@ -558,7 +559,7 @@ class ODMRLogic(GenericLogic):
 
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
+                  (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
                 + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
                 + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
@@ -679,7 +680,7 @@ class ODMRLogic(GenericLogic):
 
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
+                  (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
                 + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
                 + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
@@ -692,7 +693,7 @@ class ODMRLogic(GenericLogic):
 
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
+                  (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
                 + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
                 + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
 
@@ -836,6 +837,7 @@ class ODMRLogic(GenericLogic):
 
         #FIXME: Check whether this signal is really necessary here.
         self.sigOdmrPlotUpdated.emit()
+        self.sigOdmrFitUpdated.emit()   # so that the gui can adjust to that
 
         self._fit_param = param_dict
         self._fit_result = result
@@ -885,11 +887,10 @@ class ODMRLogic(GenericLogic):
 
 
         # add all fit parameter to the saved data:
-        if self._fit_param is not None:
-            for param in self._fit_param:
-                for entry in self._fit_param[param]:
-                    name = '{0}_{1}'.format(param, entry)
-                    parameters[name] = self._fit_param[param][entry]
+        for param in self._fit_param:
+            for entry in self._fit_param[param]:
+                name = '{0}_{1}'.format(param, entry)
+                parameters[name] = self._fit_param[param][entry]
 
         fig = self.draw_figure(cbar_range=colorscale_range,
                                percentile_range=percentile_range
