@@ -18,7 +18,8 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
-Derived form ACQ4:
+Original version derived from ACQ4, but there shouldn't be much left, maybe
+some lines in the exception handler
 Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
@@ -32,7 +33,6 @@ import functools
 
 import pyqtgraph.debug as pgdebug
 from pyqtgraph.Qt import QtCore
-from pyqtgraph.Qt import QtGui
 
 ## install global exception handler for others to hook into.
 import pyqtgraph.exceptionHandling as exceptionHandling
@@ -45,7 +45,7 @@ global original_excepthook
 original_excepthook = sys.excepthook
 
 def printExc(msg='', indent=4, prefix='|', msgType='error'):
-    """Print an error message followed by an indented exception backtrace
+    """Prints an error message followed by an indented exception backtrace
 
       @param string msg: message to be logged
       @param int indent: indentation depth in characters
@@ -57,71 +57,86 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     pgdebug.printExc(msg, indent, prefix)
 
 LEVEL_STATUS = 25
+"""log level status."""
 LEVEL_THREAD = 24
+""""log level thread"""
 
 class Logger(logging.Logger):
+    """Logger providing convenient functions for logging with the log levels
+       STATUS and THREAD
+    """
     def thread(self, msg, *args, **kwargs):
+        """Log message with log level thread
+
+          @param str msg: log message
+        """
         self.log(LEVEL_THREAD, msg, *args, **kwargs)
 
     def status(self, msg, *args, **kwargs):
+        """Log message with log level status
+
+          @param str msg: log message
+        """
         self.log(LEVEL_STATUS, msg, *args, **kwargs)
 
 class QtLogFormatter(logging.Formatter):
-    def processEntry(self, entry):
-        """Convert excpetion into serializable form.
+    """Formatter used with QtLogHandler.
 
-            @param dict entry: log file entry
-        """
-        ## pre-processing common to saveEntry and displayEntry
-        ## convert exc_info to serializable dictionary
-        if entry.get('exception', None) is not None:
-            exc_info = entry.pop('exception')
-            entry['exception'] = self.exceptionToDict(*exc_info,
-                                        topTraceback=entry.get('traceback', []))
-        else:
-            entry['exception'] = None
-
-    def exceptionToDict(self, exType, exc, tb, topTraceback):
-        """Convert exception object to dictionary.
-
-          @param exType: exception type
-          @param exc: exception object
-          @param tb: traceback object
-          @param topTraceback: ??
-
-          @return dict: dictionary containing traceback and exception information
-        """
-        excDict = {}
-        excDict['message'] = traceback.format_exception(exType, exc, tb)[-1][:-1]
-        excDict['traceback'] = topTraceback + traceback.format_exception(exType, exc, tb)[:-1]
-        if hasattr(exc, 'docs'):
-            if len(exc.docs) > 0:
-                excDict['docs'] = exc.docs
-        if hasattr(exc, 'reasons'):
-            if len(exc.reasons) > 0:
-                excDict['reasons'] = exc.reasons
-        if hasattr(exc, 'kwargs'):
-            for k in exc.kwargs:
-                excDict[k] = exc.kwargs[k]
-        if hasattr(exc, 'oldExc'):
-            excDict['oldExc'] = self.exceptionToDict(*exc.oldExc, topTraceback=[])
-        return excDict
+      Converts the log record into a dictionary with the following keys:
+        - name: logger name
+        - message: the message
+        - timestamp: the creation time of the log record
+        - level: log level
+      Optional if an exception is logged:
+        - exception: dictionary with keys:
+          - message: the message
+          - traceback: a traceback
+    """
 
     def format(self, record):
+        """Formatting function
+
+          @param object record: :logging.LogRecord:
+        """
         entry = {
                 'name': record.name,
                 'message': record.message,
                 'timestamp': self.formatTime(record,
                     datefmt="%Y-%m-%d %H:%M:%S"),
-                'level': record.levelname,
-                'exception': record.exc_info
+                'level': record.levelname
         }
-        self.processEntry(entry)
+        # add exception information if available
+        if record.exc_info is not None:
+            entry['exception'] = {
+                    'message': traceback.format_exception(
+                        *record.exc_info)[-1][:-1],
+                    'traceback': traceback.format_exception(
+                        *record.exc_info)[:-1]
+                    }
+
         return entry
 
 
 class QtLogHandler(QtCore.QObject, logging.Handler):
+    """Log handler for displaying log records in a QT gui.
+
+      For each log record the Qt signal sigLoggedMessage is emitted
+      with a dictionary as parameter. The keys of this dictionary are:
+        - name: logger name
+        - message: the message
+        - timestamp: the creation time of the log record
+        - level: log level
+      Optional if an exception is logged:
+        - exception: dictionary with keys:
+          - message: the message
+          - traceback: a traceback
+
+      @param object parent: parent of QObject, defaults to None
+      @param int level: log level, defaults to NOTSET
+    """
+
     sigLoggedMessage = QtCore.Signal(object)
+    """signal emitted for each log record"""
 
     def __init__(self, parent=None, level=0):
         QtCore.QObject.__init__(self, parent)
@@ -129,11 +144,19 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
         self.setFormatter(QtLogFormatter())
 
     def emit(self, record):
+        """Emit function of handler.
+
+          Formats the log record and emits :sigLoggedMessage:
+
+          @param object record: :logging.LogRecord:
+        """
         record = self.format(record)
         if record: self.sigLoggedMessage.emit(record)
 
 
 def initialize_logger():
+    """sets up the logger including a console, file and qt handler
+    """
     logging.setLoggerClass(Logger)
 
     # initialize logger
@@ -171,6 +194,7 @@ def initialize_logger():
 def _exceptionCallback(manager, *args):
     """Exception logging function.
 
+      @param object manager: the manager
       @param list args: contents of exception (type, value, backtrace)
     """
     # Called whenever there is an unhandled exception.
@@ -192,7 +216,10 @@ def _exceptionCallback(manager, *args):
         finally:
             blockLogging = False
 
-def register_exception_callback(manager):
-    # exception handler
+def register_exception_handler(manager):
+    """registers an exception handler
+
+      @param object manager: the manager
+    """
     exceptionHandling.register(functools.partial(_exceptionCallback, manager))
 
