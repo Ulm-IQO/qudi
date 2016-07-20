@@ -30,19 +30,9 @@ import logging.handlers
 import sys
 import traceback
 import functools
-
-import pyqtgraph.debug as pgdebug
 from pyqtgraph.Qt import QtCore
+import pyqtgraph.debug as pgdebug
 
-## install global exception handler for others to hook into.
-import pyqtgraph.exceptionHandling as exceptionHandling
-exceptionHandling.setTracebackClearing(True)
-
-global blockLogging
-blockLogging = False
-
-global original_excepthook
-original_excepthook = sys.excepthook
 
 def printExc(msg='', indent=4, prefix='|', msgType='error'):
     """Prints an error message followed by an indented exception backtrace
@@ -56,10 +46,12 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     """
     pgdebug.printExc(msg, indent, prefix)
 
+# new logging levels
 LEVEL_STATUS = 25
 """log level status."""
 LEVEL_THREAD = 24
 """"log level thread"""
+
 
 class Logger(logging.Logger):
     """Logger providing convenient functions for logging with the log levels
@@ -78,6 +70,7 @@ class Logger(logging.Logger):
           @param str msg: log message
         """
         self.log(LEVEL_STATUS, msg, *args, **kwargs)
+
 
 class QtLogFormatter(logging.Formatter):
     """Formatter used with QtLogHandler.
@@ -191,35 +184,61 @@ def initialize_logger():
 
 
 
-def _exceptionCallback(manager, *args):
+
+# global variables used by exception handler
+original_excepthook = None
+blockLogging = False
+
+def _exception_handler(manager, *args):
     """Exception logging function.
 
       @param object manager: the manager
       @param list args: contents of exception (type, value, backtrace)
     """
-    # Called whenever there is an unhandled exception.
-    # unhandled exceptions generate an error message by default, but this
-    # can be overridden.
     global blockLogging
     # If an error occurs *while* trying to log another exception, disable
     # any further logging to prevent recursion.
     if not blockLogging:
         try:
             blockLogging = True
-            ex_type, ex_value, ex_traceback = args
-            logging.getLogger().error('Unexpected error: ', exc_info=args)
-            if ex_type == KeyboardInterrupt:
-                manager.quit()
-        except:
-            print('Error: Exception could no be logged.')
-            original_excepthook(*sys.exc_info())
+            ## Start by extending recursion depth just a bit.
+            ## If the error we are catching is due to recursion, we
+            ## don't want to generate another one here.
+            recursionLimit = sys.getrecursionlimit()
+            try:
+                sys.setrecursionlimit(recursionLimit+100)
+                try:
+                    logging.error('Unhandled exception: ', exc_info=args)
+                    if args[0] == KeyboardInterrupt:
+                        manager.quit()
+                except Exception:
+                    print('   ------------------------------------------'
+                            '--------------------')
+                    print('      Error occurred during exception '
+                            'handling')
+                    print('   ------------------------------------------'
+                            '--------------------')
+                    traceback.print_exception(*sys.exc_info())
+                # Clear long-term storage of last traceback to prevent
+                # memory-hogging.
+                # (If an exception occurs while a lot of data is present
+                # on the stack, such as when loading large files, the
+                # data would ordinarily be kept until the next exception
+                # occurs. We would rather release this memory
+                # as soon as possible.)
+                sys.last_traceback = None
+            finally:
+                sys.setrecursionlimit(recursionLimit)
         finally:
             blockLogging = False
+
 
 def register_exception_handler(manager):
     """registers an exception handler
 
       @param object manager: the manager
     """
-    exceptionHandling.register(functools.partial(_exceptionCallback, manager))
+    global original_excepthook
+    original_excepthook = sys.excepthook
+    sys.excepthook = functools.partial(_exception_handler, manager)
 
