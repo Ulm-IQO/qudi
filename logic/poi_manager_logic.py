@@ -26,12 +26,12 @@ from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
+from datetime import datetime
 import numpy as np
 import re
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
 import math
-import datetime.datetime as datetime
 import time
 
 
@@ -170,8 +170,8 @@ class PoI(object):
 
 class PoiManagerLogic(GenericLogic):
 
-    """unstable: Kay Jahnke
-    This is the Logic class for tracking bright features in the confocal scan.
+    """
+    This is the Logic class for mapping and tracking bright features in the confocal scan.
     """
     _modclass = 'poimanagerlogic'
     _modtype = 'logic'
@@ -182,7 +182,6 @@ class PoiManagerLogic(GenericLogic):
            }
     _out = {'poimanagerlogic': 'PoiManagerLogic'}
 
-    signal_refocus_finished = QtCore.Signal()
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
 
@@ -414,13 +413,17 @@ class PoiManagerLogic(GenericLogic):
             return [-1., -1., -1.]
 
     def set_new_position(self, poikey=None, point=None):
-        """ Adds another point to the trace of the given poi, and uses this information to updated the sample position.
+        """ 
+        Moves the given POI to a new position, and uses this information to update 
+        the sample position.
 
         @param string poikey: the key of the poi
         @param float[3] point: coordinates of the next point
 
         @return int: error code (0:OK, -1:error)
         """
+
+        # If no new point is given, take the current confocal crosshair position
         if point is None:
             point = self._confocal_logic.get_position()
 
@@ -429,11 +432,19 @@ class PoiManagerLogic(GenericLogic):
                 self.logMsg('Length of set poi is not 3.',
                             msgType='error')
                 return -1
+            # Add new position to trace of POI
+            self.track_point_list[poikey].add_position_to_trace(position=point)
+
+            # Calculate sample shift and add it to the trace of 'sample' POI
             sample_shift = point - self.get_poi_position(poikey=poikey)
             sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
             self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-            self.signal_poi_updated.emit()
-            return self.track_point_list[poikey].add_position_to_trace(position=point)
+            
+            # signal POI has been updated (this will cause GUI to redraw)
+            if (poikey is not 'crosshair') and (poikey is not 'sample'):
+                self.signal_poi_updated.emit()
+
+            return 0
 
         self.logMsg('J. The given POI ({}) does not exist.'.format(poikey),
                     msgType='error')
@@ -463,7 +474,7 @@ class PoiManagerLogic(GenericLogic):
 
             return return_val
 
-        self.logMsg('J. The given POI ({}) does not exist.'.format(poikey),
+        self.logMsg('JJ. The given POI ({}) does not exist.'.format(poikey),
                     msgType='error')
         return -1
 
@@ -624,19 +635,8 @@ class PoiManagerLogic(GenericLogic):
         elif caller_tag == 'poimanager':
 
             if self._current_poi_key is not None and self._current_poi_key in self.track_point_list.keys():
-                print(optimized_position)
-                print(self.get_poi_position(poikey=self._current_poi_key))
 
-                sample_shift = optimized_position - self.get_poi_position(poikey=self._current_poi_key)
-
-                sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
-                self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-                self.track_point_list[self._current_poi_key].\
-                    add_position_to_trace(position=optimized_position)
-
-                if (not (self._current_poi_key is 'crosshair')) and (not (self._current_poi_key is 'sample')):
-                    self.signal_refocus_finished.emit()  # TODO rename this to sample_shifted to remove ambiguity with optimizer_logic.signal_refocus_finished
-                    self.signal_poi_updated.emit()
+                self.set_new_position(poikey=self._current_poi_key, point=optimized_position)
 
                 if self.go_to_crosshair_after_refocus:
                     temp_key = self._current_poi_key

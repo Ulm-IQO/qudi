@@ -412,16 +412,22 @@ class PoiManagerGui(GUIBase):
         self._markers = dict()
 
         # Signal at end of refocus
-        self._poi_manager_logic.signal_refocus_finished.connect(
-            self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_timer_updated.connect(
-            self._update_timer, QtCore.Qt.QueuedConnection)
+            self._update_timer,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
+            self._redraw_sample_shift,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self.populate_poi_list, QtCore.Qt.QueuedConnection)
+            self.populate_poi_list,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self._redraw_poi_markers, QtCore.Qt.QueuedConnection)
+            self._redraw_poi_markers,
+            QtCore.Qt.QueuedConnection
+        )
 
         # Connect track period
         self._mw.track_period_SpinBox.valueChanged.connect(self.change_track_period)
