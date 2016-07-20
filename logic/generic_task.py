@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import core.logger
+import logging
 from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
@@ -117,6 +117,14 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
         self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
 
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__.__name__))
+
     def onchangestate(self, e):
         """ Fysom callback for state transition.
 
@@ -151,7 +159,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigStarted.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            core.logger.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {}. {}'.format(
                 self.name, e))
             self.result.update(None, False)
 
@@ -170,7 +178,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 self.finish()
                 self.sigDoFinish.emit()
         except Exception as e:
-            core.logger.exception('Exception during task step {}. {}'.format(
+            self.log.exception('Exception during task step {}. {}'.format(
                 self.name, e))
             self.result.update(None, False)
             self.finish()
@@ -190,7 +198,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.pausingFinished()
             self.sigPaused.emit()
         except Exception as e:
-            core.logger.exception('Exception while pausing task {}. '
+            self.log.exception('Exception while pausing task {}. '
                     '{}'.format(self.name, e))
             self.result.update(None, False)
 
@@ -209,7 +217,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigResumed.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            core.logger.exception('Exception while resuming task {}. '
+            self.log.exception('Exception while resuming task {}. '
                     '{}'.format(self.name, e))
             self.result.update(None, False)
 
@@ -264,7 +272,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         try:
             return self.checkExtraPausePrerequisites()
         except Exception as e:
-            core.logger.exception('Exception while checking pause '
+            self.log.exception('Exception while checking pause '
                     'prerequisites for task {}. {}'.format(self.name, e))
             return False
 
@@ -345,6 +353,14 @@ class PrePostTask(QtCore.QObject, Fysom):
         self.ref = references
         self.config = config
 
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__.__name__))
+
     def onchangestate(self, e):
         """ Fysom callback for all state transitions.
           @param object e: Fysom state transition description
@@ -374,7 +390,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.preExecute()
         except Exception as e:
-            core.logger.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {}. {}'.format(
                 self.name, e))
 
         self.sigPreExecFinish.emit()
@@ -388,7 +404,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.postExecute()
         except Exception as e:
-            core.logger.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {}. {}'.format(
                 self.name, e))
 
         self.sigPostExecFinish.emit()
