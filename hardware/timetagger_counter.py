@@ -64,9 +64,9 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         if 'photon_source' in config.keys():
             self._photon_source = config['photon_source']
         else:
-            self.logMsg('No parameter "photon_source" configured.\n'
-                        'Assign to that parameter an appropriated channel '
-                        'from your NI Card!', msgType='error')
+            self.log.error('No parameter "photon_source" configured.\n'
+                    'Assign to that parameter an appropriated channel '
+                    'from your NI Card!')
 
     def deactivation(self, e=None):
         """ Shut down the NI card.
@@ -116,7 +116,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         """
 
         self.counter = Counter(self._tagger, channels=[self._photon_source], binwidth=int((1/self._count_frequency)*1e12), n_values=1)
-        self.logMsg('set up counter with {0}'.format(self._count_frequency), msgType='status')
+        self.log.info('set up counter with {0}'.format(self._count_frequency))
         return 0
 
     def get_counter(self, samples=None):
