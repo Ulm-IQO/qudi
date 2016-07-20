@@ -529,7 +529,8 @@ class ODMRGui(GUIBase):
     def change_frequency(self):
         """ Change CW frequency of microwave source """
         freq_norm = units.get_unit_prefix_dict()[self._freq_prefix]
-        self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value()*freq_norm)
+        frequency = self._mw.frequency_DoubleSpinBox.value()*freq_norm
+        self._odmr_logic.set_frequency(frequency=frequency)
 
     def change_start_freq(self):
         """ Change start frequency of frequency sweep """
@@ -548,8 +549,8 @@ class ODMRGui(GUIBase):
 
     def change_power(self):
         """ Change microwave power """
-        self._odmr_logic.mw_power = self._mw.power_DoubleSpinBox.value()
-        self._odmr_logic.set_power(power=self._odmr_logic.mw_power)
+        power = self._mw.power_DoubleSpinBox.value()
+        self._odmr_logic.set_power(power=power)
 
     def change_runtime(self):
         """ Change time after which microwave sweep is stopped """
