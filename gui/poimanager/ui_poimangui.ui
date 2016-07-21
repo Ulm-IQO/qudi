@@ -540,7 +540,7 @@
           </widget>
          </item>
          <item>
-          <widget class="ScienDSpinBox" name="roi_cb_high_centile_DoubleSpinBox">
+          <widget class="ScienDSpinBox" name="roi_cb_high_percentile_DoubleSpinBox">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -590,7 +590,7 @@
           </widget>
          </item>
          <item>
-          <widget class="ScienDSpinBox" name="roi_cb_low_centile_DoubleSpinBox">
+          <widget class="ScienDSpinBox" name="roi_cb_low_percentile_DoubleSpinBox">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
