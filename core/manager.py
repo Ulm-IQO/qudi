@@ -47,7 +47,6 @@ from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from collections import OrderedDict
 import pyqtgraph as pg
-from .logger import printExc
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
@@ -225,8 +224,8 @@ class Manager(QtCore.QObject):
                     except:
                         raise
             except:
-                printExc('\n: Error while acting on command line options: '
-                         '(but continuing on anyway..)')
+                logger.exception('Error while acting on command line '
+                        'options: (but continuing on anyway..)')
             # Load startup things from config here
             if 'startup' in self.tree['global']:
                 # walk throug the list of loadable modules to be loaded on startup and load them if appropriate
@@ -244,7 +243,7 @@ class Manager(QtCore.QObject):
                         logger.error('Loading startup module {} failed, not '
                                 'defined anywhere.'.format(key))
         except:
-            printExc("Error while configuring Manager:")
+            logger.exception('Error while configuring Manager:')
         finally:
             if len(self.tree['loaded']['logic']) == 0 and len(self.tree['loaded']['gui']) == 0 :
                 logger.critical('No modules loaded during startup.')
@@ -406,7 +405,7 @@ class Manager(QtCore.QObject):
                     else:
                         self.tree['config'][key] = cfg[key]
             except:
-                printExc("Error in configuration:")
+                logger.exception('Error in configuration:')
         # print self.tree['config']
         self.sigConfigChanged.emit()
 
