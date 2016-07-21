@@ -252,7 +252,20 @@ class LogFilter(QtGui.QSortFilterProxyModel):
 
 
 class AutoToolTipDelegate(QtGui.QStyledItemDelegate):
+    """ A subclass of QStyledItemDelegate to display a tooltip if the text
+        doesn't fit into the cell.
+    """
+
     def helpEvent(self, e, view, option, index):
+        """ The method responsible for displaying the tooltip. It ignores
+            custom tooltips.
+
+          @param QHelpEvent e: the help event
+          @param QAbstractItemView view: the view
+          @param QStyleOptionViewItem option: the options
+          @param QModelIndex index: the model index
+        """
+
         if e is None or view is None:
             return False
 
