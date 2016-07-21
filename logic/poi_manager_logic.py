@@ -26,12 +26,12 @@ from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
+from datetime import datetime
 import numpy as np
 import re
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
 import math
-import datetime
 import time
 
 
@@ -50,10 +50,10 @@ class PoI(object):
         # trace records every time+position when the POI position was explicitly known.
         self._position_time_trace = []
 
-        # To avoid duplication while algorithmically setting POIs, we need the key string to go to sub-second.
-        # This requires the datetime module.
+        # To avoid duplication while algorithmically setting POIs, we need the key string to 
+        # go to sub-second. This requires the datetime module.
 
-        self._creation_time = datetime.datetime.now()
+        self._creation_time = datetime.now()
 
         print(key)
 
@@ -66,8 +66,9 @@ class PoI(object):
             if len(point) != 3:
                 self.log.error('Given position does not contain 3 '
                         'dimensions.')
-            # Store the time in the history log as seconds since 1970, rather than as a datetime object.
-            creation_time_sec = (self._creation_time - datetime.datetime.utcfromtimestamp(0)).total_seconds()
+            # Store the time in the history log as seconds since 1970,
+            # rather than as a datetime object.
+            creation_time_sec = (self._creation_time - datetime.utcfromtimestamp(0)).total_seconds()
             self._position_time_trace.append(
                 np.array([creation_time_sec, point[0], point[1], point[2]]))
         if name is None:
@@ -168,8 +169,8 @@ class PoI(object):
 
 class PoiManagerLogic(GenericLogic):
 
-    """unstable: Kay Jahnke
-    This is the Logic class for tracking bright features in the confocal scan.
+    """
+    This is the Logic class for mapping and tracking bright features in the confocal scan.
     """
     _modclass = 'poimanagerlogic'
     _modtype = 'logic'
@@ -180,7 +181,6 @@ class PoiManagerLogic(GenericLogic):
            }
     _out = {'poimanagerlogic': 'PoiManagerLogic'}
 
-    signal_refocus_finished = QtCore.Signal()
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
 
@@ -208,7 +208,6 @@ class PoiManagerLogic(GenericLogic):
 
         # locking for thread safety
         self.threadlock = Mutex()
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -317,9 +316,9 @@ class PoiManagerLogic(GenericLogic):
 
             # Regular expressions to make sorting key
             convert = lambda text: int(text) if text.isdigit() else text
-            alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key[0]) ]
+            alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key[0])]
             # Now we can sort poinames by name and return keys in that order
-            return [key for [name, key] in sorted(poinames, key = alphanum_key)]
+            return [key for [name, key] in sorted(poinames, key=alphanum_key)]
 
         else:
             # TODO: produce sensible error about unknown value of abc_sort.
@@ -411,13 +410,17 @@ class PoiManagerLogic(GenericLogic):
             return [-1., -1., -1.]
 
     def set_new_position(self, poikey=None, point=None):
-        """ Adds another point to the trace of the given poi, and uses this information to updated the sample position.
+        """ 
+        Moves the given POI to a new position, and uses this information to update 
+        the sample position.
 
         @param string poikey: the key of the poi
         @param float[3] point: coordinates of the next point
 
         @return int: error code (0:OK, -1:error)
         """
+
+        # If no new point is given, take the current confocal crosshair position
         if point is None:
             point = self._confocal_logic.get_position()
 
@@ -425,11 +428,19 @@ class PoiManagerLogic(GenericLogic):
             if len(point) != 3:
                 self.log.error('Length of set poi is not 3.')
                 return -1
+            # Add new position to trace of POI
+            self.track_point_list[poikey].add_position_to_trace(position=point)
+
+            # Calculate sample shift and add it to the trace of 'sample' POI
             sample_shift = point - self.get_poi_position(poikey=poikey)
             sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
             self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-            self.signal_poi_updated.emit()
-            return self.track_point_list[poikey].add_position_to_trace(position=point)
+            
+            # signal POI has been updated (this will cause GUI to redraw)
+            if (poikey is not 'crosshair') and (poikey is not 'sample'):
+                self.signal_poi_updated.emit()
+
+            return 0
 
         self.log.error('J. The given POI ({}) does not exist.'.format(poikey))
         return -1
@@ -457,7 +468,7 @@ class PoiManagerLogic(GenericLogic):
 
             return return_val
 
-        self.log.error('J. The given POI ({}) does not exist.'.format(poikey))
+        self.log.error('JJ. The given POI ({}) does not exist.'.format(poikey))
         return -1
 
     def rename_poi(self, poikey=None, name=None, emit_change=True):
@@ -616,19 +627,8 @@ class PoiManagerLogic(GenericLogic):
         elif caller_tag == 'poimanager':
 
             if self._current_poi_key is not None and self._current_poi_key in self.track_point_list.keys():
-                print(optimized_position)
-                print(self.get_poi_position(poikey=self._current_poi_key) )
 
-                sample_shift = optimized_position - self.get_poi_position(poikey=self._current_poi_key)
-
-                sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
-                self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-                self.track_point_list[self._current_poi_key].\
-                    add_position_to_trace(position=optimized_position)
-
-                if (not (self._current_poi_key is 'crosshair')) and (not (self._current_poi_key is 'sample')):
-                    self.signal_refocus_finished.emit()  # TODO rename this to sample_shifted to remove ambiguity with optimizer_logic.signal_refocus_finished
-                    self.signal_poi_updated.emit()
+                self.set_new_position(poikey=self._current_poi_key, point=optimized_position)
 
                 if self.go_to_crosshair_after_refocus:
                     temp_key = self._current_poi_key
@@ -791,7 +791,11 @@ class PoiManagerLogic(GenericLogic):
         dot = np.dot(ab_old, ab_new)
         x_modulus = np.sqrt((ab_old * ab_old).sum())
         y_modulus = np.sqrt((ab_new * ab_new).sum())
-        cos_angle = min(dot / x_modulus / y_modulus, 1)  # float errors can cause the division to be slightly above 1 for 90 degree rotations, which will confuse arccos.
+
+        # float errors can cause the division to be slightly above 1 for 90 degree rotations, which
+        # will confuse arccos.
+        cos_angle = min(dot / x_modulus / y_modulus, 1)
+
         angle1 = np.arccos(cos_angle)  # angle in radians
 
         # Construct a rotational matrix for axis1
@@ -799,9 +803,9 @@ class PoiManagerLogic(GenericLogic):
         n2 = axis1[1]
         n3 = axis1[2]
 
-        m1 = np.matrix(((((n1*n1)*(1-np.cos(angle1))+np.cos(angle1)),((n1*n2)*(1-np.cos(angle1))-n3*np.sin(angle1)),((n1*n3)*(1-np.cos(angle1))+n2*np.sin(angle1))),
-                        (((n2*n1)*(1-np.cos(angle1))+n3*np.sin(angle1)),((n2*n2)*(1-np.cos(angle1))+np.cos(angle1)),((n2*n3)*(1-np.cos(angle1))-n1*np.sin(angle1))),
-                        (((n3*n1)*(1-np.cos(angle1))-n2*np.sin(angle1)),((n3*n2)*(1-np.cos(angle1))+n1*np.sin(angle1)),((n3*n3)*(1-np.cos(angle1))+np.cos(angle1)))))
+        m1 = np.matrix(((((n1*n1)*(1-np.cos(angle1))+np.cos(angle1)), ((n1*n2)*(1-np.cos(angle1))-n3*np.sin(angle1)), ((n1*n3)*(1-np.cos(angle1))+n2*np.sin(angle1))),
+                        (((n2*n1)*(1-np.cos(angle1))+n3*np.sin(angle1)), ((n2*n2)*(1-np.cos(angle1))+np.cos(angle1)), ((n2*n3)*(1-np.cos(angle1))-n1*np.sin(angle1))),
+                        (((n3*n1)*(1-np.cos(angle1))-n2*np.sin(angle1)), ((n3*n2)*(1-np.cos(angle1))+n1*np.sin(angle1)), ((n3*n3)*(1-np.cos(angle1))+np.cos(angle1)))))
 
         # Now that ab_old can be rotated to overlap with ab_new, we need to rotate in another
         # axis to fix "tilt".  By choosing ab_new as the rotation axis we ensure that the

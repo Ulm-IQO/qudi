@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>439</width>
-    <height>563</height>
+    <width>862</width>
+    <height>516</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,8 +19,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>439</width>
-     <height>21</height>
+     <width>862</width>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -145,14 +145,14 @@
   <widget class="QDockWidget" name="pid_parameters_DockWidget">
    <property name="minimumSize">
     <size>
-     <width>312</width>
-     <height>200</height>
+     <width>756</width>
+     <height>116</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
      <width>524287</width>
-     <height>200</height>
+     <height>60</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -163,21 +163,106 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="3" column="3">
+     <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>Setpoint</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="labelkPtext">
-       <property name="text">
-        <string>kP</string>
+     <item row="0" column="1">
+      <widget class="QDoubleSpinBox" name="setpointDoubleSpinBox">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>999.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="2" column="3">
+     <item row="0" column="2">
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>64</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="labelP">
+       <property name="text">
+        <string>P</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <widget class="QDoubleSpinBox" name="P_DoubleSpinBox">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-999.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>999.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="5">
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>65</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="6">
+      <widget class="QLabel" name="labelI">
+       <property name="text">
+        <string>I</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="7">
+      <widget class="QDoubleSpinBox" name="I_DoubleSpinBox">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-999.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>999.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="8">
+      <spacer name="horizontalSpacer_7">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>64</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="9">
       <widget class="QLabel" name="labelD">
        <property name="toolTip">
         <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
@@ -189,94 +274,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="3" column="4">
-      <widget class="QDoubleSpinBox" name="setpointDoubleSpinBox">
-       <property name="decimals">
-        <number>6</number>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>999.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="3">
-      <widget class="QLabel" name="labelP">
-       <property name="text">
-        <string>P</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="4">
-      <widget class="QDoubleSpinBox" name="manualDoubleSpinBox">
-       <property name="decimals">
-        <number>6</number>
-       </property>
-       <property name="minimum">
-        <double>-999.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>999.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="3">
-      <widget class="QLabel" name="labelManual">
-       <property name="text">
-        <string>Manual control</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3">
-      <widget class="QLabel" name="labelI">
-       <property name="text">
-        <string>I</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="4">
-      <widget class="QDoubleSpinBox" name="I_DoubleSpinBox">
-       <property name="decimals">
-        <number>6</number>
-       </property>
-       <property name="minimum">
-        <double>-999.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>999.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="4">
-      <widget class="QDoubleSpinBox" name="P_DoubleSpinBox">
-       <property name="decimals">
-        <number>6</number>
-       </property>
-       <property name="minimum">
-        <double>-999.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>999.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="labelkDtext">
-       <property name="text">
-        <string>kD</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="labelkItext">
-       <property name="text">
-        <string>kI</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="4">
+     <item row="0" column="10">
       <widget class="QDoubleSpinBox" name="D_DoubleSpinBox">
        <property name="toolTip">
         <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
@@ -284,7 +282,7 @@ Use for extremely fast counting, since all the raw data is saved.
 Timestamps in oversampling interval are all equal to the averaging time.</string>
        </property>
        <property name="decimals">
-        <number>6</number>
+        <number>3</number>
        </property>
        <property name="minimum">
         <double>-999.000000000000000</double>
@@ -294,7 +292,47 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelManual">
+       <property name="text">
+        <string>Manual control</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QDoubleSpinBox" name="manualDoubleSpinBox">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-999.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>999.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>64</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="labelkPtext">
+       <property name="text">
+        <string>kP</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="4">
       <widget class="QLabel" name="labelkP">
        <property name="text">
         <string>0</string>
@@ -304,17 +342,27 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QLabel" name="labelkD">
-       <property name="text">
-        <string>0</string>
+     <item row="1" column="5">
+      <spacer name="horizontalSpacer_6">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>65</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="1" column="6">
+      <widget class="QLabel" name="labelkItext">
+       <property name="text">
+        <string>kI</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item row="1" column="7">
       <widget class="QLabel" name="labelkI">
        <property name="text">
         <string>0</string>
@@ -324,21 +372,35 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="2">
-      <spacer name="horizontalSpacer_3">
+     <item row="1" column="8">
+      <spacer name="horizontalSpacer_8">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Preferred</enum>
-       </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>64</width>
          <height>20</height>
         </size>
        </property>
       </spacer>
+     </item>
+     <item row="1" column="9">
+      <widget class="QLabel" name="labelkDtext">
+       <property name="text">
+        <string>kD</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="10">
+      <widget class="QLabel" name="labelkD">
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
