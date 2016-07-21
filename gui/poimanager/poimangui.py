@@ -290,7 +290,7 @@ class PoiManagerGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        #self._mw.roi_cb_high_centile_DoubleSpinBox.setOpts(step=0.01, decimals=5)
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=5)
         #####################
         # Setting up display of ROI map xy image
         #####################
@@ -404,8 +404,8 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_manual_RadioButton.toggled.connect(self.refresh_roi_colorscale)
         self._mw.roi_cb_min_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
         self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
-        self._mw.roi_cb_low_centile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
-        self._mw.roi_cb_high_centile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
 
         self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
         self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
@@ -544,8 +544,8 @@ class PoiManagerGui(GUIBase):
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.roi_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.roi_cb_low_centile_DoubleSpinBox.value()
-            high_centile = self._mw.roi_cb_high_centile_DoubleSpinBox.value()
+            low_centile = self._mw.roi_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.roi_cb_high_percentile_DoubleSpinBox.value()
 
             cb_min = np.percentile(self.roi_xy_image_data, low_centile)
             cb_max = np.percentile(self.roi_xy_image_data, high_centile)
