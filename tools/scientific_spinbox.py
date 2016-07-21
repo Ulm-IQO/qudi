@@ -36,6 +36,7 @@ class ScienDSpinBox(SpinBox):
                 dec=True,
                 step=0.1,
                 minStep=0.0001,
+                bounds=(0.0, 99.99),    # set the bounds to be convenient to the default values of the Qt Designer.
                 **kwargs
         )
 
@@ -43,4 +44,8 @@ class ScienSpinBox(SpinBox):
     """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way. """
 
     def __init__(self, *args, **kwargs):
-        SpinBox.__init__(self, *args, int=True, **kwargs)
+        SpinBox.__init__(self,
+                         *args,
+                         int=True,
+                         bounds=(0, 99), # set the bounds to be convenient to the default values of the Qt Designer.
+                         **kwargs)

@@ -135,8 +135,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Return:
             ret = True  ## For some reason, spinbox pretends to ignore return key press
 
-        # Fix: introduce the Escape event, which is restoring the previous display.
-
+        #Fix: introduce the Escape event, which is restoring the previous display.
         if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Escape:
             self.updateText()
             ret = True
@@ -198,17 +197,52 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         self.updateText()
 
+    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
+    def maximum(self):
+        """ Reimplement the maximum functionality."""
+        max_val = self.opts['bounds'][1]
+
+        if self.opts['int'] and max_val is not None:
+            return int(max_val)
+        elif max_val is not None:
+            return float(max_val)
+        else:
+            return max_val
+
     def setMaximum(self, m, update=True):
         """Set the maximum allowed value (or None for no limit)"""
         if m is not None:
+
+            #FIX: insert the integer functionality:
+            if self.opts['int']:
+                m = int(m)
+
             m = D(asUnicode(m))
         self.opts['bounds'][1] = m
         if update:
             self.setValue()
 
+    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
+    def minimum(self):
+        """ Reimplement the minimum functionality."""
+
+        min_val = self.opts['bounds'][0]
+
+        if self.opts['int'] and min_val is not None:
+            return int(min_val)
+        elif min_val is not None:
+            return float(min_val)
+        else:
+            return min_val
+
     def setMinimum(self, m, update=True):
         """Set the minimum allowed value (or None for no limit)"""
         if m is not None:
+
+            #FIX: insert the integer functionality:
+            if self.opts['int']:
+                m = int(m)
+
             m = D(asUnicode(m))
         self.opts['bounds'][0] = m
         if update:
@@ -253,9 +287,11 @@ class SpinBox(QtGui.QAbstractSpinBox):
                 return
             le.setSelection(0, index)
 
+    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
     def suffix(self):
         return self.opts['suffix']
 
+    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
     def prefix(self):
         return self.opts['prefix']
 
@@ -475,7 +511,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
         """Return value of text. Return False if text is invalid, raise exception if text is intermediate"""
         strn = self.lineEdit().text()
 
-        # fix: strip leading blank characters, which produce errors:
+        #Fix: strip leading blank characters, which produce errors:
         strn = strn.lstrip()
 
         suf = self.opts['suffix']
@@ -519,8 +555,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
             #print "no value change:", val, self.val
             return
         self.setValue(val, delaySignal=False)  ## allow text update so that values are reformatted pretty-like
-        le = self.lineEdit()
-        le.deselect()
+
     #def textChanged(self):
         #print "Text changed."
 
