@@ -25,7 +25,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 
 import logging
-logger = logging.getHandler(__name__)
+logger = logging.getLogger(__name__)
 from pyqtgraph.Qt import QtCore
 import traceback
 import collections
