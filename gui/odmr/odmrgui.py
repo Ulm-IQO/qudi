@@ -243,10 +243,10 @@ class ODMRGui(GUIBase):
         self._mw.power_DoubleSpinBox.editingFinished.connect(self.change_power)
         self._mw.runtime_DoubleSpinBox.editingFinished.connect(self.change_runtime)
 
-        self._mw.odmr_cb_max_SpinBox.valueChanged.connect(self.refresh_matrix)
-        self._mw.odmr_cb_min_SpinBox.valueChanged.connect(self.refresh_matrix)
-        self._mw.odmr_cb_high_centile_SpinBox.valueChanged.connect(self.refresh_matrix)
-        self._mw.odmr_cb_low_centile_SpinBox.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_max_DoubleSpinBox.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_matrix)
 
         ########################################################################
         ##                       Connect signals                              ##
@@ -407,8 +407,8 @@ class ODMRGui(GUIBase):
 
         # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
         if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.max(matrix_image) == 0.0:
-            cb_min = self._mw.odmr_cb_min_SpinBox.value()
-            cb_max = self._mw.odmr_cb_max_SpinBox.value()
+            cb_min = self._mw.odmr_cb_min_DoubleSpinBox.value()
+            cb_max = self._mw.odmr_cb_max_DoubleSpinBox.value()
 
         # Otherwise, calculate cb range from percentiles.
         else:
@@ -416,8 +416,8 @@ class ODMRGui(GUIBase):
             matrix_image_nonzero = matrix_image[np.nonzero(matrix_image)]
 
             # Read centile range
-            low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
-            high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
+            low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
 
             cb_min = np.percentile(matrix_image_nonzero, low_centile)
             cb_max = np.percentile(matrix_image_nonzero, high_centile)
@@ -564,8 +564,8 @@ class ODMRGui(GUIBase):
         # Percentile range is None, unless the percentile scaling is selected in GUI.
         pcile_range = None
         if self._mw.odmr_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
-            high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
+            low_centile = self._mw.odmr_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
         self._odmr_logic.save_ODMR_Data(filetag, colorscale_range=cb_range, percentile_range=pcile_range)
