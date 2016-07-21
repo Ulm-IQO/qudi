@@ -81,7 +81,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
                         'address >>{}<<.'.format(self._gpib_address),
                         msgType='error')
             raise
-
+        self.model = self._gpib_connection.query('*IDN?').split(',')[1]
         self.logMsg('MicrowaveAnritsu initialised and connected to hardware.',
                     msgType='status')
 
@@ -98,7 +98,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """ Right now, this is for Anritsu MG37022A with Option 4 only."""
         limits = {
             'frequency': {
-                'min': 10*10e6 ,
+                'min': 10*10e6,
                 'max': 20*10e9
                 },
             'power': {
@@ -286,10 +286,12 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @param power:
         @return:
         """
-        self._gpib_connection.write('SWEEP:GENERATION:STEPPED')
+        self._gpib_connection.write(':SWE:GEN STEP')
         self._gpib_connection.write(':FREQ:START {}'.format(start-step))
         self._gpib_connection.write(':FREQ:STOP {}'.format(stop))
-        self._gpib_connection.write(':SWEEP:FREQ:STEP {}'.format(step))
+        self._gpib_connection.write(':SWE:FREQ:STEP {}'.format(step))
+        nrpoints = int(self._gpib_connection.query(':SWE:POIN?'))
+        return nrpoints - 1
 
     def reset_sweep(self):
         """ Reset of MW List Mode position to start from first given frequency

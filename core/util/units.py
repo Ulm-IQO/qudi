@@ -260,3 +260,25 @@ def is_complex(test_value):
 
     return type(test_value) in [np.complex, np.complex64, np.complex128]
 
+
+def in_range(value, lower_limit, upper_limit):
+    """ Check if a value is in a given range an return closest possible value in range.
+    Also check the range.
+
+    @param value: value to be checked
+    @param lower_limit: lowest allowed value
+    @param upper_limit: highest allowed value
+    @return: value closest to value in range
+    """
+    if upper_limit > lower_limit:
+        u_limit = upper_limit
+        l_limit = lower_limit
+    else:
+        l_limit = upper_limit
+        u_limit = lower_limit
+
+    if value > u_limit:
+        return upper_limit
+    if value < l_limit:
+        return lower_limit
+    return value
