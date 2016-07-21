@@ -90,10 +90,12 @@ def create_formatted_output(param_dict, default_digits=5):
         else:
             value, error, digit = round_value_to_error(param_dict[entry]['value'], param_dict[entry]['error'])
 
+            # ======================== Checking routines =======================
+
             # check if the error is so big that the rounded value will
-            # become just zero. In that case, output at least 5 digits of
-            # the actual value and not the complete value, just to have
-            # some sort of a display:
+            # become just zero. In that case, output at least the set
+            # default_digits of the actual value and not the complete value,
+            # just to have some sort of a display:
             if np.isclose(value, 0.0) or np.isnan(error) or np.isclose(error, 0.0):
 
                 # catch the rare case, when the value is almost exact zero now
@@ -124,6 +126,9 @@ def create_formatted_output(param_dict, default_digits=5):
                         # if fit was not working properly:
                         digit = -(int(np.log10(abs(param_dict[entry]['value'])))-default_digits)
                         value = param_dict[entry]['value']
+
+            # ==================================================================
+
 
             if digit < 0:
                 output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
@@ -228,6 +233,30 @@ def round_value_to_error(value, error):
 
     return round(value, round_digit), round(error, round_digit), round_digit
 
+
+def dig(entry):
+    if np.log10(entry)>= 0:
+        return int(np.log10(entry))
+    else:
+        # catch the assymetric behaviour of the log and int operation.
+        return int( int(np.abs(np.log10(entry)))+1 + np.log10(entry)) - (int(np.abs(np.log10(entry))) +1 )
+
+
+def get_norm(entry):
+    """ A rather different way to display the value in SI notation.
+
+    :param entry:
+    :return:
+    """
+    val = dig(entry)
+
+    fact = int(val/3)
+
+    power = int(3*fact)
+
+    norm = 10**(power)
+
+    return entry/norm, norm
 
 def is_number(test_value):
     """ Check whether passed value is a number
