@@ -172,7 +172,7 @@ def initialize_logger():
     rotating_file_handler = logging.handlers.RotatingFileHandler(
         'qudi.log', backupCount=5)
     rotating_file_handler.setFormatter(logging.Formatter(
-        "%(levelname)s %(asctime)s: %(message)s",
+        "%(name)s %(levelname)s %(asctime)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"))
     rotating_file_handler.doRollover()
     logger.addHandler(rotating_file_handler)
