@@ -250,7 +250,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
     def suffix(self):
         return self.opts['suffix']
 
-    def prefix(self)
+    def prefix(self):
         return self.opts['prefix']
 
     def value(self):
