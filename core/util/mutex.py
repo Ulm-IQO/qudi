@@ -23,6 +23,9 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
+
+import logging
+logger = logging.getHandler(__name__)
 from pyqtgraph.Qt import QtCore
 import traceback
 import collections
@@ -37,7 +40,7 @@ class Mutex(QtCore.QMutex):
     * Drop-in replacement for threading.Lock
     * Context management (enter/exit)
     """
-    
+
     def __init__(self, *args, **kargs):
         if kargs.get('recursive', False):
             args = (QtCore.QMutex.Recursive,)
@@ -63,7 +66,7 @@ class Mutex(QtCore.QMutex):
             finally:
                 self.l.unlock()
         return locked
-        
+
     def lock(self, id=None):
         c = 0
         waitTime = 5000  # in ms
@@ -74,12 +77,14 @@ class Mutex(QtCore.QMutex):
             if self.debug:
                 self.l.lock()
                 try:
-                    print("Waiting for mutex lock ({:.1} sec). Traceback follows:".format(c*waitTime/1000.))
-                    traceback.print_stack()
+                    logger.debug('Waiting for mutex lock ({:.1} sec). '
+                    'Traceback follows:'.format(c*waitTime/1000.))
+                    logger.debug(''.joint(traceback.format_stack()))
                     if len(self.tb) > 0:
-                        print("Mutex is currently locked from:\n", self.tb[-1])
+                        logger.debug('Mutex is currently locked from: {0}\n'
+                                ''.format(self.tb[-1]))
                     else:
-                        print("Mutex is currently locked from [???]")
+                        logger.debug('Mutex is currently locked from [???]')
                 finally:
                     self.l.unlock()
         #print 'lock', self, len(self.tb)
@@ -101,8 +106,8 @@ class Mutex(QtCore.QMutex):
         """Mimics threading.Lock.acquire() to allow this class as a drop-in replacement.
         """
         return self.tryLock()
-        
-    def release(self): 
+
+    def release(self):
         """Mimics threading.Lock.release() to allow this class as a drop-in replacement.
         """
         self.unlock()
@@ -175,7 +180,7 @@ class MutexLocker:
     #print repr(fn), repr(self), args, kargs
     #obj = self.__wrapped_object__()
     #return getattr(obj, fn)(*args, **kargs)
-    
+
 ##def WrapperClass(clsName, parents, attrs):
     ##for parent in parents:
         ##for name in dir(parent):
@@ -201,21 +206,21 @@ class MutexLocker:
         #typ = type(name, bases, attrs)
         #typ.__faked_methods__ = fakes
         #return typ
-    
+
     #def __init__(self, name, bases, attrs):
         #print self.__faked_methods__
         #for n in self.__faked_methods__:
             #self.n = None
-        
-    
-    
+
+
+
 #class ThreadsafeWrapper(object):
     #def __init__(self, obj):
         #self.__TSW_object__ = obj
-        
+
     #def __wrapped_object__(self):
         #return self.__TSW_object__
-    
+
 
 class ThreadsafeWrapper(object):
     """Wrapper that makes access to any object thread-safe (within reasonable limits).
@@ -232,7 +237,7 @@ class ThreadsafeWrapper(object):
         If reentrant is True, then the object can be locked multiple times from the same thread."""
 
         self.__TSOwrapped_object__ = obj
-            
+
         if reentrant:
             self.__TSOwrap_lock__ = Mutex(QtCore.QMutex.Recursive)
         else:
@@ -243,13 +248,13 @@ class ThreadsafeWrapper(object):
 
     def lock(self, id=None):
         self.__TSOwrap_lock__.lock(id=id)
-        
+
     def tryLock(self, timeout=None, id=None):
         self.__TSOwrap_lock__.tryLock(timeout=timeout, id=id)
-        
+
     def unlock(self):
         self.__TSOwrap_lock__.unlock()
-        
+
     def unwrap(self):
         return self.__TSOwrapped_object__
 
@@ -275,7 +280,7 @@ class ThreadsafeWrapper(object):
             return
         with self.__TSOwrap_lock__:
             return setattr(self.__wrapped_object__(), attr, val)
-            
+
     def __wrap_object__(self, obj):
         if not self.__TSOrecursive__:
             return obj
@@ -284,16 +289,16 @@ class ThreadsafeWrapper(object):
         if id(obj) not in self.__TSOwrapped_objs__:
             self.__TSOwrapped_objs__[id(obj)] = threadsafe(obj, recursive=self.__TSOrecursive__, reentrant=self.__TSOreentrant__)
         return self.__TSOwrapped_objs__[id(obj)]
-        
+
     def __wrapped_object__(self):
         #if isinstance(self.__TSOwrapped_object__, weakref.ref):
             #return self.__TSOwrapped_object__()
         #else:
         return self.__TSOwrapped_object__
-    
+
 def mkMethodWrapper(name):
-    return lambda self, *args, **kargs: self.__safe_call__(name, *args, **kargs)    
-    
+    return lambda self, *args, **kargs: self.__safe_call__(name, *args, **kargs)
+
 def threadsafe(obj, *args, **kargs):
     """Return a thread-safe wrapper around obj. (see ThreadsafeWrapper)
     args and kargs are passed directly to ThreadsafeWrapper.__init__()
@@ -312,8 +317,8 @@ def threadsafe(obj, *args, **kargs):
             attrs[n] = mkMethodWrapper(n)
     typ = type(clsName, (ThreadsafeWrapper,), attrs)
     return typ(obj, *args, **kargs)
-        
-    
+
+
 if __name__ == '__main__':
     d = {'x': 3, 'y': [1,2,3,4], 'z': {'a': 3}, 'w': (1,2,3,4)}
     t = threadsafe(d, recursive=True, reentrant=False)

@@ -89,10 +89,10 @@ class RemoteObjectManager(QtCore.QObject):
                     return self.modules.storage[name]
                 else:
                     for base in ['hardware', 'logic', 'gui']:
-                        print('remotesearch:', name)
+                        logger.info('remotesearch:', name)
                         if name in self._manager.tree['defined'][base] and 'remoteaccess' in self._manager.tree['defined'][base][name]:
                             self._manager.startModule(base, name)
-                            print('remoteload:', base, name)
+                            logger.info('remoteload:', base, name)
                     if name in self.modules.storage:
                         return self.modules.storage[name]
                     else:
