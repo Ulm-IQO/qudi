@@ -42,7 +42,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @return QThread: new thred, none if failed
         """
-        logger.thread('Creating thread: \"{0}\".'.format(name))
+        logger.debug('Creating thread: \"{0}\".'.format(name))
         with self.lock:
             if 'name' in self._threads:
                 return None
@@ -59,10 +59,10 @@ class ThreadManager(QtCore.QAbstractTableModel):
           @param str name: unique thread name
         """
         if name in self._threads:
-            logger.thread('Quitting thread {0}.'.format(name))
+            logger.debug('Quitting thread {0}.'.format(name))
             self._threads[name].thread.quit()
         else:
-            logger.thread('You tried quitting a nonexistent thread {0}.'
+            logger.debug('You tried quitting a nonexistent thread {0}.'
                     ''.format(name))
 
     def joinThread(self, name, time=None):
@@ -72,13 +72,13 @@ class ThreadManager(QtCore.QAbstractTableModel):
           @param int time: timeout for waiting in msec
         """
         if name in self._threads:
-            logger.thread('Waiting for thread {0} to end.'.format(name))
+            logger.debug('Waiting for thread {0} to end.'.format(name))
             if time is None:
                 self._threads[name].thread.wait()
             else:
                 self._threads[name].thread.wait(time)
         else:
-            logger.thread('You tried waiting for a nonexistent thread {0}.'
+            logger.debug('You tried waiting for a nonexistent thread {0}.'
                     ''.format(name))
 
     def cleanupThread(self, name):
@@ -86,7 +86,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @param str name: unique thread name
         """
-        logger.thread('Cleaning up thread {0}.'.format(name))
+        logger.debug('Cleaning up thread {0}.'.format(name))
         if 'name' in self._threads and not self._threads[name].thread.isRunning():
             with self.lock:
                 row = self.getItemNumberByKey(name)
@@ -97,7 +97,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
     def quitAllThreads(self):
         """Stop event loop of all QThreads.
         """
-        logger.thread('Quit all threads.')
+        logger.debug('Quit all threads.')
         for name in self._threads:
             self._threads[name].thread.quit()
 

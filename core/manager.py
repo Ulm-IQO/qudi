@@ -144,7 +144,7 @@ class Manager(QtCore.QObject):
 
             # Thread management
             self.tm = ThreadManager()
-            logger.thread('Main thread is {0}'.format(threading.get_ident()))
+            logger.debug('Main thread is {0}'.format(threading.get_ident()))
 
             # Task runner
             self.tr = None
@@ -182,11 +182,11 @@ class Manager(QtCore.QObject):
             try:
                 if 'serverport' in self.tree['global']:
                     remotePort = self.tree['global']['serverport']
-                    logger.status('Remote port is configured to {0}'.format(
+                    logger.info('Remote port is configured to {0}'.format(
                         remotePort))
                 else:
                     remotePort = 12345
-                    logger.status('Remote port is the standard {0}'.format(
+                    logger.info('Remote port is the standard {0}'.format(
                         remotePort))
                 serveraddress = 'localhost'
                 if 'serveraddress' in self.tree['global']:
@@ -510,7 +510,7 @@ class Manager(QtCore.QObject):
           @return object: the loaded python module
         """
 
-        logger.status('Loading module ".{0}.{1}"'.format(baseName, module))
+        logger.info('Loading module ".{0}.{1}"'.format(baseName, module))
         if baseName not in ['hardware', 'logic', 'gui']:
             raise Exception('You are trying to cheat the '
                             'system with some category {0}'.format(baseName) )
@@ -539,7 +539,7 @@ class Manager(QtCore.QObject):
           This method will add the resulting QuDi module instance to internal
           bookkeeping.
         """
-        logger.status('Configuring {0} as {1}'.format(
+        logger.info('Configuring {0} as {1}'.format(
             className, instanceName))
         with self.lock:
             if baseName in ['hardware', 'logic', 'gui']:
@@ -1034,7 +1034,7 @@ class Manager(QtCore.QObject):
             for mbase in ['hardware', 'logic', 'gui']:
                 if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     if self.tree['loaded'][mbase][mkey].getState() in ('idle', 'running'):
-                        logger.status('Deactivating module {0}.{1}'.format(
+                        logger.info('Deactivating module {0}.{1}'.format(
                             mbase, mkey))
                         self.deactivateModule(mbase, mkey)
 
@@ -1130,7 +1130,7 @@ class Manager(QtCore.QObject):
             for key in self.tree['defined'][base]:
                 self.startModule(base, key)
 
-        logger.status('Activation finished.')
+        logger.info('Activation finished.')
 
     def getStatusDir(self):
         """ Get the directory where the app state is saved, create it if necessary.

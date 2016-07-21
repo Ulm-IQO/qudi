@@ -46,31 +46,6 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     """
     pgdebug.printExc(msg, indent, prefix)
 
-# new logging levels
-LEVEL_STATUS = 25
-"""log level status."""
-LEVEL_THREAD = 24
-""""log level thread"""
-
-
-class Logger(logging.Logger):
-    """Logger providing convenient functions for logging with the log levels
-       STATUS and THREAD
-    """
-    def thread(self, msg, *args, **kwargs):
-        """Log message with log level thread
-
-          @param str msg: log message
-        """
-        self.log(LEVEL_THREAD, msg, *args, **kwargs)
-
-    def status(self, msg, *args, **kwargs):
-        """Log message with log level status
-
-          @param str msg: log message
-        """
-        self.log(LEVEL_STATUS, msg, *args, **kwargs)
-
 
 class QtLogFormatter(logging.Formatter):
     """Formatter used with QtLogHandler.
@@ -150,15 +125,11 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
 def initialize_logger():
     """sets up the logger including a console, file and qt handler
     """
-    logging.setLoggerClass(Logger)
-
     # initialize logger
-    logging.basicConfig(format="%(message)s", level=LEVEL_STATUS)
+    logging.basicConfig(format="%(message)s", level=logging.INFO)
     logging.addLevelName(logging.CRITICAL, 'critical')
     logging.addLevelName(logging.ERROR, 'error')
     logging.addLevelName(logging.WARNING, 'warning')
-    logging.addLevelName(LEVEL_STATUS, 'info')
-    logging.addLevelName(LEVEL_THREAD, 'thread')
     logging.addLevelName(logging.INFO, 'info')
     logging.addLevelName(logging.DEBUG, 'debug')
     logging.addLevelName(logging.NOTSET, 'not set')
@@ -166,7 +137,7 @@ def initialize_logger():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     # set level of stream handler which logs to stderr
-    logger.handlers[0].setLevel(LEVEL_STATUS)
+    logger.handlers[0].setLevel(logging.WARNING)
 
     # add file logger (inherits level)
     rotating_file_handler = logging.handlers.RotatingFileHandler(

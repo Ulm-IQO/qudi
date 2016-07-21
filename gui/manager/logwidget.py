@@ -41,9 +41,8 @@ class LogModel(QtCore.QAbstractTableModel):
         super().__init__(**kwargs)
         self.header = ['Name', 'Time', 'Level', 'Message']
         self.fgColor = {
-            'thread':   QtGui.QColor('#11F'),
+            'debug':   QtGui.QColor('#11F'),
             'info':     QtGui.QColor('#1F1'),
-            'status':   QtGui.QColor('#1F1'),
             'warning':  QtGui.QColor('#F90'),
             'error':    QtGui.QColor('#F11'),
             'critical': QtGui.QColor('#F11')
@@ -207,8 +206,7 @@ class LogFilter(QtGui.QSortFilterProxyModel):
           @param QObject parent: parent object of filter
         """
         super().__init__(parent)
-        self.show_levels = ['thread', 'info', 'warning', 'error',
-                'critical']
+        self.show_levels = ['info', 'warning', 'error', 'critical']
 
     def filterAcceptsRow(self, sourceRow, sourceParent):
         """ Determine wheter row (log entry) should be shown.

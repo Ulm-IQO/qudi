@@ -29,7 +29,8 @@ from .logger import initialize_logger
 initialize_logger()
 import logging
 logger = logging.getLogger(__name__)
-logger.status('Loading QuDi...')
+logger.info('Loading QuDi...')
+print('Loading QuDi...')
 
 if __package__ is None:
     import core
@@ -102,11 +103,13 @@ class AppWatchdog(QtCore.QObject):
                                     # call this function during quit.
             self.alreadyQuit = True
             self.timer.stop()
-            logger.status('Closing windows...')
+            logger.info('Closing windows...')
+            print('Closing windows...')
             if manager.hasGui:
                 manager.gui.closeWindows()
             QtCore.QCoreApplication.instance().processEvents()
-            logger.status('Stopping threads...')
+            logger.info('Stopping threads...')
+            print('Stopping threads...')
             manager.tm.quitAllThreads()
             QtCore.QCoreApplication.instance().processEvents()
             print('\n  QuDi is closed!  Ciao.')

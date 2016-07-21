@@ -196,7 +196,7 @@ class ManagerGui(GUIBase):
         """ Create an IPython kernel manager and kernel.
             Add modules to its namespace.
         """
-        self.log.thread('IPy activation in thread {0}'.format(
+        self.log.debug('IPy activation in thread {0}'.format(
             threading.get_ident()))
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
@@ -246,7 +246,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        self.log.thread('IPy deactivation'.format(threading.get_ident()))
+        self.log.debug('IPy deactivation'.format(threading.get_ident()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):
