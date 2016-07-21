@@ -30,10 +30,11 @@ import re
 import inspect
 import itertools
 import datetime
+import copy
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
-from core.util.units import get_unit_prefix_dict
+from core.util import units
 from .qradiobutton_custom import CustomQRadioButton
 
 from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
@@ -1095,7 +1096,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data * get_unit_prefix_dict()[unit_prefix]
+            return data * units.get_unit_prefix_dict()[unit_prefix]
         return data
 
     def set_element_in_block_table(self, row, column, value):
@@ -1122,7 +1123,7 @@ class PulsedMeasurementGui(GUIBase):
             if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
                 unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
                 # access the method defined in base for unit prefix:
-                value = value / get_unit_prefix_dict()[unit_prefix]
+                value = value / units.get_unit_prefix_dict()[unit_prefix]
             model.setData(model.index(row,column), value, access)
         else:
             self.logMsg('The cell ({0},{1}) in block table could not be '
@@ -2611,6 +2612,10 @@ class PulsedMeasurementGui(GUIBase):
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
         self.errorbars_present = False
 
+        # that must be one out of the dict units.get_unit_prefix_dict()
+        self._freq_prefix = 'M'
+        self._time_prefix = 'n'
+
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
         # Initialize External Control GroupBox from logic and saved status variables
@@ -2646,8 +2651,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_laser_length_SpinBox.editingFinished.connect(self.laser_length_changed)
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
         self._mw.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.analysis_fc_binning_changed)
-        self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
         self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
+
+        # connect the fit stuff:
+        self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
+        self._pulsed_meas_logic.sigFitUpdated.connect(self.refresh_signal_plot_fit)
 
         self._mw.ext_control_mw_freq_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
         self._mw.ext_control_mw_power_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
@@ -2914,13 +2922,51 @@ class PulsedMeasurementGui(GUIBase):
         """Fits the current data"""
         self._mw.fit_param_results_TextBrowser.clear()
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
-        fit_x, fit_y, fit_result, param_dict = self._pulsed_meas_logic.do_fit(current_fit_function)
+        fit_x, fit_y, fit_param, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
+
+        # One need to copy the whole fit param dict, otherwise it will be
+        # altered and changed.
+        fit_param = copy.deepcopy(fit_param)
+
+        # Adapt the parameters specifically for this GUI:
+        for param in fit_param:
+            unit = fit_param[param]['unit']
+            norm = 1.0
+
+            if fit_param[param]['unit'] == 'Hz':
+
+                freq_prefix = self._freq_prefix
+                # safety check, if the prefix is really in the unit_prefix_dict
+                if self._freq_prefix not in units.get_unit_prefix_dict():
+                    freq_prefix = ''
+
+                norm = units.get_unit_prefix_dict()[freq_prefix]
+                unit = '{0}{1}'.format(freq_prefix, fit_param[param]['unit'])
+
+            if fit_param[param]['unit'] == 's':
+
+                time_prefix = self._time_prefix
+                # safety check, if the prefix is really in the unit_prefix_dict
+                if self._time_prefix not in units.get_unit_prefix_dict():
+                    time_prefix = ''
+
+                norm = units.get_unit_prefix_dict()[time_prefix]
+                unit = '{0}{1}'.format(time_prefix, fit_param[param]['unit'])
+
+            fit_param[param]['unit'] = unit
+            fit_param[param]['value'] = fit_param[param]['value']/norm
+
+            if 'error' in fit_param[param]:
+                fit_param[param]['error'] = fit_param[param]['error']/norm
+
+        fit_text = units.create_formatted_output(fit_param)
+
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
-        self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
+        self._mw.fit_param_results_TextBrowser.setPlainText(fit_text)
         return
 
     def refresh_signal_plot(self):
-        """ Refreshes the xy-matrix image """
+        """ Refreshes the xy-plot image """
         # dealing with the error bars
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
             beamwidth = np.inf
@@ -2953,6 +2999,14 @@ class PulsedMeasurementGui(GUIBase):
                                        y=self._pulsed_meas_logic.signal_plot_y2, pen='g')
         self.change_second_plot()
         return
+
+    def refresh_signal_plot_fit(self):
+        """ Refreshes the xy-plot fit image """
+
+        self.fit_image.setData(x=self._pulsed_meas_logic.signal_plot_x_fit,
+                               y=self._pulsed_meas_logic.signal_plot_y_fit,
+                               pen='r')
+
 
     def refresh_measuring_error_plot(self):
         self.measuring_error_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
