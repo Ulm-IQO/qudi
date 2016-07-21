@@ -34,19 +34,6 @@ from pyqtgraph.Qt import QtCore
 import pyqtgraph.debug as pgdebug
 
 
-def printExc(msg='', indent=4, prefix='|', msgType='error'):
-    """Prints an error message followed by an indented exception backtrace
-
-      @param string msg: message to be logged
-      @param int indent: indentation depth in characters
-      @param string prefix: prefix for backtrace lines
-      @param string msgType: type of message (user, status, warning, error)
-
-    (This function is intended to be called within except: blocks)
-    """
-    pgdebug.printExc(msg, indent, prefix)
-
-
 class QtLogFormatter(logging.Formatter):
     """Formatter used with QtLogHandler.
 
