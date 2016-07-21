@@ -192,8 +192,6 @@ class SpinBox(QtGui.QAbstractSpinBox):
         
         self.updateText()
 
-
-
     def setMaximum(self, m, update=True):
         """Set the maximum allowed value (or None for no limit)"""
         if m is not None:
@@ -248,6 +246,12 @@ class SpinBox(QtGui.QAbstractSpinBox):
             except ValueError:
                 return
             le.setSelection(0, index)
+
+    def suffix(self):
+        return self.opts['suffix']
+
+    def prefix(self)
+        return self.opts['prefix']
 
     def value(self):
         """
@@ -316,7 +320,6 @@ class SpinBox(QtGui.QAbstractSpinBox):
     def sizeHint(self):
         return QtCore.QSize(120, 0)
     
-    
     def stepEnabled(self):
         return self.StepUpEnabled | self.StepDownEnabled        
     
@@ -356,7 +359,6 @@ class SpinBox(QtGui.QAbstractSpinBox):
             if 'minStep' in self.opts and abs(val) < self.opts['minStep']:
                 val = D(0)
         self.setValue(val, delaySignal=True)  ## note all steps (arrow buttons, wheel, up/down keys..) emit delayed signals only.
-        
 
     def valueInRange(self, value):
         bounds = self.opts['bounds']
