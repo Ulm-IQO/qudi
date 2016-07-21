@@ -25,6 +25,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 from pyqtgraph.Qt import QtGui, QtCore, uic
 import os
+import html
 
 import sys
 if 'PyQt5' in sys.modules:
@@ -250,6 +251,26 @@ class LogFilter(QtGui.QSortFilterProxyModel):
         self.invalidateFilter()
 
 
+class AutoToolTipDelegate(QtGui.QStyledItemDelegate):
+    def helpEvent(self, e, view, option, index):
+        if e is None or view is None:
+            return False
+
+        if e.type() == QtCore.QEvent.ToolTip:
+            rect = view.visualRect(index)
+            size = self.sizeHint(option, index);
+            if rect.width() < size.width():
+                tooltip = index.data(QtCore.Qt.DisplayRole)
+                QtGui.QToolTip.showText(
+                        e.globalPos(),
+                        '<div>{0}</div>'.format(html.escape(tooltip)),
+                        view)
+            else:
+                QtGui.QToolTip.hideText()
+            return True
+        return super().helpEvent(e, view, option, index)
+
+
 class LogWidget(QtGui.QWidget):
     """A widget to show log entries and filter them.
     """
@@ -283,7 +304,7 @@ class LogWidget(QtGui.QWidget):
         # in pyqt5
         if 'PyQt4' in sys.modules:
             self.output.horizontalHeader().setResizeMode(0,
-                    QtGui.QHeaderView.ResizeToContents)
+                    QtGui.QHeaderView.Interactive)
             self.output.horizontalHeader().setResizeMode(1,
                     QtGui.QHeaderView.ResizeToContents)
             self.output.horizontalHeader().setResizeMode(2,
@@ -294,7 +315,7 @@ class LogWidget(QtGui.QWidget):
                     QtGui.QHeaderView.ResizeToContents)
         else:
             self.output.horizontalHeader().setSectionResizeMode(0,
-                    QtGui.QHeaderView.ResizeToContents)
+                    QtGui.QHeaderView.Interactive)
             self.output.horizontalHeader().setSectionResizeMode(1,
                     QtGui.QHeaderView.ResizeToContents)
             self.output.horizontalHeader().setSectionResizeMode(2,
@@ -303,6 +324,8 @@ class LogWidget(QtGui.QWidget):
                     QtGui.QHeaderView.ResizeToContents)
             self.output.verticalHeader().setSectionResizeMode(
                     QtGui.QHeaderView.ResizeToContents)
+        self.output.setTextElideMode(QtCore.Qt.ElideRight)
+        self.output.setItemDelegate(AutoToolTipDelegate(self.output))
 
         # connect signals
         self.sigDisplayEntry.connect(self.displayEntry,
