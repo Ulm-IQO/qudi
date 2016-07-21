@@ -288,6 +288,7 @@ class PoiManagerGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        #self._mw.roi_cb_high_centile_DoubleSpinBox.setOpts(step=0.01, decimals=5)
         #####################
         # Setting up display of ROI map xy image
         #####################
@@ -401,8 +402,8 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_manual_RadioButton.toggled.connect(self.refresh_roi_colorscale)
         self._mw.roi_cb_min_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
         self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
-        self._mw.roi_cb_low_centile_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
-        self._mw.roi_cb_high_centile_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_low_centile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_high_centile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
 
         self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
         self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
@@ -410,16 +411,22 @@ class PoiManagerGui(GUIBase):
         self._markers = dict()
 
         # Signal at end of refocus
-        self._poi_manager_logic.signal_refocus_finished.connect(
-            self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_timer_updated.connect(
-            self._update_timer, QtCore.Qt.QueuedConnection)
+            self._update_timer,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
+            self._redraw_sample_shift,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self.populate_poi_list, QtCore.Qt.QueuedConnection)
+            self.populate_poi_list,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self._redraw_poi_markers, QtCore.Qt.QueuedConnection)
+            self._redraw_poi_markers,
+            QtCore.Qt.QueuedConnection
+        )
 
         # Connect track period
         self._mw.track_period_SpinBox.valueChanged.connect(self.change_track_period)
@@ -535,8 +542,8 @@ class PoiManagerGui(GUIBase):
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.roi_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.roi_cb_low_centile_SpinBox.value()
-            high_centile = self._mw.roi_cb_high_centile_SpinBox.value()
+            low_centile = self._mw.roi_cb_low_centile_DoubleSpinBox.value()
+            high_centile = self._mw.roi_cb_high_centile_DoubleSpinBox.value()
 
             cb_min = np.percentile(self.roi_xy_image_data, low_centile)
             cb_max = np.percentile(self.roi_xy_image_data, high_centile)

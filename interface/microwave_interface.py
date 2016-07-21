@@ -173,19 +173,19 @@ class MicrowaveInterface():
 
             The following structure is absolutely necessary:
             frequency:
-                min
-                max
+                min:
+                max:
             power:
-                min
-                max
-            sweep:
-                minstep
-                maxstep
-                nrsteps
+                min:
+                max:
             list:
-                minstep
-                maxstep
-                nrsteps
+                minstep:
+                maxstep:
+                maxentries:
+            sweep:
+                minstep:
+                maxstep:
+                maxentries:
 
            Frequency in Hz, power in dBm, minstep/maxstep in Hz.
         """
