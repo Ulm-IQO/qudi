@@ -158,7 +158,7 @@ def initialize_logger():
 
 # global variables used by exception handler
 original_excepthook = None
-blockLogging = False
+_blockLogging = False
 
 def _exception_handler(manager, *args):
     """Exception logging function.
@@ -166,12 +166,12 @@ def _exception_handler(manager, *args):
       @param object manager: the manager
       @param list args: contents of exception (type, value, backtrace)
     """
-    global blockLogging
+    global _blockLogging
     # If an error occurs *while* trying to log another exception, disable
     # any further logging to prevent recursion.
-    if not blockLogging:
+    if not _blockLogging:
         try:
-            blockLogging = True
+            _blockLogging = True
             ## Start by extending recursion depth just a bit.
             ## If the error we are catching is due to recursion, we
             ## don't want to generate another one here.
@@ -179,7 +179,7 @@ def _exception_handler(manager, *args):
             try:
                 sys.setrecursionlimit(recursionLimit+100)
                 try:
-                    logging.error('Unhandled exception: ', exc_info=args)
+                    logging.error('', exc_info=args)
                     if args[0] == KeyboardInterrupt:
                         manager.quit()
                 except Exception:
@@ -201,7 +201,7 @@ def _exception_handler(manager, *args):
             finally:
                 sys.setrecursionlimit(recursionLimit)
         finally:
-            blockLogging = False
+            _blockLogging = False
 
 
 def register_exception_handler(manager):
