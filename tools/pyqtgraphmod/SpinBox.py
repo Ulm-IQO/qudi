@@ -134,6 +134,12 @@ class SpinBox(QtGui.QAbstractSpinBox):
         ret = QtGui.QAbstractSpinBox.event(self, ev)
         if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Return:
             ret = True  ## For some reason, spinbox pretends to ignore return key press
+
+        # Fix: introduce the Escape event, which is restoring the previous display.
+
+        if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Escape:
+            self.updateText()
+            ret = True
         return ret
 
     ##lots of config options, just gonna stuff 'em all in here rather than do the get/set crap.
@@ -399,7 +405,9 @@ class SpinBox(QtGui.QAbstractSpinBox):
                 ## first make sure we didn't mess with the suffix
                 suff = self.opts.get('suffix', '')
 
-                if len(strn) == 1:
+                # fix: if the whole text is selected and one needs to typ in a
+                #      new number, then a single integer character is ignored.
+                if len(strn) == 1 and strn.isdigit():
                     scl_str = fn.siScale(self.val)[1]
                     strn = '{0} {1}{2}'.format(strn, scl_str, suff)
 
@@ -466,6 +474,10 @@ class SpinBox(QtGui.QAbstractSpinBox):
     def interpret(self):
         """Return value of text. Return False if text is invalid, raise exception if text is intermediate"""
         strn = self.lineEdit().text()
+
+        # fix: strip leading blank characters, which produce errors:
+        strn = strn.lstrip()
+
         suf = self.opts['suffix']
         if len(suf) > 0:
             if strn[-len(suf):] != suf:
