@@ -594,8 +594,9 @@ class SaveLogic(GenericLogic):
         # directory is taken.
         if not os.path.exists(self.data_dir):
                 if self.data_dir != '':
-                    print('The specified Data Directory in the config file '
-                          'does not exist. Using default instead.')
+                    self.log.warning('The specified Data Directory in the '
+                            'config file does not exist. Using default '
+                            'instead.')
                 if self.os_system == 'unix':
                     self.data_dir = self.default_unix_data_dir
                 elif self.os_system == 'win':
