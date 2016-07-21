@@ -19,17 +19,28 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-import pyqtgraph
+#import pyqtgraph
+from tools.pyqtgraphmod.SpinBox import SpinBox
 
 
-class ScienDSpinBox(pyqtgraph.SpinBox):
+class ScienDSpinBox(SpinBox):
     """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific way. """
 
     def __init__(self, *args, **kwargs):
-        pyqtgraph.SpinBox.__init__(self, *args, int=False, suffix='s', siPrefix=True,  **kwargs)
+        SpinBox.__init__(
+                self,
+                *args,
+                int=False,
+                #suffix='s',
+                siPrefix=True,
+                dec=True,
+                step=0.1,
+                minStep=0.0001,
+                **kwargs
+        )
 
-class ScienSpinBox(pyqtgraph.SpinBox):
+class ScienSpinBox(SpinBox):
     """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way. """
 
     def __init__(self, *args, **kwargs):
-        pyqtgraph.SpinBox.__init__(self, *args, int=True, **kwargs)
+        SpinBox.__init__(self, *args, int=True, **kwargs)
