@@ -547,10 +547,10 @@ class ConfocalGui(GUIBase):
         self._mw.xy_cb_manual_RadioButton.clicked.connect(self.update_xy_cb_range)
         self._mw.xy_cb_centiles_RadioButton.clicked.connect(self.update_xy_cb_range)
 
-        self._mw.xy_cb_min_InputWidget.valueChanged.connect(self.shortcut_to_xy_cb_manual)
-        self._mw.xy_cb_max_InputWidget.valueChanged.connect(self.shortcut_to_xy_cb_manual)
-        self._mw.xy_cb_low_centile_InputWidget.valueChanged.connect(self.shortcut_to_xy_cb_centiles)
-        self._mw.xy_cb_high_centile_InputWidget.valueChanged.connect(self.shortcut_to_xy_cb_centiles)
+        self._mw.xy_cb_min_DoubleSpinBox.valueChanged.connect(self.shortcut_to_xy_cb_manual)
+        self._mw.xy_cb_max_DoubleSpinBox.valueChanged.connect(self.shortcut_to_xy_cb_manual)
+        self._mw.xy_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_xy_cb_centiles)
+        self._mw.xy_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_xy_cb_centiles)
 
         # Connect the buttons and inputs for the depth colorbars
         # RadioButtons in Main tab
@@ -558,10 +558,10 @@ class ConfocalGui(GUIBase):
         self._mw.depth_cb_centiles_RadioButton.clicked.connect(self.update_depth_cb_range)
 
         # input edits in Main tab
-        self._mw.depth_cb_min_InputWidget.valueChanged.connect(self.shortcut_to_depth_cb_manual)
-        self._mw.depth_cb_max_InputWidget.valueChanged.connect(self.shortcut_to_depth_cb_manual)
-        self._mw.depth_cb_low_centile_InputWidget.valueChanged.connect(self.shortcut_to_depth_cb_centiles)
-        self._mw.depth_cb_high_centile_InputWidget.valueChanged.connect(self.shortcut_to_depth_cb_centiles)
+        self._mw.depth_cb_min_DoubleSpinBox.valueChanged.connect(self.shortcut_to_depth_cb_manual)
+        self._mw.depth_cb_max_DoubleSpinBox.valueChanged.connect(self.shortcut_to_depth_cb_manual)
+        self._mw.depth_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_depth_cb_centiles)
+        self._mw.depth_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_depth_cb_centiles)
 
         # Connect the emitted signal of an image change from the logic with
         # a refresh of the GUI picture:
@@ -769,8 +769,8 @@ class ConfocalGui(GUIBase):
         """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
         if self._mw.xy_cb_manual_RadioButton.isChecked() or np.max(self.xy_image.image) == 0.0:
-            cb_min = self._mw.xy_cb_min_InputWidget.value()
-            cb_max = self._mw.xy_cb_max_InputWidget.value()
+            cb_min = self._mw.xy_cb_min_DoubleSpinBox.value()
+            cb_max = self._mw.xy_cb_max_DoubleSpinBox.value()
 
         # Otherwise, calculate cb range from percentiles.
         else:
@@ -778,8 +778,8 @@ class ConfocalGui(GUIBase):
             xy_image_nonzero = self.xy_image.image[np.nonzero(self.xy_image.image)]
 
             # Read centile range
-            low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
+            low_centile = self._mw.xy_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.xy_cb_high_percentile_DoubleSpinBox.value()
 
             cb_min = np.percentile(xy_image_nonzero, low_centile)
             cb_max = np.percentile(xy_image_nonzero, high_centile)
@@ -793,8 +793,8 @@ class ConfocalGui(GUIBase):
         """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
         if self._mw.depth_cb_manual_RadioButton.isChecked() or np.max(self.depth_image.image) == 0.0:
-            cb_min = self._mw.depth_cb_min_InputWidget.value()
-            cb_max = self._mw.depth_cb_max_InputWidget.value()
+            cb_min = self._mw.depth_cb_min_DoubleSpinBox.value()
+            cb_max = self._mw.depth_cb_max_DoubleSpinBox.value()
 
         # Otherwise, calculate cb range from percentiles.
         else:
@@ -802,8 +802,8 @@ class ConfocalGui(GUIBase):
             depth_image_nonzero = self.depth_image.image[np.nonzero(self.depth_image.image)]
 
             # Read centile range
-            low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
+            low_centile = self._mw.depth_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.depth_cb_high_percentile_DoubleSpinBox.value()
 
             cb_min = np.percentile(depth_image_nonzero, low_centile)
             cb_max = np.percentile(depth_image_nonzero, high_centile)
@@ -1810,8 +1810,8 @@ class ConfocalGui(GUIBase):
         # Percentile range is None, unless the percentile scaling is selected in GUI.
         pcile_range = None
         if not self._mw.xy_cb_manual_RadioButton.isChecked():
-            low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
+            low_centile = self._mw.xy_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.xy_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
         self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range)
@@ -1838,8 +1838,8 @@ class ConfocalGui(GUIBase):
         # Percentile range is None, unless the percentile scaling is selected in GUI.
         pcile_range = None
         if not self._mw.depth_cb_manual_RadioButton.isChecked():
-            low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
+            low_centile = self._mw.depth_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.depth_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
         self._scanning_logic.save_depth_data(colorscale_range=cb_range, percentile_range=pcile_range)
