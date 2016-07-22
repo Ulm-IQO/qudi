@@ -31,7 +31,6 @@ import sys
 import traceback
 import functools
 from pyqtgraph.Qt import QtCore
-import pyqtgraph.debug as pgdebug
 
 
 class QtLogFormatter(logging.Formatter):
