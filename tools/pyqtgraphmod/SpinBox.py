@@ -423,7 +423,10 @@ class SpinBox(QtGui.QAbstractSpinBox):
                 (s, p) = fn.siScale(prev)
                 txt = "0.0 %s%s" % (p, self.opts['suffix'])
             else:
-                txt = fn.siFormat(float(self.val), precision=5, suffix=self.opts['suffix'])
+                txt = fn.siFormat(float(self.val),
+                                  precision=self.opts['decimals']+1,
+                                  suffix=self.opts['suffix']
+                                  )
         else:
             txt = '%.14g%s' % (self.val , self.opts['suffix'])
         self.lineEdit().setText(txt)
