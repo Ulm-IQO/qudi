@@ -291,13 +291,14 @@ class LogWidget(QtGui.QWidget):
     sigAddEntry = QtCore.Signal(object) ## for thread-safetyness
     sigScrollToAnchor = QtCore.Signal(object)  # for internal use.
 
-    def __init__(self):
+    def __init__(self, manager=None, **kwargs):
         """Creates the log widget.
 
         @param object parent: Qt parent object for log widet
 
         """
-        super().__init__()
+        super().__init__(**kwargs)
+        self._manager = manager
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_logwidget.ui')
 
@@ -345,6 +346,12 @@ class LogWidget(QtGui.QWidget):
                 QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
         self.filterTree.itemChanged.connect(self.setCheckStates)
+
+    def setManager(self, manager):
+        """
+        @param object manager: the manager
+        """
+        self._manager = manager
 
     def setStylesheet(self, logStyleSheet):
         """
@@ -410,15 +417,17 @@ class LogWidget(QtGui.QWidget):
           @param int item: Item number
           @param int column: Column number
         """
+        # check all / uncheck all
         if item == self.filterTree.topLevelItem(1):
             if item.checkState(0):
-                for i in range(item.childCount()):
-                    item.child(i).setCheckState(0, QtCore.Qt.Checked)
+                for ii in range(item.childCount()):
+                    item.child(ii).setCheckState(0, QtCore.Qt.Checked)
         elif item.parent() == self.filterTree.topLevelItem(1):
             if not item.checkState(0):
                 self.filterTree.topLevelItem(1).setCheckState(0,
                         QtCore.Qt.Unchecked)
 
+        # level filter
         levelFilter = []
         for ii in range(self.filterTree.topLevelItem(1).childCount()):
             child = self.filterTree.topLevelItem(1).child(ii)
@@ -427,4 +436,14 @@ class LogWidget(QtGui.QWidget):
                 text = child.text(0)
                 levelFilter.append(str(text))
         self.filtermodel.setLevels(levelFilter)
+
+        # switch on/off logging of debug level
+        if (item.parent() == self.filterTree.topLevelItem(1)
+            and item.text(0) == 'debug'):
+            if self._manager:
+                if item.checkState(0):
+                    self._manager.start_logging_debug()
+                else:
+                    self._manager.stop_logging_debug()
+
 

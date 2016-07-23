@@ -113,6 +113,7 @@ class ManagerGui(GUIBase):
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         # Log widget
+        self._mw.logwidget.setManager(self._manager)
         for loghandler in logging.getLogger().handlers:
             if isinstance(loghandler, core.logger.QtLogHandler):
                 loghandler.sigLoggedMessage.connect(self.handleLogEntry)
