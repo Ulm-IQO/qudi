@@ -196,6 +196,8 @@ class ManagerGui(GUIBase):
         """ Create an IPython kernel manager and kernel.
             Add modules to its namespace.
         """
+        # make sure we only log errors and above from ipython
+        logging.getLogger('ipykernel').setLevel(logging.ERROR)
         self.log.debug('IPy activation in thread {0}'.format(
             threading.get_ident()))
         self.kernel_manager = QtInProcessKernelManager()
