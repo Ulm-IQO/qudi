@@ -32,8 +32,9 @@ class GenericLogic(Base):
     _modtype = 'logic'
     _tasks = DictTableModel()
 
-    def __init__(self, manager, name, configuration, callbacks, **kwargs):
-        """ Initialzize a logic module.
+    def __init__(self, manager, name, configuration={}, callbacks={},
+            **kwargs):
+        """ Initialize a logic module.
 
           @param object manager: Manager object that has instantiated this object
           @param str name: unique module name
