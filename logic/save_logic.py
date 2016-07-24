@@ -20,15 +20,79 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
+import logging
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from cycler import cycler
+import logging
 import os
 import sys
 import inspect
 import time
 import numpy as np
+
+
+class DailyLogHandler(logging.FileHandler):
+    """
+    log handler which uses savelogic's get_daily_directory to log to a
+    file called base_filename
+
+    @param base_filename str: The base filename of the log file in the daily
+                              directory. E.g. 'qudi.log'
+    @param savelogic object: the savelogic
+    """
+
+    def __init__(self, base_filename, savelogic):
+        self._savelogic  = savelogic
+        self._base_filename = base_filename
+        # get current directory
+        self._current_directory = savelogic.get_daily_directory()
+        self._current_time = time.localtime(time.time())
+        super().__init__(os.path.join(self._current_directory,
+            self._base_filename))
+
+    @property
+    def current_directory(self):
+        """
+        Returns the currently used directory
+        """
+        return self._current_directory
+
+    def emit(self, record):
+        """
+        Emits a record. It checks if we have to rollover to the next daily
+        directory before it emits the record.
+
+        @param record struct: a log record
+        """
+        # check if we have to rollover to the next day
+        now = time.localtime(time.time())
+        if (now.tm_year != self._current_time.tm_year
+                or now.tm_mon != self._current_time.tm_mon
+                or now.tm_mday != self._current_time.tm_mday):
+            # we do
+            # close file
+            self.flush()
+            self.close()
+            # remember current time
+            self._current_time = now
+            # get the new directory, but avoid recursion because
+            # get_daily_directory uses the log itself
+            level = self.level
+            self.setLevel(100)
+            new_directory = self._savelogic.get_daily_directory()
+            self.setLevel(level)
+            # open new file in new directory
+            self._current_directory = new_directory
+            self.baseFilename = os.path.join(new_directory,
+                    self._base_filename)
+            self._open()
+            super().emit(record)
+        else:
+            # we don't
+            super().emit(record)
+
 
 
 class FunctionImplementationError(Exception):
@@ -78,9 +142,7 @@ class SaveLogic(GenericLogic):
                     }
 
     def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+        super().__init__(manager, name, config, **kwargs)
 
         # locking for thread safety
         self.lock = Mutex()
@@ -113,11 +175,26 @@ class SaveLogic(GenericLogic):
         else:
             self.log.error('Identify the operating system.')
 
+        # start logging into daily directory?
+        if 'log_into_daily_directory' in config.keys():
+            if not isinstance(config['log_into_daily_directory'], bool):
+                self.log.warning('log entry in configuration is not a '
+                        'boolean. Falling back to default setting: False.')
+                self.log_into_daily_directory = False
+            else:
+                self.log_into_daily_directory = config[
+                        'log_into_daily_directory']
+        else:
+            self.log.warning('Configuration has no entry log. Falling back '
+                    'to default setting: False.')
+            self.log_into_daily_directory = False
+        self._daily_loghandler = None
+
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{}: {}'.format(key, config[key]))
 
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
 
         @param object e: Event class object from Fysom.
@@ -128,10 +205,36 @@ class SaveLogic(GenericLogic):
                          of the state which should be reached after the event
                          has happen.
         """
-        pass
+        if self.log_into_daily_directory:
+            # adds a log handler for logging into daily directory
+            self._daily_loghandler = DailyLogHandler('qudi.log', self)
+            self._daily_loghandler.setFormatter(logging.Formatter(
+                "%(name)s %(levelname)s %(asctime)s: %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S"))
+            self._daily_loghandler.setLevel(logging.INFO)
+            logging.getLogger().addHandler(self._daily_loghandler)
+        else:
+            self._daily_loghandler = None
 
-    def deactivation(self, e=None):
-        pass
+    def on_deactivate(self, e=None):
+        if self._daily_loghandler is not None:
+            # removes the log handler logging into the daily directory
+            logging.getLogger().removeHandler(self._daily_loghandler)
+
+    @property
+    def dailylog(self):
+        """
+        Returns the daily log handler.
+        """
+        return self._daily_loghandler
+
+    def dailylog_set_level(self, level):
+        """
+        Sets the log level of the daily log handler
+
+        @param level int: log level, see logging
+        """
+        self._daily_loghandler.setLevel(level)
 
     def save_data(self, data, filepath, parameters=None, filename=None,
                   filelabel=None, timestamp=None, as_text=True, as_xml=False,
