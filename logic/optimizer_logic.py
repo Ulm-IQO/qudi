@@ -57,15 +57,15 @@ class OptimizerLogic(GenericLogic):
     signal_refocus_Z_size_changed = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal(str, list)
 
-    def __init__(self, configuration, **kwargs):
-        super().__init__(configuration=configuration, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
-        for key in configuration.keys():
-            self.logMsg('{}: {}'.format(key, configuration[key]),
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
         # setting standard parameter for refocus

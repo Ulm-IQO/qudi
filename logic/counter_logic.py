@@ -52,7 +52,7 @@ class CounterLogic(GenericLogic):
             }
     _out = {'counterlogic': 'CounterLogic'}
 
-    def __init__(self, configuration, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
         @param object manager: Manager object thath loaded this module
@@ -60,7 +60,7 @@ class CounterLogic(GenericLogic):
         @param dict config: module configuration
         @param dict kwargs: optional parameters
         """
-        super().__init__(configuration=configuration, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -68,8 +68,8 @@ class CounterLogic(GenericLogic):
         self.logMsg('The following configuration was found.', msgType='status')
 
         # checking for the right configuration
-        for key in configuration.keys():
-            self.logMsg('{}: {}'.format(key,configuration[key]),
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
         self._count_length = 300

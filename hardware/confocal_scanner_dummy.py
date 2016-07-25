@@ -37,19 +37,19 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     _in = {'fitlogic': 'FitLogic'}
     _out = {'confocalscanner': 'ConfocalScannerInterface'}
 
-    def __init__(self, configuration, **kwargs):
-        super().__init__(configuration=configuration, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
-        for key in configuration.keys():
-            self.logMsg('{}: {}'.format(key, configuration[key]),
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
-        if 'clock_frequency' in configuration.keys():
-            self._clock_frequency = configuration['clock_frequency']
+        if 'clock_frequency' in config.keys():
+            self._clock_frequency = config['clock_frequency']
         else:
             self._clock_frequency = 100
             self.logMsg('No clock_frequency configured taking 100 Hz instead.',
