@@ -50,7 +50,7 @@ class PoI(object):
         # trace records every time+position when the POI position was explicitly known.
         self._position_time_trace = []
 
-        # To avoid duplication while algorithmically setting POIs, we need the key string to 
+        # To avoid duplication while algorithmically setting POIs, we need the key string to
         # go to sub-second. This requires the datetime module.
 
         self._creation_time = datetime.now()
@@ -185,10 +185,10 @@ class PoiManagerLogic(GenericLogic):
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         # declare actions for state transitions
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, callbacks=state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -413,8 +413,8 @@ class PoiManagerLogic(GenericLogic):
             return [-1., -1., -1.]
 
     def set_new_position(self, poikey=None, point=None):
-        """ 
-        Moves the given POI to a new position, and uses this information to update 
+        """
+        Moves the given POI to a new position, and uses this information to update
         the sample position.
 
         @param string poikey: the key of the poi
@@ -439,7 +439,7 @@ class PoiManagerLogic(GenericLogic):
             sample_shift = point - self.get_poi_position(poikey=poikey)
             sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
             self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-            
+
             # signal POI has been updated (this will cause GUI to redraw)
             if (poikey is not 'crosshair') and (poikey is not 'sample'):
                 self.signal_poi_updated.emit()
@@ -754,7 +754,7 @@ class PoiManagerLogic(GenericLogic):
                 self.rename_poi(poikey=this_poi_key, name=saved_poi_name, emit_change=False)
 
         roifile.close()
-      
+
         # Now that all the POIs are created, emit the signal for other things (ie gui) to update
         self.signal_poi_updated.emit()
 
@@ -899,9 +899,9 @@ class PoiManagerLogic(GenericLogic):
         pixels_per_micron = np.max([x_pixels, y_pixels]) / np.max([x_range_microns, y_range_microns])
         # The neighborhood in pixels is nbhd_size * pixels_per_um, but it must be 1 or greater
         neighborhood_pix = int(np.max([math.ceil(pixels_per_micron * neighborhood_size), 1]))
-        
+
         data = self.roi_map_data[:, :, 3]
-        
+
         data_max = filters.maximum_filter(data, neighborhood_pix)
         maxima = (data == data_max)
         data_min = filters.minimum_filter(data, 3*neighborhood_pix)
@@ -910,7 +910,7 @@ class PoiManagerLogic(GenericLogic):
 
         labeled, num_objects = ndimage.label(maxima)
         xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects+1)))
-        
+
         for count, pix_pos in enumerate(xy):
             poi_pos = self.roi_map_data[pix_pos[0], pix_pos[1], :][0:3]
             this_poi_key = self.add_poi(position = poi_pos, emit_change=False)
