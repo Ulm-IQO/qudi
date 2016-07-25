@@ -132,7 +132,7 @@ def initialize_logger():
     rotating_file_handler = logging.handlers.RotatingFileHandler(
         'qudi.log', maxBytes=10*1024*1024, backupCount=5)
     rotating_file_handler.setFormatter(logging.Formatter(
-        "%(name)s %(levelname)s %(asctime)s: %(message)s",
+        '%(asctime)s %(levelname)s %(name)s %(message)s',
         datefmt="%Y-%m-%d %H:%M:%S"))
     rotating_file_handler.doRollover()
     rotating_file_handler.setLevel(logging.INFO)
@@ -169,7 +169,7 @@ class DebugLogHandler(logging.handlers.RotatingFileHandler):
         debug_loghandler = DebugLogHandler('debug.log',
                 backupCount=2, maxBytes=1024*1024)
         debug_loghandler.setFormatter(logging.Formatter(
-            "%(name)s %(levelname)s %(asctime)s: %(message)s",
+            '%(asctime)s %(name)s %(levelname)s: %(message)s',
             datefmt="%Y-%m-%d %H:%M:%S"))
         debug_loghandler.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(debug_loghandler)
