@@ -28,9 +28,8 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 import re
 import inspect
-import itertools
 import datetime
-import copy
+
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
@@ -2922,41 +2921,6 @@ class PulsedMeasurementGui(GUIBase):
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
         fit_x, fit_y, fit_param, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
 
-        # One need to copy the whole fit param dict, otherwise it will be
-        # altered and changed.
-        fit_param = copy.deepcopy(fit_param)
-
-        # Adapt the parameters specifically for this GUI:
-        for param in fit_param:
-            unit = fit_param[param]['unit']
-            norm = 1.0
-
-            if fit_param[param]['unit'] == 'Hz':
-
-                freq_prefix = self._freq_prefix
-                # safety check, if the prefix is really in the unit_prefix_dict
-                if self._freq_prefix not in units.get_unit_prefix_dict():
-                    freq_prefix = ''
-
-                norm = units.get_unit_prefix_dict()[freq_prefix]
-                unit = '{0}{1}'.format(freq_prefix, fit_param[param]['unit'])
-
-            if fit_param[param]['unit'] == 's':
-
-                time_prefix = self._time_prefix
-                # safety check, if the prefix is really in the unit_prefix_dict
-                if self._time_prefix not in units.get_unit_prefix_dict():
-                    time_prefix = ''
-
-                norm = units.get_unit_prefix_dict()[time_prefix]
-                unit = '{0}{1}'.format(time_prefix, fit_param[param]['unit'])
-
-            fit_param[param]['unit'] = unit
-            fit_param[param]['value'] = fit_param[param]['value']/norm
-
-            if 'error' in fit_param[param]:
-                fit_param[param]['error'] = fit_param[param]['error']/norm
-
         fit_text = units.create_formatted_output(fit_param)
 
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
@@ -3843,7 +3807,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data * get_unit_prefix_dict()[unit_prefix]
+            return data * units.get_unit_prefix_dict()[unit_prefix]
 
         return data
 
