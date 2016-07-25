@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+import pyqtgraph.functions as fn
 
 
 def get_unit_prefix_dict():
@@ -29,6 +30,9 @@ def get_unit_prefix_dict():
     """
 
     unit_prefix_dict = {
+        'y': 1e-24,
+        'z': 1e-21,
+        'a': 1e-18,
         'f': 1e-15,
         'p': 1e-12,
         'n': 1e-9,
@@ -39,13 +43,15 @@ def get_unit_prefix_dict():
         'M': 1e6,
         'G': 1e9,
         'T': 1e12,
-        'P': 1e15
+        'P': 1e15,
+        'E': 1e18,
+        'Z': 1e21,
+        'Y': 1e24
         }
     return unit_prefix_dict
 
-
-def create_formatted_output(param_dict, default_digits=5):
-    """ Display a parameter set nicely.
+def create_formatted_output(param_dict, num_sig_digits=5):
+    """ Display a parameter set nicely in SI units.
 
     @param dict param_dict: dictionary with entries being again dictionaries
                        with two needed keywords 'value' and 'unit' and one
@@ -55,20 +61,20 @@ def create_formatted_output(param_dict, default_digits=5):
                        rounding (and therefore displaying) can be
                        guaranteed.
 
-    @param int default_digits: optional, the default digits will be taken,
-                               if the rounding procedure was not successful
-                               at all. That will ensure at least that not
-                               all the digits are displayed. The default digits
-                               are add to the first non-zero digit of the value.
+    @param int num_sig_digits: optional, the number of significant digits will
+                               be taken, if the rounding procedure was not
+                               successful at all. That will ensure at least that
+                               not all the digits are displayed.
                                According to that the error will be displayed.
 
     @return str: a string, which is nicely formatted.
 
-    Note: If you want that the values are displayed in a certain order, then
-          use OrderedDict from the collections package.
+    Note:  If you want that the values are displayed in a certain order, then
+           use OrderedDict from the collections package.
+    Note2: The absolute tolerance to a zero is set to 1e-18.
 
     Example of a param dict:
-        param_dict = {'Rabi frequency': {'value':123.43,   'error': 0.321,  'unit': 'MHz'},
+        param_dict = {'Rabi frequency': {'value':123.43,   'error': 0.321,  'unit': 'Hz'},
                       'ODMR contrast':  {'value':2.563423, 'error': 0.523,  'unit': '%'},
                       'Fidelity':       {'value':0.783,    'error': 0.2222, 'unit': ''}}
 
@@ -82,65 +88,44 @@ def create_formatted_output(param_dict, default_digits=5):
     """
 
     output_str = ''
+    atol = 1e-18    # absolute tolerance for the detection of zero.
+
     for entry in param_dict:
-        if param_dict[entry].get('error') is None:
-            output_str += '{0} : {1} {2} \n'.format(entry,
-                                                    param_dict[entry]['value'],
-                                                    param_dict[entry]['unit'])
-        else:
+        if param_dict[entry].get('error') is not None:
+
             value, error, digit = round_value_to_error(param_dict[entry]['value'], param_dict[entry]['error'])
 
-            # ======================== Checking routines =======================
+            if np.isclose(value, 0.0, atol=atol) or np.isnan(error) or np.isclose(error, 0.0, atol=atol) or np.isinf(error):
 
-            # check if the error is so big that the rounded value will
-            # become just zero. In that case, output at least the set
-            # default_digits of the actual value and not the complete value,
-            # just to have some sort of a display:
-            if np.isclose(value, 0.0) or np.isnan(error) or np.isclose(error, 0.0):
-
-                # catch the rare case, when the value is almost exact zero now
-                # in both cases, before and after the rounding routine:
-                if np.isclose(param_dict[entry]['value'], 0.0):
-
-                    if np.isnan(error) or np.isclose(error, 0.0):
-
-                        # give it up, value is zero, and error is an invalid
-                        # number, just pass everything to the output:
-                        value = param_dict[entry]['value']
-                        error = param_dict[entry]['error']
-                        digit = -1
-                    else:
-
-                        # if just the value is zero, try to estimate the
-                        # digit via the error:
-                        digit = -(int(np.log10(abs(param_dict[entry]['error'])))-default_digits)
-                        value = param_dict[entry]['value']
-                        error = param_dict[entry]['error']
+                sc_fact, unit_prefix = fn.siScale(param_dict[entry]['value'])
+                str_val = '{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1)
+                if np.isnan(np.float(str_val)):
+                    value = np.NAN
+                elif np.isinf(np.float(str_val)):
+                    value = np.inf
                 else:
-                    if np.isinf(param_dict[entry]['value']):
-                        value = param_dict[entry]['value']
-                        digit = 0
+                    value = eval('{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1))
 
-                    else:
-                        # just output the specified default_digits of the value
-                        # if fit was not working properly:
-                        digit = -(int(np.log10(abs(param_dict[entry]['value'])))-default_digits)
-                        value = param_dict[entry]['value']
-
-            # ==================================================================
-
-
-            if digit < 0:
-                output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
-                                                                   value,
-                                                                   error,
-                                                                   param_dict[entry]['unit'])
             else:
-                output_str += '{0} : {1:.{4}f} \u00B1 {2:.{4}f} {3} \n'.format(entry,
-                                                                             value,
-                                                                             error,
-                                                                             param_dict[entry]['unit'],
-                                                                             digit)
+                # the factor 10 moves the displayed digit by one to the right,
+                # so that the values from 100 to 0.1 are displayed within one
+                # range, rather then from the value 1000 to 1, which is default.
+                sc_fact, unit_prefix = fn.siScale(error*10)
+
+
+            output_str += '{0}: {1} \u00B1 {2} {3}{4} \n'.format(entry,
+                                                                 round(value*sc_fact, num_sig_digits-1),
+                                                                 round(error*sc_fact, num_sig_digits-1),
+                                                                 unit_prefix,
+                                                                 param_dict[entry]['unit'],
+                                                                 )
+
+        else:
+            output_str += '{0}: '.format(entry) + fn.siFormat(param_dict[entry]['value'],
+                                      precision=num_sig_digits,
+                                      suffix=param_dict[entry]['unit']) + '\n'
+
+
     return output_str
 
 
@@ -171,7 +156,8 @@ def round_value_to_error(value, error):
            (in exponential representation, in a different magnitude, ect.).
 
     Note3: This function can handle an invalid error, i.e. if the error is
-           zero or NAN.
+           zero, NAN or infinite. The absolute tolerance to detect a number as
+           zero is set to 1e-18.
 
     Procedure explanation:
     The scientific way of displaying a measurement result in the presents of
@@ -201,8 +187,10 @@ def round_value_to_error(value, error):
 
     """
 
+    atol = 1e-18    # absolute tolerance for the detection of zero.
+
     # check if error is zero, since that is an invalid input!
-    if np.isclose(error, 0.0) or np.isnan(error) or np.isinf(error):
+    if np.isclose(error, 0.0, atol=atol) or np.isnan(error) or np.isinf(error):
         #self.logMsg('Cannot round to the error, since either a zero error '
         #            'value was passed for the number {0}, or the error is '
         #            'NaN: Error value: {1}. '.format(value, error),
@@ -218,42 +206,55 @@ def round_value_to_error(value, error):
 
     if log_val < 0:
         round_digit = -(int(log_val)-1)
-        first_err_digit = str(np.round(error, round_digit))[-1]
-
     else:
         round_digit = -(int(log_val))
-        first_err_digit = str(np.round(error, round_digit))[0]
+
+    first_err_digit = '{:e}'.format(error)[0]
 
     if first_err_digit == '1' or first_err_digit == '2':
         round_digit += 1
 
-    # I do not why the round routine in numpy produces sometimes an long
-    # series of numbers, even after rounding. The internal round routine
-    # works marvelous, therefore this is taken as the proper output:
+    # Use the python round function, since np.round uses the __repr__ conversion
+    # function which shows enough digits to unambiguously identify the number.
+    # But the __str__ conversion should round the number to a reasonable number
+    # of digits, which is the standard output of the python round function.
+    # Therefore take the python round function.
 
     return round(value, round_digit), round(error, round_digit), round_digit
 
 
-def dig(entry):
-    if np.log10(entry)>= 0:
+def get_relevant_digit(entry):
+    """ By using log10, abs and int operations, the proper relevant digit is
+        obtained.
+
+    @param flaot entry:
+
+    @return: int, the leading relevant exponent
+    """
+
+    # the log10 can only be calculated of a positive number.
+    entry = np.abs(entry)
+
+    if np.log10(entry) >= 0:
         return int(np.log10(entry))
     else:
-        # catch the assymetric behaviour of the log and int operation.
-        return int( int(np.abs(np.log10(entry)))+1 + np.log10(entry)) - (int(np.abs(np.log10(entry))) +1 )
+        # catch the asymmetric behaviour of the log and int operation.
+        return int(int(np.abs(np.log10(entry)))+1 + np.log10(entry)) - (int(np.abs(np.log10(entry))) +1)
 
 
-def get_norm(entry):
+def get_si_norm(entry):
     """ A rather different way to display the value in SI notation.
 
-    :param entry:
-    :return:
+    @param float entry: the float number from which normalization factor should
+                        be obtained.
+
+    @return: norm_val, normalization
+            float norm_val: the value in a normalized representation.
+            float normalization: the factor with which to divide the number.
     """
-    val = dig(entry)
-
+    val = get_relevant_digit(entry)
     fact = int(val/3)
-
     power = int(3*fact)
-
     norm = 10**(power)
 
     return entry/norm, norm
@@ -272,7 +273,8 @@ def is_integer(test_value):
     """
 
     return type(test_value) in [np.int, np.int8, np.int16, np.int32, np.int64,
-                          np.uint, np.uint8, np.uint16, np.uint32, np.uint64]
+                                np.uint, np.uint8, np.uint16, np.uint32,
+                                np.uint64]
 
 def is_float(test_value):
     """ Check all available float representations.
