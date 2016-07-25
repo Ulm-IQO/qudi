@@ -48,9 +48,8 @@ class DailyLogHandler(logging.FileHandler):
         self._base_filename = base_filename
         # get current directory
         self._current_directory = savelogic.get_daily_directory()
-        self._current_time = time.localtime(time.time())
-        super().__init__(os.path.join(self._current_directory,
-            self._base_filename))
+        self._current_time = time.localtime()
+        super().__init__(self.filename)
 
     @property
     def current_directory(self):
@@ -58,6 +57,12 @@ class DailyLogHandler(logging.FileHandler):
         Returns the currently used directory
         """
         return self._current_directory
+
+    @property
+    def filename(self):
+        return os.path.join(self._current_directory,
+                time.strftime(self._base_filename,
+                    self._current_time))
 
     def emit(self, record):
         """
@@ -67,7 +72,7 @@ class DailyLogHandler(logging.FileHandler):
         @param record struct: a log record
         """
         # check if we have to rollover to the next day
-        now = time.localtime(time.time())
+        now = time.localtime()
         if (now.tm_year != self._current_time.tm_year
                 or now.tm_mon != self._current_time.tm_mon
                 or now.tm_mday != self._current_time.tm_mday):
@@ -85,8 +90,7 @@ class DailyLogHandler(logging.FileHandler):
             self.setLevel(level)
             # open new file in new directory
             self._current_directory = new_directory
-            self.baseFilename = os.path.join(new_directory,
-                    self._base_filename)
+            self.baseFilename = self.filename
             self._open()
             super().emit(record)
         else:
@@ -199,19 +203,20 @@ class SaveLogic(GenericLogic):
 
         @param object e: Event class object from Fysom.
                          An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
+                         which is connected to a specific event (have a look
+                         in the Base Class). This object contains the passed
+                         event the state before the event happens and the
+                         destination of the state which should be reached
+                         after the event has happen.
         """
         if self.log_into_daily_directory:
             # adds a log handler for logging into daily directory
-            self._daily_loghandler = DailyLogHandler('qudi.log', self)
+            self._daily_loghandler = DailyLogHandler(
+                    '%Y%m%d-%Hh%Mm%Ss-qudi.log', self)
             self._daily_loghandler.setFormatter(logging.Formatter(
-                "%(name)s %(levelname)s %(asctime)s: %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S"))
-            self._daily_loghandler.setLevel(logging.INFO)
+                '%(asctime)s %(name)s %(levelname)s: %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'))
+            self._daily_loghandler.setLevel(logging.DEBUG)
             logging.getLogger().addHandler(self._daily_loghandler)
         else:
             self._daily_loghandler = None
