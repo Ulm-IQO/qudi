@@ -208,13 +208,6 @@ class WavemeterLogGui(GUIBase):
         self._curve3.setData(y=self._wm_logger_logic.histogram, x=x_axis_hz)
         self._curve4.setData(y=self._wm_logger_logic.envelope_histogram, x=x_axis)
 
-        if self._wm_logger_logic.getState() == 'running':
-            self._mw.actionStop_resume_scan.setText('Stop')
-            self._mw.actionStart_scan.setEnabled(False)
-        else:
-            self._mw.actionStop_resume_scan.setText('Resume')
-            self._mw.actionStart_scan.setEnabled(True)
-
     def add_data_point(self, point):
         if len(point) >= 3 :
             spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor( point[2]/100, 255)}]
@@ -224,11 +217,14 @@ class WavemeterLogGui(GUIBase):
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
+        # If running, then we stop the measurement and enable inputs again
         if self._wm_logger_logic.getState() == 'running':
             self._mw.actionStop_resume_scan.setText('Resume')
             self._wm_logger_logic.stop_scanning()
             self._mw.actionStop_resume_scan.setEnabled(True)
+            self._mw.actionStart_scan.setEnabled(True)
             self._mw.binSpinBox.setEnabled(True)
+        # Otherwise, we start a measurement and disable some inputs.
         else:
             self._mw.actionStop_resume_scan.setText('Stop')
             self._wm_logger_logic.start_scanning(resume=True)
@@ -243,7 +239,9 @@ class WavemeterLogGui(GUIBase):
             self._wm_logger_logic.start_scanning()
 
             # Enable the stop button once a scan starts.
+            self._mw.actionStop_resume_scan.setText('Stop')
             self._mw.actionStop_resume_scan.setEnabled(True)
+            self._mw.actionStart_scan.setEnabled(False)
             self._mw.binSpinBox.setEnabled(False)
             self.recalculate_histogram()
         else:
