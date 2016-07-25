@@ -46,7 +46,7 @@ class LogModel(QtCore.QAbstractTableModel):
             'info':     QtGui.QColor('#1F1'),
             'warning':  QtGui.QColor('#F90'),
             'error':    QtGui.QColor('#F11'),
-            'critical': QtGui.QColor('#F11')
+            'critical': QtGui.QColor('#FF00FF')
         }
         self.entries = list()
 
