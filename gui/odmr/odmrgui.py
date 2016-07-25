@@ -27,7 +27,7 @@ import numpy as np
 import datetime
 import os
 from collections import OrderedDict
-import copy
+
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -458,10 +458,6 @@ class ODMRGui(GUIBase):
         # The fit signal was already emitted in the logic, so there is no need
         # to set the fit data
 
-        # One need to copy the whole fit param dict, otherwise it will be
-        # altered and changed.
-        fit_param = copy.deepcopy(fit_param)
-
         # check which Fit method is used and remove or add again the
         # odmr_fit_image, check also whether a odmr_fit_image already exists.
         if self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
@@ -473,30 +469,6 @@ class ODMRGui(GUIBase):
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
         self._mw.odmr_fit_results_DisplayWidget.clear()
-
-        # Since the display of the fit parameters is desired e.g. in MHz, adapt
-        # the passed parameter dict for further custom display.
-        for param in fit_param:
-
-            unit = fit_param[param]['unit']
-            norm = 1.0
-
-            # Insert here all custom display of the parameters:
-            if fit_param[param]['unit'] == 'Hz':
-
-                freq_prefix = self._freq_prefix
-                # safety check, if the prefix is really in the unit_prefix_dict
-                if self._freq_prefix not in units.get_unit_prefix_dict():
-                    freq_prefix = ''
-
-                norm = units.get_unit_prefix_dict()[freq_prefix]
-                unit = '{0}{1}'.format(freq_prefix, fit_param[param]['unit'])
-
-            fit_param[param]['unit'] = unit
-            fit_param[param]['value'] = fit_param[param]['value']/norm
-
-            if 'error' in fit_param[param]:
-                fit_param[param]['error'] = fit_param[param]['error']/norm
 
         formated_results = units.create_formatted_output(fit_param)
 
