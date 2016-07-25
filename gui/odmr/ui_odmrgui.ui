@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>845</width>
+    <width>946</width>
     <height>629</height>
    </rect>
   </property>
@@ -199,7 +199,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>845</width>
+     <width>946</width>
      <height>30</height>
     </rect>
    </property>
@@ -236,19 +236,19 @@
   <widget class="QDockWidget" name="odmr_control_DockWidget">
    <property name="sizePolicy">
     <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-     <horstretch>0</horstretch>
+     <horstretch>1</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
    <property name="minimumSize">
     <size>
-     <width>500</width>
+     <width>550</width>
      <height>150</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
-     <width>500</width>
+     <width>700</width>
      <height>150</height>
     </size>
    </property>
@@ -293,7 +293,7 @@
        <item row="2" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Frequency (MHz) :</string>
+          <string>Frequency:</string>
          </property>
         </widget>
        </item>
@@ -303,21 +303,21 @@
        <item row="3" column="4">
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Stop (MHz) :</string>
+          <string>Stop :</string>
          </property>
         </widget>
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Start (MHz) :</string>
+          <string>Start:</string>
          </property>
         </widget>
        </item>
        <item row="3" column="2">
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Step (MHz) :</string>
+          <string>Step:</string>
          </property>
         </widget>
        </item>
@@ -348,7 +348,7 @@
         </widget>
        </item>
        <item row="3" column="3">
-        <widget class="QDoubleSpinBox" name="step_freq_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="step_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -357,18 +357,21 @@
          </property>
          <property name="maximumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>16777215</height>
           </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
          </property>
          <property name="decimals">
           <number>4</number>
          </property>
          <property name="minimum">
-          <double>-1000000.000000000000000</double>
+          <double>0.000000000000000</double>
          </property>
          <property name="maximum">
-          <double>1000000.000000000000000</double>
+          <double>1000000000.000000000000000</double>
          </property>
          <property name="singleStep">
           <double>0.000001000000000</double>
@@ -376,7 +379,7 @@
         </widget>
        </item>
        <item row="3" column="1">
-        <widget class="QDoubleSpinBox" name="start_freq_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="start_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -385,7 +388,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
@@ -394,6 +397,9 @@
            <width>75</width>
            <height>16777215</height>
           </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
          </property>
          <property name="decimals">
           <number>4</number>
@@ -404,7 +410,7 @@
         </widget>
        </item>
        <item row="3" column="5">
-        <widget class="QDoubleSpinBox" name="stop_freq_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="stop_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -413,23 +419,26 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
          </property>
          <property name="decimals">
           <number>4</number>
          </property>
          <property name="minimum">
-          <double>-1000000.000000000000000</double>
+          <double>0.000000000000000</double>
          </property>
          <property name="maximum">
-          <double>1000000.000000000000000</double>
+          <double>1000000000.000000000000000</double>
          </property>
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="frequency_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="frequency_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -438,7 +447,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
@@ -448,11 +457,14 @@
            <height>16777215</height>
           </size>
          </property>
+         <property name="suffix">
+          <string>Hz</string>
+         </property>
          <property name="decimals">
           <number>4</number>
          </property>
          <property name="maximum">
-          <double>100000000.000000000000000</double>
+          <double>1000000000.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -466,7 +478,7 @@
          </property>
          <property name="maximumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>16777215</height>
           </size>
          </property>
