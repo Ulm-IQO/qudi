@@ -39,7 +39,8 @@ class DailyLogHandler(logging.FileHandler):
     file called base_filename
 
     @param base_filename str: The base filename of the log file in the daily
-                              directory. E.g. 'qudi.log'
+                              directory. The filename will be datetime
+                              formatted. E.g. '%Y%m%d-%H%M%S-qudi.log'.
     @param savelogic object: the savelogic
     """
 
