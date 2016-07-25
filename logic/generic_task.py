@@ -24,6 +24,7 @@ from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 from core.FysomAdapter import Fysom
+import sys
 
 class TaskResult(QtCore.QObject):
     def __init__(self, **kwargs):
@@ -100,7 +101,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             ],
             'callbacks': default_callbacks
         }
-        super().__init__(cfg=_stateDict, **kwargs)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_stateDict, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _stateDict)
+
         self.lock = Mutex()
         self.name = name
         self.interruptable = False
@@ -314,14 +320,13 @@ class PrePostTask(QtCore.QObject, Fysom):
 
     requiredModules = []
 
-    def __init__(self, name, runner, references, config):
+    def __init__(self, name, runner, references, config, **kwargs):
         """ Create a PrePostTask.
           @param str name: unique name of the task
           @param object runner: TaskRunner that manages this task
           @param dict references: contains references to all required modules
           @param dict config: configuration parameter dictionary
         """
-        QtCore.QObject.__init__(self)
         _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
         _stateList = {
             'initial': 'stopped',
@@ -331,7 +336,11 @@ class PrePostTask(QtCore.QObject, Fysom):
             ],
             'callbacks': _default_callbacks
         }
-        Fysom.__init__(self, _stateList)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_stateList, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _stateList)
         self.lock = Mutex()
         self.name = name
         self.runner = runner

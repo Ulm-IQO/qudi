@@ -52,7 +52,7 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, configuration={}, callbacks={},
+    def __init__(self, manager, name, config={}, callbacks={},
             **kwargs):
         """ Initialise Base class object and set up its state machine.
 
@@ -97,7 +97,11 @@ class Base(QtCore.QObject, Fysom):
         }
 
         # Initialise state machine:
-        super().__init__(cfg=_baseStateList, **kwargs)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_baseStateList, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _baseStateList)
 
         # add connection base
         self.connector = OrderedDict()
@@ -114,7 +118,7 @@ class Base(QtCore.QObject, Fysom):
 
         self._manager = manager
         self._name = name
-        self._configuration = configuration
+        self._configuration = config
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 

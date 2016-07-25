@@ -556,7 +556,7 @@ class Manager(QtCore.QObject):
 
         # Create object from class
         instance = modclass(manager=self, name=instanceName,
-                configuration=configuration)
+                config=configuration)
 
         # Connect to log
         instance.sigLogMessage.connect(self.logger.queuedLogMsg)

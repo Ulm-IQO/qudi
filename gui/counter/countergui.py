@@ -58,15 +58,15 @@ class CounterGui(GUIBase):
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
 
-    def __init__(self, configuration, **kwargs):
-        super().__init__(configuration=configuration, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
-        for key in configuration.keys():
-            self.logMsg('{}: {}'.format(key, configuration[key]),
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
     def on_activate(self, e):
