@@ -436,14 +436,3 @@ class LogWidget(QtGui.QWidget):
                 text = child.text(0)
                 levelFilter.append(str(text))
         self.filtermodel.setLevels(levelFilter)
-
-        # switch on/off logging of debug level
-        if (item.parent() == self.filterTree.topLevelItem(1)
-            and item.text(0) == 'debug'):
-            if self._manager:
-                if item.checkState(0):
-                    self._manager.start_logging_debug()
-                else:
-                    self._manager.stop_logging_debug()
-
-

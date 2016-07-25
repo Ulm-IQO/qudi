@@ -48,8 +48,6 @@ from .util.mutex import Mutex   # Mutex provides access serialization between th
 from collections import OrderedDict
 import pyqtgraph as pg
 from .logger import register_exception_handler
-from .logger import QtLogHandler
-from .logger import DebugLogHandler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
 from .base import Base
@@ -1312,31 +1310,3 @@ class Manager(QtCore.QObject):
             else:
                 logger.warning('Replacing task runner.')
 
-    def start_logging_debug(self):
-        """
-        Starts logging debug messages from core, gui, logic and hardware
-        into gui and debug.log
-        """
-        for logger_name in ['core', 'gui', 'logic', 'hardware']:
-            logging.getLogger(logger_name).setLevel(logging.DEBUG)
-        # find QtHandler and set level to debug
-        for loghandler in logging.getLogger().handlers:
-            if isinstance(loghandler, QtLogHandler):
-                self._qtloghandler_level = loghandler.level
-                loghandler.setLevel(logging.DEBUG)
-                break
-        # add debug log handler
-        DebugLogHandler.add_debug_loghandler()
-
-    def stop_logging_debug(self):
-        """
-        Stops logging debug messages
-        """
-        for logger_name in ['core', 'gui', 'logic', 'hardware']:
-            logging.getLogger(logger_name).setLevel(logging.INFO)
-        # find QtHandler and set level to debug
-        for loghandler in logging.getLogger().handlers:
-            if isinstance(loghandler, QtLogHandler):
-                loghandler.setLevel(self._qtloghandler_level)
-        # remove debug log handler
-        DebugLogHandler.remove_debug_loghandler()

@@ -135,55 +135,17 @@ def initialize_logger():
         '%(asctime)s %(levelname)s %(name)s %(message)s',
         datefmt="%Y-%m-%d %H:%M:%S"))
     rotating_file_handler.doRollover()
-    rotating_file_handler.setLevel(logging.INFO)
+    rotating_file_handler.setLevel(logging.DEBUG)
     logger.addHandler(rotating_file_handler)
 
     # add Qt log handler
     qt_log_handler = QtLogHandler()
-    qt_log_handler.setLevel(logging.INFO)
+    qt_log_handler.setLevel(logging.DEBUG)
     logging.getLogger().addHandler(qt_log_handler)
 
+    for logger_name in ['core', 'gui', 'logic', 'hardware']:
+            logging.getLogger(logger_name).setLevel(logging.DEBUG)
 
-class DebugLogHandler(logging.handlers.RotatingFileHandler):
-    """
-    A rotating file handler which can be identified as debug log handler
-    for later removal.
-
-    Returns True
-    """
-    @property
-    def is_debug_loghandler(self):
-        """
-        Just some property for identification.
-        """
-        return True
-
-    @classmethod
-    def add_debug_loghandler(cls):
-        """
-        Adds a rotating file log handler based on DebugLogHandler for logging
-        debug messages to debug.log
-
-        Returns the handler.
-        """
-        debug_loghandler = DebugLogHandler('debug.log',
-                backupCount=2, maxBytes=1024*1024)
-        debug_loghandler.setFormatter(logging.Formatter(
-            '%(asctime)s %(name)s %(levelname)s: %(message)s',
-            datefmt="%Y-%m-%d %H:%M:%S"))
-        debug_loghandler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(debug_loghandler)
-        return debug_loghandler
-
-    @classmethod
-    def remove_debug_loghandler(cls):
-        """
-        Removes the rotating file log handler for logging debug messages. The
-        handler is identified because it is derived from DebugLogHandler
-        """
-        for logger in logging.getLogger().handlers:
-            if hasattr(logger, 'is_debug_loghandler'):
-                logging.getLogger().removeHandler(logger)
 
 # global variables used by exception handler
 original_excepthook = None
