@@ -20,6 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from scipy.signal import gaussian
 from scipy.ndimage import filters
@@ -121,9 +124,8 @@ def create_fit_string(self, result, model, units=dict(), decimal_digits_value_gi
                                                                 float(result.params[variable].stderr),
                                                                 decimal_digits_err)))
         except:
-            # self.logMsg('No unit given for parameter {}, setting unit '
-            #             'to empty string'.format(variable),
-            #             msgType='warning')
+            # logger.warning('No unit given for parameter {}, setting unit '
+            #             'to empty string'.format(variable))
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             "arb. u.",
                                                             "{0:.{1}e}".format(
@@ -335,10 +337,9 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
                 if abs(threshold/absolute_min)<abs(minimal_threshold):
                     if make_prints:
                         print('h16')
-                    self.logMsg('threshold to minimum ratio was too '
-                                'small to estimate two minima. So both '
-                                'are set to the same value',
-                                msgType='warning')
+                    logger.warning('Threshold to minimum ratio was too '
+                            'small to estimate two minima. So both '
+                            'are set to the same value')
                     error=-1
                     dip1_arg=dip0_arg
                     break

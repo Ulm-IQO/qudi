@@ -84,7 +84,7 @@ class PolarisationDepLogic(GenericLogic):
           @param object e: Fysom state change event
         """
         return
- 
+
     def measure_polarisation_dependence(self):
         """Do a simple pol dep measurement.
         """
@@ -100,7 +100,7 @@ class PolarisationDepLogic(GenericLogic):
 
     def rotate_polarisation(self):
         self._hwpmotor.move_rel(self.scan_length)
-        self.logMsg('rotation finished, saving data', msgType='status', importance=5)
+        self.log.info('rotation finished, saving data')
         self.signal_rotation_finished.emit()
 
     def finish_scan(self):

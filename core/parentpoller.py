@@ -29,7 +29,8 @@ import signal
 import time
 from _thread import interrupt_main
 from threading import Thread
-
+import logging
+logger = logging.getLogger(__name__)
 
 def waitForClose():
     time.sleep(1)
@@ -138,5 +139,5 @@ class ParentPollerWindows(Thread):
                     os._exit(1)
             elif result < 0:
                 # wait failed, just give up and stop polling.
-                print("Parent poll failed!!!!!")
+                logger.critical("Parent poll failed!!!!!")
                 return

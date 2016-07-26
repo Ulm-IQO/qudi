@@ -48,15 +48,15 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 
+        state_actions = {'onactivate': self.activation,
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -77,7 +77,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.timestep = config['timestep']
         else:
             self.timestep = 0.1
-            self.logMsg('No time step configured, using 100ms', msgType='warn')
+            self.log.warning('No time step configured, using 100ms.')
 
         # load parameters stored in app state store
         if 'kP' in self._statusVariables:
@@ -146,10 +146,10 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.countdown = -1
             self.integrated = 0
             self.enable = True
-        
+
         if (self.enable):
             delta = self.setpoint - self.pv
-            self.integrated += delta 
+            self.integrated += delta
             ## Calculate PID controller:
             self.P = self.kP * delta
             self.I = self.kI * self.timestep * self.integrated
@@ -234,7 +234,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
     def get_manual_value(self):
         return self.manualvalue
-        
+
     def set_manual_value(self, manualvalue):
         self.manualvalue = manualvalue
         limits = self._control.getControlLimits()
@@ -254,7 +254,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
     def get_control_limits(self):
         return self._control.getControlLimits()
-    
+
     def set_control_limits(self, limits):
         pass
 
