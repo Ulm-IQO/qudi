@@ -223,10 +223,8 @@ class PoiManagerGui(GUIBase):
            'confocallogic1': 'ConfocalLogic'
            }
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -234,7 +232,7 @@ class PoiManagerGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key, config[key]))
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Initializes the overall GUI, and establishes the connectors.
 
         @param object e: Fysom.event object from Fysom class.
@@ -474,7 +472,7 @@ class PoiManagerGui(GUIBase):
         self._rrd.ref_c_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
         self._rrd.ref_c_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

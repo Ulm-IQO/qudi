@@ -36,14 +36,10 @@ class SimpleDummy(Base, SimpleDataInterface):
     # connectors
     _out = {'simple': 'Simple'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
-
-    def activation(self, e):
+    def on_activate(self, e):
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
 
     def getData(self):

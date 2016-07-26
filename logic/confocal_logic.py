@@ -261,7 +261,7 @@ class ConfocalLogic(GenericLogic):
         self.permanent_scan = False
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param e: error code
@@ -320,7 +320,7 @@ class ConfocalLogic(GenericLogic):
         self._change_position('activation')
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Reverse steps of activation
 
         @param e: error code

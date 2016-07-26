@@ -97,9 +97,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     _cReturnWavelangthVac        = ctypes.c_long(0x0000)
 
 
-    def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -117,7 +116,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
                         'using {} instead.'.format(self._measurement_timing))
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         #############################################
         # Initialisation to access external DLL
         #############################################
@@ -173,7 +172,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self.hardware_thread.start()
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         if self.getState() != 'idle' and self.getState() != 'deactivated':
             self.stop_acqusition()
         self.hardware_thread.quit()
