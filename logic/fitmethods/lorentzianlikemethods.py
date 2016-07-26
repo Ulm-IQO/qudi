@@ -22,6 +22,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import ConstantModel, LorentzianModel
 from lmfit import Parameters
@@ -104,11 +107,10 @@ def estimate_lorentz(self,x_axis=None,data=None):
     parameters=[x_axis,data]
     for var in parameters:
         if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.', msgType='error')
+            logger.error('Given parameter is no array.')
             error=-1
         elif len(np.shape(var))!=1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
     #set parameters
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
@@ -123,16 +125,9 @@ def estimate_lorentz(self,x_axis=None,data=None):
 
 
     if data_max > abs(data_min):
-        try:
-            self.logMsg('The lorentzian estimator set the peak to the '
-                        'minimal value, if you want to fit a peak instead '
-                        'of a dip rewrite the estimator.',
-                        msgType='warning')
-        except:
-            self.logMsg('The lorentzian estimator set the peak to the '
-                        'minimal value, if you want to fit a peak instead '
-                        'of a dip rewrite the estimator.',
-                        msgType='warning')
+        logger.warning('The lorentzian estimator set the peak to the '
+                'minimal value, if you want to fit a peak instead '
+                'of a dip rewrite the estimator.')
 
     amplitude_median = data_min
     x_zero = x_axis[np.argmin(data_smooth)]
@@ -193,8 +188,8 @@ def make_lorentzian_fit(self, axis=None, data=None,
         result = model.fit(data, x=axis,params=params)
     except:
         result = model.fit(data, x=axis,params=params)
-        self.logMsg('The 1D lorentzian fit did not work. Error '
-                    'message: {0}\n'.format(result.message), msgType='warning')
+        logger.warning('The 1D lorentzian fit did not work. Error '
+                'message: {0}\n'.format(result.message))
     return result
 
 ############################################################################
@@ -225,12 +220,10 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
     #set paraameters
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
@@ -245,15 +238,9 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
 
 
     if data_max<abs(data_min):
-        try:
-            self.logMsg('This lorentzian estimator set the peak to the '
-                        'maximum value, if you want to fit a dip '
-                        'instead of a peak use estimate_lorentz.',
-                        msgType='warning')
-        except:
-            print('This lorentzian estimator set the peak to the '
-                  'maximum value, if you want to fit a dip instead of '
-                  'a peak use estimate_lorentz.')
+        logger.warning('This lorentzian estimator set the peak to the '
+                'maximum value, if you want to fit a dip '
+                'instead of a peak use estimate_lorentz.')
 
     amplitude_median = data_max
     x_zero = x_axis[np.argmax(data)]
@@ -319,9 +306,8 @@ def make_lorentzianpeak_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
     except:
         result=model.fit(data, x=axis,params=params)
-        self.logMsg('The 1D gaussian fit did not work. Error '
-                    'message:' + result.message,
-                    msgType='warning')
+        logger.warning('The 1D gaussian fit did not work. Error '
+                'message:' + result.message)
 
     return result
 
@@ -381,12 +367,10 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
     parameters = [x_axis,data]
     for var in parameters:
         if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.', \
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error=-1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
 
 
     #set paraameters
@@ -497,9 +481,8 @@ def make_doublelorentzian_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
     except:
         result=model.fit(data, x=axis,params=params)
-        self.logMsg('The double lorentzian fit did not '
-                    'work:'+result.message,
-                    msgType='warning')
+        logger.warning('The double lorentzian fit did not '
+                'work: {0}'.format(result.message))
 
     return result
 

@@ -56,13 +56,11 @@ class ODMRLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
         # number of lines in the matrix plot
         self.number_of_lines = 50
@@ -124,11 +122,6 @@ class ODMRLogic(GenericLogic):
             'N15': False,
             'Double Gaussian': False
         }
-        # set the prefix, which determines the representation in the viewboxes
-        # for the frequencies, one can choose from the dict obtainable from
-        # self.get_unit_prefix_dict(). That is mainly used to save the fitted
-        # values with the appropriated magnitude.
-        self._freq_prefix = 'M'
 
         self.mw_frequency = in_range(2870e6,
                                      self.limits['frequency']['min'],
@@ -270,9 +263,9 @@ class ODMRLogic(GenericLogic):
             self._ODMR_line_count = self.run_time / self._ODMR_line_time
             # list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
             self.ODMR_raw_data = np.full((self._mw_frequency_list_length, self._ODMR_line_count), -1)
-            self.logMsg('Raw data saving...', msgType='status', importance=5)
+            self.log.info('Raw data saving...')
         else:
-            self.logMsg('Raw data NOT saved', msgType='status', importance=5)
+            self.log.info('Raw data NOT saved.')
 
         self.start_odmr()
         if len(self._mw_frequency_list) >= self.limits[mode]['maxentries']:
@@ -866,10 +859,10 @@ class ODMRLogic(GenericLogic):
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
         else:
-            self.logMsg('The Fit Function "{0}" is not implemented to be used in '
-                        'the ODMR Logic. Correct that! Fit Call will be '
-                        'skipped and Fit Function will be set to '
-                        '"No Fit".'.format(fit_function), msgType='warning')
+            self.log.warning('The Fit Function "{0}" is not implemented to '
+                    'be used in the ODMR Logic. Correct that! Fit Call will '
+                    'be skipped and Fit Function will be set to '
+                    '"No Fit".'.format(fit_function))
             self.fit_function = 'No Fit'
 
         if self.fit_function == 'No Fit':
@@ -958,7 +951,7 @@ class ODMRLogic(GenericLogic):
             timestamp=timestamp,
             as_text=True)
 
-        self.logMsg('ODMR data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.info('ODMR data saved to:\n{0}'.format(filepath))
 
         if self.safeRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
@@ -971,9 +964,9 @@ class ODMRLogic(GenericLogic):
                 timestamp=timestamp,
                 as_text=True)
 
-            self.logMsg('Raw data succesfully saved', msgType='status', importance=7)
+            self.log.info('Raw data succesfully saved.')
         else:
-            self.logMsg('Raw data is NOT saved', msgType='status', importance=7)
+            self.log.info('Raw data is NOT saved')
 
     def draw_figure(self, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.

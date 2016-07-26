@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
+import warnings
 
 class GUIBase(Base):
     """This is the GUI base class. It provides functions that every GUI module should have.
@@ -29,7 +30,8 @@ class GUIBase(Base):
     _modtype = 'Gui'
 
     def show(self):
-        self.logMsg('Every GUI module needs to reimplement the show() function!', msgType='error')
+        warnings.warn('Every GUI module needs to reimplement the show() '
+                'function!')
 
     def saveWindowPos(self, window):
         self._statusVariables['pos_x'] = window.pos().x()

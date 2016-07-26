@@ -35,6 +35,7 @@ Reimplement each call from the magnet interface and use only the motor interface
 command to talk to the motor hardware.
 """
 
+
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 
@@ -110,10 +111,10 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         if not self._magnet_idle:
             self._motor_device.move_rel(param_dict)
         else:
-            self.logMsg('Motor Device is in Idle state and cannot perform '
-                        '"move_rel" commands. Couple the Motor to control via '
-                        'the command "set_magnet_idle_state(False)" to have '
-                        'control over its movement.', msgType='warning')
+            self.log.warning('Motor Device is in Idle state and cannot '
+                    'perform "move_rel" commands. Couple the Motor to '
+                    'control via the command "set_magnet_idle_state(False)" '
+                    'to have control over its movement.')
 
 
     def move_abs(self, param_dict):
@@ -128,10 +129,10 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         if not self._magnet_idle:
             self._motor_device.move_abs(param_dict)
         else:
-            self.logMsg('Motor Device is in Idle state and cannot perform '
-                        '"move_abs" commands. Couple the Motor to control via '
-                        'the command "set_magnet_idle_state (False)" to have '
-                        'control over its movement.', msgType='warning')
+            self.log.warning('Motor Device is in Idle state and cannot '
+                    'perform "move_abs" commands. Couple the Motor to '
+                    'control via the command "set_magnet_idle_state (False)" '
+                    'to have control over its movement.')
 
 
     def abort(self):
@@ -189,10 +190,10 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         if not self._magnet_idle:
             self._motor_device.calibrate(param_list)
         else:
-            self.logMsg('Motor Device is in Idle state and cannot perform '
-                        '"calibrate" commands. Couple the Motor to control via '
-                        'the command "set_magnet_idle_state(False)" to have '
-                        'control over its movement.', msgType='warning')
+            self.log.warning('Motor Device is in Idle state and cannot '
+                    'perform "calibrate" commands. Couple the Motor to '
+                    'control via the command "set_magnet_idle_state(False)" '
+                    'to have control over its movement.')
 
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes.
@@ -222,10 +223,10 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         if not self._magnet_idle:
             self._motor_device.set_velocity(param_list)
         else:
-            self.logMsg('Motor Device is in Idle state and cannot perform '
-                        '"set_velocity" commands. Couple the Motor to control '
-                        'via the command "set_magnet_idle_state(False)" to have '
-                        'control over its movement.', msgType='warning')
+            self.log.warning('Motor Device is in Idle state and cannot '
+                    'perform "set_velocity" commands. Couple the Motor to '
+                    'control via the command "set_magnet_idle_state(False)" '
+                    'to have control over its movement.')
 
 
     def tell(self, param_dict=None):
@@ -239,10 +240,9 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg('You can tell the motor dummy as much as you want, it has '
-                    'always an open ear for you. But do not expect an answer, '
-                    'it is very shy!',
-                    msgType='status')
+        self.log.info('You can tell the motor dummy as much as you want, it '
+                'has always an open ear for you. But do not expect an '
+                'answer, it is very shy!')
 
     def ask(self, param_dict=None):
         """ Ask the magnet a question.
@@ -258,12 +258,11 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                       string answers of the axis.
         """
 
-        self.logMsg('The Motor Hardware does not support an "ask" command and'
-                    'is not be able to answer the questions "{0}" to the axis '
-                    '"{1}"! If you want to talk to someone ask Siri, maybe '
-                    'she will listen to you and answer your questions '
-                    ':P.'.format(list(param_dict.values()), list(param_dict)),
-                    msgType='status')
+        self.log.info('The Motor Hardware does not support an "ask" command '
+                'and is not be able to answer the questions "{0}" to the '
+                'axis "{1}"! If you want to talk to someone ask Siri, maybe '
+                'she will listen to you and answer your questions '
+                ':P.'.format(list(param_dict.values()), list(param_dict)))
 
         return_val = {}
         for entry in param_dict:
@@ -278,10 +277,8 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         heated it cools them, else the coils get heated.
         @return int: (0: Ok, -1:error)
         """
-        self.logMsg('Motor Hardware does not need initialization for starting '
-                    'or ending a movement. Nothing will happen.',
-                    msgType='status')
-        pass
+        self.log.info('Motor Hardware does not need initialization for '
+                'starting or ending a movement. Nothing will happen.')
 
 
     def set_magnet_idle_state(self, magnet_idle=True):

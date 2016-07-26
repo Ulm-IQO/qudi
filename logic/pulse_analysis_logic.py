@@ -37,13 +37,11 @@ class PulseAnalysisLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(self, config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
 
     def on_activate(self, e):

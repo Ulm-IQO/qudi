@@ -45,13 +45,11 @@ class MotorDummy(Base, MotorInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         # these label should be actually set by the config.
         self._x_axis = MotorAxisDummy('x')
@@ -204,13 +202,12 @@ class MotorDummy(Base, MotorInterface):
             if  (curr_pos_x + move_x > constraints[self._x_axis.label]['pos_max'] ) or\
                 (curr_pos_x + move_x < constraints[self._x_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._x_axis.label, move_x,
-                                    constraints[self._x_axis.label]['pos_min'],
-                                    constraints[self._x_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._x_axis.label, move_x,
+                            constraints[self._x_axis.label]['pos_min'],
+                            constraints[self._x_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._x_axis.pos = self._x_axis.pos + move_x
@@ -222,13 +219,12 @@ class MotorDummy(Base, MotorInterface):
             if  (curr_pos_y + move_y > constraints[self._y_axis.label]['pos_max'] ) or\
                 (curr_pos_y + move_y < constraints[self._y_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._y_axis.label, move_y,
-                                    constraints[self._y_axis.label]['pos_min'],
-                                    constraints[self._y_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._y_axis.label, move_y,
+                            constraints[self._y_axis.label]['pos_min'],
+                            constraints[self._y_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._y_axis.pos = self._y_axis.pos + move_y
@@ -240,13 +236,12 @@ class MotorDummy(Base, MotorInterface):
             if  (curr_pos_z + move_z > constraints[self._z_axis.label]['pos_max'] ) or\
                 (curr_pos_z + move_z < constraints[self._z_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._z_axis.label, move_z,
-                                    constraints[self._z_axis.label]['pos_min'],
-                                    constraints[self._z_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._z_axis.label, move_z,
+                            constraints[self._z_axis.label]['pos_min'],
+                            constraints[self._z_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._z_axis.pos = self._z_axis.pos + move_z
@@ -259,13 +254,12 @@ class MotorDummy(Base, MotorInterface):
             if  (curr_pos_phi + move_phi > constraints[self._phi_axis.label]['pos_max'] ) or\
                 (curr_pos_phi + move_phi < constraints[self._phi_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._phi_axis.label, move_phi,
-                                    constraints[self._phi_axis.label]['pos_min'],
-                                    constraints[self._phi_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._phi_axis.label, move_phi,
+                            constraints[self._phi_axis.label]['pos_min'],
+                            constraints[self._phi_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._phi_axis.pos = self._phi_axis.pos + move_phi
@@ -289,13 +283,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_pos > constraints[self._x_axis.label]['pos_max'] ) or\
                 (desired_pos < constraints[self._x_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._x_axis.label, desired_pos,
-                                    constraints[self._x_axis.label]['pos_min'],
-                                    constraints[self._x_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._x_axis.label, desired_pos,
+                            constraints[self._x_axis.label]['pos_min'],
+                            constraints[self._x_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._x_axis.pos = desired_pos
@@ -307,13 +300,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_pos > constraints[self._y_axis.label]['pos_max'] ) or\
                 (desired_pos < constraints[self._y_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._y_axis.label, desired_pos,
-                                    constraints[self._y_axis.label]['pos_min'],
-                                    constraints[self._y_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._y_axis.label, desired_pos,
+                            constraints[self._y_axis.label]['pos_min'],
+                            constraints[self._y_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._y_axis.pos = desired_pos
@@ -325,13 +317,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_pos > constraints[self._z_axis.label]['pos_max'] ) or\
                 (desired_pos < constraints[self._z_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._z_axis.label, desired_pos,
-                                    constraints[self._z_axis.label]['pos_min'],
-                                    constraints[self._z_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._z_axis.label, desired_pos,
+                            constraints[self._z_axis.label]['pos_min'],
+                            constraints[self._z_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._z_axis.pos = desired_pos
@@ -343,13 +334,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_pos > constraints[self._phi_axis.label]['pos_max'] ) or\
                 (desired_pos < constraints[self._phi_axis.label]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._phi_axis.label, desired_pos,
-                                    constraints[self._phi_axis.label]['pos_min'],
-                                    constraints[self._phi_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._phi_axis.label, desired_pos,
+                            constraints[self._phi_axis.label]['pos_min'],
+                            constraints[self._phi_axis.label]['pos_max']))
             else:
                 self._make_wait_after_movement()
                 self._phi_axis.pos = desired_pos
@@ -361,7 +351,7 @@ class MotorDummy(Base, MotorInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg('MotorDummy: Movement stopped!', msgType='status')
+        self.log.info('MotorDummy: Movement stopped!')
         return 0
 
     def get_pos(self, param_list=None):
@@ -516,13 +506,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_vel > constraints[self._x_axis.label]['vel_max'] ) or\
                 (desired_vel < constraints[self._x_axis.label]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._x_axis.label, desired_vel,
-                                    constraints[self._x_axis.label]['vel_min'],
-                                    constraints[self._x_axis.label]['vel_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._x_axis.label, desired_vel,
+                            constraints[self._x_axis.label]['vel_min'],
+                            constraints[self._x_axis.label]['vel_max']))
             else:
                 self._x_axis.vel = desired_vel
 
@@ -532,13 +521,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_vel > constraints[self._y_axis.label]['vel_max'] ) or\
                 (desired_vel < constraints[self._y_axis.label]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._y_axis.label, desired_vel,
-                                    constraints[self._y_axis.label]['vel_min'],
-                                    constraints[self._y_axis.label]['vel_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._y_axis.label, desired_vel,
+                            constraints[self._y_axis.label]['vel_min'],
+                            constraints[self._y_axis.label]['vel_max']))
             else:
                 self._y_axis.vel = desired_vel
 
@@ -548,13 +536,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_vel > constraints[self._z_axis.label]['vel_max'] ) or\
                 (desired_vel < constraints[self._z_axis.label]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._z_axis.label, desired_vel,
-                                    constraints[self._z_axis.label]['pos_min'],
-                                    constraints[self._z_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._z_axis.label, desired_vel,
+                            constraints[self._z_axis.label]['pos_min'],
+                            constraints[self._z_axis.label]['pos_max']))
             else:
                 self._z_axis.vel = desired_vel
 
@@ -564,13 +551,12 @@ class MotorDummy(Base, MotorInterface):
             if  (desired_vel > constraints[self._phi_axis.label]['vel_max'] ) or\
                 (desired_vel < constraints[self._phi_axis.label]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._phi_axis.label, desired_vel,
-                                    constraints[self._phi_axis.label]['pos_min'],
-                                    constraints[self._phi_axis.label]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limits '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._phi_axis.label, desired_vel,
+                            constraints[self._phi_axis.label]['pos_min'],
+                            constraints[self._phi_axis.label]['pos_max']))
             else:
                 self._phi_axis.vel = desired_vel
 

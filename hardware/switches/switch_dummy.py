@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
 from core.base import Base
 from collections import OrderedDict
 from interface.switch_interface import SwitchInterface
@@ -73,15 +74,15 @@ class SwitchDummy(Base, SwitchInterface):
         """
         self.switchState[switchNumber] = True
         time.sleep(self.getSwitchTime(switchNumber))
-        self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+        self.log.info('{0} switch {1}: On'.format(self._name, switchNumber))
         return self.switchState[switchNumber]
-    
+
     def switchOff(self, switchNumber):
         """
         """
         self.switchState[switchNumber] = False
         time.sleep(self.getSwitchTime(switchNumber))
-        self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+        self.log.info('{0} switch {1}: Off'.format(self._name, switchNumber))
         return self.switchState[switchNumber]
 
     def getSwitchTime(self, switchNumber):

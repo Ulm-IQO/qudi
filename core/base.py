@@ -19,14 +19,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import logging
 from pyqtgraph.Qt import QtCore
 from .FysomAdapter import Fysom # provides a final state machine
 from collections import OrderedDict
 
-import numpy as np
 import os
 import sys
-import traceback
 
 class Base(QtCore.QObject, Fysom):
     """
@@ -46,7 +45,6 @@ class Base(QtCore.QObject, Fysom):
     """
 
     sigStateChanged = QtCore.Signal(object)  #(module name, state change)
-    sigLogMessage = QtCore.Signal(object)
     _modclass = 'base'
     _modtype = 'base'
     _in = dict()
@@ -131,14 +129,22 @@ class Base(QtCore.QObject, Fysom):
             pass
         return Fysom.__getattr__(self, name)
 
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__.__name__))
+
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden
             this method returns an error.
 
         @param object e: Fysom state change descriptor
         """
-        self.logMsg('Please implement and specify the activation method for '
-                '{0}.'.format(self.__class__.__name__), msgType='error')
+        logger.warning('Please implement and specify the activation method '
+                'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
         """ Method called when module is deactivated. If not overridden
@@ -146,8 +152,8 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        self.logMsg('Please implement and specify the deactivation method '
-                '{0}.'.format(self.__class__.__name__), msgType='error')
+        logger.warning('Please implement and specify the deactivation method '
+                '{0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
     def onchangestate(self, e):
@@ -172,7 +178,9 @@ class Base(QtCore.QObject, Fysom):
 
         """
         if not isinstance(variableDict, (dict, OrderedDict)):
-            self.logMsg('Did not pass a dict or OrderedDict to setStatusVariables in {0}.'.format(self.__class__.__name__), msgType='error')
+            logger.error('Did not pass a dict or OrderedDict to '
+                    'setStatusVariables in {0}.'.format(
+                        self.__class__.__name__))
             return
         self._statusVariables = variableDict
 
@@ -201,30 +209,6 @@ class Base(QtCore.QObject, Fysom):
         """
         return self._manager.configDir
 
-    def logMsg(self, message, **kwargs):
-        """Creates a status message method for all child classes.
-
-          @param string message: the text of the log message
-        """
-        self.sigLogMessage.emit(('{0}.{1}: {2}'.format(self._modclass, self._modtype, message), kwargs))
-
-    def logExc(self, *args, **kwargs):
-        """Calls logMsg, but adds in the current exception and callstack.
-
-          @param list args: arguments for logMsg()
-          @param dict kwargs: dictionary containing exception information.
-
-        Must be called within an except block, and should only be called if the
-        exception is not re-raised.
-        Unhandled exceptions, or exceptions that reach the top of the callstack
-        are automatically logged, so logging an exception that will be
-        re-raised can cause the exception to be logged twice.
-        Takes the same arguments as logMsg.
-        """
-        kwargs['exception'] = sys.exc_info()
-        kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]
-        self.logMsg(*args, **kwargs)
-
     @staticmethod
     def identify():
         """ Return module id.
@@ -240,12 +224,7 @@ class Base(QtCore.QObject, Fysom):
 
         """
         mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
-        self.logMsg('Filepath of the main tree was called', msgType='status',
-                    importance=0)
-
         return mainpath
- #            print("PAth of Managerfile: ", os.path.abspath(__file__))
-
 
     def get_home_dir(self):
         """ Returns the path to the home directory, which should definitely
