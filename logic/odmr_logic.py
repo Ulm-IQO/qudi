@@ -125,11 +125,6 @@ class ODMRLogic(GenericLogic):
             'N15': False,
             'Double Gaussian': False
         }
-        # set the prefix, which determines the representation in the viewboxes
-        # for the frequencies, one can choose from the dict obtainable from
-        # self.get_unit_prefix_dict(). That is mainly used to save the fitted
-        # values with the appropriated magnitude.
-        self._freq_prefix = 'M'
 
         self.mw_frequency = in_range(2870e6,
                                      self.limits['frequency']['min'],
