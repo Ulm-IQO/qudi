@@ -107,12 +107,12 @@ def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000, laser_amp_V=1
     """
     # sanity checks for input parameters
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change '
-                    'that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
 
     # split digital and analogue channels
@@ -235,23 +235,24 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bins=70, nu
                        seq_trig_channel='', wait_time_bins=500):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
     # split digital and analogue channels
     digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
@@ -410,23 +411,24 @@ def generate_pulsedodmr_bins(self, name='PulsedODMR', mw_time_bins=1000, mw_freq
                              gate_count_channel=''):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
     # split digital and analogue channels
     digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
@@ -614,23 +616,24 @@ def generate_HHamp_bins(self, name='HHamp', mw_freq_Hz=2870.0, pihalf_amp_V=0.5,
                         mw_channel='a_ch1', seq_trig_channel='', gate_count_channel=''):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
 
     # split digital and analogue channels
@@ -780,23 +783,24 @@ def generate_HHtau_bins(self, name='HHtau', mw_freq_Hz=2870.0, pihalf_amp_V=0.5,
                         gate_count_channel=''):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
 
     # split digital and analogue channels
@@ -940,23 +944,24 @@ def generate_HHpol_bins(self, name='HHpol', mw_freq_Hz=2870.0, pihalf_amp_V=0.5,
                         mw_channel='a_ch1', seq_trig_channel='', gate_count_channel=''):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
 
     # split digital and analogue channels
@@ -1114,26 +1119,28 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
                               seq_trig_channel='', gate_count_channel=''):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if mw_channel == rf_channel:
-        self.logMsg('RF and microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('RF and microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
 
     # split digital and analogue channels
@@ -1310,8 +1317,8 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #                   open_count_channel=2, seq_channel=3, wait_time_bins=500):
 #
 #     if laser_channel == mw_channel:
-#         self.logMsg('Laser and Microwave channel cannot be the same. Change '
-#                     'that!', msgType='error')
+#         self.log.error('Laser and Microwave channel cannot be the same. Change '
+#                     'that!')
 #         return
 #
 #     # --- mw element ----
@@ -1329,11 +1336,11 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #         mw_freq = mw_freq_MHz*1e6
 #         analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq, 'phase1': 0.0}
 #     else:
-#         self.logMsg('Value of {0} is not a proper mw_channel. Digital laser '
+#         self.log.error('Value of {0} is not a proper mw_channel. Digital laser '
 #                     'channels are positive values 1=d_ch1, 2=d_ch2, '
 #                     '... and analog channel numbers are chosen by a negative '
 #                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!', msgType='error')
+#                     'invalid input. Make your choice!')
 #         return
 #
 #     pi_2_time_bins = int(mw_rabi_period_bins/4)
@@ -1378,11 +1385,11 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #         pulse_function[abs(laser_channel)-1] = 'DC'
 #         analog_params[abs(laser_channel)-1] = {'amplitude1': channel_amp_V}
 #     else:
-#         self.logMsg('Value of {0} is not a proper laser channel. Digital laser '
+#         self.log.error('Value of {0} is not a proper laser channel. Digital laser '
 #                     'channels are positive values 1=d_ch1, 2=d_ch2, '
 #                     '... and analog channel numbers are chosen by a negative '
 #                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!', msgType='error')
+#                     'invalid input. Make your choice!')
 #         return
 #
 #     if open_count_channel > 0 and open_count_channel <= self.digital_channels:
@@ -1510,8 +1517,8 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #                        wait_time_bins=500):
 #
 #     if laser_channel == mw_channel:
-#         self.logMsg('Laser and Microwave channel cannot be the same. Change '
-#                     'that!', msgType='error')
+#         self.log.error('Laser and Microwave channel cannot be the same. Change '
+#                     'that!')
 #         return
 #
 #     # --- mw element pi/2 ----
@@ -1529,11 +1536,11 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #         mw_freq = mw_freq_MHz*1e6
 #         analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq, 'phase1': 0.0}
 #     else:
-#         self.logMsg('Value of {0} is not a proper mw_channel. Digital laser '
+#         self.log.error('Value of {0} is not a proper mw_channel. Digital laser '
 #                     'channels are positive values 1=d_ch1, 2=d_ch2, '
 #                     '... and analog channel numbers are chosen by a negative '
 #                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!', msgType='error')
+#                     'invalid input. Make your choice!')
 #         return
 #
 #     pi_2_time_bins = int(mw_rabi_period_bins/4)
@@ -1564,11 +1571,11 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #         mw_freq = mw_freq_MHz*1e6
 #         analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq, 'phase1': 0.0}
 #     else:
-#         self.logMsg('Value of {0} is not a proper mw_channel. Digital laser '
+#         self.log.error('Value of {0} is not a proper mw_channel. Digital laser '
 #                     'channels are positive values 1=d_ch1, 2=d_ch2, '
 #                     '... and analog channel numbers are chosen by a negative '
 #                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!', msgType='error')
+#                     'nvalid input. Make your choice!')
 #         return
 #
 #     pi_time_bins = int(mw_rabi_period_bins/2)
@@ -1612,11 +1619,11 @@ def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pih
 #         pulse_function[abs(laser_channel)-1] = 'DC'
 #         analog_params[abs(laser_channel)-1] = {'amplitude1': channel_amp_V}
 #     else:
-#         self.logMsg('Value of {0} is not a proper laser channel. Digital laser '
+#         self.log.error('Value of {0} is not a proper laser channel. Digital laser '
 #                     'channels are positive values 1=d_ch1, 2=d_ch2, '
 #                     '... and analog channel numbers are chosen by a negative '
 #                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!', msgType='error')
+#                     'invalid input. Make your choice!')
 #         return
 #
 #     if open_count_channel > 0 and open_count_channel <= self.digital_channels:
@@ -1744,23 +1751,24 @@ def generate_xy8_bins(self, name='XY8', mw_freq_Hz=2870.0e6, mw_amp_V=0.1, pi_bi
                       gate_count_channel=''):
     # Sanity checks
     if self.laser_channel == mw_channel:
-        self.logMsg('Laser and Microwave channel cannot be the same. Change that!', msgType='error')
+        self.log.error('Laser and Microwave channel cannot be the same. '
+                'Change that!')
         return
     if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.logMsg('Gate and sequence trigger channels for fast counter cannot be the same. '
-                    'Change that!', msgType='error')
+        self.log.error('Gate and sequence trigger channels for fast counter '
+                'cannot be the same. Change that!')
         return
     if mw_channel not in self.activation_config:
-        self.logMsg('MW channel "{0}" is not part of current activation_config!'.format(mw_channel),
-                    msgType='error')
+        self.log.error('MW channel "{0}" is not part of current '
+                'activation_config!'.format(mw_channel))
         return
     if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.logMsg('Sequence trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(seq_trig_channel), msgType='error')
+        self.log.error('Sequence trigger channel "{0}" is not part of '
+                'current activation_config!'.format(seq_trig_channel))
         return
     if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.logMsg('Gate trigger channel "{0}" is not part of current activation_config!'
-                    ''.format(gate_count_channel), msgType='error')
+        self.log.error('Gate trigger channel "{0}" is not part of current '
+                'activation_config!'.format(gate_count_channel))
         return
 
     # split digital and analogue channels

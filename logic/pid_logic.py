@@ -49,11 +49,11 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     def __init__(self, config, **kwargs):
         super().__init__(self, config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -74,7 +74,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.timestep = config['timestep']
         else:
             self.timestep = 0.1
-            self.logMsg('No time step configured, using 100ms', msgType='warn')
+            self.log.warning('No time step configured, using 100ms.')
 
         # load parameters stored in app state store
         if 'kP' in self._statusVariables:

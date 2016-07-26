@@ -73,13 +73,11 @@ class MagnetGui(GUIBase):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self._continue_2d_fluorescence_alignment = False
 
@@ -111,12 +109,11 @@ class MagnetGui(GUIBase):
             if config['lin_trans_unit_prefix'] in get_unit_prefix_dict():
                 self._lin_trans_unit_prefix = config['lin_trans_unit_prefix']
             else:
-                self.logMsg('The parameter "lin_trans_unit_prefix" is either '
-                            'not specified in the config or the unit prefix '
-                            'is not in the get_unit_prefix_dict() '
-                            'dictionary! Take the default prefix "{0}" '
-                            'instead.'.format(self._lin_trans_unit_prefix),
-                            msgType='warning')
+                self.log.warning('The parameter "lin_trans_unit_prefix" is '
+                        'either not specified in the config or the unit '
+                        'prefix is not in the get_unit_prefix_dict() '
+                        'dictionary! Take the default prefix "{0}" '
+                        'instead.'.format(self._lin_trans_unit_prefix))
 
         # the rotation representation should be normal, therefore it is not
         # specified.
@@ -126,13 +123,11 @@ class MagnetGui(GUIBase):
             if config['rot_trans_unit_prefix'] in get_unit_prefix_dict():
                 self._rot_trans_unit_prefix = config['rot_trans_unit_prefix']
             else:
-                self.logMsg('The parameter "rot_trans_unit_prefix" is either '
-                            'not specified in the config or the unit prefix '
-                            'is not in the get_unit_prefix_dict() '
-                            'dictionary! Take the default prefix "{0}" '
-                            'instead.'.format(self._rot_trans_unit_prefix),
-                            'instead.'.format(self._rot_trans_unit_prefix),
-                            msgType='warning')
+                self.log.warning('The parameter "rot_trans_unit_prefix" is '
+                        'either not specified in the config or the unit '
+                        'prefix is not in the get_unit_prefix_dict() '
+                        'dictionary! Take the default prefix "{0}" '
+                        'instead.'.format(self._rot_trans_unit_prefix))
 
         # create all the needed control elements. They will manage the
         # connection with each other themselves. Note some buttons are also
@@ -863,10 +858,9 @@ class MagnetGui(GUIBase):
         if self._interactive_mode:
             self._magnet_logic.stop_movement()
         else:
-            self.logMsg('Movement cannot be stopped during a movement anyway!'
-                        'Set the interactive mode to True in the Magnet '
-                        'Settings! Otherwise this method is useless.',
-                        msgType='warning')
+            self.log.warning('Movement cannot be stopped during a movement '
+                    'anyway! Set the interactive mode to True in the Magnet '
+                    'Settings! Otherwise this method is useless.')
 
     def update_pos(self, param_list=None):
         """ Update the current position.
@@ -973,11 +967,11 @@ class MagnetGui(GUIBase):
         axis1_step =  self._mw.align_2d_axes1_step_DSpinBox.value()*norm2
 
         if axis0_name == axis1_name:
-            self.logMsg('Fluorescence Alignment cannot be started since the '
+            self.log.error('Fluorescence Alignment cannot be started since the '
                         'same axis with name "{0}" was chosen for axis0 and '
                         'axis1!\n'
                         'Alignment will not be started. Change the '
-                        'settings!'.format(axis0_name), msgType='error')
+                        'settings!'.format(axis0_name))
             return
 
         if self._mw.align_2d_axis0_set_vel_CheckBox.isChecked():
@@ -1234,5 +1228,4 @@ class MagnetGui(GUIBase):
         elif self._mw.meas_type_nuclear_spin_RadioButton.isChecked():
             self.measurement_type = '2d_nuclear'
         else:
-            self.logMsg('No measurement type specified in Magnet GUI!',
-                        msgType='error')
+            self.log.error('No measurement type specified in Magnet GUI!')

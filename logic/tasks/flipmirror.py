@@ -37,7 +37,8 @@ class Task(PrePostTask):
                     else:
                         logic.switches[element[0]][element[1]].switchOff(element[1])
         else:
-            self.runner.logMsg('No switching sequence configured for pre/post task {}'.format(self.name), msgType='error')
+            self.log.error('No switching sequence configured for pre/post '
+                    'task {}'.format(self.name))
 
 
     def postExecute(self):
@@ -50,6 +51,7 @@ class Task(PrePostTask):
                     else:
                         logic.switches[element[0]][element[1]].switchOn(element[1])
         else:
-            self.runner.logMsg('No switching sequence configured for pre/post task {}'.format(self.name), msgType='error')
+            self.log.error('No switching sequence configured for pre/post '
+                    'task {}'.format(self.name))
 
 

@@ -22,6 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 from lmfit.models import Model
 import numpy as np
 from lmfit import Parameters
@@ -67,15 +70,14 @@ def make_constant_model(self, prefix=None):
         model = Model(constant_function)
     else:
         if not isinstance(prefix,str):
-            self.logMsg('Given prefix in constant model is no string. Deleting prefix.',
-                                msgType='error')
+            logger.error('Given prefix in constant model is no string. '
+                    'Deleting prefix.')
         try:
             model = Model(constant_function, prefix=prefix)
         except:
-            self.logMsg('Creating the constant model failed. '
-                        'The prefix might not be a valid string'
-                        'The prefix was deleted',
-                        msgType='error')
+            logger.error('Creating the constant model failed. '
+                    'The prefix might not be a valid string. '
+                    'The prefix was deleted.')
             model = Model(constant_function)
 
     params = model.make_params()
@@ -151,7 +153,7 @@ def make_slope_model(self):
     params = model.make_params()
 
     return model, params
-    
+
 def make_linear_model(self):
     """ This method creates a model of a constant model.
 
@@ -180,7 +182,7 @@ def make_linear_model(self):
         """
 
         return x
-    
+
     slope, slope_param = self.make_slope_model()
     constant, constant_param = self.make_constant_model()
 
@@ -205,22 +207,19 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
-    
+
     error = 0
     # check if parameters make sense
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
     try:
         """
@@ -239,11 +238,10 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
         params['offset'].value = intercept
         params['slope'].value = slope
     except:
-        self.logMsg('The linear fit did not work.',
-                    msgType='warning')
+        logger.warning('The linear fit did not work.')
         params['slope'].value = 0
         params['offset'].value = 0
-        
+
     return error, params
 
 def make_linear_fit(self, axis=None, data=None, add_parameters=None):
@@ -270,9 +268,8 @@ def make_linear_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = linear.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The linear fit did not work.lmfit result '
-                    'message: {}'.format(str(result.message)),
-                    msgType='warning')
+        logger.warning('The linear fit did not work.lmfit result '
+                'Message: {}'.format(str(result.message)))
         result = linear.fit(data, x=axis, params=params)
 
     return result

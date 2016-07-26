@@ -34,7 +34,7 @@ class FlipMirror(Base, SwitchInterface):
     _out = {'switch':'SwitchInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
-        """ Creae flip mirror control module 
+        """ Creae flip mirror control module
 
           @param object manager: reference to module manager
           @param str name: unique module name
@@ -150,11 +150,12 @@ class FlipMirror(Base, SwitchInterface):
                 if answer != 'OK1':
                     return False
                 time.sleep(self.getSwitchTime(switchNumber))
-                self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+                self.log.info('{0} switch {1}: On'.format(
+                    self._name, switchNumber))
             except:
                 return False
             return True
-    
+
     def switchOff(self, switchNumber):
         """ Turn the flip mirror to horizontal position.
 
@@ -168,7 +169,8 @@ class FlipMirror(Base, SwitchInterface):
                 if answer != 'OK1':
                     return False
                 time.sleep(self.getSwitchTime(switchNumber))
-                self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+                self.log.info('{0} switch {1}: Off'.format(
+                    self._name, switchNumber))
             except:
                 return False
             return True

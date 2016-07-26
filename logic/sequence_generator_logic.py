@@ -69,13 +69,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
@@ -99,19 +97,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             if not os.path.exists(self.pulsed_file_dir):
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.logMsg('The directort defined in "pulsed_file_dir" in the'
-                        'config for SequenceGeneratorLogic class does not '
-                        'exist!\nThe default home directory\n{0}\n will be '
-                        'taken instead.'.format(self.pulsed_file_dir),
-                        msgType='warning')
+                self.log.warning('The directort defined in "pulsed_file_dir" '
+                        'in the config for SequenceGeneratorLogic class does '
+                        'not exist!\n'
+                        'The default home directory\n{0}\n will be '
+                        'taken instead.'.format(self.pulsed_file_dir))
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.logMsg('No directory with the attribute "pulsed_file_dir"'
-                        'is defined for the SequenceGeneratorLogic!\nThe '
-                        'default home directory\n{0}\n will be taken '
-                        'instead.'.format(self.pulsed_file_dir),
-                        msgType='warning')
+            self.log.warning('No directory with the attribute '
+                    '"pulsed_file_dir" is defined for the '
+                    'SequenceGeneratorLogic!\n'
+                    'The default home directory\n{0}\n will be taken '
+                    'instead.'.format(self.pulsed_file_dir))
 
 
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
@@ -207,10 +205,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
                         self.predefined_method_list.append(eval('self.'+method))
                 except:
-                    self.logMsg('It was not possible to import element {0} '
-                                'from {1} into '
-                                'SequenceGenerationLogic.'.format(method,filename),
-                                msgType='error')
+                    self.log.error('It was not possible to import element '
+                            '{0} from {1} into SequenceGenerationLogic.'
+                            ''.format(
+                                method,filename))
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
@@ -250,8 +248,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     break
             if not d_ch_present:
                 self.set_laser_channel(activation_config[0])
-                self.logMsg('No digital channel present in sequence generator activation config.',
-                            msgType='warning')
+                self.log.warning('No digital channel present in sequence '
+                        'generator activation config.')
         return 0
 
     def set_sample_rate(self, sample_rate):
@@ -303,9 +301,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             asset_obj = self.get_pulse_block_ensemble(name)
         else:
             asset_obj = None
-            self.logMsg('No Pulse_Sequence or Pulse_Block_Ensemble by the name "{0}" could be '
-                        'found in pulsed_files_directory. Returning None.'.format(name),
-                        msgType='warning')
+            self.log.warning('No Pulse_Sequence or Pulse_Block_Ensemble by '
+                    'the name "{0}" could be found in '
+                    'pulsed_files_directory. Returning None.'.format(name))
         return asset_obj
 
 
@@ -322,9 +320,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             pickle.dump(block, outfile)
         self.refresh_block_list()
         self.current_block = block
-        self.logMsg('Pulse_Block object "{0}" serialized to harddisk in:\n'
-                    '{1}'.format(name, self.block_dir), msgType='status',
-                    importance=0)
+        self.log.debug('Pulse_Block object "{0}" serialized to harddisk in:\n'
+                    '{1}'.format(name, self.block_dir))
         return
 
     def get_pulse_block(self, name, set_as_current_block=False):
@@ -340,9 +337,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             with open(os.path.join(self.block_dir, name + '.blk'), 'rb') as infile:
                 block = pickle.load(infile)
         else:
-            self.logMsg('The Pulse_Block object with name "{0}" could not be '
-                        'found and serialized in:\n'
-                        '{1}'.format(name, self.block_dir), msgType='warning')
+            self.log.warning('The Pulse_Block object with name "{0}" could '
+                    'not be found and serialized in:\n'
+                    '{1}'.format(name, self.block_dir))
             block = None
 
         if set_as_current_block:
@@ -365,10 +362,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     self.current_block = None
             self.refresh_block_list()
         else:
-            self.logMsg('Pulse_Block object with name "{0}" not found '
-                        'in\n{1}\nTherefore nothing is '
-                        'removed.'.format(name, self.block_dir),
-                        msgType='warning')
+            self.log.warning('Pulse_Block object with name "{0}" not found '
+                    'in\n{1}\nTherefore nothing is '
+                    'removed.'.format(name, self.block_dir))
 
     def refresh_block_list(self):
         """ Refresh the list of available (saved) blocks """
@@ -409,10 +405,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             with open( os.path.join(self.ensemble_dir, name + '.ens'), 'rb') as infile:
                 ensemble = pickle.load(infile)
         else:
-            self.logMsg('The Pulse_Block_Ensemble object with name "{0}" '
-                        'could not be found and serialized in:\n'
-                        '{1}'.format(name, self.ensemble_dir),
-                        msgType='warning')
+            self.log.warning('The Pulse_Block_Ensemble object with name '
+                    '"{0}" could not be found and serialized in:\n'
+                    '{1}'.format(name, self.ensemble_dir))
 
             ensemble = None
 
@@ -436,10 +431,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
             self.refresh_ensemble_list()
         else:
-            self.logMsg('Pulse_Block_Ensemble object with name "{0}" not found '
-                        'in\n{1}\nTherefore nothing is '
-                        'removed.'.format(name, self.ensemble_dir),
-                        msgType='warning')
+            self.log.warning('Pulse_Block_Ensemble object with name "{0}" '
+                    'not found in\n{1}\nTherefore nothing is removed.'.format(
+                        name, self.ensemble_dir))
         return
 
     def refresh_ensemble_list(self):
@@ -486,10 +480,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             with open( os.path.join(self.sequence_dir, name + '.se'), 'rb') as infile:
                 sequence = pickle.load(infile)
         else:
-            self.logMsg('The Sequence object with name "{0}" could not be '
-                        'found and serialized in:\n'
-                        '{1}'.format(name, self.sequence_dir),
-                        msgType='warning')
+            self.log.warning('The Sequence object with name "{0}" could not '
+                    'be found and serialized in:\n'
+                    '{1}'.format(name, self.sequence_dir))
             sequence = None
 
         if set_as_current_sequence:
@@ -507,10 +500,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             os.remove( os.path.join(self.sequence_dir, name + '.se'))
             self.refresh_sequence_list()
         else:
-            self.logMsg('Sequence object with name "{0}" not found '
-                        'in\n{1}\nTherefore nothing is '
-                        'removed.'.format(name, self.sequence_dir),
-                        msgType='warning')
+            self.log.warning('Sequence object with name "{0}" not found '
+                    'in\n{1}\nTherefore nothing is '
+                    'removed.'.format(name, self.sequence_dir))
 
     def refresh_sequence_list(self):
         """ Refresh the list of available (saved) sequences. """
@@ -593,9 +585,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 os.remove(os.path.join(self.waveform_dir, file))
 
             if len(filename_list) != 0:
-                self.logMsg('Found old sampled ensembles for name "{0}". '
-                            'Files deleted before sampling: '
-                            '{1}'.format(ensemble_name, filename_list), msgType='warning')
+                self.log.warning('Found old sampled ensembles for name '
+                        '"{0}". Files deleted before sampling: '
+                        '{1}'.format(ensemble_name, filename_list))
 
         start_time = time.time()
         # get ensemble
@@ -683,17 +675,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if not write_to_file:
             # return a status message with the time needed for sampling the entire ensemble as a
             # whole without writing to file.
-            self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
-                        'whole: "{0}" sec'.format(str(int(np.rint(time.time() - start_time)))),
-                        msgType='status')
+            self.log.info('Time needed for sampling and writing '
+                    'Pulse_Block_Ensemble to file as a whole: "{0}" sec'
+                    ''.format(str(int(np.rint(time.time() - start_time)))))
             self.sigSampleEnsembleComplete.emit()
             # return the sample arrays for write_to_file was set to FALSE
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
             # chunkwise.
-            self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" '
-                        'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            self.log.info('Time needed for sampling and writing to file '
+                    'chunkwise: "{0}" sec'.format(
+                        str(int(np.rint(time.time()-start_time)))))
             self.sigSampleEnsembleComplete.emit()
             return [], [], created_files, offset_bin
         else:
@@ -708,9 +701,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                                                       is_first_chunk, is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
-            self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
-                        'whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))),
-                        msgType='status')
+            self.log.info('Time needed for sampling and writing '
+                    'Pulse_Block_Ensemble to file as a whole: "{0}" sec'
+                    ''.format(str(int(np.rint(time.time()-start_time)))))
             self.sigSampleEnsembleComplete.emit()
             return [], [], created_files, offset_bin
 
@@ -748,9 +741,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 os.remove(os.path.join(self.sequence_dir, file))
 
             if len(filename_list) != 0:
-                self.logMsg('Found old sequence for name "{0}". '
-                            'Files deleted before sampling: '
-                            '{1}'.format(sequence_name, filename_list), msgType='warning')
+                self.log.warning('Found old sequence for name "{0}". '
+                        'Files deleted before sampling: '
+                        '{1}'.format(sequence_name, filename_list))
 
         start_time = time.time()
         # get ensemble
@@ -837,8 +830,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # pass the whole information to the sequence creation method in the hardware:
         self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
 
-        self.logMsg('Time needed for sampling and writing Pulse Sequence to file as a whole: "{0}" '
-                    'sec'.format(str(int(np.rint(time.time() - start_time)))), msgType='status')
+        self.log.info('Time needed for sampling and writing Pulse Sequence '
+                'to file as a whole: "{0}" sec'.format(
+                    str(int(np.rint(time.time() - start_time)))))
         return
 
     def write_seq_to_file(self, a, b):

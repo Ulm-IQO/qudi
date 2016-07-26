@@ -23,13 +23,21 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
+
+# install logging facility
+from .logger import initialize_logger
+initialize_logger()
+import logging
+logger = logging.getLogger(__name__)
+logger.info('Loading QuDi...')
 print('Loading QuDi...')
+
 if __package__ is None:
     import core
     __package__ = 'core'
 else:
     import core
-    
+
 from pyqtgraph.Qt import QtCore
 
 from .manager import Manager
@@ -39,6 +47,7 @@ import pyqtgraph as pg
 import core.util.helpers as helpers
 import sys
 import os
+
 
 
 class AppWatchdog(QtCore.QObject):
@@ -90,21 +99,23 @@ class AppWatchdog(QtCore.QObject):
         if restart:
             # exitcode of 42 signals to start.py that this should be restarted
             self.exitcode = 42
-        if not self.alreadyQuit:    # Need this because multiple triggers can 
+        if not self.alreadyQuit:    # Need this because multiple triggers can
                                     # call this function during quit.
             self.alreadyQuit = True
             self.timer.stop()
-            manager.logger.print_logMsg('Closing windows..', msgType='status')
+            logger.info('Closing windows...')
+            print('Closing windows...')
             if manager.hasGui:
                 manager.gui.closeWindows()
             QtCore.QCoreApplication.instance().processEvents()
-            manager.logger.print_logMsg('Stopping threads..', msgType='status')
+            logger.info('Stopping threads...')
+            print('Stopping threads...')
             manager.tm.quitAllThreads()
             QtCore.QCoreApplication.instance().processEvents()
             print('\n  QuDi is closed!  Ciao.')
         QtCore.QCoreApplication.instance().quit()
 
-# Possibility to start the program with additional parameters. In the normal 
+# Possibility to start the program with additional parameters. In the normal
 # command line or the console, you can start the program as
 #
 #   python start.py --profile --callgraph
@@ -143,9 +154,9 @@ try:
     from zmq.eventloop import ioloop
     ioloop.install()
 except:
-    print('Preparing ZMQ failed, probasbly no IPython possible!')
+    logger.error('Preparing ZMQ failed, probably no IPython possible!')
 
-# Disable garbage collector to improve stability. 
+# Disable garbage collector to improve stability.
 # (see pyqtgraph.util.garbage_collector in the doc for more information)
 from pyqtgraph.util.garbage_collector import GarbageCollector
 gc = GarbageCollector(interval=1.0, debug=False)
@@ -171,7 +182,7 @@ interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
 
 if interactive:
     print("Interactive mode; not starting event loop.")
-    
+
     # import some modules which might be useful on the command line
     import numpy as np
 
@@ -204,7 +215,7 @@ else:
         pr = cProfile.Profile()
         pr.enable()
         # ... do something ...
-        app.exec_() 
+        app.exec_()
         pr.disable()
         s = StringIO()
         sortby = 'cumulative'
@@ -225,7 +236,7 @@ else:
         helpers.exit(watchdog.exitcode)
     else:
         app.exec_()
-        # helpers.exit() causes python to exit before Qt has a chance to clean up. 
+        # helpers.exit() causes python to exit before Qt has a chance to clean up.
         # This avoids otherwise irritating exit crashes.
         helpers.exit(watchdog.exitcode)
 

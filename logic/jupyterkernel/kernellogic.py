@@ -79,7 +79,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        self.logMsg('Start {}'.format(realconfig), msgType="status")
+        self.log.info('Start {}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -90,10 +90,10 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
+        self.log.info('Kernel is {}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
-        self.logMsg('Finished starting Kernel {}'.format(kernel.engine_id), msgType="status")
+        self.log.info('Finished starting Kernel {}'.format(kernel.engine_id))
         self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
@@ -102,7 +102,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
+        self.log.info('Stopping {}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
 
@@ -112,13 +112,13 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel reference to remove
           @param callable external: reference to rpyc client exit function
         """
-        self.logMsg('Cleanup kernel {}'.format(kernelid), msgType="status")
+        self.log.info('Cleanup kernel {}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:
                 external.exit()
             except:
-                self.logMsg('External qudikernel starter did not exit', msgType="warning")
+                self.log.warning('External qudikernel starter did not exit')
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace,

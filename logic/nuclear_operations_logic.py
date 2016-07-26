@@ -78,13 +78,11 @@ class NuclearOperationsLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
 
 
@@ -286,10 +284,10 @@ class NuclearOperationsLogic(GenericLogic):
             elif self.mw_on_odmr_peak == 2:
                 self.mw_cw_freq = self.odmr_meas_freq2
             else:
-                self.logMsg('The maximum number of odmr can only be 3, '
-                            'therfore only the peaks with number 0, 1 or 2 can '
-                            'be selected but an number of "{0}" was set. '
-                            'Measurement stopped!'.format(self.mw_on_odmr_peak))
+                self.log.error('The maximum number of odmr can only be 3, '
+                        'therfore only the peaks with number 0, 1 or 2 can '
+                        'be selected but an number of "{0}" was set. '
+                        'Measurement stopped!'.format(self.mw_on_odmr_peak))
                 self.stop_nuclear_meas()
                 self.sigNextMeasPoint.emit()
                 return

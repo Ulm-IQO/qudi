@@ -64,13 +64,11 @@ class QdplotterGui(GUIBase):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
 
     def initUI(self, e=None):
@@ -187,7 +185,7 @@ class QdplotterGui(GUIBase):
     def domain_changed(self):
         """ Handling the change of the domain.
         """
-        self._qdplot_logic.set_domain([self._mw.domain_min_DoubleSpinBox.value(), 
+        self._qdplot_logic.set_domain([self._mw.domain_min_DoubleSpinBox.value(),
                                        self._mw.domain_max_DoubleSpinBox.value()
                                        ]
                                       )
@@ -196,7 +194,7 @@ class QdplotterGui(GUIBase):
     def range_changed(self):
         """ Handling the change of range.
         """
-        self._qdplot_logic.set_range([self._mw.range_min_DoubleSpinBox.value(), 
+        self._qdplot_logic.set_range([self._mw.range_min_DoubleSpinBox.value(),
                                       self._mw.range_max_DoubleSpinBox.value()
                                       ]
                                      )

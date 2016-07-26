@@ -65,24 +65,23 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         if 'fpgacounter_serial' in config.keys():
             self._serial = config['fpgacounter_serial']
         else:
-            self.logMsg('No parameter "fpgacounter_serial" specified  in the '
-                        'config! Set the serial number for the currently used '
-                        'fpga counter!\n'
-                        'Open the Opal Kelly Frontpanel to obtain the serial '
-                        'number of the connected FPGA.\n'
-                        'Do not forget to close the Frontpanel before starting '
-                        'the QuDi program.', msgType='error')
+            self.log.error('No parameter "fpgacounter_serial" specified in '
+                    'the config! Set the serial number for the currently '
+                    'used fpga counter!\n'
+                    'Open the Opal Kelly Frontpanel to obtain the serial '
+                    'number of the connected FPGA.\n'
+                    'Do not forget to close the Frontpanel before starting '
+                    'the QuDi program.')
 
         if 'fpga_type' in config.keys():
             self._fpga_type = config['fpga_type']
         else:
             self._fpga_type = 'XEM6310_LX150'
-            self.logMsg('No parameter "fpga_type" specified in the config!\n'
-                        'Possible types are "XEM6310_LX150" or '
-                        '"XEM6310_LX45".\n'
-                        'Taking the type "{0}" as '
-                        'default.'.format(self._fpga_type),
-                        msgType='warning')
+            self.log.warning('No parameter "fpga_type" specified in the '
+                    'config!\n'
+                    'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
+                    'Taking the type "{0}" as default.'.format(
+                        self._fpga_type))
 
         self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5}
         for key in config.keys():
@@ -136,8 +135,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # check if a FPGA is connected to this host PC. That method is used to
         # determine also how many devices are available.
         if not self._fpga.GetDeviceCount():
-            self.logMsg('No FPGA connected to host PC or FrontPanel.exe is '
-                        'running.', msgType='error')
+            self.log.error('No FPGA connected to host PC or FrontPanel.exe '
+                    'is running.')
             return -1
 
         # open a connection to the FPGA with the specified serial number
@@ -155,8 +154,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # Check if the upload was successful and the Opal Kelly FrontPanel is
         # enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
-            self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA',
-                        msgType='error')
+            self.log.error('Opal Kelly FrontPanel is not enabled in FPGA')
             self.statusvar = -1
             return -1
         else:
@@ -311,14 +309,13 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # one timebin of the data to read is 32 bit wide and the data is
         # transferred in bytes.
         if self.statusvar != 2:
-            self.logMsg('The FPGA is currently not running! The current status '
-                        'is: "{0}". The running status would be 2. Start the '
-                        'FPGA to get the data_trace of the device. An emtpy '
-                        'numpy array[{1},{2}] filled with zeros will be '
-                        'returned.'.format(self.statusvar,
-                                           self._number_of_gates,
-                                           self._gate_length_bins),
-                        msgType='error')
+            self.log.error('The FPGA is currently not running! The current '
+                    'status is: "{0}". The running status would be 2. Start '
+                    'the FPGA to get the data_trace of the device. An emtpy '
+                    'numpy array[{1},{2}] filled with zeros will be '
+                    'returned.'.format(self.statusvar,
+                        self._number_of_gates,
+                        self._gate_length_bins))
 
             return self.count_data
 

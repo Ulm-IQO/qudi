@@ -60,17 +60,16 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('MicrowaveSMR20: did not find parameter '
-                        '>>gpib_address<< in configuration.', msgType='error')
+            self.log.error('MicrowaveSMR20: did not find parameter '
+                        '>>gpib_address<< in configuration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg('MicrowaveSMR20: did not find >>gpib_timeout<< in '
+            self.log.error('MicrowaveSMR20: did not find >>gpib_timeout<< in '
                         'configration. It will be set to {0} '
-                        'seconds.'.format(self._gpib_timeout),
-                        msgType='error')
+                        'seconds.'.format(self._gpib_timeout))
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -79,12 +78,11 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
                                                           timeout=self._gpib_timeout)
             #self._gpib_connection.term_chars = "\r\n"
 
-            self.logMsg('MicrowaveSMR20: initialised and connected to '
-                        'hardware.', msgType='status')
+            self.log.info('MicrowaveSMR20: initialised and connected to '
+                        'hardware.')
         except:
-             self.logMsg('MicrowaveSMR20: could not connect to the GPIB '
-                         'address >>{0}<<.'.format(self._gpib_address),
-                         msgType='error')
+             self.log.error('MicrowaveSMR20: could not connect to the GPIB '
+                         'address >>{0}<<.'.format(self._gpib_address))
 
         # set manually the number of entries in a list, the explanation for that
         # procedure is in the function self.set_list.
@@ -204,8 +202,8 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         error = 0
 
         if self.set_cw(freq[0],power) != 0:
-            self.logMsg('The frequency list has an invalide first frequency '
-                        'and power, which cannot be set.', msgType='error')
+            self.log.error('The frequency list has an invalide first '
+                    'frequency and power, which cannot be set.')
             error = -1
 
         # Bug in the micro controller of SMR20:
@@ -215,11 +213,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         # extreme annoying bug. Therefore catch too long lists.
 
         if len(freq)> self._num_list_entries:
-            self.logMsg('The frequency list exceeds the hardware limitation of '
-                        '{0} list entries. Aborting creation of a list due to '
-                        'potential overwrite of the firmware on the '
-                        'device.'.format(self._num_list_entries),
-                        msgType='error')
+            self.log.error('The frequency list exceeds the hardware '
+                    'limitation of {0} list entries. Aborting creation of a '
+                    'list due to potential overwrite of the firmware on the '
+                    'device.'.format(self._num_list_entries))
             return -1
 
         self._gpib_connection.write(':SOUR:LIST:MODE STEP')
@@ -267,8 +264,8 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         if N != len(freq):
             error = -1
-            self.logMsg('The input Frequency list does not corresponds to the '
-                        'generated List from the SMR20.', msgType='error')
+            self.log.error('The input Frequency list does not corresponds to '
+                    'the generated List from the SMR20.')
 
         return error
 

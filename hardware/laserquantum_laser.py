@@ -83,7 +83,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
                 send_end=True)
             self.inst.timeout = 50
         except visa.VisaIOError as e:
-            self.logExc()
+            self.log.exception("")
             return False
         else:
             return True

@@ -92,29 +92,25 @@ class Magnet(Base, MagnetInterface):
         if 'magnet_port' in config.keys():
             port = config['magnet_port']
         else:
-            self.logMsg('No port hs been defined in the config file!',
-                        msgType='error')
+            self.log.error('No port hs been defined in the config file!')
             return -1
 
         if 'magnet_IP_address_x' in config.keys():
             self.soc_x.connect((config['magnet_IP_address_x'], port))
         else:
-            self.logMsg('No ip-address for connection to x-coil defined!',
-                        msgType='error')
+            self.log.error('No ip-address for connection to x-coil defined!')
             return -1
 
         if 'magnet_IP_address_y' in config.keys():
             self.soc_y.connect((config['magnet_IP_address_y'], port))
         else:
-            self.logMsg('No ip-address for connection to y-coil defined!',
-                        msgType='error')
+            self.log.('No ip-address for connection to y-coil defined!')
             return -1
 
         if 'magnet_IP_address_z' in config.keys():
             self.soc_z.connect((config['magnet_IP_address_z'], port))
         else:
-            self.logMsg('No ip-address for connection to z-coil defined!',
-                        msgType='error')
+            self.log.error('No ip-address for connection to z-coil defined!')
             return -1
 
         if 'magnet_waitingtime' in config.keys():
@@ -256,8 +252,8 @@ class Magnet(Base, MagnetInterface):
             internal_counter += 1
 
         if internal_counter == 0:
-            self.logMsg('no parameter_dict was given therefore the function tell() call was useless',
-                        msgType='warning')
+            self.log.warning('no parameter_dict was given therefore the '
+                    'function tell() call was useless')
 
     def ask(self, param_dict):
         """Asks the magnet a 'question' and returns an answer from it.
@@ -315,8 +311,8 @@ class Magnet(Base, MagnetInterface):
             answer_dict['z'] = answer_dict['z'].replace('\n', '')
 
         if len(answer_dict) == 0:
-            self.logMsg('no parameter_dict was given therefore the function call ask() was useless',
-                        msgType='warning')
+            self.log.warning('no parameter_dict was given therefore the '
+                    'function call ask() was useless')
 
         return answer_dict
 
@@ -417,8 +413,9 @@ class Magnet(Base, MagnetInterface):
             else:
                 self.cool_all_switches()
         else:
-            self.logMsg("can not correctly turn on/ turn off magnet, because not all coils" +
-                        "are in the same state in function initialize", msgType="warning")
+            self.log.warning('can not correctly turn on/ turn off magnet, '
+                'because not all coils are in the same state in function '
+                'initialize')
             return -1
 
         return 0
@@ -481,8 +478,8 @@ class Magnet(Base, MagnetInterface):
         elif param_dict.get('z') is not None:
             field_dict['z'] = param_dict['z']
         else:
-            self.logMsg('no valid axis was supplied in target_field_setpoint',
-                        msgType='warning')
+            self.log.warning('no valid axis was supplied in '
+                    'target_field_setpoint')
             return -1
 
         new_coord = [field_dict['x'], field_dict['y'], field_dict['z']]
@@ -496,8 +493,8 @@ class Magnet(Base, MagnetInterface):
                 self.soc_z.send(self.utf8_to_byte("CONF:FIELD:TARG " + str(param_dict['z']) + "\n"))
 
         else:
-            self.logMsg('resulting field would be too high in target_field_setpoint',
-                        msgType='warning')
+            self.log.warning('resulting field would be too high in '
+                    'target_field_setpoint')
             return -1
 
         return 0
@@ -522,8 +519,8 @@ class Magnet(Base, MagnetInterface):
             elif 'z' in param_list:
                 self.soc_z.send(self.utf8_to_byte("RAMP\n"))
             else:
-                self.logMsg("in function ramp your definition of param_list was incorrect",
-                            msgType='warning')
+                self.log.warning('in function ramp your definition of '
+                'param_list was incorrect')
                 return -1
         return 0
 
@@ -570,8 +567,7 @@ class Magnet(Base, MagnetInterface):
             elif 'z' in param_list:
                 self.ramp_to_zero("z")
             else:
-                self.logMsg('no valid axis was supplied',
-                            msgType='warning')
+                self.log.error('no valid axis was supplied')
                 return -1
 
         return 0
@@ -614,8 +610,7 @@ class Magnet(Base, MagnetInterface):
 
         for key in param_dict.keys():
                 if key not in label_list:
-                    self.logMsg("The key "+key+" provided is no valid key in set_coordinates.",
-                                msgType='warning')
+                    self.log.warning("The key "+key+" provided is no valid key in set_coordinates.")
                     return -1
 
         transform_dict = {'rad': {'cart': coord_list}}
@@ -662,7 +657,7 @@ class Magnet(Base, MagnetInterface):
             check_1 = self.set_coordinates(param_dict)
             check_2 = self.ramp()
         else:
-            self.logMsg("move_abs hasn't done anything, see check_constraints message why", msgType="warning")
+            self.log.warning("move_abs hasn't done anything, see check_constraints message why")
             return -1
 
         check_1 = self.set_coordinates(param_dict)
@@ -709,8 +704,7 @@ class Magnet(Base, MagnetInterface):
 
         for key in param_dict.keys():
             if key not in label_list:
-                self.logMsg("The key "+key+" provided is no valid key in set_coordinates.",
-                            msgType='warning')
+                self.log.warning("The key "+key+" provided is no valid key in set_coordinates.")
                 return -1
         new_coord_dict = {'rho': coord_list[0], 'theta': coord_list[1],
                           'phi': coord_list[2]}
@@ -741,8 +735,7 @@ class Magnet(Base, MagnetInterface):
                 try:
                     rho, theta, phi = param_dict['deg'].get('rad')
                 except ValueError:
-                    self.logMsg('Supplied input list for transform_coordinates has to be of length 3: returning initial values',
-                                msgType='error')
+                    self.log.error('Supplied input list for transform_coordinates has to be of length 3: returning initial values')
                     return [-1, -1, -1]
 
                 theta = theta*np.pi/180
@@ -755,8 +748,7 @@ class Magnet(Base, MagnetInterface):
                 try:
                     rho, theta, phi = param_dict['deg'].get('cart')
                 except ValueError:
-                    self.logMsg('Supplied input list for transform_coordinates has to be of length 3: returning [-1,-1,-1]',
-                            msgType='error')
+                    self.log.error('Supplied input list for transform_coordinates has to be of length 3: returning [-1,-1,-1]')
                     return [-1, -1, -1]
             # transformations that should probably be revisited.
             # They are there in case the theta and phi values
@@ -787,7 +779,7 @@ class Magnet(Base, MagnetInterface):
                 try:
                     rho, theta, phi  = param_dict['rad']['deg']
                 except ValueError:
-                    self.logMsg("Supplied input list for transform_coordinates has to be of length 3: returning [-1, -1, -1]", msgType="error")
+                    self.log.error("Supplied input list for transform_coordinates has to be of length 3: returning [-1, -1, -1]")
                     return [-1,-1,-1]
                 theta = 180*theta/np.pi
                 phi = 180*phi/np.pi
@@ -797,7 +789,7 @@ class Magnet(Base, MagnetInterface):
                 try:
                     rho, theta, phi  = param_dict['rad']['cart']
                 except ValueError:
-                    self.logMsg("Supplied input list for transf has to be of length 3: returning [-1, -1, -1]", msgType="error")
+                    self.log.error("Supplied input list for transf has to be of length 3: returning [-1, -1, -1]")
                     return [-1,-1,-1]
                 x_val = rho * np.sin(theta) * np.cos(phi)
                 y_val = rho * np.sin(theta) * np.sin(phi)
@@ -810,7 +802,7 @@ class Magnet(Base, MagnetInterface):
                 try:
                     x_val, y_val, z_val  = param_dict['cart']['deg']
                 except ValueError:
-                    self.logMsg("Supplied input list for transform_coordinates has to be of length 3: returning [-1, -1, -1]", msgType="error")
+                    self.log.error("Supplied input list for transform_coordinates has to be of length 3: returning [-1, -1, -1]")
                     return [-1,-1,-1]
                 rho = np.sqrt(x_val ** 2 + y_val ** 2 + z_val ** 2)
                 if rho == 0:
@@ -830,7 +822,7 @@ class Magnet(Base, MagnetInterface):
                 try:
                     x_val, y_val, z_val  = param_dict['cart']['rad']
                 except ValueError:
-                    self.logMsg("Supplied input list for transform_coordinates has to be of length 3: returning [-1, -1, -1]", msgType="error")
+                    self.log.error("Supplied input list for transform_coordinates has to be of length 3: returning [-1, -1, -1]")
                     return [-1,-1,-1]
                 rho = np.sqrt(x_val ** 2 + y_val ** 2 + z_val ** 2)
                 if rho == 0:
@@ -925,8 +917,7 @@ class Magnet(Base, MagnetInterface):
             self.soc_y.send(self.utf8_to_byte("PAUSE\n"))
             self.soc_z.send(self.utf8_to_byte("PAUSE\n"))
         elif len(param_list) > 0:
-            self.logMsg('Some useless parameters were passed.',
-            msgType='warning')
+            self.log.warning('Some useless parameters were passed.')
             return -1
         else:
             if 'x' in param_list:
@@ -1061,11 +1052,10 @@ class Magnet(Base, MagnetInterface):
                 elif stateval == '10':
                     translated_status = 'Cooling persistent switch'
                 else:
-                    self.logMsg('Something went wrong in ask_status as the statevalue was not between 1 and 10!',
-                            msgType='warning')
+                    self.log.warning('Something went wrong in ask_status as the statevalue was not between 1 and 10!')
                     return -1
             except ValueError:
-                self.logMsg("Sometimes the magnet returns nonsense after a request", msgType="warning")
+                self.log.warning("Sometimes the magnet returns nonsense after a request")
                 return -1
             status_dict[myiter] = translated_status
 
@@ -1099,7 +1089,7 @@ class Magnet(Base, MagnetInterface):
             if constraint_x > param_list[1]:
                 tell_dict['x'] = 'CONF:RAMP:RATE:FIELD:' + str(param_list[0]) + ", " + str(param_list[1]) + ", " + str(param_list[0])
             else:
-                self.logMsg("constraint vel_max was violated in set_velocity with axis = 'x'", msgType='warning')
+                self.log.waring("constraint vel_max was violated in set_velocity with axis = 'x'")
 
             internal_counter += 1
         if param_dict.get('y') is not None:
@@ -1108,7 +1098,7 @@ class Magnet(Base, MagnetInterface):
             if constraint_y > param_list[1]:
                 tell_dict['y'] = 'CONF:RAMP:RATE:FIELD:' + str(param_list[0]) + ", " + str(param_list[1]) + ", " + str(param_list[0])
             else:
-                self.logMsg("constraint vel_max was violated in set_velocity with axis = 'y'", msgType='warning')
+                self.log.warning("constraint vel_max was violated in set_velocity with axis = 'y'")
             internal_counter += 1
         if param_dict.get('z') is not None:
             param_list = param_dict['z']
@@ -1117,14 +1107,13 @@ class Magnet(Base, MagnetInterface):
             if constraint_z > param_list[1]:
                 tell_dict['z'] = 'CONF:RAMP:RATE:FIELD:' + str(param_list[0]) + ", " + str(param_list[1]) + ", " + str(param_list[0])
             else:
-                self.logMsg("constraint vel_max was violated in set_velocity with axis = 'z'", msgType='warning')
+                self.log.warning("constraint vel_max was violated in set_velocity with axis = 'z'")
             internal_counter += 1
 
         if internal_counter > 0:
             self.tell(tell_dict)
         else:
-            self.logMsg('There was no statement supplied in change_ramp_rate',
-                        msgType='warning')
+            self.log.warning('There was no statement supplied in change_ramp_rate')
             return_val = -1
 
         return return_val
@@ -1183,31 +1172,27 @@ class Magnet(Base, MagnetInterface):
             try:
                 x_val, y_val, z_val = coord_list
             except ValueError:
-                self.logMsg("In check_constraints list has not the right amount of elements (3).", msgType="error")
+                self.log.error("In check_constraints list has not the right amount of elements (3).")
                 return [-1, -1, -1]
             if mode == "normal_mode":
                 if np.abs(x_val) > self.x_constr:
                     my_boolean = False
-                    self.logMsg("In check_constraints the field constraint in x-direction would be violated"
-                                " with your settings.",
-                                msgType="error")
+                    self.log.error("In check_constraints the field constraint in x-direction would be violated"
+                                " with your settings.")
                 if np.abs(y_val) > self.y_constr:
                     my_boolean = False
-                    self.logMsg("In check_constraints the field constraint in y-direction would be violated"
-                                " with your settings.",
-                                msgType="error")
+                    self.log.error("In check_constraints the field constraint in y-direction would be violated"
+                                " with your settings.")
                 #the x here is intentional, as the normal_mode constraints are cubic.
                 if np.abs(z_val) > self.x_constr:
                     my_boolean = False
-                    self.logMsg("In check_constraints the field constraint in z-direction would be violated"
-                                " with your settings.",
-                                msgType="error")
+                    self.log.error("In check_constraints the field constraint in z-direction would be violated"
+                                " with your settings.")
                 field_magnitude = np.sqrt(x_val**2 + y_val**2 + z_val**2)
                 if field_magnitude > self.rho_constr:
                     my_boolean = False
-                    self.logMsg("In check_constraints your settings would surpass the allowed length"
-                                " of the magnetic field vector.",
-                                msgType="error")
+                    self.log.error("In check_constraints your settings would surpass the allowed length"
+                                " of the magnetic field vector.")
             elif mode == "z_mode":
                 # Either in sphere on top of the cone
                 # or in cone itself.
@@ -1223,8 +1208,8 @@ class Magnet(Base, MagnetInterface):
                     my_boolean = True
 
                 if not my_boolean:
-                    self.logMsg("In check_constraints your settings don't lie in the allowed cone. See the "
-                                "function for move information", msgType="warning")
+                    self.log.warning("In check_constraints your settings don't lie in the allowed cone. See the "
+                                "function for move information")
             return my_boolean
 
         return_val = False
@@ -1243,12 +1228,12 @@ class Magnet(Base, MagnetInterface):
                 if not (constr['theta']['pos_min'] <= theta <= constr['theta']['pos_max']):
                     print("now here")
                     return_val = False
-                    self.logMsg("In check_constraints your theta values don't lie between 0 and pi. Can lead to "
-                                "erroneous behavior", msgType="warning")
+                    self.log.warning("In check_constraints your theta values don't lie between 0 and pi. Can lead to "
+                                "erroneous behavior")
                 if not (constr['phi']['pos_min'] <= phi <= constr['phi']['pos_max']):
                     return_val = False
-                    self.logMsg("In check_constraints your phi values don't lie between 0 and 2 pi."
-                                " Can lead to erroneous behavior", msgType="warning")
+                    self.log.warning("In check_constraints your phi values don't lie between 0 and 2 pi."
+                                " Can lead to erroneous behavior")
 # ok degree mode here won't work properly, because I don't check the move constraints
             if param_dict['normal_mode'].get("deg") is not None:
                 transform_dict = {'deg': {'cart': param_dict['normal_mode']["deg"]}}
@@ -1267,19 +1252,17 @@ class Magnet(Base, MagnetInterface):
                 phi = param_dict['z_mode']['rad'][2]
                 if not (0 <= theta <= 5*np.pi/180):
                     return_val = False
-                    self.logMsg("In check_constraints your theta values don't lie between 0 and  5 pi / 180."
-                                , msgType="warning")
+                    self.log.warning("In check_constraints your theta values don't lie between 0 and  5 pi / 180.")
                 if not (constr['phi']['pos_min'] <= phi <= constr['phi']['pos_max']):
                     return_val = False
-                    self.logMsg("In check_constraints your phi values don't lie between 0 and 2 pi."
-                                "Can lead to erroneous behavior", msgType="warning")
+                    self.log.warning("In check_constraints your phi values don't lie between 0 and 2 pi."
+                                "Can lead to erroneous behavior")
             if param_dict['z_mode'].get("deg") is not None:
                 transform_dict = {'deg': {'cart': param_dict['z_mode']["deg"]}}
                 cart_coord = self.transform_coordinates(transform_dict)
                 return_val = check_cart_constraints(cart_coord, 'z_mode')
         else:
-            self.logMsg("no valid key was provided, therefore nothing happened in function check_constraints."
-                        , msgType="warning")
+            self.log.warning("no valid key was provided, therefore nothing happened in function check_constraints.")
         return return_val
 
     def rho_max_pos(self, param_dict):

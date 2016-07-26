@@ -55,16 +55,15 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('This is MWanritsu: did not find >>gpib_address<< in '
-                        'configration.', msgType='error')
+            self.log.error('This is MWanritsu: did not find >>gpib_address<< '
+                    'in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg('This is MWanritsu: did not find >>gpib_timeout<< in '
-                        'configration. I will set it to 10 seconds.',
-                        msgType='error')
+            self.log.error('This is MWanritsu: did not find >>gpib_timeout<< '
+                    'in configration. I will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -72,13 +71,12 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout*1000)
         except:
-            self.logMsg('This is MWanritsu: could not connect to the GPIB '
-                        'address >>{}<<.'.format(self._gpib_address),
-                        msgType='error')
+            self.log.error('This is MWanritsu: could not connect to the GPIB '
+                        'address >>{}<<.'.format(self._gpib_address))
             raise
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
-        self.logMsg('MicrowaveAnritsu initialised and connected to hardware.',
-                    msgType='status')
+        self.log.info('MicrowaveAnritsu initialised and connected to '
+                'hardware.')
 
     def on_deactivate(self,e=None):
         """ Deinitialisation performed during deactivation of the module.
