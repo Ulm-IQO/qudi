@@ -121,8 +121,15 @@ class Base(QtCore.QObject, Fysom):
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
     def __getattr__(self, name):
-        # this is a workaround since otherwise only __getattr__ of QObject
-        # is called
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
         try:
             return QtCore.QObject.__getattr__(self, name)
         except AttributeError:
