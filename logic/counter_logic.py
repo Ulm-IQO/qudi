@@ -68,12 +68,11 @@ class CounterLogic(GenericLogic):
         #locking for thread safety
         self.threadlock = Mutex()
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self._count_length = 300
         self._count_frequency = 50
@@ -300,7 +299,7 @@ class CounterLogic(GenericLogic):
                                        plotfig = fig
                                        )
             #, as_xml=False, precision=None, delimiter=None)
-            self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+            self.log.debug('Counter Trace saved to:\n{0}'.format(filepath))
 
         return self._data_to_save, parameters
 
@@ -360,8 +359,7 @@ class CounterLogic(GenericLogic):
         elif self._counting_mode == 'finite-gated':
             self._startCount_finite_gated()
         else:
-            self.logMsg('Unknown counting mode, can not start the counter.',
-                        msgType='error')
+            self.log.error('Unknown counting mode, cannot start the counter.')
 
     def _startCount_continuous(self):
         """Prepare to start counting change state and start counting 'loop'."""
@@ -463,7 +461,8 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    self.logExc('Could not even close the hardware, giving up.', msgType='error')
+                    self.log.exception('Could not even close the hardware,'
+                            ' giving up.')
                     raise e
                 finally:
                     # switch the state variable off again
@@ -477,7 +476,7 @@ class CounterLogic(GenericLogic):
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
 
         except Exception as e:
-            self.logMsg('The counting went wrong, killing the counter.', msgType='error')
+            self.log.error('The counting went wrong, killing the counter.')
             self.stopCount()
             self.sigCountContinuousNext.emit()
             raise e
@@ -554,7 +553,8 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()#gated
                     self._counting_device.close_clock()#gated
                 except Exception as e:
-                    self.logMsg('Could not even close the hardware, giving up.', msgType='error')
+                    self.log.error('Could not even close the hardware, '
+                            'giving up.')
                     raise e
                 finally:
                     # switch the state variable off again
@@ -568,7 +568,7 @@ class CounterLogic(GenericLogic):
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)#gated
 
         except Exception as e:
-            self.logMsg('The counting went wrong, killing the counter.', msgType='error')
+            self.log.error('The counting went wrong, killing the counter.')
             self.stopCount()
             self.sigCountContinuousNext.emit()
             raise e
@@ -617,8 +617,8 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    self.logExc('Could not even close the hardware, giving up.',
-                                msgType='error')
+                    self.log.exception('Could not even close the '
+                            'hardware, giving up.')
                     raise e
                 finally:
                     # switch the state variable off again
@@ -633,8 +633,7 @@ class CounterLogic(GenericLogic):
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
 
         except Exception as e:
-            self.logMsg('The counting went wrong, killing the counter.',
-                        msgType='error')
+            self.log.error('The counting went wrong, killing the counter.')
             self.stopCount()
             self.sigCountFiniteGatedNext.emit()
             raise e
@@ -650,8 +649,8 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
         else:
-            #self.logMsg(('len(self.rawdata[0]):', len(self.rawdata[0])))
-            #self.logMsg(('self._already_counted_samples', self._already_counted_samples))
+            #self.log.debug(('len(self.rawdata[0]):', len(self.rawdata[0])))
+            #self.log.debug(('self._already_counted_samples', self._already_counted_samples))
 
             # replace the first part of the array with the new data:
             self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
@@ -659,7 +658,7 @@ class CounterLogic(GenericLogic):
             self.countdata=np.roll(self.countdata, -len(self.rawdata[0]))
             # increment the index counter:
             self._already_counted_samples += len(self.rawdata[0])
-            # self.logMsg(('already_counted_samples:',self._already_counted_samples))
+            # self.log.debug(('already_counted_samples:',self._already_counted_samples))
 
         # remember the new count data in circular array
         # self.countdata[0:len(self.rawdata)] = np.average(self.rawdata[0])
@@ -731,8 +730,8 @@ class CounterLogic(GenericLogic):
                                    filelabel=filelabel, as_text=True)
 
         #, as_xml=False, precision=None, delimiter=None)
-        self.logMsg('Current Counter Trace saved to:\n'
-                    '{0}'.format(filepath), msgType='status', importance=3)
+        self.log.debug('Current Counter Trace saved to:\n'
+                    '{0}'.format(filepath))
 
 
 

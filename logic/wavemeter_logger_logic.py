@@ -114,17 +114,16 @@ class WavemeterLoggerLogic(GenericLogic):
             self._logic_acquisition_timing = config['logic_acquisition_timing']
         else:
             self._logic_acquisition_timing = 20.
-            self.logMsg('No logic_acquisition_timing configured, '
-                        'using {} instead.'.format(self._logic_acquisition_timing),
-                        msgType='warning')
+            self.log.warning('No logic_acquisition_timing configured, '
+                    'using {} instead.'.format(
+                        self._logic_acquisition_timing))
 
         if 'logic_update_timing' in config.keys():
             self._logic_update_timing = config['logic_update_timing']
         else:
             self._logic_update_timing = 100.
-            self.logMsg('No logic_update_timing configured, '
-                        'using {} instead.'.format(self._logic_update_timing),
-                        msgType='warning')
+            self.log.warning('No logic_update_timing configured, '
+                    'using {} instead.'.format(self._logic_update_timing))
 
         self._acqusition_start_time = 0
         self._bins = 200
@@ -345,13 +344,10 @@ class WavemeterLoggerLogic(GenericLogic):
         if complete_histogram:
             count_window = len(self._counter_logic._data_to_save)
             self._data_index = 0
-            self.logMsg(('Recalcutating Laser Scanning Histogram for: '
-                         '{0:d} counts and {1:d} wavelength.').format(
-                            count_window,
-                            len(self._wavelength_data)
-                            ),
-                        msgType='status'
-                        )
+            self.log.info('Recalcutating Laser Scanning Histogram for: '
+                    '{0:d} counts and {1:d} wavelength.'.format(
+                        count_window,
+                        len(self._wavelength_data)))
         else:
             count_window = min(100, len(self._counter_logic._data_to_save))
 
@@ -470,8 +466,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
 
 
-        self.logMsg('Laser Scan saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
         filelabel = 'wavemeter_log_counts_with_wavelength'
 

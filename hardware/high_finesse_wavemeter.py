@@ -113,9 +113,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             self._measurement_timing=config['measurement_timing']
         else:
             self._measurement_timing = 10.
-            self.logMsg('No measurement_timing configured, '\
-                        'using {} instead.'.format(self._measurement_timing),
-                        msgType='warning')
+            self.log.warning('No measurement_timing configured, '\
+                        'using {} instead.'.format(self._measurement_timing))
 
 
     def activation(self, e):
@@ -127,8 +126,9 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             self._wavemeterdll = ctypes.windll.LoadLibrary('wlmData.dll')
 
         except:
-            self.logMsg('There is no Wavemeter installed on this Computer.\n Please install a High Finesse Wavemeter and try again.',
-                    msgType='error')
+            self.log.critical('There is no Wavemeter installed on this '
+                    'Computer.\nPlease install a High Finesse Wavemeter and '
+                    'try again.')
 
         # define the use of the GetWavelength function of the wavemeter
 #        self._GetWavelength2 = self._wavemeterdll.GetWavelength2
@@ -185,8 +185,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             del self._wavemeterdll
             return 0
         except:
-            self.logMsg('Could not unload the wlmData.dll of the wavemeter.',
-                    msgType='error')
+            self.log.error('Could not unload the wlmData.dll of the '
+                    'wavemeter.')
 
 
     #############################################
@@ -209,8 +209,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
         # first check its status
         if self.getState() == 'running':
-            self.logMsg('Wavemeter busy',
-                    msgType='error')
+            self.log.error('Wavemeter busy')
             return -1
 
 
@@ -230,8 +229,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         # check status just for a sanity check
         if self.getState() == 'idle':
-            self.logMsg('Wavemeter was already stopped, stopping it anyway!',
-                    msgType='warning')
+            self.log.warning('Wavemeter was already stopped, stopping it '
+                    'anyway!')
         else:
             # stop the measurement thread
             self.sig_handle_timer.emit(True)

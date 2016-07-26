@@ -19,6 +19,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 from pyqtgraph.Qt import QtCore
 from collections import OrderedDict
 from .util.mutex import Mutex
@@ -27,8 +30,6 @@ from .util.mutex import Mutex
 class ThreadManager(QtCore.QAbstractTableModel):
     """ This class keeps track of all the QThreads that are needed somewhere.
     """
-    sigLogMessage = QtCore.Signal(object)
-
     def __init__(self):
         super().__init__()
         self._threads = OrderedDict()
@@ -41,7 +42,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @return QThread: new thred, none if failed
         """
-        self.threadLog('Creating thread: \"{0}\".'.format(name))
+        logger.debug('Creating thread: \"{0}\".'.format(name))
         with self.lock:
             if 'name' in self._threads:
                 return None
@@ -58,10 +59,11 @@ class ThreadManager(QtCore.QAbstractTableModel):
           @param str name: unique thread name
         """
         if name in self._threads:
-            self.threadLog('Quitting thread {0}.'.format(name))
+            logger.debug('Quitting thread {0}.'.format(name))
             self._threads[name].thread.quit()
         else:
-            self.threadLog('You tried quitting a nonexistent thread {0}.'.format(name))
+            logger.debug('You tried quitting a nonexistent thread {0}.'
+                    ''.format(name))
 
     def joinThread(self, name, time=None):
         """Stop event loop of QThread.
@@ -70,20 +72,21 @@ class ThreadManager(QtCore.QAbstractTableModel):
           @param int time: timeout for waiting in msec
         """
         if name in self._threads:
-            self.threadLog('Waiting for thread {0} to end.'.format(name))
+            logger.debug('Waiting for thread {0} to end.'.format(name))
             if time is None:
                 self._threads[name].thread.wait()
             else:
                 self._threads[name].thread.wait(time)
         else:
-            self.threadLog('You tried waiting for a nonexistent thread {0}.'.format(name))
+            logger.debug('You tried waiting for a nonexistent thread {0}.'
+                    ''.format(name))
 
     def cleanupThread(self, name):
         """Remove thread from thread list if it is not running anymore.
-          
+
           @param str name: unique thread name
         """
-        self.threadLog('Cleaning up thread {0}.'.format(name))
+        logger.debug('Cleaning up thread {0}.'.format(name))
         if 'name' in self._threads and not self._threads[name].thread.isRunning():
             with self.lock:
                 row = self.getItemNumberByKey(name)
@@ -94,7 +97,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
     def quitAllThreads(self):
         """Stop event loop of all QThreads.
         """
-        self.threadLog('Quit all threads')
+        logger.debug('Quit all threads.')
         for name in self._threads:
             self._threads[name].thread.quit()
 
@@ -118,17 +121,6 @@ class ThreadManager(QtCore.QAbstractTableModel):
             newkey = next(it)
             i += 1
         return i
-
-
-    def threadLog(self, msg, **kwargs):
-        """Log a message with message type thread and importance 3.
-
-          @param str msg: the log message
-          @param dict kwargs: named parameters for logMsg
-        """
-        kwargs['importance'] = 3
-        kwargs['msgType'] = 'thread'
-        self.sigLogMessage.emit((msg, kwargs))
 
     def rowCount(self, parent = QtCore.QModelIndex()):
         """ Gives the number of threads registered.
@@ -176,7 +168,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
-        
+
           @param int section: number of the column to get header data for
           @param Qt.Orientation: orientation of header (horizontal or vertical)
           @param ItemDataRole: role for which to get data
@@ -209,7 +201,7 @@ class ThreadItem(QtCore.QObject):
         self.thread.setObjectName(name)
         self.name = name
         self.thread.finished.connect(self.myThreadHasQuit)
-        
+
     def myThreadHasQuit(self):
         """ Signal handler for quitting thread.
             Re-emits signal containing the unique thread name.

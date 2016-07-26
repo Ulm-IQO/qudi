@@ -40,20 +40,18 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
                          'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
-            self.logMsg('No clock_frequency configured taking 100 Hz instead.',
-                        msgType='warning')
+            self.log.warning('No clock_frequency configured taking 100 Hz '
+                    'instead.')
 
         self._scanner_counter_daq_task = None
         self._odmr_length = None
@@ -77,7 +75,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
-        self.logMsg('ODMR counter is shutting down.', importance=1)
+        self.log.debug('ODMR counter is shutting down.')
 
     def set_up_odmr_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -91,8 +89,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         if clock_frequency != None:
             self._clock_frequency = float(clock_frequency)
 
-        self.logMsg('ODMRCounterDummy>set_up_odmr_clock',
-                    msgType='warning')
+        self.log.warning('ODMRCounterDummy>set_up_odmr_clock')
 
         time.sleep(0.2)
 
@@ -111,12 +108,11 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('ODMRCounterDummy>set_up_odmr',
-                    msgType='warning')
+        self.log.warning('ODMRCounterDummy>set_up_odmr')
 
         if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
-            self.logMsg('Another odmr is already running, close this one first.',
-                        msgType='error')
+            self.log.error('Another odmr is already running, close this one '
+                    'first.')
             return -1
 
         time.sleep(0.2)
@@ -134,8 +130,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self._odmr_length = length
 #
-#        self.logMsg('ODMRCounterDummy>set_odmr_length',
-#                    msgType='warning')
+#        self.log.warning('ODMRCounterDummy>set_odmr_length')
 
         return 0
 
@@ -148,8 +143,8 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         """
 
         if self.getState() == 'locked':
-            self.logMsg('A scan_line is already running, close this one first.',
-                        msgType='error')
+            self.log.error('A scan_line is already running, close this one '
+                    'first.')
             return -1
 
         self.lock()
@@ -188,8 +183,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('ODMRCounterDummy>close_odmr',
-                    msgType='warning')
+        self.log.warning('ODMRCounterDummy>close_odmr')
 
         self._scanner_counter_daq_task = None
 
@@ -201,7 +195,6 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('ODMRCounterDummy>close_odmr_clock',
-                    msgType='warning')
+        self.log.warning('ODMRCounterDummy>close_odmr_clock')
 
         return 0

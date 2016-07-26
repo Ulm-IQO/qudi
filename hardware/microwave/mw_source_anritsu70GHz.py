@@ -50,16 +50,16 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('This is MWanritsu70GHz: did not find >>gpib_address<< '
-                        'in configration.', msgType='error')
+            self.log.error('This is MWanritsu70GHz: did not find '
+                    '>>gpib_address<<  in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg('This is MWanritsu70GHz: did not find >>gpib_timeout<< '
-                        'in configration. I will set it to 10 seconds.',
-                        msgType='error')
+            self.log.warning('This is MWanritsu70GHz: did not find '
+                    '>>gpib_timeout<< in configration. I will set it to '
+                    '10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -68,15 +68,14 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
                 self._gpib_address,
                 timeout=self._gpib_timeout*1000)
         except:
-            self.logMsg('This is MWanritsu70GHz: could not connect to the GPIB '
-                        'address >>{}<<.'.format(self._gpib_address),
-                        msgType='error')
+            log.error('This is MWanritsu70GHz: could not connect to the GPIB '
+                      'address >>{}<<.'.format(self._gpib_address))
             raise
         # native command mode, some things are missing in SCPI mode
         self._gpib_connection.write('SYST:LANG \"NATIVE\"')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
-        self.logMsg('Anritsu {} initialised and connected to hardware.'.format(self.model),
-                    msgType='status')
+        self.log.info('Anritsu {} initialised and connected to hardware.'
+                ''.format(self.model))
 
     def deactivation(self,e=None):
         self._gpib_connection.close()
