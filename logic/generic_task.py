@@ -122,6 +122,22 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
         self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
 
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+          return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+          pass
+        return Fysom.__getattr__(self, name)
+
     @property
     def log(self):
         """
@@ -360,6 +376,22 @@ class PrePostTask(QtCore.QObject, Fysom):
         self.runner = runner
         self.ref = references
         self.config = config
+
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+          return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+          pass
+        return Fysom.__getattr__(self, name)
 
     @property
     def log(self):
