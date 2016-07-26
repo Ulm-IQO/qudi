@@ -1149,24 +1149,24 @@ class PulsedMeasurementLogic(GenericLogic):
                                         'unit' : '%'}
 
         elif fit_function =='Stretched Exponential':
-            self.logMsg('Stretched Exponential not yet implemented.', msgType='warning')
+            self.log.warning('Stretched Exponential not yet implemented.')
             pulsed_fit_x = []
             pulsed_fit_y = []
 
         elif fit_function =='Exponential':
-            self.logMsg('Exponential not yet implemented.', msgType='warning')
+            self.log.warning('Exponential not yet implemented.')
             pulsed_fit_x = []
             pulsed_fit_y = []
 
         elif fit_function =='XY8':
-            self.logMsg('XY8 not yet implemented', msgType='warning')
+            self.log.warning('XY8 not yet implemented')
             pulsed_fit_x = []
             pulsed_fit_y = []
         else:
-            self.logMsg('The Fit Function "{0}" is not implemented to be used '
-                        'in the Pulsed Measurement Logic. Correct that! Fit '
-                        'Call will be skipped and Fit Function will be set to '
-                        '"No Fit".'.format(fit_function), msgType='warning')
+            self.log.warning('The Fit Function "{0}" is not implemented to '
+                    'be used in the Pulsed Measurement Logic. Correct that! '
+                    'Fit Call will be skipped and Fit Function will be set '
+                    'to "No Fit".'.format(fit_function))
             pulsed_fit_x = []
             pulsed_fit_y = []
 
