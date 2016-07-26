@@ -24,6 +24,10 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 import sys
 import scipy.optimize as opt
@@ -50,6 +54,7 @@ import statsmodels.api as sm
 #from peakutils.plot import plot as pplot
 
 #matplotlib.rcParams.update({'font.size': 12})
+
 
 class FitLogic():
         """
@@ -129,12 +134,12 @@ class FitLogic():
                                         if not str(method).split('_')[1] in oneD_fit_methods:
                                             oneD_fit_methods[str(method).split('_')[1]]=[]
                     except:
-                        self.logMsg('It was not possible to import element {} into FitLogic.'.format(method),
-                                msgType='error')
+                        logger.error('It was not possible to import element '
+                                '{} into FitLogic.'.format(method))
             try:
-                self.logMsg('Methods were included to FitLogic, but only if naming is right: ',
-                            'make_<own method>_fit. If estimator should be added, the name has',
-                                    msgType='message')
+                logger.info('Methods were included to FitLogic, but only if '
+                        'naming is right: make_<own method>_fit. If '
+                        'estimator should be added, the name has')
             except:
                 pass
 
@@ -1586,8 +1591,7 @@ class FitLogic():
             try:
                 result = mod_final.fit(data, x=axis, params=params)
             except:
-                self.logMsg('The 1D gaussian fit did not work.',
-                            msgType='warning')
+                logger.warning('The 1D gaussian fit did not work.')
                 result = mod_final.fit(data, x=axis, params=params)
                 print(result.message)
 

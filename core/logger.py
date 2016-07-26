@@ -18,247 +18,189 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
-Derived form ACQ4:
+Original version derived from ACQ4, but there shouldn't be much left, maybe
+some lines in the exception handler
 Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-import time
+
+import logging
+import logging.handlers
+import sys
 import traceback
-import sys, os
-
-import pyqtgraph.debug as pgdebug
-import pyqtgraph.configfile as configfile
+import functools
 from pyqtgraph.Qt import QtCore
-from .util.mutex import Mutex
-import numpy as np
-import weakref
-import re
 
-## install global exception handler for others to hook into.
-import pyqtgraph.exceptionHandling as exceptionHandling
-exceptionHandling.setTracebackClearing(True)
 
-global LOG
-LOG = None
+class QtLogFormatter(logging.Formatter):
+    """Formatter used with QtLogHandler.
 
-global blockLogging
-blockLogging = False
-
-global original_excepthook
-original_excepthook = sys.excepthook
-
-def printExc(msg='', indent=4, prefix='|', msgType='error'):
-    """Print an error message followed by an indented exception backtrace
-
-      @param string msg: message to be logged
-      @param int indent: indentation depth in characters
-      @param string prefix: prefix for backtrace lines
-      @param string msgType: type of message (user, status, warning, error)
-
-    (This function is intended to be called within except: blocks)
+      Converts the log record into a dictionary with the following keys:
+        - name: logger name
+        - message: the message
+        - timestamp: the creation time of the log record
+        - level: log level
+      Optional if an exception is logged:
+        - exception: dictionary with keys:
+          - message: the message
+          - traceback: a traceback
     """
-    pgdebug.printExc(msg, indent, prefix)
 
-class Logger(QtCore.QObject):
-    """Class that does all the log handling in QuDi."""
-    
-    sigLoggedMessage = QtCore.Signal(object)
-    
-    def __init__(self, manager):
-        """Create a logger instance for a manager object.
+    def format(self, record):
+        """Formatting function
 
-          @param object manager: instance of the Manager class that this logger
-                                 belongs to.
+          @param object record: :logging.LogRecord:
         """
-        super().__init__()
-        path = os.path.dirname(__file__)
-        self.manager = manager
-        self.msgCount = 0
-        self.logCount = 0
-        self.logFile = None
-        
-        # Start a new temp log file, destroying anything left over from the 
-        # last session.
-        configfile.writeConfigFile('', self.fileName())  
-        self.lock = Mutex()
-        exceptionHandling.register(self.exceptionCallback)
-
-    def exceptionCallback(self, *args):
-        """Exception logging function.
-
-          @param list args: contents of exception (typt, value, backtrace)
-        """
-        # Called whenever there is an unhandled exception.
-        # unhandled exceptions generate an error message by default, but this
-        # can be overridden.
-        global blockLogging
-        # If an error occurs *while* trying to log another exception, disable
-        # any further logging to prevent recursion.
-        if not blockLogging:
-            try:
-                blockLogging = True
-                self.logMsg('Unexpected error: ', exception=args, 
-                            msgType='error')
-                ex_type, ex_value, ex_traceback = args
-                print(ex_type)
-                if ex_type == KeyboardInterrupt:
-                    self.manager.quit()
-            except:
-                print('Error: Exception could no be logged.')
-                original_excepthook(*sys.exc_info())
-            finally:
-                blockLogging = False
-
-    # Called indirectly when logMsg is called from a non-gui thread 
-    def queuedLogMsg(self, args):
-        """Deferred message logging function.
-
-          @param list args: arguments for logMsg()
-        """
-        #print(args)
-        self.logMsg(args[0], **args[1])
-        
-    def print_logMsg(self, msg, **kwargs):
-        """Print message to stdout and log it.
-
-          @param list kwargs: paamteers for logMsg()
-        """
-        print(msg)
-        self.logMsg(msg, **kwargs)
-
-    def logMsg(self, msg, importance=5, msgType='status', **kwargs):
-        """Function for adding messages to log.
-
-          @param string msg: the text of the log message
-          @param string msgTypes: user, status, error, warning (status is default)
-          @param int importance: 0-9 (0 is low importance, 9 is high, 5 is default)
-          @param tuple exception: a tuple (type, exception, traceback) as 
-                                  returned by 'sys.exc_info()'
-          @param list(string) docs: a list of strings where documentation 
-                                    related to the message can be found
-          @param list(string) reasons: a list of reasons (as strings) for the message
-          @paam list traceback: a list of formatted callstack/trackback objects
-              (formatting a traceback/callstack returns a list of strings),
-              usually looks like
-              [['line 1', 'line 2', 'line3'], ['line1', 'line2']]
-
-           Feel free to add your own keyword arguments.
-           These will be saved in the log.txt file,
-           but will not affect the content or way that messages are displayed.
-        """
-        currentDir = None
-        
-        now = str(time.strftime('%Y.%m.%d %H:%M:%S'))
-        self.msgCount += 1
-        name = 'LogEntry_' + str(self.msgCount)
         entry = {
-            #'docs': None,
-            #'reasons': None,
-            'message': msg,
-            'timestamp': now,
-            'importance': importance,
-            'msgType': msgType,
-            #'exception': exception,
-            'id': self.msgCount,
+                'name': record.name,
+                'timestamp': self.formatTime(record,
+                    datefmt="%Y-%m-%d %H:%M:%S"),
+                'level': record.levelname
         }
-        for k in kwargs:
-            entry[k] = kwargs[k]
-            
-        self.processEntry(entry)
-        
-        # Allow exception to override values in the entry
-        if entry.get('exception', None) is not None and 'msgType' in entry['exception']:
-            entry['msgType'] = entry['exception']['msgType']
-        
-        self.saveEntry({name:entry})
-        self.sigLoggedMessage.emit(entry)
-        
-    def logExc(self, *args, **kwargs):
-        """Calls logMsg, but adds in the current exception and callstack.
-
-          @param list args: arguments for logMsg()
-          @param dict kwargs: dictionary containing exception information.
-
-        Must be called within an except block, and should only be called if the
-        exception is not re-raised.
-        Unhandled exceptions, or exceptions that reach the top of the callstack
-        are automatically logged, so logging an exception that will be 
-        re-raised can cause the exception to be logged twice.
-        Takes the same arguments as logMsg.
-        """
-        kwargs['exception'] = sys.exc_info()
-        kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]
-        self.logMsg(*args, **kwargs)
-        
-    def processEntry(self, entry):
-        """Convert excpetion into serializable form.
-            
-            @param dict entry: log file entry
-        """
-        ## pre-processing common to saveEntry and displayEntry
-        ## convert exc_info to serializable dictionary
-        if entry.get('exception', None) is not None:
-            exc_info = entry.pop('exception')
-            entry['exception'] = self.exceptionToDict(*exc_info, 
-                                        topTraceback=entry.get('traceback', []))
+        if hasattr(record, 'message'):
+            entry['message'] = record.message
         else:
-            entry['exception'] = None
+            entry['message'] = super().format(record)
+        # add exception information if available
+        if record.exc_info is not None:
+            entry['exception'] = {
+                    'message': traceback.format_exception(
+                        *record.exc_info)[-1][:-1],
+                    'traceback': traceback.format_exception(
+                        *record.exc_info)[:-1]
+                    }
 
-    def exceptionToDict(self, exType, exc, tb, topTraceback):
-        """Convert exception object to dictionary.
-          
-          @param exType: exception type
-          @param exc: exception object
-          @param tb: traceback object
-          @param topTraceback: ??
-          
-          @return dict: dictionary containing traceback and exception information
-        """
-        #lines = (traceback.format_stack()[:-skip] 
-            #+ ["  ---- exception caught ---->\n"] 
-            #+ traceback.format_tb(sys.exc_info()[2])
-            #+ traceback.format_exception_only(*sys.exc_info()[:2]))
-        #print topTraceback
-        excDict = {}
-        excDict['message'] = traceback.format_exception(exType, exc, tb)[-1][:-1] 
-        excDict['traceback'] = topTraceback + traceback.format_exception(exType, exc, tb)[:-1]
-        if hasattr(exc, 'docs'):
-            if len(exc.docs) > 0:
-                excDict['docs'] = exc.docs
-        if hasattr(exc, 'reasons'):
-            if len(exc.reasons) > 0:
-                excDict['reasons'] = exc.reasons
-        if hasattr(exc, 'kwargs'):
-            for k in exc.kwargs:
-                excDict[k] = exc.kwargs[k]
-        if hasattr(exc, 'oldExc'):
-            excDict['oldExc'] = self.exceptionToDict(*exc.oldExc, topTraceback=[])
-        return excDict
-    
-    def fileName(self):
-        """Get file name of log file.
-         
-          @return string: path to log file
-        """
-        ## return the log file currently used
-        if self.logFile is None:
-            return "tempLog.txt"
-        else:
-            return self.logFile.name()
+        return entry
 
-    def getLogDir(self):
-        """Get log directory.
 
-          @return string: path to log directory
-        """
-        return None
-    
-    def saveEntry(self, entry):
-        """Append log entry to log file.
+class QtLogHandler(QtCore.QObject, logging.Handler):
+    """Log handler for displaying log records in a QT gui.
 
-          @param dict entry: log file entry
+      For each log record the Qt signal sigLoggedMessage is emitted
+      with a dictionary as parameter. The keys of this dictionary are:
+        - name: logger name
+        - message: the message
+        - timestamp: the creation time of the log record
+        - level: log level
+      Optional if an exception is logged:
+        - exception: dictionary with keys:
+          - message: the message
+          - traceback: a traceback
+
+      @param object parent: parent of QObject, defaults to None
+      @param int level: log level, defaults to NOTSET
+    """
+
+    sigLoggedMessage = QtCore.Signal(object)
+    """signal emitted for each log record"""
+
+    def __init__(self, parent=None, level=0):
+        QtCore.QObject.__init__(self, parent)
+        logging.Handler.__init__(self, level)
+        self.setFormatter(QtLogFormatter())
+
+    def emit(self, record):
+        """Emit function of handler.
+
+          Formats the log record and emits :sigLoggedMessage:
+
+          @param object record: :logging.LogRecord:
         """
-        with self.lock:
-            configfile.appendConfigFile(entry, self.fileName())
+        record = self.format(record)
+        if record: self.sigLoggedMessage.emit(record)
+
+
+def initialize_logger():
+    """sets up the logger including a console, file and qt handler
+    """
+    # initialize logger
+    logging.basicConfig(format="%(message)s", level=logging.INFO)
+    logging.addLevelName(logging.CRITICAL, 'critical')
+    logging.addLevelName(logging.ERROR, 'error')
+    logging.addLevelName(logging.WARNING, 'warning')
+    logging.addLevelName(logging.INFO, 'info')
+    logging.addLevelName(logging.DEBUG, 'debug')
+    logging.addLevelName(logging.NOTSET, 'not set')
+    logging.captureWarnings(True)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    # set level of stream handler which logs to stderr
+    logger.handlers[0].setLevel(logging.WARNING)
+
+    # add file logger
+    rotating_file_handler = logging.handlers.RotatingFileHandler(
+        'qudi.log', maxBytes=10*1024*1024, backupCount=5)
+    rotating_file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s %(name)s %(message)s',
+        datefmt="%Y-%m-%d %H:%M:%S"))
+    rotating_file_handler.doRollover()
+    rotating_file_handler.setLevel(logging.DEBUG)
+    logger.addHandler(rotating_file_handler)
+
+    # add Qt log handler
+    qt_log_handler = QtLogHandler()
+    qt_log_handler.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(qt_log_handler)
+
+    for logger_name in ['core', 'gui', 'logic', 'hardware']:
+            logging.getLogger(logger_name).setLevel(logging.DEBUG)
+
+
+# global variables used by exception handler
+original_excepthook = None
+_blockLogging = False
+
+def _exception_handler(manager, *args):
+    """Exception logging function.
+
+      @param object manager: the manager
+      @param list args: contents of exception (type, value, backtrace)
+    """
+    global _blockLogging
+    # If an error occurs *while* trying to log another exception, disable
+    # any further logging to prevent recursion.
+    if not _blockLogging:
+        try:
+            _blockLogging = True
+            ## Start by extending recursion depth just a bit.
+            ## If the error we are catching is due to recursion, we
+            ## don't want to generate another one here.
+            recursionLimit = sys.getrecursionlimit()
+            try:
+                sys.setrecursionlimit(recursionLimit+100)
+                try:
+                    logging.error('', exc_info=args)
+                    if args[0] == KeyboardInterrupt:
+                        manager.quit()
+                except Exception:
+                    print('   ------------------------------------------'
+                            '--------------------')
+                    print('      Error occurred during exception '
+                            'handling')
+                    print('   ------------------------------------------'
+                            '--------------------')
+                    traceback.print_exception(*sys.exc_info())
+                # Clear long-term storage of last traceback to prevent
+                # memory-hogging.
+                # (If an exception occurs while a lot of data is present
+                # on the stack, such as when loading large files, the
+                # data would ordinarily be kept until the next exception
+                # occurs. We would rather release this memory
+                # as soon as possible.)
+                sys.last_traceback = None
+            finally:
+                sys.setrecursionlimit(recursionLimit)
+        finally:
+            _blockLogging = False
+
+
+def register_exception_handler(manager):
+    """registers an exception handler
+
+      @param object manager: the manager
+    """
+    global original_excepthook
+    original_excepthook = sys.excepthook
+    sys.excepthook = functools.partial(_exception_handler, manager)
 

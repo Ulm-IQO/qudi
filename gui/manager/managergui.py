@@ -19,6 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import logging
+import core.logger
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 try:
@@ -111,7 +113,10 @@ class ManagerGui(GUIBase):
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         # Log widget
-        self._manager.logger.sigLoggedMessage.connect(self.handleLogEntry)
+        self._mw.logwidget.setManager(self._manager)
+        for loghandler in logging.getLogger().handlers:
+            if isinstance(loghandler, core.logger.QtLogHandler):
+                loghandler.sigLoggedMessage.connect(self.handleLogEntry)
         # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
@@ -179,19 +184,23 @@ class ManagerGui(GUIBase):
         self._about.show()
 
     def handleLogEntry(self, entry):
-        """ Forward log entry to log widget and show an error popup if it is an error message.
+        """ Forward log entry to log widget and show an error popup if it is
+            an error message.
 
             @param dict entry: Log entry
         """
         self._mw.logwidget.addEntry(entry)
-        if entry['msgType'] == 'error':
+        if entry['level'] == 'error' or entry['level'] == 'critical':
             self.errorDialog.show(entry)
 
     def startIPython(self):
         """ Create an IPython kernel manager and kernel.
             Add modules to its namespace.
         """
-        self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
+        # make sure we only log errors and above from ipython
+        logging.getLogger('ipykernel').setLevel(logging.WARNING)
+        self.log.debug('IPy activation in thread {0}'.format(
+            threading.get_ident()))
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
         self.kernel = self.kernel_manager.kernel
@@ -204,8 +213,10 @@ class ManagerGui(GUIBase):
             })
         self.updateIPythonModuleList()
         self.kernel.gui = 'qt4'
-        self.logMsg('IPython has kernel {0}'.format(self.kernel_manager.has_kernel))
-        self.logMsg('IPython kernel alive {0}'.format(self.kernel_manager.is_alive()))
+        self.log.info('IPython has kernel {0}'.format(
+            self.kernel_manager.has_kernel))
+        self.log.info('IPython kernel alive {0}'.format(
+            self.kernel_manager.is_alive()))
         self._manager.sigModulesChanged.connect(self.updateIPythonModuleList)
 
     def startIPythonWidget(self):
@@ -238,7 +249,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        self.logMsg('IPy deactivation'.format(threading.get_ident()), msgType='thread')
+        self.log.debug('IPy deactivation'.format(threading.get_ident()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):

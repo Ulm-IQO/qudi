@@ -201,11 +201,11 @@ class ConfocalGui(GUIBase):
                   'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]), msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
         self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
         self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
@@ -1829,7 +1829,7 @@ class ConfocalGui(GUIBase):
         picture save algorithm is situated here in confocal, since it is a very
         specific task to save the used PlotObject.
         """
-        self.logMsg('Deprecated, use normal save method instead!', msgType='error')
+        self.log.warning('Deprecated, use normal save method instead!')
 
     def save_depth_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""
@@ -1857,7 +1857,7 @@ class ConfocalGui(GUIBase):
         picture save algorithm is situated here in confocal, since it is a very
         specific task to save the used PlotObject.
         """
-        self.logMsg('Deprecated, use normal save method instead!', msgType='error')
+        self.log.warning('Deprecated, use normal save method instead!')
 
     def switch_hardware(self):
         """ Switches the hardware state. """

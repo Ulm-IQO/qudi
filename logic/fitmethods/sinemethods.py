@@ -20,6 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
@@ -98,8 +101,7 @@ def make_sine_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = sine.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The sine fit did not work.',
-                    msgType='warning')
+        logger.warning('The sine fit did not work.')
         result = sine.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -126,16 +128,13 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     # set parameters
@@ -169,7 +168,7 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
         phase += np.pi
     elif np.gradient(data)[0] > 0 and data_level[0] < 0:
         phase = 2.*np.pi - phase
-    
+
     params['frequency'].value = frequency_max
     params['phase'].value = phase
     params['offset'].value = offset
@@ -250,18 +249,15 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #varification of data
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
-        
+
     # set the offset as the median of the data
     offset = np.median(data)
     # level data
@@ -308,8 +304,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     params['phase'].value = phase
     params['offset'].value = offset
 
-    params['lifetime'].min = 3 * (x_axis[1]-x_axis[0])    
-    params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)   
+    params['lifetime'].min = 3 * (x_axis[1]-x_axis[0])
+    params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)
     params['frequency'].min = min(0.1 / (x_axis[-1]-x_axis[0]),freq[3])
     params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0]))
     params['amplitude'].min = 0
@@ -339,8 +335,8 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
     try:
         result = sineexponentialdecay.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The sineexponentialdecay fit did not work.','message: {}'.format(str(result.message)),
-                    msgType='warning')
+        logger.warning('The sineexponentialdecay fit did not work. '
+                'Error message: {}'.format(str(result.message)))
         result = sineexponentialdecay.fit(data, x=axis, params=params)
 
     return result

@@ -160,13 +160,11 @@ class FastComtec(Base, FastCounterInterface):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self.GATED = False
         self.MINIMAL_BINWIDTH = 0.25e-9    # in seconds per bin
@@ -294,7 +292,7 @@ class FastComtec(Base, FastCounterInterface):
     #     if status.started == 1:
     #         return 2
     #     else:
-    #         self.logMsg('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)), msgType='error')
+    #         self.log.error('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)))
     #         return -1
 
     def start_measure(self):
