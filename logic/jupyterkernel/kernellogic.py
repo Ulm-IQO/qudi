@@ -37,24 +37,18 @@ class QudiKernelLogic(GenericLogic):
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
     _out = {'kernel': 'QudiKernelLogic'}
-    
+
     sigStartKernel = QtCore.Signal(str)
     sigStopKernel = QtCore.Signal(int)
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """ Create logic object
-          
-          @param object manager: reference to module Manager
-          @param str name: unique module name
-          @param dict config: configuration in a dict
           @param dict kwargs: additional parameters as a dict
         """
-        ## declare actions for state transitions
-        state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(**kwargs)
         self.kernellist = dict()
         self.modules = set()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Prepare logic module for work.
 
           @param object e: Fysom state change notification
@@ -69,14 +63,14 @@ class QudiKernelLogic(GenericLogic):
         self._manager.sigModulesChanged.connect(self.updateModuleList)
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate module.
 
           @param object e: Fysom state change notification
         """
         for kernel in self.kernellist:
             self.stopKernel(kernel)
-            
+
     def startKernel(self, config, external=None):
         """Start a qudi inprocess jupyter kernel.
           @param dict config: connection information for kernel
@@ -111,7 +105,7 @@ class QudiKernelLogic(GenericLogic):
         self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
-        
+
     def cleanupKernel(self, kernelid, external=None):
         """Remove kernel reference and tell rpyc client for that kernel to exit.
 

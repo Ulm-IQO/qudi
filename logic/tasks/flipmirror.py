@@ -23,8 +23,8 @@ from logic.generic_task import PrePostTask
 
 class Task(PrePostTask):
 
-    def __init__(self, name, runner, references, config):
-        super().__init__(name, runner, references, config)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         print('Task {} added!'.format(self.name))
 
     def preExecute(self):

@@ -48,12 +48,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     # declare connectors
     _out = {'fastcounter': 'FastCounterInterface'}
 
-    def __init__(self, manager, name, config={}, **kwargs):
-        callback_dict = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, callback_dict, **kwargs)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Connect and configure the access to the FPGA.
 
         @param object e: Event class object from Fysom.
@@ -125,7 +120,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._activate_dac_ref()
         self._set_dac_voltages()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the FPGA.
 
         @param object e: Event class object from Fysom. A more detailed

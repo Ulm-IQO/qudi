@@ -35,10 +35,8 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
     _in = {'fitlogic': 'FitLogic'}
     _out = {'confocalscanner': 'ConfocalScannerInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -66,7 +64,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
 
@@ -123,7 +121,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 #        print('Position of NV 1',self._points[0,:],self._points_z[0,:],len(self._points))
 #        print(self._points_z[:,0],self._points[:,0])
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.reset_hardware()
 
     def reset_hardware(self):

@@ -53,20 +53,15 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
     # magnet interface, and which can be plug in to an appropriated magnet logic
     _out = {'magnetstage': 'MagnetInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         # save the idle state in this class variable, since that is not present
         # in the actual motor hardware device. Use this variable to decide
         # whether movement commands are passed to the hardware.
         self._magnet_idle = False
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -81,7 +76,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         self._motor_device = self.connector['in']['motorstage']['object']
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

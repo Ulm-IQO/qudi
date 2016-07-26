@@ -101,10 +101,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     sigAnalyzeData = QtCore.Signal(object, object)
     sigStart = QtCore.Signal()
 
-    def __init__(self,manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate' : self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         if 'deviceID' in config.keys():
             self._deviceID = config['deviceID']
@@ -148,7 +146,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self.threadlock = Mutex()
 
 
-    def activation(self, fysom_e=None):
+    def on_activate(self, fysom_e=None):
         """ Activate and establish the connection to Picohard and initialize.
 
         @param object e: Event class object from Fysom.
@@ -176,7 +174,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self.result = []
 
 
-    def deactivation(self, fysom_e=None):
+    def on_deactivate(self, fysom_e=None):
         """ Deactivates and disconnects the device.
 
         @param object e: Event class object from Fysom. Detailed explanation

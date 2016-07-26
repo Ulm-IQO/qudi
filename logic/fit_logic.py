@@ -47,7 +47,6 @@ class FitLogic(GenericLogic):
     _out = {'fitlogic': 'FitLogic'}
 
     def __init__(self, **kwargs):
-        # declare actions for state transitions
         super().__init__(**kwargs)
         # locking for thread safety
         self.lock = Mutex()

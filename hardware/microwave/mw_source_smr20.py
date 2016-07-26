@@ -42,11 +42,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     ## declare connectors
     _out = {'MWSourceSMR20': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config = {}, **kwargs):
-        cb = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, cb)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -94,7 +90,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         # procedure is in the function self.set_list.
         self._num_list_entries = 4000
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

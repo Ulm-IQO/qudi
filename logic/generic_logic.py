@@ -34,10 +34,6 @@ class GenericLogic(Base):
     def __init__(self, **kwargs):
         """ Initialzize a logic module.
 
-          @param object manager: Manager object that has instantiated this object
-          @param str name: unique module name
-          @param dict configuration: module configuration as a dict
-          @param dict callbacks: dict of callback functions for Fysom state machine
           @param dict kwargs: dict of additional arguments
         """
         super().__init__(**kwargs)
