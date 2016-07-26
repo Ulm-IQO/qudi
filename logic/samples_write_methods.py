@@ -340,8 +340,8 @@ class SamplesWriteMethods():
         channel_number = digital_samples.shape[0]
         # FIXME: Also allow for single channel to be specified. Set all others to zero.
         if channel_number != 8:
-            self.logMsg('FPGA pulse generator needs 8 digital channels. {0} is not allowed!'.format(
-                channel_number), msgType='error')
+            self.log.error('FPGA pulse generator needs 8 digital channels. '
+                    '{0} is not allowed!'.format(channel_number))
             return -1
 
         # encode channels into FPGA samples (bytes)
@@ -350,9 +350,9 @@ class SamplesWriteMethods():
             # calculate number of zero timeslots to append
             number_of_zeros = 32 - (total_number_of_samples % 32)
             encoded_samples = np.zeros(chunk_length_bins + number_of_zeros, dtype='uint8')
-            self.logMsg('FPGA pulse sequence length is no integer multiple of 32 samples. '
-                        'Appending {0} zero-samples to the sequence.'.format(number_of_zeros),
-                        msgType='warning')
+            self.log.warning('FPGA pulse sequence length is no integer '
+                    'multiple of 32 samples. Appending {0} zero-samples to '
+                    'the sequence.'.format(number_of_zeros))
         else:
             encoded_samples = np.zeros(chunk_length_bins, dtype='uint8')
 

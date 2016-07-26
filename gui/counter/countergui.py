@@ -44,7 +44,6 @@ class CounterMainWindow(QtGui.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-
 class CounterGui(GUIBase):
 
     """ FIXME: Please document
@@ -64,13 +63,11 @@ class CounterGui(GUIBase):
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.

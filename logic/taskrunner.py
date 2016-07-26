@@ -139,8 +139,7 @@ class TaskRunner(GenericLogic):
             t['name'] = task
             # print('tsk:', task)
             if not 'module' in config['tasks'][task]:
-                self.logMsg('No module given for task {}'.format(task),
-                            msgType='error')
+                self.log.error('No module given for task {}'.format(task))
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
@@ -182,9 +181,11 @@ class TaskRunner(GenericLogic):
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:
-                    self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
-            except Exception as e:
-                self.logExc('Error while importing module for task {}'.format(t['name']), msgType='error')
+                    self.log.error('Not a subclass of allowd task classes {}'
+                            ''.format(task))
+            except:
+                self.log.exception('Error while importing module for '
+                        'task {}'.format(t['name']))
         self.sigCheckTasks.emit()
 
     def registerTask(self, task):
@@ -213,7 +214,7 @@ class TaskRunner(GenericLogic):
             task['needsmodules'] = {}
             task['config'] = {}
         except:
-            self.logMsg('Cannot registerTask, not a wirteable dict.')
+            self.log.error('Cannot register task, not a writeable dict.')
             return False
 
         checklist = ('ok', 'object', 'name')
@@ -225,7 +226,8 @@ class TaskRunner(GenericLogic):
             ):
             self.model.append(t)
         else:
-            self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
+            self.log.error('Not a subclass of allowd task classes {}'.format(
+                task))
             return False
         return True
 
@@ -293,7 +295,9 @@ class TaskRunner(GenericLogic):
         """
         # print('runner', QtCore.QThread.currentThreadId())
         if not task['ok']:
-            self.logMsg('Task {} did not pass all its checks for required tasks and modules and cannot be run'.format(task['name']), msgType='error')
+            self.log.error('Task {} did not pass all checks for required '
+                    'tasks and modules and cannot be run'.format(
+                        task['name']))
             return
         if task['object'].can('run'):
             task['object'].run()
@@ -304,7 +308,7 @@ class TaskRunner(GenericLogic):
         elif task['object'].can('postrun'):
             task['object'].postrun()
         else:
-            self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
+            self.log.error('Task cannot be run: {}'.format(task.name))
 
     def pauseTaskByIndex(self, index):
         """ Try pausing a task identified by its list index.
@@ -331,8 +335,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('pause'):
             task['object'].pause()
         else:
-            self.logMsg('This thing cannot be paused:  {}'.format(task['name']),
-                        msgType='error')
+            self.log.error('Task cannot be paused:  {}'.format(task['name']))
 
     def stopTaskByIndex(self, index):
         """ Try stopping a task identified by its list index.
@@ -355,7 +358,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('finish'):
             task['object'].finish()
         else:
-            self.logMsg('This thing cannot be stopped:  {}'.format(task['name']), msgType='error')
+            self.log.error('Task cannot be stopped: {}'.format(task['name']))
 
     def getTaskByName(self, taskname):
         """ Get task dictionary for a given task name.
@@ -420,10 +423,13 @@ class TaskRunner(GenericLogic):
                         elif t['object'].isstate('stopped'):
                             pass
                         else:
-                            self.logMsg('This pausetask {} failed while resuming after stop: {}'.format(ptask, task['name']), msgType='error')
+                            self.log.error('Pausetask {} failed while '
+                                    'resuming after stop: {}'.format(
+                                        ptask, task['name']))
                             return False
             except:
-                self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                self.log.exception('This pausetask {} failed while '
+                        'preparing: {}'.format(ptask, task['name']))
                 return False
         return True
 
@@ -451,10 +457,13 @@ class TaskRunner(GenericLogic):
                         if t['object'].can('postrun'):
                             t['object'].postrun()
                         else:
-                            self.logMsg('This preposttask {} failed while postrunning in: {}'.format(pptask, task['name']), msgType='error')
+                            self.log.error('Preposttask {} failed while '
+                                    'postrunning in: {}'.format(
+                                        pptask, task['name']))
                             return False
             except:
-                self.logExc('This preposttask {} failed while postrunning in: {}'.format(pptask, task['name']), msgType='error')
+                self.log.exception('This preposttask {} failed while '
+                        'postrunning in: {}'.format(pptask, task['name']))
                 return False
         return True
 
@@ -484,10 +493,13 @@ class TaskRunner(GenericLogic):
                         elif  t['object'].isstate('paused'):
                             pass
                         else:
-                            self.logMsg('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                            self.log.error('Preposttask {} failed while '
+                                    'preparing: {}'.format(
+                                        pptask, task['name']))
                             return False
             except:
-                self.logExc('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                self.log.exception('This preposttask {} failed while '
+                        'preparing: {}'.format(pptask, task['name']))
                 return False
 
     def pausePauseTasks(self, ref):
@@ -516,10 +528,13 @@ class TaskRunner(GenericLogic):
                         elif t['object'].isstate('stopped') or t['object'].isstate('paused'):
                             pass
                         else:
-                            self.logMsg('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                            self.log.error('Pausetask {} failed while '
+                                    'preparing: {}'.format(
+                                        ptask, task['name']))
                             return False
             except:
-                self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                self.log.exception('This pausetask {} failed while '
+                        'preparing: {}'.format(ptask, task['name']))
                 return False
         return True
 

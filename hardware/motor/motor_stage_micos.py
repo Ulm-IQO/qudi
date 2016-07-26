@@ -65,13 +65,11 @@ class MotorStageMicos(Base, MotorInterface):
                          'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
     def activation(self, e):
 
 
@@ -94,58 +92,52 @@ class MotorStageMicos(Base, MotorInterface):
         if 'com_port_micos_xy' in config.keys():
             self._com_port_xy, label_x, label_y  = config['com_port_micos_xy']
         else:
-            self.logMsg('No parameter "com_port_micos_xy" found in config.\n'
-                        'Cannot connect to motorized stage! Enter the '
-                        'parameter with the following scheme:/n'
-                        '("<COM-PORT>","<lable_x_axis>","label_y_axis")',
-                        msgType='error')
+            self.log.error('No parameter "com_port_micos_xy" found in '
+                    'config.\n'
+                    'Cannot connect to motorized stage! Enter the '
+                    'parameter with the following scheme:/n'
+                    '("<COM-PORT>","<lable_x_axis>","label_y_axis")')
 
 
         if 'com_port_micos_zphi' in config.keys():
             self._com_port_zphi, label_z, label_phi  = config['com_port_micos_zphi']
         else:
-            self.logMsg('No parameter "com_port_micos_zphi" found in config.\n'
-                        'Cannot connect to motorized stage! Enter the '
-                        'parameter with the following scheme:/n'
-                        '("<COM-PORT>","<lable_x_axis>","label_y_axis")',
-                        msgType='error')
+            self.log.error('No parameter "com_port_micos_zphi" found in '
+                    'config.\nCannot connect to motorized stage! Enter the '
+                    'parameter with the following scheme:/n'
+                    '("<COM-PORT>","<lable_x_axis>","label_y_axis")')
 
         # here the variables for the terminal character are read in
         if 'micos_term_chars_xy' in config.keys():
             self._term_chars_xy = config['micos_term_chars_xy']
         else:
             self._term_chars_xy = '\n'
-            self.logMsg('No parameter "micos_term_chars_xy" found in config!\n'
-                        'Taking LF character "\\n" instead.',
-                        msgType='warning')
+            self.log.warning('No parameter "micos_term_chars_xy" found in '
+                    'config!\nTaking LF character "\\n" instead.')
 
         if 'micos_term_chars_zphi' in config.keys():
             self._term_chars_zphi = config['micos_term_chars_zphi']
         else:
             self._term_chars_zphi = '\n'
-            self.logMsg('No parameter "micos_term_chars_zphi" found in config!\n'
-                        'Taking LF character "\\n" instead.',
-                        msgType='warning')
+            self.log.warning('No parameter "micos_term_chars_zphi" found in '
+                    'config!\nTaking LF character "\\n" instead.')
 
         # here the variables for the baud rate are read in
         if 'micos_baud_rate_xy' in config.keys():
             self._baud_rate_xy = config['micos_baud_rate_xy']
         else:
             self._baud_rate_xy = 57600
-            self.logMsg('No parameter "micos_baud_rate_xy" found in config!\n'
-                        'Taking the baud rate {0} '
-                        'instead.'.format(self._baud_rate_xy),
-                        msgType='warning')
-
+            self.log.warning('No parameter "micos_baud_rate_xy" found in '
+                    'config!\nTaking the baud rate {0} '
+                    'instead.'.format(self._baud_rate_xy))
 
         if 'micos_baud_rate_zphi' in config.keys():
             self._baud_rate_zphi = config['micos_baud_rate_zphi']
         else:
             self._baud_rate_zphi = 57600
-            self.logMsg('No parameter "micos_baud_rate_zphi" found in config!\n'
-                        'Taking the baud rate {0} '
-                        'instead.'.format(self._baud_rate_zphi),
-                        msgType='warning')
+            self.log.warning('No parameter "micos_baud_rate_zphi" found in '
+                    'config!\nTaking the baud rate {0} '
+                    'instead.'.format(self._baud_rate_zphi))
 
         self._micos_a = self.rm.open_resource(self._com_port_xy) # x, y
         self._micos_a.label_x = label_x     # attach a label attribute
@@ -282,13 +274,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (curr_pos_x + move_x > constraints[self._micos_a.label_x]['pos_max'] ) or\
                 (curr_pos_x + move_x < constraints[self._micos_a.label_x]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._micos_a.label_x, move_x,
-                                    constraints[self._micos_a.label_x]['pos_min'],
-                                    constraints[self._micos_a.label_x]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._micos_a.label_x, move_x,
+                            constraints[self._micos_a.label_x]['pos_min'],
+                            constraints[self._micos_a.label_x]['pos_max']))
             else:
                 self._micos_a.write('{:f} 0.0 0.0 r'.format(move_x))
 
@@ -301,13 +292,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (curr_pos_y + move_y > constraints[self._micos_a.label_y]['pos_max'] ) or\
                 (curr_pos_y + move_y < constraints[self._micos_a.label_y]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._micos_a.label_y, move_y,
-                                    constraints[self._micos_a.label_y]['pos_min'],
-                                    constraints[self._micos_a.label_y]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._micos_a.label_y, move_y,
+                            constraints[self._micos_a.label_y]['pos_min'],
+                            constraints[self._micos_a.label_y]['pos_max']))
             else:
                 self._micos_a.write('0.0 {:f} 0.0 r'.format(move_y))
 
@@ -320,13 +310,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (curr_pos_z + move_z > constraints[self._micos_b.label_z]['pos_max'] ) or\
                 (curr_pos_z + move_z < constraints[self._micos_b.label_z]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._micos_b.label_z, move_z,
-                                    constraints[self._micos_b.label_z]['pos_min'],
-                                    constraints[self._micos_b.label_z]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._micos_b.label_z, move_z,
+                            constraints[self._micos_b.label_z]['pos_min'],
+                            constraints[self._micos_b.label_z]['pos_max']))
             else:
                 self._micos_b.write('{:f} 0.0 0.0 r'.format(move_z))
 
@@ -339,13 +328,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (curr_pos_phi + move_phi > constraints[self._micos_b.label_phi]['pos_max'] ) or\
                 (curr_pos_phi + move_phi < constraints[self._micos_b.label_phi]['pos_min']):
 
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._micos_b.label_phi, move_phi,
-                                    constraints[self._micos_b.label_phi]['pos_min'],
-                                    constraints[self._micos_b.label_phi]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make further movement of the axis '
+                        '"{0}" with the step {1}, since the border [{2},{3}] '
+                        'was reached! Ignore command!'.format(
+                            self._micos_b.label_phi, move_phi,
+                            constraints[self._micos_b.label_phi]['pos_min'],
+                            constraints[self._micos_b.label_phi]['pos_max']))
             else:
                 self._micos_b.write('0.0 {:f} 0.0 r'.format(move_phi))
 
@@ -377,13 +365,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_pos > constraints[self._micos_a.label_x]['pos_max'] ) or\
                 (desired_pos < constraints[self._micos_a.label_x]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_a.label_x, desired_pos,
-                                    constraints[self._micos_a.label_x]['pos_min'],
-                                    constraints[self._micos_a.label_x]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_a.label_x, desired_pos,
+                            constraints[self._micos_a.label_x]['pos_min'],
+                            constraints[self._micos_a.label_x]['pos_max']))
             else:
                 self._micos_a.write('{:f} 0.0 0.0 move'.format(desired_pos) )
                 self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
@@ -399,13 +386,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_pos > constraints[self._micos_a.label_y]['pos_max'] ) or\
                 (desired_pos < constraints[self._micos_a.label_y]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_a.label_y, desired_pos,
-                                    constraints[self._micos_a.label_y]['pos_min'],
-                                    constraints[self._micos_a.label_y]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_a.label_y, desired_pos,
+                            constraints[self._micos_a.label_y]['pos_min'],
+                            constraints[self._micos_a.label_y]['pos_max']))
             else:
                 self._micos_a.write('0.0 {:f} 0.0 move'.format(desired_pos) )
                 self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
@@ -420,13 +406,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_pos > constraints[self._micos_b.label_z]['pos_max'] ) or\
                 (desired_pos < constraints[self._micos_b.label_z]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_b.label_z, desired_pos,
-                                    constraints[self._micos_b.label_z]['pos_min'],
-                                    constraints[self._micos_b.label_z]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_b.label_z, desired_pos,
+                            constraints[self._micos_b.label_z]['pos_min'],
+                            constraints[self._micos_b.label_z]['pos_max']))
             else:
                 self._micos_b.write('{:f} 0.0 0.0 move'.format(desired_pos) )
                 self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
@@ -441,13 +426,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_pos > constraints[self._micos_b.label_phi]['pos_max'] ) or\
                 (desired_pos < constraints[self._micos_b.label_phi]['pos_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_b.label_phi, desired_pos,
-                                    constraints[self._micos_b.label_phi]['pos_min'],
-                                    constraints[self._micos_b.label_phi]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_b.label_phi, desired_pos,
+                            constraints[self._micos_b.label_phi]['pos_min'],
+                            constraints[self._micos_b.label_phi]['pos_max']))
             else:
                 self._micos_b.write('0.0 {:f} 0.0 move'.format(desired_pos) )
                 self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
@@ -490,8 +474,7 @@ class MotorStageMicos(Base, MotorInterface):
         self._micos_b.write(chr(3))
 #        self._micos_a.write('abort')
 #        self._micos_b.write('abort')
-        self.logMsg('Movement of all the axis aborted! Stage stopped.',
-                    msgType='warning')
+        self.log.warning('Movement of all the axis aborted! Stage stopped.')
         return 0
 
     def get_pos(self, param_list=None):
@@ -535,7 +518,7 @@ class MotorStageMicos(Base, MotorInterface):
                 pos[self._micos_b.label_phi] = float(zphi_pos.split()[1])
 
         except:
-            self.logMsg('Get pos routine has failed!', msgType='error')
+            self.log.error('Get pos routine has failed!')
 
         return pos
 
@@ -581,7 +564,7 @@ class MotorStageMicos(Base, MotorInterface):
                 status[self._micos_b.label_phi] = message_zphi
 
         except:
-            self.logMsg('Get_status routine has failed!', msgType='error')
+            self.log.error('Get_status routine has failed!')
 
         return status
 
@@ -694,13 +677,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_vel > constraints[self._micos_a.label_x]['vel_max'] ) or\
                 (desired_vel < constraints[self._micos_a.label_x]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_a.label_x, desired_vel,
-                                    constraints[self._micos_a.label_x]['vel_min'],
-                                    constraints[self._micos_a.label_x]['vel_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_a.label_x, desired_vel,
+                            constraints[self._micos_a.label_x]['vel_min'],
+                            constraints[self._micos_a.label_x]['vel_max']))
             else:
                 self._micos_a.write('{:f} 0.0 0.0 sv'.format(desired_vel))
 
@@ -710,13 +692,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_vel > constraints[self._micos_a.label_y]['vel_max'] ) or\
                 (desired_vel < constraints[self._micos_a.label_y]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_a.label_y, desired_vel,
-                                    constraints[self._micos_a.label_y]['vel_min'],
-                                    constraints[self._micos_a.label_y]['vel_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_a.label_y, desired_vel,
+                            constraints[self._micos_a.label_y]['vel_min'],
+                            constraints[self._micos_a.label_y]['vel_max']))
             else:
                 self._micos_a.write('0.0 {:f} 0.0 sv'.format(desired_vel))
 
@@ -726,13 +707,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_vel > constraints[self._micos_b.label_z]['vel_max'] ) or\
                 (desired_vel < constraints[self._micos_b.label_z]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_b.label_z, desired_vel,
-                                    constraints[self._micos_b.label_z]['pos_min'],
-                                    constraints[self._micos_b.label_z]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_b.label_z, desired_vel,
+                            constraints[self._micos_b.label_z]['pos_min'],
+                            constraints[self._micos_b.label_z]['pos_max']))
             else:
                 self._micos_b.write('{:f} 0.0 0.0 sv'.format(desired_vel))
 
@@ -742,13 +722,12 @@ class MotorStageMicos(Base, MotorInterface):
             if  (desired_vel > constraints[self._micos_b.label_phi]['vel_max'] ) or\
                 (desired_vel < constraints[self._micos_b.label_phi]['vel_min']):
 
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._micos_b.label_phi, desired_vel,
-                                    constraints[self._micos_b.label_phi]['pos_min'],
-                                    constraints[self._micos_b.label_phi]['pos_max']),
-                            msgType='warning')
+                self.log.warning('Cannot make absolute movement of the axis '
+                        '"{0}" to possition {1}, since it exceeds the limts '
+                        '[{2},{3}] ! Command is ignored!'.format(
+                            self._micos_b.label_phi, desired_vel,
+                            constraints[self._micos_b.label_phi]['pos_min'],
+                            constraints[self._micos_b.label_phi]['pos_max']))
             else:
                 self._micos_b.write('0.0 {:f} 0.0 sv'.format(desired_vel))
 

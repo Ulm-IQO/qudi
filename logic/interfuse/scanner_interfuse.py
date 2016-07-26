@@ -151,8 +151,8 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
             z_max = self.get_position_range()[2][1]
             if z<z_min or z>z_max:
                 z = min(max(z,z_min),z_max)
-                self.logMsg('The entered z position is out of scanner range! z was set to min/max.'
-                            ,msgType='warning')
+                self.log.warning('The entered z position is out of scanner '
+                        'range! z was set to min/max.')
             self._scanning_device.set_position(x,y,z,a)
         else:
             self._scanning_device.set_position(x,y,z,a)
@@ -246,7 +246,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         self._tiltcorrection = True
         self._tilt_reference_x = self.get_scanner_position()[0]
         self._tilt_reference_y = self.get_scanner_position()[1]
-        
+
     def deactivate_tiltcorrection(self):
         self._tiltcorrection = False
         self._tilt_reference_x = self.get_scanner_position()[0]

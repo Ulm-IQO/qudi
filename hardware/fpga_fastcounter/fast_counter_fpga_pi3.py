@@ -55,32 +55,27 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         if 'fpgacounter_serial' in config.keys():
             self._fpgacounter_serial=config['fpgacounter_serial']
         else:
-            self.logMsg('No serial number defined for fpga counter',
-                        msgType='warning')
+            self.log.warning('No serial number defined for fpga counter')
 
         if 'fpgacounter_channel_apd_0' in config.keys():
             self._channel_apd_0 = config['fpgacounter_channel_apd_0']
         else:
-            self.logMsg('No apd0 channel defined for fpga counter',
-                        msgType='warning')
+            self.log.warning('No apd0 channel defined for fpga counter')
 
         if 'fpgacounter_channel_apd_1' in config.keys():
             self._channel_apd_1 = config['fpgacounter_channel_apd_1']
         else:
-            self.logMsg('No apd1 channel defined for fpga counter',
-                        msgType='warning')
+            self.log.warning('No apd1 channel defined for fpga counter')
 
         if 'fpgacounter_channel_detect' in config.keys():
             self._channel_detect = config['fpgacounter_channel_detect']
         else:
-            self.logMsg('No no detect channel defined for fpga counter',
-                        msgType='warning')
+            self.log.warning('No no detect channel defined for fpga counter')
 
         if 'fpgacounter_channel_sequence' in config.keys():
             self._channel_sequence = config['fpgacounter_channel_sequence']
         else:
-            self.logMsg('No sequence channel defined for fpga counter',
-                        msgType='warning')
+            self.log.warning('No sequence channel defined for fpga counter')
 
         tt._Tagger_setSerial(self._fpgacounter_serial)
         thirdpartypath = os.path.join(self.get_main_dir(), 'thirdparty')
