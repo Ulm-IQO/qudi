@@ -165,7 +165,8 @@ class TaskRunner(GenericLogic):
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
                 # print('loaded:', mod)
                 # print('dir:', dir(mod))
-                t['object'] = mod.Task(t['name'], self, ref, t['config'])
+                t['object'] = mod.Task(name=t['name'], runner=self,
+                        references=ref, config=t['config'])
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:
