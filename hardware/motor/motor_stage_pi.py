@@ -36,10 +36,8 @@ class MotorStagePI(Base, MotorInterface):
     # connectors
     _out = {'motorstage': 'MotorInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        cb_dict = {'onactivate': self.activation,
-                   'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, cb_dict)
+    def __init__(self, **kwargs):
+        super().__init__(self, **kwargs)
 
         #axis definition:
         self._x_axis_label = 'x'
@@ -55,7 +53,7 @@ class MotorStagePI(Base, MotorInterface):
 #        da die stage glaube ich immer was zurückgibt....
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -202,7 +200,7 @@ class MotorStagePI(Base, MotorInterface):
                         msgType='warning')
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -533,7 +531,7 @@ class MotorStagePI(Base, MotorInterface):
 
     def _calibrate_rot(self):
         """ internal method that handles the calibration of the rot stage """
-        
+
         self._write_rot([1,1,0])      # moves the rot stage to its home position
         self._in_movement_rot()       # waits until rot_stage finished its move
 
@@ -621,7 +619,7 @@ class MotorStagePI(Base, MotorInterface):
             while a != 0 or b != 0 or c != 0:
                 print('find centerposition...')
                 [a, b, c] = self._in_movement_xyz()
-    
+
         self._serial_connection_xyz.write(axis_ID+'DH\n')
         print('calibration finished')
 

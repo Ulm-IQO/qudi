@@ -44,12 +44,8 @@ class AWG7122C(Base, PulserInterface):
     # _out = {'awg5002c': 'PulserInterface'}
     _out = {'pulser': 'PulserInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         if 'awg_IP_address' in config.keys():
             self.ip_address = config['awg_IP_address']
@@ -125,7 +121,7 @@ class AWG7122C(Base, PulserInterface):
 
         self._marker_byte_dict = {0: b'\x00', 1: b'\x01', 2: b'\x02', 3: b'\x03'}
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -163,7 +159,7 @@ class AWG7122C(Base, PulserInterface):
         #Set current directory on AWG
         self.tell('MMEMORY:CDIRECTORY "{0}"\n'.format(self.ftp_path+self.asset_directory))
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

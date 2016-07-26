@@ -240,11 +240,8 @@ class ConfocalLogic(GenericLogic):
 
     signal_history_event = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager=manager, name=name, config=config,
-                callbacks=state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.', msgType='status')
 

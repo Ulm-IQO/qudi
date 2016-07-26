@@ -23,11 +23,11 @@ import time
 
 class Task(PrePostTask):
 
-    def __init__(self, name, runner, references, config):
-        super().__init__(name, runner, references, config)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         print('PrePost init task {}'.format(name))
         print(self.config)
-    
+
     def preExecute(self):
         time.sleep(1)
         print('pre action of task {}'.format(self.name))

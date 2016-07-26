@@ -95,17 +95,13 @@ class WavemeterLoggerLogic(GenericLogic):
             }
     _out = {'wavemeterloggerlogic': 'WavemeterLoggerLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
 
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
           @param dict config: module configuration
           @param dict kwargs: optional parameters
         """
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -141,7 +137,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self.current_wavelength = 0
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
@@ -178,7 +174,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self.hardware_thread.start()
         self.last_point_time = time.time()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
           @param object e: Fysom state change event

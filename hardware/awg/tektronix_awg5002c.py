@@ -42,12 +42,8 @@ class AWG5002C(Base, PulserInterface):
     # _out = {'awg5002c': 'PulserInterface'}
     _out = {'pulser': 'PulserInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-
-        state_actions = {'onactivate'   : self.activation,
-                         'ondeactivate' : self.deactivation}
-
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.connected = False
 
@@ -58,7 +54,7 @@ class AWG5002C(Base, PulserInterface):
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
         self.current_loaded_asset = None
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -145,7 +141,7 @@ class AWG5002C(Base, PulserInterface):
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

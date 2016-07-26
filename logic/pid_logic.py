@@ -46,11 +46,8 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     sigNextStep = QtCore.Signal()
     sigNewValue = QtCore.Signal(float)
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(self, config=config, **kwargs)
 
         self.logMsg('The following configuration was found.', msgType='status')
 
@@ -62,7 +59,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
         self._process = self.connector['in']['process']['object']
@@ -118,7 +115,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
         self.sigNextStep.emit()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Perform required deactivation. """
 
         # save parameters stored in app state store
@@ -146,10 +143,10 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.countdown = -1
             self.integrated = 0
             self.enable = True
-        
+
         if (self.enable):
             delta = self.setpoint - self.pv
-            self.integrated += delta 
+            self.integrated += delta
             ## Calculate PID controller:
             self.P = self.kP * delta
             self.I = self.kI * self.timestep * self.integrated
@@ -234,7 +231,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
     def get_manual_value(self):
         return self.manualvalue
-        
+
     def set_manual_value(self, manualvalue):
         self.manualvalue = manualvalue
         limits = self._control.getControlLimits()
@@ -254,7 +251,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
     def get_control_limits(self):
         return self._control.getControlLimits()
-    
+
     def set_control_limits(self, limits):
         pass
 

@@ -60,10 +60,8 @@ class MotorStageMicos(Base, MotorInterface):
 #    make subfolder with __init__ for subfolder check GUI
 #    change format string to new convention
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -72,7 +70,7 @@ class MotorStageMicos(Base, MotorInterface):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-    def activation(self, e):
+    def on_activate(self, e):
 
 
         # ALEX COMMENT: Why are the values stored? In general that is not a
@@ -160,7 +158,7 @@ class MotorStageMicos(Base, MotorInterface):
         self._micos_b.baud_rate = self._baud_rate_zphi
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Disconnect from hardware and clean up """
         self._micos_a.close()
         self._micos_b.close()

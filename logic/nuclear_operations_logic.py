@@ -75,12 +75,8 @@ class NuclearOperationsLogic(GenericLogic):
 
     sigMeasStarted = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -92,7 +88,7 @@ class NuclearOperationsLogic(GenericLogic):
 
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -195,7 +191,7 @@ class NuclearOperationsLogic(GenericLogic):
         # connect signals:
         self.sigNextMeasPoint.connect(self._meas_point_loop, QtCore.Qt.QueuedConnection)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

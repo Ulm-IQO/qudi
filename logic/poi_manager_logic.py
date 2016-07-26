@@ -186,9 +186,7 @@ class PoiManagerLogic(GenericLogic):
     signal_poi_updated = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(config=config, callbacks=state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -212,7 +210,7 @@ class PoiManagerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
 
@@ -289,7 +287,7 @@ class PoiManagerLogic(GenericLogic):
 
         return new_track_point.get_key()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         return
 
     def get_confocal_image_data(self):

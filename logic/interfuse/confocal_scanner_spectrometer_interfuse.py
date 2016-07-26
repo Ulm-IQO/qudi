@@ -39,10 +39,8 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
            'spectrometer1': 'SpectrometerInterface'}
     _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -70,7 +68,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
 
@@ -79,7 +77,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._spectrometer_hw = self.connector['in']['spectrometer1']['object']
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.reset_hardware()
 
     def reset_hardware(self):

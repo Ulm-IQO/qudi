@@ -55,8 +55,6 @@ class CounterLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
-        @param object manager: Manager object thath loaded this module
-        @param str name: unique module name
         @param dict config: module configuration
         @param dict kwargs: optional parameters
         """

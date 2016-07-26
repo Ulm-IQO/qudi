@@ -31,18 +31,14 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
     _in = {'confocalscanner1': 'ConfocalScannerInterface'}
     _out = {'confocalscanner1': 'ConfocalScannerInterface'}
 
-    def __init__(self,manager,name,config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self._tiltcorrection = False
         self._tilt_reference_x = 0
         self._tilt_reference_y = 0
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -55,7 +51,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         """
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
 
-    def deactivation(self,e):
+    def on_deactivate(self,e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -246,7 +242,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         self._tiltcorrection = True
         self._tilt_reference_x = self.get_scanner_position()[0]
         self._tilt_reference_y = self.get_scanner_position()[1]
-        
+
     def deactivate_tiltcorrection(self):
         self._tiltcorrection = False
         self._tilt_reference_x = self.get_scanner_position()[0]

@@ -42,10 +42,8 @@ class MotorDummy(Base, MotorInterface):
     _out = {'motorstage': 'MotorInterface'}
 
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -65,7 +63,7 @@ class MotorDummy(Base, MotorInterface):
 
     #TODO: Checks if configuration is set and is reasonable
 
-    def activation(self, e):
+    def on_activate(self, e):
 
         # PLEASE REMEMBER: DO NOT CALL THE POSITION SIMPLY self.x SINCE IT IS
         # EXTREMLY DIFFICULT TO SEARCH FOR x GLOBALLY IN A FILE!
@@ -86,7 +84,7 @@ class MotorDummy(Base, MotorInterface):
         self._z_axis.status = 0
         self._phi_axis.status = 0
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
 
 

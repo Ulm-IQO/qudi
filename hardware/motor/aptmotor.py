@@ -790,11 +790,7 @@ class APTStage(Base, MotorInterface):
         module, then overwrite it in the class, which inherited that class.
      """
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialize instance variables and connect to hardware as configured.
 
         @param object e: Event class object from Fysom.
@@ -885,7 +881,7 @@ class APTStage(Base, MotorInterface):
         """
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Disconnect from hardware and clean up.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -1171,11 +1167,6 @@ class APTOneAxisStage(APTStage):
     _out = {'aptmotor': 'MotorInterface'}
 
 
-    def __init__(self, manager, name, config, **kwargs):
-        # pass the init to the inherited class APTStage and run its init:
-        super().__init__(manager, name, config, **kwargs)
-
-
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.
 
@@ -1295,10 +1286,6 @@ class APTThreeAxisStage(APTStage):
 
     # connectors
     _out = {'aptmotor': 'MotorInterface'}
-
-    def __init__(self, manager, name, config, **kwargs):
-        # pass the init to the inherited class APTStage and run its init:
-        super().__init__(manager, name, config, **kwargs)
 
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.
@@ -1447,10 +1434,6 @@ class APTFourAxisStage(APTStage):
 
     # connectors
     _out = {'aptmotor': 'MotorInterface'}
-
-    def __init__(self, manager, name, config, **kwargs):
-        # pass the init to the inherited class APTStage and run its init:
-        super().__init__(manager, name, config, **kwargs)
 
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.

@@ -37,13 +37,8 @@ class PulseExtractionLogic(GenericLogic):
     _in = {'fastcounter': 'FastCounterInterface'}
     _out = {'pulseextractionlogic': 'PulseExtractionLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -59,7 +54,7 @@ class PulseExtractionLogic(GenericLogic):
                                     # Is added to the new data.
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -73,7 +68,7 @@ class PulseExtractionLogic(GenericLogic):
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._check_if_counter_gated()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

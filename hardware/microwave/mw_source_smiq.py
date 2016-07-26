@@ -40,12 +40,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     ## declare connectors
     _out = {'mwsourcesmiq': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self,e):
+    def on_activate(self,e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -89,7 +84,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             msgType='status')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

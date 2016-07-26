@@ -44,11 +44,8 @@ class MagnetDummy(Base, MagnetInterface):
 
     _out = {'magnetstage': 'MagnetInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -68,7 +65,7 @@ class MagnetDummy(Base, MagnetInterface):
 
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -82,7 +79,7 @@ class MagnetDummy(Base, MagnetInterface):
         pass
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
