@@ -43,15 +43,14 @@ class TSYS01SPI(Base, ProcessInterface):
     RESET     = 0x1E
     START_ADC = 0x48
     READ_ROM0 = 0xA0
-    
-    def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
-        
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
         #locking for thread safety
         self.threadlock = Mutex()
-        
-    def activation(self, e):
+
+    def on_activate(self, e):
         config = self.getConfiguration()
         print(config)
         self.bus = config['bus']
@@ -62,7 +61,7 @@ class TSYS01SPI(Base, ProcessInterface):
         self.reset()
         self.readROM()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.spi.close()
 
     def diag(self):
@@ -89,7 +88,7 @@ class TSYS01SPI(Base, ProcessInterface):
         self.rom = []
         for i in range(8):
             self.rom.append(self.readRomAddr(i))
-        
+
     def startADC(self):
         try:
             rbuf = self.spi.xfer([self.START_ADC])

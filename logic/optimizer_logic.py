@@ -57,10 +57,8 @@ class OptimizerLogic(GenericLogic):
     signal_refocus_Z_size_changed = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal(str, list)
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -91,7 +89,7 @@ class OptimizerLogic(GenericLogic):
         # Keep track of who called the refocus
         self._caller_tag = ''
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param e: error code
@@ -169,7 +167,7 @@ class OptimizerLogic(GenericLogic):
         self._initialize_z_refocus_image()
         return 0
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Reverse steps of activation
 
         @param e: error code

@@ -69,10 +69,8 @@ class ODMRGui(GUIBase):
     _in = {'odmrlogic1': 'ODMRLogic',
            'savelogic': 'SaveLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -80,7 +78,7 @@ class ODMRGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -288,7 +286,7 @@ class ODMRGui(GUIBase):
         # Show the Main ODMR GUI:
         self._mw.show()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Reverse steps of activation
 
         @param object e: Fysom.event object from Fysom class. A more detailed

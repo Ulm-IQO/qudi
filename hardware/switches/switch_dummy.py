@@ -34,19 +34,18 @@ class SwitchDummy(Base, SwitchInterface):
     # connectors
     _out = {'switch': 'SwitchInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.switchState = [False, False, False]
         self.switchCalibration = dict()
         self.switchCalibration['On'] = [0.9, 0.8, 0.88]
         self.switchCalibration['Off'] = [0.15, 0.3, 0.2]
 
-    def activation(self, e):
+    def on_activate(self, e):
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
 
     def getNumberOfSwitches(self):

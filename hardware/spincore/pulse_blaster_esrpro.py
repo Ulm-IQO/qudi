@@ -63,12 +63,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     # declare connectors
     _out = {'PulseBlasterESRPRO': 'PulseBlasterESRPRO'}
 
-    def __init__(self,manager, name, config = {}, **kwargs):
-
-        state_actions = {'onactivate'   : self.activation,
-                         'ondeactivate' : self.deactivation}
-
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -76,7 +72,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         self.GRAN_MIN = 2   # minimal possible granuality in time, in ns.
         self.FREQ_MAX = int(1/self.GRAN_MIN *1000) # Maximal output frequency.
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Fysom.event object from Fysom class.
@@ -110,7 +106,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         self.open_connection()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

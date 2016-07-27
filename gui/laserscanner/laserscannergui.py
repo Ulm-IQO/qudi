@@ -53,14 +53,8 @@ class VoltScanGui(GUIBase):
     _in = {'voltagescannerlogic1': 'VoltageScannerLogic',
           }
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -68,7 +62,7 @@ class VoltScanGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Reverse steps of activation
 
         @param e: error code
@@ -78,7 +72,7 @@ class VoltScanGui(GUIBase):
         self._mw.close()
         return 0
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
 
           @param class e: event class from Fysom

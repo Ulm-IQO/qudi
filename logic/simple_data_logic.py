@@ -25,29 +25,17 @@ from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
 import numpy as np
 
-class SimpleDataLogic(GenericLogic):        
+class SimpleDataLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
     _in = {'simpledata': 'SimpleData'}
     _out = {'simplelogic': 'SimpleDataLogic'}
-        
+
     sigRepeat = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        """ Create logic object
-          
-          @param object manager: reference to module Manager
-          @param str name: unique module name
-          @param dict config: configuration in a dict
-          @param dict kwargs: additional parameters as a dict
-        """
-        ## declare actions for state transitions
-        state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Prepare logic module for work.
 
           @param object e: Fysom state change notification
@@ -57,7 +45,7 @@ class SimpleDataLogic(GenericLogic):
         self.bufferLength = 1000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate modeule.
 
           @param object e: Fysom state change notification
@@ -92,6 +80,6 @@ class SimpleDataLogic(GenericLogic):
         s = np.r_[self.buf[self.window_len-1:0:-1], self.buf, self.buf[-1:-self.window_len:-1]]
         for channel in range(self._data_logic.getChannels()):
             convolved = np.convolve(w/w.sum(), s[:, channel], mode='valid')
-            self.smooth[:, channel] = convolved 
+            self.smooth[:, channel] = convolved
         self.sigRepeat.emit()
 

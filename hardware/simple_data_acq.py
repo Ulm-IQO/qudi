@@ -39,17 +39,13 @@ class SimpleAcq(Base, SimpleDataInterface):
     # connectors
     _out = {'simple': 'Simple'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
-
-    def activation(self, e):
+    def on_activate(self, e):
         self.rm = visa.ResourceManager('@py')
         print(self.rm.list_resources())
         self.my_instrument = self.rm.open_resource('ASRL/dev/ttyUSB0::INSTR', baud_rate=115200)
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.my_instrument.close()
         self.rm.close()
 
