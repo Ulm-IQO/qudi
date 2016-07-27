@@ -28,7 +28,6 @@ import numpy as np
 import pyqtgraph as pg
 import os
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 class PIDMainWindow(QtGui.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -66,7 +65,6 @@ class PIDGui(GUIBase):
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
-
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
@@ -162,7 +160,7 @@ class PIDGui(GUIBase):
         self._mw.manualDoubleSpinBox.setValue(self._pid_logic.get_manual_value())
 
         # make correct button state
-        self._mw.start_control_Action.setChecked(self._pid_logic.get_enabled() or self._pid_logic.countdown >= 0)
+        self._mw.start_control_Action.setChecked(self._pid_logic.get_enabled())
 
         #####################
         # Connecting user interactions
@@ -219,9 +217,9 @@ class PIDGui(GUIBase):
                 '<font color={}>{:,.3f}</font>'.format(
                 palette.c2.name(),
                 self._pid_logic.history[2, -1]))
-            self._mw.labelkP.setText('{0:,.6f}'.format(self._pid_logic.P))
-            self._mw.labelkI.setText('{0:,.6f}'.format(self._pid_logic.I))
-            self._mw.labelkD.setText('{0:,.6f}'.format(self._pid_logic.D))
+            self._mw.labelkP.setText('{0:,.6f}'.format(self._pid_logic.get_P))
+            self._mw.labelkI.setText('{0:,.6f}'.format(self._pid_logic.get_I))
+            self._mw.labelkD.setText('{0:,.6f}'.format(self._pid_logic.get_D))
             self._curve1.setData(
                 y=self._pid_logic.history[0],
                 x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
