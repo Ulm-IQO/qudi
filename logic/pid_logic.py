@@ -29,7 +29,7 @@ import numpy as np
 import time
 import datetime
 
-class PIDLogic(GenericLogic, PIDControllerInterface):
+class PIDLogic(GenericLogic):
     """
     Controll a process via software PID.
     """
@@ -37,8 +37,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     _modtype = 'logic'
     ## declare connectors
     _in = {
-        'process': 'ProcessInterface',
-        'control': 'ProcessControlInterface',
+        'controller': 'PIDControllerInterface',
         'savelogic': 'SaveLogic'
         }
     _out = {'pidlogic': 'PIDLogic'}
@@ -65,122 +64,26 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._process = self.connector['in']['process']['object']
-        self._control = self.connector['in']['control']['object']
+        self._controller = self.connector['in']['controller']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()
 
         config = self.getConfiguration()
-        if 'timestep' in config:
-            self.timestep = config['timestep']
-        else:
-            self.timestep = 0.1
-            self.log.warning('No time step configured, using 100ms.')
-
         # load parameters stored in app state store
-        if 'kP' in self._statusVariables:
-            self.kP = self._statusVariables['kP']
-        else:
-            self.kP = 1
-        if 'kI' in self._statusVariables:
-            self.kI = self._statusVariables['kI']
-        else:
-            self.kI = 1
-        if 'kD' in self._statusVariables:
-            self.kD = self._statusVariables['kD']
-        else:
-            self.kD = 1
-        if 'setpoint' in self._statusVariables:
-            self.setpoint = self._statusVariables['setpoint']
-        else:
-            self.setpoint = 273.15
-        #if 'enable' in self._statusVariables:
-        #    self.enable = self._statusVariables['enable']
-        #else:
-        #    self.enable = False
-        if 'manualvalue' in self._statusVariables:
-            self.manualvalue = self._statusVariables['manualvalue']
-        else:
-            self.manualvalue = 0
         if 'bufferLength' in self._statusVariables:
             self.bufferLength = self._statusVariables['bufferLength']
         else:
             self.bufferLength = 1000
-        self.sigNextStep.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
-        self.sigNewValue.connect(self._control.setControlValue)
         self.history = np.zeros([3, self.bufferLength])
         self.savingState = False
-        self.enable = False
-        self.integrated = 0
-        self.countdown = 2
-
-        self.sigNextStep.emit()
 
     def deactivation(self, e):
         """ Perform required deactivation. """
 
         # save parameters stored in app state store
-        self._statusVariables['kP'] = self.kP
-        self._statusVariables['kI'] = self.kI
-        self._statusVariables['kD'] = self.kD
-        self._statusVariables['setpoint'] = self.setpoint
-        self._statusVariables['enable'] = self.enable
         self._statusVariables['bufferLength'] = self.bufferLength
-
-    def _calcNextStep(self):
-        """ This function implements the Takahashi Type C PID
-            controller: the P and D term are no longer dependent
-             on the set-point, only on PV (which is Thlt).
-             The D term is NOT low-pass filtered.
-             This function should be called once every TS seconds.
-        """
-        self.pv = self._process.getProcessValue()
-
-        if self.countdown > 0:
-            self.countdown -= 1
-            self.previousdelta = self.setpoint - self.pv
-            print('Countdown: ', self.countdown)
-        elif self.countdown == 0:
-            self.countdown = -1
-            self.integrated = 0
-            self.enable = True
-
-        if (self.enable):
-            delta = self.setpoint - self.pv
-            self.integrated += delta
-            ## Calculate PID controller:
-            self.P = self.kP * delta
-            self.I = self.kI * self.timestep * self.integrated
-            self.D = self.kD / self.timestep * (delta - self.previousdelta)
-
-            self.cv += self.P + self.I + self.D
-            self.previousdelta = delta
-
-            ## limit contol output to maximum permissible limits
-            limits = self._control.getControlLimits()
-            if (self.cv > limits[1]):
-                self.cv = limits[1]
-            if (self.cv < limits[0]):
-                self.cv = limits[0]
-
-            self.history = np.roll(self.history, -1, axis=1)
-            self.history[0, -1] = self.pv
-            self.history[1, -1] = self.cv
-            self.history[2, -1] = self.setpoint
-            self.sigNewValue.emit(self.cv)
-        else:
-            self.cv = self.manualvalue
-            limits = self._control.getControlLimits()
-            if (self.cv > limits[1]):
-                self.cv = limits[1]
-            if (self.cv < limits[0]):
-                self.cv = limits[0]
-            self.sigNewValue.emit(self.cv)
-
-        time.sleep(self.timestep)
-        self.sigNextStep.emit()
 
     def getBufferLength(self):
         return self.bufferLength
