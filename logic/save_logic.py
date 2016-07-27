@@ -146,8 +146,8 @@ class SaveLogic(GenericLogic):
                     'savefig.dpi': '180'
                     }
 
-    def __init__(self, manager, name, config, **kwargs):
-        super().__init__(manager, name, config, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         # locking for thread safety
         self.lock = Mutex()

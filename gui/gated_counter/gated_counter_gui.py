@@ -57,11 +57,8 @@ class GatedCounterGui(GUIBase):
     sigStartGatedCounter = QtCore.Signal()
     sigStopGatedCounter = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.initUI,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -69,7 +66,7 @@ class GatedCounterGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -160,7 +157,7 @@ class GatedCounterGui(GUIBase):
         self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
 
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

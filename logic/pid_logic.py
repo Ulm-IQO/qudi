@@ -46,11 +46,8 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     sigNextStep = QtCore.Signal()
     sigNewValue = QtCore.Signal(float)
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -62,7 +59,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
         self._process = self.connector['in']['process']['object']
@@ -118,7 +115,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
 
         self.sigNextStep.emit()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Perform required deactivation. """
 
         # save parameters stored in app state store

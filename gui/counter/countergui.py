@@ -34,13 +34,13 @@ class CounterMainWindow(QtGui.QMainWindow):
 
     """ Create the Main Window based on the *.ui file. """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_slow_counter.ui')
 
         # Load it
-        super(CounterMainWindow, self).__init__()
+        super().__init__(**kwargs)
         uic.loadUi(ui_file, self)
         self.show()
 
@@ -57,11 +57,8 @@ class CounterGui(GUIBase):
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.initUI,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -69,7 +66,7 @@ class CounterGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key, config[key]))
 
-    def initUI(self, e=None):
+    def on_activate(self, e):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -164,7 +161,7 @@ class CounterGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         # FIXME: !
         """ Deactivate the module
 

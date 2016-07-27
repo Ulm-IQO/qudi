@@ -178,10 +178,8 @@ class PulsedMeasurementGui(GUIBase):
             'pulsedmeasurementlogic': 'PulsedMeasurementLogic'
             }
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -195,7 +193,7 @@ class PulsedMeasurementGui(GUIBase):
         # that variable is for testing issues and can be deleted if not needed:
         self._write_chunkwise = False
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Initialize, connect and configure the pulsed measurement GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -233,7 +231,7 @@ class PulsedMeasurementGui(GUIBase):
         self.show()
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Undo the Definition, configuration and initialisation of the pulsed
             measurement GUI.
 

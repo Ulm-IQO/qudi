@@ -47,12 +47,8 @@ class FitLogic(GenericLogic):
     # declare connectors
     _out = {'fitlogic': 'FitLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         # locking for thread safety
         self.lock = Mutex()
 
@@ -116,7 +112,7 @@ class FitLogic(GenericLogic):
                 'naming is right: check the doxygen documentation '
                 'if you added a new method and it does not show.')
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -129,5 +125,5 @@ class FitLogic(GenericLogic):
         """
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass

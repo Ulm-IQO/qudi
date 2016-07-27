@@ -40,10 +40,8 @@ class PulserDummy(Base, PulserInterface):
     # connectors
     _out = {'pulser': 'PulserInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate'   : self.activation,
-                         'ondeactivate' : self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -112,7 +110,7 @@ class PulserDummy(Base, PulserInterface):
 
         self.current_status = 0    # that means off, not running.
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -125,7 +123,7 @@ class PulserDummy(Base, PulserInterface):
         """
         self.connected = True
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

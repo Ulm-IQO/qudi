@@ -116,11 +116,8 @@ class MagnetLogic(GenericLogic):
 
     sigTest = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -166,7 +163,7 @@ class MagnetLogic(GenericLogic):
         self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -251,7 +248,7 @@ class MagnetLogic(GenericLogic):
         self.nuclear_2d_num_ssr = 3000
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

@@ -56,10 +56,8 @@ class PIDGui(GUIBase):
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -68,7 +66,7 @@ class PIDGui(GUIBase):
             self.log.info('{}: {}'.format(key,config[key]))
 
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
 
         @param object e: Fysom.event object from Fysom class.
@@ -193,7 +191,7 @@ class PIDGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

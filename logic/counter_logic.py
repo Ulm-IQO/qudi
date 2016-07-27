@@ -52,18 +52,13 @@ class CounterLogic(GenericLogic):
             }
     _out = {'counterlogic': 'CounterLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
-        @param object manager: Manager object thath loaded this module
-        @param str name: unique module name
         @param dict config: module configuration
         @param dict kwargs: optional parameters
         """
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -83,7 +78,7 @@ class CounterLogic(GenericLogic):
         self._counting_mode = 'continuous'
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -119,7 +114,7 @@ class CounterLogic(GenericLogic):
         self.sigCountFiniteGatedNext.connect(self.countLoopBody_finite_gated,
                                              QtCore.Qt.QueuedConnection)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
