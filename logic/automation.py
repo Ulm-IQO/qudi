@@ -160,29 +160,17 @@ class TreeModel(QtCore.QAbstractItemModel):
         else:
             return parent.itemData[0]
 
-class AutomationLogic(GenericLogic):        
+class AutomationLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
     _modclass = 'AutomationLogic'
     _modtype = 'logic'
     _in = {'taskrunner': 'TaskRunner'}
     _out = {'automationlogic': 'AutomationLogic'}
-        
+
     sigRepeat = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        """ Create logic object
-          
-          @param object manager: reference to module Manager
-          @param str name: unique module name
-          @param dict config: configuration in a dict
-          @param dict kwargs: additional parameters as a dict
-        """
-        ## declare actions for state transitions
-        state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Prepare logic module for work.
 
           @param object e: Fysom state change notification
@@ -205,7 +193,7 @@ class AutomationLogic(GenericLogic):
         #self.model.loadExecTree(tr)
         self.loadAutomation('auto.cfg')
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate modeule.
 
           @param object e: Fysom state change notification

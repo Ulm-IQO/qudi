@@ -32,12 +32,11 @@ class HBridge(Base, SwitchInterface):
     _modtype = 'hardware'
     _out = {'switch': 'SwitchInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config,  c_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.lock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
@@ -51,7 +50,7 @@ class HBridge(Base, SwitchInterface):
                 send_end=True
         )
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.inst.close()
 
     def getNumberOfSwitches(self):

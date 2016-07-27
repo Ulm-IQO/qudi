@@ -36,10 +36,8 @@ class MotorStagePI(Base, MotorInterface):
     # connectors
     _out = {'motorstage': 'MotorInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        cb_dict = {'onactivate': self.activation,
-                   'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, cb_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         #axis definition:
         self._x_axis_label = 'x'
@@ -55,7 +53,7 @@ class MotorStagePI(Base, MotorInterface):
 #        da die stage glaube ich immer was zurückgibt....
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -188,7 +186,7 @@ class MotorStagePI(Base, MotorInterface):
                     'instead.'.format(self._MicroStepSize))
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

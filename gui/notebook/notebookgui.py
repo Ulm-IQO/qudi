@@ -34,17 +34,7 @@ class NotebookWebView(GUIBase):
     ## declare connectors
     _in = {'notebooklogic': 'NotebookLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        """Create an instance of the module.
-
-          @param object manager:
-          @param str name:
-          @param dict config:
-        """
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initializes all needed UI files and establishes the connectors.
 
         @param object e: Fysom.event object from Fysom class.
@@ -63,7 +53,7 @@ class NotebookWebView(GUIBase):
         self.restoreWindowPos(self._mw)
         self._mw.show()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

@@ -52,24 +52,19 @@ class LaserScannerLogic(GenericLogic):
     signal_change_voltage = QtCore.Signal(float)
     signal_scan_next_line = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """ Create VoltageScanningLogic object with connectors.
 
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
-          @param dict config: module configuration
           @param dict kwargs: optional parameters
         """
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(**kwargs)
 
         # locking for thread safety
         self.threadlock = Mutex()
 
         self.stopRequested = False
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
@@ -126,7 +121,7 @@ class LaserScannerLogic(GenericLogic):
         # Initialie data matrix
         self._initialise_data_matrix(100)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
           @param object e: Fysom state change event

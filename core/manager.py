@@ -78,7 +78,7 @@ class Manager(QtCore.QObject):
     sigManagerQuit = QtCore.Signal(object, bool)
     sigShowManager = QtCore.Signal()
 
-    def __init__(self, configFile=None, argv=None):
+    def __init__(self, configFile=None, argv=None, **kwargs):
         """Constructor for QuDi main management class
 
           @param string configFile: path to configuration file
@@ -137,7 +137,7 @@ class Manager(QtCore.QObject):
     """)
 
             # Initialize parent class QObject
-            QtCore.QObject.__init__(self)
+            super().__init__(**kwargs)
 
             # Register exception handler
             register_exception_handler(self)
@@ -561,8 +561,9 @@ class Manager(QtCore.QObject):
         if not issubclass(modclass, Base):
             raise Exception('Bad inheritance, for instance %s from %s.%s.' % (instanceName, baseName, className))
 
-        # Create object from class (Manager, Name, config)
-        instance = modclass(self, instanceName, configuration)
+        # Create object from class
+        instance = modclass(manager=self, name=instanceName,
+                config=configuration)
 
         with self.lock:
             if baseName in ['hardware', 'logic', 'gui']:
