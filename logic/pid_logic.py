@@ -42,15 +42,10 @@ class PIDLogic(GenericLogic):
         }
     _out = {'pidlogic': 'PIDLogic'}
 
-    sigNextStep = QtCore.Signal()
-    sigNewValue = QtCore.Signal(float)
+    sigUpdateDisplay = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
         self.log.info('The following configuration was found.')
 
         # checking for the right configuration
@@ -61,39 +56,58 @@ class PIDLogic(GenericLogic):
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
         self._controller = self.connector['in']['controller']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
-        self.previousdelta = 0
-        self.cv = self._control.getControlValue()
-
         config = self.getConfiguration()
+
         # load parameters stored in app state store
-        if 'bufferLength' in self._statusVariables:
-            self.bufferLength = self._statusVariables['bufferLength']
+        if 'bufferlength' in self._statusVariables:
+            self.bufferLength = self._statusVariables['bufferlength']
         else:
             self.bufferLength = 1000
+
+        if 'timestep' in self._statusVariables:
+            self.timestep = self._statusVariables['timestep']
+        else:
+            self.timestep = 100
+
         self.history = np.zeros([3, self.bufferLength])
         self.savingState = False
+        self.enabled = False
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.setInterval(self.timestep)
+        self.timer.timeout.connect(self.loop)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Perform required deactivation. """
 
-        # save parameters stored in app state store
-        self._statusVariables['bufferLength'] = self.bufferLength
+        # save parameters stored in ap state store
+        self._statusVariables['bufferlength'] = self.bufferLength
+        self._statusVariables['timestep'] = self.timestep
 
     def getBufferLength(self):
         return self.bufferLength
 
     def startLoop(self):
-        self.countdown = 2
+        self.enabled = True
+        self.timer.start(self.timestep)
 
     def stopLoop(self):
-        self.countdown = -1
-        self.enable = False
+        self.enabled = False
+
+    def loop(self):
+        self.history = np.roll(self.history, -1, axis=1)
+        self.history[0, -1] = self._controller.get_process_value()
+        self.history[1, -1] = self._controller.get_control_value()
+        self.history[2, -1] = self._controller.get_setpoint()
+        self.sigUpdateDisplay.emit()
+        if self.enabled:
+            self.timer.start(self.timestep)
 
     def getSavingState(self):
         return self.savingState
@@ -112,52 +126,53 @@ class PIDLogic(GenericLogic):
         self.history = np.zeros([3, self.bufferLength])
 
     def get_kp(self):
-        return self.kP
+        return self._controller.get_kp()
 
     def set_kp(self, kp):
-        self.kP = kp
+        return self._controller.set_kp(kp)
+        
 
     def get_ki(self):
-        return self.kI
+        return self._controller.get_ki()
 
     def set_ki(self, ki):
-        self.kI = ki
+        return self._controller.set_ki(ki)
 
     def get_kd(self):
-        return self.kD
+        return self._controller.get_kd()
 
     def set_kd(self, kd):
-        self.kD = kd
+        return self._controller.set_kd(kd)
 
     def get_setpoint(self):
-        return self.setpoint
+        return self.history[2, -1]
 
     def set_setpoint(self, setpoint):
-        self.setpoint = setpoint
+        self._controller.set_setpoint(setpoint)
 
     def get_manual_value(self):
-        return self.manualvalue
+        return self._controller.get_manual_value()
 
     def set_manual_value(self, manualvalue):
-        self.manualvalue = manualvalue
-        limits = self._control.getControlLimits()
-        if (self.manualvalue > limits[1]):
-            self.manualvalue = limits[1]
-        if (self.manualvalue < limits[0]):
-            self.manualvalue = limits[0]
-
+        return self._controller.set_manual_value(manualvalue)
+        
     def get_enabled(self):
-        return self.enable
+        return self.enabled
 
     def set_enabled(self, enabled):
-        if enabled and not self.enable and self.countdown == -1:
+        if enabled and not self.enabled:
             self.startLoop()
-        if not enabled and self.enable:
+        if not enabled and self.enabled:
             self.stopLoop()
 
     def get_control_limits(self):
-        return self._control.getControlLimits()
+        return self._controller.get_control_limits()
 
     def set_control_limits(self, limits):
-        pass
+        return self._controller.set_control_limits(limits)
 
+    def get_pv(self):
+        return self.history[0, -1]
+
+    def get_cv(self):
+        return self.history[1, -1]
