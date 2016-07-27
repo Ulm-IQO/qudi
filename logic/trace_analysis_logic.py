@@ -47,18 +47,13 @@ class TraceAnalysisLogic(GenericLogic):
     sigHistogramUpdated = QtCore.Signal()
 
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
-        @param object manager: Manager object thath loaded this module
-        @param str name: unique module name
         @param dict config: module configuration
         @param dict kwargs: optional parameters
         """
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -69,7 +64,7 @@ class TraceAnalysisLogic(GenericLogic):
         self.hist_data = None
         self._hist_num_bins = None
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -89,7 +84,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         self.current_fit_function = 'No Fit'
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

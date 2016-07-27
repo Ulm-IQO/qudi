@@ -39,12 +39,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     ## declare connectors
     _out = {'mwsourceanritsu': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self,e=None):
+    def on_activate(self,e=None):
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
@@ -77,7 +72,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self.log.info('Anritsu {} initialised and connected to hardware.'
                 ''.format(self.model))
 
-    def deactivation(self,e=None):
+    def on_deactivate(self,e=None):
         self._gpib_connection.close()
         self.rm.close()
 

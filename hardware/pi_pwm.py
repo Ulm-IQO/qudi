@@ -35,14 +35,13 @@ class PiPWM(Base, ProcessControlInterface):
     ## declare connectors
     _out = {'pwm': 'ProcessControlInterface'}
 
-    def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         config = self.getConfiguration()
 
         if 'channel' in config:
@@ -79,7 +78,7 @@ class PiPWM(Base, ProcessControlInterface):
         self.setupPins()
         self.startPWM()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.stopPWM()
 
     def setupPins(self):

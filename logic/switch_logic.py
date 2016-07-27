@@ -24,24 +24,20 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
 
-class SwitchLogic(GenericLogic):        
+class SwitchLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
     _modclass = 'switch'
     _modtype = 'logic'
     _out = {'switchlogic': 'SwitchLogic'}
-        
-    def __init__(self, manager, name, config, **kwargs):
+
+    def __init__(self, config, **kwargs):
         """ Create logic object
-          
-          @param object manager: reference to module Manager
-          @param str name: unique module name
+
           @param dict config: configuration in a dict
           @param dict kwargs: additional parameters as a dict
         """
-        ## declare actions for state transitions
-        state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         # dynamic number of 'in' connectors depending on config
         if 'connect' in config:
@@ -49,8 +45,8 @@ class SwitchLogic(GenericLogic):
                 self.connector['in'][connector] = OrderedDict()
                 self.connector['in'][connector]['class'] = 'SwitchInterface'
                 self.connector['in'][connector]['object'] = None
-        
-    def activation(self, e):
+
+    def on_activate(self, e):
         """ Prepare logic module for work.
 
           @param object e: Fysom state change notification
@@ -62,7 +58,7 @@ class SwitchLogic(GenericLogic):
             for i in range(self.connector['in'][connector]['object'].getNumberOfSwitches()):
                 self.switches[hwname][i] = self.connector['in'][connector]['object']
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate modeule.
 
           @param object e: Fysom state change notification

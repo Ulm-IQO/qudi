@@ -195,11 +195,8 @@ class ConfocalGui(GUIBase):
            'optimizerlogic1': 'OptimizerLogic'
            }
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.initUI,
-                  'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -223,7 +220,7 @@ class ConfocalGui(GUIBase):
         self.xy_image_orientation = np.array([0, 1, 2, -1], int)
         self.depth_image_orientation = np.array([0, 1, 2, -1], int)
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
 
         @param object e: Fysom.event object from Fysom class.
@@ -706,7 +703,7 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Reverse steps of activation
 
         @param object e: Fysom.event object from Fysom class. A more detailed

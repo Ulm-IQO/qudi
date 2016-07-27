@@ -43,9 +43,8 @@ class OkFpgaPulser(Base, PulserInterface):
     _modtype = 'hardware'
     _out = {'pulser': 'PulserInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config,  c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -82,13 +81,13 @@ class OkFpgaPulser(Base, PulserInterface):
         # self.lock = Mutex()
         self.current_loaded_asset = None
 
-    def activation(self, e):
+    def on_activate(self, e):
         self.current_loaded_asset = None
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
         self.sample_rate = self.get_sample_rate()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self._disconnect_fpga()
 
     def get_constraints(self):

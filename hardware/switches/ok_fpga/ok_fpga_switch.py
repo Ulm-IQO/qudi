@@ -38,12 +38,11 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
     _modtype = 'hardware'
     _out = {'switch': 'SwitchInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config,  c_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.lock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         self.fp = ok.FrontPanel()
         self.fp.GetDeviceCount()
         self.fp.OpenBySerial(self.fp.GetDeviceListSerial(0))
@@ -55,7 +54,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
             self.reset()
             self.log.info('FPGA connected')
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
         # self.fp.
 

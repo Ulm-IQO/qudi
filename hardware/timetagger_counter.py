@@ -37,13 +37,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
     _out = {'ttcounter': 'SlowCounterInterface'
             }
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Starts up the NI Card at activation.
 
         @param object e: Event class object from Fysom.
@@ -68,7 +62,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
                     'Assign to that parameter an appropriated channel '
                     'from your NI Card!')
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         """ Shut down the NI card.
 
         @param object e: Event class object from Fysom. A more detailed

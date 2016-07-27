@@ -55,9 +55,8 @@ class PIDGui(GUIBase):
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        super().__init__(manager, name, config)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
