@@ -1122,7 +1122,7 @@ class ODMRLogic(GenericLogic):
             time.sleep(1)
             # print('running')
 
-        meas_param = self.do_fit(fit_function=fit_function)
+        fit_x, fit_y, meas_param, result = self.do_fit(fit_function=fit_function)
 
         meas_param['ODMR frequency start (Hz)'] = self.mw_start
         meas_param['ODMR frequency step (Hz)'] = self.mw_step
