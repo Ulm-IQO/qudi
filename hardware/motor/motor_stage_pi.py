@@ -37,7 +37,7 @@ class MotorStagePI(Base, MotorInterface):
     _out = {'motorstage': 'MotorInterface'}
 
     def __init__(self, **kwargs):
-        super().__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         #axis definition:
         self._x_axis_label = 'x'

@@ -57,7 +57,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigFitUpdated = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
-        super().__init__(self, config=config, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
