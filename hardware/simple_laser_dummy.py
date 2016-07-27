@@ -35,7 +35,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     _out = {'laser': 'Laser'}
 
     def __init__(self, **kwargs):
-        super.__init__(**kwargs)
+        super().__init__(**kwargs)
         self.state = LaserState['OFF']
         self.shutter = ShutterState['CLOSED']
         self.mode = ControlMode['POWER']
