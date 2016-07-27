@@ -29,7 +29,7 @@ import numpy as np
 import time
 import datetime
 
-class PIDLogic(GenericLogic, PIDControllerInterface):
+class SoftPIDController(GenericLogic, PIDControllerInterface):
     """
     Controll a process via software PID.
     """
@@ -39,35 +39,29 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     _in = {
         'process': 'ProcessInterface',
         'control': 'ProcessControlInterface',
-        'savelogic': 'SaveLogic'
         }
-    _out = {'pidlogic': 'PIDLogic'}
+    _out = {'controller': 'SoftPIDController'}
 
-    sigNextStep = QtCore.Signal()
     sigNewValue = QtCore.Signal(float)
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
+            self.log.debug('{}: {}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
         self._process = self.connector['in']['process']['object']
         self._control = self.connector['in']['control']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()
@@ -76,8 +70,8 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
         if 'timestep' in config:
             self.timestep = config['timestep']
         else:
-            self.timestep = 0.1
-            self.logMsg('No time step configured, using 100ms', msgType='warn')
+            self.timestep = 100
+            self.log.warn('No time step configured, using 100ms')
 
         # load parameters stored in app state store
         if 'kP' in self._statusVariables:
@@ -104,7 +98,12 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.manualvalue = self._statusVariables['manualvalue']
         else:
             self.manualvalue = 0
-        self.sigNextStep.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
+
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.setInterval(self.timestep)
+
+        self.timer.timeout.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
         self.sigNewValue.connect(self._control.setControlValue)
 
         self.history = np.zeros([3, 5])
@@ -113,9 +112,9 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
         self.integrated = 0
         self.countdown = 2
 
-        self.sigNextStep.emit()
+        self.timer.start(self.timestep)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Perform required deactivation. """
 
         # save parameters stored in app state store
@@ -175,8 +174,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
                 self.cv = limits[0]
             self.sigNewValue.emit(self.cv)
 
-        time.sleep(self.timestep)
-        self.sigNextStep.emit()
+        self.timer.start(self.timestep)
 
     def startLoop(self):
         self.countdown = 2
@@ -233,7 +231,7 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
             self.manualvalue = limits[0]
 
     def get_enabled(self):
-        return self.enable
+        return self.enable or self.countdown >= 0
 
     def set_enabled(self, enabled):
         if enabled and not self.enable and self.countdown == -1:
@@ -247,3 +245,15 @@ class PIDLogic(GenericLogic, PIDControllerInterface):
     def set_control_limits(self, limits):
         pass
 
+    def get_control_value(self):
+        return self.cv
+    
+    def get_process_value(self):
+        return self.pv
+
+    def get_extra(self):
+        return {
+            'P': self.P,
+            'I': self.I,
+            'D': self.D
+        }
