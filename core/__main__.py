@@ -119,7 +119,7 @@ class AppWatchdog(QtCore.QObject):
 
 
 # Possibility to start the program with additional parameters.
-parser = argparse.ArgumentParser(description='QuDi', prog='start.py')
+parser = argparse.ArgumentParser(prog='start.py')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-p', '--profile', action='store_true',
         help='enables profiler')
