@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 import gc
-import getopt
 import glob
 import re
 import time
