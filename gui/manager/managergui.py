@@ -87,7 +87,7 @@ class ManagerGui(GUIBase):
         self.errorDialog = ErrorDialog(self)
         self._about = AboutDialog()
         version = self.getSoftwareVersion()
-        configFile = self._manager._getConfigFile()  # TODO: better handle this hidden method from manager logic
+        configFile = self._manager.configFile
         self._about.label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
             ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(version[0], version[1]))
