@@ -820,8 +820,15 @@ class Manager(QtCore.QObject):
 
         """
         logger.info('Deactivating {0}.{1}'.format(base, key))
-        if not self.tree['loaded'][base][key].getState() in ('idle', 'running'):
-            logger.error('{0} module {1} not active (idle or running) anymore.'
+        if base not in ['hardware', 'logic', 'gui']:
+            logger.error('Unknown module base "{0}"'.format(base))
+            return
+        if key not in self.tree['loaded'][base]:
+            logger.error('{0} module {1} not loaded.'.format(base, key))
+            return
+        if not self.tree['loaded'][base][key].getState() in ('idle',
+                'running'):
+            logger.error('{0} module {1} not active (idle or running).'
                     ''.format(base, key))
             return
         try:
@@ -829,7 +836,8 @@ class Manager(QtCore.QObject):
             if base == 'logic':
                 self.tm.quitThread('mod-' + base + '-' + key)
                 self.tm.joinThread('mod-' + base + '-' + key)
-            self.saveStatusVariables(base, key, self.tree['loaded'][base][key].getStatusVariables())
+            self.saveStatusVariables(base, key,
+                    self.tree['loaded'][base][key].getStatusVariables())
         except:
             logger.exception(
                     '{0} module {1}: error during deactivation:'.format(
