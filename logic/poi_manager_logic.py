@@ -50,7 +50,7 @@ class PoI(object):
         # trace records every time+position when the POI position was explicitly known.
         self._position_time_trace = []
 
-        # To avoid duplication while algorithmically setting POIs, we need the key string to 
+        # To avoid duplication while algorithmically setting POIs, we need the key string to
         # go to sub-second. This requires the datetime module.
 
         self._creation_time = datetime.now()
@@ -184,10 +184,8 @@ class PoiManagerLogic(GenericLogic):
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -209,7 +207,7 @@ class PoiManagerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
 
@@ -286,7 +284,7 @@ class PoiManagerLogic(GenericLogic):
 
         return new_track_point.get_key()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         return
 
     def get_confocal_image_data(self):
@@ -410,8 +408,8 @@ class PoiManagerLogic(GenericLogic):
             return [-1., -1., -1.]
 
     def set_new_position(self, poikey=None, point=None):
-        """ 
-        Moves the given POI to a new position, and uses this information to update 
+        """
+        Moves the given POI to a new position, and uses this information to update
         the sample position.
 
         @param string poikey: the key of the poi
@@ -435,7 +433,7 @@ class PoiManagerLogic(GenericLogic):
             sample_shift = point - self.get_poi_position(poikey=poikey)
             sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
             self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-            
+
             # signal POI has been updated (this will cause GUI to redraw)
             if (poikey is not 'crosshair') and (poikey is not 'sample'):
                 self.signal_poi_updated.emit()
@@ -747,7 +745,6 @@ class PoiManagerLogic(GenericLogic):
                 self.rename_poi(poikey=this_poi_key, name=saved_poi_name, emit_change=False)
 
         roifile.close()
-
         # Now that all the POIs are created, emit the signal for other things (ie gui) to update
         self.signal_poi_updated.emit()
 

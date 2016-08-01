@@ -79,11 +79,8 @@ class WavemeterDummy(Base, WavemeterInterface):
 
     sig_handle_timer = QtCore.Signal(bool)
 
-    def __init__(self, manager, name, config={}, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config,
-                      callbacks=c_dict, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         # locking for thread safety
         self.threadlock = Mutex()
@@ -100,7 +97,7 @@ class WavemeterDummy(Base, WavemeterInterface):
             self.log.warning('No measurement_timing configured, '
                     'using {} instead.'.format(self._measurement_timing))
 
-    def activation(self, e):
+    def on_activate(self, e):
 
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
@@ -115,7 +112,7 @@ class WavemeterDummy(Base, WavemeterInterface):
         # start the event loop for the hardware
         self.hardware_thread.start()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
 
         self.stop_acqusition()
         self.hardware_thread.quit()

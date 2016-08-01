@@ -143,13 +143,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             'odmrcounter': 'ODMRCounterInterface'
             }
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Starts up the NI Card at activation.
 
         @param object e: Event class object from Fysom.
@@ -357,7 +351,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         # rest, so start it always and leave it running
         self._start_analoque_output()
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         """ Shut down the NI card.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -1909,13 +1903,7 @@ class NICard2(NICard):
     # connectors
     _out = {'gatedslowcounter1' : 'SlowCounterInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # run the init of the superclass:
-        super().__init__(manager, name, config, **kwargs)
-
-
-
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Starts up the NI Card at activation.
 
         @param object e: Event class object from Fysom.

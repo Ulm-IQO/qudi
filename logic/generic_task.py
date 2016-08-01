@@ -24,11 +24,12 @@ import logging
 from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom
+from core.FysomAdapter import Fysom
+import sys
 
 class TaskResult(QtCore.QObject):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.data = None
         self.success = None
 
@@ -71,14 +72,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
     pauseTasks = {}
     requiredModules = []
 
-    def __init__(self, name, runner, references, config):
+    def __init__(self, name, runner, references, config, **kwargs):
         """ Create an Interruptable task.
           @param str name: unique task name
           @param object runner: reference to the TaskRunner managing this task
           @param dict references: a dictionary of all required modules
           @param dict config: configuration dictionary
         """
-        QtCore.QObject.__init__(self)
         default_callbacks = {
                 'onrun': self._start,
                 'onpause': self._pause,
@@ -102,7 +102,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             ],
             'callbacks': default_callbacks
         }
-        Fysom.__init__(self, _stateDict)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_stateDict, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _stateDict)
+
         self.lock = Mutex()
         self.name = name
         self.interruptable = False
@@ -116,6 +121,22 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigDoResume.connect(self._doResume, QtCore.Qt.QueuedConnection)
         self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
         self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
+
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+          return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+          pass
+        return Fysom.__getattr__(self, name)
 
     @property
     def log(self):
@@ -329,14 +350,13 @@ class PrePostTask(QtCore.QObject, Fysom):
 
     requiredModules = []
 
-    def __init__(self, name, runner, references, config):
+    def __init__(self, name, runner, references, config, **kwargs):
         """ Create a PrePostTask.
           @param str name: unique name of the task
           @param object runner: TaskRunner that manages this task
           @param dict references: contains references to all required modules
           @param dict config: configuration parameter dictionary
         """
-        QtCore.QObject.__init__(self)
         _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
         _stateList = {
             'initial': 'stopped',
@@ -346,12 +366,32 @@ class PrePostTask(QtCore.QObject, Fysom):
             ],
             'callbacks': _default_callbacks
         }
-        Fysom.__init__(self, _stateList)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_stateList, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _stateList)
         self.lock = Mutex()
         self.name = name
         self.runner = runner
         self.ref = references
         self.config = config
+
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+          return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+          pass
+        return Fysom.__getattr__(self, name)
 
     @property
     def log(self):

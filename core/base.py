@@ -21,10 +21,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import logging
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom # provides a final state machine
+from .FysomAdapter import Fysom # provides a final state machine
 from collections import OrderedDict
 
 import os
+import sys
 
 class Base(QtCore.QObject, Fysom):
     """
@@ -49,7 +50,8 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, configuration={}, callbacks={}, **kwargs):
+    def __init__(self, manager, name, config={}, callbacks={},
+            **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
@@ -60,8 +62,6 @@ class Base(QtCore.QObject, Fysom):
 
         """
 
-        # Qt signal/slot capabilities
-        QtCore.QObject.__init__(self)
 
         default_callbacks = {
             'onactivate': self.on_activate,
@@ -95,7 +95,11 @@ class Base(QtCore.QObject, Fysom):
         }
 
         # Initialise state machine:
-        Fysom.__init__(self, _baseStateList)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_baseStateList, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _baseStateList)
 
         # add connection base
         self.connector = OrderedDict()
@@ -112,9 +116,25 @@ class Base(QtCore.QObject, Fysom):
 
         self._manager = manager
         self._name = name
-        self._configuration = configuration
+        self._configuration = config
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
+
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+            return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+            pass
+        return Fysom.__getattr__(self, name)
 
     @property
     def log(self):

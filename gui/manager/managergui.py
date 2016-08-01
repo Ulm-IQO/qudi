@@ -58,19 +58,18 @@ class ManagerGui(GUIBase):
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """Create an instance of the module.
 
           @param object manager:
           @param str name:
           @param dict config:
         """
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+        super().__init__(**kwargs)
         self.modlist = list()
         self.modules = set()
 
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Activation method called on change to active state.
 
         @param object e: Fysom.event object from Fysom class.
@@ -88,7 +87,7 @@ class ManagerGui(GUIBase):
         self.errorDialog = ErrorDialog(self)
         self._about = AboutDialog()
         version = self.getSoftwareVersion()
-        configFile = self._manager._getConfigFile()  # TODO: better handle this hidden method from manager logic
+        configFile = self._manager.configFile
         self._about.label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
             ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(version[0], version[1]))
@@ -146,7 +145,7 @@ class ManagerGui(GUIBase):
         #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
-    def deactivation(self,e):
+    def on_deactivate(self,e):
         """Close window and remove connections.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

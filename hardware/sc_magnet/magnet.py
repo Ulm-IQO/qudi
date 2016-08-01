@@ -42,14 +42,10 @@ class Magnet(Base, MagnetInterface):
     _out = {'magnetstage': 'magnet_interface'}
 
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """Here the connections to the power supplies and to the counter are established"""
-        # declare actions for state transitions
+        super().__init__(**kwargs)
 
-        # apparently not needed anymore
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-
-        Base.__init__(self, manager, name, config, c_dict)
         self.soc_x = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.soc_y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.soc_z = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -78,7 +74,7 @@ class Magnet(Base, MagnetInterface):
         self.z_constr = 3.0
         self.rho_constr = 1.2
 
-    def activation(self, e):
+    def on_activate(self, e):
         """
         loads the config file and extracts the necessary configurations for the
         superconducting magnet
@@ -140,7 +136,7 @@ class Magnet(Base, MagnetInterface):
         tell_dict = {'x': 'CONF:FIELD:UNITS 1', 'y': 'CONF:FIELD:UNITS 1', 'z': 'CONF:FIELD:UNITS 1'}
         self.tell(tell_dict)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
 
     def utf8_to_byte(self, myutf8):
