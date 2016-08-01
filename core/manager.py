@@ -746,10 +746,12 @@ class Manager(QtCore.QObject):
             except:
                 logger.exception('Error while loading {0} module: '
                         '{1}'.format(base, key))
-        elif key in self.tree['loaded'][base] and 'module.Class' in self.tree['defined'][base][key]:
+        elif (key in self.tree['loaded'][base]
+                and 'module.Class' in self.tree['defined'][base][key]):
             try:
                 # state machine: deactivate
-                self.deactivateModule(base, key)
+                if self.isModuleActive(base, key):
+                    self.deactivateModule(base, key)
             except:
                 logger.exception('Error while deactivating {0} module: '
                         '{1}'.format(base, key))
@@ -776,6 +778,21 @@ class Manager(QtCore.QObject):
             logger.error('Module not loaded or not loadable (missing module '
                      'declaration in configuration): {0}.{1}'.format(base, key))
         return 0
+
+    def isModuleActive(self, base, key):
+        """Returns whether a given module is active.
+
+          @param string base: module base package (hardware, logic or gui)
+          @param string key: module which is going to be activated.
+        """
+        if base not in self.tree['loaded']:
+            logger.error('Unknown module base "{0}"'.format(base))
+            return False
+        if key not in self.tree['loaded'][base]:
+            logger.error('{0} module {1} not loaded.'.format(base, key))
+            return False
+        return self.tree['loaded'][base][key].getState() in ('idle',
+                'running')
 
     def activateModule(self, base, key):
         """Activate the module given in key with the help of base class.
@@ -1020,9 +1037,12 @@ class Manager(QtCore.QObject):
         for depmod in deps[key]:
             destbase, destmod = depmod
             for c in self.tree['loaded'][destbase][destmod].connector['in']:
-                if self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] is self.tree['loaded'][base][key]:
-                    self.deactivateModule(destbase, destmod)
-                    self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] = None
+                if self.tree['loaded'][destbase][destmod].connector[
+                        'in'][c]['object'] is self.tree['loaded'][base][key]:
+                    if self.isModuleActive(destbase, destmod):
+                        self.deactivateModule(destbase, destmod)
+                    self.tree['loaded'][destbase][destmod].connector[
+                            'in'][c]['object'] = None
 
         # reload and reconnect
         success = self.reloadConfigureModule(base, key)
@@ -1155,7 +1175,8 @@ class Manager(QtCore.QObject):
         """Nicely request that all modules shut down for application restart."""
         for mbase in ['hardware', 'logic', 'gui']:
             for module in self.tree['loaded'][mbase]:
-                self.deactivateModule(mbase, module)
+                if self.isModuleActive(mbase, module):
+                    self.deactivateModule(mbase, module)
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 
