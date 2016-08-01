@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>946</width>
-    <height>629</height>
+    <height>727</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -191,8 +191,6 @@
      </layout>
     </item>
    </layout>
-   <zorder>splitter</zorder>
-   <zorder>splitter</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -200,7 +198,7 @@
      <x>0</x>
      <y>0</y>
      <width>946</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -262,14 +260,14 @@
        <item row="0" column="0">
         <widget class="QLabel" name="label_7">
          <property name="text">
-          <string>Runtime (s) :</string>
+          <string>Runtime:</string>
          </property>
         </widget>
        </item>
        <item row="2" column="2">
         <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Power (dBm) :</string>
+          <string>Power:</string>
          </property>
         </widget>
        </item>
@@ -286,7 +284,7 @@
        <item row="0" column="2">
         <widget class="QLabel" name="label_8">
          <property name="text">
-          <string>Elapsed Time [s] :</string>
+          <string>Elapsed Time (s) :</string>
          </property>
         </widget>
        </item>
@@ -342,6 +340,9 @@
            <height>16777215</height>
           </size>
          </property>
+         <property name="suffix">
+          <string>s</string>
+         </property>
          <property name="maximum">
           <double>10000000.000000000000000</double>
          </property>
@@ -374,7 +375,7 @@
           <double>1000000000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.000001000000000</double>
+          <double>0.100000000000000</double>
          </property>
         </widget>
        </item>
@@ -461,15 +462,18 @@
           <string>Hz</string>
          </property>
          <property name="decimals">
-          <number>4</number>
+          <number>6</number>
          </property>
          <property name="maximum">
           <double>1000000000.000000000000000</double>
          </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
+         </property>
         </widget>
        </item>
        <item row="2" column="3">
-        <widget class="QDoubleSpinBox" name="power_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="power_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -482,8 +486,11 @@
            <height>16777215</height>
           </size>
          </property>
+         <property name="suffix">
+          <string>dBm</string>
+         </property>
          <property name="decimals">
-          <number>3</number>
+          <number>5</number>
          </property>
          <property name="minimum">
           <double>-1000.000000000000000</double>
@@ -500,22 +507,10 @@
   </widget>
   <widget class="QDockWidget" name="odmr_fit_DockWidget">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>329</width>
-     <height>150</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>524287</width>
-     <height>150</height>
-    </size>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
@@ -669,6 +664,16 @@
   </customwidget>
  </customwidgets>
  <tabstops>
+  <tabstop>runtime_DoubleSpinBox</tabstop>
+  <tabstop>frequency_DoubleSpinBox</tabstop>
+  <tabstop>power_DoubleSpinBox</tabstop>
+  <tabstop>mode_ComboBox</tabstop>
+  <tabstop>start_freq_DoubleSpinBox</tabstop>
+  <tabstop>step_freq_DoubleSpinBox</tabstop>
+  <tabstop>stop_freq_DoubleSpinBox</tabstop>
+  <tabstop>fit_methods_ComboBox</tabstop>
+  <tabstop>do_fit_PushButton</tabstop>
+  <tabstop>odmr_fit_results_DisplayWidget</tabstop>
   <tabstop>odmr_cb_max_DoubleSpinBox</tabstop>
   <tabstop>odmr_cb_high_percentile_DoubleSpinBox</tabstop>
   <tabstop>odmr_cb_PlotWidget</tabstop>
@@ -676,8 +681,8 @@
   <tabstop>odmr_cb_min_DoubleSpinBox</tabstop>
   <tabstop>odmr_cb_centiles_RadioButton</tabstop>
   <tabstop>odmr_cb_manual_RadioButton</tabstop>
-  <tabstop>odmr_matrix_PlotWidget</tabstop>
   <tabstop>odmr_PlotWidget</tabstop>
+  <tabstop>odmr_matrix_PlotWidget</tabstop>
  </tabstops>
  <resources/>
  <connections>

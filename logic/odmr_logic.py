@@ -53,6 +53,9 @@ class ODMRLogic(GenericLogic):
     sigOdmrElapsedTimeChanged = QtCore.Signal()
     sigODMRMatrixAxesChanged = QtCore.Signal()
 
+    sigMicrowaveCWModeChanged = QtCore.Signal(bool)
+    sigMicrowaveListModeChanged = QtCore.Signal(bool)
+
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
         state_actions = {'onactivate': self.activation,
@@ -225,6 +228,9 @@ class ODMRLogic(GenericLogic):
         self._odmr_counter.set_up_odmr_clock(clock_frequency=self._clock_frequency)
         self._odmr_counter.set_up_odmr()
 
+        self.sigMicrowaveCWModeChanged.emit(False)
+        self.sigMicrowaveListModeChanged.emit(True)
+
     def kill_odmr(self):
         """ Stopping the ODMR counter. """
         self._odmr_counter.close_odmr()
@@ -356,6 +362,10 @@ class ODMRLogic(GenericLogic):
                 self.unlock()
                 self.sigOdmrPlotUpdated.emit()
                 self.sigOdmrMatrixUpdated.emit()
+
+                self.sigMicrowaveCWModeChanged.emit(False)
+                self.sigMicrowaveListModeChanged.emit(False)
+
                 return
 
         # reset position so every line starts from the same frequency
@@ -480,6 +490,10 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._mw_device.on()
+
+        self.sigMicrowaveCWModeChanged.emit(True)
+        self.sigMicrowaveListModeChanged.emit(False)
+
         return error_code
 
     def MW_off(self):
@@ -488,6 +502,10 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._mw_device.off()
+
+        self.sigMicrowaveCWModeChanged.emit(False)
+        self.sigMicrowaveListModeChanged.emit(False)
+
         return error_code
 
     def get_fit_functions(self):
