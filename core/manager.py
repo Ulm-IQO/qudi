@@ -818,7 +818,7 @@ class Manager(QtCore.QObject):
 
         """
         logger.info('Deactivating {0}.{1}'.format(base, key))
-        if base not in ['hardware', 'logic', 'gui']:
+        if base not in self.tree['loaded']:
             logger.error('Unknown module base "{0}"'.format(base))
             return
         if key not in self.tree['loaded'][base]:
@@ -846,16 +846,18 @@ class Manager(QtCore.QObject):
         """ Based on object id, find which connections to replace.
 
           @param str base: Module category
-          @param str key: Unique configured module name for module where we want the dependencies
+          @param str key: Unique configured module name for module where
+                          we want the dependencies
 
-          @return dict: module dependencies in the right format for the Manager.toposort function
+          @return dict: module dependencies in the right format for the
+                        Manager.toposort function
         """
         deplist = list()
         if base not in self.tree['loaded']:
-            logger.error('{0} module {1}: no such base'.format(base, key))
+            logger.error('Unknown base in module {0}.{1}'.format(base, key))
             return None
         if key not in self.tree['loaded'][base]:
-            logger.error('{0} module {1}: no such module defined'.format(
+            logger.error('{0} module {1} not loaded.'.format(
                 base, key))
             return None
         for mbase in self.tree['loaded']:
@@ -870,7 +872,8 @@ class Manager(QtCore.QObject):
                         logger.error('Malformed connector {2} in module '
                                 '.{0}.{1}!'.format(mbase, mkey, conn))
                         continue
-                    if target.connector['in'][conn]['object'] is self.tree['loaded'][base][key]:
+                    if target.connector['in'][conn]['object'] is self.tree[
+                            'loaded'][base][key]:
                         deplist.append( (mbase, mkey) )
         return {key: deplist}
 
