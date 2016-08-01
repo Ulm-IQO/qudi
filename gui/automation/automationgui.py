@@ -36,18 +36,7 @@ class AutomationGui(GUIBase):
     sigPauseTaskFromList = QtCore.Signal(object)
     sigStopTaskFromList = QtCore.Signal(object)
 
-    def __init__(self, manager, name, config, **kwargs):
-        """ Create the switch control GUI.
-
-          @param object manager: Manager object that this module was loaded from
-          @param str name: Unique module name
-          @param dict config: Module configuration
-          @param dict kwargs: Optional arguments as a dict
-        """
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
-
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """Create all UI objects and show the window.
 
         @param object e: Fysom.event object from Fysom class.
@@ -77,7 +66,7 @@ class AutomationGui(GUIBase):
         """
         self._mw.show()
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         """ Hide window and stop ipython console.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

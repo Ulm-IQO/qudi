@@ -49,11 +49,7 @@ class Lightfield(Base, SpectrometerInterface):
 
     _out = {'spec': 'SpectrometerInterface'}
 
-    def __init__(self, manager, name, configuration):
-        cb = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self,manager,name,configuration, cb)
-
-    def activation(self, e):
+    def on_activate(self, e):
 
         lfpath = os.environ['LIGHTFIELD_ROOT']
         lfaddinpath = os.path.join(os.environ['LIGHTFIELD_ROOT'], 'AddInViews')
@@ -106,7 +102,7 @@ class Lightfield(Base, SpectrometerInterface):
         #self.openExperiment(name)
         self.lastframe = list()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         if hasattr(self, 'au'):
             del self.au
 

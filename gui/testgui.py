@@ -25,31 +25,24 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 class TestGui(GUIBase):
     """A class to test gui module loading.
-       
+
         This class does not implement a show() method to test the
         error thrown by GUIBase when this function is not implemented.
     """
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         """Create a TestWindow object.
 
-          @param object manager: Manager object that this module is loaded from
-          @param str name: unique module name
           @param dict config: configuration dictionary
           @param dict kwargs: further optional arguments
         """
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
-        
+        super().__init__(config=config, **kwargs)
+
         # get text from config
         self.buttonText = 'No Text configured'
         if 'text' in config:
             self.buttonText = config['text']
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """This creates all the necessary UI elements.
           @param object e: Fysom state change
         """
@@ -67,8 +60,8 @@ class TestGui(GUIBase):
         self.cwdget.setLayout(self.layout)
         self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
-        
-    def deactivation(self, e):
+
+    def on_deactivate(self, e):
         """
           @param object e: Fysom state change
         """

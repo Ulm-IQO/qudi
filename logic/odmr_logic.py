@@ -52,15 +52,12 @@ class ODMRLogic(GenericLogic):
     sigOdmrFinished = QtCore.Signal()
     sigOdmrElapsedTimeChanged = QtCore.Signal()
     sigODMRMatrixAxesChanged = QtCore.Signal()
-
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
 
@@ -74,7 +71,7 @@ class ODMRLogic(GenericLogic):
         self.stopRequested = False
         self._clear_odmr_plots = False
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -192,7 +189,7 @@ class ODMRLogic(GenericLogic):
         self.MW_off()
         self._mw_device.set_ex_trigger(source=self.MW_trigger_source, pol=self.MW_trigger_pol)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

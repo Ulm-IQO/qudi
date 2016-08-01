@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 import gc
-import getopt
 import glob
 import re
 import time
@@ -78,11 +77,10 @@ class Manager(QtCore.QObject):
     sigManagerQuit = QtCore.Signal(object, bool)
     sigShowManager = QtCore.Signal()
 
-    def __init__(self, configFile=None, argv=None):
+    def __init__(self, args, **kwargs):
         """Constructor for QuDi main management class
 
-          @param string configFile: path to configuration file
-          @param list argv: command line arguments
+          @param args: argparse command line arguments
         """
         # used for keeping some basic methods thread-safe
         self.lock = Mutex(recursive=True)
@@ -106,38 +104,15 @@ class Manager(QtCore.QObject):
         self.tree['global'] = OrderedDict()
         self.tree['global']['startup'] = list()
 
-        self.hasGui = True
+        self.hasGui = not args.no_gui
         self.currentDir = None
         self.baseDir = None
         self.alreadyQuit = False
         self.remoteServer = True
-        self._qtloghandler_level = logging.INFO
 
-        opts = []
         try:
-            # Command Line parameters
-            if argv is not None:
-                try:
-                    opts, args = getopt.getopt(
-                                    argv,
-                                    'c:s:g',
-                                    [
-                                        'config=',
-                                        'storagedir=',
-                                        'no-gui'
-                                    ]
-                                )
-                except getopt.GetoptError as err:
-                    print(str(err))
-                    print("""
-    Valid options are:
-        -c --config=        Configuration file to load
-        -s --storagedir=   Storage directory to use
-        -g --no-gui         Do not load manager module
-    """)
-
             # Initialize parent class QObject
-            QtCore.QObject.__init__(self)
+            super().__init__(**kwargs)
 
             # Register exception handler
             register_exception_handler(self)
@@ -149,22 +124,7 @@ class Manager(QtCore.QObject):
             # Task runner
             self.tr = None
 
-            # Handle command line options
-            loadModules = []
-            setStorageDir = None
-            loadConfigs = []
-
-            for o, a in opts:
-                if o in ['-c', '--config']:
-                    configFile = a
-                elif o in ['-s', '--storagedir']:
-                    setStorageDir = a
-                elif o in ['-g', '--no-gui']:
-                    self.hasGui = False
-                else:
-                    print("Unhandled option", o, a)
-
-             # Gui setup if we have gui
+            # Gui setup if we have gui
             if self.hasGui:
                 import core.gui
                 self.gui = core.gui.Gui()
@@ -173,10 +133,12 @@ class Manager(QtCore.QObject):
                 self.gui.setAppIcon()
 
             # Read in configuration file
-            if configFile is None:
-                configFile = self._getConfigFile()
-            self.configDir = os.path.dirname(configFile)
-            self.readConfig(configFile)
+            if args.config == '':
+                config_file = self._getConfigFile()
+            else:
+                config_file = args.config
+            self.configDir = os.path.dirname(config_file)
+            self.readConfig(config_file)
 
             # Create remote module server
             try:
@@ -215,18 +177,6 @@ class Manager(QtCore.QObject):
 
             logger.info('QuDi started.')
 
-            # Act on options if they were specified..
-            try:
-                for name in loadConfigs:
-                    self.loadDefinedConfig(name)
-                for m in loadModules:
-                    try:
-                        self.loadDefinedModule(m)
-                    except:
-                        raise
-            except:
-                logger.exception('Error while acting on command line '
-                        'options: (but continuing on anyway..)')
             # Load startup things from config here
             if 'startup' in self.tree['global']:
                 # walk throug the list of loadable modules to be loaded on startup and load them if appropriate
@@ -246,7 +196,8 @@ class Manager(QtCore.QObject):
         except:
             logger.exception('Error while configuring Manager:')
         finally:
-            if len(self.tree['loaded']['logic']) == 0 and len(self.tree['loaded']['gui']) == 0 :
+            if (len(self.tree['loaded']['logic']) == 0
+                    and len(self.tree['loaded']['gui']) == 0 ):
                 logger.critical('No modules loaded during startup.')
 
     def getMainDir(self):
@@ -561,8 +512,9 @@ class Manager(QtCore.QObject):
         if not issubclass(modclass, Base):
             raise Exception('Bad inheritance, for instance %s from %s.%s.' % (instanceName, baseName, className))
 
-        # Create object from class (Manager, Name, config)
-        instance = modclass(self, instanceName, configuration)
+        # Create object from class
+        instance = modclass(manager=self, name=instanceName,
+                config=configuration)
 
         with self.lock:
             if baseName in ['hardware', 'logic', 'gui']:

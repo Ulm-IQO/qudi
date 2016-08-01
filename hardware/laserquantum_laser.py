@@ -44,11 +44,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
     # connectors
     _out = {'laser': 'Laser'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """
 
         @param e:
@@ -58,7 +54,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         self.psu = PSUTypes[config['psu']]
         self.connect_laser(config['interface'])
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """
         @param e:
         @return:

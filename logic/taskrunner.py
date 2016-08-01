@@ -29,8 +29,8 @@ import importlib
 class TaskListTableModel(ListTableModel):
     """ An extension of the ListTableModel for keeping a task list in a TaskRunner.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.headers = ['Task Name', 'Task State', 'Pre/Post actions', 'Pauses',
                         'Needs modules', 'is ok']
 
@@ -93,19 +93,7 @@ class TaskRunner(GenericLogic):
     sigLoadTasks = QtCore.Signal()
     sigCheckTasks = QtCore.Signal()
 
-    def __init__(self, manager, name, configuration, **kwargs):
-        """ Initialzize a logic module.
-
-        @param object manager: Manager object that has instantiated this object
-        @param str name: unique module name
-        @param dict configuration: module configuration as a dict
-        @param dict kwargs: dict of additional arguments
-        """
-        callbacks = {'onactivate': self.activation,
-                     'ondeactivate': self.deactivation}
-        super().__init__(manager, name, configuration, callbacks, **kwargs)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialise task runner.
 
         @param object e: Fysom state change notification
@@ -118,7 +106,7 @@ class TaskRunner(GenericLogic):
         self._manager.registerTaskRunner(self)
         self.sigLoadTasks.emit()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Shut down task runner.
 
         @param object e: Fysom state change notification
@@ -177,7 +165,8 @@ class TaskRunner(GenericLogic):
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
                 # print('loaded:', mod)
                 # print('dir:', dir(mod))
-                t['object'] = mod.Task(t['name'], self, ref, t['config'])
+                t['object'] = mod.Task(name=t['name'], runner=self,
+                        references=ref, config=t['config'])
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:

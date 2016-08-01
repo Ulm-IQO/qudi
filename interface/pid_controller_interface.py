@@ -67,3 +67,11 @@ class PIDControllerInterface:
     def set_control_limits(self, limits):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
+    def get_process_value(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def get_control_value(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+
+    def get_extra(self):
+        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))

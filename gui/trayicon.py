@@ -29,17 +29,7 @@ class TrayIcon(GUIBase):
     Right-clicking this icon will bring up a Quit button that will colse the whole application.
     """
 
-    def __init__(self, manager, name, config = {}, **kwargs):
-        """ Constructor for QuDi tray icon module.
-          @param object manager: the manager object that this tray icon belongs to
-          @param string name: the unique name of the module
-          @param dict config: the configuration dict for the module
-          @param dict kwargs: further named arguments
-        """
-        callback = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, callback)
-
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Set up tray icon UI .
 
           @param e: Fysom state change
@@ -51,7 +41,7 @@ class TrayIcon(GUIBase):
         self._tray.quitAction.triggered.connect(self._manager.quit)
         self._tray.managerAction.triggered.connect(lambda: self._manager.sigShowManager.emit())
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Remove all the stuff that we set up.
 
           @param object e: Fysom state change notification
@@ -90,7 +80,7 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 
     def click_trap(self, value):
         """ Click handler.
-            
+
           @param value: action that caused the activation
 
             This method is called when the tray icon is left-clicked and
