@@ -778,12 +778,18 @@ class Manager(QtCore.QObject):
         return 0
 
     def activateModule(self, base, key):
-        """Activated the module given in key with the help of base class.
+        """Activate the module given in key with the help of base class.
 
           @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be activated.
 
         """
+        if base not in self.tree['loaded']:
+            logger.error('Unknown module base "{0}"'.format(base))
+            return
+        if key not in self.tree['loaded'][base]:
+            logger.error('{0} module {1} not loaded.'.format(base, key))
+            return
         if self.tree['loaded'][base][key].getState() != 'deactivated' and (
                 ( base in self.tree['defined']
                     and key in self.tree['defined'][base]
@@ -793,7 +799,7 @@ class Manager(QtCore.QObject):
                     and  key in self.tree['start'][base])) :
             return
         if self.tree['loaded'][base][key].getState() != 'deactivated':
-            logger.error('{0} module {1} not deactivated anymore'.format(
+            logger.error('{0} module {1} not deactivated'.format(
                 base, key))
             return
         ## start main loop for qt objects
@@ -802,7 +808,8 @@ class Manager(QtCore.QObject):
             self.tree['loaded'][base][key].moveToThread(modthread)
             modthread.start()
         try:
-            self.tree['loaded'][base][key].setStatusVariables(self.loadStatusVariables(base, key))
+            self.tree['loaded'][base][key].setStatusVariables(
+                    self.loadStatusVariables(base, key))
             self.tree['loaded'][base][key].activate()
         except:
             logger.exception(
