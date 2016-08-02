@@ -794,6 +794,7 @@ class Manager(QtCore.QObject):
         return self.tree['loaded'][base][key].getState() in ('idle',
                 'running')
 
+    @QtCore.pyqtSlot(str, str)
     def activateModule(self, base, key):
         """Activate the module given in key with the help of base class.
 
@@ -834,6 +835,7 @@ class Manager(QtCore.QObject):
                         base, key))
         QtCore.QCoreApplication.instance().processEvents()
 
+    @QtCore.pyqtSlot(str, str)
     def deactivateModule(self, base, key):
         """Activated the module given in key with the help of base class.
 
@@ -961,6 +963,7 @@ class Manager(QtCore.QObject):
             deps.update({key: list(deplist)})
         return deps
 
+    @QtCore.pyqtSlot(str, str)
     def startModule(self, base, key):
         """ Figure out the module dependencies in terms of connections, load and activate module.
 
@@ -1001,6 +1004,7 @@ class Manager(QtCore.QObject):
                         self.tree['loaded'][mbase][mkey].show()
         return 0
 
+    @QtCore.pyqtSlot(str, str)
     def stopModule(self, base, key):
         """ Figure out the module dependencies in terms of connections and deactivate module.
 
@@ -1021,6 +1025,7 @@ class Manager(QtCore.QObject):
                             mbase, mkey))
                         self.deactivateModule(mbase, mkey)
 
+    @QtCore.pyqtSlot(str, str)
     def restartModuleSimple(self, base, key):
         """Deactivate, reloade, activate module.
           @param str base: Module category
@@ -1063,6 +1068,7 @@ class Manager(QtCore.QObject):
             self.activateModule(destbase, destmod)
         return 0
 
+    @QtCore.pyqtSlot(str, str)
     def restartModuleRecursive(self, base, key):
         """ Figure out the module dependencies in terms of connections, reload and activate module.
 
