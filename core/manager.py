@@ -746,10 +746,12 @@ class Manager(QtCore.QObject):
             except:
                 logger.exception('Error while loading {0} module: '
                         '{1}'.format(base, key))
-        elif key in self.tree['loaded'][base] and 'module.Class' in self.tree['defined'][base][key]:
+        elif (key in self.tree['loaded'][base]
+                and 'module.Class' in self.tree['defined'][base][key]):
             try:
                 # state machine: deactivate
-                self.deactivateModule(base, key)
+                if self.isModuleActive(base, key):
+                    self.deactivateModule(base, key)
             except:
                 logger.exception('Error while deactivating {0} module: '
                         '{1}'.format(base, key))
@@ -777,14 +779,35 @@ class Manager(QtCore.QObject):
                      'declaration in configuration): {0}.{1}'.format(base, key))
         return 0
 
+    def isModuleActive(self, base, key):
+        """Returns whether a given module is active.
+
+          @param string base: module base package (hardware, logic or gui)
+          @param string key: module which is going to be activated.
+        """
+        if base not in self.tree['loaded']:
+            logger.error('Unknown module base "{0}"'.format(base))
+            return False
+        if key not in self.tree['loaded'][base]:
+            logger.error('{0} module {1} not loaded.'.format(base, key))
+            return False
+        return self.tree['loaded'][base][key].getState() in ('idle',
+                'running')
+
     @QtCore.pyqtSlot(str, str)
     def activateModule(self, base, key):
-        """Activated the module given in key with the help of base class.
+        """Activate the module given in key with the help of base class.
 
           @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be activated.
 
         """
+        if base not in self.tree['loaded']:
+            logger.error('Unknown module base "{0}"'.format(base))
+            return
+        if key not in self.tree['loaded'][base]:
+            logger.error('{0} module {1} not loaded.'.format(base, key))
+            return
         if self.tree['loaded'][base][key].getState() != 'deactivated' and (
                 ( base in self.tree['defined']
                     and key in self.tree['defined'][base]
@@ -794,7 +817,7 @@ class Manager(QtCore.QObject):
                     and  key in self.tree['start'][base])) :
             return
         if self.tree['loaded'][base][key].getState() != 'deactivated':
-            logger.error('{0} module {1} not deactivated anymore'.format(
+            logger.error('{0} module {1} not deactivated'.format(
                 base, key))
             return
         ## start main loop for qt objects
@@ -803,7 +826,8 @@ class Manager(QtCore.QObject):
             self.tree['loaded'][base][key].moveToThread(modthread)
             modthread.start()
         try:
-            self.tree['loaded'][base][key].setStatusVariables(self.loadStatusVariables(base, key))
+            self.tree['loaded'][base][key].setStatusVariables(
+                    self.loadStatusVariables(base, key))
             self.tree['loaded'][base][key].activate()
         except:
             logger.exception(
@@ -820,8 +844,15 @@ class Manager(QtCore.QObject):
 
         """
         logger.info('Deactivating {0}.{1}'.format(base, key))
-        if not self.tree['loaded'][base][key].getState() in ('idle', 'running'):
-            logger.error('{0} module {1} not active (idle or running) anymore.'
+        if base not in self.tree['loaded']:
+            logger.error('Unknown module base "{0}"'.format(base))
+            return
+        if key not in self.tree['loaded'][base]:
+            logger.error('{0} module {1} not loaded.'.format(base, key))
+            return
+        if not self.tree['loaded'][base][key].getState() in ('idle',
+                'running'):
+            logger.error('{0} module {1} not active (idle or running).'
                     ''.format(base, key))
             return
         try:
@@ -829,7 +860,8 @@ class Manager(QtCore.QObject):
             if base == 'logic':
                 self.tm.quitThread('mod-' + base + '-' + key)
                 self.tm.joinThread('mod-' + base + '-' + key)
-            self.saveStatusVariables(base, key, self.tree['loaded'][base][key].getStatusVariables())
+            self.saveStatusVariables(base, key,
+                    self.tree['loaded'][base][key].getStatusVariables())
         except:
             logger.exception(
                     '{0} module {1}: error during deactivation:'.format(
@@ -840,16 +872,18 @@ class Manager(QtCore.QObject):
         """ Based on object id, find which connections to replace.
 
           @param str base: Module category
-          @param str key: Unique configured module name for module where we want the dependencies
+          @param str key: Unique configured module name for module where
+                          we want the dependencies
 
-          @return dict: module dependencies in the right format for the Manager.toposort function
+          @return dict: module dependencies in the right format for the
+                        Manager.toposort function
         """
         deplist = list()
         if base not in self.tree['loaded']:
-            logger.error('{0} module {1}: no such base'.format(base, key))
+            logger.error('Unknown base in module {0}.{1}'.format(base, key))
             return None
         if key not in self.tree['loaded'][base]:
-            logger.error('{0} module {1}: no such module defined'.format(
+            logger.error('{0} module {1} not loaded.'.format(
                 base, key))
             return None
         for mbase in self.tree['loaded']:
@@ -864,7 +898,8 @@ class Manager(QtCore.QObject):
                         logger.error('Malformed connector {2} in module '
                                 '.{0}.{1}!'.format(mbase, mkey, conn))
                         continue
-                    if target.connector['in'][conn]['object'] is self.tree['loaded'][base][key]:
+                    if target.connector['in'][conn]['object'] is self.tree[
+                            'loaded'][base][key]:
                         deplist.append( (mbase, mkey) )
         return {key: deplist}
 
@@ -1007,9 +1042,12 @@ class Manager(QtCore.QObject):
         for depmod in deps[key]:
             destbase, destmod = depmod
             for c in self.tree['loaded'][destbase][destmod].connector['in']:
-                if self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] is self.tree['loaded'][base][key]:
-                    self.deactivateModule(destbase, destmod)
-                    self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] = None
+                if self.tree['loaded'][destbase][destmod].connector[
+                        'in'][c]['object'] is self.tree['loaded'][base][key]:
+                    if self.isModuleActive(destbase, destmod):
+                        self.deactivateModule(destbase, destmod)
+                    self.tree['loaded'][destbase][destmod].connector[
+                            'in'][c]['object'] = None
 
         # reload and reconnect
         success = self.reloadConfigureModule(base, key)
@@ -1143,7 +1181,8 @@ class Manager(QtCore.QObject):
         """Nicely request that all modules shut down for application restart."""
         for mbase in ['hardware', 'logic', 'gui']:
             for module in self.tree['loaded'][mbase]:
-                self.deactivateModule(mbase, module)
+                if self.isModuleActive(mbase, module):
+                    self.deactivateModule(mbase, module)
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 
