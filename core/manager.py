@@ -214,26 +214,40 @@ class Manager(QtCore.QObject):
           @return sting: path to configuration file
         """
         path = self.getMainDir()
+        # we first look for config/load.cfg which can point to another
+        # config file using the "configfile" key
         loadConfigFile = os.path.join(path, 'config', 'load.cfg')
         if os.path.isfile(loadConfigFile):
-            print('Load config file is {0}'.format(loadConfigFile))
+            logger.info('load.cfg config file found at {0}'.format(
+                loadConfigFile))
             try:
                 confDict = configfile.readConfigFile(loadConfigFile)
-                if 'configfile' in confDict and isinstance(confDict['configfile'], str):
-                    configFile = os.path.join(path, 'config', confDict['configfile'])
+                if ('configfile' in confDict
+                        and isinstance(confDict['configfile'], str)):
+                    # check if this config file is existing
+                    # try relative filenames
+                    configFile = os.path.join(path, 'config',
+                            confDict['configfile'])
                     if os.path.isfile(configFile):
                         return configFile
+                    # try absolute filename or relative to pwd
                     if os.path.isfile(confDict['configfile']):
                         return confDict['configfile']
-            except Exception as e:
-                print(e)
+                    else:
+                        logger.critical('Couldn\'t find config file '
+                                'specified in load.cfg: {0}'.format(
+                                    confDict['configfile']))
+            except Exception:
+                logger.exception('Error while handling load.cfg.')
+        # try config/example/custom.cfg next
         cf = os.path.join(path, 'config', 'example', 'custom.cfg')
         if os.path.isfile(cf):
             return cf
+        # try config/example/default.cfg
         cf = os.path.join(path, 'config', 'example', 'default.cfg')
         if os.path.isfile(cf):
             return cf
-        raise Exception('Could not find config file {0} in: {1}'.format(filename, os.path.join(path, 'config')))
+        raise Exception('Could not find any config file.')
 
     def _appDataDir(self):
         """Get the system specific application data directory.
