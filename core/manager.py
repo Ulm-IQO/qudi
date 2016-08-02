@@ -234,7 +234,7 @@ class Manager(QtCore.QObject):
                     if os.path.isfile(confDict['configfile']):
                         return confDict['configfile']
                     else:
-                        logger.cricital('Couldn\'t find config file '
+                        logger.critical('Couldn\'t find config file '
                                 'specified in load.cfg: {0}'.format(
                                     confDict['configfile']))
             except Exception:
