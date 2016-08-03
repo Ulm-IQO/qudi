@@ -1773,11 +1773,7 @@ class FitLogic():
                              params['beta'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
                           + 1.5* np.random.normal(size=x_axis.shape))
-<<<<<<< HEAD
-            
-=======
 
->>>>>>> 5790ae2f7d11632f359af842642b2c07fbb2142e
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis,
                                                              data=data_noisy,
                                                              add_parameters=None)
@@ -1874,17 +1870,10 @@ test=FitLogic()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
-<<<<<<< HEAD
-#test.double_poissonian_testing()
-#test.bareexponentialdecay_testing()
-=======
 test.double_poissonian_testing()
 # test.bareexponentialdecay_testing()
->>>>>>> 5790ae2f7d11632f359af842642b2c07fbb2142e
 #test.exponentialdecay_testing()
-test.sineexponentialdecay_testing()
+#test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
 #test.linear_testing()
-#test.linear_testing()
-#test.doublecompressedexponentialdecay_testing()
 
