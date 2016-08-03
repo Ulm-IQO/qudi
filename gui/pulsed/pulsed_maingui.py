@@ -32,6 +32,8 @@ import datetime
 
 
 from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
+from gui.colordefs import QudiPalette as palettedark
 from core.util.mutex import Mutex
 from core.util import units
 from .qradiobutton_custom import CustomQRadioButton
@@ -2581,26 +2583,31 @@ class PulsedMeasurementGui(GUIBase):
         """
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
-                                            self._pulsed_meas_logic.signal_plot_y)
+                                            self._pulsed_meas_logic.signal_plot_y,
+                                            pen=palette.c1)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
         if self._pulsed_meas_logic.alternating:
             self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
-                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
-            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
+                                                 self._pulsed_meas_logic.signal_plot_y2,
+                                                 pen=palette.c3)
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2)
 
         # Configure the fit of the data in the main pulse analysis display:
-        self.fit_image = pg.PlotDataItem()
-        self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image, pen='r')
+        self.fit_image = pg.PlotDataItem(pen=palette.c2)
+        self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image)
 
         # Configure the errorbars of the data in the main pulse analysis display:
         self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_meas_logic.signal_plot_x,
                                                      y=self._pulsed_meas_logic.signal_plot_y,
                                                      top=self._pulsed_meas_logic.measuring_error_plot_y,
-                                                     bottom=self._pulsed_meas_logic.measuring_error_plot_y,pen='b')
+                                                     bottom=self._pulsed_meas_logic.measuring_error_plot_y,
+                                                     pen=palette.c1)
 
         # Configure the second pulse analysis display:
-        self.second_plot_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self.second_plot_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y,
+                                                 pen=palette.c1)
         self._mw.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
         self._mw.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
@@ -2921,7 +2928,7 @@ class PulsedMeasurementGui(GUIBase):
 
         fit_text = units.create_formatted_output(fit_param)
 
-        self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
+        self.fit_image.setData(x=fit_x, y=fit_y)
         self._mw.fit_param_results_TextBrowser.setPlainText(fit_text)
         return
 
@@ -2956,7 +2963,7 @@ class PulsedMeasurementGui(GUIBase):
                                   y=self._pulsed_meas_logic.signal_plot_y)
         if self._pulsed_meas_logic.alternating:
             self.signal_image2.setData(x=self._pulsed_meas_logic.signal_plot_x,
-                                       y=self._pulsed_meas_logic.signal_plot_y2, pen='g')
+                                       y=self._pulsed_meas_logic.signal_plot_y2)
         self.change_second_plot()
         return
 
@@ -2964,8 +2971,7 @@ class PulsedMeasurementGui(GUIBase):
         """ Refreshes the xy-plot fit image """
 
         self.fit_image.setData(x=self._pulsed_meas_logic.signal_plot_x_fit,
-                               y=self._pulsed_meas_logic.signal_plot_y_fit,
-                               pen='r')
+                               y=self._pulsed_meas_logic.signal_plot_y_fit)
 
 
     def refresh_measuring_error_plot(self):
@@ -3097,8 +3103,9 @@ class PulsedMeasurementGui(GUIBase):
         # add/remove data set in plot widget
         if alternating and not self._pulsed_meas_logic.alternating:
             self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
-                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
-            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
+                                                 self._pulsed_meas_logic.signal_plot_y2,
+                                                 pen=palette.c3)
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2)
         if not alternating and self._pulsed_meas_logic.alternating:
             self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
         # Set flag in logic
@@ -3916,17 +3923,19 @@ class PulsedMeasurementGui(GUIBase):
         # Configure all objects for laserpulses_PlotWidget and also itself:
 
         # Adjust settings for the moveable lines in the pulses plot:
-        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)), movable=True)
-        self.sig_start_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
-        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)), movable=True)
-        self.sig_end_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
-        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)), movable=True)
-        self.ref_start_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
-        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)), movable=True)
-        self.ref_end_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
+        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3), movable=True)
+        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c2))
+        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3), movable=True)
+        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c2))
+        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
+        self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4))
+        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
+        self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4))
 
         # the actual data:
-        self.lasertrace_image = pg.PlotDataItem(self._pulsed_meas_logic.laser_plot_x, self._pulsed_meas_logic.laser_plot_y)
+        self.lasertrace_image = pg.PlotDataItem(self._pulsed_meas_logic.laser_plot_x,
+                                                self._pulsed_meas_logic.laser_plot_y,
+                                                pen=palette.c1)
 
         self._mw.laserpulses_PlotWidget.addItem(self.lasertrace_image)
         self._mw.laserpulses_PlotWidget.addItem(self.sig_start_line)
@@ -3938,7 +3947,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.laserpulses_PlotWidget.setLabel('bottom', 'bins')
 
         # Configure all objects for measuring_error_PlotWidget and also itself:
-        self.measuring_error_image = pg.PlotDataItem(self._pulsed_meas_logic.measuring_error_plot_x, self._pulsed_meas_logic.measuring_error_plot_y*1000)
+        self.measuring_error_image = pg.PlotDataItem(self._pulsed_meas_logic.measuring_error_plot_x,
+                                                     self._pulsed_meas_logic.measuring_error_plot_y*1000,
+                                                     pen=palette.c1)
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='ns')
