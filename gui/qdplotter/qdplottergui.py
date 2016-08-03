@@ -58,22 +58,17 @@ class QdplotterGui(GUIBase):
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.initUI,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -145,7 +140,7 @@ class QdplotterGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         # FIXME: !
         """ Deactivate the module
 
@@ -187,7 +182,7 @@ class QdplotterGui(GUIBase):
     def domain_changed(self):
         """ Handling the change of the domain.
         """
-        self._qdplot_logic.set_domain([self._mw.domain_min_DoubleSpinBox.value(), 
+        self._qdplot_logic.set_domain([self._mw.domain_min_DoubleSpinBox.value(),
                                        self._mw.domain_max_DoubleSpinBox.value()
                                        ]
                                       )
@@ -196,7 +191,7 @@ class QdplotterGui(GUIBase):
     def range_changed(self):
         """ Handling the change of range.
         """
-        self._qdplot_logic.set_range([self._mw.range_min_DoubleSpinBox.value(), 
+        self._qdplot_logic.set_range([self._mw.range_min_DoubleSpinBox.value(),
                                       self._mw.range_max_DoubleSpinBox.value()
                                       ]
                                      )

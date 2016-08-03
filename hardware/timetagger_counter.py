@@ -37,13 +37,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
     _out = {'ttcounter': 'SlowCounterInterface'
             }
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self, e=None):
+    def on_activate(self, e=None):
         """ Starts up the NI Card at activation.
 
         @param object e: Event class object from Fysom.
@@ -64,11 +58,11 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         if 'photon_source' in config.keys():
             self._photon_source = config['photon_source']
         else:
-            self.logMsg('No parameter "photon_source" configured.\n'
-                        'Assign to that parameter an appropriated channel '
-                        'from your NI Card!', msgType='error')
+            self.log.error('No parameter "photon_source" configured.\n'
+                    'Assign to that parameter an appropriated channel '
+                    'from your NI Card!')
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         """ Shut down the NI card.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -116,7 +110,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         """
 
         self.counter = Counter(self._tagger, channels=[self._photon_source], binwidth=int((1/self._count_frequency)*1e12), n_values=1)
-        self.logMsg('set up counter with {0}'.format(self._count_frequency), msgType='status')
+        self.log.info('set up counter with {0}'.format(self._count_frequency))
         return 0
 
     def get_counter(self, samples=None):

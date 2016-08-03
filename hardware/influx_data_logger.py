@@ -31,13 +31,12 @@ class InfluxLogger(Base, DataLoggerInterface):
 
     ## declare connectors
     _out = {'data': 'ProcessInterface'}
-    
-    def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.log_channels = {}
-        
-    def activation(self, e):
+
+    def on_activate(self, e):
         config = self.getConfiguration()
 
         if 'user' in config:
@@ -51,7 +50,7 @@ class InfluxLogger(Base, DataLoggerInterface):
 
         if 'host' in config:
             self.host = config['host']
-           
+
         if 'port' in config:
             self.port = config['port']
         else:
@@ -68,7 +67,7 @@ class InfluxLogger(Base, DataLoggerInterface):
 
         self.connect_db()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         del self.conn
 
     def connect_db(self):
@@ -85,7 +84,7 @@ class InfluxLogger(Base, DataLoggerInterface):
             else:
                 if :
 
-            
+
 
     def log_to_channel(self, channel, values):
         if channel in self.log_channels.keys() and len(values) == len(self.log_channels[channel][values]):

@@ -37,24 +37,18 @@ class QudiKernelLogic(GenericLogic):
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
     _out = {'kernel': 'QudiKernelLogic'}
-    
+
     sigStartKernel = QtCore.Signal(str)
     sigStopKernel = QtCore.Signal(int)
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """ Create logic object
-          
-          @param object manager: reference to module Manager
-          @param str name: unique module name
-          @param dict config: configuration in a dict
           @param dict kwargs: additional parameters as a dict
         """
-        ## declare actions for state transitions
-        state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(**kwargs)
         self.kernellist = dict()
         self.modules = set()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Prepare logic module for work.
 
           @param object e: Fysom state change notification
@@ -69,14 +63,14 @@ class QudiKernelLogic(GenericLogic):
         self._manager.sigModulesChanged.connect(self.updateModuleList)
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate module.
 
           @param object e: Fysom state change notification
         """
         for kernel in self.kernellist:
             self.stopKernel(kernel)
-            
+
     def startKernel(self, config, external=None):
         """Start a qudi inprocess jupyter kernel.
           @param dict config: connection information for kernel
@@ -85,7 +79,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        self.logMsg('Start {}'.format(realconfig), msgType="status")
+        self.log.info('Start {}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -96,10 +90,10 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
+        self.log.info('Kernel is {}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
-        self.logMsg('Finished starting Kernel {}'.format(kernel.engine_id), msgType="status")
+        self.log.info('Finished starting Kernel {}'.format(kernel.engine_id))
         self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
@@ -108,23 +102,23 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
+        self.log.info('Stopping {}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
-        
+
     def cleanupKernel(self, kernelid, external=None):
         """Remove kernel reference and tell rpyc client for that kernel to exit.
 
           @param str kernelid: uuid of kernel reference to remove
           @param callable external: reference to rpyc client exit function
         """
-        self.logMsg('Cleanup kernel {}'.format(kernelid), msgType="status")
+        self.log.info('Cleanup kernel {}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:
                 external.exit()
             except:
-                self.logMsg('External qudikernel starter did not exit', msgType="warning")
+                self.log.warning('External qudikernel starter did not exit')
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace,

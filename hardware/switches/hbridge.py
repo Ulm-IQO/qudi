@@ -32,12 +32,11 @@ class HBridge(Base, SwitchInterface):
     _modtype = 'hardware'
     _out = {'switch': 'SwitchInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config,  c_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.lock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
@@ -51,7 +50,7 @@ class HBridge(Base, SwitchInterface):
                 send_end=True
         )
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.inst.close()
 
     def getNumberOfSwitches(self):
@@ -115,13 +114,15 @@ class HBridge(Base, SwitchInterface):
                     if answer != 'P{0}=1'.format(coilnr):
                         return False
                     time.sleep(self.getSwitchTime(switchNumber))
-                    self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+                    self.log.info('{0} switch {1}: On'.format(
+                        self._name, switchNumber))
                 except:
                     return False
                 return True
         else:
-            self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
-    
+            self.log.error('You are trying to use non-existing output no {0}'
+                    ''.format(coilnr))
+
     def switchOff(self, switchNumber):
         """ Retract coil ore move motor.
 
@@ -137,12 +138,14 @@ class HBridge(Base, SwitchInterface):
                     if answer != 'P{0}=0'.format(coilnr):
                         return False
                     time.sleep(self.getSwitchTime(switchNumber))
-                    self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+                    self.log.info('{0} switch {1}: Off'.format(
+                        self._name, switchNumber))
                 except:
                     return False
                 return True
         else:
-            self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
+            self.log.error('You are trying to use non-existing output no {0}'
+                    ''.format(coilnr))
 
     def getSwitchTime(self, switchNumber):
         """ Give switching time for switch.

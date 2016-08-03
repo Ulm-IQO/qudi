@@ -75,24 +75,18 @@ class NuclearOperationsLogic(GenericLogic):
 
     sigMeasStarted = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -195,7 +189,7 @@ class NuclearOperationsLogic(GenericLogic):
         # connect signals:
         self.sigNextMeasPoint.connect(self._meas_point_loop, QtCore.Qt.QueuedConnection)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
@@ -290,10 +284,10 @@ class NuclearOperationsLogic(GenericLogic):
             elif self.mw_on_odmr_peak == 2:
                 self.mw_cw_freq = self.odmr_meas_freq2
             else:
-                self.logMsg('The maximum number of odmr can only be 3, '
-                            'therfore only the peaks with number 0, 1 or 2 can '
-                            'be selected but an number of "{0}" was set. '
-                            'Measurement stopped!'.format(self.mw_on_odmr_peak))
+                self.log.error('The maximum number of odmr can only be 3, '
+                        'therfore only the peaks with number 0, 1 or 2 can '
+                        'be selected but an number of "{0}" was set. '
+                        'Measurement stopped!'.format(self.mw_on_odmr_peak))
                 self.stop_nuclear_meas()
                 self.sigNextMeasPoint.emit()
                 return

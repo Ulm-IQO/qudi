@@ -39,25 +39,21 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
            'spectrometer1': 'SpectrometerInterface'}
     _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
         else:
             self._clock_frequency = 100
-            self.logMsg('No clock_frequency configured taking 100 Hz instead.',
-                        msgType='warning')
+            self.log.warning('No clock_frequency configured taking 100 Hz '
+                    'instead.')
 
 
         # Internal parameters
@@ -70,7 +66,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
 
@@ -79,7 +75,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._spectrometer_hw = self.connector['in']['spectrometer1']['object']
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.reset_hardware()
 
     def reset_hardware(self):
@@ -87,8 +83,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg('Scanning Device will be reset.',
-                    msgType='warning')
+        self.log.warning('Scanning Device will be reset.')
         return 0
 
     def get_position_range(self):
@@ -152,8 +147,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('ConfocalScannerInterfaceDummy>set_up_scanner',
-                    msgType='warning')
+        self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
 
         return 0
 
@@ -203,15 +197,13 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """
 
         #if self.getState() == 'locked':
-        #    self.logMsg('A scan_line is already running, close this one first.', \
-        #    msgType='error')
+        #    self.log.error('A scan_line is already running, close this one first.')
         #    return -1
         #
         #self.lock()
 
         if not isinstance( line_path, (frozenset, list, set, tuple, np.ndarray, ) ):
-            self.logMsg('Given voltage list is no array type.', \
-            msgType='error')
+            self.log.error('Given voltage list is no array type.')
             return np.array([-1.])
 
         self.set_up_line(np.shape(line_path)[1])

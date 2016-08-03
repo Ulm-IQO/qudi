@@ -240,16 +240,14 @@ class ConfocalLogic(GenericLogic):
 
     signal_history_event = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]), msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
 
         #locking for thread safety
@@ -263,7 +261,7 @@ class ConfocalLogic(GenericLogic):
         self.permanent_scan = False
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param e: error code
@@ -322,7 +320,7 @@ class ConfocalLogic(GenericLogic):
         self._change_position('activation')
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Reverse steps of activation
 
         @param e: error code
@@ -441,7 +439,8 @@ class ConfocalLogic(GenericLogic):
 
         # Checks if the x-start and x-end value are ok
         if x2 < x1:
-            self.logMsg('x1 must be smaller than x2, but they are ({0:.3f},{1:.3f}).'.format(x1, x2), msgType='error')
+            self.log.error('x1 must be smaller than x2, but they are '
+                    '({0:.3f},{1:.3f}).'.format(x1, x2))
             return -1
 
         if self._zscan:
@@ -450,7 +449,8 @@ class ConfocalLogic(GenericLogic):
             self._X = np.linspace(x1, x2, self.xy_resolution)
             # Checks if the z-start and z-end value are ok
             if z2 < z1:
-                self.logMsg('z1 must be smaller than z2, but they are ({0:.3f},{1:.3f}).'.format(z1, z2), msgType='error')
+                self.log.error('z1 must be smaller than z2, but they are '
+                        '({0:.3f},{1:.3f}).'.format(z1, z2))
                 return -1
             # creates an array of evenly spaced numbers over the interval
             # z1, z2 and the spacing is equal to z_resolution
@@ -458,7 +458,8 @@ class ConfocalLogic(GenericLogic):
         else:
             # Checks if the y-start and y-end value are ok
             if y2 < y1:
-                self.logMsg('y1 must be smaller than y2, but they are ({0:.3f},{1:.3f}).'.format(y1, y2), msgType='error')
+                self.log.error('y1 must be smaller than y2, but they are '
+                        '({0:.3f},{1:.3f}).'.format(y1, y2))
                 return -1
 
             # prevents distorion of the image
@@ -565,12 +566,12 @@ class ConfocalLogic(GenericLogic):
             self._scanning_device.close_scanner()
             self._scanning_device.close_scanner_clock()
         except Exception as e:
-            self.logExc('Could not even close the scanner, giving up.', msgType='error')
+            self.log.exception('Could not even close the scanner, giving up.')
             raise e
         try:
             self._scanning_device.unlock()
         except Exception as e:
-            self.logExc('Could not unlock scanning device.', msgType='error')
+            self.log.exception('Could not unlock scanning device.')
 
         return 0
 
@@ -748,7 +749,7 @@ class ConfocalLogic(GenericLogic):
             self.signal_scan_lines_next.emit()
 
         except Exception as e:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.log.critical('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
             raise e
@@ -857,7 +858,7 @@ class ConfocalLogic(GenericLogic):
                                    )
         #, as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
     def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
@@ -966,7 +967,7 @@ class ConfocalLogic(GenericLogic):
                                    )
         #, as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
     def draw_figure(self, data, image_extent, scan_axis=['X', 'Y'], cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.

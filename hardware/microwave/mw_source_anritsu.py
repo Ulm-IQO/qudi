@@ -38,12 +38,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
     # declare connectors
     _out = {'mwsourceanritsu': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config={}, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self,e=None):
+    def on_activate(self,e=None):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -60,16 +55,15 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('This is MWanritsu: did not find >>gpib_address<< in '
-                        'configration.', msgType='error')
+            self.log.error('This is MWanritsu: did not find >>gpib_address<< '
+                    'in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg('This is MWanritsu: did not find >>gpib_timeout<< in '
-                        'configration. I will set it to 10 seconds.',
-                        msgType='error')
+            self.log.error('This is MWanritsu: did not find >>gpib_timeout<< '
+                    'in configration. I will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -77,15 +71,14 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout*1000)
         except:
-            self.logMsg('This is MWanritsu: could not connect to the GPIB '
-                        'address >>{}<<.'.format(self._gpib_address),
-                        msgType='error')
+            self.log.error('This is MWanritsu: could not connect to the GPIB '
+                        'address >>{}<<.'.format(self._gpib_address))
             raise
+        self.model = self._gpib_connection.query('*IDN?').split(',')[1]
+        self.log.info('MicrowaveAnritsu initialised and connected to '
+                'hardware.')
 
-        self.logMsg('MicrowaveAnritsu initialised and connected to hardware.',
-                    msgType='status')
-
-    def deactivation(self,e=None):
+    def on_deactivate(self,e=None):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -93,6 +86,30 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
         self._gpib_connection.close()
         self.rm.close()
+
+    def get_limits(self):
+        """ Right now, this is for Anritsu MG37022A with Option 4 only."""
+        limits = {
+            'frequency': {
+                'min': 10*10e6,
+                'max': 20*10e9
+                },
+            'power': {
+                'min': -105,
+                'max': 18
+                },
+            'list': {
+                'minstep': 0.001,
+                'maxstep': 20*10e9,
+                'maxentries': 10001
+                },
+            'sweep': {
+                'minstep': 0.001,
+                'maxstep': 20*10e9,
+                'maxentries': 10001
+                }
+            }
+        return limits
 
     def on(self):
         """ Switches on any preconfigured microwave output.
@@ -262,10 +279,12 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @param power:
         @return:
         """
-        self._gpib_connection.write('SWEEP:GENERATION:STEPPED')
+        self._gpib_connection.write(':SWE:GEN STEP')
         self._gpib_connection.write(':FREQ:START {}'.format(start-step))
         self._gpib_connection.write(':FREQ:STOP {}'.format(stop))
-        self._gpib_connection.write(':SWEEP:FREQ:STEP {}'.format(step))
+        self._gpib_connection.write(':SWE:FREQ:STEP {}'.format(step))
+        nrpoints = int(self._gpib_connection.query(':SWE:POIN?'))
+        return nrpoints - 1
 
     def reset_sweep(self):
         """ Reset of MW List Mode position to start from first given frequency

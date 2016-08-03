@@ -37,7 +37,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>on')
-        return -1
 
     def off(self):
         """ Switches off any microwave output.
@@ -45,7 +44,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>off')
-        return -1
 
     def get_power(self):
         """ Gets the microwave output power.
@@ -53,7 +51,6 @@ class MicrowaveInterface():
         @return float: the power set at the device in dBm
         """
         raise InterfaceImplementationError('MicrowaveInterface>get_power')
-        return 0.0
 
     def set_power(self, power=0.):
         """ Sets the microwave output power.
@@ -63,7 +60,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_power')
-        return -1
 
     def get_frequency(self):
         """ Gets the frequency of the microwave output.
@@ -71,7 +67,6 @@ class MicrowaveInterface():
         @return float: frequency (in Hz), which is currently set for this device
         """
         raise InterfaceImplementationError('MicrowaveInterface>get_frequency')
-        return 0.0
 
     def set_frequency(self, freq=0.):
         """ Sets the frequency of the microwave output.
@@ -81,7 +76,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_frequency')
-        return -1
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
         """ Sets the MW mode to cw and additionally frequency and power
@@ -95,7 +89,6 @@ class MicrowaveInterface():
         Interleave option is used for arbitrary waveform generator devices.
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_cw')
-        return -1
 
     def set_list(self, freq=None, power=None):
         """ Sets the MW mode to list mode
@@ -106,7 +99,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_list')
-        return -1
 
     def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
@@ -114,7 +106,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>reset_listpos')
-        return -1
 
     def list_on(self):
         """ Switches on the list mode.
@@ -122,7 +113,6 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>list_on')
-        return -1
 
     def sweep_on(self):
         """ Switches on the sweep mode.
@@ -130,13 +120,11 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>sweep_on')
-        return -1
 
     def set_sweep(self, start, stop, step, power):
         """ Sweep from frequency start to frequency sto pin steps of width stop with power.
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_sweep')
-        return -1
 
     def reset_sweep(self):
         """ Reset of MW sweep position to start
@@ -144,14 +132,11 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>sweep_reset')
-        return -1
-
 
     def sweep_pos(self, frequency=None):
         """
         """
         raise InterfaceImplementationError('MicrowaveInterface>sweep_pos')
-        return -1
 
     def set_ex_trigger(self, source, pol):
         """ Set the external trigger for this device with proper polarization.
@@ -163,19 +148,16 @@ class MicrowaveInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MicrowaveInterface>trigger')
-        return -1
 
     def set_modulation(self, flag=None):
         """
         """
         raise InterfaceImplementationError('MicrowaveInterface>set_modulation')
-        return -1
 
     def output(self):
         """
         """
         raise InterfaceImplementationError('MicrowaveInterface>output')
-        return -1
 
     def am(self, depth=None):
         """
@@ -183,8 +165,29 @@ class MicrowaveInterface():
         @return float:
         """
         raise InterfaceImplementationError('MicrowaveInterface>am')
-        return -1
 
+    def get_limits(self):
+        """ Return the device-specific limits in a nested dictionary.
 
+          @return dict: limits dictionary
 
+            The following structure is absolutely necessary:
+            frequency:
+                min:
+                max:
+            power:
+                min:
+                max:
+            list:
+                minstep:
+                maxstep:
+                maxentries:
+            sweep:
+                minstep:
+                maxstep:
+                maxentries:
+
+           Frequency in Hz, power in dBm, minstep/maxstep in Hz.
+        """
+        raise InterfaceImplementationError('MicrowaveInterface>get_limits')
 

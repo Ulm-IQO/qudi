@@ -21,11 +21,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
 from scipy.signal import gaussian
 from scipy.ndimage import filters
+from scipy.interpolate import InterpolatedUnivariateSpline
 #from scipy.stats import poisson
 
 from scipy import special
@@ -77,7 +81,7 @@ def make_poissonian_model(self, no_of_functions=None):
 
         @return: poisson function: in order to use it as a model
         """
-        return self.poisson(x,mu)
+        return self.poisson(x, mu)
 
     def amplitude_function(x, amplitude):
         """
@@ -120,8 +124,7 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
-                self.logMsg('Given parameter is no one dimensional array.',
-                            msgType='error')
+                logger.error('Given parameter is no one dimensional array.')
 
     mod_final, params = self.make_poissonian_model()
 
@@ -135,11 +138,10 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The poissonian fit did not work. Check if a poisson '
-                    'distribution is needed or a normal approximation can be'
-                    'used. For values above 10 a normal/ gaussian distribution'
-                    ' is a good approximation.',
-                    msgType='warning')
+        logger.warning('The poissonian fit did not work. Check if a poisson '
+                'distribution is needed or a normal approximation can be'
+                'used. For values above 10 a normal/ gaussian distribution'
+                ' is a good approximation.')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -164,12 +166,10 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     parameters = [x_axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     # a gaussian filter is appropriate due to the well approximation of poisson
@@ -202,8 +202,7 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
-                self.logMsg('Given parameter is no one dimensional array.',
-                            msgType='error')
+                logger.error('Given parameter is no one dimensional array.')
 
     mod_final, params = self.make_poissonian_model(no_of_functions=2)
 
@@ -217,11 +216,10 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The double poissonian fit did not work. Check if a poisson '
-                    'distribution is needed or a normal approximation can be'
-                    'used. For values above 10 a normal/ gaussian distribution'
-                    ' is a good approximation.',
-                    msgType='warning')
+        logger.warning('The double poissonian fit did not work. Check if a '
+                'poisson distribution is needed or a normal approximation '
+                'can be used. For values above 10 a normal/ gaussian '
+                'distribution is a good approximation.')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -261,50 +259,67 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
-    # make the filter an extra function shared and usable for other functions
+    #TODO: make the filter an extra function shared and usable for other functions.
+    # Calculate here also an interpolation factor, which will be based on the
+    # given data set. If the convolution later on has more points, then the fit
+    # has a higher chance to be successful. The interpol_factor multiplies the
+    # number of points.
+    # Set the interpolation factor according to the amount of data. Too much
+    # interpolation is not good for the peak estimation, also too less in not
+    # good.
+
     if len(x_axis) < 20.:
         len_x = 5
+        interpol_factor = 8
     elif len(x_axis) >= 100.:
         len_x = 10
+        interpol_factor = 1
     else:
+        if len(x_axis) < 60:
+            interpol_factor = 4
+        else:
+            interpol_factor = 2
         len_x = int(len(x_axis) / 10.) + 1
 
+    # Create the interpolation function, based on the data:
+    interpol_function = InterpolatedUnivariateSpline(x_axis, data, k=1)
+    # adjust the x_axis to that:
+    x_axis_interpol = np.linspace(x_axis[0], x_axis[-1], len(x_axis)*interpol_factor)
+    # create actually the interpolated data:
+    interpol_data = interpol_function(x_axis_interpol)
+
+    # Use a gaussian function to convolve with the data, to smooth the datatrace.
+    # Then the peak search algorithm performs much better.
     gaus = gaussian(len_x, len_x)
-    data_smooth = filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
+    data_smooth = filters.convolve1d(interpol_data, gaus / gaus.sum(), mode='mirror')
 
     # search for double gaussian
+    search_results = self._search_double_dip(x_axis_interpol,
+                                             data_smooth * (-1),
+                                             threshold_fraction,
+                                             minimal_threshold,
+                                             sigma_threshold_fraction,
+                                             make_prints=False)
+    error = search_results[0]
+    sigma0_argleft, dip0_arg, sigma0_argright = search_results[1:4]
+    sigma1_argleft, dip1_arg, sigma1_argright = search_results[4:7]
 
-    error, \
-    sigma0_argleft, dip0_arg, sigma0_argright, \
-    sigma1_argleft, dip1_arg, sigma1_argright = \
-        self._search_double_dip(x_axis,
-                                data_smooth * (-1),
-                                threshold_fraction,
-                                minimal_threshold,
-                                sigma_threshold_fraction,
-                                make_prints=False
-                                )
+    # set the initial values for the fit:
+    params['poissonian0_mu'].value = x_axis_interpol[dip0_arg]
+    params['poissonian0_amplitude'].value = (data_smooth[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
+    params['poissonian0_amplitude'].min = 1e-15
 
-
-    params['poissonian0_mu'].value = x_axis[dip0_arg]
-    params['poissonian0_amplitude'].value = (data[dip0_arg] /
-                  self.poisson(x_axis[dip0_arg],x_axis[dip0_arg]) )
-
-
-    params['poissonian1_mu'].value = x_axis[dip1_arg]
-    params['poissonian1_amplitude'].value = ( data[dip1_arg] /
-                  self.poisson(x_axis[dip1_arg],x_axis[dip1_arg]) )
+    params['poissonian1_mu'].value = x_axis_interpol[dip1_arg]
+    params['poissonian1_amplitude'].value = (data_smooth[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
+    params['poissonian1_amplitude'].min = 1e-15
 
     return error, params

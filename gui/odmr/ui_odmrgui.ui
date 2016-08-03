@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>845</width>
-    <height>629</height>
+    <width>946</width>
+    <height>727</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -17,9 +17,15 @@
    <string>qudi: ODMR</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0" rowspan="7">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
      <widget class="QSplitter" name="splitter">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>1</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
@@ -41,134 +47,148 @@
       </widget>
      </widget>
     </item>
-    <item row="0" column="1" colspan="2">
-     <widget class="QSpinBox" name="odmr_cb_max_SpinBox">
-      <property name="maximumSize">
-       <size>
-        <width>80</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="minimum">
-       <number>0</number>
-      </property>
-      <property name="maximum">
-       <number>999999999</number>
-      </property>
-      <property name="value">
-       <number>100000</number>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QLabel" name="label_10">
-      <property name="maximumSize">
-       <size>
-        <width>30</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="2">
-     <widget class="QSpinBox" name="odmr_cb_high_centile_SpinBox">
-      <property name="maximumSize">
-       <size>
-        <width>50</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="maximum">
-       <number>100</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="1" colspan="2">
-     <widget class="PlotWidget" name="odmr_cb_PlotWidget">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>80</width>
-        <height>16777215</height>
-       </size>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1">
-     <widget class="QLabel" name="label_11">
-      <property name="maximumSize">
-       <size>
-        <width>30</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="2">
-     <widget class="QSpinBox" name="odmr_cb_low_centile_SpinBox">
-      <property name="maximumSize">
-       <size>
-        <width>50</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="maximum">
-       <number>100</number>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="1" colspan="2">
-     <widget class="QSpinBox" name="odmr_cb_min_SpinBox">
-      <property name="maximumSize">
-       <size>
-        <width>80</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="maximum">
-       <number>999999999</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="1" colspan="2">
-     <widget class="QRadioButton" name="odmr_cb_centiles_RadioButton">
-      <property name="text">
-       <string>&amp;Centiles</string>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
-      </property>
-      <attribute name="buttonGroup">
-       <string notr="true">buttonGroup</string>
-      </attribute>
-     </widget>
-    </item>
-    <item row="6" column="1" colspan="2">
-     <widget class="QRadioButton" name="odmr_cb_manual_RadioButton">
-      <property name="text">
-       <string>Man&amp;ual</string>
-      </property>
-      <attribute name="buttonGroup">
-       <string notr="true">buttonGroup</string>
-      </attribute>
-     </widget>
+    <item>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="ScienDSpinBox" name="odmr_cb_max_DoubleSpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="suffix">
+         <string>c/s</string>
+        </property>
+        <property name="minimum">
+         <double>-10.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>100000.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="ScienDSpinBox" name="odmr_cb_high_percentile_DoubleSpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="suffix">
+         <string>%</string>
+        </property>
+        <property name="minimum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>100.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="PlotWidget" name="odmr_cb_PlotWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="ScienDSpinBox" name="odmr_cb_low_percentile_DoubleSpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="suffix">
+         <string>%</string>
+        </property>
+        <property name="minimum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="ScienDSpinBox" name="odmr_cb_min_DoubleSpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="suffix">
+         <string>c/s</string>
+        </property>
+        <property name="minimum">
+         <double>-10.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>1000.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="odmr_cb_centiles_RadioButton">
+        <property name="text">
+         <string>Per&amp;centiles</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="odmr_cb_manual_RadioButton">
+        <property name="text">
+         <string>Man&amp;ual</string>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -177,8 +197,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>845</width>
-     <height>26</height>
+     <width>946</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -214,19 +234,19 @@
   <widget class="QDockWidget" name="odmr_control_DockWidget">
    <property name="sizePolicy">
     <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-     <horstretch>0</horstretch>
+     <horstretch>1</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
    <property name="minimumSize">
     <size>
-     <width>500</width>
+     <width>550</width>
      <height>150</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
-     <width>500</width>
+     <width>700</width>
      <height>150</height>
     </size>
    </property>
@@ -240,14 +260,14 @@
        <item row="0" column="0">
         <widget class="QLabel" name="label_7">
          <property name="text">
-          <string>Runtime (s) :</string>
+          <string>Runtime:</string>
          </property>
         </widget>
        </item>
        <item row="2" column="2">
         <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Power (dBm) :</string>
+          <string>Power:</string>
          </property>
         </widget>
        </item>
@@ -264,14 +284,14 @@
        <item row="0" column="2">
         <widget class="QLabel" name="label_8">
          <property name="text">
-          <string>Elapsed Time [s] :</string>
+          <string>Elapsed Time (s) :</string>
          </property>
         </widget>
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Frequency (MHz) :</string>
+          <string>Frequency:</string>
          </property>
         </widget>
        </item>
@@ -281,21 +301,21 @@
        <item row="3" column="4">
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Stop (MHz) :</string>
+          <string>Stop :</string>
          </property>
         </widget>
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Start (MHz) :</string>
+          <string>Start:</string>
          </property>
         </widget>
        </item>
        <item row="3" column="2">
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Step (MHz) :</string>
+          <string>Step:</string>
          </property>
         </widget>
        </item>
@@ -320,13 +340,16 @@
            <height>16777215</height>
           </size>
          </property>
+         <property name="suffix">
+          <string>s</string>
+         </property>
          <property name="maximum">
           <double>10000000.000000000000000</double>
          </property>
         </widget>
        </item>
        <item row="3" column="3">
-        <widget class="QDoubleSpinBox" name="step_freq_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="step_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -335,26 +358,29 @@
          </property>
          <property name="maximumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>16777215</height>
           </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
          </property>
          <property name="decimals">
           <number>4</number>
          </property>
          <property name="minimum">
-          <double>-1000000.000000000000000</double>
+          <double>0.000000000000000</double>
          </property>
          <property name="maximum">
-          <double>1000000.000000000000000</double>
+          <double>1000000000.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.000001000000000</double>
+          <double>0.100000000000000</double>
          </property>
         </widget>
        </item>
        <item row="3" column="1">
-        <widget class="QDoubleSpinBox" name="start_freq_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="start_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -363,7 +389,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
@@ -372,6 +398,9 @@
            <width>75</width>
            <height>16777215</height>
           </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
          </property>
          <property name="decimals">
           <number>4</number>
@@ -382,7 +411,7 @@
         </widget>
        </item>
        <item row="3" column="5">
-        <widget class="QDoubleSpinBox" name="stop_freq_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="stop_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -391,23 +420,26 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
          </property>
          <property name="decimals">
           <number>4</number>
          </property>
          <property name="minimum">
-          <double>-1000000.000000000000000</double>
+          <double>0.000000000000000</double>
          </property>
          <property name="maximum">
-          <double>1000000.000000000000000</double>
+          <double>1000000000.000000000000000</double>
          </property>
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="frequency_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="frequency_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -416,7 +448,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
@@ -426,16 +458,22 @@
            <height>16777215</height>
           </size>
          </property>
+         <property name="suffix">
+          <string>Hz</string>
+         </property>
          <property name="decimals">
-          <number>4</number>
+          <number>6</number>
          </property>
          <property name="maximum">
-          <double>100000000.000000000000000</double>
+          <double>1000000000.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
        <item row="2" column="3">
-        <widget class="QDoubleSpinBox" name="power_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="power_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -444,12 +482,15 @@
          </property>
          <property name="maximumSize">
           <size>
-           <width>80</width>
+           <width>100</width>
            <height>16777215</height>
           </size>
          </property>
+         <property name="suffix">
+          <string>dBm</string>
+         </property>
          <property name="decimals">
-          <number>3</number>
+          <number>5</number>
          </property>
          <property name="minimum">
           <double>-1000.000000000000000</double>
@@ -466,22 +507,10 @@
   </widget>
   <widget class="QDockWidget" name="odmr_fit_DockWidget">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>329</width>
-     <height>150</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>524287</width>
-     <height>150</height>
-    </size>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
@@ -628,17 +657,32 @@
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
   </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>tools.scientific_spinbox.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>odmr_cb_max_SpinBox</tabstop>
-  <tabstop>odmr_cb_high_centile_SpinBox</tabstop>
+  <tabstop>runtime_DoubleSpinBox</tabstop>
+  <tabstop>frequency_DoubleSpinBox</tabstop>
+  <tabstop>power_DoubleSpinBox</tabstop>
+  <tabstop>mode_ComboBox</tabstop>
+  <tabstop>start_freq_DoubleSpinBox</tabstop>
+  <tabstop>step_freq_DoubleSpinBox</tabstop>
+  <tabstop>stop_freq_DoubleSpinBox</tabstop>
+  <tabstop>fit_methods_ComboBox</tabstop>
+  <tabstop>do_fit_PushButton</tabstop>
+  <tabstop>odmr_fit_results_DisplayWidget</tabstop>
+  <tabstop>odmr_cb_max_DoubleSpinBox</tabstop>
+  <tabstop>odmr_cb_high_percentile_DoubleSpinBox</tabstop>
   <tabstop>odmr_cb_PlotWidget</tabstop>
-  <tabstop>odmr_cb_low_centile_SpinBox</tabstop>
-  <tabstop>odmr_cb_min_SpinBox</tabstop>
+  <tabstop>odmr_cb_low_percentile_DoubleSpinBox</tabstop>
+  <tabstop>odmr_cb_min_DoubleSpinBox</tabstop>
   <tabstop>odmr_cb_centiles_RadioButton</tabstop>
   <tabstop>odmr_cb_manual_RadioButton</tabstop>
-  <tabstop>odmr_matrix_PlotWidget</tabstop>
   <tabstop>odmr_PlotWidget</tabstop>
+  <tabstop>odmr_matrix_PlotWidget</tabstop>
  </tabstops>
  <resources/>
  <connections>

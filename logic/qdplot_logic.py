@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
@@ -48,23 +49,17 @@ class QdplotLogic(GenericLogic):
            }
     _out = {'qdplotlogic': 'QdplotLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.
 
-        @param object manager: Manager object thath loaded this module
-        @param str name: unique module name
-        @param dict config: module configuration
         @param dict kwargs: optional parameters
         """
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(**kwargs)
 
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -86,7 +81,7 @@ class QdplotLogic(GenericLogic):
 
         self._save_logic = self.connector['in']['savelogic']['object']
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -98,17 +93,11 @@ class QdplotLogic(GenericLogic):
         """Set the data to plot
         """
         if x is None:
-            self.logMsg('No x-values provided, cannot set plot data.',
-                        msgType='error',
-                        importance=3
-                        )
+            self.log.error('No x-values provided, cannot set plot data.')
             return -1
 
         if y is None:
-            self.logMsg('No y-values provided, cannot set plot data.',
-                        msgType='error',
-                        importance=3
-                        )
+            self.log.error('No y-values provided, cannot set plot data.')
             return -1
 
         self.indep_vals = x
@@ -233,4 +222,4 @@ class QdplotLogic(GenericLogic):
                                    as_text=True,
                                    plotfig=fig
                                    )
-        self.logMsg('Data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.debug('Data saved to:\n{0}'.format(filepath))

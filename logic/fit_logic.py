@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -46,12 +47,8 @@ class FitLogic(GenericLogic):
     # declare connectors
     _out = {'fitlogic': 'FitLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         # locking for thread safety
         self.lock = Mutex()
 
@@ -109,13 +106,13 @@ class FitLogic(GenericLogic):
                                     if not str(method).split('_')[1] in self.oneD_fit_methods:
                                         self.oneD_fit_methods[str(method).split('_')[1]] = []
                 except:
-                    self.logMsg('It was not possible to import element {} into FitLogic.'.format(method),
-                                msgType='error')
-        self.logMsg('Methods were included to FitLogic, but only if naming is right: check the doxygen documentation' +
-                    'if you added a new method and it does not show',
-                    msgType='warning')
+                    self.log.error('It was not possible to import element {} '
+                            'into FitLogic.'.format(method))
+        self.log.warning('Methods were included to FitLogic, but only if '
+                'naming is right: check the doxygen documentation '
+                'if you added a new method and it does not show.')
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -128,5 +125,5 @@ class FitLogic(GenericLogic):
         """
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass

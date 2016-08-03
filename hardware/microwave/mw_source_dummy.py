@@ -36,26 +36,23 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     ## declare connectors
     _out = {'mwsourcedummy': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg("The following configuration was found.", msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg("{}: {}".format(key,config[key]), msgType='status')
+            self.log.info("{}: {}".format(key,config[key]))
 
         # trying to load the visa connection
         try:
             import visa
         except:
-            self.logMsg("No visa connection installed. Please install pyvisa.",
-                        msgType='error')
+            self.log.error('No visa connection installed. Please install '
+                    'pyvisa.')
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -68,7 +65,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -76,12 +73,36 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         pass
 
+    def get_limits(self):
+        """Dummy limits"""
+        limits = {
+            'frequency': {
+                'min': 100 * 10e3,
+                'max': 50 * 10e9
+                },
+            'power': {
+                'min': -120,
+                'max': 30
+                },
+            'list': {
+                'minstep': 1,
+                'maxstep': 10 * 10e9,
+                'maxentries': 5000
+                },
+            'sweep': {
+                'minstep': 0.1,
+                'maxstep': 10 * 10e9,
+                'maxentries': 10 * 10e9
+                }
+            }
+        return limits
+
     def on(self):
         """ Switches on any preconfigured microwave output.
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("MicrowaveDummy>on", msgType='warning')
+        self.log.warning('MicrowaveDummy>on')
         return 0
 
     def off(self):
@@ -89,7 +110,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("MicrowaveDummy>off", msgType='warning')
+        self.log.warning('MicrowaveDummy>off')
         return 0
 
     def get_power(self):
@@ -97,7 +118,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        self.logMsg("MicrowaveDummy>get_power", msgType='warning')
+        self.log.warning('MicrowaveDummy>get_power')
         return random.uniform(-10, 10)
 
     def set_power(self,power=None):
@@ -107,8 +128,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("MicrowaveDummy>set_power, power: {0:f}".format(power),
-                    msgType='warning')
+        self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(
+            power))
         return 0
 
 
@@ -117,7 +138,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        self.logMsg("MicrowaveDummy>get_frequency", msgType='warning')
+        self.log.warning('MicrowaveDummy>get_frequency')
         return random.uniform(0, 1e6)
 
     def set_frequency(self, freq=None):
@@ -127,8 +148,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("MicrowaveDummy>set_frequency, frequency: "
-                    "{0:f}".format(freq), msgType='warning')
+        self.log.warning('MicrowaveDummy>set_frequency, frequency: '
+                    '{0:f}'.format(freq))
         return 0
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
@@ -142,8 +163,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        self.logMsg("MicrowaveDummy>set_cw, frequency: {0:f}, power "
-                    "{0:f}:".format(freq, power), msgType='warning')
+        self.log.warning('MicrowaveDummy>set_cw, frequency: {0:f}, power '
+                    '{0:f}:'.format(freq, power))
         return 0
 
     def set_list(self, freq=None, power=None):
@@ -155,8 +176,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('MicrowaveDummy>set_list,\nfrequency (Hz): {0}\n'
-                    'power (dBm): {1}'.format(freq, power), msgType='warning')
+        self.log.warning('MicrowaveDummy>set_list,\nfrequency (Hz): {0}\n'
+                    'power (dBm): {1}'.format(freq, power))
         return 0
 
     def reset_listpos(self):
@@ -164,7 +185,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # self.logMsg("MicrowaveDummy>reset_listpos", msgType='warning')
+        # self.log.warning('MicrowaveDummy>reset_listpos')
         return 0
 
     def list_on(self):
@@ -172,7 +193,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("MicrowaveDummy>list_on", msgType='warning')
+        self.log.warning('MicrowaveDummy>list_on')
         return 0
 
     def set_ex_trigger(self, source, pol):

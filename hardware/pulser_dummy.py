@@ -40,19 +40,16 @@ class PulserDummy(Base, PulserInterface):
     # connectors
     _out = {'pulser': 'PulserInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate'   : self.activation,
-                         'ondeactivate' : self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
-        self.logMsg('Dummy Pulser: I will simulate an AWG :) !', msgType='status')
+        self.log.info('Dummy Pulser: I will simulate an AWG :) !')
 
         self.awg_waveform_directory = '/waves'
 
@@ -63,20 +60,19 @@ class PulserDummy(Base, PulserInterface):
 
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.logMsg('The directory defined in parameter '
-                            '"pulsed_file_dir" in the config for '
-                            'SequenceGeneratorLogic class does not exist!\n'
-                            'The default home directory\n{0}\n will be taken '
-                            'instead.'.format(self.pulsed_file_dir),
-                            msgType='warning')
+                self.log.warning('The directory defined in parameter '
+                        '"pulsed_file_dir" in the config for '
+                        'SequenceGeneratorLogic class does not exist!\n'
+                        'The default home directory\n{0}\n will be taken '
+                        'instead.'.format(self.pulsed_file_dir))
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.logMsg('No parameter "pulsed_file_dir" was specified in the '
-                        'config for SequenceGeneratorLogic as directory for '
-                        'the pulsed files!\nThe default home directory\n{0}\n'
-                        'will be taken instead.'.format(self.pulsed_file_dir),
-                        msgType='warning')
+            self.log.warning('No parameter "pulsed_file_dir" was specified '
+                    'in the config for SequenceGeneratorLogic as directory '
+                    'for the pulsed files!\nThe default home directory\n'
+                    '{0}\n'
+                    'will be taken instead.'.format(self.pulsed_file_dir))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
@@ -114,7 +110,7 @@ class PulserDummy(Base, PulserInterface):
 
         self.current_status = 0    # that means off, not running.
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -127,7 +123,7 @@ class PulserDummy(Base, PulserInterface):
         """
         self.connected = True
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -274,7 +270,7 @@ class PulserDummy(Base, PulserInterface):
         @return int: error code (0:stopped, -1:error, 1:running)
         """
         self.current_status = 1
-        self.logMsg('PulserDummy: Switch on the Output.', msgType='status')
+        self.log.info('PulserDummy: Switch on the Output.')
         return self.current_status
 
     def pulser_off(self):
@@ -283,7 +279,7 @@ class PulserDummy(Base, PulserInterface):
         @return int: error code (0:stopped, -1:error, 1:running)
         """
         self.current_status = 0
-        self.logMsg('PulserDummy: Switch off the Output.', msgType='status')
+        self.log.info('PulserDummy: Switch off the Output.')
         return self.current_status
 
     def upload_asset(self, asset_name=None):
@@ -297,8 +293,9 @@ class PulserDummy(Base, PulserInterface):
         If nothing is passed, method will be skipped.
         """
         if asset_name is None:
-            self.logMsg('No asset name provided for upload!\nCorrect '
-                        'that!\nCommand will be ignored.', msgType='warning')
+            self.log.warning('No asset name provided for upload!\n'
+                    'Correct that!\n'
+                    'Command will be ignored.')
             return -1
 
         saved_files = self._get_filenames_on_host()
@@ -770,9 +767,8 @@ class PulserDummy(Base, PulserInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('It is so nice that you talk to me and told me "{0}"; as '
-                    'a dummy it is very dull out here! :) '.format(command),
-                    msgType='status')
+        self.log.info('It is so nice that you talk to me and told me "{0}"; '
+                'as a dummy it is very dull out here! :) '.format(command))
 
         return 0
 
@@ -784,9 +780,8 @@ class PulserDummy(Base, PulserInterface):
         @return string: the answer of the device to the 'question' in a string
         """
 
-        self.logMsg("Dude, I'm a dummy! Your question '{0}' is way to "
-                    "complicated for me :D !".format(question),
-                    msgType='status')
+        self.log.info('Dude, I\'m a dummy! Your question \'{0}\' is way to '
+                    'complicated for me :D !'.format(question))
 
         return 'I am a dummy!'
 
@@ -795,7 +790,7 @@ class PulserDummy(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg('Dummy cannot be reseted!', msgType='status')
+        self.log.info('Dummy cannot be reseted!')
 
         return 0
 

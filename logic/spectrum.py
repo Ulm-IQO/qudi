@@ -44,22 +44,17 @@ class SpectrumLogic(GenericLogic):
            }
     _out = {'spectrumlogic': 'SpectrumLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
 
-          @param object manager: Manager object that loaded this module
-          @param str name: unique module name
-          @param dict config: module configuration
           @param dict kwargs: optional parameters
         """
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(**kwargs)
 
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
@@ -75,7 +70,7 @@ class SpectrumLogic(GenericLogic):
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
           @param object e: Fysom state change event

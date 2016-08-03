@@ -36,7 +36,7 @@ class TraceAnalysisLogic(GenericLogic):
     _modclass = 'TraceAnalysisLogic'
     _modtype = 'logic'
 
-    ## declare connectors
+    # declare connectors
     _in = {'counterlogic1': 'CounterLogic',
            'savelogic': 'SaveLogic',
            'fitlogic': 'FitLogic',
@@ -47,30 +47,24 @@ class TraceAnalysisLogic(GenericLogic):
     sigHistogramUpdated = QtCore.Signal()
 
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
-        @param object manager: Manager object thath loaded this module
-        @param str name: unique module name
         @param dict config: module configuration
         @param dict kwargs: optional parameters
         """
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
         self.hist_data = None
         self._hist_num_bins = None
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -90,7 +84,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         self.current_fit_function = 'No Fit'
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -191,7 +185,7 @@ class TraceAnalysisLogic(GenericLogic):
         """
 
         hist_data = self.calculate_histogram(trace=trace, num_bins=num_bins)
-        threshold_fit, fidelity = self.calculate_threshold(hist_data)
+        threshold_fit, fidelity, fit_param = self.calculate_threshold(hist_data)
         bin_trace = self.calculate_binary_trace(trace, threshold_fit)
 
         # here the index_arr contain all indices where the state is above
@@ -236,7 +230,21 @@ class TraceAnalysisLogic(GenericLogic):
         param['fidelity'] = fidelity # Fidelity of Double Poissonian Fit
         param['threshold'] = threshold_fit # Threshold
 
+        # add the fit parameter to the output parameter:
+        param.update(fit_param)
+
         return flip_prob, param
+
+    def analyze_lifetime(self, trace, dt, estimated_lifetime=None):
+        """ Perform an lifetime analysis of a 1D time trace. The analysis is
+            based on the Hidden-Markov-Model
+
+        @return:
+        """
+
+        pass
+
+
 
     def analyze_flip_prob_postselect(self):
         """ Post select the data trace so that the flip probability is only
@@ -269,36 +277,35 @@ class TraceAnalysisLogic(GenericLogic):
         You can obtain with get_fit_methods all implemented fit methods.
         """
 
-
-
         if self.hist_data is None:
             hist_fit_x = []
             hist_fit_y = []
-            param_dict = {}
-            return hist_fit_x, hist_fit_y, param_dict
+            param_dict = OrderedDict()
+            fit_result = None
+            return hist_fit_x, hist_fit_y, param_dict, fit_result
         else:
 
-            # self.logMsg((self.calculate_threshold(self.hist_data)))
+            # self.log.debug((self.calculate_threshold(self.hist_data)))
 
             # shift x axis to middle of bin
             axis = self.hist_data[0][:-1]+(self.hist_data[0][1]-self.hist_data[0][0])/2.
             data = self.hist_data[1]
 
             if fit_function == 'No Fit':
-                hist_fit_x, hist_fit_y, fit_param_dict = self.do_no_fit()
-                return hist_fit_x, hist_fit_y, fit_param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict, fit_result = self.do_no_fit()
+                return hist_fit_x, hist_fit_y, fit_param_dict, fit_result
             elif fit_function == 'Gaussian':
-                hist_fit_x, hist_fit_y, fit_param_dict = self.do_gaussian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict, fit_result = self.do_gaussian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict, fit_result
             elif fit_function == 'Double Gaussian':
-                hist_fit_x, hist_fit_y, fit_param_dict = self.do_doublegaussian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict, fit_result = self.do_doublegaussian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict, fit_result
             elif fit_function == 'Poisson':
-                hist_fit_x, hist_fit_y, fit_param_dict = self.do_possonian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict, fit_result = self.do_possonian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict, fit_result
             elif fit_function == 'Double Poisson':
-                hist_fit_x, hist_fit_y, fit_param_dict = self.do_doublepossonian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict, fit_result = self.do_doublepossonian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict, fit_result
 
     def do_no_fit(self):
         """ Perform no fit, basically return an empty array.
@@ -312,7 +319,8 @@ class TraceAnalysisLogic(GenericLogic):
         hist_fit_x = []
         hist_fit_y = []
         param_dict = {}
-        return hist_fit_x, hist_fit_y, param_dict
+        fit_result = None
+        return hist_fit_x, hist_fit_y, param_dict, fit_result
 
     def do_gaussian_fit(self, axis, data):
         """ Perform a gaussian fit.
@@ -324,9 +332,8 @@ class TraceAnalysisLogic(GenericLogic):
 
         model, params = self._fit_logic.make_gaussian_model()
         if len(axis) < len(params):
-            self.logMsg('Fit could not be performed because number of '
-                        'parameters is smaller than data points.',
-                        msgType='warning')
+            self.log.warning('Fit could not be performed because number of '
+                    'parameters is smaller than data points.')
             return self.do_no_fit()
 
         else:
@@ -362,9 +369,9 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03C3_0'] = {'value': result.params['amplitude'].value,
-                                    'error': result.params['amplitude'].stderr,
-                                    'unit' : 'Occurrences'}
+            param_dict['sigma_0'] = {'value': result.params['amplitude'].value,
+                                      'error': result.params['amplitude'].stderr,
+                                      'unit' : 'Occurrences'}
 
             param_dict['FWHM'] = {'value': result.params['fwhm'].value,
                                   'error': result.params['fwhm'].stderr,
@@ -378,14 +385,17 @@ class TraceAnalysisLogic(GenericLogic):
                                        'error': result.params['amplitude'].stderr,
                                        'unit' : 'Occurrences'}
 
-            return hist_fit_x, hist_fit_y, param_dict
+            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+
+            return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublegaussian_fit(self, axis, data):
         model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
+
         if len(axis) < len(params):
-            self.logMsg('Fit could not be performed because number of '
-                        'parameters is smaller than data points',
-                        msgType='warning')
+            self.log.warning('Fit could not be performed because number of '
+                    'parameters is smaller than data points')
             return self.do_no_fit()
 
         else:
@@ -401,7 +411,7 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03C3_0'] = {'value': result.params['gaussian0_sigma'].value,
+            param_dict['sigma_0'] = {'value': result.params['gaussian0_sigma'].value,
                                      'error': result.params['gaussian0_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
@@ -417,7 +427,7 @@ class TraceAnalysisLogic(GenericLogic):
                                          'error': result.params['gaussian0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            param_dict['\u03C3_1'] = {'value': result.params['gaussian1_sigma'].value,
+            param_dict['sigma_1'] = {'value': result.params['gaussian1_sigma'].value,
                                      'error': result.params['gaussian1_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
@@ -433,14 +443,15 @@ class TraceAnalysisLogic(GenericLogic):
                                          'error': result.params['gaussian1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            return hist_fit_x, hist_fit_y, param_dict
+            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+            return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublepossonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
         if len(axis) < len(params):
-            self.logMsg('Fit could not be performed because number of '
-                        'parameters is smaller than data points',
-                        msgType='warning')
+            self.log.warning('Fit could not be performed because number of '
+                    'parameters is smaller than data points')
             return self.do_no_fit()
 
         else:
@@ -456,27 +467,28 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03BB0'] = {'value': result.params['poissonian0_mu'].value,
+            param_dict['lambda_0'] = {'value': result.params['poissonian0_mu'].value,
                                      'error': result.params['poissonian0_mu'].stderr,
                                      'unit' : 'Counts/s'}
             param_dict['Amplitude_0'] = {'value': result.params['poissonian0_amplitude'].value,
                                          'error': result.params['poissonian0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
-            param_dict['\u03BB1'] = {'value': result.params['poissonian1_mu'].value,
+            param_dict['lambda_1'] = {'value': result.params['poissonian1_mu'].value,
                                      'error': result.params['poissonian1_mu'].stderr,
                                      'unit' : 'Counts/s'}
             param_dict['Amplitude_1'] = {'value': result.params['poissonian1_amplitude'].value,
                                          'error': result.params['poissonian1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            return hist_fit_x, hist_fit_y, param_dict
+            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+            return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_possonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model()
         if len(axis) < len(params):
-            self.logMsg('Fit could not be performed because number of '
-                        'parameters is smaller than data points',
-                        msgType='error')
+            self.log.error('Fit could not be performed because number of '
+                    'parameters is smaller than data points')
             return self.do_no_fit()
         else:
             result = self._fit_logic.make_poissonian_fit(axis=axis,
@@ -491,11 +503,13 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03BB'] = {'value': np.round(result.params['poissonian_mu'].value, 3),
-                                     'error': np.round(result.params['poissonian_mu'].stderr, 2),
-                                     'unit' : 'Counts/s'}
+            param_dict['lambda'] = {'value': result.params['poissonian_mu'].value,
+                                    'error': result.params['poissonian_mu'].stderr,
+                                    'unit' : 'Counts/s'}
 
-            return hist_fit_x, hist_fit_y, param_dict
+            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+            return hist_fit_x, hist_fit_y, param_dict, result
 
     def get_poissonian(self, x_val, mu, amplitude):
         """ Calculate, bases on the passed values a poisson distribution.
@@ -575,14 +589,37 @@ class TraceAnalysisLogic(GenericLogic):
         y_data = hist_data[1]
         hist_fit_x, hist_fit_y, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
 
-        mu0 = param_dict['\u03BB0']['value']
-        mu1 = param_dict['\u03BB1']['value']
+        if param_dict.get('lambda_0') is None:
+            self.logMsg('The double poissonian fit does not work! Take at '
+                        'least a dummy value, in order not to break the '
+                        'routine.', msgType='error')
+            amp0 = 1
+            amp1 = 1
 
-        amp0 = param_dict['Amplitude_0']['value']
-        amp1 = param_dict['Amplitude_1']['value']
+            param_dict['Amplitude_0'] = {'value': amp0, 'unit': 'occurences'}
+            param_dict['Amplitude_1'] = {'value': amp0, 'unit': 'occurences'}
 
-        first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
-        sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
+            # make them a bit different so that fit works.
+            mu0 = hist_data[0][:].mean()-0.1
+            mu1 = hist_data[0][:].mean()+0.1
+
+            param_dict['lambda_0'] = {'value': mu0, 'unit': 'counts'}
+            param_dict['lambda_1'] = {'value': mu1, 'unit': 'counts'}
+
+        else:
+
+            mu0 = param_dict['lambda_0']['value']
+            mu1 = param_dict['lambda_1']['value']
+
+            amp0 = param_dict['Amplitude_0']['value']
+            amp1 = param_dict['Amplitude_1']['value']
+
+        if mu0 < mu1:
+            first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
+            sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
+        else:
+            first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
+            sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
 
         # create a two poissonian array, where the second poissonian
         # distribution is add as negative values. Now the transition from
@@ -611,21 +648,40 @@ class TraceAnalysisLogic(GenericLogic):
         # is identical, then fidelity indicates a poor separation of the peaks.
 
         if mu0 < mu1:
-            area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
-            area0_high = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
-            area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
-            area1_high = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
+            area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, 1).sum()
+            area0_high = self.get_poissonian(hist_data[0][trans_index:], mu0, 1).sum()
+            area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, 1).sum()
+            area1_high = self.get_poissonian(hist_data[0][trans_index:], mu1, 1).sum()
+
+            area0_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
+            area0_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
+            area1_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
+            area1_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
+
         else:
-            area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
-            area1_high = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
-            area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
-            area0_high = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
+            area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, 1).sum()
+            area1_high = self.get_poissonian(hist_data[0][trans_index:], mu0, 1).sum()
+            area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, 1).sum()
+            area0_high = self.get_poissonian(hist_data[0][trans_index:], mu1, 1).sum()
+
+            area1_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
+            area1_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
+            area0_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
+            area0_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
 
         # Now calculate how big is the overlap relative to the sum of the other
         # part of the area, that will give the normalized fidelity:
         fidelity = 1 - (area1_low / area0_low + area0_high / area1_high) / 2
 
-        return threshold_fit, fidelity
+        area0 = self.get_poissonian(hist_data[0][:], mu0, amp0).sum()
+        area1 = self.get_poissonian(hist_data[0][:], mu1, amp1).sum()
+
+        # try this new measure for the fidelity
+        fidelity2 = 1 - ((area1_low_amp/area1) / (area0_low_amp/area0) + (area0_high_amp/area0) / (area1_high_amp/area1) ) / 2
+
+        param_dict['normalized_fidelity'] = fidelity2
+
+        return threshold_fit, fidelity, param_dict
 
 
     def calculate_binary_trace(self, trace, threshold):

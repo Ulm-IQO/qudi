@@ -27,7 +27,7 @@ import subprocess
 import sys
 import os
 
-myenv = os.environ.copy() 
+myenv = os.environ.copy()
 
 if sys.platform == 'win32':
     from core.util.win_interrupt import create_interrupt_event
@@ -58,6 +58,9 @@ while True:
         elif retval == 42:
             print('Restarting...')
             continue
+        elif retval == 2:
+            # invalid commandline argument
+            break
         else:
             print('Unexpected return value {0}. Exiting.'.format(retval))
             sys.exit(retval)

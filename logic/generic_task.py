@@ -20,14 +20,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import logging
 from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom
+from core.FysomAdapter import Fysom
+import sys
 
 class TaskResult(QtCore.QObject):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.data = None
         self.success = None
 
@@ -39,7 +41,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
     """ This class represents a task in a module that can be safely executed by checking preconditions
         and pausing other tasks that are being executed as well.
         The task can also be paused, given that the preconditions for pausing are met.
-        
+
         State diagram for InterruptableTask:
 
         stopped -> starting -----------> running ---------> finishing -*
@@ -70,14 +72,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
     pauseTasks = {}
     requiredModules = []
 
-    def __init__(self, name, runner, references, config):
+    def __init__(self, name, runner, references, config, **kwargs):
         """ Create an Interruptable task.
           @param str name: unique task name
           @param object runner: reference to the TaskRunner managing this task
           @param dict references: a dictionary of all required modules
           @param dict config: configuration dictionary
         """
-        QtCore.QObject.__init__(self)
         default_callbacks = {
                 'onrun': self._start,
                 'onpause': self._pause,
@@ -101,7 +102,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             ],
             'callbacks': default_callbacks
         }
-        Fysom.__init__(self, _stateDict)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_stateDict, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _stateDict)
+
         self.lock = Mutex()
         self.name = name
         self.interruptable = False
@@ -116,6 +122,30 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
         self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
 
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+          return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+          pass
+        return Fysom.__getattr__(self, name)
+
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__.__name__))
+
     def onchangestate(self, e):
         """ Fysom callback for state transition.
 
@@ -124,7 +154,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigStateChanged.emit(e)
 
     def _start(self, e):
-        """  
+        """
           @param object e: Fysom state transition description
 
           @return bool: True if task was started, False otherwise
@@ -150,9 +180,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigStarted.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception during task {}. {}'.format(
+                self.name, e))
             self.result.update(None, False)
-    
+
     def _doTaskStep(self):
         """ Check for state transitions to pause or stop and execute one step of the task work function.
         """
@@ -168,13 +199,14 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 self.finish()
                 self.sigDoFinish.emit()
         except Exception as e:
-            self.runner.logExc('Exception during task step {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception during task step {}. {}'.format(
+                self.name, e))
             self.result.update(None, False)
             self.finish()
             self.sigDoFinish.emit()
-                
+
     def _pause(self, e):
-        """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step. 
+        """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step.
         """
         pass
 
@@ -187,9 +219,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.pausingFinished()
             self.sigPaused.emit()
         except Exception as e:
-            self.runner.logExc('Exception while pausing task {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception while pausing task {}. '
+                    '{}'.format(self.name, e))
             self.result.update(None, False)
-        
+
     def _resume(self, e):
         """ Trigger resuming action.
         """
@@ -205,7 +238,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigResumed.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            self.runner.logExc('Exception while resuming task {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception while resuming task {}. '
+                    '{}'.format(self.name, e))
             self.result.update(None, False)
 
     def _finish(self, e):
@@ -234,7 +268,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 return False
         for task in self.pauseTasks:
             if not (isinstance(self.pauseTasks[task], InterruptibleTask)
-                    and ( 
+                    and (
                         self.pauseTasks[task].can('pause')
                         or self.pauseTasks[task].isstate('stopped')
                     )):
@@ -245,9 +279,9 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkExtraStartPrerequisites(self):
-        """ If your task has extra prerequisites that are not covered by 
-            checking if a certain task can be paused, overwrite this function 
-            when sub-classing. 
+        """ If your task has extra prerequisites that are not covered by
+            checking if a certain task can be paused, overwrite this function
+            when sub-classing.
 
         @return bool: return True if task can be started, False otherwise
         """
@@ -259,7 +293,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
         try:
             return self.checkExtraPausePrerequisites()
         except Exception as e:
-            self.runner.logExc('Exception while checking pause prerequisites for task {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception while checking pause '
+                    'prerequisites for task {}. {}'.format(self.name, e))
             return False
 
     def checkExtraPausePrerequisites(self):
@@ -315,14 +350,13 @@ class PrePostTask(QtCore.QObject, Fysom):
 
     requiredModules = []
 
-    def __init__(self, name, runner, references, config):
+    def __init__(self, name, runner, references, config, **kwargs):
         """ Create a PrePostTask.
           @param str name: unique name of the task
           @param object runner: TaskRunner that manages this task
           @param dict references: contains references to all required modules
           @param dict config: configuration parameter dictionary
         """
-        QtCore.QObject.__init__(self)
         _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
         _stateList = {
             'initial': 'stopped',
@@ -332,12 +366,40 @@ class PrePostTask(QtCore.QObject, Fysom):
             ],
             'callbacks': _default_callbacks
         }
-        Fysom.__init__(self, _stateList)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_stateList, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _stateList)
         self.lock = Mutex()
         self.name = name
         self.runner = runner
         self.ref = references
         self.config = config
+
+    def __getattr__(self, name):
+        """
+        Attribute getter.
+
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
+        """
+        try:
+          return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+          pass
+        return Fysom.__getattr__(self, name)
+
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__.__name__))
 
     def onchangestate(self, e):
         """ Fysom callback for all state transitions.
@@ -368,7 +430,8 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.preExecute()
         except Exception as e:
-            self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception during task {}. {}'.format(
+                self.name, e))
 
         self.sigPreExecFinish.emit()
 
@@ -381,7 +444,8 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.postExecute()
         except Exception as e:
-            self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            self.log.exception('Exception during task {}. {}'.format(
+                self.name, e))
 
         self.sigPostExecFinish.emit()
-        
+
