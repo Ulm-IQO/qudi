@@ -52,24 +52,19 @@ class LaserScannerLogic(GenericLogic):
     signal_change_voltage = QtCore.Signal(float)
     signal_scan_next_line = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, **kwargs):
         """ Create VoltageScanningLogic object with connectors.
 
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
-          @param dict config: module configuration
           @param dict kwargs: optional parameters
         """
-        # declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(**kwargs)
 
         # locking for thread safety
         self.threadlock = Mutex()
 
         self.stopRequested = False
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
@@ -126,7 +121,7 @@ class LaserScannerLogic(GenericLogic):
         # Initialie data matrix
         self._initialise_data_matrix(100)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
           @param object e: Fysom state change event
@@ -147,7 +142,7 @@ class LaserScannerLogic(GenericLogic):
 
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
-            self.logMsg('Cannot goto, because scanner is locked!', msgType='error')
+            self.log.error('Cannot goto, because scanner is locked!')
             return -1
         else:
             self.signal_change_voltage.emit(volts)
@@ -306,7 +301,7 @@ class LaserScannerLogic(GenericLogic):
 
     def _generate_ramp(self, voltage1, voltage2, speed):
         """Generate a ramp vrom voltage1 to voltage2 that
-        satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the 
+        satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the
         ramp is just linear.
 
         @param float voltage1: voltage at start of ramp.
@@ -341,9 +336,9 @@ class LaserScannerLogic(GenericLogic):
             v_max_linear = v_max - v_range_of_accel
 
             if v_min_linear > v_max_linear:
-                self.logMsg('Voltage ramp too short to apply the configured smoothing_steps.'
-                            'A simple linear ramp was created instead.'
-                            )
+                self.log.warning('Voltage ramp too short to apply the '
+                        'configured smoothing_steps. A simple linear ramp '
+                        'was created instead.')
                 num_of_linear_steps = np.rint((v_max - v_min) / linear_v_step)
                 ramp = np.linspace(v_min, v_max, num_of_linear_steps)
 
@@ -390,7 +385,7 @@ class LaserScannerLogic(GenericLogic):
 
         """
         if line_to_scan is None:
-            self.logMsg('Voltage scanning logic needs a line to scan!', msgType='error')
+            self.log.error('Voltage scanning logic needs a line to scan!')
             return -1
         try:
             # scan of a single line
@@ -399,7 +394,7 @@ class LaserScannerLogic(GenericLogic):
             return counts_on_scan_line
 
         except Exception as e:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.log.error('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_next_line.emit()
             raise e
@@ -413,12 +408,12 @@ class LaserScannerLogic(GenericLogic):
             self._scanning_device.close_scanner()
             self._scanning_device.close_scanner_clock()
         except Exception as e:
-            self.logExc('Could not even close the scanner, giving up.', msgType='error')
+            self.log.exception('Could not even close the scanner, giving up.')
             raise e
         try:
             self._scanning_device.unlock()
         except Exception as e:
-            self.logExc('Could not unlock scanning device.', msgType='error')
+            self.log.exception('Could not unlock scanning device.')
 
         return 0
 
@@ -486,7 +481,6 @@ class LaserScannerLogic(GenericLogic):
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Laser Scan saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
         return 0

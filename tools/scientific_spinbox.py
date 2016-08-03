@@ -19,17 +19,46 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-import pyqtgraph
+#import pyqtgraph
+from tools.pyqtgraphmod.SpinBox import SpinBox
 
 
-class ScienDSpinBox(pyqtgraph.SpinBox):
-    """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific way. """
+class ScienDSpinBox(SpinBox):
+    """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific 
+        way. 
+
+    This class can be directly used in Qt Designer by promoting the 
+    QDoubleSpinBox to ScienDSpinBox. State the path to this file (in python 
+    style, i.e. dots are separating the directories) as the header file and use
+    the name of the present class.
+    """
 
     def __init__(self, *args, **kwargs):
-        pyqtgraph.SpinBox.__init__(self, *args, int=False, suffix='s', siPrefix=True,  **kwargs)
+        SpinBox.__init__(
+                self,
+                *args,
+                int=False,
+                #suffix='s',
+                siPrefix=True,
+                dec=True,
+                step=0.1,
+                minStep=0.0001,
+                bounds=(0.0, 99.99),    # set the bounds to be convenient to the default values of the Qt Designer.
+                **kwargs
+        )
 
-class ScienSpinBox(pyqtgraph.SpinBox):
-    """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way. """
+class ScienSpinBox(SpinBox):
+    """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way. 
+    
+    This class can be directly used in Qt Designer by promoting the 
+    QSpinBox to ScienSpinBox. State the path to this file (in python style, 
+    i.e. dots are separating the directories) as the header file and use the 
+    name of the present class.
+    """
 
     def __init__(self, *args, **kwargs):
-        pyqtgraph.SpinBox.__init__(self, *args, int=True, **kwargs)
+        SpinBox.__init__(self,
+                         *args,
+                         int=True,
+                         bounds=(0, 99), # set the bounds to be convenient to the default values of the Qt Designer.
+                         **kwargs)

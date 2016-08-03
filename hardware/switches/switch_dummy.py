@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
 from core.base import Base
 from collections import OrderedDict
 from interface.switch_interface import SwitchInterface
@@ -33,19 +34,18 @@ class SwitchDummy(Base, SwitchInterface):
     # connectors
     _out = {'switch': 'SwitchInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.switchState = [False, False, False]
         self.switchCalibration = dict()
         self.switchCalibration['On'] = [0.9, 0.8, 0.88]
         self.switchCalibration['Off'] = [0.15, 0.3, 0.2]
 
-    def activation(self, e):
+    def on_activate(self, e):
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
 
     def getNumberOfSwitches(self):
@@ -73,15 +73,15 @@ class SwitchDummy(Base, SwitchInterface):
         """
         self.switchState[switchNumber] = True
         time.sleep(self.getSwitchTime(switchNumber))
-        self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+        self.log.info('{0} switch {1}: On'.format(self._name, switchNumber))
         return self.switchState[switchNumber]
-    
+
     def switchOff(self, switchNumber):
         """
         """
         self.switchState[switchNumber] = False
         time.sleep(self.getSwitchTime(switchNumber))
-        self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+        self.log.info('{0} switch {1}: Off'.format(self._name, switchNumber))
         return self.switchState[switchNumber]
 
     def getSwitchTime(self, switchNumber):

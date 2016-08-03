@@ -44,19 +44,7 @@ class PolarisationDepLogic(GenericLogic):
     signal_rotation_finished = QtCore.Signal()
     signal_start_rotation = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        """ Create CounterLogic object with connectors.
-
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
-          @param dict config: module configuration
-          @param dict kwargs: optional parameters
-        """
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
-
-    def activation(self,e):
+    def on_activate(self,e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
@@ -78,13 +66,13 @@ class PolarisationDepLogic(GenericLogic):
         self.signal_start_rotation.connect(self.rotate_polarisation, QtCore.Qt.QueuedConnection)
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
           @param object e: Fysom state change event
         """
         return
- 
+
     def measure_polarisation_dependence(self):
         """Do a simple pol dep measurement.
         """
@@ -100,7 +88,7 @@ class PolarisationDepLogic(GenericLogic):
 
     def rotate_polarisation(self):
         self._hwpmotor.move_rel(self.scan_length)
-        self.logMsg('rotation finished, saving data', msgType='status', importance=5)
+        self.log.info('rotation finished, saving data')
         self.signal_rotation_finished.emit()
 
     def finish_scan(self):

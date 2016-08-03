@@ -19,12 +19,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import logging
 from pyqtgraph.Qt import QtCore
-from fysom import Fysom # provides a final state machine
+from .FysomAdapter import Fysom # provides a final state machine
 from collections import OrderedDict
+
 import os
 import sys
-import traceback
 
 class Base(QtCore.QObject, Fysom):
     """
@@ -44,13 +45,13 @@ class Base(QtCore.QObject, Fysom):
     """
 
     sigStateChanged = QtCore.Signal(object)  #(module name, state change)
-    sigLogMessage = QtCore.Signal(object)
     _modclass = 'base'
     _modtype = 'base'
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, configuration={}, callbacks={}, **kwargs):
+    def __init__(self, manager, name, config={}, callbacks={},
+            **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
@@ -61,12 +62,10 @@ class Base(QtCore.QObject, Fysom):
 
         """
 
-        # Qt signal/slot capabilities
-        QtCore.QObject.__init__(self)
 
         default_callbacks = {
-            'onactivate': self.default_activate,
-            'ondeactivate': self.default_deactivate}
+            'onactivate': self.on_activate,
+            'ondeactivate': self.on_deactivate}
         default_callbacks.update(callbacks)
 
         # State machine definition
@@ -96,7 +95,11 @@ class Base(QtCore.QObject, Fysom):
         }
 
         # Initialise state machine:
-        Fysom.__init__(self, _baseStateList)
+        if 'PyQt5' in sys.modules:
+            super().__init__(cfg=_baseStateList, **kwargs)
+        else:
+            QtCore.QObject.__init__(self)
+            Fysom.__init__(self, _baseStateList)
 
         # add connection base
         self.connector = OrderedDict()
@@ -113,36 +116,64 @@ class Base(QtCore.QObject, Fysom):
 
         self._manager = manager
         self._name = name
-        self._configuration = configuration
+        self._configuration = config
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
-    def default_activate(self, e):
-        """ The default activation callback gives an error if not overwritten.
-
-            @param object e: Fysom state change descriptor
+    def __getattr__(self, name):
         """
-        self.logMsg('Please implement and specify the activation method for {0}.'.format(self.__class__.__name__), msgType='error')
+        Attribute getter.
 
-    def default_deactivate(self,e ):
-        """ The default deactivation callback gives an error if not overwritten.
-
-            @param object e: Fysom state change descriptor
+        We'll reimplement it here because otherwise only __getattr__ of the
+        first base class (QObject) is called and the second base class is
+        never looked up.
+        Here we look up the first base class first and if the attribute is
+        not found, we'll look into the second base class.
         """
-        self.logMsg('Please implement and specify the deactivation method {0}.'.format(self.__class__.__name__), msgType='error')
+        try:
+            return QtCore.QObject.__getattr__(self, name)
+        except AttributeError:
+            pass
+        return Fysom.__getattr__(self, name)
+
+    @property
+    def log(self):
+        """
+        Returns a logger object
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__,self.__class__.__name__))
+
+    def on_activate(self, e):
+        """ Method called when module is activated. If not overridden
+            this method returns an error.
+
+        @param object e: Fysom state change descriptor
+        """
+        logger.warning('Please implement and specify the activation method '
+                'for {0}.'.format(self.__class__.__name__))
+
+    def on_deactivate(self, e):
+        """ Method called when module is deactivated. If not overridden
+            this method returns an error.
+
+        @param object e: Fysom state change descriptor
+        """
+        logger.warning('Please implement and specify the deactivation method '
+                '{0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
     def onchangestate(self, e):
         """ Fysom callback for state transition.
 
-          @param object e: Fysom state transition description
+        @param object e: Fysom state transition description
         """
         self.sigStateChanged.emit(e)
 
     def getStatusVariables(self):
         """ Return a dict of variable names and their content representing the module state for saving.
 
-          @return dict: variable names and contents.
+        @return dict: variable names and contents.
 
         """
         return self._statusVariables
@@ -154,7 +185,9 @@ class Base(QtCore.QObject, Fysom):
 
         """
         if not isinstance(variableDict, (dict, OrderedDict)):
-            self.logMsg('Did not pass a dict or OrderedDict to setStatusVariables in {0}.'.format(self.__class__.__name__), msgType='error')
+            logger.error('Did not pass a dict or OrderedDict to '
+                    'setStatusVariables in {0}.'.format(
+                        self.__class__.__name__))
             return
         self._statusVariables = variableDict
 
@@ -183,30 +216,6 @@ class Base(QtCore.QObject, Fysom):
         """
         return self._manager.configDir
 
-    def logMsg(self, message, **kwargs):
-        """Creates a status message method for all child classes.
-
-          @param string message: the text of the log message
-        """
-        self.sigLogMessage.emit(('{0}.{1}: {2}'.format(self._modclass, self._modtype, message), kwargs))
-
-    def logExc(self, *args, **kwargs):
-        """Calls logMsg, but adds in the current exception and callstack.
-
-          @param list args: arguments for logMsg()
-          @param dict kwargs: dictionary containing exception information.
-
-        Must be called within an except block, and should only be called if the
-        exception is not re-raised.
-        Unhandled exceptions, or exceptions that reach the top of the callstack
-        are automatically logged, so logging an exception that will be
-        re-raised can cause the exception to be logged twice.
-        Takes the same arguments as logMsg.
-        """
-        kwargs['exception'] = sys.exc_info()
-        kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]
-        self.logMsg(*args, **kwargs)
-
     @staticmethod
     def identify():
         """ Return module id.
@@ -222,12 +231,7 @@ class Base(QtCore.QObject, Fysom):
 
         """
         mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
-        self.logMsg('Filepath of the main tree was called', msgType='status',
-                    importance=0)
-
         return mainpath
- #            print("PAth of Managerfile: ", os.path.abspath(__file__))
-
 
     def get_home_dir(self):
         """ Returns the path to the home directory, which should definitely
@@ -236,13 +240,3 @@ class Base(QtCore.QObject, Fysom):
         """
         return os.path.abspath(os.path.expanduser('~'))
 
-    def get_unit_prefix_dict(self):
-        """ Return the dictionary, which assigns the prefix of a unit to its
-            proper order of magnitude.
-        @return dict: keys are string prefix and items are magnitude values.
-        """
-
-        unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
-                            'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
-                            'T':1e12, 'P':1e15}
-        return unit_prefix_dict

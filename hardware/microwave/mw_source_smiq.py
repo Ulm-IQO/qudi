@@ -40,12 +40,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     ## declare connectors
     _out = {'mwsourcesmiq': 'MicrowaveInterface'}
 
-    def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation,
-                  'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self,e):
+    def on_activate(self,e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -61,16 +56,15 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('This is MWSMIQ: did not find >>gpib_address<< in '
-                        'configration.', msgType='error')
+            self.log.error('This is MWSMIQ: did not find >>gpib_address<< in '
+                        'configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
             self._gpib_timeout = 10*1000
-            self.logMsg('This is MWSMIQ: did not find >>gpib_timeout<< in '
-                        'configration. I will set it to 10 seconds.',
-                        msgType='error')
+            self.log.error('This is MWSMIQ: did not find >>gpib_timeout<< in '
+                        'configration. I will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -78,15 +72,14 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            self.logMsg('This is MWSMIQ: could not connect to the GPIB '
-                        'address >>{}<<.'.format(self._gpib_address),
-                        msgType='error')
+            self.log.error('This is MWSMIQ: could not connect to the GPIB '
+                    'address >>{}<<.'.format(self._gpib_address))
             raise
 
-        self.logMsg('MWSMIQ initialised and connected to hardware.',
-                    msgType='status')
+        self.log.info('MWSMIQ initialised and connected to hardware.')
+        self.model = self._gpib_connection.query('*IDN?').split(',')[1]
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -95,6 +88,62 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         self._gpib_connection.close()
         self.rm.close()
+
+    def get_limits(self):
+        minpower = -144
+        maxpower = 10
+        minfreq = 300 * 10e3
+        maxfreq = 6.4 * 10e9
+        minliststep = 0.1
+        maxliststep = 6.4 * 10e9
+        listentries = 4000
+        minsweepstep = 0.1
+        maxsweepstep = 10e9
+        sweepentries = 10e6
+
+        if self.model == 'SMIQ02B':
+            maxfreq = 2.2 * 10e9
+            maxpower = 13
+            maxliststep = 2.2 * 10e9
+        elif self.model == 'SMIQ03B':
+            maxfreq = 3.3 * 10e9
+            maxpower = 13
+            maxliststep = 3.3 * 10e9
+        elif self.model == 'SMIQ03HD':
+            maxfreq = 3.3 * 10e9
+            maxpower = 13
+            maxliststep = 3.3 * 10e9
+        elif self.model == 'SMIQ04B':
+            maxfreq = 4.4 * 10e9
+            maxliststep = 4.4 * 10e9
+        elif self.model == 'SMIQ06B':
+            pass
+        elif self.model == 'SMIQ06ATE':
+            pass
+        else:
+            self.log.warning('Model string unknown, hardware limits may be '
+                    'wrong.')
+        limits = {
+            'frequency': {
+                'min': minfreq,
+                'max': maxfreq
+                },
+            'power': {
+                'min': minpower,
+                'max': maxpower
+                },
+            'list': {
+                'minstep': minliststep,
+                'maxstep': maxliststep,
+                'maxentries': listentries
+                },
+            'sweep': {
+                'minstep': minsweepstep,
+                'maxstep': maxsweepstep,
+                'maxentries': sweepentries
+                }
+            }
+        return limits
 
     def on(self):
         """ Switches on any preconfigured microwave output.
@@ -113,7 +162,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self._gpib_connection.ask(':FREQ:MODE?') != 'CW':
+        if self._gpib_connection.query(':FREQ:MODE?') != 'CW':
             self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write(':OUTP OFF')
         self._gpib_connection.write('*WAI')
@@ -125,7 +174,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        return float(self._gpib_connection.ask(':POW?'))
+        return float(self._gpib_connection.query(':POW?'))
 
     def set_power(self, power=0.):
         """ Sets the microwave output power.
@@ -145,7 +194,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        return float(self._gpib_connection.ask(':FREQ?'))
+        return float(self._gpib_connection.query(':FREQ?'))
 
     def set_frequency(self, freq=None):
         """ Sets the frequency of the microwave output.
@@ -225,7 +274,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write(':LIST:MODE STEP')
         self._gpib_connection.write('*WAI')
 
-        n = int(np.round(float(self._gpib_connection.ask(':LIST:FREQ:POIN?'))))
+        n = int(np.round(float(self._gpib_connection.query(':LIST:FREQ:POIN?'))))
 
         if n != len(freq) + 1:
             error = -1
@@ -260,7 +309,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write(':TRIG1:SWE:SOUR EXT')
         self._gpib_connection.write(':TRIG1:SLOP POS')
         self._gpib_connection.write('*WAI')
-        n = int(np.round(float(self._gpib_connection.ask(':SWE:FREQ:POIN?'))))
+        n = int(np.round(float(self._gpib_connection.query(':SWE:FREQ:POIN?'))))
         # print(n)
         # if n != len(self._mw_frequency_list):
         #     return -1
@@ -287,7 +336,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # If there are timeout  problems after this command, update the smiq
         # firmware to > 5.90 as there was a problem with excessive wait times
         # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
-        return int(self._gpib_connection.ask('*OPC?'))
+        return int(self._gpib_connection.query('*OPC?'))
 
     def list_on(self):
         """ Switches on the list mode.
@@ -303,7 +352,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
         self._gpib_connection.write(':FREQ:MODE LIST')
         self._gpib_connection.write('*WAI')
-        return int(self._gpib_connection.ask('*OPC?'))
+        return int(self._gpib_connection.query('*OPC?'))
 
     def set_ex_trigger(self, source, pol):
         """ Set the external trigger for this device with proper polarization.

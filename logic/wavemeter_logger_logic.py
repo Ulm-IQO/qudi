@@ -95,17 +95,13 @@ class WavemeterLoggerLogic(GenericLogic):
             }
     _out = {'wavemeterloggerlogic': 'WavemeterLoggerLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
 
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
           @param dict config: module configuration
           @param dict kwargs: optional parameters
         """
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+        super().__init__(config=config, **kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -114,17 +110,16 @@ class WavemeterLoggerLogic(GenericLogic):
             self._logic_acquisition_timing = config['logic_acquisition_timing']
         else:
             self._logic_acquisition_timing = 20.
-            self.logMsg('No logic_acquisition_timing configured, '
-                        'using {} instead.'.format(self._logic_acquisition_timing),
-                        msgType='warning')
+            self.log.warning('No logic_acquisition_timing configured, '
+                    'using {} instead.'.format(
+                        self._logic_acquisition_timing))
 
         if 'logic_update_timing' in config.keys():
             self._logic_update_timing = config['logic_update_timing']
         else:
             self._logic_update_timing = 100.
-            self.logMsg('No logic_update_timing configured, '
-                        'using {} instead.'.format(self._logic_update_timing),
-                        msgType='warning')
+            self.log.warning('No logic_update_timing configured, '
+                    'using {} instead.'.format(self._logic_update_timing))
 
         self._acqusition_start_time = 0
         self._bins = 200
@@ -141,7 +136,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self.current_wavelength = 0
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
@@ -178,7 +173,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self.hardware_thread.start()
         self.last_point_time = time.time()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
           @param object e: Fysom state change event
@@ -345,13 +340,10 @@ class WavemeterLoggerLogic(GenericLogic):
         if complete_histogram:
             count_window = len(self._counter_logic._data_to_save)
             self._data_index = 0
-            self.logMsg(('Recalcutating Laser Scanning Histogram for: '
-                         '{0:d} counts and {1:d} wavelength.').format(
-                            count_window,
-                            len(self._wavelength_data)
-                            ),
-                        msgType='status'
-                        )
+            self.log.info('Recalcutating Laser Scanning Histogram for: '
+                    '{0:d} counts and {1:d} wavelength.'.format(
+                        count_window,
+                        len(self._wavelength_data)))
         else:
             count_window = min(100, len(self._counter_logic._data_to_save))
 
@@ -470,8 +462,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
 
 
-        self.logMsg('Laser Scan saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
         filelabel = 'wavemeter_log_counts_with_wavelength'
 

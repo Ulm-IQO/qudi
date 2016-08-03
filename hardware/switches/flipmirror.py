@@ -33,21 +33,20 @@ class FlipMirror(Base, SwitchInterface):
     _modtype = 'hardware'
     _out = {'switch':'SwitchInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        """ Creae flip mirror control module 
+    def __init__(self, config, **kwargs):
+        """ Creae flip mirror control module
 
           @param object manager: reference to module manager
           @param str name: unique module name
           @param dict config; configuration parameters in a dict
           @param dict kwargs: aditional parameters in a dict
         """
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
+        super().__init__(config=config, **kwargs)
         self.lock = Mutex()
         print(config)
         print(self._configuration)
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Prepare module, connect to hardware.
 
           @param e: Fysom stae change notification.
@@ -65,7 +64,7 @@ class FlipMirror(Base, SwitchInterface):
                 send_end=True
         )
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Disconnect from hardware on deactivation.
 
           @param e: Fysom stae change notification.
@@ -150,11 +149,12 @@ class FlipMirror(Base, SwitchInterface):
                 if answer != 'OK1':
                     return False
                 time.sleep(self.getSwitchTime(switchNumber))
-                self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+                self.log.info('{0} switch {1}: On'.format(
+                    self._name, switchNumber))
             except:
                 return False
             return True
-    
+
     def switchOff(self, switchNumber):
         """ Turn the flip mirror to horizontal position.
 
@@ -168,7 +168,8 @@ class FlipMirror(Base, SwitchInterface):
                 if answer != 'OK1':
                     return False
                 time.sleep(self.getSwitchTime(switchNumber))
-                self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+                self.log.info('{0} switch {1}: Off'.format(
+                    self._name, switchNumber))
             except:
                 return False
             return True

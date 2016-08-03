@@ -48,12 +48,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     # declare connectors
     _out = {'fastcounter': 'FastCounterInterface'}
 
-    def __init__(self, manager, name, config={}, **kwargs):
-        callback_dict = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, callback_dict, **kwargs)
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Connect and configure the access to the FPGA.
 
         @param object e: Event class object from Fysom.
@@ -70,24 +65,28 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         if 'fpgacounter_serial' in config.keys():
             self._serial = config['fpgacounter_serial']
         else:
-            self.logMsg('No parameter "fpgacounter_serial" specified  in the '
-                        'config! Set the serial number for the currently used '
-                        'fpga counter!\n'
-                        'Open the Opal Kelly Frontpanel to obtain the serial '
-                        'number of the connected FPGA.\n'
-                        'Do not forget to close the Frontpanel before starting '
-                        'the QuDi program.', msgType='error')
+            self.log.error('No parameter "fpgacounter_serial" specified in '
+                    'the config! Set the serial number for the currently '
+                    'used fpga counter!\n'
+                    'Open the Opal Kelly Frontpanel to obtain the serial '
+                    'number of the connected FPGA.\n'
+                    'Do not forget to close the Frontpanel before starting '
+                    'the QuDi program.')
 
         if 'fpga_type' in config.keys():
             self._fpga_type = config['fpga_type']
         else:
             self._fpga_type = 'XEM6310_LX150'
-            self.logMsg('No parameter "fpga_type" specified in the config!\n'
-                        'Possible types are "XEM6310_LX150" or '
-                        '"XEM6310_LX45".\n'
-                        'Taking the type "{0}" as '
-                        'default.'.format(self._fpga_type),
-                        msgType='warning')
+            self.log.warning('No parameter "fpga_type" specified in the '
+                    'config!\n'
+                    'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
+                    'Taking the type "{0}" as default.'.format(
+                        self._fpga_type))
+
+        self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5}
+        for key in config.keys():
+            if 'threshV_ch' in key:
+                self._switching_voltage[int(key[-1])] = config[key]
 
         # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
         # c dll which was wrapped with SWIG for Windows type systems to be
@@ -115,8 +114,12 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._internal_clock_hz = 950e6 # that is a fixed number, 950MHz
         # connect to the FPGA module
         self._connect()
+        # configure DAC for threshold voltages
+        self._reset_dac()
+        self._activate_dac_ref()
+        self._set_dac_voltages()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deactivate the FPGA.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -132,8 +135,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # check if a FPGA is connected to this host PC. That method is used to
         # determine also how many devices are available.
         if not self._fpga.GetDeviceCount():
-            self.logMsg('No FPGA connected to host PC or FrontPanel.exe is '
-                        'running.', msgType='error')
+            self.log.error('No FPGA connected to host PC or FrontPanel.exe '
+                    'is running.')
             return -1
 
         # open a connection to the FPGA with the specified serial number
@@ -151,8 +154,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # Check if the upload was successful and the Opal Kelly FrontPanel is
         # enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
-            self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA',
-                        msgType='error')
+            self.log.error('Opal Kelly FrontPanel is not enabled in FPGA')
             self.statusvar = -1
             return -1
         else:
@@ -162,8 +164,38 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             self.statusvar = 0
         return 0
 
+    def _set_dac_voltages(self):
+        """
+        """
+        dac_sma_mapping = {1: 1, 2: 5, 3: 2, 4: 6, 5: 3, 6: 7, 7: 4, 8: 8}
+        set_voltage_cmd = 0x03000000
+        for dac_chnl in range(8):
+            sma_chnl = dac_sma_mapping[dac_chnl+1]
+            dac_value = int(np.rint(4096*self._switching_voltage[sma_chnl]/(2.5*2)))
+            if dac_value > 4095:
+                dac_value = 4095
+            elif dac_value < 0:
+                dac_value = 0
+            tmp_cmd = set_voltage_cmd + (dac_chnl << 20) + (dac_value << 8)
+            self._fpga.SetWireInValue(0x01, tmp_cmd)
+            self._fpga.UpdateWireIns()
+            self._fpga.ActivateTriggerIn(0x40, 0)
+
+    def _activate_dac_ref(self):
+        """
+        """
+        self._fpga.SetWireInValue(0x01, 0x08000001)
+        self._fpga.UpdateWireIns()
+        self._fpga.ActivateTriggerIn(0x40, 0)
+
+    def _reset_dac(self):
+        """
+        """
+        self._fpga.ActivateTriggerIn(0x40, 31)
+
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
+
 
         @return dict: dict with keys being the constraint names as string and
                       items are the definition for the constaints.
@@ -276,16 +308,14 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # initialize the read buffer for the USB transfer.
         # one timebin of the data to read is 32 bit wide and the data is
         # transferred in bytes.
-
         if self.statusvar != 2:
-            self.logMsg('The FPGA is currently not running! The current status '
-                        'is: "{0}". The running status would be 2. Start the '
-                        'FPGA to get the data_trace of the device. An emtpy '
-                        'numpy array[{1},{2}] filled with zeros will be '
-                        'returned.'.format(self.statusvar,
-                                           self._number_of_gates,
-                                           self._gate_length_bins),
-                        msgType='error')
+            self.log.error('The FPGA is currently not running! The current '
+                    'status is: "{0}". The running status would be 2. Start '
+                    'the FPGA to get the data_trace of the device. An emtpy '
+                    'numpy array[{1},{2}] filled with zeros will be '
+                    'returned.'.format(self.statusvar,
+                        self._number_of_gates,
+                        self._gate_length_bins))
 
             return self.count_data
 

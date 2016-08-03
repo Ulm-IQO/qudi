@@ -44,36 +44,32 @@ class FastCounterDummy(Base, FastCounterInterface):
     # connectors
     _out = {'fastcounter': 'FastCounterInterface'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         if 'gated' in config.keys():
             self._gated = config['gated']
         else:
             self._gated = False
-            self.logMsg('No parameter "gated" was specified in the '
+            self.log.warning('No parameter "gated" was specified in the '
                         'config. The default configuration gated={0} will be '
-                        'taken instead.'.format(self._gated), msgType='warning')
+                        'taken instead.'.format(self._gated))
 
         if 'choose_trace' in config.keys():
             self._choose_trace = config['choose_trace']
         else:
             self._choose_trace = False
-            self.logMsg('No parameter "choose_trace" was specified in the '
-                        'config. The default configuration choose_trace={0} '
-                        'will be taken instead.'.format(self._choose_trace),
-                        msgType='warning')
+            self.log.warning('No parameter "choose_trace" was specified in '
+                    'the config. The default configuration choose_trace={0} '
+                    'will be taken instead.'.format(self._choose_trace))
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Fysom.event object from Fysom class.
@@ -89,7 +85,7 @@ class FastCounterDummy(Base, FastCounterInterface):
         self._gate_length_bins = 8192
         return
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed

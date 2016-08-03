@@ -22,6 +22,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import ConstantModel, LorentzianModel
 from lmfit import Parameters
@@ -35,6 +38,36 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 #                             Lorentzian Model                             #
 #                                                                          #
 ############################################################################
+
+
+"""
+Information about the general Lorentzian Model
+==============================================
+
+The lorentzian has the following general form:
+
+                                 _                       _
+                            A   |           sigma         |
+    f(x; A, x_0, sigma) = ----- |  ---------------------- |
+                            pi  |_ (x_0 - x)^2 + sigma^2 _|
+
+which can be redefined with
+                 !      2
+    f(x=x_0) = I = -----------
+                    pi * sigma
+
+
+                                 _                            _
+                                |         (sigma/2)^2          |
+    L(x; I, x_0, sigma) =   I * |  --------------------------  |
+                                |_ (x_0 - x)^2 + (sigma/2)^2  _|
+
+
+Note that the fitting algorithm is using the equation f(x; A, x_0, sigma) and
+not L(x; I, x_0, sigma), therefore all the parameters are defined according to
+f(x; A, x_0, sigma).
+
+"""
 
 
 def make_lorentzian_model(self):
@@ -74,12 +107,11 @@ def estimate_lorentz(self,x_axis=None,data=None):
     parameters=[x_axis,data]
     for var in parameters:
         if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.', msgType='error')
+            logger.error('Given parameter is no array.')
             error=-1
         elif len(np.shape(var))!=1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
-    #set paraameters
+            logger.error('Given parameter is no one dimensional array.')
+    #set parameters
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
@@ -87,27 +119,23 @@ def estimate_lorentz(self,x_axis=None,data=None):
     data_min = data_level.min()
     data_max = data_level.max()
 
-    #estimate sigma
+    # estimate sigma
     numerical_integral = (np.sum(data_level) *
                           (abs(x_axis[-1] - x_axis[0])) / len(x_axis))
 
+
     if data_max > abs(data_min):
-        try:
-            self.logMsg('The lorentzian estimator set the peak to the '
-                        'minimal value, if you want to fit a peak instead '
-                        'of a dip rewrite the estimator.',
-                        msgType='warning')
-        except:
-            self.logMsg('The lorentzian estimator set the peak to the '
-                        'minimal value, if you want to fit a peak instead '
-                        'of a dip rewrite the estimator.',
-                        msgType='warning')
+        logger.warning('The lorentzian estimator set the peak to the '
+                'minimal value, if you want to fit a peak instead '
+                'of a dip rewrite the estimator.')
 
     amplitude_median = data_min
     x_zero = x_axis[np.argmin(data_smooth)]
 
     sigma = numerical_integral / (np.pi * amplitude_median)
     amplitude = amplitude_median * np.pi * sigma
+
+    amplitude = -1 *abs(amplitude_median * np.pi * sigma)
 
     return error, amplitude, x_zero, sigma, offset
 
@@ -160,8 +188,8 @@ def make_lorentzian_fit(self, axis=None, data=None,
         result = model.fit(data, x=axis,params=params)
     except:
         result = model.fit(data, x=axis,params=params)
-        self.logMsg('The 1D lorentzian fit did not work. Error '
-                    'message: {0}\n'.format(result.message), msgType='warning')
+        logger.warning('The 1D lorentzian fit did not work. Error '
+                'message: {0}\n'.format(result.message))
     return result
 
 ############################################################################
@@ -192,12 +220,10 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
     #set paraameters
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
@@ -212,15 +238,9 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
 
 
     if data_max<abs(data_min):
-        try:
-            self.logMsg('This lorentzian estimator set the peak to the '
-                        'maximum value, if you want to fit a dip '
-                        'instead of a peak use estimate_lorentz.',
-                        msgType='warning')
-        except:
-            print('This lorentzian estimator set the peak to the '
-                  'maximum value, if you want to fit a dip instead of '
-                  'a peak use estimate_lorentz.')
+        logger.warning('This lorentzian estimator set the peak to the '
+                'maximum value, if you want to fit a dip '
+                'instead of a peak use estimate_lorentz.')
 
     amplitude_median = data_max
     x_zero = x_axis[np.argmax(data)]
@@ -286,9 +306,8 @@ def make_lorentzianpeak_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
     except:
         result=model.fit(data, x=axis,params=params)
-        self.logMsg('The 1D gaussian fit did not work. Error '
-                    'message:' + result.message,
-                    msgType='warning')
+        logger.warning('The 1D gaussian fit did not work. Error '
+                'message:' + result.message)
 
     return result
 
@@ -348,12 +367,10 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
     parameters = [x_axis,data]
     for var in parameters:
         if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.', \
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error=-1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
 
 
     #set paraameters
@@ -464,9 +481,8 @@ def make_doublelorentzian_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
     except:
         result=model.fit(data, x=axis,params=params)
-        self.logMsg('The double lorentzian fit did not '
-                    'work:'+result.message,
-                    msgType='warning')
+        logger.warning('The double lorentzian fit did not '
+                'work: {0}'.format(result.message))
 
     return result
 
@@ -493,17 +509,24 @@ def estimate_N14(self, x_axis=None, data=None):
 
     """
 
-    data_smooth_lorentz, offset=self.find_offset_parameter(x_axis,data)
+    # find the offset parameter, which should be in the fit the zero level:
+    data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
+
+    # Create now a filter of length 5MHz, then create a step-wise function with
+    # three dips. This step-wise function will be convolved with the smoothed
+    # data, where the maximal contribution will be if the peaks are within the
+    # filter. Take that to obtain from that the accurate peak position:
 
     #filter of one dip should always have a length of approx linewidth 1MHz
     points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
     # filter should have a width of 5MHz
     x_filter = np.linspace(0, 5*points_within_1MHz, 5*points_within_1MHz)
-    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
-                                    (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
-                                    (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
-                                    (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
-                                    (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
+    lorentz = np.piecewise(x_filter, [(x_filter >= 0)                   * (x_filter < len(x_filter)*1/5),
+                                      (x_filter >= len(x_filter)*1/5)   * (x_filter < len(x_filter)*2/5),
+                                      (x_filter >= len(x_filter)*2/5)   * (x_filter < len(x_filter)*3/5),
+                                      (x_filter >= len(x_filter)*3/5)   * (x_filter < len(x_filter)*4/5),
+                                      (x_filter >= len(x_filter)*4/5)],
+                           [1, 0, 1, 0, 1])
 
     # if the filter is smaller than 5 points a convolution does not make sense
     if len(lorentz) >= 5:
@@ -512,32 +535,52 @@ def estimate_N14(self, x_axis=None, data=None):
     else:
         x_axis_min = x_axis[data_smooth_lorentz.argmin()]-2.15*1e6
 
+    # Create the parameter container, with the estimated values, which should be
+    # passed to the fit algorithm:
     parameters = Parameters()
 
-    data_level = data_smooth_lorentz - data_smooth_lorentz.max()
+    # level of the data, that means the offset is subtracted and the real data
+    # are present
+    data_level = data_smooth_lorentz - data_smooth_lorentz.mean()
     minimum_level = data_level.min()
-    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
-    Integral = function.integral(x_axis[0], x_axis[-1])
 
-    sigma = abs(Integral /(np.pi * minimum_level) )
+    # In order to perform a smooth integral to obtain the area under the curve
+    # make an interpolation of the passed data, in case they are very sparse.
+    # That increases the accuracy of the calculated Integral.
+    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    integrated_area = function.integral(x_axis[0], x_axis[-1])
+
+    sigma = abs(integrated_area / (minimum_level/np.pi))
+    # That is wrong, so commenting out:
+    # sigma = abs(integrated_area /(np.pi * minimum_level) )
 
     amplitude = -1*abs(minimum_level*np.pi*sigma)
 
+    # Since the total amplitude of the lorentzian is depending on sigma it makes
+    # sense to vary sigma within an interval, which is smaller than the minimal
+    # distance between two points. Then the fit algorithm will have a larger
+    # range to determine the amplitude properly. That is the main issue with the
+    # fit!
     linewidth = sigma
-    minimal_linewidth = x_axis[1]-x_axis[0]
+    minimal_linewidth = (x_axis[1]-x_axis[0])/4
     maximal_linewidth = x_axis[-1]-x_axis[0]
 
+    # The linewidth of all the lorentzians are set to be the same! that is a
+    # physical constraint for the N14 fitting.
+
     #            (Name,                  Value,          Vary, Min,             Max,           Expr)
-    parameters.add('lorentz0_amplitude', value=amplitude, max=-1e-6)
-    parameters.add('lorentz0_center',    value=x_axis_min,)
-    parameters.add('lorentz0_sigma',     value=linewidth, min=minimal_linewidth,max=maximal_linewidth)
-    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
-    parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6, expr='lorentz0_center+2.15*1e6')
-    parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value, min=minimal_linewidth,max=maximal_linewidth,expr='lorentz0_sigma')
-    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
-    parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6, expr='lorentz0_center+4.3*1e6')
-    parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value, min=minimal_linewidth,max=maximal_linewidth,expr='lorentz0_sigma')
+    parameters.add('lorentz0_amplitude', value=amplitude,                                                  max=-1e-6)
+    parameters.add('lorentz0_center',    value=x_axis_min)
+    parameters.add('lorentz0_sigma',     value=linewidth,                           min=minimal_linewidth, max=maximal_linewidth)
+    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
+    parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6,                                      expr='lorentz0_center+2.15*1e6')
+    parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
+    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
+    parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6,                                      expr='lorentz0_center+4.3*1e6')
+    parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
     parameters.add('c',                  value=data_smooth_lorentz.max())
 
     return parameters

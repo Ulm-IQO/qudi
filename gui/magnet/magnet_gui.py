@@ -30,7 +30,7 @@ import datetime
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
-
+from core.util.units import get_unit_prefix_dict
 
 class MagnetMainWindow(QtGui.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -67,24 +67,19 @@ class MagnetGui(GUIBase):
     _in = {'magnetlogic1': 'MagnetLogic',
            'savelogic': 'SaveLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.initUI,
-                         'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, state_actions, **kwargs)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self._continue_2d_fluorescence_alignment = False
 
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -104,35 +99,32 @@ class MagnetGui(GUIBase):
 
         # set the prefix, which determines the representation in the viewboxes
         # for the linear translations. It can be chosen from the dict obtainable
-        # from self.get_unit_prefix_dict():
+        # from get_unit_prefix_dict():
         self._lin_trans_unit_prefix = 'm'
         if 'lin_trans_unit_prefix' in config.keys():
 
-            if config['lin_trans_unit_prefix'] in self.get_unit_prefix_dict():
+            if config['lin_trans_unit_prefix'] in get_unit_prefix_dict():
                 self._lin_trans_unit_prefix = config['lin_trans_unit_prefix']
             else:
-                self.logMsg('The parameter "lin_trans_unit_prefix" is either '
-                            'not specified in the config or the unit prefix '
-                            'is not in the self.get_unit_prefix_dict() '
-                            'dictionary! Take the default prefix "{0}" '
-                            'instead.'.format(self._lin_trans_unit_prefix),
-                            msgType='warning')
+                self.log.warning('The parameter "lin_trans_unit_prefix" is '
+                        'either not specified in the config or the unit '
+                        'prefix is not in the get_unit_prefix_dict() '
+                        'dictionary! Take the default prefix "{0}" '
+                        'instead.'.format(self._lin_trans_unit_prefix))
 
         # the rotation representation should be normal, therefore it is not
         # specified.
         self._rot_trans_unit_prefix = ''
         if 'rot_trans_unit_prefix' in config.keys():
 
-            if config['rot_trans_unit_prefix'] in self.get_unit_prefix_dict():
+            if config['rot_trans_unit_prefix'] in get_unit_prefix_dict():
                 self._rot_trans_unit_prefix = config['rot_trans_unit_prefix']
             else:
-                self.logMsg('The parameter "rot_trans_unit_prefix" is either '
-                            'not specified in the config or the unit prefix '
-                            'is not in the self.get_unit_prefix_dict() '
-                            'dictionary! Take the default prefix "{0}" '
-                            'instead.'.format(self._rot_trans_unit_prefix),
-                            'instead.'.format(self._rot_trans_unit_prefix),
-                            msgType='warning')
+                self.log.warning('The parameter "rot_trans_unit_prefix" is '
+                        'either not specified in the config or the unit '
+                        'prefix is not in the get_unit_prefix_dict() '
+                        'dictionary! Take the default prefix "{0}" '
+                        'instead.'.format(self._rot_trans_unit_prefix))
 
         # create all the needed control elements. They will manage the
         # connection with each other themselves. Note some buttons are also
@@ -312,7 +304,7 @@ class MagnetGui(GUIBase):
 
         self.keep_former_magnet_settings()
 
-    def deactivation(self, e=None):
+    def on_deactivate(self, e=None):
         """ Deactivate the module properly.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
@@ -422,9 +414,9 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setDecimals(3)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
 
@@ -440,13 +432,13 @@ class MagnetGui(GUIBase):
         """ Create all the gui elements to control a relative movement.
 
         The generic variable name for a created QLable is:
-            move_rel_axis{0}_Label
+            move_rel_axis_{0}_Label
         The generic variable name for a created QDoubleSpinBox is:
-            move_rel_axis{0}_DoubleSpinBox
+            move_rel_axis_{0}_DoubleSpinBox
         The generic variable name for a created QPushButton in negative dir is:
-            move_rel_axis{0}_m_PushButton
+            move_rel_axis_{0}_m_PushButton
         The generic variable name for a created QPushButton in positive dir is:
-            move_rel_axis{0}_p_PushButton
+            move_rel_axis_{0}_p_PushButton
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
         Use the method get_ref_move_rel_DoubleSpinBox with the appropriated
@@ -458,7 +450,7 @@ class MagnetGui(GUIBase):
         # set the axis_labels in the curr_pos_DockWidget:
         for index, axis_label in enumerate(constraints):
 
-            label_var_name = 'move_rel_axis{0}_Label'.format(axis_label)
+            label_var_name = 'move_rel_axis_{0}_Label'.format(axis_label)
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_rel_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
             # set axis_label for the label:
@@ -478,16 +470,16 @@ class MagnetGui(GUIBase):
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_rel_axis{0}_DoubleSpinBox'.format(axis_label)
+            dspinbox_ref_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(axis_label)
             setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.move_rel_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
@@ -498,13 +490,13 @@ class MagnetGui(GUIBase):
 
 
             # this is the name prototype for the relative movement minus button
-            func_name = '_move_rel_axis{0}_m'.format(axis_label)
+            func_name = 'move_rel_axis_{0}_m'.format(axis_label)
             # create a method and assign it as attribute:
             setattr(self, func_name, self._function_builder_move_rel(func_name,axis_label,-1) )
             move_rel_m_ref =  getattr(self, func_name)  # get the reference
 
             # the change of the PushButton is connected to the previous method.
-            button_var_name = 'move_rel_axis{0}_m_PushButton'.format(axis_label)
+            button_var_name = 'move_rel_axis_{0}_m_PushButton'.format(axis_label)
             setattr(self._mw, button_var_name, QtGui.QPushButton(self._mw.move_rel_DockWidgetContents))
             button_var = getattr(self._mw, button_var_name)
             button_var.setObjectName(button_var_name)
@@ -513,12 +505,12 @@ class MagnetGui(GUIBase):
             self._mw.move_rel_GridLayout.addWidget(button_var, index, 2, 1, 1)
 
             # this is the name prototype for the relative movement plus button
-            func_name = '_move_rel_axis{0}_p'.format(axis_label)
+            func_name = 'move_rel_axis_{0}_p'.format(axis_label)
             setattr(self, func_name, self._function_builder_move_rel(func_name,axis_label,1) )
-            move_rel_p_ref =  getattr(self, func_name)
+            move_rel_p_ref = getattr(self, func_name)
 
             # the change of the PushButton is connected to the previous method.
-            button_var_name = 'move_rel_axis{0}_p_PushButton'.format(axis_label)
+            button_var_name = 'move_rel_axis_{0}_p_PushButton'.format(axis_label)
             setattr(self._mw, button_var_name, QtGui.QPushButton(self._mw.move_rel_DockWidgetContents))
             button_var = getattr(self._mw, button_var_name)
             button_var.setObjectName(button_var_name)
@@ -530,19 +522,19 @@ class MagnetGui(GUIBase):
         """ Create all the GUI elements to control a relative movement.
 
         The generic variable name for a created QLable is:
-            move_rel_axis{0}_Label
+            move_abs_axis_{0}_Label
         The generic variable name for a created QLable is:
-            move_abs_axis{0}_Slider
+            move_abs_axis_{0}_Slider
         The generic variable name for a created QDoubleSpinBox is:
-            move_abs_axis{0}_DoubleSpinBox
+            move_abs_axis_{0}_DoubleSpinBox
         The generic variable name for a created QPushButton for move is:
             move_abs_PushButton
 
         These methods should not be called:
         The generic variable name for a update method for the QDoubleSpinBox:
-            _update_move_abs{0}_dspinbox
+            _update_move_abs_{0}_dspinbox
         The generic variable name for a update method for the QSlider:
-            _update_move_abs{0}_slider
+            _update_move_abs_{0}_slider
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
         Use the method get_ref_move_abs_DoubleSpinBox with the appropriated
@@ -553,7 +545,7 @@ class MagnetGui(GUIBase):
 
         for index, axis_label in enumerate(constraints):
 
-            label_var_name = 'move_abs_axis{0}_Label'.format(axis_label)
+            label_var_name = 'move_abs_axis_{0}_Label'.format(axis_label)
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_abs_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
             # set axis_label for the label:
@@ -575,7 +567,7 @@ class MagnetGui(GUIBase):
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            slider_obj_name = 'move_abs_axis{0}_Slider'.format(axis_label)
+            slider_obj_name = 'move_abs_axis_{0}_Slider'.format(axis_label)
             setattr(self._mw, slider_obj_name, QtGui.QSlider(self._mw.move_abs_DockWidgetContents))
             slider_obj = getattr(self._mw, slider_obj_name)
             slider_obj.setObjectName(slider_obj_name)
@@ -585,7 +577,7 @@ class MagnetGui(GUIBase):
             max_val = abs(constraints[axis_label]['pos_max'] - constraints[axis_label]['pos_min'])
 
             # set the step size of the slider to a fixed resolution, that
-            # prevents really ugly rounting error behaviours in display.
+            # prevents really ugly rounding error behaviours in display.
             # Set precision to nanometer scale, which is actually never reached.
             max_steps = int(max_val/smallest_step_slider)
 
@@ -601,16 +593,16 @@ class MagnetGui(GUIBase):
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_abs_axis{0}_DoubleSpinBox'.format(axis_label)
+            dspinbox_ref_name = 'move_abs_axis_{0}_DoubleSpinBox'.format(axis_label)
             setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.move_abs_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
@@ -621,21 +613,22 @@ class MagnetGui(GUIBase):
 
             # build a function to change the dspinbox value and connect a
             # slidermove event to it:
-            func_name = '_update_move_abs{0}_dspinbox'.format(axis_label)
+            func_name = '_update_move_abs_{0}_dspinbox'.format(axis_label)
             setattr(self, func_name, self._function_builder_update_viewbox(func_name, axis_label, dspinbox_ref))
             update_func_dspinbox_ref = getattr(self, func_name)
             slider_obj.valueChanged.connect(update_func_dspinbox_ref)
 
 
+
             # build a function to change the slider value and connect a
             # spinbox value change event to it:
-            func_name = '_update_move_abs{0}_slider'.format(axis_label)
+            func_name = '_update_move_abs_{0}_slider'.format(axis_label)
             setattr(self, func_name, self._function_builder_update_slider(func_name, axis_label, slider_obj))
             update_func_slider_ref = getattr(self, func_name)
-            dspinbox_ref.valueChanged.connect(update_func_slider_ref)
+            # dspinbox_ref.valueChanged.connect(update_func_slider_ref)
 
             # the editingFinished idea has to be implemented properly at first:
-            # dspinbox_ref.editingFinished.connect(update_func_slider_ref)
+            dspinbox_ref.editingFinished.connect(update_func_slider_ref)
 
         extension = len(constraints)
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
@@ -701,10 +694,10 @@ class MagnetGui(GUIBase):
             # everything smoother but not actually affect the displayed number:
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
                 max_step_slider = 1e-9
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
                 max_step_slider = 1e-6
             actual_pos = (constraints[axis_label]['pos_min']+ slider_val * max_step_slider)
             ref_dspinbox.setValue(actual_pos/norm)
@@ -732,7 +725,7 @@ class MagnetGui(GUIBase):
         outside of the present function.
         """
 
-        def func_dummy_name(viewbox_val):
+        def func_dummy_name():
             """
             @param int slider_step: The current value of the slider, will be an
                                     integer value between
@@ -743,16 +736,19 @@ class MagnetGui(GUIBase):
                                         pos_min + slider_step*pos_step
             """
 
+            dspinbox_obj = self.get_ref_move_abs_DoubleSpinBox(axis_label)
+            viewbox_val = dspinbox_obj.value()
+
             constraints = self._magnet_logic.get_hardware_constraints()
             # set the resolution of the slider to nanometer precision, that is
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
                 max_step_slider = 1e-9
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
                 max_step_slider = 1e-6
 
             slider_val = abs(viewbox_val*norm - constraints[axis_label]['pos_min'])/max_step_slider
@@ -772,16 +768,16 @@ class MagnetGui(GUIBase):
 
         That method get called from methods, which are created on the fly at
         runtime during the activation of that module (basically from the
-        methods with the generic name _move_rel_axis{0} or
-        _por _move_rel_axis{0}_m with the appropriate label).
+        methods with the generic name move_rel_axis_{0}_p or
+        move_rel_axis_{0}_m with the appropriate label).
         """
         constraints = self._magnet_logic.get_hardware_constraints()
         dspinbox = self.get_ref_move_rel_DoubleSpinBox(axis_label)
 
         if constraints[axis_label]['unit'] == 'm':
-            norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
-            norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
         movement = dspinbox.value()*norm * direction
 
@@ -806,9 +802,9 @@ class MagnetGui(GUIBase):
             for label in constraints:
 
                 if constraints[label]['unit'] == 'm':
-                    norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                    norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
                 else:
-                    norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                    norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
                 move_abs[label] = self.get_ref_move_abs_DoubleSpinBox(label).value()*norm
 
@@ -828,21 +824,21 @@ class MagnetGui(GUIBase):
     def get_ref_move_rel_DoubleSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'move_rel_axis{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
     def get_ref_move_abs_DoubleSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'move_abs_axis{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'move_abs_axis_{0}_DoubleSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
     def get_ref_move_abs_Slider(self, label):
         """ Get the reference to the slider for the passed label. """
 
-        slider_name = 'move_abs_axis{0}_Slider'.format(label)
+        slider_name = 'move_abs_axis_{0}_Slider'.format(label)
         slider_ref = getattr(self._mw, slider_name)
         return slider_ref
 
@@ -863,10 +859,9 @@ class MagnetGui(GUIBase):
         if self._interactive_mode:
             self._magnet_logic.stop_movement()
         else:
-            self.logMsg('Movement cannot be stopped during a movement anyway!'
-                        'Set the interactive mode to True in the Magnet '
-                        'Settings! Otherwise this method is useless.',
-                        msgType='warning')
+            self.log.warning('Movement cannot be stopped during a movement '
+                    'anyway! Set the interactive mode to True in the Magnet '
+                    'Settings! Otherwise this method is useless.')
 
     def update_pos(self, param_list=None):
         """ Update the current position.
@@ -890,9 +885,9 @@ class MagnetGui(GUIBase):
             dspinbox_pos_ref = self.get_ref_curr_pos_DoubleSpinBox(axis_label)
 
             if constraints[axis_label]['unit'] == 'm':
-                norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             else:
-                norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
 
             dspinbox_pos_ref.setValue(curr_pos[axis_label]/norm)
 
@@ -958,26 +953,26 @@ class MagnetGui(GUIBase):
 
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
         if constraints[axis0_name]['unit'] == 'm':
-            norm1 = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm1 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
-            norm1 = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm1 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
         axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()*norm1
         axis0_step =  self._mw.align_2d_axes0_step_DSpinBox.value()*norm1
 
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
         if constraints[axis1_name]['unit'] == 'm':
-            norm2 = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm2 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
-            norm2 = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm2 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
         axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()*norm2
         axis1_step =  self._mw.align_2d_axes1_step_DSpinBox.value()*norm2
 
         if axis0_name == axis1_name:
-            self.logMsg('Fluorescence Alignment cannot be started since the '
+            self.log.error('Fluorescence Alignment cannot be started since the '
                         'same axis with name "{0}" was chosen for axis0 and '
                         'axis1!\n'
                         'Alignment will not be started. Change the '
-                        'settings!'.format(axis0_name), msgType='error')
+                        'settings!'.format(axis0_name))
             return
 
         if self._mw.align_2d_axis0_set_vel_CheckBox.isChecked():
@@ -1025,11 +1020,11 @@ class MagnetGui(GUIBase):
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
 
         if constraints[axis0_name]['unit'] == 'm':
-            norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
                                                  constraints[axis0_name]['unit'])
         else:
-            norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
                                                  constraints[axis0_name]['unit'])
 
@@ -1068,11 +1063,11 @@ class MagnetGui(GUIBase):
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
 
         if constraints[axis1_name]['unit'] == 'm':
-            norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
                                                  constraints[axis1_name]['unit'])
         else:
-            norm = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
             unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
                                                  constraints[axis1_name]['unit'])
 
@@ -1234,5 +1229,4 @@ class MagnetGui(GUIBase):
         elif self._mw.meas_type_nuclear_spin_RadioButton.isChecked():
             self.measurement_type = '2d_nuclear'
         else:
-            self.logMsg('No measurement type specified in Magnet GUI!',
-                        msgType='error')
+            self.log.error('No measurement type specified in Magnet GUI!')

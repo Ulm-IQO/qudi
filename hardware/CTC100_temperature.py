@@ -27,7 +27,7 @@ import visa
 
 class CTC100(Base):
     """
-    This module implements communication with the Edwards turbopump and 
+    This module implements communication with the Edwards turbopump and
     vacuum equipment.
     """
     _modclass = 'ctc100'
@@ -36,20 +36,16 @@ class CTC100(Base):
     # connectors
     _out = {'ctc': 'CTC'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
-
-    def activation(self, e):
+    def on_activate(self, e):
         config = self.getConfiguration()
         self.connect(config['interface'])
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         self.disconnect()
 
     def connect(self, interface):
         """ Connect to Instrument.
-        
+
             @param str interface: visa interface identifier
 
             @return bool: connection success
@@ -58,13 +54,13 @@ class CTC100(Base):
             self.rm = visa.ResourceManager()
             self.inst = self.rm.open_resource(interface, baud_rate=9600, term_chars='\n', send_end=True)
         except visa.VisaIOError as e:
-            self.logExc()
+            self.log.exception("")
             return False
         else:
             return True
 
     def disconnect(self):
-        """ 
+        """
         Close the connection to the instrument.
         """
         self.inst.close()
@@ -72,7 +68,7 @@ class CTC100(Base):
 
     def get_channel_names(self):
         return self.inst.ask('getOutputNames?').split(', ')
-        
+
     def is_channel_selected(self, channel):
          return self.inst.ask(channel.replace(" ", "") + '.selected?' ).split(' = ')[-1] == 'On'
 
@@ -111,19 +107,19 @@ class CTC100(Base):
             return result == 'Off':
         else:
             return True
-            
+
     def get_setpoint(self, channel):
         return self.inst.ask_for_values('{}.PID.setpoint?'.format(channel))[0]
 
     def set_setpoint(self, channel, setpoint):
         return self.inst.ask_for_values('{}.PID.setpoint = {}'.format(channel, setpoint))[0]
-        
+
     def get_pid_mode(self, channel):
         return self.inst.ask('{}.PID.Mode?'.format(channel)).split(' = ')[1]
 
     def set_pid_mode(self, channel, mode):
         return self.inst.ask('{}.PID.Mode = {}'.format(channel, mode)).split(' = ')[1]
-        
+
     def channel_off(self, channel):
         return self.inst.ask('{}.Off'.format(channel)).split(' = ')[1]
 

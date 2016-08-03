@@ -34,27 +34,17 @@ class PulseAnalysisLogic(GenericLogic):
             }
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
-
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
-
-        self.fit_result = ([])
+            self.log.info('{}: {}'.format(key,config[key]))
 
 
-
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -70,13 +60,23 @@ class PulseAnalysisLogic(GenericLogic):
         return
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
         pass
+
+    def set_old_raw_data(self, raw_data):
+        """
+        This method will set the old raw data inside the pulse extraction logic to be added to the
+        new data set.
+        @param raw_data: numpy ndarray, the raw count data from the fast counter. Must be same
+                        dimension as the new data to be recorded.
+        """
+        self._pulse_extraction_logic.old_raw_data = raw_data
+        return
 
 
     def _analyze_data(self, norm_start_bin, norm_end_bin, signal_start_bin,
@@ -93,11 +93,10 @@ class PulseAnalysisLogic(GenericLogic):
         @return: float array signal_data: Array with the computed signal
         @return: float array laser_data: Array with the laser data
         @return: float array raw_data: Array with the raw data
-        @return: bool is_gated: True if gated counter, otherwise ungated counter
         """
 
         # acquire data from the pulse extraction logic
-        laser_data, raw_data, is_gated = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
+        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
 
         # Initialize the signal and normalization mean data arrays
         reference_mean = np.zeros(num_of_lasers, dtype=float)
@@ -125,7 +124,7 @@ class PulseAnalysisLogic(GenericLogic):
 
             measuring_error[jj] = self.calculate_measuring_error(signal_area[jj], reference_area[jj])
 
-        return signal_data, laser_data, raw_data, measuring_error, is_gated
+        return signal_data, laser_data, raw_data, measuring_error
 
 
 
@@ -137,9 +136,13 @@ class PulseAnalysisLogic(GenericLogic):
 
         @return: float measuring_error: Computed error
         """
-
-        #with respect to gaußian error 'evolution'
-        measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
+        if reference_area == 0.:
+            measuring_error = 0.
+        elif signal_area == 0.:
+            measuring_error = 0.
+        else:
+            #with respect to gaußian error 'evolution'
+            measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
 
         return measuring_error
 

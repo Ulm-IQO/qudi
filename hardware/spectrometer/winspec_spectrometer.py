@@ -49,17 +49,13 @@ class WinSpec32(Base, SpectrometerInterface):
 
     _out = {'spec': 'SpectrometerInterface'}
 
-    def __init__(self, manager, name, configuration):
-        cb = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self,manager,name,configuration, cb)
-
-    def activation(self, e):
+    def on_activate(self, e):
         w32c.pythoncom.CoInitialize()
         self.expt_is_running = WinSpecLib.EXP_RUNNING
         self.path = 'asdf'
         self.prefix = 'test'
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         pass
 
     def recordSpectrum(self):

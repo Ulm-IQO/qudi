@@ -21,6 +21,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model, GaussianModel, ConstantModel
 from lmfit import Parameters
@@ -106,8 +109,7 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The 1D gaussian fit did not work.',
-                    msgType='warning')
+        logger.warning('The 1D gaussian fit did not work.')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -132,16 +134,13 @@ def estimate_gaussian(self, x_axis=None, data=None, params=None):
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
+            logger.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
+            logger.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
+        logger.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     # If the estimator is not good enough one can start improvement with
@@ -217,8 +216,8 @@ def make_twoDgaussian_fit(self, axis=None, data=None,
         result=mod.fit(data, x=axis,params=params)
     except:
         result=mod.fit(data, x=axis,params=params)
-        self.logMsg('The 2D gaussian fit did not '
-                    'work:'+result.message, msgType='warning')
+        logger.warning('The 2D gaussian fit did not work: {0}'.format(
+            result.message))
 
     return result
 
@@ -326,8 +325,7 @@ def estimate_twoDgaussian(self, x_axis=None, y_axis=None, data=None):
         # FIXME: Why don't you check earlier?
         # FIXME: Check for 1D array, 2D
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is not an array.', \
-                        msgType='error')
+            logger.error('Given parameter is not an array.')
             amplitude = 0.
             x_zero = 0.
             y_zero = 0.
@@ -520,8 +518,7 @@ def make_doublegaussian_fit(self, axis=None, data=None,
         result = model.fit(data, x=axis, params=params)
     except:
         result = model.fit(data, x=axis, params=params)
-        self.logMsg('The double gaussian fit did not '
-                    'work:' + result.message,
-                    msgType='warning')
+        logger.warning('The double gaussian fit did not work: {0}'.format(
+            result.message))
 
     return result

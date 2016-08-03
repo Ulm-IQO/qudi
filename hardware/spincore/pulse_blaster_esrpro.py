@@ -25,6 +25,8 @@ import platform
 import os
 import numpy as np
 from collections import OrderedDict
+
+from interface.pulser_interface import PulserInterface
 from core.base import Base
 from core.util.mutex import Mutex
 
@@ -61,12 +63,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     # declare connectors
     _out = {'PulseBlasterESRPRO': 'PulseBlasterESRPRO'}
 
-    def __init__(self,manager, name, config = {}, **kwargs):
-
-        state_actions = {'onactivate'   : self.activation,
-                         'ondeactivate' : self.deactivation}
-
-        Base.__init__(self, manager, name, config, state_actions, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -74,7 +72,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         self.GRAN_MIN = 2   # minimal possible granuality in time, in ns.
         self.FREQ_MAX = int(1/self.GRAN_MIN *1000) # Maximal output frequency.
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Fysom.event object from Fysom class.
@@ -85,7 +83,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        
+
         # Check the platform architecture:
         arch = platform.architecture()
         if arch == ('32bit', 'WindowsPE'):
@@ -108,7 +106,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         self.open_connection()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
@@ -120,9 +118,6 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     # Below all the low level routines which are wrapped with ctypes which
     # are talking directly to the hardware via the SpinAPI dll library.
     # =========================================================================
-
-    def logMsg(self,msg, importance=5, msgType='status'):
-        print(msg,'\nStatus:',msgType)
 
     def check(self, func_val):
         """ Check routine for the received error codes.
@@ -143,9 +138,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
             err_str = self.get_error_string()
 
-            self.logMsg('Error in PulseBlaster with errorcode {0}:\n'
-                        '{1}'.format(func_val, err_str),
-                        msgType='error')
+            self.log.error('Error in PulseBlaster with errorcode {0}:\n'
+                           '{1}'.format(func_val, err_str))
         return func_val
 
     def get_error_string(self):
@@ -194,9 +188,9 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         # check whether the input is an integer
         if not isinstance( board_num, int ):
-            self.logMsg('PulseBlaster cannot choose a board, since an integer '
+            self.log.error('PulseBlaster cannot choose a board, since an integer '
                         'type was expected, but the following value was '
-                        'passed:\n{0}'.format(board_num), msgType='error')
+                        'passed:\n{0}'.format(board_num))
         self.check(self._dll.pb_select_board(board_num))
 
     def get_version(self):
@@ -219,8 +213,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         firmware_id = self._dll.pb_get_firmware_id()
 
         if firmware_id == 0 :
-            self.logMsg('Retrieving the Firmware ID is not a feature of this '
-                        'board', msgType='status')
+            self.log.info('Retrieving the Firmware ID is not a feature of this '
+                        'board')
 
         return firmware_id
 
@@ -342,7 +336,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                                    to set high. If 8 channels are addressable
                                    then their bit representation would be
                                        0b00000000   (in python).
-                                   where the most right corresponds to ch1 and 
+                                   where the most right corresponds to ch1 and
                                    the most left to ch8. If you want to
                                    set channel 1,2,3 and 7 to be on, then the
                                    bit word must be
@@ -453,11 +447,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         #self.lock()
 
         if clock_freq > self.FREQ_MAX:
-            self.logMsg('The maximal value for the clock frequency for the '
+            self.log.warning('The maximal value for the clock frequency for the '
                         'PulseBlaster card is {0}MHz, but a value of {1} was '
                         'passed. The clock is set to maximal sampling '
-                        'frequency.'.format(self.FREQ_MAX, clock_freq),
-                        msgType='warning')
+                        'frequency.'.format(self.FREQ_MAX, clock_freq))
             clock_freq = 500
 
         self.set_core_clock(clock_freq)
@@ -471,9 +464,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         for pulse in sequence_list[1:]:
             num  = self._convert_inst_to_pulse(pulse['active_channels'], pulse['length'] )
             if num > 4094: # =(2**12 -2)
-                self.logMsg('Error in PulseCreation: Command {0} exceeds the '
-                            'maximal number of commands'.format(num),
-                            msgType='error')
+                self.log.error('Error in PulseCreation: Command {0} exceeds the '
+                            'maximal number of commands'.format(num))
 
         active_channels = sequence_list[-1]['active_channels']
 
@@ -485,9 +477,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
             num = self._write_pulse(bitmask=0, inst=6, inst_data=start_pulse,
                                     length=12)
         if num > 4094: # =(2**12 -2)
-                self.logMsg('Error in PulseCreation: Command {0} exceeds the '
-                            'maximal number of commands'.format(num),
-                            msgType='error')
+                self.log.error('Error in PulseCreation: Command {0} exceeds '
+                               'the maximal number of commands'.format(num))
 
         self.stop_programming()
 
@@ -512,11 +503,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         # output sampling.)
         residual = length % self.GRAN_MIN
         if residual != 0:
-            self.logMsg('The length of the pulse does not fulfil the '
+            self.log.warning('The length of the pulse does not fulfil the '
                         'granularity of {0}ns. The length is rounded to a '
                         'number, devidable by the granuality! {1}ns were '
-                        'dropped.'.format(self.GRAN_MIN, residual),
-                        msgType='warning')
+                        'dropped.'.format(self.GRAN_MIN, residual))
         length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
 
         if length <= 256: # pulses are written in 8 bit words. Save memory if
@@ -550,13 +540,12 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                                                 inst_data=factor,
                                                 length=value*self.GRAN_MIN)
                     else:
-                        self.logMsg('Error in PulseCreation: Loop counts are '
+                        self.log.error('Error in PulseCreation: Loop counts are '
                                     '{0} in LONG_DELAY instruction and '
                                     'exceedes the maximal possible value of '
                                     '2^20+1 = 1048576.\n'
                                     'Repeat PulseCreation with different '
-                                    'parameters!'.format(factor),
-                                    msgType='error')
+                                    'parameters!'.format(factor))
 
                     if i > 4:
                         self._write_pulse(channel_bitmask, inst=0,

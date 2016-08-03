@@ -34,16 +34,15 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     # connectors
     _out = {'laser': 'Laser'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.state = LaserState['OFF']
         self.shutter = ShutterState['CLOSED']
         self.mode = ControlMode['POWER']
         self.current_setpoint = 0
         self.power_setpoint = 0
 
-    def activation(self, e):
+    def on_activate(self, e):
         """
 
         @param e:
@@ -51,7 +50,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         """
         pass
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """
         @param e:
         @return:
@@ -67,7 +66,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_power_setpoint(self):
         return self.power_setpoint
- 
+
     def set_power(self, power):
         self.power_setpoint = power
         return self.power_setpoint
@@ -91,7 +90,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     def set_control_mode(self, control_mode):
         self.mode = control_mode
         return self.mode
-        
+
     def on(self):
         self.state = LaserState['ON']
         return self.state
@@ -102,7 +101,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_laser_state(self):
         return self.state
-    
+
     def set_laser_state(self, state):
         self.state = state
         return self.state

@@ -23,13 +23,21 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
+
+# install logging facility
+from .logger import initialize_logger
+initialize_logger()
+import logging
+logger = logging.getLogger(__name__)
+logger.info('Loading QuDi...')
 print('Loading QuDi...')
+
 if __package__ is None:
     import core
     __package__ = 'core'
 else:
     import core
-    
+
 from pyqtgraph.Qt import QtCore
 
 from .manager import Manager
@@ -37,8 +45,10 @@ from .parentpoller import ParentPollerWindows, ParentPollerUnix
 import numpy as np
 import pyqtgraph as pg
 import core.util.helpers as helpers
+import argparse
 import sys
 import os
+
 
 
 class AppWatchdog(QtCore.QObject):
@@ -90,44 +100,40 @@ class AppWatchdog(QtCore.QObject):
         if restart:
             # exitcode of 42 signals to start.py that this should be restarted
             self.exitcode = 42
-        if not self.alreadyQuit:    # Need this because multiple triggers can 
+        if not self.alreadyQuit:    # Need this because multiple triggers can
                                     # call this function during quit.
             self.alreadyQuit = True
             self.timer.stop()
-            manager.logger.print_logMsg('Closing windows..', msgType='status')
+            logger.info('Closing windows...')
+            print('Closing windows...')
             if manager.hasGui:
                 manager.gui.closeWindows()
             QtCore.QCoreApplication.instance().processEvents()
-            manager.logger.print_logMsg('Stopping threads..', msgType='status')
+            logger.info('Stopping threads...')
+            print('Stopping threads...')
             manager.tm.quitAllThreads()
             QtCore.QCoreApplication.instance().processEvents()
+            logger.info('QuDi is closed!  Ciao.')
             print('\n  QuDi is closed!  Ciao.')
         QtCore.QCoreApplication.instance().quit()
 
-# Possibility to start the program with additional parameters. In the normal 
-# command line or the console, you can start the program as
-#
-#   python start.py --profile --callgraph
-#
-# where "--profile" enables the usage of a profiler and "--callgraph" gives the
-# possibility to display the dependencies between the methods/modules.
 
-if '--profile' in sys.argv:
-    profile = True
-    sys.argv.pop(sys.argv.index('--profile'))   # remove parameter from argv since it is used now.
-else:
-    profile = False
-if '--callgraph' in sys.argv:
-    callgraph = True
-    sys.argv.pop(sys.argv.index('--callgraph')) # remove parameter from argv since it is used now.
-else:
-    callgraph = False
-if '--manhole' in sys.argv:
-    open_manhole = True
-    sys.argv.pop(sys.argv.index('--manhole')) # remove parameter from argv since it is used now.
-else:
-    open_manhole = False
-if '-g' in sys.argv or '--no-gui' in sys.argv:
+# Possibility to start the program with additional parameters.
+parser = argparse.ArgumentParser(prog='start.py')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-p', '--profile', action='store_true',
+        help='enables profiler')
+group.add_argument('-cg', '--callgraph', action='store_true',
+        help='display dependencies between the methods/modules')
+parser.add_argument('-m', '--manhole', action='store_true',
+        help='manhole for debugging purposes')
+parser.add_argument('-g', '--no-gui', action='store_true',
+        help='does not load the manager gui module')
+parser.add_argument('-c', '--config', default='', help='configuration file')
+args = parser.parse_args()
+
+# Qt Application (gui or non-gui)
+if args.no_gui:
     app = QtCore.QCoreApplication(sys.argv)
 else:
     app = pg.mkQApp()
@@ -143,18 +149,17 @@ try:
     from zmq.eventloop import ioloop
     ioloop.install()
 except:
-    print('Preparing ZMQ failed, probasbly no IPython possible!')
+    logger.error('Preparing ZMQ failed, probably no IPython possible!')
 
-# Disable garbage collector to improve stability. 
+# Disable garbage collector to improve stability.
 # (see pyqtgraph.util.garbage_collector in the doc for more information)
 from pyqtgraph.util.garbage_collector import GarbageCollector
 gc = GarbageCollector(interval=1.0, debug=False)
 
 # Create Manager. This configures devices and creates the main manager window.
-# All additional arguments in sys.argv, which were not used and executed here
-# are passed to the main device handler, the Manager.
+# Arguments parsed by argparse are passed to the Manager.
 watchdog = AppWatchdog()
-man = Manager(argv=sys.argv[1:])
+man = Manager(args=args)
 watchdog.setupParentPoller(man)
 man.sigManagerQuit.connect(watchdog.quitApplication)
 
@@ -162,7 +167,7 @@ man.sigManagerQuit.connect(watchdog.quitApplication)
 #QtCore.pyqtRemoveInputHook()
 
 # manhole for debugging stuff inside the app from outside
-if open_manhole:
+if args.manhole:
     import manhole
     manhole.install()
 
@@ -171,7 +176,7 @@ interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
 
 if interactive:
     print("Interactive mode; not starting event loop.")
-    
+
     # import some modules which might be useful on the command line
     import numpy as np
 
@@ -198,13 +203,13 @@ if interactive:
             readline.write_history_file(historyPath)
     atexit.register(save_history)
 else:
-    if profile:
+    if args.profile:
         import cProfile, pstats
         from io import StringIO
         pr = cProfile.Profile()
         pr.enable()
         # ... do something ...
-        app.exec_() 
+        app.exec_()
         pr.disable()
         s = StringIO()
         sortby = 'cumulative'
@@ -215,7 +220,7 @@ else:
         # a chance to clean up.
         # This avoids otherwise irritating exit crashes.
         helpers.exit(watchdog.exitcode)
-    elif callgraph:
+    elif args.callgraph:
         from pycallgraph import PyCallGraph
         from pycallgraph.output import GraphvizOutput
         with PyCallGraph(output=GraphvizOutput()):
@@ -225,7 +230,7 @@ else:
         helpers.exit(watchdog.exitcode)
     else:
         app.exec_()
-        # helpers.exit() causes python to exit before Qt has a chance to clean up. 
+        # helpers.exit() causes python to exit before Qt has a chance to clean up.
         # This avoids otherwise irritating exit crashes.
         helpers.exit(watchdog.exitcode)
 

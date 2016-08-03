@@ -20,6 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from scipy.signal import gaussian
 from scipy.ndimage import filters
@@ -56,26 +59,26 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
                 parameters.add(para)
             if 'min' in update_dict[para]:
                 parameters[para].min = update_dict[para]['min']
-    
+
             if 'max' in update_dict[para]:
                 parameters[para].max = update_dict[para]['max']
-    
+
             if 'vary' in update_dict[para]:
                 parameters[para].vary = update_dict[para]['vary']
-    
+
             if 'expr' in update_dict[para]:
                 parameters[para].expr = update_dict[para]['expr']
-                
+
             if 'value' in update_dict[para]:
                 if parameters[para].min is not None:
                     if (parameters[para].min > update_dict[para]['value']):
-                        parameters[para].min = update_dict[para]['value'] 
+                        parameters[para].min = update_dict[para]['value']
                         parameters[para].value = update_dict[para]['value']
                 if parameters[para].max is not None:
                     if (parameters[para].max < update_dict[para]['value']):
-                        parameters[para].max = update_dict[para]['value']                    
+                        parameters[para].max = update_dict[para]['value']
                         parameters[para].value = update_dict[para]['value']
-                else:        
+                else:
                     parameters[para].value = update_dict[para]['value']
         return parameters
 
@@ -121,9 +124,8 @@ def create_fit_string(self, result, model, units=dict(), decimal_digits_value_gi
                                                                 float(result.params[variable].stderr),
                                                                 decimal_digits_err)))
         except:
-            # self.logMsg('No unit given for parameter {}, setting unit '
-            #             'to empty string'.format(variable),
-            #             msgType='warning')
+            # logger.warning('No unit given for parameter {}, setting unit '
+            #             'to empty string'.format(variable))
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             "arb. u.",
                                                             "{0:.{1}e}".format(
@@ -196,7 +198,9 @@ def _search_end_of_dip(self, direction, data, peak_arg, start_arg, end_arg, sigm
     return sigma_threshold,sigma_arg
 
 
-def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_threshold=0.01, sigma_threshold_fraction=0.3, make_prints=False):
+def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
+                       minimal_threshold=0.01, sigma_threshold_fraction=0.3,
+                       make_prints=False):
     """ This method searches for a double dip. There are three values which can be set in order to adjust
     the search. A threshold which defines when  a minimum is a dip,
     this threshold is then lowered if no dip can be found until the
@@ -333,10 +337,9 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_thres
                 if abs(threshold/absolute_min)<abs(minimal_threshold):
                     if make_prints:
                         print('h16')
-                    self.logMsg('threshold to minimum ratio was too '
-                                'small to estimate two minima. So both '
-                                'are set to the same value',
-                                msgType='warning')
+                    logger.warning('Threshold to minimum ratio was too '
+                            'small to estimate two minima. So both '
+                            'are set to the same value')
                     error=-1
                     dip1_arg=dip0_arg
                     break
@@ -383,8 +386,8 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_thres
                                  make_prints= make_prints)
 
     return error, sigma0_argleft, dip0_arg, sigma0_argright, sigma1_argleft, dip1_arg, sigma1_argright
-    
-    
+
+
 ############################################################################
 #                                                                          #
 #             Additional routines with Lorentzian-like filter              #

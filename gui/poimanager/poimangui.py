@@ -223,20 +223,16 @@ class PoiManagerGui(GUIBase):
            'confocallogic1': 'ConfocalLogic'
            }
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key, config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key, config[key]))
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Initializes the overall GUI, and establishes the connectors.
 
         @param object e: Fysom.event object from Fysom class.
@@ -290,6 +286,8 @@ class PoiManagerGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=5)
+        self._mw.roi_cb_low_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=2)
         #####################
         # Setting up display of ROI map xy image
         #####################
@@ -403,8 +401,8 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_manual_RadioButton.toggled.connect(self.refresh_roi_colorscale)
         self._mw.roi_cb_min_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
         self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
-        self._mw.roi_cb_low_centile_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
-        self._mw.roi_cb_high_centile_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
 
         self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
         self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
@@ -412,16 +410,22 @@ class PoiManagerGui(GUIBase):
         self._markers = dict()
 
         # Signal at end of refocus
-        self._poi_manager_logic.signal_refocus_finished.connect(
-            self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_timer_updated.connect(
-            self._update_timer, QtCore.Qt.QueuedConnection)
+            self._update_timer,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
+            self._redraw_sample_shift,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self.populate_poi_list, QtCore.Qt.QueuedConnection)
+            self.populate_poi_list,
+            QtCore.Qt.QueuedConnection
+        )
         self._poi_manager_logic.signal_poi_updated.connect(
-            self._redraw_poi_markers, QtCore.Qt.QueuedConnection)
+            self._redraw_poi_markers,
+            QtCore.Qt.QueuedConnection
+        )
 
         # Connect track period
         self._mw.track_period_SpinBox.valueChanged.connect(self.change_track_period)
@@ -468,7 +472,7 @@ class PoiManagerGui(GUIBase):
         self._rrd.ref_c_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
         self._rrd.ref_c_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
@@ -537,8 +541,8 @@ class PoiManagerGui(GUIBase):
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.roi_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.roi_cb_low_centile_SpinBox.value()
-            high_centile = self._mw.roi_cb_high_centile_SpinBox.value()
+            low_centile = self._mw.roi_cb_low_percentile_DoubleSpinBox.value()
+            high_centile = self._mw.roi_cb_high_percentile_DoubleSpinBox.value()
 
             cb_min = np.percentile(self.roi_xy_image_data, low_centile)
             cb_max = np.percentile(self.roi_xy_image_data, high_centile)

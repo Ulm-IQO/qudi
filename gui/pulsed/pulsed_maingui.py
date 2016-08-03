@@ -28,11 +28,12 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 import re
 import inspect
-import itertools
 import datetime
+
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
+from core.util import units
 from .qradiobutton_custom import CustomQRadioButton
 
 from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
@@ -177,18 +178,14 @@ class PulsedMeasurementGui(GUIBase):
             'pulsedmeasurementlogic': 'PulsedMeasurementLogic'
             }
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, config, c_dict)
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -196,7 +193,7 @@ class PulsedMeasurementGui(GUIBase):
         # that variable is for testing issues and can be deleted if not needed:
         self._write_chunkwise = False
 
-    def initUI(self, e=None):
+    def on_activate(self, e=None):
         """ Initialize, connect and configure the pulsed measurement GUI.
 
         @param object e: Fysom.event object from Fysom class.
@@ -234,7 +231,7 @@ class PulsedMeasurementGui(GUIBase):
         self.show()
 
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Undo the Definition, configuration and initialisation of the pulsed
             measurement GUI.
 
@@ -1094,7 +1091,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data*self.get_unit_prefix_dict()[unit_prefix]
+            return data * units.get_unit_prefix_dict()[unit_prefix]
         return data
 
     def set_element_in_block_table(self, row, column, value):
@@ -1121,15 +1118,15 @@ class PulsedMeasurementGui(GUIBase):
             if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
                 unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
                 # access the method defined in base for unit prefix:
-                value = value/self.get_unit_prefix_dict()[unit_prefix]
+                value = value / units.get_unit_prefix_dict()[unit_prefix]
             model.setData(model.index(row,column), value, access)
         else:
-            self.logMsg('The cell ({0},{1}) in block table could not be '
+            self.log.warning('The cell ({0},{1}) in block table could not be '
                         'assigned with the value="{2}", since the type "{3}" '
                         'of the cell from the delegated type differs from '
                         '"{4}" of the value!\nPrevious value will be '
                         'kept.'.format(row, column, value, type(data),
-                                       type(value) ) , msgType='warning')
+                                       type(value)))
 
 
     def _update_current_pulse_block(self):
@@ -1199,10 +1196,10 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|f4, '
             else:
-                self.logMsg('Type definition not found in the block table.'
+                self.log.error('Type definition not found in the block table.'
                             '\nType is neither a string, integer or float. '
-                            'Include that type in the get_pulse_block_table method!',
-                            msgType='error')
+                            'Include that type in the get_pulse_block_table '
+                            'method!')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]
@@ -1211,7 +1208,6 @@ class PulsedMeasurementGui(GUIBase):
         # fill the table:
         for column in range(tab.columnCount()):
             for row in range(tab.rowCount()):
-                # self.logMsg(, msgType='status')
                 table[row][column] = self.get_element_in_block_table(row, column)
 
         return table
@@ -1265,20 +1261,22 @@ class PulsedMeasurementGui(GUIBase):
                     config_to_set = config
                     break
             if config_to_set is None:
-                self.logMsg('Mismatch in number of channels between block to load and chosen '
-                            'activation_config. Need {0} digital and {1} analogue channels. '
-                            'Could not find a matching activation_config.'
-                            ''.format(block.digital_channels, block.analog_channels),
-                            msgType='error')
+                self.log.error('Mismatch in number of channels between block '
+                        'to load and chosen activation_config. Need {0} '
+                        'digital and {1} analogue channels. Could not find a '
+                        'matching activation_config.'.format(
+                            block.digital_channels, block.analog_channels))
                 return -1
             # find index of the config inside the ComboBox
             index_to_set = self._mw.gen_activation_config_ComboBox.findText(config_to_set)
             self._mw.gen_activation_config_ComboBox.setCurrentIndex(index_to_set)
-            self.logMsg('Mismatch in number of channels between block to load and chosen '
-                        'activation_config. Need {0} digital and {1} analogue channels. '
-                        'The following activation_config was chosen: "{2}"'
-                        ''.format(block.digital_channels, block.analog_channels, config_to_set),
-                        msgType='error')
+            self.log.error('Mismatch in number of channels between block to '
+                    'load and chosen activation_config. Need {0} digital '
+                    'and {1} analogue channels. The following '
+                    'activation_config was chosen: "{2}"'.format(
+                        block.digital_channels,
+                        block.analog_channels,
+                        config_to_set))
 
             # get currently active activation_config.
             current_config = activation_config[config_to_set]
@@ -1376,8 +1374,8 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Block object."""
         objectname = self._mw.curr_block_name_LineEdit.text()
         if objectname == '':
-            self.logMsg('No Name for Pulse_Block specified. Generation '
-                        'aborted!', importance=7, msgType='warning')
+            self.log.warning('No Name for Pulse_Block specified. Generation '
+                        'aborted!')
             return
         self.generate_pulse_block_object(objectname, self.get_pulse_block_table())
 
@@ -1745,12 +1743,12 @@ class PulsedMeasurementGui(GUIBase):
         if type(data) == type(value):
             model.setData(model.index(row,column), value, access)
         else:
-            self.logMsg('The cell ({0},{1}) in block organizer table could not be '
-                        'assigned with the value="{2}", since the type "{3}" '
-                        'of the cell from the delegated type differs from '
-                        '"{4}" of the value!\nPrevious value will be '
-                        'kept.'.format(row, column, value, type(data),
-                                       type(value) ) , msgType='warning')
+            self.log.warning('The cell ({0},{1}) in block organizer table '
+                    'could not be assigned with the value="{2}", since the '
+                    'type "{3}" of the cell from the delegated type differs '
+                    'from "{4}" of the value!\nPrevious value will be '
+                    'kept.'.format(row, column, value, type(data),
+                        type(value)))
 
     def get_organizer_table(self):
         """ Convert organizer table data to numpy array.
@@ -1773,10 +1771,11 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|f4, '
             else:
-                self.logMsg('Type definition not found in the organizer table.'
-                            '\nType is neither a string, integer or float. '
-                            'Include that type in the get_organizer_table method!',
-                            msgType='error')
+                self.log.error('Type definition not found in the organizer '
+                        'table.'
+                        '\nType is neither a string, integer or float. '
+                        'Include that type in the get_organizer_table '
+                        'method!')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]
@@ -1785,7 +1784,6 @@ class PulsedMeasurementGui(GUIBase):
         # fill the table:
         for column in range(tab.columnCount()):
             for row in range(tab.rowCount()):
-                # self.logMsg(, msgType='status')
                 table[row][column] = self.get_element_in_organizer_table(row, column)
 
         return table
@@ -1900,10 +1898,10 @@ class PulsedMeasurementGui(GUIBase):
             if config_name_to_set is not None:
                 index = self._mw.gen_activation_config_ComboBox.findText(config_name_to_set)
                 self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
-            self.logMsg(
-                'Current generator channel activation config did not match the activation '
-                'config of the Pulse_Block_Ensemble to load. Changed config to "{0}".'
-                ''.format(config_name_to_set), msgType='status')
+            self.log.info('Current generator channel activation config '
+                    'did not match the activation config of the '
+                    'Pulse_Block_Ensemble to load. Changed config to "{0}".'
+                    ''.format(config_name_to_set))
 
         # set the sample rate to the one defined in the loaded ensemble
         current_sample_rate = self._seq_gen_logic.sample_rate
@@ -1911,9 +1909,10 @@ class PulsedMeasurementGui(GUIBase):
         if current_sample_rate != sample_rate_to_set:
             self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate_to_set/1e6)
             self.generator_sample_rate_changed()
-            self.logMsg('Current generator sample rate did not match the sample rate of the '
-                        'Pulse_Block_Ensemble to load. Changed the sample rate to {0}Hz.'
-                        ''.format(sample_rate_to_set), msgType='status')
+            self.log.info('Current generator sample rate did not match the '
+                    'sample rate of the Pulse_Block_Ensemble to load. '
+                    'Changed the sample rate to {0}Hz.'
+                    ''.format(sample_rate_to_set))
 
         # set the laser channel to the one defined in the loaded ensemble
         current_laser_channel = self._seq_gen_logic.laser_channel
@@ -1921,10 +1920,10 @@ class PulsedMeasurementGui(GUIBase):
         if current_laser_channel != laser_channel_to_set and laser_channel_to_set is not None:
             index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel_to_set)
             self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
-            self.logMsg(
-                'Current generator laser channel did not match the laser channel of the '
-                'Pulse_Block_Ensemble to load. Changed the laser channel to "{0}".'
-                ''.format(laser_channel_to_set), msgType='status')
+            self.log.info('Current generator laser channel did not match the '
+                    'laser channel of the Pulse_Block_Ensemble to load. '
+                    'Changed the laser channel to "{0}".'
+                    ''.format(laser_channel_to_set))
 
         self.block_organizer_clear_table()  # clear the block organizer table
         rows = len(ensemble.block_list)  # get amout of rows needed for display
@@ -2033,8 +2032,8 @@ class PulsedMeasurementGui(GUIBase):
 
         objectname = self._mw.curr_ensemble_name_LineEdit.text()
         if objectname == '':
-            self.logMsg('No Name for Pulse_Block_Ensemble specified. '
-                        'Generation aborted!', importance=7, msgType='warning')
+            self.log.warning('No Name for Pulse_Block_Ensemble specified. '
+                        'Generation aborted!')
             return
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
         self.generate_pulse_block_ensemble_object(objectname, self.get_organizer_table(),
@@ -2234,13 +2233,12 @@ class PulsedMeasurementGui(GUIBase):
                 default_value = inspected.parameters[param_name].default
 
                 if default_value is inspect._empty:
-                    self.logMsg('The method "{0}" in the logic has an '
+                    self.log.error('The method "{0}" in the logic has an '
                                 'argument "{1}" without a default value!\n'
                                 'Assign a default value to that, otherwise a '
                                 'type estimation is not possible!\n'
                                 'Creation of the viewbox '
-                                'aborted.'.format(method.__name__, param_name),
-                                msgType='error')
+                                'aborted.'.format(method.__name__, param_name))
                     return
 
                 if type(default_value) is bool:
@@ -2252,13 +2250,12 @@ class PulsedMeasurementGui(GUIBase):
                 elif type(default_value) is str:
                     view_obj = self._create_QLineEdit(groupBox, default_value)
                 else:
-                    self.logMsg('The method "{0}" in the logic has an '
-                                'argument "{1}" with is not of the valid types'
-                                'str, float int or bool!\n'
-                                'Choose one of those default values! Creation '
-                                'of the viewbox '
-                                'aborted.'.format(method.__name__, param_name)
-                                , msgType='error')
+                    self.log.error('The method "{0}" in the logic has an '
+                            'argument "{1}" with is not of the valid types'
+                            'str, float int or bool!\n'
+                            'Choose one of those default values! Creation '
+                            'of the viewbox aborted.'.format(
+                                method.__name__, param_name))
 
                 obj_list.append(view_obj)
                 gridLayout.addWidget(label_obj, 0, index, 1, 1)
@@ -2448,9 +2445,9 @@ class PulsedMeasurementGui(GUIBase):
                     parameters[index] = object.text()
                     ensemble_name = object.text()
                 else:
-                    self.logMsg('Not possible to get the value from the '
-                                'viewbox, since it does not have one of the'
-                                'possible access methods!', msgType='error')
+                    self.log.error('Not possible to get the value from the '
+                            'viewbox, since it does not have one of the'
+                            'possible access methods!')
 
             # the * operator unpacks the list
             ref_logic_gen(*parameters)
@@ -2587,6 +2584,10 @@ class PulsedMeasurementGui(GUIBase):
                                             self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        if self._pulsed_meas_logic.alternating:
+            self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
@@ -2605,6 +2606,10 @@ class PulsedMeasurementGui(GUIBase):
 
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
         self.errorbars_present = False
+
+        # that must be one out of the dict units.get_unit_prefix_dict()
+        self._freq_prefix = 'M'
+        self._time_prefix = 'n'
 
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
@@ -2634,14 +2639,18 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.toggle_external_mw_source_editor)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
         self._mw.ana_param_laserpulse_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
+        self._mw.ana_param_alternating_CheckBox.stateChanged.connect(self.analysis_alternating_changed)
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
         self._mw.ana_param_laser_length_SpinBox.editingFinished.connect(self.laser_length_changed)
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
         self._mw.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.analysis_fc_binning_changed)
-        self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
         self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
+
+        # connect the fit stuff:
+        self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
+        self._pulsed_meas_logic.sigFitUpdated.connect(self.refresh_signal_plot_fit)
 
         self._mw.ext_control_mw_freq_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
         self._mw.ext_control_mw_power_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
@@ -2664,7 +2673,6 @@ class PulsedMeasurementGui(GUIBase):
         self._statusVariables['ana_param_laserpulse_defined_CheckBox'] = self._mw.ana_param_laserpulse_defined_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_first_CheckBox'] = self._mw.ana_param_ignore_first_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_last_CheckBox'] = self._mw.ana_param_ignore_last_CheckBox.isChecked()
-        self._statusVariables['ana_param_alternating_CheckBox'] = self._mw.ana_param_alternating_CheckBox.isChecked()
         self._statusVariables['ana_param_errorbars_CheckBox'] = self._mw.ana_param_errorbars_CheckBox.isChecked()
         self._statusVariables['second_plot_ComboBox_text'] = self._mw.second_plot_ComboBox.currentText()
 
@@ -2719,6 +2727,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_laser_length_SpinBox.setValue(self._pulsed_meas_logic.laser_length_s*1e9)
 
         # ignore and alternating checkboxes
+        self._mw.ana_param_alternating_CheckBox.setChecked(self._pulsed_meas_logic.alternating)
+
         if 'ana_param_ignore_first_CheckBox' in self._statusVariables:
             self._mw.ana_param_ignore_first_CheckBox.setChecked(
                 self._statusVariables['ana_param_ignore_first_CheckBox'])
@@ -2729,11 +2739,6 @@ class PulsedMeasurementGui(GUIBase):
                 self._statusVariables['ana_param_ignore_last_CheckBox'])
         else:
             self._mw.ana_param_ignore_last_CheckBox.setChecked(False)
-        if 'ana_param_alternating_CheckBox' in self._statusVariables:
-            self._mw.ana_param_alternating_CheckBox.setChecked(
-                self._statusVariables['ana_param_alternating_CheckBox'])
-        else:
-            self._mw.ana_param_alternating_CheckBox.setChecked(False)
 
         # define own x-axis checkbox
         if 'ana_param_x_axis_defined_CheckBox' in self._statusVariables:
@@ -2836,9 +2841,9 @@ class PulsedMeasurementGui(GUIBase):
             if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked() or \
                 not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
                 if asset_obj is None:
-                    self.logMsg('Error while trying to run pulsed measurement. '
-                                'No asset is loaded onto the pulse generator. Aborting run.',
-                                msgType='error')
+                    self.log.error('Error while trying to run pulsed '
+                            'measurement. No asset is loaded onto the '
+                            'pulse generator. Aborting run.')
                     return
             # infer number of laser pulses from the currently loaded asset if needed.
             # If they have been manually set in the GUI the changes are already in the logic.
@@ -2856,9 +2861,9 @@ class PulsedMeasurementGui(GUIBase):
                 if asset_obj.measurement_ticks_list is not None:
                     meas_ticks_list = asset_obj.measurement_ticks_list
                 else:
-                    self.logMsg('Error while trying to run pulsed measurement. '
-                                'No measurement ticks defined in asset. Aborting run.',
-                                msgType='error')
+                    self.log.error('Error while trying to run pulsed '
+                            'measurement. No measurement ticks defined '
+                            'in asset. Aborting run.')
                     return
                 self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
 
@@ -2912,13 +2917,16 @@ class PulsedMeasurementGui(GUIBase):
         """Fits the current data"""
         self._mw.fit_param_results_TextBrowser.clear()
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
-        fit_x, fit_y, fit_result, param_dict = self._pulsed_meas_logic.do_fit(current_fit_function)
+        fit_x, fit_y, fit_param, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
+
+        fit_text = units.create_formatted_output(fit_param)
+
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
-        self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
+        self._mw.fit_param_results_TextBrowser.setPlainText(fit_text)
         return
 
     def refresh_signal_plot(self):
-        """ Refreshes the xy-matrix image """
+        """ Refreshes the xy-plot image """
         # dealing with the error bars
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
             beamwidth = np.inf
@@ -2946,8 +2954,19 @@ class PulsedMeasurementGui(GUIBase):
         # dealing with the actual signal
         self.signal_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
                                   y=self._pulsed_meas_logic.signal_plot_y)
+        if self._pulsed_meas_logic.alternating:
+            self.signal_image2.setData(x=self._pulsed_meas_logic.signal_plot_x,
+                                       y=self._pulsed_meas_logic.signal_plot_y2, pen='g')
         self.change_second_plot()
         return
+
+    def refresh_signal_plot_fit(self):
+        """ Refreshes the xy-plot fit image """
+
+        self.fit_image.setData(x=self._pulsed_meas_logic.signal_plot_x_fit,
+                               y=self._pulsed_meas_logic.signal_plot_y_fit,
+                               pen='r')
+
 
     def refresh_measuring_error_plot(self):
         self.measuring_error_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
@@ -3070,6 +3089,24 @@ class PulsedMeasurementGui(GUIBase):
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self._pulsed_meas_logic.set_timer_interval(timer_interval)
 
+    def analysis_alternating_changed(self):
+        """
+        Is called whenever the "alternating" CheckBox is clicked
+        """
+        alternating = self._mw.ana_param_alternating_CheckBox.isChecked()
+        # add/remove data set in plot widget
+        if alternating and not self._pulsed_meas_logic.alternating:
+            self.signal_image2 = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                                 self._pulsed_meas_logic.signal_plot_y2, pen='g')
+            self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image2, pen='g')
+        if not alternating and self._pulsed_meas_logic.alternating:
+            self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
+        # Set flag in logic
+        self._pulsed_meas_logic.alternating = alternating
+        # recalculate measurement ticks
+        self.analysis_xaxis_changed()
+        return
+
     def analysis_fc_binning_changed(self):
         """
         If a new binning value is selected, apply the change to the logic.
@@ -3086,7 +3123,10 @@ class PulsedMeasurementGui(GUIBase):
         """
         xaxis_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
         xaxis_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
-        num_of_lasers = self._pulsed_meas_logic.number_of_lasers
+        if self._pulsed_meas_logic.alternating:
+            num_of_lasers = self._pulsed_meas_logic.number_of_lasers//2
+        else:
+            num_of_lasers = self._pulsed_meas_logic.number_of_lasers
         xaxis_ticks_list = np.linspace(xaxis_start, xaxis_start+(xaxis_incr*(num_of_lasers-1)), num_of_lasers)
         self._pulsed_meas_logic.set_measurement_ticks_list(xaxis_ticks_list)
 
@@ -3262,12 +3302,13 @@ class PulsedMeasurementGui(GUIBase):
             elif type(seq_param_hardware[entry]['min']) == float:
                 dict_def = float_def
             else:
-                self.logMsg('The configuration dict for sequence parameter could not be created, '
-                            'since the keyword "min" in the parameter {0} does not correspond to '
-                            'type of "bool", "int" nor "float" but has a type {1}. Cannot handle '
-                            'that, therefore this parameter is '
-                            'neglected.'.format(entry, type(seq_param_hardware[entry]['min'])),
-                            msgType='error')
+                self.log.error('The configuration dict for sequence '
+                        'parameter could not be created, since the keyword '
+                        '"min" in the parameter {0} does not correspond to '
+                        'type of "bool", "int" nor "float" but has a type '
+                        '{1}. Cannot handle that, therefore this parameter '
+                        'is neglected.'.format(
+                            entry, type(seq_param_hardware[entry]['min'])))
                 dict_def = {}
 
             # go through the dict_def and replace all given entries by the sequence parameter
@@ -3559,8 +3600,8 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Sequence object."""
         objectname = self._mw.curr_seq_name_LineEdit.text()
         if objectname == '':
-            self.logMsg('No Name for Pulse_Sequence specified. Generation aborted!', importance=7,
-                        msgType='warning')
+            self.log.warning('No Name for Pulse_Sequence specified. '
+                    'Generation aborted!')
             return
         rotating_frame = self._mw.curr_seq_rot_frame_CheckBox.isChecked()
 
@@ -3764,7 +3805,7 @@ class PulsedMeasurementGui(GUIBase):
         if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
             unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
             # access the method defined in base for unit prefix:
-            return data * self.get_unit_prefix_dict()[unit_prefix]
+            return data * units.get_unit_prefix_dict()[unit_prefix]
 
         return data
 
@@ -3789,11 +3830,12 @@ class PulsedMeasurementGui(GUIBase):
         if type(data) == type(value):
             model.setData(model.index(row, column), value, access)
         else:
-            self.logMsg('The cell ({0},{1}) in pulse sequence table could not be assigned with '
-                        'the value="{2}", since the type "{3}" of the cell of the delegated '
-                        'column differs from the type "{4}" of the value!\n'
-                        'Previous value will be kept.'.format(row, column, value, type(data),
-                                                              type(value)), msgType='warning')
+            self.log.warning('The cell ({0},{1}) in pulse sequence table '
+                    'could not be assigned with the value="{2}", since the '
+                    'type "{3}" of the cell of the delegated column differs '
+                    'from the type "{4}" of the value!\n'
+                    'Previous value will be kept.'.format(
+                        row, column, value, type(data), type(value)))
         return
 
     def get_sequence_table(self):
@@ -3816,10 +3858,10 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|float, '
             else:
-                self.logMsg('Type definition not found in the sequence table.'
-                            '\nType is neither a string, integer or float. '
-                            'Include that type in the get_sequence_table method!',
-                            msgType='error')
+                self.log.error('Type definition not found in the sequence '
+                        'table.'
+                        '\nType is neither a string, integer or float. '
+                        'Include that type in the get_sequence_table method!')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]
@@ -3828,7 +3870,6 @@ class PulsedMeasurementGui(GUIBase):
         # fill the return table:
         for column in range(tab.columnCount()):
             for row in range(tab.rowCount()):
-                # self.logMsg(, msgType='status')
                 table[row][column] = self.get_element_in_sequence_table(row, column)
 
         return table
@@ -3901,10 +3942,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='ns')
-
-
-        # prepare the combobox:
-        self.num_of_lasers_changed()
 
         self._mw.extract_param_ana_window_start_SpinBox.setValue(self._pulsed_meas_logic.signal_start_bin)
         self._mw.extract_param_ana_window_width_SpinBox.setValue(self._pulsed_meas_logic.signal_width_bin)
@@ -4038,13 +4075,13 @@ class PulsedMeasurementGui(GUIBase):
 
         # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
         # pulse plot
-        exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
-        exporter.export(filename+'.svg')
-
-        # auxiliary plot
-        if 'None' not in self._mw.second_plot_ComboBox.currentText():
-            exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
-            exporter_aux.export(filename + '_aux' + '.svg')
+        # exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
+        # exporter.export(filename+'.svg')
+        #
+        # # auxiliary plot
+        # if 'None' not in self._mw.second_plot_ComboBox.currentText():
+        #     exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
+        #     exporter_aux.export(filename + '_aux' + '.svg')
 
         self._pulsed_meas_logic._save_data(filetag, timestamp)
 

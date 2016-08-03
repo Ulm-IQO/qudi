@@ -29,7 +29,7 @@ import numpy as np
 
 class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 
-    """ This class wraps the slow-counter dummy and adds polarisation angle dependence in order to simulate dipole polarisation measurements.  
+    """ This class wraps the slow-counter dummy and adds polarisation angle dependence in order to simulate dipole polarisation measurements.
     """
 
     _modclass = 'polarizationdepsim'
@@ -42,11 +42,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 
     _move_signal = QtCore.Signal()
 
-    def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
-        
-    def activation(self, e):
+    def on_activate(self, e):
         """ Activation of the class
         """
         # name connected modules
@@ -68,7 +64,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         # Signals
         self._move_signal.connect(self._move_step, QtCore.Qt.QueuedConnection)
 
-    def deactivation(self,e):
+    def on_deactivate(self,e):
         self._counter_hw.close_counter()
         self._counter_hw.close_clock()
 

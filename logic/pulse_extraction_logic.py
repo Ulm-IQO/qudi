@@ -37,27 +37,22 @@ class PulseExtractionLogic(GenericLogic):
     _in = {'fastcounter': 'FastCounterInterface'}
     _out = {'pulseextractionlogic': 'PulseExtractionLogic'}
 
-    def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation,
-                         'ondeactivate': self.deactivation}
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        GenericLogic.__init__(self, manager, name, config, state_actions,
-                              **kwargs)
-
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{}: {}'.format(key,config[key]))
 
         self.is_counter_gated = False
         self.conv_std_dev = 5
+        self.old_raw_data = None    # This is used to pause and continue a measurement.
+                                    # Is added to the new data.
 
 
-    def activation(self, e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -71,7 +66,7 @@ class PulseExtractionLogic(GenericLogic):
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._check_if_counter_gated()
 
-    def deactivation(self, e):
+    def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -224,6 +219,9 @@ class PulseExtractionLogic(GenericLogic):
         # poll data from the fast counting device, netobtain is needed for
         # getting numpy array over network
         raw_data = netobtain(self._fast_counter_device.get_data_trace())
+        if self.old_raw_data is not None:
+            #if raw_data.shape == self.old_raw_data.shape:
+            raw_data = np.add(raw_data, self.old_raw_data)
 
         # call appropriate laser extraction method depending on if the fast
         # counter is gated or not.
@@ -231,7 +229,7 @@ class PulseExtractionLogic(GenericLogic):
             laser_data = self._gated_extraction(raw_data)
         else:
             laser_data = self._ungated_extraction(raw_data, num_of_lasers)
-        return laser_data.astype(dtype=int), raw_data.astype(dtype=int), self.is_counter_gated
+        return laser_data.astype(dtype=int), raw_data.astype(dtype=int)
 
 
     def _check_if_counter_gated(self):
