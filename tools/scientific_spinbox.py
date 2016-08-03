@@ -24,7 +24,14 @@ from tools.pyqtgraphmod.SpinBox import SpinBox
 
 
 class ScienDSpinBox(SpinBox):
-    """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific way. """
+    """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific 
+        way. 
+
+    This class can be directly used in Qt Designer by promoting the 
+    QDoubleSpinBox to ScienDSpinBox. State the path to this file (in python 
+    style, i.e. dots are separating the directories) as the header file and use
+    the name of the present class.
+    """
 
     def __init__(self, *args, **kwargs):
         SpinBox.__init__(
@@ -41,7 +48,13 @@ class ScienDSpinBox(SpinBox):
         )
 
 class ScienSpinBox(SpinBox):
-    """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way. """
+    """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way. 
+    
+    This class can be directly used in Qt Designer by promoting the 
+    QSpinBox to ScienSpinBox. State the path to this file (in python style, 
+    i.e. dots are separating the directories) as the header file and use the 
+    name of the present class.
+    """
 
     def __init__(self, *args, **kwargs):
         SpinBox.__init__(self,
