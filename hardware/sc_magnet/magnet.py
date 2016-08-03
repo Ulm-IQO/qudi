@@ -100,7 +100,7 @@ class Magnet(Base, MagnetInterface):
         if 'magnet_IP_address_y' in config.keys():
             self.soc_y.connect((config['magnet_IP_address_y'], port))
         else:
-            self.log.('No ip-address for connection to y-coil defined!')
+            self.log.error('No ip-address for connection to y-coil defined!')
             return -1
 
         if 'magnet_IP_address_z' in config.keys():
