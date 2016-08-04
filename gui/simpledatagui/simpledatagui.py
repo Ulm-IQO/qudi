@@ -20,11 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
+from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
 from collections import OrderedDict
 import numpy as np
-import pyqtgraph as pg
 import os
 
 
@@ -95,12 +95,13 @@ class SimpleDataGui(GUIBase):
 
         self.curvearr = []
         self.smootharr = []
+        colorlist = (palette.c1, palette.c2, palette.c3, palette.c4, palette.c5, palette.c6)
         ## Create an empty plot curve to be filled later, set its pen
         for i in range(self._simple_logic._data_logic.getChannels()):
             self.curvearr.append(self.plot1.plot())
-            self.curvearr[-1].setPen('g')
+            self.curvearr[-1].setPen(colorlist[(2*i)%len(colorlist)])
             self.smootharr.append(self.plot2.plot())
-            self.smootharr[-1].setPen('r', width=2)
+            self.smootharr[-1].setPen(colorlist[(2*i+1)%len(colorlist)], width=2)
 
         # make correct button state
         self._mw.startAction.setChecked(False)

@@ -20,8 +20,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtGui, uic
+from gui.colordefs import QudiPalettePale as palette
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, uic
 import os
 
 
@@ -116,7 +117,7 @@ class SpectrometerGui(GUIBase):
 
         # Create an empty plot curve to be filled later, set its pen
         self._curve1 = self._pw.plot()
-        self._curve1.setPen({'color': '0F0', 'width': 2})
+        self._curve1.setPen(palette.c2, width=2)
 
         self._save_PNG = True
 

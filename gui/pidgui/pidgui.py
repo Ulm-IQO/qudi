@@ -28,7 +28,6 @@ import numpy as np
 import pyqtgraph as pg
 import os
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 class PIDMainWindow(QtGui.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -64,7 +63,6 @@ class PIDGui(GUIBase):
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
-
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
@@ -158,21 +156,23 @@ class PIDGui(GUIBase):
         self._mw.D_DoubleSpinBox.setValue(self._pid_logic.get_kd())
         self._mw.setpointDoubleSpinBox.setValue(self._pid_logic.get_setpoint())
         self._mw.manualDoubleSpinBox.setValue(self._pid_logic.get_manual_value())
+        self._mw.pidEnabledCheckBox.setChecked(self._pid_logic._controller.get_enabled())
 
         # make correct button state
-        self._mw.start_control_Action.setChecked(self._pid_logic.get_enabled() or self._pid_logic.countdown >= 0)
+        self._mw.start_control_Action.setChecked(self._pid_logic.get_enabled())
 
         #####################
         # Connecting user interactions
         self._mw.start_control_Action.triggered.connect(self.start_clicked)
         self._mw.record_control_Action.triggered.connect(self.save_clicked)
 
-        self._mw.P_DoubleSpinBox.valueChanged.connect(self.kPChanged)
-        self._mw.I_DoubleSpinBox.valueChanged.connect(self.kIChanged)
-        self._mw.D_DoubleSpinBox.valueChanged.connect(self.kDChanged)
+        self._mw.P_DoubleSpinBox.valueChanged.connect(self.kpChanged)
+        self._mw.I_DoubleSpinBox.valueChanged.connect(self.kiChanged)
+        self._mw.D_DoubleSpinBox.valueChanged.connect(self.kdChanged)
 
-        self._mw.setpointDoubleSpinBox.valueChanged.connect(self._pid_logic.set_setpoint)
-        self._mw.manualDoubleSpinBox.valueChanged.connect(self._pid_logic.set_manual_value)
+        self._mw.setpointDoubleSpinBox.valueChanged.connect(self.setpointChanged)
+        self._mw.manualDoubleSpinBox.valueChanged.connect(self.manualValueChanged)
+        self._mw.pidEnabledCheckBox.toggled.connect(self.pidEnabledChanged)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -182,7 +182,7 @@ class PIDGui(GUIBase):
         self.sigStart.connect(self._pid_logic.startLoop)
         self.sigStop.connect(self._pid_logic.stopLoop)
 
-        self._pid_logic.sigNewValue.connect(self.updateData)
+        self._pid_logic.sigUpdateDisplay.connect(self.updateData)
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -200,7 +200,7 @@ class PIDGui(GUIBase):
         # FIXME: !
         self._mw.close()
 
-    def updateData(self, value):
+    def updateData(self):
         """ The function that grabs the data and sends it to the plot.
         """
 
@@ -217,9 +217,13 @@ class PIDGui(GUIBase):
                 '<font color={}>{:,.3f}</font>'.format(
                 palette.c2.name(),
                 self._pid_logic.history[2, -1]))
-            self._mw.labelkP.setText('{0:,.6f}'.format(self._pid_logic.P))
-            self._mw.labelkI.setText('{0:,.6f}'.format(self._pid_logic.I))
-            self._mw.labelkD.setText('{0:,.6f}'.format(self._pid_logic.D))
+            extra = self._pid_logic._controller.get_extra()
+            if 'P' in extra:
+                self._mw.labelkP.setText('{0:,.6f}'.format(extra['P']))
+            if 'I' in extra:
+                self._mw.labelkI.setText('{0:,.6f}'.format(extra['I']))
+            if 'D' in extra:
+                self._mw.labelkD.setText('{0:,.6f}'.format(extra['D']))
             self._curve1.setData(
                 y=self._pid_logic.history[0],
                 x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
@@ -238,7 +242,7 @@ class PIDGui(GUIBase):
         else:
             self._mw.record_control_Action.setText('Start Saving Data')
 
-        if self._pid_logic.enable:
+        if self._pid_logic.get_enabled():
             self._mw.start_control_Action.setText('Stop')
         else:
             self._mw.start_control_Action.setText('Start')
@@ -255,7 +259,7 @@ class PIDGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._pid_logic.enable:
+        if self._pid_logic.get_enabled():
             self._mw.start_control_Action.setText('Start')
             self.sigStop.emit()
         else:
@@ -272,15 +276,6 @@ class PIDGui(GUIBase):
             self._mw.record_counts_Action.setText('Save')
             self._pid_logic.startSaving()
 
-    def kPChanged(self):
-        self._pid_logic.set_kp(self._mw.P_DoubleSpinBox.value())
-
-    def kIChanged(self):
-        self._pid_logic.set_ki(self._mw.I_DoubleSpinBox.value())
-
-    def kDChanged(self):
-        self._pid_logic.set_kd(self._mw.D_DoubleSpinBox.value())
-
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
         """
@@ -295,3 +290,21 @@ class PIDGui(GUIBase):
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.pid_trace_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.pid_parameters_DockWidget)
+
+    def kpChanged(self):
+        self._pid_logic.set_kp(self._mw.P_DoubleSpinBox.value())
+
+    def kiChanged(self):
+        self._pid_logic.set_ki(self._mw.I_DoubleSpinBox.value())
+
+    def kdChanged(self):
+        self._pid_logic.set_kd(self._mw.D_DoubleSpinBox.value())
+
+    def setpointChanged(self):
+        self._pid_logic.set_setpoint(self._mw.setpointDoubleSpinBox.value())
+
+    def manualValueChanged(self):
+        self._pid_logic.set_manual_value(self._mw.manualDoubleSpinBox.value())
+
+    def pidEnabledChanged(self, state):
+        self._pid_logic._controller.set_enabled(state)
