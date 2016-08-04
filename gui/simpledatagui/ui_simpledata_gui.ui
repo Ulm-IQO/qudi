@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>791</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -58,7 +58,7 @@
     <string>Controls</string>
    </property>
    <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonTextUnderIcon</enum>
+    <enum>Qt::ToolButtonTextBesideIcon</enum>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
@@ -107,7 +107,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Display</string>
+    <string>&amp;Display</string>
    </property>
    <property name="toolTip">
     <string>Show the Data display</string>
@@ -119,7 +119,7 @@
      <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
-    <string>Close</string>
+    <string>&amp;Close</string>
    </property>
   </action>
  </widget>
