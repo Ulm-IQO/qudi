@@ -149,11 +149,6 @@ class ODMRGui(GUIBase):
             pen=pg.mkPen(palette.c2)
         )
 
-        # set the prefix, which determines the representation in the viewboxes
-        # for the frequencies,  one can choose from the dict obtainable from
-        # units.get_unit_prefix_dict():
-        self._freq_prefix = 'M'
-
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.odmr_PlotWidget.addItem(self.odmr_image)
@@ -211,9 +206,15 @@ class ODMRGui(GUIBase):
         # Take the default values from logic:
         self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.mw_frequency)
         self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start)
+
         self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step)
+        self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0) # set the minimal step to 1Hz.
+
         self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop)
+
         self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.mw_power)
+        self._mw.power_DoubleSpinBox.setOpts(minStep=0.1)
+
         self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
 
@@ -270,7 +271,7 @@ class ODMRGui(GUIBase):
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
         self._odmr_logic.sigOdmrElapsedTimeChanged.connect(self.refresh_elapsedtime)
         # connect settings signals
-        self._mw.action_Settings.triggered.connect(self.menue_settings)
+        self._mw.action_Settings.triggered.connect(self.menu_settings)
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.reject_settings)
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
@@ -282,6 +283,10 @@ class ODMRGui(GUIBase):
         self._mw.fit_methods_ComboBox.activated[str].connect(self.update_fit_variable)
         # Push Buttons
         self._mw.do_fit_PushButton.clicked.connect(self.update_fit)
+
+        # let the gui react on the signals from the GUI
+        self._odmr_logic.sigMicrowaveCWModeChanged.connect(self.update_cw_display)
+        self._odmr_logic.sigMicrowaveListModeChanged.connect(self.update_run_stop_display)
 
         # Show the Main ODMR GUI:
         self._mw.show()
@@ -323,6 +328,42 @@ class ODMRGui(GUIBase):
             # scan is running:
             self._mw.clear_odmr_PushButton.setEnabled(False)
 
+    def update_cw_display(self, cw_on):
+        """ Update the display for the cw state of the microwave.
+
+        @param bool cw_on: for True the mw on display will be shown, otherwise
+                           mw off will be displayed.
+        """
+
+        if cw_on:
+            # # prevent any triggering, which results from changing the state of
+            # # the combobox:
+            # self._mw.mode_ComboBox.blockSignals(True)
+            text = 'CW'
+        else:
+            text = 'Off'
+
+        index = self._mw.mode_ComboBox.findText(text, QtCore.Qt.MatchFixedString)
+        if index >= 0:
+            self._mw.mode_ComboBox.setCurrentIndex(index)
+        else:
+            self.logMsg('No proper state to display was found in the combobox!',
+                        msgType='warning')
+
+    def update_run_stop_display(self, run_odmr):
+        """ Update the display for the odmr measurement.
+
+        @param bool run_odmr: True indicates that the measurement is running and
+                              False that it is stopped.
+        """
+
+        if run_odmr:
+            self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.clear_odmr_PushButton.setEnabled(True)
+        else:
+            self._mw.action_resume_odmr.setEnabled(True)
+            self._mw.clear_odmr_PushButton.setEnabled(False)
+
     def resume_odmr(self, is_checked):
         if is_checked:
             self._odmr_logic.stop_odmr_scan()
@@ -348,8 +389,8 @@ class ODMRGui(GUIBase):
         """ Clear the ODMR plots. """
         self._odmr_logic.clear_odmr_plots()
 
-    def menue_settings(self):
-        """ Open the settings menue """
+    def menu_settings(self):
+        """ Open the settings menu """
         self._sd.exec_()
 
     def refresh_plot(self):

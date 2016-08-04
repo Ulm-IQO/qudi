@@ -49,7 +49,7 @@
      <x>0</x>
      <y>0</y>
      <width>888</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -85,6 +85,8 @@
    </attribute>
    <addaction name="actionStart_scan"/>
    <addaction name="actionStop_resume_scan"/>
+   <addaction name="separator"/>
+   <addaction name="actionSave_histogram"/>
   </widget>
   <widget class="QDockWidget" name="scanParametersDockWidget">
    <property name="windowTitle">

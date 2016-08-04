@@ -25,9 +25,11 @@ import numpy as np
 from collections import OrderedDict
 
 from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
+from gui.colordefs import QudiPalette as palettedark
 from core.util import units
+import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, uic
-from pyqtgraph import PlotCurveItem
 
 
 class GatedCounterMainWindow(QtGui.QMainWindow):
@@ -92,19 +94,19 @@ class GatedCounterGui(GUIBase):
 
         # Create an empty plot curve to be filled later, set its pen
         self._trace1 = self._gp.plot()
-        self._trace1.setPen('g')
+        self._trace1.setPen(palette.c1)
 
         self._hp = self._mw.histogram_PlotWidget
         self._hp.setLabel('left', 'Occurrences', units='#')
         self._hp.setLabel('bottom', 'Counts', units='counts/s')
 
-        self._histoplot1 = PlotCurveItem()
-        self._hp.addItem(self._histoplot1, pen='r')
-        self._histoplot1.setPen((37, 87, 238, 255))
+        self._histoplot1 = pg.PlotCurveItem()
+        self._histoplot1.setPen(palette.c1)
+        self._hp.addItem(self._histoplot1)
 
 
         # Configure the fit of the data in the main pulse analysis display:
-        self._fit_image = PlotCurveItem()
+        self._fit_image = pg.PlotCurveItem()
         self._hp.addItem(self._fit_image)
 
         # setting the x axis length correctly
@@ -254,7 +256,7 @@ class GatedCounterGui(GUIBase):
         self._histoplot1.setData(x=self._trace_analysis.hist_data[0],
                                  y=self._trace_analysis.hist_data[1],
                                  stepMode=True, fillLevel=0,
-                                 brush=(0, 0, 208, 180))
+                                 brush=palettedark.c1)
 
     def num_bins_changed(self, num_bins):
         """
@@ -279,7 +281,7 @@ class GatedCounterGui(GUIBase):
 
         fit_x, fit_y, fit_param_dict, fit_result = self._trace_analysis.do_fit(fit_function=current_fit_function)
 
-        self._fit_image.setData(x=fit_x, y=fit_y, pen='r')
+        self._fit_image.setData(x=fit_x, y=fit_y, pen=pg.mkPen(palette.c2, width=2))
 
         if len(fit_param_dict) == 0:
             fit_result = 'No Fit parameter passed.'
