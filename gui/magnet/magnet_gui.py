@@ -31,6 +31,9 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from core.util.units import get_unit_prefix_dict
+from tools.scientific_spinbox import ScienSpinBox
+from tools.scientific_spinbox import ScienDSpinBox
+
 
 class MagnetMainWindow(QtGui.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -96,35 +99,6 @@ class MagnetGui(GUIBase):
         self._mw = MagnetMainWindow()
 
         config = self.getConfiguration()
-
-        # set the prefix, which determines the representation in the viewboxes
-        # for the linear translations. It can be chosen from the dict obtainable
-        # from get_unit_prefix_dict():
-        self._lin_trans_unit_prefix = 'm'
-        if 'lin_trans_unit_prefix' in config.keys():
-
-            if config['lin_trans_unit_prefix'] in get_unit_prefix_dict():
-                self._lin_trans_unit_prefix = config['lin_trans_unit_prefix']
-            else:
-                self.log.warning('The parameter "lin_trans_unit_prefix" is '
-                        'either not specified in the config or the unit '
-                        'prefix is not in the get_unit_prefix_dict() '
-                        'dictionary! Take the default prefix "{0}" '
-                        'instead.'.format(self._lin_trans_unit_prefix))
-
-        # the rotation representation should be normal, therefore it is not
-        # specified.
-        self._rot_trans_unit_prefix = ''
-        if 'rot_trans_unit_prefix' in config.keys():
-
-            if config['rot_trans_unit_prefix'] in get_unit_prefix_dict():
-                self._rot_trans_unit_prefix = config['rot_trans_unit_prefix']
-            else:
-                self.log.warning('The parameter "rot_trans_unit_prefix" is '
-                        'either not specified in the config or the unit '
-                        'prefix is not in the get_unit_prefix_dict() '
-                        'dictionary! Take the default prefix "{0}" '
-                        'instead.'.format(self._rot_trans_unit_prefix))
 
         # create all the needed control elements. They will manage the
         # connection with each other themselves. Note some buttons are also
@@ -367,12 +341,12 @@ class MagnetGui(GUIBase):
 
         The generic variable name for a created QLable is:
             curr_pos_axis{0}_Label
-        The generic variable name for a created QDoubleSpinBox is:
-            curr_pos_axis{0}_DoubleSpinBox
+        The generic variable name for a created ScienDSpinBox is:
+            curr_pos_axis{0}_ScienDSpinBox
         where in {0} the name of the axis will be inserted.
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_curr_pos_DoubleSpinBox with the appropriated
+        Use the method get_ref_curr_pos_ScienDSpinBox with the appropriated
         label, otherwise you will break the generality.
         """
 
@@ -388,21 +362,15 @@ class MagnetGui(GUIBase):
             label_var = getattr(self._mw, label_var_name)
             label_var.setObjectName(label_var_name)
 
-            if constraints[axis_label]['unit'] == 'm':
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._lin_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-            else:
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._rot_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
+            label_var.setText('{0}'.format(axis_label))
 
             self._mw.curr_pos_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the current position display
-            dspinbox_ref_name = 'curr_pos_axis{0}_DoubleSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.curr_pos_DockWidgetContents))
+            dspinbox_ref_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(axis_label)
+
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(self._mw.curr_pos_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
             dspinbox_ref.setReadOnly(True)
@@ -411,18 +379,13 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMinimum(-np.inf)
             #TODO: set the decimals also from the constraints or make them
             #      setable in the settings window!
+
             dspinbox_ref.setDecimals(3)
-
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
+            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step'])
 
             self._mw.curr_pos_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
-        extension =  len(constraints)
+        extension = len(constraints)
         self._mw.curr_pos_GridLayout.addWidget(self._mw.curr_pos_get_pos_PushButton, 0, 2, extension, 1)
         self._mw.curr_pos_GridLayout.addWidget(self._mw.curr_pos_stop_PushButton, 0, 3, extension, 1)
         self._mw.curr_pos_get_pos_PushButton.clicked.connect(self.update_pos)
@@ -433,15 +396,15 @@ class MagnetGui(GUIBase):
 
         The generic variable name for a created QLable is:
             move_rel_axis_{0}_Label
-        The generic variable name for a created QDoubleSpinBox is:
-            move_rel_axis_{0}_DoubleSpinBox
+        The generic variable name for a created ScienDSpinBox is:
+            move_rel_axis_{0}_ScienDSpinBox
         The generic variable name for a created QPushButton in negative dir is:
             move_rel_axis_{0}_m_PushButton
         The generic variable name for a created QPushButton in positive dir is:
             move_rel_axis_{0}_p_PushButton
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_move_rel_DoubleSpinBox with the appropriated
+        Use the method get_ref_move_rel_ScienDSpinBox with the appropriated
         label, otherwise you will break the generality.
         """
 
@@ -456,36 +419,24 @@ class MagnetGui(GUIBase):
             # set axis_label for the label:
             label_var.setObjectName(label_var_name)
 
-            if constraints[axis_label]['unit'] == 'm':
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._lin_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-            else:
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._rot_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
+            label_var.setText('{0}'.format(axis_label))
 
             # add the label to the grid:
             self._mw.move_rel_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.move_rel_DockWidgetContents))
+            dspinbox_ref_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(axis_label)
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(self._mw.move_rel_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
-            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
+            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
+            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
             #TODO: set the decimals also from the constraints!
             dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
+            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step'])
             self._mw.move_rel_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
 
@@ -525,19 +476,19 @@ class MagnetGui(GUIBase):
             move_abs_axis_{0}_Label
         The generic variable name for a created QLable is:
             move_abs_axis_{0}_Slider
-        The generic variable name for a created QDoubleSpinBox is:
-            move_abs_axis_{0}_DoubleSpinBox
+        The generic variable name for a created ScienDSpinBox is:
+            move_abs_axis_{0}_ScienDSpinBox
         The generic variable name for a created QPushButton for move is:
             move_abs_PushButton
 
         These methods should not be called:
-        The generic variable name for a update method for the QDoubleSpinBox:
+        The generic variable name for a update method for the ScienDSpinBox:
             _update_move_abs_{0}_dspinbox
         The generic variable name for a update method for the QSlider:
             _update_move_abs_{0}_slider
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_move_abs_DoubleSpinBox with the appropriated
+        Use the method get_ref_move_abs_ScienDSpinBox with the appropriated
         label, otherwise you will break the generality.
         """
 
@@ -551,21 +502,13 @@ class MagnetGui(GUIBase):
             # set axis_label for the label:
             label_var.setObjectName(label_var_name)
 
-            if constraints[axis_label]['unit'] == 'm':
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._lin_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-                smallest_step_slider = 1e-9
-            else:
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._rot_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-                smallest_step_slider = 1e-6
+            # make the steps of the splider as a multiple of 10
+            smallest_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
 
             # add the label to the grid:
             self._mw.move_abs_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
             slider_obj_name = 'move_abs_axis_{0}_Slider'.format(axis_label)
             setattr(self._mw, slider_obj_name, QtGui.QSlider(self._mw.move_abs_DockWidgetContents))
@@ -591,24 +534,19 @@ class MagnetGui(GUIBase):
 
             self._mw.move_abs_GridLayout.addWidget(slider_obj, index, 1, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_abs_axis_{0}_DoubleSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.move_abs_DockWidgetContents))
+            dspinbox_ref_name = 'move_abs_axis_{0}_ScienDSpinBox'.format(axis_label)
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(self._mw.move_abs_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
-            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
+            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
+            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
             #TODO: set the decimals also from the constraints!
             dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
+            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step'])
             self._mw.move_abs_GridLayout.addWidget(dspinbox_ref, index, 2, 1, 1)
 
             # build a function to change the dspinbox value and connect a
@@ -693,14 +631,10 @@ class MagnetGui(GUIBase):
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-                max_step_slider = 1e-9
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-                max_step_slider = 1e-6
-            actual_pos = (constraints[axis_label]['pos_min']+ slider_val * max_step_slider)
-            ref_dspinbox.setValue(actual_pos/norm)
+            max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+
+            actual_pos = (constraints[axis_label]['pos_min'] + slider_val * max_step_slider)
+            ref_dspinbox.setValue(actual_pos)
 
         func_dummy_name.__name__ = func_name
         return func_dummy_name
@@ -736,7 +670,7 @@ class MagnetGui(GUIBase):
                                         pos_min + slider_step*pos_step
             """
 
-            dspinbox_obj = self.get_ref_move_abs_DoubleSpinBox(axis_label)
+            dspinbox_obj = self.get_ref_move_abs_ScienDSpinBox(axis_label)
             viewbox_val = dspinbox_obj.value()
 
             constraints = self._magnet_logic.get_hardware_constraints()
@@ -744,14 +678,9 @@ class MagnetGui(GUIBase):
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-                max_step_slider = 1e-9
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-                max_step_slider = 1e-6
+            max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
 
-            slider_val = abs(viewbox_val*norm - constraints[axis_label]['pos_min'])/max_step_slider
+            slider_val = abs(viewbox_val - constraints[axis_label]['pos_min'])/max_step_slider
             ref_slider.setValue(slider_val)
 
         func_dummy_name.__name__ = func_name
@@ -772,14 +701,9 @@ class MagnetGui(GUIBase):
         move_rel_axis_{0}_m with the appropriate label).
         """
         constraints = self._magnet_logic.get_hardware_constraints()
-        dspinbox = self.get_ref_move_rel_DoubleSpinBox(axis_label)
+        dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
 
-        if constraints[axis_label]['unit'] == 'm':
-            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-        else:
-            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-        movement = dspinbox.value()*norm * direction
+        movement = dspinbox.value() * direction
 
         self._magnet_logic.move_rel({axis_label: movement})
         # if self._interactive_mode:
@@ -798,15 +722,11 @@ class MagnetGui(GUIBase):
             self._magnet_logic.move_abs(param_dict)
         else:
             constraints = self._magnet_logic.get_hardware_constraints()
+
+            # create the move_abs dict
             move_abs = {}
             for label in constraints:
-
-                if constraints[label]['unit'] == 'm':
-                    norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-                else:
-                    norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-                move_abs[label] = self.get_ref_move_abs_DoubleSpinBox(label).value()*norm
+                move_abs[label] = self.get_ref_move_abs_ScienDSpinBox(label).value()
 
             self._magnet_logic.move_abs(move_abs)
 
@@ -814,24 +734,24 @@ class MagnetGui(GUIBase):
         #     self.update_pos()
 
 
-    def get_ref_curr_pos_DoubleSpinBox(self, label):
+    def get_ref_curr_pos_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'curr_pos_axis{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
-    def get_ref_move_rel_DoubleSpinBox(self, label):
+    def get_ref_move_rel_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
-    def get_ref_move_abs_DoubleSpinBox(self, label):
+    def get_ref_move_abs_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'move_abs_axis_{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'move_abs_axis_{0}_ScienDSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
@@ -882,18 +802,13 @@ class MagnetGui(GUIBase):
 
         for axis_label in curr_pos:
             # update the values of the current position viewboxes:
-            dspinbox_pos_ref = self.get_ref_curr_pos_DoubleSpinBox(axis_label)
+            dspinbox_pos_ref = self.get_ref_curr_pos_ScienDSpinBox(axis_label)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-            dspinbox_pos_ref.setValue(curr_pos[axis_label]/norm)
+            dspinbox_pos_ref.setValue(curr_pos[axis_label])
 
             # update the values also of the absolute movement display:
-            dspinbox_move_abs_ref = self.get_ref_move_abs_DoubleSpinBox(axis_label)
-            dspinbox_move_abs_ref.setValue(curr_pos[axis_label]/norm)
+            dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
+            dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
 
     def start_2d_alignment_clicked(self):
@@ -952,20 +867,12 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
 
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
-        if constraints[axis0_name]['unit'] == 'm':
-            norm1 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-        else:
-            norm1 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-        axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()*norm1
-        axis0_step =  self._mw.align_2d_axes0_step_DSpinBox.value()*norm1
+        axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()
+        axis0_step = self._mw.align_2d_axes0_step_DSpinBox.value()
 
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
-        if constraints[axis1_name]['unit'] == 'm':
-            norm2 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-        else:
-            norm2 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-        axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()*norm2
-        axis1_step =  self._mw.align_2d_axes1_step_DSpinBox.value()*norm2
+        axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()
+        axis1_step = self._mw.align_2d_axes1_step_DSpinBox.value()
 
         if axis0_name == axis1_name:
             self.log.error('Fluorescence Alignment cannot be started since the '
@@ -976,12 +883,12 @@ class MagnetGui(GUIBase):
             return
 
         if self._mw.align_2d_axis0_set_vel_CheckBox.isChecked():
-            axis0_vel = self._mw.align_2d_axes0_vel_DSpinBox.value()*norm1
+            axis0_vel = self._mw.align_2d_axes0_vel_DSpinBox.value()
         else:
             axis0_vel = None
 
         if self._mw.align_2d_axis1_set_vel_CheckBox.isChecked():
-            axis1_vel = self._mw.align_2d_axes1_vel_DSpinBox.value()*norm2
+            axis1_vel = self._mw.align_2d_axes1_vel_DSpinBox.value()
         else:
             axis1_vel = None
 
@@ -1019,25 +926,15 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
 
-        if constraints[axis0_name]['unit'] == 'm':
-            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
-                                                 constraints[axis0_name]['unit'])
-        else:
-            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
-                                                 constraints[axis0_name]['unit'])
-
         # set the label text properly:
-        self._mw.align_2d_axes0_range_Label.setText('Range '+unit_text)
-        self._mw.align_2d_axes0_step_Label.setText('Step '+unit_text)
-        vel_unit = unit_text[:-1] + '/s)'
-        self._mw.align_2d_axis0_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
+        self._mw.align_2d_axes0_range_Label.setText('Range')
+        self._mw.align_2d_axes0_step_Label.setText('Step')
+        self._mw.align_2d_axis0_set_vel_CheckBox.setText('Set Velocity?')
 
         # set the range constraints:
         self._mw.align_2d_axes0_range_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
-        self._mw.align_2d_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
+        self._mw.align_2d_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
+        self._mw.align_2d_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
         # FIXME: obtain the decimals correctly:
         # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
         self._mw.align_2d_axes0_range_DSpinBox.setDecimals(3)
@@ -1045,14 +942,14 @@ class MagnetGui(GUIBase):
 
         # set the step constraints:
         self._mw.align_2d_axes0_step_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
-        self._mw.align_2d_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
+        self._mw.align_2d_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
+        self._mw.align_2d_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
         self._mw.align_2d_axes0_step_DSpinBox.setDecimals(3)
 
         # set the velocity constraints:
-        self._mw.align_2d_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min']/norm)
-        self._mw.align_2d_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max']/norm)
-        self._mw.align_2d_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step']/norm)
+        self._mw.align_2d_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min'])
+        self._mw.align_2d_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max'])
+        self._mw.align_2d_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step'])
 
     def _update_limits_axis1(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
@@ -1062,36 +959,26 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
 
-        if constraints[axis1_name]['unit'] == 'm':
-            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
-                                                 constraints[axis1_name]['unit'])
-        else:
-            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
-                                                 constraints[axis1_name]['unit'])
-
         # set the label text properly:
-        self._mw.align_2d_axes1_range_Label.setText('Range '+unit_text)
-        self._mw.align_2d_axes1_step_Label.setText('Step '+unit_text)
-        vel_unit = unit_text[:-1] + '/s)'
-        self._mw.align_2d_axis1_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
+        self._mw.align_2d_axes1_range_Label.setText('Range')
+        self._mw.align_2d_axes1_step_Label.setText('Step')
+        self._mw.align_2d_axis1_set_vel_CheckBox.setText('Set Velocity?')
 
         self._mw.align_2d_axes1_range_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
-        self._mw.align_2d_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
+        self._mw.align_2d_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
+        self._mw.align_2d_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
         # FIXME: obtain the decimals correctly:
         # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
         self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
 
         self._mw.align_2d_axes1_step_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
-        self._mw.align_2d_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
+        self._mw.align_2d_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
+        self._mw.align_2d_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
         self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
 
-        self._mw.align_2d_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min']/norm)
-        self._mw.align_2d_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max']/norm)
-        self._mw.align_2d_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step']/norm)
+        self._mw.align_2d_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min'])
+        self._mw.align_2d_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max'])
+        self._mw.align_2d_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step'])
 
     def _set_vel_display_axis0(self):
         """ Set the visibility of the velocity display for axis 0. """
