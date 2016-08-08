@@ -81,10 +81,9 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         def ignore_aliases(self, data):
             """
-            A bug fixed version of the original to allow the use of ndarrays
+            ignore aliases and anchors
             """
-            if data is None or data is ():
-                return True
+            return True
 
     def ordereddict_representer(dumper, data):
         """
@@ -98,13 +97,13 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         Representer for numpy int dtypes
         """
-        return dumper.represent_int(data)
+        return dumper.represent_int(numpy.asscalar(data))
 
     def float_representer(dumper, data):
         """
         Representer for numpy float dtypes
         """
-        return dumper.represent_float(data)
+        return dumper.represent_float(numpy.asscalar(data))
 
     def ndarray_representer(dumper, data):
         """
