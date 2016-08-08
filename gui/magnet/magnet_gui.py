@@ -358,30 +358,31 @@ class MagnetGui(GUIBase):
             # Set the QLabel according to the grid
             # this is the name prototype for the label of current position display
             label_var_name = 'curr_pos_axis{0}_Label'.format(axis_label)
+
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.curr_pos_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name)
             label_var.setObjectName(label_var_name)
-
             label_var.setText('{0}'.format(axis_label))
-
             self._mw.curr_pos_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
             # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the current position display
             dspinbox_ref_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(axis_label)
 
-            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(self._mw.curr_pos_DockWidgetContents))
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.curr_pos_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
             dspinbox_ref.setReadOnly(True)
             dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
             dspinbox_ref.setMaximum(np.inf)
             dspinbox_ref.setMinimum(-np.inf)
-            #TODO: set the decimals also from the constraints or make them
-            #      setable in the settings window!
 
-            dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step'])
+            # in the ScienDSpinBox the decimals are actually the number of
+            # significant digits, therefore set them here by default:
+            dspinbox_ref.setDecimals(5)
+            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001)
+            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
             self._mw.curr_pos_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
@@ -416,27 +417,29 @@ class MagnetGui(GUIBase):
             label_var_name = 'move_rel_axis_{0}_Label'.format(axis_label)
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_rel_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
-            # set axis_label for the label:
-            label_var.setObjectName(label_var_name)
-
+            label_var.setObjectName(label_var_name) # set axis_label for the label
             label_var.setText('{0}'.format(axis_label))
-
             # add the label to the grid:
             self._mw.move_rel_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
             # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
             dspinbox_ref_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(self._mw.move_rel_DockWidgetContents))
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.move_rel_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
-            #TODO: set the decimals also from the constraints!
-            dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step'])
+
+            # in the ScienDSpinBox the decimals are actually the number of
+            # significant digits, therefore set them here by default:
+            dspinbox_ref.setDecimals(5)
+            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001)
+            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
+
             self._mw.move_rel_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
 
@@ -503,7 +506,8 @@ class MagnetGui(GUIBase):
             label_var.setObjectName(label_var_name)
 
             # make the steps of the splider as a multiple of 10
-            smallest_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            # smallest_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            smallest_step_slider = constraints[axis_label]['pos_step']
 
             # add the label to the grid:
             self._mw.move_abs_GridLayout.addWidget(label_var, index, 0, 1, 1)
@@ -537,16 +541,21 @@ class MagnetGui(GUIBase):
             # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
             dspinbox_ref_name = 'move_abs_axis_{0}_ScienDSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(self._mw.move_abs_DockWidgetContents))
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.move_abs_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
-            #TODO: set the decimals also from the constraints!
-            dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step'])
+
+            # in the ScienDSpinBox the decimals are actually the number of
+            # significant digits, therefore set them here by default:
+            dspinbox_ref.setDecimals(5)
+            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001)
+            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
+
             self._mw.move_abs_GridLayout.addWidget(dspinbox_ref, index, 2, 1, 1)
 
             # build a function to change the dspinbox value and connect a
@@ -555,8 +564,6 @@ class MagnetGui(GUIBase):
             setattr(self, func_name, self._function_builder_update_viewbox(func_name, axis_label, dspinbox_ref))
             update_func_dspinbox_ref = getattr(self, func_name)
             slider_obj.valueChanged.connect(update_func_dspinbox_ref)
-
-
 
             # build a function to change the slider value and connect a
             # spinbox value change event to it:
@@ -631,7 +638,8 @@ class MagnetGui(GUIBase):
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
-            max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            # max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            max_step_slider = constraints[axis_label]['pos_step']
 
             actual_pos = (constraints[axis_label]['pos_min'] + slider_val * max_step_slider)
             ref_dspinbox.setValue(actual_pos)
@@ -678,7 +686,8 @@ class MagnetGui(GUIBase):
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
-            max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            # max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            max_step_slider = constraints[axis_label]['pos_step']
 
             slider_val = abs(viewbox_val - constraints[axis_label]['pos_min'])/max_step_slider
             ref_slider.setValue(slider_val)
@@ -769,10 +778,10 @@ class MagnetGui(GUIBase):
         self._magnet_logic.set_optimize_pos(state)
 
     def stop_movement(self):
-        """ Ivokes an immediate stop of the hardware.
+        """ Invokes an immediate stop of the hardware.
 
         MAKE SURE THAT THE HARDWARE CAN BE CALLED DURING AN ACTION!
-        If the parameter _interactive_modev is set to False no stop can be done
+        If the parameter _interactive_mode is set to False no stop can be done
         since the device would anyway not respond to a method call.
         """
 
@@ -789,7 +798,7 @@ class MagnetGui(GUIBase):
         @param dict param_dict: optional, if specific positions needed to be
                                 updated.
 
-        If no value is passed, the current possition is retrieved from the
+        If no value is passed, the current position is retrieved from the
         logic and the display is changed.
         """
         constraints = self._magnet_logic.get_hardware_constraints()
