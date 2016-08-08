@@ -55,7 +55,7 @@ class ODMRLogic(GenericLogic):
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
 
-    
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -352,7 +352,6 @@ class ODMRLogic(GenericLogic):
         """
         if self.stopRequested:
             with self.threadlock:
-                self._mw_device.set_cw(freq=self.mw_frequency, power=self.mw_power)
                 self.MW_off()
                 self.kill_odmr()
                 self.stopRequested = False
@@ -415,7 +414,6 @@ class ODMRLogic(GenericLogic):
         self.elapsed_time = time.time() - self._StartTime
         self.sigOdmrElapsedTimeChanged.emit()
         if self.elapsed_time >= self.run_time:
-            self.do_fit(fit_function=self.current_fit_function)
             self.stopRequested = True
             self.sigOdmrFinished.emit()
 
@@ -1151,7 +1149,7 @@ class ODMRLogic(GenericLogic):
 
         if save_after_meas:
             timestamp = datetime.datetime.now()
-            self.save_ODMR_Data(tag=name_tag, timestamp=timestamp)
+            self.save_ODMR_Data(tag=name_tag)
             meas_param['ODMR measurement saved at time'] = timestamp
 
         return meas_param

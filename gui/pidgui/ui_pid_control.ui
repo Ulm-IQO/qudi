@@ -436,7 +436,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <string>PID Controls</string>
    </property>
    <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonTextUnderIcon</enum>
+    <enum>Qt::ToolButtonTextBesideIcon</enum>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>

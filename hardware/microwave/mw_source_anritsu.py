@@ -223,7 +223,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         for f in freq[:-1]:
             s += ' {0:f},'.format(f)
         s += ' {0:f}'.format(freq[-1])
-        print(s)
+        # print(s)
         self._gpib_connection.write(':LIST:FREQ' + s)
         self._gpib_connection.write(':LIST:STAR 0')
         self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(freq)))
