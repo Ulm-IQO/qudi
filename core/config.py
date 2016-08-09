@@ -63,6 +63,28 @@ def ordered_load(stream, Loader=yaml.Loader):
             arrays = numpy.load(f)
             return arrays['array']
 
+    def construct_str(loader, node):
+        """
+        construct strings but if the string starts with 'array(' it tries
+        to evaluate it as numpy array.
+
+        TODO: This behaviour should be deprecated at some point.
+        """
+        value = loader.construct_yaml_str(node)
+        print(value)
+        if value.startswith('array('):
+            try:
+                local = {"array": numpy.array}
+                for dtype in ['int8', 'uint8', 'int16', 'uint16', 'float16',
+                        'int32', 'uint32', 'float32', 'int64', 'uint64',
+                        'float64']:
+                    local[dtype] = getattr(numpy, dtype)
+                return eval(value, local)
+            except SyntaxError:
+                return value
+        else:
+            return value
+
     # add constructor
     OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
@@ -70,6 +92,9 @@ def ordered_load(stream, Loader=yaml.Loader):
     OrderedLoader.add_constructor(
             '!ndarray',
             construct_ndarray)
+    OrderedLoader.add_constructor(
+            yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
+            construct_str)
 
     # load config file
     config = yaml.load(stream, OrderedLoader)
