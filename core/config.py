@@ -16,6 +16,7 @@ from collections import OrderedDict
 import numpy
 import re
 import yaml
+from io import BytesIO
 
 # this fixes a bug in PyYAML with scientific notation
 yaml.resolver.Resolver.add_implicit_resolver(
@@ -53,10 +54,22 @@ def ordered_load(stream, Loader=yaml.Loader):
         loader.flatten_mapping(node)
         return OrderedDict(loader.construct_pairs(node))
 
+    def construct_ndarray(loader, node):
+        """
+        The ndarray constructor.
+        """
+        value = loader.construct_yaml_binary(node)
+        with BytesIO(bytes(value)) as f:
+            arrays = numpy.load(f)
+            return arrays['array']
+
     # add constructor
     OrderedLoader.add_constructor(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-        construct_mapping)
+            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+            construct_mapping)
+    OrderedLoader.add_constructor(
+            '!ndarray',
+            construct_ndarray)
 
     # load config file
     config = yaml.load(stream, OrderedLoader)
@@ -109,7 +122,12 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         Representer for numpy ndarrays
         """
-        return dumper.represent_list(data.tolist())
+        with BytesIO() as f:
+            numpy.savez_compressed(f, array=data)
+            compressed_string = f.getvalue()
+        node = dumper.represent_binary(compressed_string)
+        node.tag = '!ndarray'
+        return node
 
     # add representers
     OrderedDumper.add_representer(OrderedDict, ordereddict_representer)
