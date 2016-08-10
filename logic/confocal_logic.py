@@ -276,7 +276,7 @@ class ConfocalLogic(GenericLogic):
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
         else:
-            self._clock_frequency = 1000.
+            self._clock_frequency = 500
         if 'return_slowness' in self._statusVariables:
             self.return_slowness = self._statusVariables['return_slowness']
         else:
