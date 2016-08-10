@@ -534,8 +534,6 @@ class WavemeterLoggerLogic(GenericLogic):
         ax2.set_xlim(ghz_min, ghz_max)
         ax2.set_xlabel('Shift (GHz)')
 
-        plt.show()
-
         return fig
 
     def nm_to_ghz(self, wavelength):
