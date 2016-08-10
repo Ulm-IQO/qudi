@@ -34,21 +34,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from collections import OrderedDict
 import numpy
 import re
-import yaml
+import ruamel.yaml as yaml
 from io import BytesIO
-
-# this fixes a bug in PyYAML with scientific notation
-yaml.resolver.Resolver.add_implicit_resolver(
-        'tag:yaml.org,2002:float',
-        re.compile(
-            r'''^(?:[-+]?(?:[0-9][0-9_]*)(?:\.[0-9_]*)?(?:[eE][-+]?[0-9]+)
-            |(?:[-+]?(?:[0-9][0-9_]*)\.[0-9_]*)
-            |\.[0-9_]+(?:[eE][-+]?[0-9]+)?
-            |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*
-            |[-+]?\.(?:inf|Inf|INF)
-            |\.(?:nan|NaN|NAN))$''', re.X),
-        list('-+0123456789.'))
-
 
 def ordered_load(stream, Loader=yaml.Loader):
     """
@@ -143,7 +130,7 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
             """
             return True
 
-    def ordereddict_representer(dumper, data):
+    def represent_ordereddict(dumper, data):
         """
         Representer for OrderedDict
         """
@@ -151,19 +138,19 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
             data.items())
 
-    def int_representer(dumper, data):
+    def represent_int(dumper, data):
         """
         Representer for numpy int dtypes
         """
         return dumper.represent_int(numpy.asscalar(data))
 
-    def float_representer(dumper, data):
+    def represent_float(dumper, data):
         """
         Representer for numpy float dtypes
         """
         return dumper.represent_float(numpy.asscalar(data))
 
-    def ndarray_representer(dumper, data):
+    def represent_ndarray(dumper, data):
         """
         Representer for numpy ndarrays
         """
@@ -175,20 +162,20 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         return node
 
     # add representers
-    OrderedDumper.add_representer(OrderedDict, ordereddict_representer)
-    OrderedDumper.add_representer(numpy.uint8, int_representer)
-    OrderedDumper.add_representer(numpy.uint16, int_representer)
-    OrderedDumper.add_representer(numpy.uint32, int_representer)
-    OrderedDumper.add_representer(numpy.uint64, int_representer)
-    OrderedDumper.add_representer(numpy.int8, int_representer)
-    OrderedDumper.add_representer(numpy.int16, int_representer)
-    OrderedDumper.add_representer(numpy.int32, int_representer)
-    OrderedDumper.add_representer(numpy.int64, int_representer)
-    OrderedDumper.add_representer(numpy.float16, float_representer)
-    OrderedDumper.add_representer(numpy.float32, float_representer)
-    OrderedDumper.add_representer(numpy.float64, float_representer)
-    OrderedDumper.add_representer(numpy.float128, float_representer)
-    OrderedDumper.add_representer(numpy.ndarray, ndarray_representer)
+    OrderedDumper.add_representer(OrderedDict, represent_ordereddict)
+    OrderedDumper.add_representer(numpy.uint8, represent_int)
+    OrderedDumper.add_representer(numpy.uint16, represent_int)
+    OrderedDumper.add_representer(numpy.uint32, represent_int)
+    OrderedDumper.add_representer(numpy.uint64, represent_int)
+    OrderedDumper.add_representer(numpy.int8, represent_int)
+    OrderedDumper.add_representer(numpy.int16, represent_int)
+    OrderedDumper.add_representer(numpy.int32, represent_int)
+    OrderedDumper.add_representer(numpy.int64, represent_int)
+    OrderedDumper.add_representer(numpy.float16, represent_float)
+    OrderedDumper.add_representer(numpy.float32, represent_float)
+    OrderedDumper.add_representer(numpy.float64, represent_float)
+    OrderedDumper.add_representer(numpy.float128, represent_float)
+    OrderedDumper.add_representer(numpy.ndarray, represent_ndarray)
 
     # dump data
     return yaml.dump(data, stream, OrderedDumper, **kwds)
