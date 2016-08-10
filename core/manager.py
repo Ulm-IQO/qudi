@@ -425,7 +425,6 @@ class Manager(QtCore.QObject):
         """
         saveconfig = OrderedDict()
         saveconfig.update(self.tree['defined'])
-        saveconfig['startup'] = self.tree['start']
         saveconfig['global'] = self.tree['global']
 
         self.writeConfigFile(saveconfig, filename)
