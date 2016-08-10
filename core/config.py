@@ -71,7 +71,6 @@ def ordered_load(stream, Loader=yaml.Loader):
         TODO: This behaviour should be deprecated at some point.
         """
         value = loader.construct_yaml_str(node)
-        print(value)
         if value.startswith('array('):
             try:
                 local = {"array": numpy.array}
