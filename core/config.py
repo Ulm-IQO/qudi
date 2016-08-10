@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Configuration file module.
+This file contains the Qudi configuration file module.
 
 A configuration file is saved in YAML format. This module provides a loader
 and a dumper using an OrderedDict instead of the regular dict used by PyYAML.
@@ -10,6 +11,24 @@ The fix of the scientific notation is applied globally at module import.
 
 The idea of the implementation of the OrderedDict was taken from
 http://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
+
+
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from collections import OrderedDict
@@ -71,6 +90,8 @@ def ordered_load(stream, Loader=yaml.Loader):
         TODO: This behaviour should be deprecated at some point.
         """
         value = loader.construct_yaml_str(node)
+        # if a string could be an array, we try to evaluate the string
+        # to reconstruct a numpy array. If it fails we return the string.
         if value.startswith('array('):
             try:
                 local = {"array": numpy.array}
