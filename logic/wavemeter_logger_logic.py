@@ -531,6 +531,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    as_text=True,
                                    plotfig=fig,
                                    precision=':.6f')
+        plt.close(fig)
         return 0
 
     def draw_figure(self):
