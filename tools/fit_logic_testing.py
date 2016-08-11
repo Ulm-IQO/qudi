@@ -201,318 +201,227 @@ class FitLogic():
             plt.plot(x,result.best_fit,'-r')
             plt.show()
 
+
         def N14_testing(self):
-            # x = np.linspace(2800, 2900, 51)
-            # x = np.linspace(2820, 2920, 1001)*1e6
-            x = np.linspace(2850, 2860, 101)*1e6
-
-            path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-07\2016-07-05 N14 fit fails\20160705-1203-10_n14_fit_fails_80MHz_span_ODMR_data.dat')
-            data = np.loadtxt(path)
-
-            x=data[:,0]
-            data_noisy = data[:,1]
-
-
-            mod, params = self.make_multiplelorentzian_model(no_of_lor=3)
-#            print('Parameters of the model',mod.param_names)
-
-#            data_smooth_lorentz, offset=self.find_offset_parameter(x, data)
-            data_smooth_lorentz, offset = self.find_offset_parameter(x, data_noisy)
-
-            #filter of one dip should always have a length of approx linewidth 1MHz
-            points_within_1MHz = len(x)/(x.max()-x.min()) * 1e6
-            # filter should have a width of 5MHz
-            x_filter = np.linspace(0, 5*points_within_1MHz, 5*points_within_1MHz)
-            lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
-                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
-                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
-                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
-                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
-
-            # if the filter is smaller than 5 points a convolution does not make sense
-            if len(lorentz) >= 5:
-                data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
-                x_axis_min = x[data_convolved.argmin()]-2.15*1e6
-            else:
-                x_axis_min = x[data_smooth_lorentz.argmin()]-2.15*1e6
-
-#            p.add('lorentz0_amplitude',value=-1e9)
-##            p.add('lorentz0_center',value=2850+abs(np.random.random(1)*8))
-#            p.add('lorentz0_center',value=2852*1e6)
-##            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)+0.5)
-#            p.add('lorentz0_sigma',value=1*1e6)
-#            p.add('lorentz1_amplitude',value=p['lorentz0_amplitude'].value)
-#            p.add('lorentz1_center',value=p['lorentz0_center'].value+2.15*1e6)
-#            p.add('lorentz1_sigma',value=p['lorentz0_sigma'].value)
-#            p.add('lorentz2_amplitude',value=p['lorentz0_amplitude'].value)
-#            p.add('lorentz2_center',value=p['lorentz1_center'].value+2.15*1e6)
-#            p.add('lorentz2_sigma',value=p['lorentz0_sigma'].value)
-#            p.add('c',value=15000.)
-
-            # level of the data, that means the offset is subtracted and the
-            # real data are present
-            data_level = data_smooth_lorentz - data_smooth_lorentz.mean()
-            minimum_level = data_level.min()
-
-
-            # plt.figure(1)
-#            plt.plot(x, data_smooth_lorentz)
-            plt.plot(x, data_level)
-            plt.show()
-
-            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-            function = InterpolatedUnivariateSpline(x, data_level, k=1)
-            integrated_area = function.integral(x[0], x[-1])
-
-#            lorentz0_sigma = abs(integrated_area /
-#                                 (np.pi * amplitude) )
-#
-#            lorentz0_amplitude = -1*abs(amplitude*np.pi*lorentz0_sigma)
-
-#            minimum_level = 36500
-
-            sigma = abs(integrated_area /(minimum_level/np.pi ) )
-#            sigma = 600000
-
-            amplitude = -1*abs(minimum_level*np.pi*sigma)
-#            amplitude = -3000000000
-
-#            amplitude = 1800
-            print('amplitude', amplitude, 'sigma', sigma)
-
-            # Since the total amplitude of the lorentzian is depending on sigma
-            # it makes sense to vary sigma within an interval, which is smaller
-            # than the minimal distance between two points. Then the fit
-            # algorithm will have a larger range to determine the amplitude
-            # properly. That is the main issue with the fit.
-            linewidth = sigma
-            minimal_linewidth = (x[1]-x[0])/4
-            maximal_linewidth = x[-1]-x[0]
-            print('minimal_linewidth',minimal_linewidth, 'maximal_linewidth', maximal_linewidth)
-
-
-            p = Parameters()
-
-                    #            (Name,                  Value,          Vary, Min,             Max,           Expr)
-            p.add('lorentz0_amplitude', value=amplitude,   vary=True,                                                max=-1e-6)
-            p.add('lorentz0_center',    value=x_axis_min)
-            p.add('lorentz0_sigma',     value=linewidth,                           min=minimal_linewidth, max=maximal_linewidth)
-            p.add('lorentz1_amplitude', value=p['lorentz0_amplitude'].value,    vary=True,                  max=-1e-6)
-            p.add('lorentz1_center',    value=p['lorentz0_center'].value+2.15*1e6,                                     expr='lorentz0_center+2.15*1e6')
-            p.add('lorentz1_sigma',     value=p['lorentz0_sigma'].value,   min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
-            p.add('lorentz2_amplitude', value=p['lorentz0_amplitude'].value,    vary=True,                  max=-1e-6)
-            p.add('lorentz2_center',    value=p['lorentz1_center'].value+2.15*1e6,                                      expr='lorentz0_center+4.3*1e6')
-            p.add('lorentz2_sigma',     value=p['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
-            p.add('c',                  value=np.mean(data_smooth_lorentz))
-
-
-            data_test = mod.eval(x=x,params=p)
-
-
-            # create a genera dictionary of dicts which each parameter name will
-            # be assigned to an attribute name:
-            param_dict = dict()
-            for single_param in p:
-                store_param = dict()
-                if p[single_param].min is not None:
-                    store_param['min'] = p[single_param].min
-                if p[single_param].min is not None:
-                    store_param['max'] = p[single_param].max
-                if p[single_param].min is not None:
-                    store_param['vary'] = p[single_param].vary
-                if p[single_param].min is not None:
-                    store_param['value'] = p[single_param].value
-                if p[single_param].min is not None:
-                    store_param['expr'] = p[single_param].expr
-
-                param_dict[single_param] = store_param
-
-            result2 = mod.fit(data_noisy,x=x, params=p)
-
-            result=self.make_N14_fit(x, data_noisy, param_dict)
-
-            print(result.fit_report())
-
-            data_smooth_lorentz, offset=self.find_offset_parameter(x,data_noisy)
-#
-            stepsize_in_x=len(x)/(x.max()-x.min())*1e6
-            print('stepsize_in_x',stepsize_in_x)
-            print('x.min()', x.min(),'x.max()', x.max())
-#            stepsize_in_x=
-
-#            lorentz = np.ones(int(stepsize_in_x)+1)
-            x_filter = np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
-            lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
-                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
-                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
-                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
-                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
-
-#            print(lorentz)
-#             plt.figure(2)
-            plt.plot(x_filter/5, lorentz)
-            plt.axis([-0.5, 5.5, -0.05, 1.05])
-            plt.show()
-
-#            print(x[int(len(lorentz)/5)]-x[0])
-
-#            data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
-#            print(offset)
-            data_level = data_smooth_lorentz - data_smooth_lorentz.max()
-
-            # plt.figure(3)
-            plt.plot(data_level)
-            plt.show()
-
-            amplitude = data_level.min()
-                # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-            x_axis = x
-            function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
-            Integral = function.integral(x_axis[0], x_axis[-1])
-            print('Integral',Integral)
-#
-            lorentz0_sigma = abs(Integral /
-                                 (np.pi * amplitude) )
-
-            lorentz0_amplitude = -1*abs(amplitude*np.pi*lorentz0_sigma)
-
-
-            print('lorentz0_sigma/3.',lorentz0_sigma/3., ',lorentz0_amplitude/3.',lorentz0_amplitude/3.)
-#
-#            numerical_integral_1=numerical_integral_0
-#
-#            lorentz1_sigma = abs( numerical_integral_1
-#                                  / (np.pi * lorentz1_amplitude)  )
-#
-#            #esstimate amplitude
-#            lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
-
-            plt.plot(x,data_noisy,'-b', label='data')
-#            plt.plot(x,data_smooth_lorentz,'-g',linewidth=2.0)
-#            plt.plot(x,data_smooth,'-y',linewidth=2.0)
-            plt.plot(x,result.init_fit,'-y')
-#            plt.plot(x,result.best_fit,'-r', label='fit')
-#            plt.plot(x,result.init_fit,'-g',label='init')
-            plt.plot(x, data_test,'-k', label='test')
-            plt.plot(x, result2.best_fit,'-r', label='fit')
-            plt.show()
-
-
-        def N14_testing2(self):
-            """ Old fit version.  """
-
-            # Create/load data for fitting
-            # ============================
-
-            path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-07\2016-07-05 N14 fit fails\20160705-1147-41_n14_fit_fails_60MHz_span_ODMR_data.dat')
-            data = np.loadtxt(path)
-
-            # The data for the fit:
-            x_axis = data[:,0]
-            data_noisy = data[:,1]
+            """ A combined function to test either data from file or to create
+                random data for yourself and apply the fit. """
 
             # get the model of the three lorentzian peak, this gives you the
             # ability to get the used parameter container for the fit.
             mod, params = self.make_multiplelorentzian_model(no_of_lor=3)
 
 
-            # Estimate the initial parameters
-            # ===============================
+            # Create/load data for fitting or use self defined parameter
+            # ==========================================================
 
-            # find the offset parameter, which should be in the fit the zero
-            # level.
-            data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data_noisy)
+            load_data = False
 
-            offset_array = np.zeros(len(x_axis))+offset
+            if load_data:
 
-            # plot all the current results:
-            plt.plot(x_axis, data_smooth_lorentz)
-            plt.plot(x_axis, data_noisy)
-            plt.plot(x_axis, offset_array)
-            plt.show()
+                # you can insert the whole path with the windows separator
+                # symbol \ just use the r in front of the string to indicated
+                # that this is a raw input. The os package will do the rest.
+                path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-07\2016-07-05 N14 fit fails\20160705-1147-41_n14_fit_fails_60MHz_span_ODMR_data.dat')
+                data = np.loadtxt(path)
 
-            # filter of one dip should always have a length of approx linewidth 1MHz
-            points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
-            print(points_within_1MHz)
+                # The data for the fit:
+                x_axis = data[:,0]
+                data_noisy = data[:,1]
 
-            # filter should have a width of 5MHz
-            x_filter = np.linspace(0, 5*points_within_1MHz, 5*points_within_1MHz)
-            lorentz = np.piecewise(x_filter, [(x_filter >= 0)                   * (x_filter < len(x_filter)*1/5),
-                                              (x_filter >= len(x_filter)*1/5)   * (x_filter < len(x_filter)*2/5),
-                                              (x_filter >= len(x_filter)*2/5)   * (x_filter < len(x_filter)*3/5),
-                                              (x_filter >= len(x_filter)*3/5)   * (x_filter < len(x_filter)*4/5),
-                                              (x_filter >= len(x_filter)*4/5)],
-                                   [1, 0, 1, 0, 1])
+                # Estimate the initial parameters
+                # ===============================
 
-            plt.plot(x_filter, lorentz)
-            plt.show()
-            print('offset', offset)
 
-            # if the filter is smaller than 5 points a convolution does not
-            # make sense
-            if len(lorentz) >= 5:
+                # find the offset parameter, which should be in the fit the zero
+                # level.
+                data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data_noisy)
 
-                # perform a convolution of the data
-                data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
-                x_axis_min = x_axis[data_convolved.argmin()]-2.15*1e6
+                offset_array = np.zeros(len(x_axis))+offset
+
+                # plot all the current results:
+                plt.plot(x_axis, data_smooth_lorentz, label='smoothed data')
+                plt.plot(x_axis, data_noisy, label='noisy data')
+                plt.plot(x_axis, offset_array, label='calculated offset')
+                plt.xlabel('Frequency (Hz)')
+                plt.ylabel('Counts (#)')
+                plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+                plt.show()
+
+                # filter of one dip should always have a length of approx linewidth 1MHz
+                points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
+#                print(points_within_1MHz)
+
+                # filter should have a width of 5MHz
+                x_filter = np.linspace(0, 5*points_within_1MHz, 5*points_within_1MHz)
+                lorentz = np.piecewise(x_filter, [(x_filter >= 0)                   * (x_filter < len(x_filter)*1/5),
+                                                  (x_filter >= len(x_filter)*1/5)   * (x_filter < len(x_filter)*2/5),
+                                                  (x_filter >= len(x_filter)*2/5)   * (x_filter < len(x_filter)*3/5),
+                                                  (x_filter >= len(x_filter)*3/5)   * (x_filter < len(x_filter)*4/5),
+                                                  (x_filter >= len(x_filter)*4/5)],
+                                       [1, 0, 1, 0, 1])
+
+                plt.plot(x_filter/5, lorentz, label='convolution pattern')
+                plt.axis([-0.5, 5.5, -0.05, 1.05])
+                plt.xlabel('Frequency (MHz)')
+                plt.ylabel('relative intensity')
+                plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+                plt.show()
+#                print('offset', offset)
+
+
+                # if the filter is smaller than 5 points a convolution does not
+                # make sense
+                if len(lorentz) >= 5:
+
+                    # perform a convolution of the data
+                    data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
+                    x_axis_min = x_axis[data_convolved.argmin()]-2.15*1e6
+                else:
+                    x_axis_min = x_axis[data_smooth_lorentz.argmin()]-2.15*1e6
+
+
+                plt.plot(x_axis, data_smooth_lorentz, label='smoothed data')
+#                plt.plot(x_axis, data_noisy)
+#                plt.plot(x_axis, offset_array)
+                plt.plot(x_axis, data_convolved, label='Result after convolution with pattern')
+                plt.xlabel('Frequency (Hz)')
+                plt.ylabel('Counts (#)')
+                plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+                plt.show()
+#                print('x_axis_min', x_axis_min)
+
+                # level of the data, that means the offset is subtracted and
+                # the real data are present
+                data_level = data_smooth_lorentz - data_smooth_lorentz.mean()
+#                data_level = data_smooth_lorentz - data_smooth_lorentz.max() # !!! previous version !!!
+                minimum_level = data_level.min()
+
+                # In order to perform a smooth integral to obtain the area
+                # under the curve make an interpolation of the passed data, in
+                # case they are very sparse. That increases the accuracy of the
+                # calculated Integral.
+                # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+
+                smoothing_spline = 1 # must be 1<= smoothing_spline <= 5
+                interpol_func = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+                integrated_area = interpol_func.integral(x_axis[0], x_axis[-1])
+
+                # set the number of interpolated points
+                num_int_points = 1000
+                x_interpolated_values = np.linspace(x_axis.min(), x_axis.max(), num_int_points)
+
+                # and use now the interpolate function to generate the data.
+#                plt.plot(x_interpolated_values, interpol_func(x_interpolated_values))
+#                plt.plot(x_axis, data_level)
+#                plt.show()
+
+
+                sigma = abs(integrated_area /(np.pi * minimum_level) )
+#                sigma = abs(integrated_area /(minimum_level/np.pi ) ) # !!! previous version !!!
+
+                amplitude = -1*abs(minimum_level*np.pi*sigma)
+
+
+                # Since the total amplitude of the lorentzian is depending on
+                # sigma it makes sense to vary sigma within an interval, which
+                # is smaller than the minimal distance between two points. Then
+                # the fit algorithm will have a larger range to determine the
+                # amplitude properly. That is the main issue with the fit.
+                linewidth = sigma
+                minimal_linewidth = x_axis[1]-x_axis[0]
+                maximal_linewidth = x_axis[-1]-x_axis[0]
+#                print('minimal_linewidth:', minimal_linewidth, 'maximal_linewidth:', maximal_linewidth)
+
+                # Create the parameter container, with the estimated values, which
+                # should be passed to the fit algorithm
+                parameters = Parameters()
+
+                #            (Name,                  Value,          Vary, Min,             Max,           Expr)
+                parameters.add('lorentz0_amplitude', value=amplitude,                                                  max=-1e-6)
+                parameters.add('lorentz0_center',    value=x_axis_min)
+                parameters.add('lorentz0_sigma',     value=linewidth,                           min=minimal_linewidth, max=maximal_linewidth)
+                parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
+                parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6,                                      expr='lorentz0_center+2.15*1e6')
+                parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
+                parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
+                parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6,                                      expr='lorentz0_center+4.3*1e6')
+                parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
+                parameters.add('c',                  value=data_smooth_lorentz.max())
+
+
             else:
-                x_axis_min = x_axis[data_smooth_lorentz.argmin()]-2.15*1e6
+
+#                x_axis = np.linspace(2800, 2900, 51)
+                x_axis = np.linspace(2850, 2860, 101)*1e6
+#                x_axis = np.arange(2850, 2860, 101)*1e6
+
+                sigma = 1e6  # linewidth
+#                sigma = abs(np.random.random(1)*1)+0.5
+                amplitude = -1e9
+
+                minimal_linewidth = (x_axis[1]-x_axis[0])/4
+                maximal_linewidth = x_axis[-1]-x_axis[0]
+                x_axis_min = 2852*1e6
+#                x_axis_min = 2850+abs(np.random.random(1)*8)
+
+                parameters = Parameters()
+
+                parameters.add('lorentz0_amplitude',value=amplitude,                                                   max=-1e-6)
+                parameters.add('lorentz0_center',   value=x_axis_min)
+                parameters.add('lorentz0_sigma',    value=sigma,                                min=minimal_linewidth, max=maximal_linewidth)
+                parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,                      max=-1e-6)
+                parameters.add('lorentz1_center',   value=parameters['lorentz0_center'].value+2.15*1e6,                                       expr='lorentz0_center+2.15*1e6')
+                parameters.add('lorentz1_sigma',    value=parameters['lorentz0_sigma'].value,   min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
+                parameters.add('lorentz2_amplitude',value=parameters['lorentz0_amplitude'].value,                      max=-1e-6)
+                parameters.add('lorentz2_center',   value=parameters['lorentz1_center'].value+2.15*1e6,                                       expr='lorentz0_center+4.3*1e6')
+                parameters.add('lorentz2_sigma',    value=parameters['lorentz0_sigma'].value,   min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
+                parameters.add('c',                 value=15000.)
+
+                data_noisy=(mod.eval(x=x_axis,params=parameters) + 50*np.random.normal(size=x_axis.shape))
 
 
-            plt.plot(x_axis, data_smooth_lorentz)
-#            plt.plot(x_axis, data_noisy)
-#            plt.plot(x_axis, offset_array)
-            plt.plot(x_axis, data_convolved)
+#            data_test = mod.eval(x=x_axis, params=parameters)
+
+            # create a genera dictionary of dicts which each parameter name
+            # will be assigned to an attribute name:
+#            param_dict = dict()
+#            for single_param in parameters:
+#                store_param = dict()
+#                if parameters[single_param].min is not None:
+#                    store_param['min'] = parameters[single_param].min
+#                if parameters[single_param].min is not None:
+#                    store_param['max'] = parameters[single_param].max
+#                if parameters[single_param].min is not None:
+#                    store_param['vary'] = parameters[single_param].vary
+#                if parameters[single_param].min is not None:
+#                    store_param['value'] = parameters[single_param].value
+#                if parameters[single_param].min is not None:
+#                    store_param['expr'] = parameters[single_param].expr
+#
+#                param_dict[single_param] = store_param
+#
+#            result2 = mod.fit(data_noisy,x=x_axis, params=parameters)
+
+            result = self.make_N14_fit(x_axis, data_noisy)
+
+            print(result.fit_report())
+
+            plt.plot(x_axis, data_noisy,'-b', label='data')
+#            plt.plot(x_axis, data_smooth_lorentz,'-g',linewidth=2.0, label='smoothed data')
+#            plt.plot(x_axis, data_convolved,'-y',linewidth=2.0, label='convolved data')
+#            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
+#            plt.plot(x, result2.best_fit,'-r', label='fit')
+            plt.plot(x_axis,result.best_fit,'-r', label='best fit result')
+            plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
+#            plt.plot(x_axis, data_test,'-k', label='test data')
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Counts (#)')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
             plt.show()
-            print('x_axis_min', x_axis_min)
-
-            # Create the parameter container, with the estimated values, which
-            # should be passed to the fit algorithm
-            parameters = Parameters()
-
-            data_level = data_smooth_lorentz - data_smooth_lorentz.max()
-            minimum_level = data_level.min()
-
-            # In order to perform a smooth integral to obtain the area under
-            # the curve make an interpolation of the passed data, in case they
-            # are very sparse. That increases the accuracy of the calculated
-            # Integral.
-            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-
-            smoothing_spline = 1 # must be 1<= smoothing_spline <= 5
-            interpol_func = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-            Integral = interpol_func.integral(x_axis[0], x_axis[-1])
-
-            # set the number of interpolated points
-            num_int_points = 1000
-            x_interpolated_values = np.linspace(x_axis.min(), x_axis.max(), num_int_points)
-
-            # and use now the interpolate function to generate the data.
-#            plt.plot(x_interpolated_values, interpol_func(x_interpolated_values))
-#            plt.plot(x_axis, data_level)
-#            plt.show()
-
-
-            sigma = abs(Integral /(np.pi * minimum_level) )
-
-            amplitude = -1*abs(minimum_level*np.pi*sigma)
-
-            linewidth = sigma
-            minimal_linewidth = x_axis[1]-x_axis[0]
-            maximal_linewidth = x_axis[-1]-x_axis[0]
-
-            #            (Name,                  Value,          Vary, Min,             Max,           Expr)
-            parameters.add('lorentz0_amplitude', value=amplitude,                                                  max=-1e-6)
-            parameters.add('lorentz0_center',    value=x_axis_min)
-            parameters.add('lorentz0_sigma',     value=linewidth,                           min=minimal_linewidth, max=maximal_linewidth)
-            parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
-            parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6,                                      expr='lorentz0_center+2.15*1e6')
-            parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
-            parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
-            parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6,                                      expr='lorentz0_center+4.3*1e6')
-            parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
-            parameters.add('c',                  value=data_smooth_lorentz.max())
-
 
 
 
@@ -1855,8 +1764,7 @@ class FitLogic():
 plt.rcParams['figure.figsize'] = (10,5)
 
 test=FitLogic()
-#test.N14_testing()
-#test.N14_testing2()
+test.N14_testing()
 #test.N15_testing()
 #test.oneD_testing()
 #test.gaussian_testing()
@@ -1870,7 +1778,7 @@ test=FitLogic()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
-test.double_poissonian_testing()
+#test.double_poissonian_testing()
 # test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
