@@ -827,6 +827,7 @@ class ConfocalLogic(GenericLogic):
                                    plotfig=fig
                                    )
         #, as_xml=False, precision=None, delimiter=None)
+        plt.close(fig)
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -936,6 +937,7 @@ class ConfocalLogic(GenericLogic):
                                    plotfig=fig
                                    )
         #, as_xml=False, precision=None, delimiter=None)
+        plt.close(fig)
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
