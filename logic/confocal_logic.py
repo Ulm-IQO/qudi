@@ -23,13 +23,22 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
-from core.util.numpyhelpers import numpy_to_b, numpy_from_b
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+from io import BytesIO
+def numpy_from_b(compressed_b):
+    f = BytesIO(bytes(compressed_b))
+    np_file = np.load(f)
+    redict = dict()
+    for name in np_file.files:
+        redict.update({name: np_file[name]})
+    f.close()
+    return redict
 
 
 class ConfocalHistoryEntry(QtCore.QObject):
@@ -172,8 +181,8 @@ class ConfocalHistoryEntry(QtCore.QObject):
         serialized['tilt_point3'] = self.point3
         serialized['tilt_reference'] = [self.tilt_reference_x, self.tilt_reference_y]
         serialized['tilt_slope'] = [self.tilt_slope_x, self.tilt_slope_y]
-        serialized['xy_image'] = numpy_to_b(image=self.xy_image)
-        serialized['depth_image'] = numpy_to_b(image=self.depth_image)
+        serialized['xy_image'] = self.xy_image
+        serialized['depth_image'] = self.depth_image
         return serialized
 
 
@@ -209,9 +218,17 @@ class ConfocalHistoryEntry(QtCore.QObject):
         if 'tilt_point3' in serialized and len(serialized['tilt_point3'] ) == 3:
             self.point3 = np.array(serialized['tilt_point3'])
         if 'xy_image' in serialized:
-            self.xy_image = numpy_from_b(serialized['xy_image'])['image']
+            if isinstance(serialized['xy_image'], np.ndarray):
+                self.xy_image = serialized['xy_image']
+            else:
+                self.xy_image = numpy_from_b(
+                        eval(serialized['xy_image']))['image']
         if 'depth_image' in serialized:
-            self.depth_image = numpy_from_b(serialized['depth_image'])['image']
+            if isinstance(serialized['depth_image'], np.ndarray):
+                self.depth_image = serialized['depth_image'].copy()
+            else:
+                self.depth_image = numpy_from_b(
+                        eval(serialized['depth_image']))['image']
 
 
 class ConfocalLogic(GenericLogic):
@@ -296,8 +313,11 @@ class ConfocalLogic(GenericLogic):
                         new_history_item = ConfocalHistoryEntry(self)
                         new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
                         self.history.append(new_history_item)
-                    except:
+                    except KeyError:
                         pass
+                    except:
+                        self.log.exception(
+                                'Restoring history {0} failed.'.format(i))
         else:
             self.max_history_length = 10
         try:
