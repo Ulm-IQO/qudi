@@ -2878,10 +2878,23 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._pulsed_meas_logic.sequence_length_s*1e3) #computed expected duration in ms
 
             # Enable and disable buttons
+            self._mw.ext_control_use_mw_CheckBox.setEnabled(False)
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
+            self._mw.pulser_sample_freq_DSpinBox.setEnabled(False)
+            self._mw.pulser_activation_config_ComboBox.setEnabled(False)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(False)
+            self._mw.ana_param_laserpulse_defined_CheckBox.setEnabled(False)
+            self._mw.ana_param_num_laser_pulse_SpinBox.setEnabled(False)
+            self._mw.ana_param_laser_length_SpinBox.setEnabled(False)
+            self._mw.ana_param_ignore_first_CheckBox.setEnabled(False)
+            self._mw.ana_param_ignore_last_CheckBox.setEnabled(False)
+            self._mw.ana_param_alternating_CheckBox.setEnabled(False)
+            self._mw.ana_param_x_axis_defined_CheckBox.setEnabled(False)
+            self._mw.ana_param_x_axis_start_ScienDSpinBox.setEnabled(False)
+            self._mw.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
             self._mw.action_pull_data.setEnabled(True)
+
 
             self._pulsed_meas_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
@@ -2891,9 +2904,21 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.action_continue_pause.toggle()
         else:
             #Enables and disables buttons
+            self._mw.ext_control_use_mw_CheckBox.setEnabled(True)
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
+            self._mw.pulser_sample_freq_DSpinBox.setEnabled(True)
+            self._mw.pulser_activation_config_ComboBox.setEnabled(True)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
+            self._mw.ana_param_laserpulse_defined_CheckBox.setEnabled(True)
+            self._mw.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
+            self._mw.ana_param_laser_length_SpinBox.setEnabled(True)
+            self._mw.ana_param_ignore_first_CheckBox.setEnabled(True)
+            self._mw.ana_param_ignore_last_CheckBox.setEnabled(True)
+            self._mw.ana_param_alternating_CheckBox.setEnabled(True)
+            self._mw.ana_param_x_axis_defined_CheckBox.setEnabled(True)
+            self._mw.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
+            self._mw.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
             self._mw.action_pull_data.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(False)
 
