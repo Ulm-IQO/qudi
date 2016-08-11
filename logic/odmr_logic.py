@@ -958,6 +958,7 @@ class ODMRLogic(GenericLogic):
             timestamp=timestamp,
             plotfig=fig,
             as_text=True)
+        plt.close(fig)
 
         self._save_logic.save_data(
             data2,

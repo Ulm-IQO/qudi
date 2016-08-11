@@ -90,9 +90,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.tilt_slope_x = 0
         self.tilt_slope_y = 0
 
-        self.point1 = np.array((0, 0, 0))
-        self.point2 = np.array((0, 0, 0))
-        self.point3 = np.array((0, 0, 0))
+        # self.point1 = np.array((0, 0, 0))
+        # self.point2 = np.array((0, 0, 0))
+        # self.point3 = np.array((0, 0, 0))
 
 
     def restore(self, confocal):
@@ -631,20 +631,20 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        if tag == 'optimizer' or tag == 'scanner' or tag == 'activation':
-            self._scanning_device.scanner_set_position(
-            x = self._current_x,
-            y = self._current_y,
-            z = self._current_z,
-            a = self._current_a
-            )
-        else:
-            self._scanning_device.scanner_set_position(
-                x = self._current_x,
-                y = self._current_y,
-                z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y),
-                a = self._current_a
-                )
+        # if tag == 'optimizer' or tag == 'scanner' or tag == 'activation':
+        self._scanning_device.scanner_set_position(
+        x = self._current_x,
+        y = self._current_y,
+        z = self._current_z,
+        a = self._current_a
+        )
+        # else:
+        #     self._scanning_device.scanner_set_position(
+        #         x = self._current_x,
+        #         y = self._current_y,
+        #         z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y),
+        #         a = self._current_a
+        #         )
         return 0
 
 
@@ -847,6 +847,7 @@ class ConfocalLogic(GenericLogic):
                                    plotfig=fig
                                    )
         #, as_xml=False, precision=None, delimiter=None)
+        plt.close(fig)
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -956,6 +957,7 @@ class ConfocalLogic(GenericLogic):
                                    plotfig=fig
                                    )
         #, as_xml=False, precision=None, delimiter=None)
+        plt.close(fig)
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -1102,46 +1104,37 @@ class ConfocalLogic(GenericLogic):
 
         return fig
 
+    ##################################### Tilit correction ########################################
+
     def set_tilt_point1(self):
         """ Gets the first reference point for tilt correction."""
-        self.point1 = np.array((self._current_x, self._current_y, self._current_z))
+        self.point1 = np.array(self._scanning_device.get_scanner_position()[:3])
 
     def set_tilt_point2(self):
         """ Gets the second reference point for tilt correction."""
-
-        self.point2 = np.array((self._current_x, self._current_y, self._current_z))
+        self.point2 = np.array(self._scanning_device.get_scanner_position()[:3])
 
     def set_tilt_point3(self):
         """Gets the third reference point for tilt correction."""
-
-        self.point3 = np.array((self._current_x, self._current_y, self._current_z))
-
+        self.point3 = np.array(self._scanning_device.get_scanner_position()[:3])
 
     def calc_tilt_correction(self):
         """Calculates the values for the tilt correction."""
-
-        # I took this from the old code, maybe we should double-check the formulas, but so far it worked...
         a = self.point2 - self.point1
         b = self.point3 - self.point1
-        # guys is there really no cross product?????
-        n = np.array((
-            a[1]*b[2] - a[2]*b[1],
-            a[2]*b[0] - a[0]*b[2],
-            a[0]*b[1] - a[1]*b[0]
-             ))
-        self._tilt_variable_ax = n[0] / n[2]
-        self._tilt_variable_ay = n[1] / n[2]
+        n = np.cross(a,b)
+        self._scanning_device.tilt_variable_ax = n[0] / n[2]
+        self._scanning_device.tilt_variable_ay = n[1] / n[2]
 
+    def activate_tiltcorrection(self):
+        self._scanning_device.tiltcorrection = True
+        self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
+        self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
 
-    def _calc_dz(self, x, y):
-        """Calculates the change in z for given tilt correction."""
-
-        # I took this from the old code, maybe we should double-check the formulas, but so far it worked...
-        if not self.TiltCorrection:
-            return 0.
-        else:
-            dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
-            return dz
+    def deactivate_tiltcorrection(self):
+        self._scanning_device.tiltcorrection = False
+        self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
+        self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
 
     def history_forward(self):
         if self.history_index < len(self.history) - 1:

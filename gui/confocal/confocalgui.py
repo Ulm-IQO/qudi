@@ -1411,8 +1411,10 @@ class ConfocalGui(GUIBase):
 
     def use_tiltcorrection_clicked(self, e):
         """ """
-        self._scanning_logic.TiltCorrection = e
-        self._optimizer_logic.tiltcorrection = e
+        if e:
+            self._scanning_logic.activate_tiltcorrection()
+        else:
+            self._scanning_logic.deactivate_tiltcorrection()
 
     def calculate_tiltcorrection_clicked(self):
         """ """
