@@ -22,6 +22,7 @@ Copyright (C) 2016 Florian Frank alexander.stark@uni-ulm.de
 from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 import numpy as np
+import copy
 
 class ScannerInterfuse(GenericLogic, ConfocalScannerInterface):
 
@@ -164,7 +165,7 @@ class ScannerInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return float[]: current position in (x, y, z, a).
         """
-        position = self._scanning_device.get_scanner_position()         # not tested atm
+        position = copy.copy(self._scanning_device.get_scanner_position())    # not tested atm
         if self.tiltcorrection:
             position[2] = position[2]-self._calc_dz(position[0],position[1])
             return position

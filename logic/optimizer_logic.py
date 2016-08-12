@@ -429,13 +429,13 @@ class OptimizerLogic(GenericLogic):
         else:
             if self.use_custom_params:
                 result = self._fit_logic.make_gaussian_fit(
-                    axis=self._zimage_Z_values + self._calc_dz(x=self.optim_pos_x, y=self.optim_pos_y),
+                    axis=self._zimage_Z_values,
                     data=self.z_refocus_line,
                     # Todo: It is required that the changed parameters are given as a dictionary
                     add_parameters={})
             else:
                 result = self._fit_logic.make_gaussian_fit(
-                    axis=self._zimage_Z_values + self._calc_dz(x=self.optim_pos_x, y=self.optim_pos_y),
+                    axis=self._zimage_Z_values,
                     data=self.z_refocus_line)
         self.z_params = result.params
 
@@ -446,13 +446,13 @@ class OptimizerLogic(GenericLogic):
         else:  # move to new position
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
             # checks if new pos is too far away
-            if abs(self._initial_pos_z+self._calc_dz(x=self.optim_pos_x,y=self.optim_pos_y) - result.best_values['center']) < self._max_offset:
+            if abs(self._initial_pos_z - result.best_values['center']) < self._max_offset:
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
                     gauss, params = self._fit_logic.make_gaussian_model()
                     self.z_fit_data = gauss.eval(
-                        x=self._fit_zimage_Z_values+self._calc_dz(x=self.optim_pos_x,y=self.optim_pos_y), params=result.params)
+                        x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
                     # checks if new pos is too high
                     if result.best_values['center'] > self._initial_pos_z:
@@ -585,41 +585,3 @@ class OptimizerLogic(GenericLogic):
             self._current_y = y
         if z != None:
             self._current_z = z
-
-
-    def set_tilt_point1(self):
-        """ Gets the first reference point for tilt correction."""
-        self.point1 = np.array((self._current_x, self._current_y, self._current_z))
-
-    def set_tilt_point2(self):
-        """ Gets the second reference point for tilt correction."""
-
-        self.point2 = np.array((self._current_x, self._current_y, self._current_z))
-
-    def set_tilt_point3(self):
-        """Gets the third reference point for tilt correction."""
-
-        self.point3 = np.array((self._current_x, self._current_y, self._current_z))
-
-
-    def calc_tilt_correction(self):
-        """Calculates the values for the tilt correction."""
-
-        a = self.point2 - self.point1
-        b = self.point3 - self.point1
-                # guys is there really no cross product?????
-        n = np.array((
-            a[1]*b[2] - a[2]*b[1],
-            a[2]*b[0] - a[0]*b[2],
-            a[0]*b[1] - a[1]*b[0]
-             ))
-        self._tilt_variable_ax = n[0] / n[2]
-        self._tilt_variable_ay = n[1] / n[2]
-
-    def _calc_dz(self, x, y):
-        """Calculates the change in z for given tilt correction."""
-        if not self.tilt_correction:
-            return 0.
-        else:
-            dz = -( (x - self.tilt_reference_x)*self._tilt_variable_ax + (y - self.tilt_reference_y)*self._tilt_variable_ay )
-            return dz
