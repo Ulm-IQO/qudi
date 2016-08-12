@@ -846,6 +846,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
                                    timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6f')
+        plt.close(fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####

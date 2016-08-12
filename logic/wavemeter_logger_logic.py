@@ -30,7 +30,9 @@ import datetime
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+
 class HardwarePull(QtCore.QObject):
+
     """ Helper class for running the hardware communication in a separate thread. """
 
     def __init__(self, parentclass):
@@ -38,7 +40,6 @@ class HardwarePull(QtCore.QObject):
 
         # remember the reference to the parent class to access functions ad settings
         self._parentclass = parentclass
-
 
     def handle_timer(self, state_change):
         """ Threaded method that can be called by a signal from outside to start the timer.
@@ -60,23 +61,33 @@ class HardwarePull(QtCore.QObject):
             to sigCountNext and emitting sigCountNext through a queued connection.
         """
 
-        self._parentclass.current_wavelength = 1.0*self._parentclass._wavemeter_device.get_current_wavelength()
-        time_stamp = time.time()-self._parentclass._acqusition_start_time
+        hardware = self._parentclass._wavemeter_device
+        self._parentclass.current_wavelength = 1.0 * hardware.get_current_wavelength()
+
+        time_stamp = time.time() - self._parentclass._acqusition_start_time
 
         # only wavelength >200 nm make sense, ignore the rest
-        if self._parentclass.current_wavelength>200:
-            self._parentclass._wavelength_data.append(np.array([time_stamp,self._parentclass.current_wavelength]))
+        if self._parentclass.current_wavelength > 200:
+            self._parentclass._wavelength_data.append(
+                np.array([time_stamp, self._parentclass.current_wavelength])
+            )
 
         # check if we have a new min or max and save it if so
         if self._parentclass.current_wavelength > self._parentclass.intern_xmax:
-            self._parentclass.intern_xmax=self._parentclass.current_wavelength
+            self._parentclass.intern_xmax = self._parentclass.current_wavelength
         if self._parentclass.current_wavelength < self._parentclass.intern_xmin:
-            self._parentclass.intern_xmin=self._parentclass.current_wavelength
+            self._parentclass.intern_xmin = self._parentclass.current_wavelength
 
-        if ( not self._parentclass._counter_logic.get_saving_state() ) or self._parentclass._counter_logic.getState() == 'idle':
+        if (
+            (not self._parentclass._counter_logic.get_saving_state()) or
+            self._parentclass._counter_logic.getState() == 'idle'
+        ):
+
             self._parentclass.stop_scanning()
 
+
 class WavemeterLoggerLogic(GenericLogic):
+
     """This logic module gathers data from wavemeter and the counter logic.
     """
 
@@ -88,11 +99,11 @@ class WavemeterLoggerLogic(GenericLogic):
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
 
-    ## declare connectors
-    _in = { 'wavemeter1': 'WavemeterInterface',
-            'savelogic': 'SaveLogic',
-            'counterlogic': 'CounterLogic'
-            }
+    # declare connectors
+    _in = {'wavemeter1': 'WavemeterInterface',
+           'savelogic': 'SaveLogic',
+           'counterlogic': 'CounterLogic'
+           }
     _out = {'wavemeterloggerlogic': 'WavemeterLoggerLogic'}
 
     def __init__(self, config, **kwargs):
@@ -103,7 +114,7 @@ class WavemeterLoggerLogic(GenericLogic):
         """
         super().__init__(config=config, **kwargs)
 
-        #locking for thread safety
+        # locking for thread safety
         self.threadlock = Mutex()
 
         if 'logic_acquisition_timing' in config.keys():
@@ -111,15 +122,16 @@ class WavemeterLoggerLogic(GenericLogic):
         else:
             self._logic_acquisition_timing = 20.
             self.log.warning('No logic_acquisition_timing configured, '
-                    'using {} instead.'.format(
-                        self._logic_acquisition_timing))
+                             'using {} instead.'.format(self._logic_acquisition_timing)
+                             )
 
         if 'logic_update_timing' in config.keys():
             self._logic_update_timing = config['logic_update_timing']
         else:
             self._logic_update_timing = 100.
             self.log.warning('No logic_update_timing configured, '
-                    'using {} instead.'.format(self._logic_update_timing))
+                             'using {} instead.'.format(self._logic_update_timing)
+                             )
 
         self._acqusition_start_time = 0
         self._bins = 200
@@ -134,7 +146,6 @@ class WavemeterLoggerLogic(GenericLogic):
         self.intern_xmax = -1.0
         self.intern_xmin = 1.0e10
         self.current_wavelength = 0
-
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -152,12 +163,16 @@ class WavemeterLoggerLogic(GenericLogic):
         self._counter_logic = self.connector['in']['counterlogic']['object']
 
         # create a new x axis from xmin to xmax with bins points
-        self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
+        self.histogram_axis = np.arange(self._xmin,
+                                        self._xmax,
+                                        (self._xmax - self._xmin) / self._bins
+                                        )
         self.histogram = np.zeros(self.histogram_axis.shape)
         self.envelope_histogram = np.zeros(self.histogram_axis.shape)
 
-        #self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
-        self.sig_update_histogram_next.connect(self._attach_counts_to_wavelength, QtCore.Qt.QueuedConnection)
+        self.sig_update_histogram_next.connect(self._attach_counts_to_wavelength,
+                                               QtCore.Qt.QueuedConnection
+                                               )
 
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
@@ -183,7 +198,6 @@ class WavemeterLoggerLogic(GenericLogic):
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
 
-
     def get_max_wavelength(self):
         return self._xmax
 
@@ -194,21 +208,20 @@ class WavemeterLoggerLogic(GenericLogic):
         return self._bins
 
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
-        if not bins is None:
-            self._bins=bins
-        if not xmin is None:
-            self._xmin=xmin
-        if not xmax is None:
-            self._xmax=xmax
+        if bins is not None:
+            self._bins = bins
+        if xmin is not None:
+            self._xmin = xmin
+        if xmax is not None:
+            self._xmax = xmax
 
 #        print('New histogram', self._bins,self._xmin,self._xmax)
         # create a new x axis from xmin to xmax with bins points
         self.rawhisto = np.zeros(self._bins)
         self.envelope_histogram = np.zeros(self._bins)
-        self.sumhisto = np.ones(self._bins)*1.0e-10
+        self.sumhisto = np.ones(self._bins) * 1.0e-10
         self.histogram_axis = np.linspace(self._xmin, self._xmax, self._bins)
         self.sig_update_histogram_next.emit(True)
-
 
     def start_scanning(self, resume=False):
         """ Prepare to start counting:
@@ -231,14 +244,13 @@ class WavemeterLoggerLogic(GenericLogic):
             self._acqusition_start_time = self._counter_logic._saving_start_time
             self._wavelength_data = []
 
-
             self.data_index = 0
 
             self._recent_wavelength_window = [0, 0]
             self.counts_with_wavelength = []
 
-            self.rawhisto=np.zeros(self._bins)
-            self.sumhisto=np.ones(self._bins)*1.0e-10
+            self.rawhisto = np.zeros(self._bins)
+            self.sumhisto = np.ones(self._bins) * 1.0e-10
             self.intern_xmax = -1.0
             self.intern_xmin = 1.0e10
             self.recent_avg = [0, 0, 0]
@@ -256,7 +268,7 @@ class WavemeterLoggerLogic(GenericLogic):
         """
 
         if not self.getState() == 'idle':
-            #self._wavemeter_device.stop_acqusition()
+            # self._wavemeter_device.stop_acqusition()
             # stop the measurement thread
             self.sig_handle_timer.emit(False)
             # set status to idle again
@@ -265,15 +277,16 @@ class WavemeterLoggerLogic(GenericLogic):
         if self._counter_logic.get_saving_state():
             self._counter_logic.save_data(to_file=False)
 
-
         return 0
 
     def _attach_counts_to_wavelength(self, complete_histogram):
-        """ Interpolate a wavelength value for each photon count value.  This process assumes that the wavelength
-        is varying smoothly and fairly continuously, which is sensible for most measurement conditions.
+        """ Interpolate a wavelength value for each photon count value.  This process assumes that
+        the wavelength is varying smoothly and fairly continuously, which is sensible for most
+        measurement conditions.
 
-        Recent count values are those recorded AFTER the previous stitch operation, but BEFORE the most recent
-        wavelength value (do not extrapolate beyond the current wavelength information).
+        Recent count values are those recorded AFTER the previous stitch operation, but BEFORE the
+        most recent wavelength value (do not extrapolate beyond the current wavelength
+        information).
         """
 
         # If there is not yet any wavelength data, then wait and signal next loop
@@ -285,25 +298,27 @@ class WavemeterLoggerLogic(GenericLogic):
         # The end of the recent_wavelength_window is the time of the latest wavelength data
         self._recent_wavelength_window[1] = self._wavelength_data[-1][0]
 
-        # (speed-up) We only need to worry about "recent" counts, because as the count data gets very long all the
-        # earlier points will already be attached to wavelength values.
+        # (speed-up) We only need to worry about "recent" counts, because as the count data gets
+        # very long all the earlier points will already be attached to wavelength values.
         count_recentness = 100  # TODO: calculate this from count_freq and wavemeter refresh rate
-        wavelength_recentness = np.min([5, len(self._wavelength_data)])  # TODO: Does this depend on things, or do we loop fast enough to get every wavelength value?
+
+        # TODO: Does this depend on things, or do we loop fast enough to get every wavelength value?
+        wavelength_recentness = np.min([5, len(self._wavelength_data)])
 
         recent_counts = np.array(self._counter_logic._data_to_save[-count_recentness:])
         recent_wavelengths = np.array(self._wavelength_data[-wavelength_recentness:])
 
         # The latest counts are those recorded during the recent_wavelength_window
-        count_idx = [0,0]
-        count_idx[0] = np.searchsorted(recent_counts[:,0], self._recent_wavelength_window[0])
-        count_idx[1] = np.searchsorted(recent_counts[:,0], self._recent_wavelength_window[1])
+        count_idx = [0, 0]
+        count_idx[0] = np.searchsorted(recent_counts[:, 0], self._recent_wavelength_window[0])
+        count_idx[1] = np.searchsorted(recent_counts[:, 0], self._recent_wavelength_window[1])
 
         latest_counts = recent_counts[count_idx[0]:count_idx[1]]
 
         # Interpolate to obtain wavelength values at the times of each count
-        interpolated_wavelengths = np.interp(latest_counts[:,0],
-                                             xp=recent_wavelengths[:,0],
-                                             fp=recent_wavelengths[:,1]
+        interpolated_wavelengths = np.interp(latest_counts[:, 0],
+                                             xp=recent_wavelengths[:, 0],
+                                             fp=recent_wavelengths[:, 1]
                                              )
 
         # Stitch interpolated wavelength into latest counts array
@@ -330,51 +345,56 @@ class WavemeterLoggerLogic(GenericLogic):
     def _update_histogram(self, complete_histogram):
         """ Calculate new points for the histogram.
 
-        @param bool complete_histogram: should the complete histogram be recalculated, or just the most recent data?
+        @param bool complete_histogram: should the complete histogram be recalculated, or just the
+                                        most recent data?
         @return:
         """
 
         # If things like num_of_bins have changed, then recalculate the complete histogram
-        # Note: The histogram may be recalculated (bins changed, etc) from the stitched data.  There is no need to
-        # recompute the interpolation for the stitched data.
+        # Note: The histogram may be recalculated (bins changed, etc) from the stitched data.
+        # There is no need to recompute the interpolation for the stitched data.
         if complete_histogram:
             count_window = len(self._counter_logic._data_to_save)
             self._data_index = 0
             self.log.info('Recalcutating Laser Scanning Histogram for: '
-                    '{0:d} counts and {1:d} wavelength.'.format(
-                        count_window,
-                        len(self._wavelength_data)))
+                          '{0:d} counts and {1:d} wavelength.'.format(
+                              count_window,
+                              len(self._wavelength_data)
+                          )
+                          )
         else:
             count_window = min(100, len(self._counter_logic._data_to_save))
 
-        if  count_window < 2:
-            time.sleep(self._logic_update_timing*1e-3)
+        if count_window < 2:
+            time.sleep(self._logic_update_timing * 1e-3)
             self.sig_update_histogram_next.emit(False)
             return
 
         temp = np.array(self._counter_logic._data_to_save[-count_window:])
 
         # only do something if there is wavelength data to work with
-        if len(self._wavelength_data)>0:
+        if len(self._wavelength_data) > 0:
 
             for i in self._wavelength_data[self._data_index:]:
                 self._data_index += 1
 
-                if  i[1] < self._xmin or i[1] > self._xmax:
+                if i[1] < self._xmin or i[1] > self._xmax:
                     continue
 
                 # calculate the bin the new wavelength needs to go in
-                newbin=np.digitize([i[1]],self.histogram_axis)[0]
+                newbin = np.digitize([i[1]], self.histogram_axis)[0]
                 # if the bin make no sense, start from the beginning
-                if  newbin > len(self.rawhisto)-1:
+                if newbin > len(self.rawhisto) - 1:
                     continue
 
                 # sum the counts in rawhisto and count the occurence of the bin in sumhisto
-                interpolation = np.interp(i[0], xp=temp[:,0], fp=temp[:,1])
+                interpolation = np.interp(i[0], xp=temp[:, 0], fp=temp[:, 1])
                 self.rawhisto[newbin] += interpolation
                 self.sumhisto[newbin] += 1.0
 
-                self.envelope_histogram[newbin] = np.max([interpolation,self.envelope_histogram[newbin]])
+                self.envelope_histogram[newbin] = np.max([interpolation,
+                                                          self.envelope_histogram[newbin]
+                                                          ])
 
                 datapoint = [i[1], i[0], interpolation]
                 if time.time() - self.last_point_time > 1:
@@ -388,19 +408,19 @@ class WavemeterLoggerLogic(GenericLogic):
                         self.recent_avg[j] += datapoint[j] / self.recent_count
 
             # the plot data is the summed counts divided by the occurence of the respective bins
-            self.histogram=self.rawhisto/self.sumhisto
+            self.histogram = self.rawhisto / self.sumhisto
 
-
-    def save_data(self, timestamp = None):
+    def save_data(self, timestamp=None):
         """ Save the counter trace data and writes it to a file.
 
-        @param datetime timestamp: timestamp passed from gui so that saved images match filenames of data.
-                                    This will be removed when savelogic handles the image creation also.
+        @param datetime timestamp: timestamp passed from gui so that saved images match filenames
+                                    of data. This will be removed when savelogic handles the image
+                                    creation also.
 
         @return int: error code (0:OK, -1:error)
         """
 
-        self._saving_stop_time=time.time()
+        self._saving_stop_time = time.time()
 
         filepath = self._save_logic.get_path_for_module(module_name='WavemeterLogger')
         filelabel = 'wavemeter_log_histogram'
@@ -410,43 +430,62 @@ class WavemeterLoggerLogic(GenericLogic):
         if timestamp is None:
             timestamp = datetime.datetime.now()
 
-
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)':np.array([self.histogram_axis,self.histogram]).transpose()}
+        data = {'Wavelength (nm), Signal (counts/s)': np.array(
+                [self.histogram_axis, self.histogram]
+                ).transpose()}
 
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bins (#)'] = self._bins
         parameters['Xmin (nm)'] = self._xmin
         parameters['XMax (nm)'] = self._xmax
-        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._acqusition_start_time))
-        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                     time.localtime(self._acqusition_start_time)
+                                                     )
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                    time.localtime(self._saving_stop_time)
+                                                    )
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp,
+                                   as_text=True,
+                                   precision=':.6f'
+                                   )
 
         filelabel = 'wavemeter_log_wavelength'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s), Wavelength (nm)':self._wavelength_data}
+        data = {'Time (s), Wavelength (nm)': self._wavelength_data}
         # write the parameters:
         parameters = OrderedDict()
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
-        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._acqusition_start_time))
-        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                     time.localtime(self._acqusition_start_time)
+                                                     )
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                    time.localtime(self._saving_stop_time)
+                                                    )
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp,
+                                   as_text=True,
+                                   precision=':.6f'
+                                   )
 
         filelabel = 'wavemeter_log_counts'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s),Signal (counts/s)':self._counter_logic._data_to_save}
+        data = {'Time (s),Signal (counts/s)': self._counter_logic._data_to_save}
 
         # write the parameters:
         parameters = OrderedDict()
@@ -457,10 +496,14 @@ class WavemeterLoggerLogic(GenericLogic):
         parameters['Oversampling (Samples)'] = self._counter_logic._counting_samples
         parameters['Smooth Window Length (# of events)'] = self._counter_logic._smooth_window_length
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
-
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp,
+                                   as_text=True,
+                                   precision=':.6f'
+                                   )
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
@@ -474,8 +517,11 @@ class WavemeterLoggerLogic(GenericLogic):
         # write the parameters:
         parameters = OrderedDict()
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
-                                                     time.localtime(self._acqusition_start_time))
-        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+                                                     time.localtime(self._acqusition_start_time)
+                                                     )
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
+                                                    time.localtime(self._saving_stop_time)
+                                                    )
 
         self._save_logic.save_data(data,
                                    filepath,
@@ -484,7 +530,8 @@ class WavemeterLoggerLogic(GenericLogic):
                                    timestamp=timestamp,
                                    as_text=True,
                                    plotfig=fig,
-                                   precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
+                                   precision=':.6f')
+        plt.close(fig)
         return 0
 
     def draw_figure(self):
@@ -533,8 +580,6 @@ class WavemeterLoggerLogic(GenericLogic):
 
         ax2.set_xlim(ghz_min, ghz_max)
         ax2.set_xlabel('Shift (GHz)')
-
-        plt.show()
 
         return fig
 
