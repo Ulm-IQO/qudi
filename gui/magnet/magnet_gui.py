@@ -108,6 +108,8 @@ class MagnetGui(GUIBase):
         self._create_move_rel_control()
         self._create_move_abs_control()
 
+        self._create_meas_type_RadioButtons()
+
         # Configuring the dock widgets
         # Use the class 'MagnetMainWindow' to create the GUI window
 
@@ -139,18 +141,15 @@ class MagnetGui(GUIBase):
         self._activate_magnet_settings(e)
 
         # connect the actions of the toolbar:
-        self._mw.actionMagnet_Settings.triggered.connect(self.open_magnet_settings)
-        self._mw.actionDefault_View.triggered.connect(self.set_default_view_main_window)
+        self._mw.magnet_settings_Action.triggered.connect(self.open_magnet_settings)
+        self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
 
         self.update_pos()
         self._magnet_logic.sigPosChanged.connect(self.update_pos)
 
         # Connect alignment GUI elements:
-        self._mw.align_2d_start_PushButton.clicked.connect(self.start_2d_alignment_clicked)
-        self._mw.align_2d_continue_PushButton.clicked.connect(self.continue_2d_alignment_clicked)
-        self._mw.align_2d_abort_PushButton.clicked.connect(self.abort_2d_alignment_clicked)
 
-        self._magnet_logic.sigMeasurementFinished.connect(self._change_to_stop)
+        self._magnet_logic.sigMeasurementFinished.connect(self._change_display_to_stop_2d_alignment)
 
 
 
@@ -205,7 +204,18 @@ class MagnetGui(GUIBase):
         self._update_2d_graph_data()
         self._update_2d_graph_cb()
 
-        self._mw.alignment_2d_save_PushButton.clicked.connect(self.save_2d_plots_and_data)
+
+        # Add save file tag input box
+        self._mw.alignment_2d_nametag_LineEdit = QtGui.QLineEdit(self._mw)
+        self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
+        self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag which will be\n'
+                                              'added to the filename.')
+
+        self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
+        self._mw.save_Action.triggered.connect(self.save_2d_plots_and_data)
+
+        self._mw.run_stop_2d_alignment_Action.triggered.connect(self.run_stop_2d_alignment)
+        self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_2d_alignment)
 
         # connect the signals:
         # --------------------
@@ -259,11 +269,6 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_nuclear_idle_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_idle_time*1e9)
         self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_reps_within_ssr)
         self._mw.align_2d_nuclear_num_of_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_num_ssr)
-
-
-        self._mw.alignment_2d_status_Label.setText('Stopped')
-        self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
-
 
     def _activate_magnet_settings(self, e):
         """ Activate magnet settings.
@@ -335,6 +340,32 @@ class MagnetGui(GUIBase):
     def keep_former_magnet_settings(self):
 
         self._ms.interactive_mode_CheckBox.setChecked(self._interactive_mode)
+
+    def _create_meas_type_RadioButtons(self):
+        """ Create the measurement Buttons for the desired measurements:
+
+        @return:
+        """
+
+        self._mw.alignment_2d_ButtonGroup = QtGui.QButtonGroup(self._mw)
+
+        self._mw.meas_type_fluorescence_RadioButton = QtGui.QRadioButton(parent=self._mw)
+        self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_fluorescence_RadioButton)
+        self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_fluorescence_RadioButton)
+        self._mw.meas_type_fluorescence_RadioButton.setText('Fluorescence')
+
+        self._mw.meas_type_odmr_RadioButton = QtGui.QRadioButton(parent=self._mw)
+        self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_odmr_RadioButton)
+        self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_odmr_RadioButton)
+        self._mw.meas_type_odmr_RadioButton.setText('ODMR')
+
+        self._mw.meas_type_nuclear_spin_RadioButton = QtGui.QRadioButton(parent=self._mw)
+        self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_nuclear_spin_RadioButton)
+        self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_nuclear_spin_RadioButton)
+        self._mw.meas_type_nuclear_spin_RadioButton.setText('Nuclear Spin')
+
+        self._mw.meas_type_fluorescence_RadioButton.setChecked(True)
+
 
     def _create_axis_pos_disp(self):
         """ Create the axis position display.
@@ -504,6 +535,7 @@ class MagnetGui(GUIBase):
             label_var = getattr(self._mw, label_var_name) # get the reference
             # set axis_label for the label:
             label_var.setObjectName(label_var_name)
+            label_var.setText(axis_label)
 
             # make the steps of the splider as a multiple of 10
             # smallest_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
@@ -820,12 +852,33 @@ class MagnetGui(GUIBase):
             dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
 
+    def run_stop_2d_alignment(self, is_checked):
+        """ Manage what happens if 2d magnet scan is started/stopped
+
+        @param bool is_checked: state if the current scan, True = started,
+                                False = stopped
+        """
+
+        if is_checked:
+            self.start_2d_alignment_clicked()
+
+        else:
+            self.abort_2d_alignment_clicked()
+
+    def _change_display_to_stop_2d_alignment(self):
+        """ Changes every display component back to the stopped state. """
+
+        self._mw.run_stop_2d_alignment_Action.blockSignals(True)
+        self._mw.run_stop_2d_alignment_Action.setChecked(False)
+
+        self._mw.continue_2d_alignment_Action.blockSignals(True)
+        self._mw.continue_2d_alignment_Action.setChecked(False)
+
+        self._mw.run_stop_2d_alignment_Action.blockSignals(False)
+        self._mw.continue_2d_alignment_Action.blockSignals(False)
+
     def start_2d_alignment_clicked(self):
         """ Start the 2d alignment. """
-
-        self._mw.alignment_2d_status_Label.setText('Running')
-        self._mw.alignment_2d_status_Label.setStyleSheet('color: green')
-
 
         if self.measurement_type == '2d_fluorescence':
             self._magnet_logic.curr_alignment_method = self.measurement_type
@@ -909,6 +962,18 @@ class MagnetGui(GUIBase):
 
         self._continue_2d_fluorescence_alignment = False
 
+    def continue_stop_2d_alignment(self, is_checked):
+        """ Manage what happens if 2d magnet scan is continued/stopped
+
+        @param bool is_checked: state if the current scan, True = continue,
+                                False = stopped
+        """
+
+        if is_checked:
+            self.continue_2d_alignment_clicked()
+        else:
+            self.abort_2d_alignment_clicked()
+
 
     def continue_2d_alignment_clicked(self):
 
@@ -919,13 +984,8 @@ class MagnetGui(GUIBase):
     def abort_2d_alignment_clicked(self):
         """ Stops the current Fluorescence alignment. """
 
-        self._change_to_stop()
+        self._change_display_to_stop_2d_alignment()
         self._magnet_logic.stop_alignment()
-
-    def _change_to_stop(self):
-        """ Changes every display component back to the stopped state. """
-        self._mw.alignment_2d_status_Label.setText('Stopped')
-        self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
 
     def _update_limits_axis0(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
