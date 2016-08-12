@@ -1182,6 +1182,16 @@ class Manager(QtCore.QObject):
             variables = OrderedDict()
         return variables
 
+    def removeStatusFile(self, base, module):
+        try:
+            statusdir = self.getStatusDir()
+            classname = self.tree['defined'][base][module]['module.Class'].split('.')[-1]
+            filename = os.path.join(statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+            if os.path.isfile(filename):
+                os.remove(filename)
+        except:
+            logger.exception('Failed to remove module status file.')
+
     def quit(self):
         """Nicely request that all modules shut down."""
         for mbase in ['gui', 'logic', 'hardware']:

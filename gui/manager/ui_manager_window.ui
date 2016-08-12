@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1020</width>
+    <width>1095</width>
     <height>681</height>
    </rect>
   </property>
@@ -48,8 +48,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>892</width>
-             <height>311</height>
+             <width>962</width>
+             <height>286</height>
             </rect>
            </property>
           </widget>
@@ -72,8 +72,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>892</width>
-             <height>311</height>
+             <width>96</width>
+             <height>26</height>
             </rect>
            </property>
           </widget>
@@ -96,8 +96,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>892</width>
-             <height>311</height>
+             <width>96</width>
+             <height>26</height>
             </rect>
            </property>
           </widget>
@@ -114,8 +114,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1020</width>
-     <height>21</height>
+     <width>1095</width>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -248,8 +248,7 @@
   <action name="action_Load_all_modules">
    <property name="icon">
     <iconset theme="media-playback-start">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string> Load &amp;all modules</string>
@@ -258,8 +257,7 @@
   <action name="actionStart_all_modules">
    <property name="icon">
     <iconset theme="media-playback-start">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Start all modules</string>
@@ -289,8 +287,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>&amp;Log</string>
@@ -347,8 +344,7 @@
   <action name="actionExport_log_as_HTML">
    <property name="icon">
     <iconset theme="document-save-as">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>&amp;Export log as HTML</string>
@@ -385,7 +381,7 @@
      <normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</iconset>
    </property>
    <property name="text">
-    <string>Reload current configuration</string>
+    <string>&amp;Reload current configuration</string>
    </property>
   </action>
  </widget>
