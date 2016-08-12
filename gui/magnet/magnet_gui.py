@@ -194,6 +194,25 @@ class MagnetGui(GUIBase):
 
         self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
 
+        if 'alignment_2d_cb_GraphicsView_text' in self._statusVariables:
+            textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_Label']
+
+        else:
+            textlabel = 'Fluorescence'
+
+        if 'alignment_2d_cb_GraphicsView_units' in self._statusVariables:
+            units = self._statusVariables['alignment_2d_cb_GraphicsView_units']
+        else:
+            units = 'counts/s'
+
+        self._mw.alignment_2d_cb_GraphicsView.setLabel('right', textlabel, units=units)
+
+        #FIXME: that should be actually set in the logic
+        if 'measurement_type' in self._statusVariables:
+            self.measurement_type = self._statusVariables['measurement_type']
+        else:
+            self.measurement_type = 'fluorescence'
+
         self._magnet_logic.sig2DAxisChanged.connect(self._update_2d_graph_axis)
         self._magnet_logic.sig2DMatrixChanged.connect(self._update_2d_graph_data)
 
@@ -225,7 +244,6 @@ class MagnetGui(GUIBase):
 
 
         # for odmr alignment:
-        self.measurement_type = 'fluorescence'
         self._mw.meas_type_fluorescence_RadioButton.toggled.connect(self.set_measurement_type)
         self._mw.meas_type_odmr_RadioButton.toggled.connect(self.set_measurement_type)
         self._mw.meas_type_nuclear_spin_RadioButton.toggled.connect(self.set_measurement_type)
@@ -289,6 +307,10 @@ class MagnetGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        self._statusVariables['measurement_type'] = self.measurement_type
+        self._statusVariables['alignment_2d_cb_GraphicsView_text'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
+        self._statusVariables['alignment_2d_cb_GraphicsView_units'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
+
         self._mw.close()
 
     def show(self):
@@ -1170,6 +1192,8 @@ class MagnetGui(GUIBase):
 
     def set_measurement_type(self):
         """ According to the selected Radiobox a measurement type will be chosen."""
+
+        #FIXME: the measurement type should actually be set and saved in the logic
 
         if self._mw.meas_type_fluorescence_RadioButton.isChecked():
             self.measurement_type = '2d_fluorescence'

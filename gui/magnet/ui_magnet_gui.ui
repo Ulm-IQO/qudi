@@ -866,7 +866,7 @@ at each point?</string>
          <widget class="PlotWidget" name="alignment_2d_cb_GraphicsView">
           <property name="maximumSize">
            <size>
-            <width>80</width>
+            <width>90</width>
             <height>16777215</height>
            </size>
           </property>
