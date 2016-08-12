@@ -41,6 +41,11 @@ def numpy_from_b(compressed_b):
     return redict
 
 
+class OldConfigFileError(Exception):
+    def __init__(self):
+        super().__init__('Old configuration file detected. Ignoring history.')
+
+
 class ConfocalHistoryEntry(QtCore.QObject):
     """ This class contains all relevant parameters of a Confocal scan.
         It provides methods to extract, restore and serialize this data.
@@ -221,14 +226,20 @@ class ConfocalHistoryEntry(QtCore.QObject):
             if isinstance(serialized['xy_image'], np.ndarray):
                 self.xy_image = serialized['xy_image']
             else:
-                self.xy_image = numpy_from_b(
-                        eval(serialized['xy_image']))['image']
+                try:
+                    self.xy_image = numpy_from_b(
+                            eval(serialized['xy_image']))['image']
+                except:
+                    raise OldConfigFileError()
         if 'depth_image' in serialized:
             if isinstance(serialized['depth_image'], np.ndarray):
                 self.depth_image = serialized['depth_image'].copy()
             else:
-                self.depth_image = numpy_from_b(
-                        eval(serialized['depth_image']))['image']
+                try:
+                    self.depth_image = numpy_from_b(
+                            eval(serialized['depth_image']))['image']
+                except:
+                    raise OldConfigFileError()
 
 
 class ConfocalLogic(GenericLogic):
@@ -315,8 +326,11 @@ class ConfocalLogic(GenericLogic):
                         self.history.append(new_history_item)
                     except KeyError:
                         pass
+                    except OldConfigFileError:
+                        self.log.warning('Old style config file detected. '
+                                'History {0} ignored.'.format(i))
                     except:
-                        self.log.exception(
+                        self.log.warning(
                                 'Restoring history {0} failed.'.format(i))
         else:
             self.max_history_length = 10
