@@ -86,7 +86,15 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         # set manually the number of entries in a list, the explanation for that
         # procedure is in the function self.set_list.
-        self._num_list_entries = 4000
+        self._MAX_LIST_ENTRIES = 4000
+        
+        self._gpib_connection.write('*WAI')
+        self._FREQ_MAX = eval(self._gpib_connection.ask('FREQuency? MAX'))
+        self._FREQ_MIN = eval(self._gpib_connection.ask('FREQuency? MIN'))  
+        self._POWER_MAX = eval(self._gpib_connection.ask('POWER? MAX'))
+        self._POWER_MIN = eval(self._gpib_connection.ask('POWER? MIN'))
+
+        
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -212,11 +220,11 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         # memory such that the current firmware becomes corrupt. That is an
         # extreme annoying bug. Therefore catch too long lists.
 
-        if len(freq)> self._num_list_entries:
+        if len(freq)> self._MAX_LIST_ENTRIES:
             self.log.error('The frequency list exceeds the hardware '
                     'limitation of {0} list entries. Aborting creation of a '
                     'list due to potential overwrite of the firmware on the '
-                    'device.'.format(self._num_list_entries))
+                    'device.'.format(self._MAX_LIST_ENTRIES))
             return -1
 
         self._gpib_connection.write(':SOUR:LIST:MODE STEP')
@@ -342,5 +350,58 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._gpib_connection.write(':SYSTem:PRESet')
         self._gpib_connection.write('*RST')
         self._gpib_connection.write(':OUTP OFF')
-
+        
         return 0
+        
+    def get_limits(self):
+        """ Return the device-specific limits in a nested dictionary.
+
+          @return dict: limits dictionary
+
+            The following structure is absolutely necessary:
+            frequency:
+                min:
+                max:
+            power:
+                min:
+                max:
+            list:
+                minstep:
+                maxstep:
+                maxentries:
+            sweep:
+                minstep:
+                maxstep:
+                maxentries:
+
+           Frequency in Hz, power in dBm, minstep/maxstep in Hz.
+        """
+
+        minliststep = 0.1
+        maxliststep = 6.4 * 10e9
+
+        minsweepstep = 0.1
+        maxsweepstep = 10e9
+        sweepentries = 10e6
+
+        limits = {
+            'frequency': {
+                'min': self._FREQ_MIN,
+                'max': self._FREQ_MAX
+                },
+            'power': {
+                'min': self._POWER_MIN,
+                'max': self._POWER_MAX
+                },
+            'list': {
+                'minstep': minliststep,
+                'maxstep': maxliststep,
+                'maxentries': self._MAX_LIST_ENTRIES
+                },
+            'sweep': {
+                'minstep': minsweepstep,
+                'maxstep': maxsweepstep,
+                'maxentries': sweepentries
+                }
+            }
+        return limits

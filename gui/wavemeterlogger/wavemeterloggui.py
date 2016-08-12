@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import pyqtgraph as pg
+import numpy as np
 
 import pyqtgraph.exporters
 import datetime
@@ -196,20 +197,18 @@ class WavemeterLogGui(GUIBase):
         x_axis = self._wm_logger_logic.histogram_axis
         x_axis_hz = 3.0e17 / (x_axis) - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
 
-        #self._curve1.setData(y=self._wm_logger_logic.histogram, x=x_axis)
-        plotdata = self._wm_logger_logic.counts_with_wavelength
-        self._curve1.setData(x=[entry[2] for entry in plotdata],
-                             y=[entry[1] for entry in plotdata]
-                             )
+        plotdata = np.array(self._wm_logger_logic.counts_with_wavelength)
+        if len(plotdata.shape) > 1 and plotdata.shape[1] == 3:
+            self._curve1.setData(plotdata[:, 2:0:-1])
+
         self._curve2.setData(y=self._wm_logger_logic.histogram, x=x_axis)
         self._curve3.setData(y=self._wm_logger_logic.histogram, x=x_axis_hz)
         self._curve4.setData(y=self._wm_logger_logic.envelope_histogram, x=x_axis)
 
     def add_data_point(self, point):
-        if len(point) >= 3 :
-            spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor( point[2]/100, 255)}]
+        if len(point) >= 3:
+            spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor(point[2]/100, 255)}]
             self._scatterplot.addPoints(spts)
-            #print(point)
 
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
@@ -263,9 +262,9 @@ class WavemeterLogGui(GUIBase):
 
     def recalculate_histogram(self):
         self._wm_logger_logic.recalculate_histogram(
-            bins = self._mw.binSpinBox.value(),
-            xmin = self._mw.minDoubleSpinBox.value(),
-            xmax = self._mw.maxDoubleSpinBox.value()
+            bins=self._mw.binSpinBox.value(),
+            xmin=self._mw.minDoubleSpinBox.value(),
+            xmax=self._mw.maxDoubleSpinBox.value()
         )
 
     def set_auto_range(self):

@@ -22,10 +22,11 @@ Copyright (C) 2016 Florian Frank alexander.stark@uni-ulm.de
 from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 import numpy as np
+import copy
 
-class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
+class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
 
-    _modclass = 'ScannerInterfuse'
+    _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
     _in = {'confocalscanner1': 'ConfocalScannerInterface'}
@@ -34,9 +35,9 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._tiltcorrection = False
-        self._tilt_reference_x = 0
-        self._tilt_reference_y = 0
+        # self._tiltcorrection = False
+        # self._tilt_reference_x = 0
+        # self._tilt_reference_y = 0
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -50,6 +51,12 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
                          had happened.
         """
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
+
+        self.tilt_variable_ax = 1
+        self.tilt_variable_ay = 1
+        self.tiltcorrection = False
+        self.tilt_reference_x = 0
+        self.tilt_reference_y = 0
 
     def on_deactivate(self,e):
         """ Deinitialisation performed during deactivation of the module.
@@ -66,7 +73,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.reset_hardware()
+        return self._scanning_device.reset_hardware()
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -86,7 +93,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.set_position_range(myrange)
+        return self._scanning_device.set_position_range(myrange)
 
     def set_voltage_range(self, myrange=[-10., 10.]):
         """ Sets the voltage range of the NI Card.
@@ -96,7 +103,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.set_voltage_range(myrange)
+        return self._scanning_device.set_voltage_range(myrange)
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -109,7 +116,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.set_up_scanner_clock(clock_frequency,clock_channel)
+        return self._scanning_device.set_up_scanner_clock(clock_frequency,clock_channel)
 
     def set_up_scanner(self, counter_channel=None, photon_source=None,
                        clock_channel=None, scanner_ao_channels=None):
@@ -127,7 +134,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.set_up_scanner(counter_channel,photon_source,clock_channel,
+        return self._scanning_device.set_up_scanner(counter_channel,photon_source,clock_channel,
                                              scanner_ao_channels)
 
     def scanner_set_position(self, x=None, y=None, z=None, a=None):
@@ -141,7 +148,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self._tiltcorrection:
+        if self.tiltcorrection:
             z = z+self._calc_dz(x,y)
             z_min = self.get_position_range()[2][0]
             z_max = self.get_position_range()[2][1]
@@ -149,17 +156,17 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
                 z = min(max(z,z_min),z_max)
                 self.log.warning('The entered z position is out of scanner '
                         'range! z was set to min/max.')
-            self._scanning_device.set_position(x,y,z,a)
+            return self._scanning_device.scanner_set_position(x,y,z,a)
         else:
-            self._scanning_device.set_position(x,y,z,a)
+            return self._scanning_device.scanner_set_position(x,y,z,a)
 
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
 
         @return float[]: current position in (x, y, z, a).
         """
-        position = self._scanning_device.get_position()         # not tested atm
-        if self._tiltcorrection:
+        position = copy.copy(self._scanning_device.get_scanner_position())    # not tested atm
+        if self.tiltcorrection:
             position[2] = position[2]-self._calc_dz(position[0],position[1])
             return position
         else:
@@ -174,7 +181,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.set_up_line(length)
+        return self._scanning_device.set_up_line(length)
 
     def scan_line(self, line_path=None):
         """ Scans a line and returns the counts on that line.
@@ -185,9 +192,9 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
 
-        if self._tiltcorrection:
+        if self.tiltcorrection:
             line_path[:][2] = line_path[:][2] + self._calc_dz(line_path[:][0],line_path[:][1])
-        self._scanning_device.scan_line(line_path)
+        return self._scanning_device.scan_line(line_path)
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
@@ -195,7 +202,7 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.close_scanner()
+        return self._scanning_device.close_scanner()
 
     def close_scanner_clock(self, power=0):
         """ Closes the clock and cleans up afterwards.
@@ -203,47 +210,47 @@ class ScannerIntefuse(GenericLogic, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanning_device.close_scanner_clock()
+        return self._scanning_device.close_scanner_clock()
 
     ###############################################################################################
     ################################### Tiltcorrection Stuff ######################################
     ###############################################################################################
 
-    def set_tilt_point1(self):
-        """ Gets the first reference point for tilt correction."""
-        self.point1 = self.get_scanner_position()[:3]
+    # def set_tilt_point1(self):
+    #     """ Gets the first reference point for tilt correction."""
+    #     self.point1 = self.get_scanner_position()[:3]
+    #
+    # def set_tilt_point2(self):
+    #     """ Gets the second reference point for tilt correction."""
+    #     self.point2 = self.get_scanner_position()[:3]
+    #
+    # def set_tilt_point3(self):
+    #     """Gets the third reference point for tilt correction."""
+    #     self.point3 = self.get_scanner_position()[:3]
 
-    def set_tilt_point2(self):
-        """ Gets the second reference point for tilt correction."""
-        self.point2 = self.get_scanner_position()[:3]
-
-    def set_tilt_point3(self):
-        """Gets the third reference point for tilt correction."""
-        self.point3 = self.get_scanner_position()[:3]
-
-    def calc_tilt_correction(self):
-        """Calculates the values for the tilt correction."""
-        a = self.point2 - self.point1
-        b = self.point3 - self.point1
-        n = np.cross(a,b)
-        self._tilt_variable_ax = n[0] / n[2]
-        self._tilt_variable_ay = n[1] / n[2]
+    # def calc_tilt_correction(self):
+    #     """Calculates the values for the tilt correction."""
+    #     a = self.point2 - self.point1
+    #     b = self.point3 - self.point1
+    #     n = np.cross(a,b)
+    #     self._tilt_variable_ax = n[0] / n[2]
+    #     self._tilt_variable_ay = n[1] / n[2]
 
     def _calc_dz(self, x, y):
         """Calculates the change in z for given tilt correction."""
-        if not self._tiltcorrection:
+        if not self.tiltcorrection:
             return 0.
         else:
-            dz = -((x - self._tilt_reference_x)*self._tilt_variable_ax+(y - self._tilt_reference_y)
-                    *self._tilt_variable_ay )
+            dz = -((x - self.tilt_reference_x)*self.tilt_variable_ax+(y - self.tilt_reference_y)
+                    *self.tilt_variable_ay )
             return dz
 
-    def activate_tiltcorrection(self):
-        self._tiltcorrection = True
-        self._tilt_reference_x = self.get_scanner_position()[0]
-        self._tilt_reference_y = self.get_scanner_position()[1]
-
-    def deactivate_tiltcorrection(self):
-        self._tiltcorrection = False
-        self._tilt_reference_x = self.get_scanner_position()[0]
-        self._tilt_reference_y = self.get_scanner_position()[1]
+    # def activate_tiltcorrection(self):
+    #     self._tiltcorrection = True
+    #     self._tilt_reference_x = self.get_scanner_position()[0]
+    #     self._tilt_reference_y = self.get_scanner_position()[1]
+    #
+    # def deactivate_tiltcorrection(self):
+    #     self._tiltcorrection = False
+    #     self._tilt_reference_x = self.get_scanner_position()[0]
+    #     self._tilt_reference_y = self.get_scanner_position()[1]
