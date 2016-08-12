@@ -189,7 +189,7 @@
              <enum>QTabWidget::Rounded</enum>
             </property>
             <property name="currentIndex">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="documentMode">
              <bool>false</bool>
@@ -243,13 +243,25 @@
                   </widget>
                  </item>
                  <item row="3" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes0_vel_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="align_2d_axes0_vel_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes0_range_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="align_2d_axes0_range_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes0_step_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="align_2d_axes0_step_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </widget>
@@ -277,7 +289,11 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes1_range_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="align_2d_axes1_range_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
                  </item>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_2">
@@ -287,9 +303,9 @@
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes1_step_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axes1_step_DSpinBox">
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                   </widget>
                  </item>
@@ -308,7 +324,11 @@
                   </widget>
                  </item>
                  <item row="3" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes1_vel_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="align_2d_axes1_vel_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </widget>
@@ -378,7 +398,7 @@
               <item row="2" column="0">
                <widget class="QLabel" name="label_7">
                 <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Integration&lt;br/&gt;Time (s):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Integration&lt;br/&gt;Time:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>
@@ -401,9 +421,9 @@ at each point?</string>
                </widget>
               </item>
               <item row="2" column="1">
-               <widget class="QDoubleSpinBox" name="align_2d_fluorescence_integrationtime_DSpinBox">
+               <widget class="ScienDSpinBox" name="align_2d_fluorescence_integrationtime_DSpinBox">
                 <property name="suffix">
-                 <string/>
+                 <string>s</string>
                 </property>
                 <property name="decimals">
                  <number>1</number>
@@ -432,14 +452,14 @@ at each point?</string>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_14">
                    <property name="text">
-                    <string>Range Freq (MHz)</string>
+                    <string>Range Freq:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_13">
                    <property name="text">
-                    <string>Center Freq (MHz)</string>
+                    <string>Center Freq:</string>
                    </property>
                   </widget>
                  </item>
@@ -447,9 +467,12 @@ at each point?</string>
                   <widget class="QComboBox" name="align_2d_odmr_low_fit_func_ComboBox"/>
                  </item>
                  <item row="3" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_low_power_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_power_DSpinBox">
+                   <property name="suffix">
+                    <string>dBm</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="minimum">
                     <double>-100.000000000000000</double>
@@ -462,14 +485,17 @@ at each point?</string>
                  <item row="2" column="0">
                   <widget class="QLabel" name="label_15">
                    <property name="text">
-                    <string>Step Freq (MHz)</string>
+                    <string>Step Freq:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_low_center_freq_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_center_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="maximum">
                     <double>100000000.000000000000000</double>
@@ -479,12 +505,15 @@ at each point?</string>
                  <item row="3" column="0">
                   <widget class="QLabel" name="label_16">
                    <property name="text">
-                    <string>power (dBm)</string>
+                    <string>Power:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="4" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_low_runtime_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_runtime_DSpinBox">
+                   <property name="suffix">
+                    <string>s</string>
+                   </property>
                    <property name="decimals">
                     <number>3</number>
                    </property>
@@ -496,7 +525,7 @@ at each point?</string>
                  <item row="4" column="0">
                   <widget class="QLabel" name="label_20">
                    <property name="text">
-                    <string>Runtime (s):</string>
+                    <string>Runtime:</string>
                    </property>
                   </widget>
                  </item>
@@ -508,9 +537,12 @@ at each point?</string>
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_low_range_freq_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_range_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="maximum">
                     <double>100000000.000000000000000</double>
@@ -518,9 +550,12 @@ at each point?</string>
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_low_step_freq_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_step_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="minimum">
                     <double>-100000000.000000000000000</double>
@@ -542,28 +577,31 @@ at each point?</string>
                  <item row="2" column="0">
                   <widget class="QLabel" name="label_18">
                    <property name="text">
-                    <string>Step Freq (MHz)</string>
+                    <string>Step Freq:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_21">
                    <property name="text">
-                    <string>Center Freq (MHz)</string>
+                    <string>Center Freq:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="4" column="0">
                   <widget class="QLabel" name="label_19">
                    <property name="text">
-                    <string>Runtime (s):</string>
+                    <string>Runtime:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_high_center_freq_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_center_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="maximum">
                     <double>100000000.000000000000000</double>
@@ -576,14 +614,17 @@ at each point?</string>
                  <item row="3" column="0">
                   <widget class="QLabel" name="label_17">
                    <property name="text">
-                    <string>power (dBm)</string>
+                    <string>Power:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="3" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_high_power_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_power_DSpinBox">
+                   <property name="suffix">
+                    <string>dBm</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="minimum">
                     <double>-100.000000000000000</double>
@@ -594,7 +635,10 @@ at each point?</string>
                   </widget>
                  </item>
                  <item row="4" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_high_runtime_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_runtime_DSpinBox">
+                   <property name="suffix">
+                    <string>s</string>
+                   </property>
                    <property name="decimals">
                     <number>3</number>
                    </property>
@@ -606,7 +650,7 @@ at each point?</string>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_22">
                    <property name="text">
-                    <string>Range Freq (MHz)</string>
+                    <string>Range Freq:</string>
                    </property>
                   </widget>
                  </item>
@@ -618,9 +662,12 @@ at each point?</string>
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_high_range_freq_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_range_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="maximum">
                     <double>100000000.000000000000000</double>
@@ -628,9 +675,12 @@ at each point?</string>
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_odmr_high_step_freq_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_step_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
                    <property name="decimals">
-                    <number>3</number>
+                    <number>5</number>
                    </property>
                    <property name="minimum">
                     <double>-100000000.000000000000000</double>
@@ -661,22 +711,25 @@ at each point?</string>
              </attribute>
              <layout class="QGridLayout" name="gridLayout_27">
               <item row="0" column="1">
-               <widget class="QDoubleSpinBox" name="align_2d_nuclear_rabi_periode_DSpinBox">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_rabi_periode_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
                 <property name="decimals">
-                 <number>3</number>
+                 <number>5</number>
                 </property>
                 <property name="maximum">
                  <double>1000000.000000000000000</double>
                 </property>
                 <property name="value">
-                 <double>1600.000000000000000</double>
+                 <double>0.000000000000000</double>
                 </property>
                </widget>
               </item>
               <item row="8" column="0">
                <widget class="QLabel" name="label_31">
                 <property name="text">
-                 <string>idle time (ns)</string>
+                 <string>idle time:</string>
                 </property>
                </widget>
               </item>
@@ -686,30 +739,39 @@ at each point?</string>
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The Rabi period must be long enough to be frequency specific on one of the hyperfine tranisitions, i.e. the pi pulse (half of the rabi period) should be longer than 700ns.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                 <property name="text">
-                 <string>Rabi periode (ns)</string>
+                 <string>Rabi period:</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QDoubleSpinBox" name="align_2d_nuclear_mw_freq_DSpinBox">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_mw_freq_DSpinBox">
+                <property name="suffix">
+                 <string>Hz</string>
+                </property>
                 <property name="decimals">
-                 <number>3</number>
+                 <number>5</number>
                 </property>
                 <property name="maximum">
                  <double>10000000.000000000000000</double>
                 </property>
                 <property name="value">
-                 <double>9000.000000000000000</double>
+                 <double>0.000000000000000</double>
                 </property>
                </widget>
               </item>
               <item row="4" column="1">
-               <widget class="QDoubleSpinBox" name="align_2d_nuclear_laser_time_DSpinBox">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_laser_time_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>5</number>
+                </property>
                 <property name="maximum">
                  <double>1000000000.000000000000000</double>
                 </property>
                 <property name="value">
-                 <double>800.000000000000000</double>
+                 <double>0.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -729,14 +791,14 @@ at each point?</string>
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That must be one of the frequencies of the hyperfine transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                 <property name="text">
-                 <string>MW freq (MHz):</string>
+                 <string>MW freq:</string>
                 </property>
                </widget>
               </item>
               <item row="4" column="0">
                <widget class="QLabel" name="label_28">
                 <property name="text">
-                 <string>Laser time (ns):</string>
+                 <string>Laser time:</string>
                 </property>
                </widget>
               </item>
@@ -748,7 +810,7 @@ at each point?</string>
                </widget>
               </item>
               <item row="2" column="1">
-               <widget class="QSpinBox" name="align_2d_nuclear_mw_channel_SpinBox">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_mw_channel_SpinBox">
                 <property name="minimum">
                  <number>-10</number>
                 </property>
@@ -762,11 +824,17 @@ at each point?</string>
               </item>
               <item row="8" column="1">
                <widget class="QDoubleSpinBox" name="align_2d_nuclear_idle_time_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>5</number>
+                </property>
                 <property name="maximum">
                  <double>100000000.000000000000000</double>
                 </property>
                 <property name="value">
-                 <double>1500.000000000000000</double>
+                 <double>0.000000000000000</double>
                 </property>
                </widget>
               </item>
@@ -778,7 +846,7 @@ at each point?</string>
                </widget>
               </item>
               <item row="6" column="1">
-               <widget class="QSpinBox" name="align_2d_nuclear_laser_channel_SpinBox">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_laser_channel_SpinBox">
                 <property name="minimum">
                  <number>-10</number>
                 </property>
@@ -791,7 +859,7 @@ at each point?</string>
                </widget>
               </item>
               <item row="7" column="1">
-               <widget class="QSpinBox" name="align_2d_nuclear_detect_channel_SpinBox">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_detect_channel_SpinBox">
                 <property name="minimum">
                  <number>-10</number>
                 </property>
@@ -817,7 +885,7 @@ at each point?</string>
                </widget>
               </item>
               <item row="9" column="1">
-               <widget class="QSpinBox" name="align_2d_nuclear_reps_within_ssr_SpinBox">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_reps_within_ssr_SpinBox">
                 <property name="maximum">
                  <number>100000000</number>
                 </property>
@@ -837,7 +905,7 @@ at each point?</string>
                </widget>
               </item>
               <item row="10" column="1">
-               <widget class="QSpinBox" name="align_2d_nuclear_num_of_ssr_SpinBox">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_num_of_ssr_SpinBox">
                 <property name="maximum">
                  <number>10000000</number>
                 </property>
@@ -847,7 +915,10 @@ at each point?</string>
                </widget>
               </item>
               <item row="3" column="1">
-               <widget class="QDoubleSpinBox" name="align_2d_nuclear_mw_power_DSpinBox">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_mw_power_DSpinBox">
+                <property name="suffix">
+                 <string>dBm</string>
+                </property>
                 <property name="decimals">
                  <number>3</number>
                 </property>
@@ -862,7 +933,7 @@ at each point?</string>
               <item row="3" column="0">
                <widget class="QLabel" name="label_34">
                 <property name="text">
-                 <string>MW power(dBm):</string>
+                 <string>MW power:</string>
                 </property>
                </widget>
               </item>
@@ -1179,6 +1250,16 @@ at each point?</string>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>tools.scientific_spinbox</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>tools.scientific_spinbox</header>
   </customwidget>
  </customwidgets>
  <resources/>
