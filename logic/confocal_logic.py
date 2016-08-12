@@ -81,9 +81,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.tilt_slope_x = 0
         self.tilt_slope_y = 0
 
-        # self.point1 = np.array((0, 0, 0))
-        # self.point2 = np.array((0, 0, 0))
-        # self.point3 = np.array((0, 0, 0))
+        self.point1 = np.array((0, 0, 0))
+        self.point2 = np.array((0, 0, 0))
+        self.point3 = np.array((0, 0, 0))
 
 
     def restore(self, confocal):
