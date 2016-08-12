@@ -25,91 +25,8 @@
       </property>
       <widget class="QWidget" name="dockWidgetContents_3">
        <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="1" colspan="2">
-         <widget class="QDoubleSpinBox" name="alignment_2d_cb_max_centiles_DSpinBox">
-          <property name="decimals">
-           <number>0</number>
-          </property>
-          <property name="maximum">
-           <double>2100000000.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>100.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>1000.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLabel" name="label_9">
-          <property name="maximumSize">
-           <size>
-            <width>30</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>%:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QDoubleSpinBox" name="alignment_2d_cb_high_centiles_DSpinBox">
-          <property name="maximumSize">
-           <size>
-            <width>50</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="decimals">
-           <number>1</number>
-          </property>
-          <property name="singleStep">
-           <double>1.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>100.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1" colspan="2">
-         <widget class="PlotWidget" name="alignment_2d_cb_GraphicsView"/>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLabel" name="label_8">
-          <property name="maximumSize">
-           <size>
-            <width>30</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>%:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="2">
-         <widget class="QDoubleSpinBox" name="alignment_2d_cb_low_centiles_DSpinBox">
-          <property name="maximumSize">
-           <size>
-            <width>50</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="decimals">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <double>100.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1" colspan="2">
-         <widget class="QDoubleSpinBox" name="alignment_2d_cb_min_centiles_DSpinBox">
+        <item row="5" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_min_centiles_DSpinBox">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -125,41 +42,43 @@
           <property name="layoutDirection">
            <enum>Qt::LeftToRight</enum>
           </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
           <property name="maximum">
            <double>1000000000.000000000000000</double>
           </property>
           <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_high_centiles_DSpinBox">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+          <property name="value">
            <double>100.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="5" column="1" colspan="2">
-         <widget class="QRadioButton" name="alignment_2d_centiles_RadioButton">
-          <property name="text">
-           <string>Centiles</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-          <attribute name="buttonGroup">
-           <string notr="true">buttonGroup</string>
-          </attribute>
-         </widget>
-        </item>
-        <item row="6" column="1" colspan="2">
-         <widget class="QRadioButton" name="alignment_2d_manual_RadioButton">
-          <property name="text">
-           <string>Manual</string>
-          </property>
-          <property name="checked">
-           <bool>false</bool>
-          </property>
-          <attribute name="buttonGroup">
-           <string notr="true">buttonGroup</string>
-          </attribute>
-         </widget>
-        </item>
-        <item row="0" column="0" rowspan="7">
+        <item row="0" column="0" rowspan="9">
          <widget class="PlotWidget" name="alignment_2d_GraphicsView">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
@@ -169,7 +88,7 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="3" rowspan="7">
+        <item row="0" column="3" rowspan="9">
          <layout class="QGridLayout" name="gridLayout_22">
           <item row="0" column="0">
            <widget class="QTabWidget" name="tabWidget_3">
@@ -181,7 +100,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>250</width>
+              <width>220</width>
               <height>16777215</height>
              </size>
             </property>
@@ -690,7 +609,7 @@ at each point?</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="0">
+                 <item row="6" column="0" colspan="2">
                   <widget class="QCheckBox" name="align_2d_odmr_save_after_measure_CheckBox">
                    <property name="text">
                     <string>Save after measure</string>
@@ -942,6 +861,86 @@ at each point?</string>
            </widget>
           </item>
          </layout>
+        </item>
+        <item row="3" column="1">
+         <widget class="PlotWidget" name="alignment_2d_cb_GraphicsView">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_low_centiles_DSpinBox">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QRadioButton" name="alignment_2d_centiles_RadioButton">
+          <property name="text">
+           <string>Centiles</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QRadioButton" name="alignment_2d_manual_RadioButton">
+          <property name="text">
+           <string>Manual</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_max_centiles_DSpinBox">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>2100000000.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="value">
+           <double>1000.000000000000000</double>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -1282,7 +1281,6 @@ at each point?</string>
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
