@@ -235,18 +235,18 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_odmr_low_fit_func_ComboBox.clear()
         self._mw.align_2d_odmr_low_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_low_fitfunction_list)
         self._mw.align_2d_odmr_low_fit_func_ComboBox.setCurrentIndex(1)
-        self._mw.align_2d_odmr_low_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_center_freq/1e6)
-        self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq/1e6)
-        self._mw.align_2d_odmr_low_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_range_freq/1e6)
+        self._mw.align_2d_odmr_low_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_center_freq)
+        self._mw.align_2d_odmr_low_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_range_freq)
+        self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq)
         self._mw.align_2d_odmr_low_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_power)
         self._mw.align_2d_odmr_low_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_runtime)
 
         self._mw.align_2d_odmr_high_fit_func_ComboBox.clear()
         self._mw.align_2d_odmr_high_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_high_fitfunction_list)
         self._mw.align_2d_odmr_high_fit_func_ComboBox.setCurrentIndex(1)
-        self._mw.align_2d_odmr_high_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_center_freq/1e6)
-        self._mw.align_2d_odmr_high_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_step_freq/1e6)
-        self._mw.align_2d_odmr_high_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_range_freq/1e6)
+        self._mw.align_2d_odmr_high_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_center_freq)
+        self._mw.align_2d_odmr_high_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_range_freq)
+        self._mw.align_2d_odmr_high_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_step_freq)
         self._mw.align_2d_odmr_high_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_power)
         self._mw.align_2d_odmr_high_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_runtime)
 
@@ -259,14 +259,14 @@ class MagnetGui(GUIBase):
 
 
         # for single shot alignment of a nuclear spin:
-        self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode*1e9)
-        self._mw.align_2d_nuclear_mw_freq_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_freq/1e6)
+        self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode)
+        self._mw.align_2d_nuclear_mw_freq_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_freq)
         self._mw.align_2d_nuclear_mw_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_mw_channel)
         self._mw.align_2d_nuclear_mw_power_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_power)
-        self._mw.align_2d_nuclear_laser_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_laser_time*1e9)
+        self._mw.align_2d_nuclear_laser_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_laser_time)
         self._mw.align_2d_nuclear_laser_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_laser_channel)
         self._mw.align_2d_nuclear_detect_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_detect_channel)
-        self._mw.align_2d_nuclear_idle_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_idle_time*1e9)
+        self._mw.align_2d_nuclear_idle_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_idle_time)
         self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_reps_within_ssr)
         self._mw.align_2d_nuclear_num_of_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_num_ssr)
 
@@ -890,16 +890,16 @@ class MagnetGui(GUIBase):
         elif self.measurement_type == '2d_odmr':
             self._magnet_logic.curr_alignment_method = self.measurement_type
 
-            self._magnet_logic.odmr_2d_low_center_freq = self._mw.align_2d_odmr_low_center_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_low_range_freq = self._mw.align_2d_odmr_low_range_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_center_freq = self._mw.align_2d_odmr_low_center_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_range_freq = self._mw.align_2d_odmr_low_range_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_power = self._mw.align_2d_odmr_low_power_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_runtime  = self._mw.align_2d_odmr_low_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_fitfunction = self._mw.align_2d_odmr_low_fit_func_ComboBox.currentText()
 
-            self._magnet_logic.odmr_2d_high_center_freq = self._mw.align_2d_odmr_high_center_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_high_step_freq = self._mw.align_2d_odmr_high_step_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_high_range_freq = self._mw.align_2d_odmr_high_range_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_center_freq = self._mw.align_2d_odmr_high_center_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_high_range_freq = self._mw.align_2d_odmr_high_range_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_high_step_freq = self._mw.align_2d_odmr_high_step_freq_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_power = self._mw.align_2d_odmr_high_power_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_runtime = self._mw.align_2d_odmr_high_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_fitfunction = self._mw.align_2d_odmr_high_fit_func_ComboBox.currentText()
@@ -912,14 +912,14 @@ class MagnetGui(GUIBase):
         elif self.measurement_type == '2d_nuclear':
             self._magnet_logic.curr_alignment_method = self.measurement_type
 
-            self._magnet_logic.nuclear_2d_rabi_periode = self._mw.align_2d_nuclear_rabi_periode_DSpinBox.value()*1e-9
-            self._magnet_logic.nuclear_2d_mw_freq = self._mw.align_2d_nuclear_mw_freq_DSpinBox.value()*1e6
+            self._magnet_logic.nuclear_2d_rabi_periode = self._mw.align_2d_nuclear_rabi_periode_DSpinBox.value()
+            self._magnet_logic.nuclear_2d_mw_freq = self._mw.align_2d_nuclear_mw_freq_DSpinBox.value()
             self._magnet_logic.nuclear_2d_mw_channel = self._mw.align_2d_nuclear_mw_channel_SpinBox.value()
             self._magnet_logic.nuclear_2d_mw_power = self._mw.align_2d_nuclear_mw_power_DSpinBox.value()
-            self._magnet_logic.nuclear_2d_laser_time = self._mw.align_2d_nuclear_laser_time_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_laser_time = self._mw.align_2d_nuclear_laser_time_DSpinBox.value()
             self._magnet_logic.nuclear_2d_laser_channel = self._mw.align_2d_nuclear_laser_channel_SpinBox.value()
             self._magnet_logic.nuclear_2d_detect_channel = self._mw.align_2d_nuclear_detect_channel_SpinBox.value()
-            self._magnet_logic.nuclear_2d_idle_time = self._mw.align_2d_nuclear_idle_time_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_idle_time = self._mw.align_2d_nuclear_idle_time_DSpinBox.value()
             self._magnet_logic.nuclear_2d_reps_within_ssr = self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.value()
             self._magnet_logic.nuclear_2d_num_ssr = self._mw.align_2d_nuclear_num_of_ssr_SpinBox.value()
 
@@ -995,30 +995,26 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
 
-        # set the label text properly:
-        self._mw.align_2d_axes0_range_Label.setText('Range')
-        self._mw.align_2d_axes0_step_Label.setText('Step')
-        self._mw.align_2d_axis0_set_vel_CheckBox.setText('Set Velocity?')
-
         # set the range constraints:
         self._mw.align_2d_axes0_range_DSpinBox.setMinimum(0)
         self._mw.align_2d_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
         self._mw.align_2d_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
-        # FIXME: obtain the decimals correctly:
-        # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
-        self._mw.align_2d_axes0_range_DSpinBox.setDecimals(3)
-
+        # self._mw.align_2d_axes0_range_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes0_range_DSpinBox.setSuffix(constraints[axis0_name]['unit'])
 
         # set the step constraints:
         self._mw.align_2d_axes0_step_DSpinBox.setMinimum(0)
         self._mw.align_2d_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
         self._mw.align_2d_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
-        self._mw.align_2d_axes0_step_DSpinBox.setDecimals(3)
+        # self._mw.align_2d_axes0_step_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes0_step_DSpinBox.setSuffix(constraints[axis0_name]['unit'])
 
         # set the velocity constraints:
         self._mw.align_2d_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min'])
         self._mw.align_2d_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max'])
         self._mw.align_2d_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step'])
+        # self._mw.align_2d_axes0_vel_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes0_vel_DSpinBox.setSuffix(constraints[axis0_name]['unit']+'/s')
 
     def _update_limits_axis1(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
@@ -1028,26 +1024,23 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
 
-        # set the label text properly:
-        self._mw.align_2d_axes1_range_Label.setText('Range')
-        self._mw.align_2d_axes1_step_Label.setText('Step')
-        self._mw.align_2d_axis1_set_vel_CheckBox.setText('Set Velocity?')
-
         self._mw.align_2d_axes1_range_DSpinBox.setMinimum(0)
         self._mw.align_2d_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
         self._mw.align_2d_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
-        # FIXME: obtain the decimals correctly:
-        # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
-        self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
+        # self._mw.align_2d_axes1_range_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes1_range_DSpinBox.setSuffix(constraints[axis1_name]['unit'])
 
         self._mw.align_2d_axes1_step_DSpinBox.setMinimum(0)
         self._mw.align_2d_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
         self._mw.align_2d_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
-        self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
+        # self._mw.align_2d_axes1_step_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes1_step_DSpinBox.setSuffix(constraints[axis1_name]['unit'])
 
         self._mw.align_2d_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min'])
         self._mw.align_2d_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max'])
         self._mw.align_2d_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step'])
+        # self._mw.align_2d_axes1_vel_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes1_vel_DSpinBox.setSuffix(constraints[axis1_name]['unit']+'/s')
 
     def _set_vel_display_axis0(self):
         """ Set the visibility of the velocity display for axis 0. """
