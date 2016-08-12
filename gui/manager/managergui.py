@@ -54,6 +54,7 @@ class ManagerGui(GUIBase):
     sigStartAll = QtCore.Signal()
     sigStartModule = QtCore.Signal(str, str)
     sigReloadModule = QtCore.Signal(str, str)
+    sigCleanupStatus = QtCore.Signal(str, str)
     sigStopModule = QtCore.Signal(str, str)
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
@@ -119,6 +120,7 @@ class ManagerGui(GUIBase):
         # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
+        self.sigCleanupStatus.connect(self._manager.removeStatusFile)
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
@@ -317,6 +319,7 @@ Go, play.
                 widget.sigLoadThis.connect(self.sigStartModule)
                 widget.sigReloadThis.connect(self.sigReloadModule)
                 widget.sigDeactivateThis.connect(self.sigStopModule)
+                widget.sigCleanupStatus.connect(self.sigCleanupStatus)
                 self.checkTimer.timeout.connect(widget.checkModuleState)
 
     def fillTreeItem(self, item, value):
@@ -481,6 +484,7 @@ class ModuleListItem(QtGui.QFrame):
     sigLoadThis = QtCore.Signal(str, str)
     sigReloadThis = QtCore.Signal(str, str)
     sigDeactivateThis = QtCore.Signal(str, str)
+    sigCleanupStatus = QtCore.Signal(str, str)
 
     def __init__(self, manager, basename, modulename):
         """ Create a module widget.
@@ -505,6 +509,7 @@ class ModuleListItem(QtGui.QFrame):
         self.loadButton.clicked.connect(self.loadButtonClicked)
         self.reloadButton.clicked.connect(self.reloadButtonClicked)
         self.deactivateButton.clicked.connect(self.deactivateButtonClicked)
+        self.cleanupButton.clicked.connect(self.cleanupButtonClicked)
 
     def loadButtonClicked(self):
         """ Send signal to load and activate this module.
@@ -521,7 +526,13 @@ class ModuleListItem(QtGui.QFrame):
     def deactivateButtonClicked(self):
         """ Send signal to deactivate this module.
         """
-        self.sigDeactivateThis.emit(self.base , self.name)
+        self.sigDeactivateThis.emit(self.base, self.name)
+
+    def cleanupButtonClicked(self):
+        """ Send signal to deactivate this module.
+        """
+        self.sigCleanupStatus.emit(self.base, self.name)
+
 
     def checkModuleState(self):
         """ Get the state of this module and display it in the statusLabel
