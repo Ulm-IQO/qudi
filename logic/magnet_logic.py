@@ -119,50 +119,6 @@ class MagnetLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
-
-        self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
-        self.curr_2d_pathway_mode = 'snake-wise'    # choose that as default
-        self._checktime = 0.5 # in seconds
-
-
-        # The data matrices and arrays. For the 1D case, self._axis0_data
-        # is the actual data trace. Create also arrays for the additional
-        # data, which was measured during the alignment.
-
-        # for each axis, make a default value:
-        self._1D_axis0_data = np.zeros(2)
-
-        self._2D_axis0_data = np.zeros(2)
-        self._2D_axis1_data = np.zeros(2)
-
-        self._3D_axis0_data = np.zeros(2)
-        self._3D_axis1_data = np.zeros(2)
-        self._3D_axis2_data = np.zeros(2)
-
-        self._1D_add_data_matrix = np.zeros(shape=np.shape(self._1D_axis0_data), dtype=object)
-
-        self._2D_data_matrix = np.zeros((2, 2))
-        self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
-
-        self._3D_data_matrix = np.zeros((2, 2, 2))
-        self._3D_add_data_matrix = np.zeros(shape=np.shape(self._3D_data_matrix), dtype=object)
-
-        self._stop_measure = False
-
-        #FIXME: I am right now not quite sure how to combine the passed
-        #       parameters in an elegant way, therefore all the different values
-        #       are stored.
-
-        # put all the alignment methods together
-        self.curr_alignment_method = '2d_fluorescence'
-        self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
-
-
     def on_activate(self, e):
         """ Definition and initialisation of the GUI.
 
@@ -178,13 +134,18 @@ class MagnetLogic(GenericLogic):
         self._magnet_device = self.connector['in']['magnetstage']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
+        self.log.info('The following configuration was found.')
+        # checking for the right configuration
+        config = self.getConfiguration()
+        for key in config.keys():
+            self.log.info('{}: {}'.format(key,config[key]))
+
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
         self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
         self._counter_logic = self.connector['in']['counterlogic']['object']
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
-
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that
@@ -193,59 +154,238 @@ class MagnetLogic(GenericLogic):
         self.sigMoveRel.connect(self._magnet_device.move_rel)
         self.sigAbort.connect(self._magnet_device.abort)
 
-
         # signal connect for alignment:
 
         self._sigInitializeMeasPos.connect(self._move_to_curr_pathway_index)
         self._sigStepwiseAlignmentNext.connect(self._stepwise_loop_body,
                                                QtCore.Qt.QueuedConnection)
 
+        self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
 
-        # connect the optimizer signals:
+        if 'curr_2d_pathway_mode' in self._statusVariables:
+            self.curr_2d_pathway_mode = self._statusVariables['curr_2d_pathway_mode']
+        else:
+            self.curr_2d_pathway_mode = 'snake-wise'    # choose that as default
+
+        if '_checktime' in self._statusVariables:
+            self._checktime = self._statusVariables['_checktime']
+        else:
+            self._checktime = 0.5 # in seconds
 
         self.sigTest.connect(self._do_premeasurement_proc)
 
+        if '_1D_axis0_data' in self._statusVariables:
+            self._1D_axis0_data = self._statusVariables['_1D_axis0_data']
+        else:
+            self._1D_axis0_data = np.zeros(2)
+
+        if '_2D_axis0_data' in self._statusVariables:
+            self._2D_axis0_data = self._statusVariables['_2D_axis0_data']
+        else:
+            self._2D_axis0_data = np.zeros(2)
+
+        if '_2D_axis1_data' in self._statusVariables:
+            self._2D_axis1_data = self._statusVariables['_2D_axis1_data']
+        else:
+            self._2D_axis1_data = np.zeros(2)
+
+        if '_3D_axis0_data' in self._statusVariables:
+            self._3D_axis0_data = self._statusVariables['_3D_axis0_data']
+        else:
+            self._3D_axis0_data = np.zeros(2)
+
+        if '_3D_axis1_data' in self._statusVariables:
+            self._3D_axis1_data = self._statusVariables['_3D_axis1_data']
+        else:
+            self._3D_axis1_data = np.zeros(2)
+
+        if '_3D_axis2_data' in self._statusVariables:
+            self._3D_axis2_data = self._statusVariables['_3D_axis2_data']
+        else:
+            self._3D_axis2_data = np.zeros(2)
+
+        if '_1D_add_data_matrix' in self._statusVariables:
+            self._1D_add_data_matrix = self._statusVariables['_1D_add_data_matrix']
+        else:
+            self._1D_add_data_matrix = np.zeros(shape=np.shape(self._1D_axis0_data), dtype=object)
+
+
+        if '_2D_data_matrix' in self._statusVariables:
+            self._2D_data_matrix = self._statusVariables['_2D_data_matrix']
+        else:
+            self._2D_data_matrix = np.zeros((2, 2))
+
+        if '_2D_add_data_matrix' in self._statusVariables:
+            self._2D_add_data_matrix = self._statusVariables['_2D_add_data_matrix']
+        else:
+            self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
+
+        if '_3D_data_matrix' in self._statusVariables:
+            self._3D_data_matrix = self._statusVariables['_3D_data_matrix']
+        else:
+            self._3D_data_matrix = np.zeros((2, 2, 2))
+
+        if '_3D_add_data_matrix' in self._statusVariables:
+            self._3D_add_data_matrix = self._statusVariables['_3D_add_data_matrix']
+        else:
+            self._3D_add_data_matrix = np.zeros(shape=np.shape(self._3D_data_matrix), dtype=object)
+
+        if 'curr_alignment_method' in self._statusVariables:
+            self.curr_alignment_method = self._statusVariables['curr_alignment_method']
+        else:
+            self.curr_alignment_method = '2d_fluorescence'
+
+        self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
+
         # Fluorescence alignment settings:
-        self._optimize_pos = False
-        self.fluorescence_integration_time = 5  # integration time in s
+        if '_optimize_pos' in self._statusVariables:
+            self._optimize_pos = self._statusVariables['_optimize_pos']
+        else:
+            self._optimize_pos = False
+
+        if 'fluorescence_integration_time' in self._statusVariables:
+            self.fluorescence_integration_time = self._statusVariables['fluorescence_integration_time']
+        else:
+            self.fluorescence_integration_time = 5  # integration time in s
 
         # ODMR alignment settings (ALL IN SI!!!):
-        self.odmr_2d_low_center_freq = 11028e6
-        self.odmr_2d_low_step_freq = 0.15e6
-        self.odmr_2d_low_range_freq = 25e6
-        self.odmr_2d_low_power = 4
-        self.odmr_2d_low_runtime = 40
+
+        if 'odmr_2d_low_center_freq' in self._statusVariables:
+            self.odmr_2d_low_center_freq = self._statusVariables['odmr_2d_low_center_freq']
+        else:
+            self.odmr_2d_low_center_freq = 11028e6
+
+        if 'odmr_2d_low_step_freq' in self._statusVariables:
+            self.odmr_2d_low_step_freq = self._statusVariables['odmr_2d_low_step_freq']
+        else:
+            self.odmr_2d_low_step_freq = 0.15e6
+
+        if 'odmr_2d_low_range_freq' in self._statusVariables:
+            self.odmr_2d_low_range_freq = self._statusVariables['odmr_2d_low_range_freq']
+        else:
+            self.odmr_2d_low_range_freq = 25e6
+
+        if 'odmr_2d_low_power' in self._statusVariables:
+            self.odmr_2d_low_power = self._statusVariables['odmr_2d_low_power']
+        else:
+            self.odmr_2d_low_power = 4
+
+        if 'odmr_2d_low_runtime' in self._statusVariables:
+            self.odmr_2d_low_runtime = self._statusVariables['odmr_2d_low_runtime']
+        else:
+            self.odmr_2d_low_runtime = 40
+
         self.odmr_2d_low_fitfunction_list = self._odmr_logic.get_fit_functions()
-        self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
 
-        self.odmr_2d_high_center_freq = 16768e6
-        self.odmr_2d_high_step_freq = 0.15e6
-        self.odmr_2d_high_range_freq = 25e6
-        self.odmr_2d_high_power = 2
-        self.odmr_2d_high_runtime = 40
+        if 'odmr_2d_low_fitfunction' in self._statusVariables:
+            self.odmr_2d_low_fitfunction = self._statusVariables['odmr_2d_low_fitfunction']
+        else:
+            self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
+
+
+
+        if 'odmr_2d_high_center_freq' in self._statusVariables:
+            self.odmr_2d_high_center_freq = self._statusVariables['odmr_2d_high_center_freq']
+        else:
+            self.odmr_2d_high_center_freq = 16768e6
+
+        if 'odmr_2d_high_step_freq' in self._statusVariables:
+            self.odmr_2d_high_step_freq = self._statusVariables['odmr_2d_high_step_freq']
+        else:
+            self.odmr_2d_high_step_freq = 0.15e6
+
+        if 'odmr_2d_high_range_freq' in self._statusVariables:
+            self.odmr_2d_high_range_freq = self._statusVariables['odmr_2d_high_range_freq']
+        else:
+            self.odmr_2d_high_range_freq = 25e6
+
+        if 'odmr_2d_high_power' in self._statusVariables:
+            self.odmr_2d_high_power = self._statusVariables['odmr_2d_high_power']
+        else:
+            self.odmr_2d_high_power = 2
+
+        if 'odmr_2d_high_runtime' in self._statusVariables:
+            self.odmr_2d_high_runtime = self._statusVariables['odmr_2d_high_runtime']
+        else:
+            self.odmr_2d_high_runtime = 40
+
         self.odmr_2d_high_fitfunction_list = self._odmr_logic.get_fit_functions()
-        self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
 
-        self.odmr_2d_save_after_measure = True
-        self.odmr_2d_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
-        self.odmr_2d_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
+        if 'odmr_2d_high_fitfunction' in self._statusVariables:
+            self.odmr_2d_high_fitfunction = self._statusVariables['odmr_2d_high_fitfunction']
+        else:
+            self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
+
+        if 'odmr_2d_save_after_measure' in self._statusVariables:
+            self.odmr_2d_save_after_measure = self._statusVariables['odmr_2d_save_after_measure']
+        else:
+            self.odmr_2d_save_after_measure = True
+
+        if 'odmr_2d_peak_axis0_move_ratio' in self._statusVariables:
+            self.odmr_2d_peak_axis0_move_ratio = self._statusVariables['odmr_2d_peak_axis0_move_ratio']
+        else:
+            self.odmr_2d_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
+
+        if 'odmr_2d_peak_axis1_move_ratio' in self._statusVariables:
+            self.odmr_2d_peak_axis1_move_ratio = self._statusVariables['odmr_2d_peak_axis1_move_ratio']
+        else:
+            self.odmr_2d_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
 
         # that is just a normalization value, which is needed for the ODMR
         # alignment, since the colorbar cannot display values greater (2**32)/2.
         # A solution has to found for that!
-        self.norm = 1000
+        self.norm = 1
 
         # single shot alignment on nuclear spin settings (ALL IN SI!!!):
-        self.nuclear_2d_rabi_periode = 1000e-9
-        self.nuclear_2d_mw_freq = 100e6
-        self.nuclear_2d_mw_channel = -1
-        self.nuclear_2d_mw_power = -30
-        self.nuclear_2d_laser_time = 900e-9
-        self.nuclear_2d_laser_channel = 2
-        self.nuclear_2d_detect_channel = 1
-        self.nuclear_2d_idle_time = 1500e-9
-        self.nuclear_2d_reps_within_ssr = 1000
-        self.nuclear_2d_num_ssr = 3000
+        if 'nuclear_2d_rabi_periode' in self._statusVariables:
+            self.nuclear_2d_rabi_periode = self._statusVariables['nuclear_2d_rabi_periode']
+        else:
+            self.nuclear_2d_rabi_periode = 1000e-9
+
+        if 'nuclear_2d_mw_freq' in self._statusVariables:
+            self.nuclear_2d_mw_freq = self._statusVariables['nuclear_2d_mw_freq']
+        else:
+            self.nuclear_2d_mw_freq = 100e6
+
+        if 'nuclear_2d_mw_channel' in self._statusVariables:
+            self.nuclear_2d_mw_channel = self._statusVariables['nuclear_2d_mw_channel']
+        else:
+            self.nuclear_2d_mw_channel = -1
+
+        if 'nuclear_2d_mw_power' in self._statusVariables:
+            self.nuclear_2d_mw_power = self._statusVariables['nuclear_2d_mw_power']
+        else:
+            self.nuclear_2d_mw_power = -30
+
+        if 'nuclear_2d_laser_time' in self._statusVariables:
+            self.nuclear_2d_laser_time = self._statusVariables['nuclear_2d_laser_time']
+        else:
+            self.nuclear_2d_laser_time = 900e-9
+
+        if 'nuclear_2d_laser_channel' in self._statusVariables:
+            self.nuclear_2d_laser_channel = self._statusVariables['nuclear_2d_laser_channel']
+        else:
+            self.nuclear_2d_laser_channel = 2
+
+        if 'nuclear_2d_detect_channel' in self._statusVariables:
+            self.nuclear_2d_detect_channel = self._statusVariables['nuclear_2d_detect_channel']
+        else:
+            self.nuclear_2d_detect_channel = 1
+
+        if 'nuclear_2d_idle_time' in self._statusVariables:
+            self.nuclear_2d_idle_time = self._statusVariables['nuclear_2d_idle_time']
+        else:
+            self.nuclear_2d_idle_time = 1500e-9
+
+        if 'nuclear_2d_reps_within_ssr' in self._statusVariables:
+            self.nuclear_2d_reps_within_ssr = self._statusVariables['nuclear_2d_reps_within_ssr']
+        else:
+            self.nuclear_2d_reps_within_ssr = 1000
+
+        if 'nuclear_2d_num_ssr' in self._statusVariables:
+            self.nuclear_2d_num_ssr = self._statusVariables['nuclear_2d_num_ssr']
+        else:
+            self.nuclear_2d_num_ssr = 3000
 
 
     def on_deactivate(self, e):
@@ -254,7 +394,36 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        pass
+        self._statusVariables['optimize_pos'] =  self._optimize_pos
+        self._statusVariables['fluorescence_integration_time'] =  self.fluorescence_integration_time
+
+        self._statusVariables['odmr_2d_low_center_freq'] =  self.odmr_2d_low_center_freq
+        self._statusVariables['odmr_2d_low_step_freq'] =  self.odmr_2d_low_step_freq
+        self._statusVariables['odmr_2d_low_range_freq'] =  self.odmr_2d_low_range_freq
+        self._statusVariables['odmr_2d_low_power'] =  self.odmr_2d_low_power
+        self._statusVariables['odmr_2d_low_runtime'] =  self.odmr_2d_low_runtime
+        self._statusVariables['odmr_2d_low_fitfunction'] =  self.odmr_2d_low_fitfunction
+
+        self._statusVariables['odmr_2d_high_center_freq'] =  self.odmr_2d_high_center_freq
+        self._statusVariables['odmr_2d_high_step_freq'] =  self.odmr_2d_high_step_freq
+        self._statusVariables['odmr_2d_high_range_freq'] =  self.odmr_2d_high_range_freq
+        self._statusVariables['odmr_2d_high_power'] =  self.odmr_2d_high_power
+        self._statusVariables['odmr_2d_high_runtime'] =  self.odmr_2d_high_runtime
+        self._statusVariables['odmr_2d_high_fitfunction'] =  self.odmr_2d_high_fitfunction
+        self._statusVariables['odmr_2d_save_after_measure'] =  self.odmr_2d_save_after_measure
+        self._statusVariables['odmr_2d_peak_axis0_move_ratio'] =  self.odmr_2d_peak_axis0_move_ratio
+        self._statusVariables['odmr_2d_peak_axis1_move_ratio'] =  self.odmr_2d_peak_axis1_move_ratio
+
+        self._statusVariables['nuclear_2d_rabi_periode'] =  self.nuclear_2d_rabi_periode
+        self._statusVariables['nuclear_2d_mw_freq'] =  self.nuclear_2d_mw_freq
+        self._statusVariables['nuclear_2d_mw_channel'] =  self.nuclear_2d_mw_channel
+        self._statusVariables['nuclear_2d_mw_power'] =  self.nuclear_2d_mw_power
+        self._statusVariables['nuclear_2d_laser_time'] =  self.nuclear_2d_laser_time
+        self._statusVariables['nuclear_2d_laser_channel'] =  self.nuclear_2d_laser_channel
+        self._statusVariables['nuclear_2d_detect_channel'] =  self.nuclear_2d_detect_channel
+        self._statusVariables['nuclear_2d_idle_time'] =  self.nuclear_2d_idle_time
+        self._statusVariables['nuclear_2d_reps_within_ssr'] =  self.nuclear_2d_reps_within_ssr
+        self._statusVariables['nuclear_2d_num_ssr'] =  self.nuclear_2d_num_ssr
 
     def get_hardware_constraints(self):
         """ Retrieve the hardware constraints.
