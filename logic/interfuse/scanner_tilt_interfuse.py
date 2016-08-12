@@ -24,9 +24,9 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 import numpy as np
 import copy
 
-class ScannerInterfuse(GenericLogic, ConfocalScannerInterface):
+class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
 
-    _modclass = 'ScannerInterfuse'
+    _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
     _in = {'confocalscanner1': 'ConfocalScannerInterface'}
