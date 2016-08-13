@@ -51,14 +51,7 @@ from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
 from .base import Base
 
-class Singleton(QtCore.pyqtWrapperType):
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-class Manager(QtCore.QObject, metaclass=Singleton):
+class Manager(QtCore.QObject):
     """The Manager object is responsible for:
       - Loading/configuring device modules and storing their handles
       - Providing unified timestamps
