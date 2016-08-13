@@ -108,8 +108,7 @@ else:
     QtCore.qInstallMessageHandler(qt5_messageHandler)
 
 
-# import numpy and pyqtgraph
-import numpy as np
+# import pyqtgraph
 import pyqtgraph as pg
 
 
