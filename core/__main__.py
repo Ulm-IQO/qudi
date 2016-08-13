@@ -79,7 +79,8 @@ def qt_message_handler(msgType, msg):
     A message handler handling Qt messages.
     """
     logger = logging.getLogger('Qt')
-    msg = msg.decode('utf-8')
+    if 'PyQt4' in sys.modules or 'PySide' in sys.modules:
+        msg = msg.decode('utf-8')
     if msgType == QtCore.QtDebugMsg:
         logger.debug(msg)
     elif msgType == QtCore.QtWarningMsg:
@@ -105,7 +106,7 @@ if 'PyQt4' in sys.modules or 'PySide' in sys.modules:
 else:
     def qt5_message_handler(msgType, context, msg):
         qt_message_handler(msgType, msg)
-    QtCore.qInstallMessageHandler(qt5_messageHandler)
+    QtCore.qInstallMessageHandler(qt5_message_handler)
 
 
 # import pyqtgraph
