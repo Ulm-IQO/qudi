@@ -23,26 +23,11 @@
    <enum>QFrame::StyledPanel</enum>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QPushButton" name="loadButton">
-     <property name="text">
-      <string>Load something.</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QToolButton" name="reloadButton">
-     <property name="text">
-      <string>...</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</iconset>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="2">
     <widget class="QToolButton" name="deactivateButton">
+     <property name="toolTip">
+      <string>Deactivate module</string>
+     </property>
      <property name="text">
       <string>...</string>
      </property>
@@ -52,10 +37,48 @@
      </property>
     </widget>
    </item>
+   <item row="0" column="1">
+    <widget class="QToolButton" name="reloadButton">
+     <property name="toolTip">
+      <string>Reload module</string>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset>
+       <normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</iconset>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="loadButton">
+     <property name="toolTip">
+      <string>Load this module and all its dependencies</string>
+     </property>
+     <property name="text">
+      <string>Load something.</string>
+     </property>
+    </widget>
+   </item>
    <item row="1" column="0" colspan="3">
     <widget class="QLabel" name="statusLabel">
      <property name="text">
       <string>Module status goes here.</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QToolButton" name="cleanupButton">
+     <property name="toolTip">
+      <string>Clean up module status file</string>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset>
+       <normaloff>../../artwork/icons/oxygen/22x22/edit-clear.png</normaloff>../../artwork/icons/oxygen/22x22/edit-clear.png</iconset>
      </property>
     </widget>
    </item>

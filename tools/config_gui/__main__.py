@@ -6,8 +6,7 @@ if __package__ is None:
 else:
     import __init__
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
-import pyqtgraph as pg
+from qtpy import QtCore, QtGui, QtWidgets, uic
 
 from pyflowgraph.graph_view import GraphView
 from pyflowgraph.graph_view_widget import GraphViewWidget
@@ -19,9 +18,10 @@ import os
 
 sys.path.append(os.getcwd())
 from gui.colordefs import QudiPalettePale as palette
+from menu import ModMenu
 
 
-class ConfigMainWindow(QtGui.QMainWindow):
+class ConfigMainWindow(QtWidgets.QMainWindow):
     """ This class represents the Manager Window.
     """
     def __init__(self):
@@ -50,13 +50,7 @@ class ConfigMainWindow(QtGui.QMainWindow):
         self.actionFrame_all_nodes.activated.connect(self.graphView.frameAllNodes)
 
         # add module menu
-        self.mmroot = QtGui.QMenu()
-        self.logicmenu = QtGui.QMenu('Logic')
-        self.guimenu = QtGui.QMenu('Gui')
-        self.hwmenu = QtGui.QMenu('Hardware')
-        self.mmroot.addMenu(self.logicmenu)
-        self.mmroot.addMenu(self.guimenu)
-        self.mmroot.addMenu(self.hwmenu)
+        self.mmroot = ModMenu()
         self.actionAdd_Module.setMenu(self.mmroot)
 
     def testGraph(self):
@@ -94,9 +88,13 @@ class ConfigMainWindow(QtGui.QMainWindow):
 
     def updateWindowTitle(self, filename, extra=''):
         self.setWindowTitle('{}{} - QuDi configuration editor'.format(filename, extra))
+    
+    def getModuleInfo(self):
+        modules = listmods.find_pyfiles(os.getcwd())
+        m, i_s, ie, oe = listmods.check_qudi_modules(modules)
 
 if __name__ == "__main__":
-    app = pg.mkQApp()
+    app = QtWidgets.QApplication(sys.argv)
     mw = ConfigMainWindow()
     app.exec_()
 
