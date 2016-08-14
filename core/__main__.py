@@ -24,6 +24,33 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 """
 
 
+import sys
+import os
+
+# Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS,
+# and SIGILL signals
+# -> e.g. for segmentation faults
+import faulthandler
+faulthandler.disable()
+faulthandler.enable(all_threads=True)
+
+
+# parse commandline parameters
+import argparse
+parser = argparse.ArgumentParser(prog='start.py')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-p', '--profile', action='store_true',
+        help='enables profiler')
+group.add_argument('-cg', '--callgraph', action='store_true',
+        help='display dependencies between the methods/modules')
+parser.add_argument('-m', '--manhole', action='store_true',
+        help='manhole for debugging purposes')
+parser.add_argument('-g', '--no-gui', action='store_true',
+        help='does not load the manager gui module')
+parser.add_argument('-c', '--config', default='', help='configuration file')
+args = parser.parse_args()
+
+
 # install logging facility
 from .logger import initialize_logger
 initialize_logger()
@@ -32,23 +59,85 @@ logger = logging.getLogger(__name__)
 logger.info('Loading QuDi...')
 print('Loading QuDi...')
 
+
+# this loads Qt and makes sure the API version is right with PyQt4
 if __package__ is None:
     import core
     __package__ = 'core'
 else:
     import core
 
+
+# define a global variable for the manager
+man = None
+
+
+# install logging facility for Qt errors
 from pyqtgraph.Qt import QtCore
+def qt_message_handler(msgType, msg):
+    """
+    A message handler handling Qt messages.
+    """
+    logger = logging.getLogger('Qt')
+    if 'PyQt4' in sys.modules or 'PySide' in sys.modules:
+        msg = msg.decode('utf-8')
+    if msgType == QtCore.QtDebugMsg:
+        logger.debug(msg)
+    elif msgType == QtCore.QtWarningMsg:
+        logger.warning(msg)
+    elif msgType == QtCore.QtCriticalMsg:
+        logger.critical(msg)
+    else:
+        import traceback
+        logger.critical('Fatal error occurred: {0}\n'
+                'Traceback:\n'
+                '{1}'.format(msg, ''.join(traceback.format_stack())))
+        global man
+        if man is not None:
+            logger.critical('Asking manager to quit.')
+            try:
+                man.quit()
+                QtCore.QCoreApplication.instance().processEvents()
+            except:
+                logger.exception('Manager failed quitting.')
 
-from .manager import Manager
-from .parentpoller import ParentPollerWindows, ParentPollerUnix
-import numpy as np
+if 'PyQt4' in sys.modules or 'PySide' in sys.modules:
+    QtCore.qInstallMsgHandler(qt_message_handler)
+else:
+    def qt5_message_handler(msgType, context, msg):
+        qt_message_handler(msgType, msg)
+    QtCore.qInstallMessageHandler(qt5_message_handler)
+
+
+# import pyqtgraph
 import pyqtgraph as pg
-import core.util.helpers as helpers
-import argparse
-import sys
-import os
 
+
+# instantiate Qt Application (gui or non-gui)
+if args.no_gui:
+    app = QtCore.QCoreApplication(sys.argv)
+else:
+    app = pg.mkQApp()
+
+
+# Install the pyzmq ioloop. This has to be done before anything else from
+# tornado is imported.
+try:
+    from zmq.eventloop import ioloop
+    ioloop.install()
+except:
+    logger.error('Preparing ZMQ failed, probably no IPython possible!')
+
+
+# Disable standard garbage collector and run it from the event loop to
+# improve stability.
+# (see pyqtgraph.util.garbage_collector in the doc for more information)
+from pyqtgraph.util.garbage_collector import GarbageCollector
+gc = GarbageCollector(interval=1.0, debug=False)
+
+
+# define a watchdog for our application
+from .parentpoller import ParentPollerWindows, ParentPollerUnix
 
 
 class AppWatchdog(QtCore.QObject):
@@ -118,46 +207,9 @@ class AppWatchdog(QtCore.QObject):
         QtCore.QCoreApplication.instance().quit()
 
 
-# Possibility to start the program with additional parameters.
-parser = argparse.ArgumentParser(prog='start.py')
-group = parser.add_mutually_exclusive_group()
-group.add_argument('-p', '--profile', action='store_true',
-        help='enables profiler')
-group.add_argument('-cg', '--callgraph', action='store_true',
-        help='display dependencies between the methods/modules')
-parser.add_argument('-m', '--manhole', action='store_true',
-        help='manhole for debugging purposes')
-parser.add_argument('-g', '--no-gui', action='store_true',
-        help='does not load the manager gui module')
-parser.add_argument('-c', '--config', default='', help='configuration file')
-args = parser.parse_args()
-
-# Qt Application (gui or non-gui)
-if args.no_gui:
-    app = QtCore.QCoreApplication(sys.argv)
-else:
-    app = pg.mkQApp()
-
-# Enable stack trace output when a crash is detected
-import faulthandler
-faulthandler.disable()
-faulthandler.enable(all_threads=True)
-
-try:
-    # Install the pyzmq ioloop. This has to be done before anything else from
-    # tornado is imported.
-    from zmq.eventloop import ioloop
-    ioloop.install()
-except:
-    logger.error('Preparing ZMQ failed, probably no IPython possible!')
-
-# Disable garbage collector to improve stability.
-# (see pyqtgraph.util.garbage_collector in the doc for more information)
-from pyqtgraph.util.garbage_collector import GarbageCollector
-gc = GarbageCollector(interval=1.0, debug=False)
-
 # Create Manager. This configures devices and creates the main manager window.
 # Arguments parsed by argparse are passed to the Manager.
+from .manager import Manager
 watchdog = AppWatchdog()
 man = Manager(args=args)
 watchdog.setupParentPoller(man)
@@ -171,11 +223,14 @@ if args.manhole:
     import manhole
     manhole.install()
 
+
 # Start Qt event loop unless running in interactive mode and not using PySide.
+import core.util.helpers as helpers
 interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
 
 if interactive:
-    print("Interactive mode; not starting event loop.")
+    logger.info('Interactive mode; not starting event loop.')
+    print('Interactive mode; not starting event loop.')
 
     # import some modules which might be useful on the command line
     import numpy as np
@@ -203,7 +258,9 @@ if interactive:
             readline.write_history_file(historyPath)
     atexit.register(save_history)
 else:
+    # non-interactive, start application in different modes
     if args.profile:
+        # with profiler
         import cProfile, pstats
         from io import StringIO
         pr = cProfile.Profile()
@@ -221,16 +278,20 @@ else:
         # This avoids otherwise irritating exit crashes.
         helpers.exit(watchdog.exitcode)
     elif args.callgraph:
+        # with callgraph
         from pycallgraph import PyCallGraph
         from pycallgraph.output import GraphvizOutput
         with PyCallGraph(output=GraphvizOutput()):
             app.exec_()
     elif not man.hasGui:
+        # without gui
         app.exec_()
         helpers.exit(watchdog.exitcode)
     else:
+        # start regular
         app.exec_()
-        # helpers.exit() causes python to exit before Qt has a chance to clean up.
+        # helpers.exit() causes python to exit before Qt has a chance to
+        # clean up.
         # This avoids otherwise irritating exit crashes.
         helpers.exit(watchdog.exitcode)
 
