@@ -61,6 +61,9 @@ while True:
         elif retval == 2:
             # invalid commandline argument
             break
+        elif retval == -6:
+            # called if QFatal occurs
+            break
         else:
             print('Unexpected return value {0}. Exiting.'.format(retval))
             sys.exit(retval)
