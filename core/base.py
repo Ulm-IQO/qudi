@@ -20,12 +20,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import logging
-from pyqtgraph.Qt import QtCore
-from .FysomAdapter import Fysom # provides a final state machine
+import qtpy
+from qtpy import QtCore
+from .FysomAdapter import Fysom  # provides a final state machine
 from collections import OrderedDict
 
 import os
 import sys
+
 
 class Base(QtCore.QObject, Fysom):
     """
@@ -44,14 +46,14 @@ class Base(QtCore.QObject, Fysom):
     * Reload module data (from saved variables)
     """
 
-    sigStateChanged = QtCore.Signal(object)  #(module name, state change)
+    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
     _modclass = 'base'
     _modtype = 'base'
     _in = dict()
     _out = dict()
 
     def __init__(self, manager, name, config={}, callbacks={},
-            **kwargs):
+                 **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
@@ -61,7 +63,6 @@ class Base(QtCore.QObject, Fysom):
           @param dict callbacks: dictionary specifying functions to be run on state machine transitions
 
         """
-
 
         default_callbacks = {
             'onactivate': self.on_activate,
@@ -76,30 +77,30 @@ class Base(QtCore.QObject, Fysom):
         _baseStateList = {
             'initial': 'deactivated',
             'events': [
-                {'name': 'activate',    'src': 'deactivated',   'dst': 'idle' },
-                {'name': 'deactivate',  'src': 'idle',          'dst': 'deactivated' },
-                {'name': 'deactivate',  'src': 'running',       'dst': 'deactivated' },
-                {'name': 'run',         'src': 'idle',          'dst': 'running' },
-                {'name': 'stop',        'src': 'running',       'dst': 'idle' },
-                {'name': 'lock',        'src': 'idle',          'dst': 'locked' },
-                {'name': 'lock',        'src': 'running',       'dst': 'locked' },
-                {'name': 'block',       'src': 'idle',          'dst': 'blocked' },
-                {'name': 'block',       'src': 'running',       'dst': 'blocked' },
-                {'name': 'locktoblock', 'src': 'locked',        'dst': 'blocked' },
-                {'name': 'unlock',      'src': 'locked',        'dst': 'idle' },
-                {'name': 'unblock',     'src': 'blocked',       'dst': 'idle' },
-                {'name': 'runlock',     'src': 'locked',        'dst': 'running' },
-                {'name': 'runblock',    'src': 'blocked',       'dst': 'running' }
+                {'name': 'activate',    'src': 'deactivated',   'dst': 'idle'},
+                {'name': 'deactivate',  'src': 'idle',          'dst': 'deactivated'},
+                {'name': 'deactivate',  'src': 'running',       'dst': 'deactivated'},
+                {'name': 'run',         'src': 'idle',          'dst': 'running'},
+                {'name': 'stop',        'src': 'running',       'dst': 'idle'},
+                {'name': 'lock',        'src': 'idle',          'dst': 'locked'},
+                {'name': 'lock',        'src': 'running',       'dst': 'locked'},
+                {'name': 'block',       'src': 'idle',          'dst': 'blocked'},
+                {'name': 'block',       'src': 'running',       'dst': 'blocked'},
+                {'name': 'locktoblock', 'src': 'locked',        'dst': 'blocked'},
+                {'name': 'unlock',      'src': 'locked',        'dst': 'idle'},
+                {'name': 'unblock',     'src': 'blocked',       'dst': 'idle'},
+                {'name': 'runlock',     'src': 'locked',        'dst': 'running'},
+                {'name': 'runblock',    'src': 'blocked',       'dst': 'running'}
             ],
             'callbacks': default_callbacks
         }
 
         # Initialise state machine:
-        if 'PyQt5' in sys.modules:
-            super().__init__(cfg=_baseStateList, **kwargs)
-        else:
+        if qtpy.PYQT4 or qtpy.PYSIDE:
             QtCore.QObject.__init__(self)
             Fysom.__init__(self, _baseStateList)
+        else:
+            super().__init__(cfg=_baseStateList, **kwargs)
 
         # add connection base
         self.connector = OrderedDict()
@@ -142,7 +143,7 @@ class Base(QtCore.QObject, Fysom):
         Returns a logger object
         """
         return logging.getLogger("{0}.{1}".format(
-            self.__module__,self.__class__.__name__))
+            self.__module__, self.__class__.__name__))
 
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden
@@ -151,7 +152,7 @@ class Base(QtCore.QObject, Fysom):
         @param object e: Fysom state change descriptor
         """
         logger.warning('Please implement and specify the activation method '
-                'for {0}.'.format(self.__class__.__name__))
+                       'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
         """ Method called when module is deactivated. If not overridden
@@ -160,7 +161,7 @@ class Base(QtCore.QObject, Fysom):
         @param object e: Fysom state change descriptor
         """
         logger.warning('Please implement and specify the deactivation method '
-                '{0}.'.format(self.__class__.__name__))
+                       '{0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
     def onchangestate(self, e):
@@ -186,8 +187,8 @@ class Base(QtCore.QObject, Fysom):
         """
         if not isinstance(variableDict, (dict, OrderedDict)):
             logger.error('Did not pass a dict or OrderedDict to '
-                    'setStatusVariables in {0}.'.format(
-                        self.__class__.__name__))
+                         'setStatusVariables in {0}.'.format(
+                             self.__class__.__name__))
             return
         self._statusVariables = variableDict
 
@@ -230,7 +231,8 @@ class Base(QtCore.QObject, Fysom):
              @return string: path to the main tree of the software
 
         """
-        mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
+        mainpath = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), ".."))
         return mainpath
 
     def get_home_dir(self):
@@ -239,4 +241,3 @@ class Base(QtCore.QObject, Fysom):
             @return string: absolute path to the home directory
         """
         return os.path.abspath(os.path.expanduser('~'))
-

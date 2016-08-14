@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import logging
 logger = logging.getLogger(__name__)
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from collections import OrderedDict
 from .util.mutex import Mutex
 

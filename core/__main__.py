@@ -73,13 +73,14 @@ man = None
 
 
 # install logging facility for Qt errors
-from pyqtgraph.Qt import QtCore
+import qtpy
+from qtpy import QtCore
 def qt_message_handler(msgType, msg):
     """
     A message handler handling Qt messages.
     """
     logger = logging.getLogger('Qt')
-    if 'PyQt4' in sys.modules or 'PySide' in sys.modules:
+    if qtpy.PYQT4 or qtpy.PYSIDE:
         msg = msg.decode('utf-8')
     if msgType == QtCore.QtDebugMsg:
         logger.debug(msg)
@@ -101,7 +102,7 @@ def qt_message_handler(msgType, msg):
             except:
                 logger.exception('Manager failed quitting.')
 
-if 'PyQt4' in sys.modules or 'PySide' in sys.modules:
+if qtpy.PYQT4 or qtpy.PYSIDE:
     QtCore.qInstallMsgHandler(qt_message_handler)
 else:
     def qt5_message_handler(msgType, context, msg):
@@ -109,15 +110,12 @@ else:
     QtCore.qInstallMessageHandler(qt5_message_handler)
 
 
-# import pyqtgraph
-import pyqtgraph as pg
-
-
 # instantiate Qt Application (gui or non-gui)
 if args.no_gui:
     app = QtCore.QCoreApplication(sys.argv)
 else:
-    app = pg.mkQApp()
+    from qtpy import QtWidgets
+    app = QtWidgets.QApplication(sys.argv)
 
 
 # Install the pyzmq ioloop. This has to be done before anything else from
@@ -226,7 +224,7 @@ if args.manhole:
 
 # Start Qt event loop unless running in interactive mode and not using PySide.
 import core.util.helpers as helpers
-interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
+interactive = (sys.flags.interactive == 1) and not qtpy.PYSIDE
 
 if interactive:
     logger.info('Interactive mode; not starting event loop.')
