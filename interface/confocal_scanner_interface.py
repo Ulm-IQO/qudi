@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.util.customexceptions import InterfaceImplementationError
 
 
-class ConfocalScannerInterface():
+class ConfocalScannerInterface:
     """ This is the Interface class to define the controls for the simple
     microwave hardware.
     """
