@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.util.customexceptions import InterfaceImplementationError
 
 
-class SlowCounterInterface():
+class SlowCounterInterface:
     """ Define the controls for a slow counter."""
 
     _modtype = 'SlowCounterInterface'

@@ -60,7 +60,8 @@ class Base(QtCore.QObject, Fysom):
           @param object manager: the manager object that
           @param str name: unique name for this object
           @param dict configuration: parameters from the configuration file
-          @param dict callbacks: dictionary specifying functions to be run on state machine transitions
+          @param dict callbacks: dictionary specifying functions to be run
+                                 on state machine transitions
 
         """
 
@@ -151,8 +152,8 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        logger.warning('Please implement and specify the activation method '
-                       'for {0}.'.format(self.__class__.__name__))
+        self.log.warning('Please implement and specify the activation method '
+                         'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
         """ Method called when module is deactivated. If not overridden
@@ -160,8 +161,8 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        logger.warning('Please implement and specify the deactivation method '
-                       '{0}.'.format(self.__class__.__name__))
+        self.log.warning('Please implement and specify the deactivation '
+                         'method {0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
     def onchangestate(self, e):
@@ -172,7 +173,8 @@ class Base(QtCore.QObject, Fysom):
         self.sigStateChanged.emit(e)
 
     def getStatusVariables(self):
-        """ Return a dict of variable names and their content representing the module state for saving.
+        """ Return a dict of variable names and their content representing
+            the module state for saving.
 
         @return dict: variable names and contents.
 
@@ -180,15 +182,16 @@ class Base(QtCore.QObject, Fysom):
         return self._statusVariables
 
     def setStatusVariables(self, variableDict):
-        """ Give a module a dict of variable names and their content representing the module state.
+        """ Give a module a dict of variable names and their content
+            representing the module state.
 
           @param OrderedDict dict: variable names and contents.
 
         """
         if not isinstance(variableDict, (dict, OrderedDict)):
-            logger.error('Did not pass a dict or OrderedDict to '
-                         'setStatusVariables in {0}.'.format(
-                             self.__class__.__name__))
+            self.log.error('Did not pass a dict or OrderedDict to '
+                           'setStatusVariables in {0}.'.format(
+                               self.__class__.__name__))
             return
         self._statusVariables = variableDict
 
@@ -197,7 +200,8 @@ class Base(QtCore.QObject, Fysom):
 
           @return str: state of state machine
 
-          Valid return values are: 'deactivated', 'idle', 'running', 'locked', 'blocked'
+          Valid return values are: 'deactivated', 'idle', 'running', 'locked',
+                                   'blocked'
         """
         return self.current
 
@@ -210,7 +214,8 @@ class Base(QtCore.QObject, Fysom):
         return self._configuration
 
     def getConfigDirectory(self):
-        """ Return the configuration directory for the manager this module belongs to.
+        """ Return the configuration directory for the manager this module
+            belongs to.
 
           @return str: path of configuration directory
 
@@ -226,7 +231,7 @@ class Base(QtCore.QObject, Fysom):
         return {moduleclass: _class, moduletype: _modtype}
 
     def get_main_dir(self):
-        """Returns the absolut path to the directory of the main software.
+        """ Returns the absolut path to the directory of the main software.
 
              @return string: path to the main tree of the software
 
