@@ -24,7 +24,6 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from lmfit import Parameters
-import core.util.numpyhelpers as nphelp
 import numpy as np
 import time
 import datetime
