@@ -896,6 +896,10 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.pulser_sample_freq_DSpinBox.setValue(asset_obj.sample_rate/1e6)
             self.pulser_sample_rate_changed()
 
+
+        self._pulsed_meas_logic.set_num_of_lasers(asset_obj.number_of_lasers)
+        self._pulsed_meas_logic.sequence_length_s = asset_obj.length_bins / asset_obj.sample_rate
+
         # Load asset into channles via logic module
         self.sigLoadToChannel.emit(asset_name)
         return
@@ -2866,7 +2870,7 @@ class PulsedMeasurementGui(GUIBase):
             # If they have been manually set in the GUI the changes are already in the logic.
             if not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
                 if asset_obj.measurement_ticks_list is not None:
-                    meas_ticks_list = asset_obj.measurement_ticks_list
+                    meas_ticks_list = asset_obj.measurement_ticks_list/ asset_obj.sample_rate
                 else:
                     self.log.error('Error while trying to run pulsed '
                             'measurement. No measurement ticks defined '

@@ -174,7 +174,7 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     OrderedDumper.add_representer(numpy.float16, represent_float)
     OrderedDumper.add_representer(numpy.float32, represent_float)
     OrderedDumper.add_representer(numpy.float64, represent_float)
-    OrderedDumper.add_representer(numpy.float128, represent_float)
+    # OrderedDumper.add_representer(numpy.float128, represent_float)
     OrderedDumper.add_representer(numpy.ndarray, represent_ndarray)
 
     # dump data
