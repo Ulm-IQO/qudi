@@ -195,7 +195,7 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
 
         if 'alignment_2d_cb_GraphicsView_text' in self._statusVariables:
-            textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_Label']
+            textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_text']
 
         else:
             textlabel = 'Fluorescence'
@@ -206,6 +206,20 @@ class MagnetGui(GUIBase):
             units = 'counts/s'
 
         self._mw.alignment_2d_cb_GraphicsView.setLabel('right', textlabel, units=units)
+
+        #FIXME: save that in the logic
+        if 'align_2d_axes0_range_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes0_range_DSpinBox.setValue(self._statusVariables['align_2d_axes0_range_DSpinBox'])
+        if 'align_2d_axes0_step_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes0_step_DSpinBox.setValue(self._statusVariables['align_2d_axes0_step_DSpinBox'])
+        if 'align_2d_axes0_vel_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes0_vel_DSpinBox.setValue(self._statusVariables['align_2d_axes0_vel_DSpinBox'])
+        if 'align_2d_axes1_range_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes1_range_DSpinBox.setValue(self._statusVariables['align_2d_axes1_range_DSpinBox'])
+        if 'align_2d_axes1_step_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes1_step_DSpinBox.setValue(self._statusVariables['align_2d_axes1_step_DSpinBox'])
+        if 'align_2d_axes1_vel_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes1_vel_DSpinBox.setValue(self._statusVariables['align_2d_axes1_vel_DSpinBox'])
 
         #FIXME: that should be actually set in the logic
         if 'measurement_type' in self._statusVariables:
@@ -228,7 +242,7 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_nametag_LineEdit = QtGui.QLineEdit(self._mw)
         self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
         self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag which will be\n'
-                                              'added to the filename.')
+                                                          'added to the filename.')
 
         self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
         self._mw.save_Action.triggered.connect(self.save_2d_plots_and_data)
@@ -310,6 +324,14 @@ class MagnetGui(GUIBase):
         self._statusVariables['measurement_type'] = self.measurement_type
         self._statusVariables['alignment_2d_cb_GraphicsView_text'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
         self._statusVariables['alignment_2d_cb_GraphicsView_units'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
+
+        #FIXME: save that in the logic
+        self._statusVariables['align_2d_axes0_range_DSpinBox'] = self._mw.align_2d_axes0_range_DSpinBox.value()
+        self._statusVariables['align_2d_axes0_step_DSpinBox'] = self._mw.align_2d_axes0_step_DSpinBox.value()
+        self._statusVariables['align_2d_axes0_vel_DSpinBox'] = self._mw.align_2d_axes0_vel_DSpinBox.value()
+        self._statusVariables['align_2d_axes1_range_DSpinBox'] = self._mw.align_2d_axes1_range_DSpinBox.value()
+        self._statusVariables['align_2d_axes1_step_DSpinBox'] = self._mw.align_2d_axes1_step_DSpinBox.value()
+        self._statusVariables['align_2d_axes1_vel_DSpinBox'] = self._mw.align_2d_axes1_vel_DSpinBox.value()
 
         self._mw.close()
 
