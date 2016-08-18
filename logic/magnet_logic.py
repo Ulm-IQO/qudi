@@ -75,7 +75,10 @@ class MagnetLogic(GenericLogic):
            'counterlogic': 'CounterLogic',
            'odmrlogic': 'ODMRLogic',
            'savelogic': 'SaveLogic',
-           'scannerlogic':'ScannerLogic'}
+           'scannerlogic':'ScannerLogic',
+           'traceanalysis':'TraceAnalysisLogic',
+           'gatedcounterlogic': 'GatedCounterLogic',
+           'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
     _out = {'magnetlogic': 'MagnetLogic'}
 
     # General Signals, used everywhere:
@@ -146,6 +149,13 @@ class MagnetLogic(GenericLogic):
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
         self._counter_logic = self.connector['in']['counterlogic']['object']
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
+
+        self._gc_logic = self.connector['in']['gatedcounterlogic']['object']
+        self._ta_logic = self.connector['in']['traceanalysis']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+
+        self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
+
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that
@@ -1541,7 +1551,259 @@ class MagnetLogic(GenericLogic):
 
     def _perform_nuclear_measure(self):
         """ Make a single shot alignment. """
-        pass
+
+        # possible parameters for the nuclear measurement:
+        # self.nuclear_2d_rabi_periode
+        # self.nuclear_2d_mw_freq
+        # self.nuclear_2d_mw_channel
+        # self.nuclear_2d_mw_power
+        # self.nuclear_2d_laser_time
+        # self.nuclear_2d_laser_channel
+        # self.nuclear_2d_detect_channel
+        # self.nuclear_2d_idle_time
+        # self.nuclear_2d_reps_within_ssr
+        # self.nuclear_2d_num_ssr
+        self._load_pulsed_odmr()
+        self._pulser_on()
+
+        # self.odmr_2d_low_center_freq
+        # self.odmr_2d_low_step_freq
+        # self.odmr_2d_low_range_freq
+        #
+        # self.odmr_2d_low_power,
+        # self.odmr_2d_low_runtime,
+        # self.odmr_2d_low_fitfunction,
+        # self.odmr_2d_save_after_measure,
+
+        # Use the parameters from the ODMR alignment!
+        cont_meas, param = self._perform_single_trans_contrast_measure()
+
+        odmr_freq = param['Freq. ' + str(self.nuclear_2d_mw_on_peak-1)]['value']*1e6
+
+        self._set_cw_mw(switch_on=True, freq=odmr_freq, power=self.nuclear_2d_mw_power)
+        self._load_nuclear_spin_readout()
+        self._pulser_on()
+
+        # Check whether proper mode is active and if not activated that:
+        if self._gc_logic.get_counting_mode() != 'finite-gated':
+            self._gc_logic.set_counting_mode(mode='finite-gated')
+
+        # Set the count length for the single shot and start counting:
+        self._gc_logic.set_count_length(self.nuclear_2d_num_ssr)
+
+        self._run_gated_counter()
+
+        self._set_cw_mw(switch_on=False)
+
+        # try with single poissonian:
+
+
+        num_bins = (self._gc_logic.countdata.max() - self._gc_logic.countdata.min())
+        self._ta_logic.set_num_bins_histogram(num_bins)
+
+        hist_fit_x, hist_fit_y, param_single_poisson = self._ta_logic.do_fit('Poisson')
+
+
+        param['chi_sqr_single'] = param_single_poisson['chi_sqr']['value']
+
+
+        # try with normal double poissonian:
+
+        # better performance by starting with half of number of bins:
+        num_bins = int((self._gc_logic.countdata.max() - self._gc_logic.countdata.min())/2)
+        self._ta_logic.set_num_bins_histogram(num_bins)
+
+        flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
+
+        # self._pulser_off()
+        #
+        # self._load_pulsed_odmr()
+        # self._pulser_on()
+
+        out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
+                       (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
+
+        while (np.isnan(param2['fidelity'] or out_of_range) and num_bins > 4):
+            # Reduce the number of bins if the calculation yields an invalid
+            # number
+            num_bins = int(num_bins/2)
+            self._ta_logic.set_num_bins_histogram(num_bins)
+            flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
+
+
+            # reduce the number of bins by one, so that the fitting algorithm
+            # work. Eventually, that has to go in the fit constaints of the
+            # algorithm.
+
+            out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
+                           (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
+
+            if out_of_range:
+                num_bins = num_bins-1
+                self._ta_logic.set_num_bins_histogram(num_bins)
+                self.logMsg('Fitted values {0},{1} are out of range [{2},{3}]! '
+                            'Change the histogram a '
+                            'bit.'.format(param2['\u03BB0']['value'],
+                                          param2['\u03BB1']['value'],
+                                          self._gc_logic.countdata.min(),
+                                          self._gc_logic.countdata.max()))
+
+                flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
+
+        # run the lifetime calculatiion:
+        #        In order to calculate the T1 time one needs the length of one SingleShot readout
+        dt = (self.nuclear_2d_rabi_periode/2 + self.nuclear_2d_laser_time + self.nuclear_2d_idle_time) * self.nuclear_2d_reps_within_ssr
+        # param_lifetime = self._ta_logic.analyze_lifetime(self._gc_logic.countdata, dt, self.nuclear_2d_estimated_lifetime)
+        # param.update(param_lifetime)
+
+
+        # If everything went wrong, then put at least a reasonable number:
+        if np.isnan(param2['fidelity']):
+            param2['fidelity'] = 0.5    # that fidelity means that
+
+        # add the flip probability as a parameter to the parameter dict and add
+        # also all the other parameters to that dict:
+        param['flip_probability'] =  flip_prob
+        param.update(param2)
+
+        if self.nuclear_2d_use_single_poisson:
+            # print(param)
+            # print(param['chi_sqr'])
+            return param['chi_sqr_single'], param
+
+        else:
+            return param['fidelity'], param
+
+    def _run_gated_counter(self):
+
+        self._gc_logic.startCount()
+        time.sleep(2)
+
+        # wait until the gated counter is done
+        while self._gc_logic.getState() != 'idle' and not self._stop_measure:
+            # print('in SSR measure')
+            time.sleep(1)
+
+
+    def _set_cw_mw(self, switch_on, freq=2.87e9, power=-40):
+
+        if switch_on:
+            self._odmr_logic.set_frequency(freq)
+            self._odmr_logic.set_power(power)
+            self._odmr_logic.MW_on()
+        else:
+            self._odmr_logic.MW_off()
+
+    def _load_pulsed_odmr(self):
+        """ Load a pulsed ODMR asset. """
+        #FIXME: Move this creation routine to the tasks!
+
+        self._seq_gen_logic.load_asset(asset_name='PulsedODMR')
+
+    def _load_nuclear_spin_readout(self):
+        """ Load a nuclear spin readout asset. """
+        #FIXME: Move this creation routine to the tasks!
+
+        self._seq_gen_logic.load_asset(asset_name='SSR')
+
+    def _pulser_on(self):
+        """ Switch on the pulser output. """
+
+        self._set_channel_activation(active=True, apply_to_device=True)
+        self._seq_gen_logic.pulser_on()
+
+    def _pulser_off(self):
+        """ Switch off the pulser output. """
+
+        self._set_channel_activation(active=False, apply_to_device=False)
+        self._seq_gen_logic.pulser_off()
+
+    def _set_channel_activation(self, active=True, apply_to_device=False):
+        """ Set the channels according to the current activation config to be either active or not.
+
+        @param bool active: the activation according to the current activation
+                            config will be checked and if channel
+                            is not active and active=True, then channel will be
+                            activated. Otherwise if channel is active and
+                            active=False channel will be deactivated.
+                            All other channels, which are not in activation
+                            config will be deactivated if they are not already
+                            deactivated.
+        @param bool apply_to_device: Apply the activation or deactivation of the
+                                     current activation_config either to the
+                                     device and the viewboxes, or just to the
+                                     viewboxes.
+        """
+
+        pulser_const = self._seq_gen_logic.get_hardware_constraints()
+
+        curr_config_name = self._seq_gen_logic.current_activation_config_name
+        activation_config = pulser_const['activation_config'][curr_config_name]
+
+        # here is the current activation pattern of the pulse device:
+        active_ch = self._seq_gen_logic.get_active_channels()
+
+        ch_to_change = {} # create something like  a_ch = {1:True, 2:True} to switch
+
+        # check whether the correct channels are already active, and if not
+        # correct for that and activate and deactivate the appropriate ones:
+        available_ch = self._get_available_ch()
+        for ch_name in available_ch:
+
+            # if the channel is in the activation, check whether it is active:
+            if ch_name in activation_config:
+
+                if apply_to_device:
+                    # if channel is not active but activation is needed (active=True),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if not active_ch[ch_name] and active:
+                        ch_to_change[ch_name] = active
+
+                    # if channel is active but deactivation is needed (active=False),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if active_ch[ch_name] and not active:
+                        ch_to_change[ch_name] = active
+
+
+            else:
+                # all other channel which are active should be deactivated:
+                if active_ch[ch_name]:
+                    ch_to_change[ch_name] = False
+
+        self._seq_gen_logic.set_active_channels(ch_to_change)
+
+    def _get_available_ch(self):
+        """ Helper method to get a list of all available channels.
+
+        @return list: entries are the generic string names of the channels.
+        """
+        config = self._seq_gen_logic.get_hardware_constraints()['activation_config']
+
+        available_ch = []
+        all_a_ch = []
+        all_d_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_a_ch = [entry for entry in config[conf] if 'a_ch' in entry]
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_a_ch:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+            # append all new digital channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        all_a_ch.sort()
+        all_d_ch.sort()
+        available_ch.extend(all_a_ch)
+        available_ch.extend(all_d_ch)
+
+        return available_ch
 
     def _do_postmeasurement_proc(self):
 
