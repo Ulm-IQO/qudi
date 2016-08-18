@@ -24,9 +24,10 @@ import numpy as np
 from pyqtgraph.Qt import QtCore
 import time
 from collections import OrderedDict
+import datetime
 
 from logic.generic_logic import GenericLogic
-
+from core.util.mutex import Mutex
 
 class NuclearOperationsLogic(GenericLogic):
     """ A higher order logic, which combines several lower class logic modules
@@ -84,7 +85,7 @@ class NuclearOperationsLogic(GenericLogic):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-
+        self.threadlock = Mutex()
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -98,75 +99,204 @@ class NuclearOperationsLogic(GenericLogic):
                          had happened.
         """
 
+        # Retrieve the status variables or use default values:
+        # ==========================
 
-        # choose default values:
-        self.x_axis_start = 1e-3                    # in s
-        self.x_axis_step = 10e-3                     # in s
-        self.x_axis_num_points = 50
+        # pulser parameters:
+        # ==================
 
+        if 'electron_rabi_periode' in self._statusVariables:
+            self.electron_rabi_periode = self._statusVariables['electron_rabi_periode']
+        else:
+            self.electron_rabi_periode = 1800e-9        # in s
 
+        # pulser microwave:
 
+        if 'pulser_mw_freq' in self._statusVariables:
+            self.pulser_mw_freq = self._statusVariables['pulser_mw_freq']
+        else:
+            self.pulser_mw_freq = 200e6     # in Hz
+
+        if 'pulser_mw_amp' in self._statusVariables:
+            self.pulser_mw_amp = self._statusVariables['pulser_mw_amp']
+        else:
+            self.pulser_mw_amp = 2.25          # in V
+
+        if 'pulser_mw_ch' in self._statusVariables:
+            self.pulser_mw_ch = self._statusVariables['pulser_mw_ch']
+        else:
+            self.pulser_mw_ch = -1
+
+        # pulser rf:
+        if 'nuclear_rabi_period0' in self._statusVariables:
+            self.nuclear_rabi_period0 = self._statusVariables['nuclear_rabi_period0']
+        else:
+            self.nuclear_rabi_period0 = 30e-6   # in s
+
+        if 'pulser_rf_freq0' in self._statusVariables:
+            self.pulser_rf_freq0 = self._statusVariables['pulser_rf_freq0']
+        else:
+            self.pulser_rf_freq0 = 6.32e6   # in Hz
+
+        if 'pulser_rf_amp0' in self._statusVariables:
+            self.pulser_rf_amp0 = self._statusVariables['pulser_rf_amp0']
+        else:
+            self.pulser_rf_amp0 = 0.1
+
+        if 'nuclear_rabi_period1' in self._statusVariables:
+            self.nuclear_rabi_period1 = self._statusVariables['nuclear_rabi_period1']
+        else:
+            self.nuclear_rabi_period1 = 30e-6   # in s
+
+        if 'pulser_rf_freq1' in self._statusVariables:
+            self.pulser_rf_freq1 = self._statusVariables['pulser_rf_freq1']
+        else:
+            self.pulser_rf_freq1 = 3.24e6   # in Hz
+
+        if 'pulser_rf_amp1' in self._statusVariables:
+            self.pulser_rf_amp1 = self._statusVariables['pulser_rf_amp1']
+        else:
+            self.pulser_rf_amp1 = 0.1
+
+        if 'pulser_rf_ch' in self._statusVariables:
+            self.pulser_rf_ch = self._statusVariables['pulser_rf_ch']
+        else:
+            self.pulser_rf_ch = -2
+
+        # laser options:
+        if 'pulser_laser_length' in self._statusVariables:
+            self.pulser_laser_length = self._statusVariables['pulser_laser_length']
+        else:
+            self.pulser_laser_length = 3e-6 # in s
+        if 'pulser_laser_amp' in self._statusVariables:
+            self.pulser_laser_amp = self._statusVariables['pulser_laser_amp']
+        else:
+            self.pulser_laser_amp = 1       # in V
+        if 'pulser_laser_ch' in self._statusVariables:
+            self.pulser_laser_ch = self._statusVariables['pulser_laser_ch']
+        else:
+            self.pulser_laser_ch = 1
+
+        if 'num_singleshot_readout' in self._statusVariables:
+            self.num_singleshot_readout = self._statusVariables['num_singleshot_readout']
+        else:
+            self.num_singleshot_readout = 3000
+
+        if 'pulser_idle_time' in self._statusVariables:
+            self.pulser_idle_time = self._statusVariables['pulser_idle_time']
+        else:
+            self.pulser_idle_time = 1.5e-6  # in s
+        # detection gated counter:
+        if 'pulser_detect_ch' in self._statusVariables:
+            self.pulser_detect_ch = self._statusVariables['pulser_detect_ch']
+        else:
+            self.pulser_detect_ch = 1
+
+        # measurement parameters:
+        if 'current_meas_asset_name' in self._statusVariables:
+            self.current_meas_asset_name = self._statusVariables['current_meas_asset_name']
+        else:
+            self.current_meas_asset_name = ''
+        if 'x_axis_start' in self._statusVariables:
+            self.x_axis_start = self._statusVariables['x_axis_start']
+        else:
+            self.x_axis_start = 1e-3                    # in s
+        if 'x_axis_step' in self._statusVariables:
+            self.x_axis_step = self._statusVariables['x_axis_step']
+        else:
+            self.x_axis_step = 10e-3                     # in s
+        if 'x_axis_num_points' in self._statusVariables:
+            self.x_axis_num_points = self._statusVariables['x_axis_num_points']
+        else:
+            self.x_axis_num_points = 50
+        if 'num_of_meas_runs' in self._statusVariables:
+            self.num_of_meas_runs = self._statusVariables['num_of_meas_runs']
+        else:
+            self.num_of_meas_runs   = 1 # How often the measurement should be repeated.
+
+        # current measurement information:
         self.current_meas_point = self.x_axis_start
         self.current_meas_index = 0
         self.num_of_current_meas_runs = 0
-        self.num_of_meas_runs   = 1 # How often the measurement should be repeated.
         self.elapsed_time = 0
-        self.start_time = 0
-        self.optimize_period = 200
+        self.start_time = datetime.datetime.now()
         self.next_optimize_time = self.start_time
 
+        # parameters for confocal and odmr optimization:
+        if 'optimize_period_odmr' in self._statusVariables:
+            self.optimize_period_odmr = self._statusVariables['optimize_period_odmr']
+        else:
+            self.optimize_period_odmr = 200
+        if 'optimize_period_confocal' in self._statusVariables:
+            self.optimize_period_confocal = self._statusVariables['optimize_period_confocal']
+        else:
+            self.optimize_period_confocal = 300      # in s
+        if 'odmr_meas_freq0' in self._statusVariables:
+            self.odmr_meas_freq0 = self._statusVariables['odmr_meas_freq0']
+        else:
+            self.odmr_meas_freq0 = 10000e6              # in Hz
+        if 'odmr_meas_freq1' in self._statusVariables:
+            self.odmr_meas_freq1 = self._statusVariables['odmr_meas_freq1']
+        else:
+            self.odmr_meas_freq1 = 10002.1e6            # in Hz
+        if 'odmr_meas_freq2' in self._statusVariables:
+            self.odmr_meas_freq2 = self._statusVariables['odmr_meas_freq2']
+        else:
+            self.odmr_meas_freq2 = 10004.2e6            # in Hz
+        if 'odmr_meas_runtime' in self._statusVariables:
+            self.odmr_meas_runtime = self._statusVariables['odmr_meas_runtime']
+        else:
+            self.odmr_meas_runtime = 30             # in s
+        if 'odmr_meas_freq_range' in self._statusVariables:
+            self.odmr_meas_freq_range = self._statusVariables['odmr_meas_freq_range']
+        else:
+            self.odmr_meas_freq_range = 30e6            # in Hz
+        if 'odmr_meas_step' in self._statusVariables:
+            self.odmr_meas_step = self._statusVariables['odmr_meas_step']
+        else:
+            self.odmr_meas_step = 0.15e6                # in Hz
+        if 'odmr_meas_power' in self._statusVariables:
+            self.odmr_meas_power = self._statusVariables['odmr_meas_power']
+        else:
+            self.odmr_meas_power = -30                  # in dBm
 
+        # Microwave measurment parameters:
+        if 'mw_cw_freq' in self._statusVariables:
+            self.mw_cw_freq = self._statusVariables['mw_cw_freq']
+        else:
+            self.mw_cw_freq = 10e9                      # in Hz
+        if 'mw_cw_power' in self._statusVariables:
+            self.mw_cw_power = self._statusVariables['mw_cw_power']
+        else:
+            self.mw_cw_power = -30                         # in dBm
+
+        # on which odmr peak the manipulation is going to be applied:
+        if 'mw_on_odmr_peak' in self._statusVariables:
+            self.mw_on_odmr_peak = self._statusVariables['mw_on_odmr_peak']
+        else:
+            self.mw_on_odmr_peak = 1
+
+        # Gated counter:
+        if 'gc_number_of_samples' in self._statusVariables:
+            self.gc_number_of_samples = self._statusVariables['gc_number_of_samples']
+        else:
+            self.gc_number_of_samples = 3000    # in counts
+
+        if 'gc_samples_per_readout' in self._statusVariables:
+            self.gc_samples_per_readout = self._statusVariables['gc_samples_per_readout']
+        else:
+            self.gc_samples_per_readout = 10    # in counts
+
+
+
+
+        self._optimize_now = False
         self._stop_requested = False
-
-        self.mw_cw_freq = 10e9                      # in Hz
-        self.mw_power = -30                         # in dBm
-
-        # parameters for pulsed ODMR:
-        self.odmr_meas_freq0 = 10000e6              # in Hz
-        self.odmr_meas_freq1 = 10002.1e6            # in Hz
-        self.odmr_meas_freq2 = 10004.2e6            # in Hz
-        self.odmr_meas_runtime = 30             # in s
-        self.odmr_meas_freq_range = 30e6            # in Hz
-        self.odmr_meas_step = 0.15e6                # in Hz
-        self.odmr_meas_power = -30                  # in dBm
-        self.odmr_time_for_next_optimize = 300      # in s
-
-        self.electron_rabi_periode = 1800e-9        # in s
-
-
 
         # store here all the measured odmr peaks
         self.measured_odmr_list = []
 
-        # on which odmr peak the manipulation is going to be applied:
-        self.mw_on_odmr_peak = 1
-
-        # laser options:
-        self.pulser_laser_ch = 1
-        self.pulser_laser_amp = 1       # in V
-        self.pulser_laser_length = 3e-6 # in s
-        self.pulser_mw_ch = -1
-        self.pulser_mw_freq = 200e6     # in Hz
-        self.pulser_mw_amp = 2.25          # in V
-        self.pulser_idle_time = 1.5e-6  # in s
-        self.pulser_rf_ch = -2
-        self.pulser_rf_amp = 0.1
-
-        self.pulser_detect_ch = 1
-
-        self.nuclear_rabi_period = 30e-6
-        self.pulser_rf_freq0 = 6.32e6   # in Hz
-
-        self.num_singleshot_readout = 3000
-
-        self.gc_number_of_samples = 3000    # in counts
-        self.gc_samples_per_readout = 50    # in counts
-
-        # self.rf_length_measure_point = 10e-6
-        # self.rf_freq_measure_point =
-
-        self._optimize_now = False
-
+        # Perform initialization routines:
         self.initialize_x_axis()
         self.initialize_y_axis()
         self.initialize_meas_param()
@@ -195,8 +325,70 @@ class NuclearOperationsLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        pass
+        # Save the status variables:
+        # ==========================
 
+        # Pulser parameter:
+        # electron Rabi:
+        self._statusVariables['electron_rabi_periode'] = self.electron_rabi_periode
+
+        # pulser microwave:
+        self._statusVariables['pulser_mw_freq'] = self.pulser_mw_freq
+        self._statusVariables['pulser_mw_amp'] = self.pulser_mw_amp
+        self._statusVariables['pulser_mw_ch'] = self.pulser_mw_ch
+
+        # pulser radiofrequency:
+        self._statusVariables['nuclear_rabi_period0'] = self.nuclear_rabi_period0
+        self._statusVariables['pulser_rf_freq0'] = self.pulser_rf_freq0
+        self._statusVariables['pulser_rf_amp0'] = self.pulser_rf_amp0
+        self._statusVariables['nuclear_rabi_period1'] = self.nuclear_rabi_period1
+        self._statusVariables['pulser_rf_freq1'] = self.pulser_rf_freq1
+        self._statusVariables['pulser_rf_amp1'] = self.pulser_rf_amp1
+        self._statusVariables['pulser_rf_ch'] = self.pulser_rf_ch
+
+        # pulser laser parameters:
+        self._statusVariables['pulser_laser_length'] = self.pulser_laser_length
+        self._statusVariables['pulser_laser_amp'] = self.pulser_laser_amp
+        self._statusVariables['pulser_laser_ch'] = self.pulser_laser_ch
+        self._statusVariables['num_singleshot_readout'] = self.num_singleshot_readout
+
+        # pulser idle status:
+        self._statusVariables['pulser_idle_time'] = self.pulser_idle_time
+        # detect channel:
+        self._statusVariables['pulser_detect_ch'] = self.pulser_detect_ch
+
+
+        # Measurement parameter:
+        self._statusVariables['current_meas_asset_name'] = self.current_meas_asset_name
+
+        # x-axis value:
+        self._statusVariables['x_axis_start'] = self.x_axis_start
+        self._statusVariables['x_axis_step'] = self.x_axis_step
+        self._statusVariables['x_axis_num_points'] = self.x_axis_num_points
+        self._statusVariables['num_of_meas_runs'] = self.num_of_meas_runs
+
+
+        # Optimization parameter
+        self._statusVariables['optimize_period_odmr'] = self.optimize_period_odmr
+        self._statusVariables['optimize_period_confocal'] = self.optimize_period_confocal
+        # parameters for pulsed ODMR:
+        self._statusVariables['odmr_meas_freq0'] = self.odmr_meas_freq0
+        self._statusVariables['odmr_meas_freq1'] = self.odmr_meas_freq1
+        self._statusVariables['odmr_meas_freq2'] = self.odmr_meas_freq2
+        self._statusVariables['odmr_meas_runtime'] = self.odmr_meas_runtime
+        self._statusVariables['odmr_meas_freq_range'] = self.odmr_meas_freq_range
+        self._statusVariables['odmr_meas_step'] = self.odmr_meas_step
+        self._statusVariables['odmr_meas_power'] = self.odmr_meas_power
+
+
+        # Microwave measurment parameters:
+        self._statusVariables['mw_cw_freq'] = self.mw_cw_freq
+        self._statusVariables['mw_cw_power'] = self.mw_cw_power
+        self._statusVariables['mw_on_odmr_peak'] = self.mw_on_odmr_peak
+
+        # Gated counter parameter
+        self._statusVariables['gc_number_of_samples'] = self.gc_number_of_samples
+        self._statusVariables['gc_samples_per_readout'] = self.gc_samples_per_readout
 
     def initialize_x_axis(self):
         """ Initialize the x axis. """
