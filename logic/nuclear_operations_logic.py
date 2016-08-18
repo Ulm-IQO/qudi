@@ -925,11 +925,149 @@ class NuclearOperationsLogic(GenericLogic):
 
     def mw_off(self):
         """ Stop the microwave device. """
-        self.MW_off()
+        self._odmr_logic.MW_off()
 
     def set_mw_on_odmr_freq(self, freq, power):
         """ Set the microwave on a the specified freq with the specified power. """
 
-        self.set_frequency(freq)
-        self.set_power(power)
+        self._odmr_logic.set_frequency(freq)
+        self._odmr_logic.set_power(power)
+
+    def save_nuclear_operation_measurement(self, name_tag=None, timestamp=None):
+        """ Save the nuclear operation data.
+
+        @param str name_tag:
+        @param object timestamp: datetime.datetime object, from which everything
+                                 can be created.
+        """
+
+        filepath = self._save_logic.get_path_for_module(module_name='NuclearOperations')
+
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        if name_tag is not None and len(name_tag) > 0:
+            filelabel1 = name_tag + '_nuclear_ops_xy_data'
+            filelabel2 = name_tag + '_nuclear_ops_data_y_matrix'
+            filelabel3 = name_tag + '_nuclear_ops_add_data_matrix'
+            filelabel4 = name_tag + '_nuclear_ops_odmr_data'
+        else:
+            filelabel1 = '_nuclear_ops_data'
+            filelabel2 = '_nuclear_ops_data_matrix'
+            filelabel3 = '_nuclear_ops_add_data_matrix'
+            filelabel4 = '_nuclear_ops_odmr_data'
+
+        param = OrderedDict()
+        param['Electron Rabi Period (ns)'] = self.electron_rabi_periode*1e9
+        param['Pulser Microwave Frequency (MHz)'] = self.pulser_mw_freq/1e6
+        param['Pulser MW amp (V)'] = self.pulser_mw_amp
+        param['Pulser MW channel'] = self.pulser_mw_ch
+        param['Nuclear Rabi period Trans 0 (micro-s)'] = self.nuclear_rabi_period0*1e6
+        param['Nuclear Trans freq 0 (MHz)'] = self.pulser_rf_freq0/1e6
+        param['Pulser RF amp 0 (V)'] = self.pulser_rf_amp0
+        param['Nuclear Rabi period Trans 1 (micro-s)'] = self.nuclear_rabi_period1*1e6
+        param['Nuclear Trans freq 1 (MHz)'] = self.pulser_rf_freq1/1e6
+        param['Pulser RF amp 1 (V)'] = self.pulser_rf_amp1
+        param['Pulser Rf channel'] = self.pulser_rf_ch
+        param['Pulser Laser length (ns)'] = self.pulser_laser_length*1e9
+        param['Pulser Laser amp (V)'] = self.pulser_laser_amp
+        param['Pulser Laser channel'] = self.pulser_laser_ch
+        param['Number of single shot readouts per pulse'] = self.num_singleshot_readout
+        param['Pulser idle Time (ns)'] = self.pulser_idle_time*1e9
+        param['Pulser Detect channel'] = self.pulser_detect_ch
+
+        data1 = OrderedDict()
+        data2 = OrderedDict()
+        data3 = OrderedDict()
+        data4 = OrderedDict()
+
+        # Measurement Parameter:
+        param[''] = self.current_meas_asset_name
+        if self.current_meas_asset_name in ['Nuclear_Frequency_Scan']:
+            param['x axis start (MHz)'] = self.x_axis_start/1e6
+            param['x axis step (MHz)'] = self.x_axis_step/1e6
+            param['Current '] = self.current_meas_point/1e6
+
+            data1['RF pulse frequency (MHz)'] = self.x_axis_list
+            data1['Flip Probability'] = self.y_axis_list
+
+            data2['RF pulse frequency matrix (MHz)'] = self.y_axis_matrix
+
+        elif self.current_meas_asset_name in ['Nuclear_Rabi','QSD_-_Artificial_Drive', 'QSD_-_SWAP_FID','QSD_-_Entanglement_FID']:
+            param['x axis start (micro-s)'] = self.x_axis_start*1e6
+            param['x axis step (micro-s)'] = self.x_axis_step*1e6
+            param['Current '] = self.current_meas_point*1e6
+
+            data1['RF pulse length (micro-s)'] = self.x_axis_list
+            data1['Flip Probability'] = self.y_axis_list
+
+            data2['RF pulse length matrix (micro-s)'] = self.y_axis_matrix
+
+        else:
+            param['x axis start'] = self.x_axis_start
+            param['x axis step'] = self.x_axis_step
+            param['Current '] = self.current_meas_point
+
+            data1['x axis'] = self.x_axis_list
+            data1['y axis'] = self.y_axis_list
+
+            data2['y axis matrix)'] = self.y_axis_matrix
+
+        data3['Additional Data Matrix'] = self.parameter_matrix
+        data4['Measured ODMR Data Matrix'] = np.array(self.measured_odmr_list)
+
+        param['Number of expected measurement points per run'] = self.x_axis_num_points
+        param['Number of expected measurement runs'] = self.num_of_meas_runs
+        param['Number of current measurement runs'] = self.num_of_current_meas_runs
+
+        param['Current measurement index'] = self.current_meas_index
+        param['Optimize Period ODMR (s)'] = self.optimize_period_odmr
+        param['Optimize Period Confocal (s)'] = self.optimize_period_confocal
+
+        param['current ODMR trans freq0 (MHz)'] = self.odmr_meas_freq0/1e6
+        param['current ODMR trans freq1 (MHz)'] = self.odmr_meas_freq1/1e6
+        param['current ODMR trans freq2 (MHz)'] = self.odmr_meas_freq2/1e6
+        param['Runtime of ODMR optimization (s)'] = self.odmr_meas_runtime
+        param['Frequency Range ODMR optimization (MHz)'] = self.odmr_meas_freq_range/1e6
+        param['Frequency Step ODMR optimization (MHz)'] = self.odmr_meas_step/1e6
+        param['Power of ODMR optimization (dBm)'] = self.odmr_meas_power
+
+        param['Selected ODMR trans freq (MHz)'] = self.mw_cw_freq/1e6
+        param['Selected ODMR trans power (dBm)'] = self.mw_cw_power
+        param['Selected ODMR trans Peak'] = self.mw_on_odmr_peak
+
+        param['Number of samples in the gated counter'] = self.gc_number_of_samples
+        param['Number of samples per readout'] = self.gc_samples_per_readout
+
+        param['Elapsed Time (s)'] = self.elapsed_time
+        param['Start of measurement'] = self.start_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        self._save_logic.save_data(data1,
+                                   filepath,
+                                   parameters=param,
+                                   filelabel=filelabel1,
+                                   timestamp=timestamp,
+                                   as_text=True)
+
+        self._save_logic.save_data(data2,
+                                   filepath,
+                                   filelabel=filelabel2,
+                                   timestamp=timestamp,
+                                   as_text=True)
+
+        self._save_logic.save_data(data4,
+                                   filepath,
+                                   filelabel=filelabel4,
+                                   timestamp=timestamp,
+                                   as_text=True)
+
+        # self._save_logic.save_data(data3,
+        #                            filepath,
+        #                            filelabel=filelabel3,
+        #                            timestamp=timestamp,
+        #                            as_text=True)
+
+
+
+        self.logMsg('Nuclear Operation data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
