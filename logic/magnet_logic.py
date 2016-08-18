@@ -122,6 +122,8 @@ class MagnetLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
+        self._stop_measure = False
+
     def on_activate(self, e):
         """ Definition and initialisation of the GUI.
 
@@ -344,7 +346,10 @@ class MagnetLogic(GenericLogic):
         # that is just a normalization value, which is needed for the ODMR
         # alignment, since the colorbar cannot display values greater (2**32)/2.
         # A solution has to found for that!
-        self.norm = 1
+        self.norm = 1000
+
+        self.odmr_2d_single_trans = False   # use that if only one ODMR
+                                            # transition is available.
 
         # single shot alignment on nuclear spin settings (ALL IN SI!!!):
         if 'nuclear_2d_rabi_periode' in self._statusVariables:
@@ -1206,7 +1211,10 @@ class MagnetLogic(GenericLogic):
             data, add_data = self._perform_fluorescence_measure()
 
         elif self.curr_alignment_method == '2d_odmr':
-            data, add_data = self._perform_odmr_measure()
+            if self.odmr_2d_single_trans:
+                data, add_data = self._perform_single_trans_contrast_measure()
+            else:
+                data, add_data = self._perform_odmr_measure()
 
         elif self.curr_alignment_method == '2d_nuclear':
             data, add_data = self._perform_nuclear_measure()
@@ -1220,6 +1228,9 @@ class MagnetLogic(GenericLogic):
 
         #FIXME: that should be run through the TaskRunner! Implement the call
         #       by not using this connection!
+
+        if self._counter_logic.get_counting_mode != 'continuous':
+            self._counter_logic.set_counting_mode(mode='continuous')
 
         self._counter_logic.start_saving()
         time.sleep(self.fluorescence_integration_time)
@@ -1810,6 +1821,15 @@ class MagnetLogic(GenericLogic):
         # do a selected post measurement procedure,
 
         return
+
+
+    def get_available_odmr_peaks(self):
+        """ Retrieve the information on which odmr peak the microwave can be
+            applied.
+
+        @return list: with string entries denoting the peak number
+        """
+        return [1, 2, 3]
 
     def save_1d_data(self):
 
