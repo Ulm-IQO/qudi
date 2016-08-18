@@ -356,10 +356,9 @@ class Manager(QtCore.QObject):
                                     'Stylesheet not found at {0}'.format(
                                         stylesheetpath))
                                 continue
-                            stylesheetfile = open(stylesheetpath)
-                            stylesheet = stylesheetfile.read()
-                            stylesheetfile.close()
-                            self.gui.setStyleSheet(stylesheet)
+                            with open(stylesheetpath, 'r') as stylesheetfile:
+                                stylesheet = stylesheetfile.read()
+                                self.gui.setStyleSheet(stylesheet)
                         else:
                             self.tree['global'][m] = cfg['global'][m]
 
