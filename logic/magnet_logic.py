@@ -1413,6 +1413,132 @@ class MagnetLogic(GenericLogic):
 
         return diff, store_dict
 
+    def _perform_single_trans_contrast_measure(self):
+        """ Make an ODMR measurement on one single transition and use the
+            contrast as a measure.
+        """
+
+        store_dict = {}
+
+        # optimize at first the position:
+        self._do_optimize_pos()
+
+        # correct the ODMR alignment the shift of the ODMR lines due to movement
+        # in axis0 and axis1, therefore find out how much you will move in each
+        # distance:
+        if self._pathway_index == 0:
+            axis0_pos_start = self._saved_pos_before_align[self._axis0_name]
+            axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
+
+            axis1_pos_start = self._saved_pos_before_align[self._axis1_name]
+            axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
+        else:
+            axis0_pos_start = self._backmap[self._pathway_index-1][self._axis0_name]
+            axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
+
+            axis1_pos_start = self._backmap[self._pathway_index-1][self._axis1_name]
+            axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
+
+        # that is the current distance the magnet has moved:
+        axis0_move = axis0_pos_stop - axis0_pos_start
+        axis1_move = axis1_pos_stop - axis1_pos_start
+        # print('axis0_move', axis0_move, 'axis1_move', axis1_move)
+
+        # in essence, get the last measurement value for odmr freq and calculate
+        # the odmr peak shift for axis0 and axis1 based on the already measured
+        # peaks and update the values odmr_2d_peak_axis0_move_ratio and
+        # odmr_2d_peak_axis1_move_ratio:
+        if self._pathway_index > 1:
+            # in essence, get the last measurement value for odmr freq:
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('Frequency') is not None:
+                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Frequency']['value']*1e6
+                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Frequency']['value']*1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('Freq. 1') is not None:
+                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Freq. 1']['value']*1e6
+                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Freq. 1']['value']*1e6
+            else:
+                self.logMsg('No previous saved lower odmr freq found in '
+                            'ODMR alignment data! Cannot do the ODMR '
+                            'Alignment!', msgType='error')
+
+
+            # only if there was a non zero movement, the if make sense to
+            # calculate the shift for either the axis0 or axis1.
+            # BE AWARE THAT FOR A MOVEMENT IN AXIS0 AND AXIS1 AT THE SAME TIME
+            # NO PROPER CALCULATION OF THE OMDR LINES CAN BE PROVIDED!
+            if not np.isclose(axis0_move, 0.0):
+                # update the correction ratio:
+                peak_axis0_move_ratio = (odmr_freq1 - odmr_freq2)/axis0_move
+
+                # calculate the average shift of the odmr lines for the lower
+                # and the upper transition:
+                self.odmr_2d_peak_axis0_move_ratio = peak_axis0_move_ratio
+
+                print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio/1e12)
+            if not np.isclose(axis1_move, 0.0):
+                # update the correction ratio:
+                peak_axis1_move_ratio = (odmr_freq1 - odmr_freq2)/axis1_move
+
+
+                # calculate the shift of the odmr lines for the transition:
+                self.odmr_2d_peak_axis1_move_ratio = peak_axis1_move_ratio
+
+        # Measurement of one transition:
+        # -------------------------------------
+
+        freq_shift_axis0 = axis0_move * self.odmr_2d_peak_axis0_move_ratio
+        freq_shift_axis1 = axis1_move * self.odmr_2d_peak_axis1_move_ratio
+
+        # correct here the center freq with the estimated corrections:
+        self.odmr_2d_low_center_freq += (freq_shift_axis0 + freq_shift_axis1)
+        # print('self.odmr_2d_low_center_freq',self.odmr_2d_low_center_freq)
+
+        # create a unique nametag for the current measurement:
+        name_tag = 'trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
+                   +'_'+ str(self._backmap[self._pathway_index]['index'][1])
+
+        # of course the shift of the ODMR peak is not linear for a movement in
+        # axis0 and axis1, but we need just an estimate how to set the boundary
+        # conditions for the first scan, since the first scan will move to a
+        # start position and then it need to know where to search for the ODMR
+        # peak(s).
+
+        # calculate the parameters for the odmr scan:
+        start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq/2
+        step_freq = self.odmr_2d_low_step_freq
+        stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq/2
+
+        param = self._odmr_logic.perform_odmr_measurement(start_freq,
+                                                          step_freq,
+                                                          stop_freq,
+                                                          self.odmr_2d_low_power,
+                                                          self.odmr_2d_low_runtime,
+                                                          self.odmr_2d_low_fitfunction,
+                                                          self.odmr_2d_save_after_measure,
+                                                          name_tag)
+
+        param['ODMR peak/Magnet move ratio axis0'] = self.odmr_2d_peak_axis0_move_ratio
+        param['ODMR peak/Magnet move ratio axis1'] = self.odmr_2d_peak_axis1_move_ratio
+
+        # extract the frequency meausure:
+        if param.get('Frequency') is not None:
+            odmr_freq_meas = param['Frequency']['value']*1e6
+            cont_meas = param['Contrast']['value']
+        elif param.get('Freq. 1') is not None:
+            odmr_freq_meas = param['Freq. 1']['value']*1e6
+            cont_meas = param['Contrast 0']['value'] + param['Contrast 1']['value'] + param['Contrast 2']['value']
+        else:
+            # a default value for testing and debugging:
+            odmr_freq_meas = 1000e6
+            cont_meas = 0.0
+
+        self.odmr_2d_low_center_freq = odmr_freq_meas
+
+        while self._odmr_logic.getState() != 'idle' and not self._stop_measure:
+            time.sleep(0.5)
+
+        return cont_meas, param
+
     def _perform_nuclear_measure(self):
         """ Make a single shot alignment. """
         pass
