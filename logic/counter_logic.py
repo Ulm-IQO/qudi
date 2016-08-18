@@ -342,6 +342,16 @@ class CounterLogic(GenericLogic):
         """
         self._counting_mode = mode
 
+    def get_counting_mode(self):
+        """ Retrieve the current counting mode.
+
+        @return str: one of the possible counting options:
+                'continuous'    = counts continuously
+                'gated'         = bins the counts according to a gate signal
+                'finite-gated'  = finite measurement with predefined number of samples
+        """
+        return self._counting_mode
+
     def startCount(self):
         """ This is called externally, and is basically a wrapper that
             redirects to the chosen counting mode start function.
