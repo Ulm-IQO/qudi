@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 import core.logger
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore, QtWidgets, uic
 try:
     from qtconsole.inprocess import QtInProcessKernelManager
 except ImportError:
@@ -38,7 +38,8 @@ import pyqtgraph as pg
 import numpy as np
 import os
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
+# Rather than import the ui*.py file here, the ui*.ui file itself is
+# loaded by uic.loadUI in the QtGui classes below.
 
 
 class ManagerGui(GUIBase):
@@ -47,9 +48,10 @@ class ManagerGui(GUIBase):
       @signal sigStartAll: sent when all modules should be loaded
       @signal str str sigStartThis: load a specific module
       @signal str str sigReloadThis reload a specific module from Python code
-      @signal str str sigStopThis: stop all actions of a module and remove references
-
-        It supports module loading, reloading, logging and other administrative tasks.
+      @signal str str sigStopThis: stop all actions of a module and remove
+                                   references
+      It supports module loading, reloading, logging and other
+      administrative tasks.
     """
     sigStartAll = QtCore.Signal()
     sigStartModule = QtCore.Signal(str, str)
@@ -75,11 +77,11 @@ class ManagerGui(GUIBase):
 
         @param object e: Fysom.event object from Fysom class.
                          An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
+                         which is connected to a specific event (have a look
+                         in the Base Class). This object contains the passed
+                         event, the state before the event happened and the
+                         destination of the state which should be reached
+                         after the event had happened.
 
         This method creates the Manager main window.
         """
@@ -91,22 +93,28 @@ class ManagerGui(GUIBase):
         configFile = self._manager.configFile
         self._about.label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
-            ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(version[0], version[1]))
-        self.versionLabel = QtGui.QLabel()
+            ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(
+                version[0], version[1]))
+        self.versionLabel = QtWidgets.QLabel()
         self.versionLabel.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
             ' style=\"color: cyan;\"> {0} </a>,'
-            ' on branch {1}, configured from {2}'.format(version[0], version[1], configFile))
+            ' on branch {1}, configured from {2}'.format(
+                version[0], version[1], configFile))
         self.versionLabel.setOpenExternalLinks(True)
         self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
-        self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
+        self._mw.loadAllButton.clicked.connect(
+            self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
-        self._mw.actionReload_current_configuration.triggered.connect(self.reloadConfig)
+        self._mw.actionReload_current_configuration.triggered.connect(
+            self.reloadConfig)
         self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
-        self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
-        self._mw.actionAbout_Qt.triggered.connect(QtGui.QApplication.aboutQt)
+        self._mw.action_Load_all_modules.triggered.connect(
+            self._manager.startAllConfiguredModules)
+        self._mw.actionAbout_Qt.triggered.connect(
+            QtWidgets.QApplication.aboutQt)
         self._mw.actionAbout_QuDi.triggered.connect(self.showAboutQuDi)
 
         self._manager.sigShowManager.connect(self.show)
@@ -137,9 +145,12 @@ class ManagerGui(GUIBase):
         # remote widget
         self._mw.remoteWidget.hostLabel.setText('URL:')
         self._mw.remoteWidget.portLabel.setText(
-            'rpyc://{0}:{1}/'.format(self._manager.rm.host, self._manager.rm.server.port))
-        self._mw.remoteWidget.remoteModuleListView.setModel(self._manager.rm.remoteModules)
-        self._mw.remoteWidget.sharedModuleListView.setModel(self._manager.rm.sharedModules)
+            'rpyc://{0}:{1}/'.format(self._manager.rm.host,
+                                     self._manager.rm.server.port))
+        self._mw.remoteWidget.remoteModuleListView.setModel(
+            self._manager.rm.remoteModules)
+        self._mw.remoteWidget.sharedModuleListView.setModel(
+            self._manager.rm.sharedModules)
 
         self._mw.config_display_dockWidget.hide()
         self._mw.remoteDockWidget.hide()
@@ -147,7 +158,7 @@ class ManagerGui(GUIBase):
         #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
-    def on_deactivate(self,e):
+    def on_deactivate(self, e):
         """Close window and remove connections.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
@@ -175,7 +186,7 @@ class ManagerGui(GUIBase):
     def show(self):
         """Show the window and bring it t the top.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -211,7 +222,7 @@ class ManagerGui(GUIBase):
             'np': np,
             'config': self._manager.tree['defined'],
             'manager': self._manager
-            })
+        })
         self.updateIPythonModuleList()
         self.kernel.gui = 'qt4'
         self.log.info('IPython has kernel {0}'.format(
@@ -221,7 +232,8 @@ class ManagerGui(GUIBase):
         self._manager.sigModulesChanged.connect(self.updateIPythonModuleList)
 
     def startIPythonWidget(self):
-        """ Create an IPython console widget and connect it to an IPython kernel.
+        """ Create an IPython console widget and connect it to an IPython
+        kernel.
         """
         banner = """
 This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'.
@@ -237,12 +249,15 @@ Go, play.
         self._csd = ConsoleSettingsDialog()
         self._csd.accepted.connect(self.consoleApplySettings)
         self._csd.rejected.connect(self.consoleKeepSettings)
-        self._csd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.consoleApplySettings)
+        self._csd.buttonBox.button(
+            QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+                self.consoleApplySettings)
         self._mw.actionConsoleSettings.triggered.connect(self._csd.exec_)
         self.consoleKeepSettings()
 
         self._mw.consolewidget.kernel_manager = self.kernel_manager
-        self._mw.consolewidget.kernel_client = self._mw.consolewidget.kernel_manager.client()
+        self._mw.consolewidget.kernel_client = \
+            self._mw.consolewidget.kernel_manager.client()
         self._mw.consolewidget.kernel_client.start_channels()
         # the linux style theme which is basically the monokai theme
         self._mw.consolewidget.set_default_style(colors='linux')
@@ -250,7 +265,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        self.log.debug('IPy deactivation'.format(threading.get_ident()))
+        self.log.debug('IPy deactivation: {0}'.format(threading.get_ident()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):
@@ -267,7 +282,8 @@ Go, play.
         for base in ['hardware', 'logic', 'gui']:
             for module in self._manager.tree['loaded'][base]:
                 currentModules.add(module)
-                newNamespace[module] = self._manager.tree['loaded'][base][module]
+                newNamespace[module] = self._manager.tree[
+                    'loaded'][base][module]
         discard = self.modules - currentModules
         self.namespace.update(newNamespace)
         for module in discard:
@@ -278,7 +294,8 @@ Go, play.
         """ Write old values into config dialog.
         """
         if 'console_font_size' in self._statusVariables:
-            self._csd.fontSizeBox.setProperty('value', self._statusVariables['console_font_size'])
+            self._csd.fontSizeBox.setProperty(
+                'value', self._statusVariables['console_font_size'])
         else:
             self._csd.fontSizeBox.setProperty('value', 10)
 
@@ -300,15 +317,17 @@ Go, play.
     def updateGUIModuleList(self):
         """ Clear and refill the module list widget
         """
-        #self.clearModuleList(self)
+        # self.clearModuleList(self)
         self.fillModuleList(self._mw.guilayout, 'gui')
         self.fillModuleList(self._mw.logiclayout, 'logic')
         self.fillModuleList(self._mw.hwlayout, 'hardware')
 
     def fillModuleList(self, layout, base):
-        """ Fill the module list widget with module widgets for defined gui modules.
+        """ Fill the module list widget with module widgets for defined gui
+            modules.
 
-          @param QLayout layout: layout of th module list widget where module widgest should be addad
+          @param QLayout layout: layout of th module list widget where
+                                 module widgest should be addad
           @param str base: module category to fill
         """
         for module in self._manager.tree['defined'][base]:
@@ -323,7 +342,8 @@ Go, play.
                 self.checkTimer.timeout.connect(widget.checkModuleState)
 
     def fillTreeItem(self, item, value):
-        """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
+        """ Recursively fill a QTreeWidgeItem with the contents from a
+            dictionary.
 
           @param QTreeWidgetItem item: the widget item to fill
           @param (dict, list, etc) value: value to fill in
@@ -331,33 +351,34 @@ Go, play.
         item.setExpanded(True)
         if type(value) is OrderedDict or type(value) is dict:
             for key in value:
-                child = QtGui.QTreeWidgetItem()
+                child = QtWidgets.QTreeWidgetItem()
                 child.setText(0, key)
                 item.addChild(child)
                 self.fillTreeItem(child, value[key])
         elif type(value) is list:
             for val in value:
-                child = QtGui.QTreeWidgetItem()
+                child = QtWidgets.QTreeWidgetItem()
                 item.addChild(child)
                 if type(val) is dict:
                     child.setText(0, '[dict]')
-                    self.fillTreeItem(child,val)
+                    self.fillTreeItem(child, val)
                 elif type(val) is OrderedDict:
                     child.setText(0, '[odict]')
-                    self.fillTreeItem(child,val)
+                    self.fillTreeItem(child, val)
                 elif type(val) is list:
                     child.setText(0, '[list]')
-                    self.fillTreeItem(child,val)
+                    self.fillTreeItem(child, val)
                 else:
                     child.setText(0, str(val))
                 child.setExpanded(True)
         else:
-            child = QtGui.QTreeWidgetItem()
+            child = QtWidgets.QTreeWidgetItem()
             child.setText(0, str(value))
             item.addChild(child)
 
     def getSoftwareVersion(self):
-        """ Try to determine the software version in case the program is in a git repository.
+        """ Try to determine the software version in case the program is in
+            a git repository.
         """
         try:
             repo = Repo(self.get_main_dir())
@@ -368,7 +389,6 @@ Go, play.
         except Exception as e:
             print('Could not get git repo because:', e)
             return ('unknown', -1)
-
 
     def fillTreeWidget(self, widget, value):
         """ Fill a QTreeWidget with the content of a dictionary
@@ -382,54 +402,57 @@ Go, play.
     def reloadConfig(self):
         """  Reload the current config. """
 
-        reply = QtGui.QMessageBox.question(
-                        self._mw,
-                        'Restart',
-                        'Do you want to restart the current configuration?',
-                        QtGui.QMessageBox.Yes,
-                        QtGui.QMessageBox.No
-                        )
+        reply = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Restart',
+            'Do you want to restart the current configuration?',
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No
+        )
 
         configFile = self._manager._getConfigFile()
-        restart = (reply == QtGui.QMessageBox.Yes)
+        restart = (reply == QtWidgets.QMessageBox.Yes)
         self.sigLoadConfig.emit(configFile, restart)
 
     def getLoadFile(self):
-        """ Ask the user for a file where the configuration should be loaded from
+        """ Ask the user for a file where the configuration should be loaded
+            from
         """
         defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
-        filename = QtGui.QFileDialog.getOpenFileName(
-                self._mw,
-                'Load Configration',
-                defaultconfigpath ,
-                'Configuration files (*.cfg)')
+        filename = QtWidgets.QFileDialog.getOpenFileName(
+            self._mw,
+            'Load Configration',
+            defaultconfigpath,
+            'Configuration files (*.cfg)')
         if filename != '':
-            reply = QtGui.QMessageBox.question(
-                        self._mw,
-                        'Restart',
-                        'Do you want to restart to use the configuration?',
-                        QtGui.QMessageBox.Yes,
-                        QtGui.QMessageBox.No
-                    )
-            restart = (reply == QtGui.QMessageBox.Yes)
+            reply = QtWidgets.QMessageBox.question(
+                self._mw,
+                'Restart',
+                'Do you want to restart to use the configuration?',
+                QtWidgets.QMessageBox.Yes,
+                QtWidgets.QMessageBox.No
+            )
+            restart = (reply == QtWidgets.QMessageBox.Yes)
             self.sigLoadConfig.emit(filename, restart)
 
     def getSaveFile(self):
-        """ Ask the user for a file where the configuration should be saved to.
+        """ Ask the user for a file where the configuration should be saved
+            to.
         """
         defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
-        filename = QtGui.QFileDialog.getSaveFileName(
-                self._mw,
-                'Save Configration',
-                defaultconfigpath ,
-                'Configuration files (*.cfg)')
+        filename = QtWidgets.QFileDialog.getSaveFileName(
+            self._mw,
+            'Save Configration',
+            defaultconfigpath,
+            'Configuration files (*.cfg)')
         if filename != '':
             self.sigSaveConfig.emit(filename)
 
 
-class ManagerMainWindow(QtGui.QMainWindow):
+class ManagerMainWindow(QtWidgets.QMainWindow):
     """ This class represents the Manager Window.
     """
+
     def __init__(self):
         """ Create the Manager Window.
         """
@@ -443,14 +466,17 @@ class ManagerMainWindow(QtGui.QMainWindow):
         self.show()
 
         # Set up the layout
-        # this really cannot be done in Qt designer, you cannot set a layout on an empty widget
-        self.guilayout = QtGui.QVBoxLayout(self.guiscroll)
-        self.logiclayout = QtGui.QVBoxLayout(self.logicscroll)
-        self.hwlayout = QtGui.QVBoxLayout(self.hwscroll)
+        # this really cannot be done in Qt designer, you cannot set a layout
+        # on an empty widget
+        self.guilayout = QtWidgets.QVBoxLayout(self.guiscroll)
+        self.logiclayout = QtWidgets.QVBoxLayout(self.logicscroll)
+        self.hwlayout = QtWidgets.QVBoxLayout(self.hwscroll)
 
-class AboutDialog(QtGui.QDialog):
+
+class AboutDialog(QtWidgets.QDialog):
     """ This class represents the QuDi About dialog.
     """
+
     def __init__(self):
         """ Create QuDi About Dialog.
         """
@@ -462,8 +488,12 @@ class AboutDialog(QtGui.QDialog):
         super().__init__()
         uic.loadUi(ui_file, self)
 
-class ConsoleSettingsDialog(QtGui.QDialog):
-    """ Create the SettingsDialog window, based on the corresponding *.ui file."""
+
+class ConsoleSettingsDialog(QtWidgets.QDialog):
+    """ Create the SettingsDialog window, based on the corresponding *.ui
+        file.
+    """
+
     def __init__(self):
          # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -473,12 +503,16 @@ class ConsoleSettingsDialog(QtGui.QDialog):
         super().__init__()
         uic.loadUi(ui_file, self)
 
-class ModuleListItem(QtGui.QFrame):
+
+class ModuleListItem(QtWidgets.QFrame):
     """ This class represents a module widget in the QuDi module list.
 
-      @signal str str sigLoadThis: gives signal with base and name of module to be loaded
-      @signal str str sigReloadThis: gives signal with base and name of module to be reloaded
-      @signal str str sigStopThis: gives signal with base and name of module to be deactivated
+      @signal str str sigLoadThis: gives signal with base and name of module
+                                   to be loaded
+      @signal str str sigReloadThis: gives signal with base and name of
+                                     module to be reloaded
+      @signal str str sigStopThis: gives signal with base and name of module
+                                   to be deactivated
     """
 
     sigLoadThis = QtCore.Signal(str, str)
@@ -533,19 +567,20 @@ class ModuleListItem(QtGui.QFrame):
         """
         self.sigCleanupStatus.emit(self.base, self.name)
 
-
     def checkModuleState(self):
         """ Get the state of this module and display it in the statusLabel
         """
         state = ''
         if self.statusLabel.text() != 'exception, cannot get state':
             try:
-                if self.base in self.manager.tree['loaded'] and self.name in self.manager.tree['loaded'][self.base]:
-                    state = self.manager.tree['loaded'][self.base][self.name].getState()
+                if (self.base in self.manager.tree['loaded']
+                        and self.name in self.manager.tree['loaded'][
+                            self.base]):
+                    state = self.manager.tree['loaded'][
+                        self.base][self.name].getState()
                 else:
                     state = 'not loaded'
             except:
                 state = 'exception, cannot get state'
 
             self.statusLabel.setText(state)
-
