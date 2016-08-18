@@ -156,7 +156,8 @@ class ManagerGui(GUIBase):
         self.stopIPythonWidget()
         self.stopIPython()
         self.checkTimer.stop()
-        self.checkTimer.timeout.disconnect()
+        if len(self.modlist) > 0:
+            self.checkTimer.timeout.disconnect()
         self.sigStartModule.disconnect()
         self.sigReloadModule.disconnect()
         self.sigStopModule.disconnect()
