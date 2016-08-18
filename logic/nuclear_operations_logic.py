@@ -29,6 +29,7 @@ import datetime
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
+
 class NuclearOperationsLogic(GenericLogic):
     """ A higher order logic, which combines several lower class logic modules
         in order to perform measurements and manipulations of nuclear spins.
@@ -72,7 +73,7 @@ class NuclearOperationsLogic(GenericLogic):
 
     sigNextMeasPoint = QtCore.Signal()
     sigCurrMeasPointUpdated = QtCore.Signal()
-    sigMeasValueUpdated = QtCore.Signal()
+    sigMeasurementStopped = QtCore.Signal()
 
     sigMeasStarted = QtCore.Signal()
 
@@ -301,8 +302,6 @@ class NuclearOperationsLogic(GenericLogic):
         self.initialize_y_axis()
         self.initialize_meas_param()
 
-        self.current_meas_asset_name = ''
-
         # establish the access to all connectors:
         self._save_logic = self.connector['in']['savelogic']['object']
 
@@ -325,6 +324,8 @@ class NuclearOperationsLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
+
+
         # Save the status variables:
         # ==========================
 
@@ -390,26 +391,26 @@ class NuclearOperationsLogic(GenericLogic):
         self._statusVariables['gc_number_of_samples'] = self.gc_number_of_samples
         self._statusVariables['gc_samples_per_readout'] = self.gc_samples_per_readout
 
+
     def initialize_x_axis(self):
         """ Initialize the x axis. """
 
         stop = self.x_axis_start + self.x_axis_step*self.x_axis_num_points
         self.x_axis_list = np.arange(self.x_axis_start, stop+(self.x_axis_step/2), self.x_axis_step)
         self.current_meas_point = self.x_axis_start
-        self.current_meas_index = 0
-        self.sigCurrMeasPointUpdated.emit()
 
     def initialize_y_axis(self):
         """ Initialize the y axis. """
-        self.y_axis_list = np.zeros(self.x_axis_list.shape)
-        self.y_axis_fit_list = np.zeros(self.x_axis_list.shape)
+
+        self.y_axis_list = np.zeros(self.x_axis_list.shape)     # y axis where current data are stored
+        self.y_axis_fit_list = np.zeros(self.x_axis_list.shape) # y axis where fit is stored.
 
         # here all consequutive measurements are saved, where the
         # self.num_of_meas_runs determines the measurement index for the row.
-        self.y_axis_matrix = np.zeros(1, len(self.x_axis_list))
+        self.y_axis_matrix = np.zeros((1, len(self.x_axis_list)))
 
         # here all the measurement parameters per measurement point are stored:
-        self.parameter_matrix = np.zeros(1, len(self.x_axis_list), dtype=object)
+        self.parameter_matrix = np.zeros((1, len(self.x_axis_list)), dtype=object)
 
     def initialize_meas_param(self):
         """ Initialize the measurement param containter. """
@@ -417,30 +418,43 @@ class NuclearOperationsLogic(GenericLogic):
         # nuclear measurement.
         self._meas_param = OrderedDict()
 
-
     def start_nuclear_meas(self, continue_meas=False):
         """ Start the nuclear operation measurement. """
+
+        self._stop_requested = False
 
         if not continue_meas:
             # prepare here everything for a measurement and go to the measurement
             # loop.
-            self.prepare_measurement_protocols()
+            self.prepare_measurement_protocols(self.current_meas_asset_name)
 
             self.initialize_x_axis()
             self.initialize_y_axis()
 
+            self.current_meas_index = 0
+            self.sigCurrMeasPointUpdated.emit()
+            self.num_of_current_meas_runs = 0
+
+            self.measured_odmr_list = []
+
+            self.elapsed_time = 0
+            self.start_time = datetime.datetime.now()
+            self.next_optimize_time = 0
+
         # load the measurement sequence:
         self._load_measurement_seq(self.current_meas_asset_name)
         self._pulser_on()
-        self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_power)
+        self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_cw_power)
         self.mw_on()
+
+        self.lock()
 
         self.sigMeasStarted.emit()
         self.sigNextMeasPoint.emit()
 
     def _meas_point_loop(self):
-
         """ Run this loop continuously until the an abort criterium is reached. """
+
         if self._stop_requested:
             with self.threadlock:
                 # end measurement and switch all devices off
@@ -450,10 +464,15 @@ class NuclearOperationsLogic(GenericLogic):
                 self.mw_off()
                 self._pulser_off()
                 # emit all needed signals for the update:
-                self.sigMeasValueUpdated.emit()
+                self.sigCurrMeasPointUpdated.emit()
+                self.sigMeasurementStopped.emit()
                 return
 
-        if self._optimize_now:
+        # if self._optimize_now:
+
+        self.elapsed_time = (datetime.datetime.now() - self.start_time).total_seconds()
+
+        if self.next_optimize_time < self.elapsed_time:
             current_meas_asset = self.current_meas_asset_name
             self.mw_off()
 
@@ -469,26 +488,29 @@ class NuclearOperationsLogic(GenericLogic):
 
             # use the new measured frequencies for the microwave:
 
-            if self.mw_on_odmr_peak == 0:
+            if self.mw_on_odmr_peak == 1:
                 self.mw_cw_freq = self.odmr_meas_freq0
-            elif self.mw_on_odmr_peak == 1:
-                self.mw_cw_freq = self.odmr_meas_freq1
             elif self.mw_on_odmr_peak == 2:
+                self.mw_cw_freq = self.odmr_meas_freq1
+            elif self.mw_on_odmr_peak == 3:
                 self.mw_cw_freq = self.odmr_meas_freq2
             else:
                 self.log.error('The maximum number of odmr can only be 3, '
-                        'therfore only the peaks with number 0, 1 or 2 can '
-                        'be selected but an number of "{0}" was set. '
-                        'Measurement stopped!'.format(self.mw_on_odmr_peak))
+                            'therfore only the peaks with number 0, 1 or 2 can '
+                            'be selected but an number of "{0}" was set. '
+                            'Measurement stopped!'.format(self.mw_on_odmr_peak))
                 self.stop_nuclear_meas()
                 self.sigNextMeasPoint.emit()
                 return
 
-            self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_power)
+            self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_cw_power)
             # establish the previous measurement conditions
             self.mw_on()
             self._load_measurement_seq(current_meas_asset)
             self._pulser_on()
+
+            self.elapsed_time = (datetime.datetime.now() - self.start_time).total_seconds()
+            self.next_optimize_time = self.elapsed_time + self.optimize_period_odmr
 
         # if stop request was done already here, do not perform the current
         # measurement but jump to the switch off procedure at the top of this
@@ -499,23 +521,31 @@ class NuclearOperationsLogic(GenericLogic):
 
         # this routine will return a desired measurement value and the
         # measurement parameters, which belong to it.
-        curr_meas_points, meas_param = self._get_meas_point()
+        curr_meas_points, meas_param = self._get_meas_point(self.current_meas_asset_name)
 
         # this routine will handle the saving and storing of the measurement
         # results:
-        self._set_meas_point(self.current_meas_index, self.num_of_current_meas_runs, curr_meas_points, meas_param)
+        self._set_meas_point(num_of_meas_runs=self.num_of_current_meas_runs,
+                             meas_index=self.current_meas_index,
+                             meas_points=curr_meas_points,
+                             meas_param=meas_param)
+
+
+        if self._stop_requested:
+            self.sigNextMeasPoint.emit()
+            return
 
         # increment the measurement index or set it back to zero if it exceed
         # the maximal number of x axis measurement points. The measurement index
         # will be used for the next measurement
-        if self.current_meas_index + 1 > self.x_axis_num_points:
+        if self.current_meas_index + 1 >= len(self.x_axis_list):
             self.current_meas_index = 0
 
             # If the next measurement run begins, add a new matrix line to the
             # self.y_axis_matrix
             self.num_of_current_meas_runs += 1
 
-            new_row = np.zeros(self.x_axis_num_points)
+            new_row = np.zeros(len(self.x_axis_list))
 
             # that vertical stack command behaves similar to the append method
             # in python lists, where the new_row will be appended to the matrix:
@@ -525,6 +555,10 @@ class NuclearOperationsLogic(GenericLogic):
         else:
             self.current_meas_index += 1
 
+
+
+        # check if measurement is at the end, and if not, adjust the measurement
+        # sequence to the next measurement point.
         if self.num_of_current_meas_runs < self.num_of_meas_runs:
 
             # take the next measurement index from the x axis as the current
@@ -533,6 +567,7 @@ class NuclearOperationsLogic(GenericLogic):
 
             # adjust the measurement protocol with the new current_meas_point
             self.adjust_measurement(self.current_meas_asset_name)
+            self._load_measurement_seq(self.current_meas_asset_name)
         else:
             self.stop_nuclear_meas()
 
@@ -571,26 +606,38 @@ class NuclearOperationsLogic(GenericLogic):
         # here the actual measurement is going to be started and stoped and
         # then analyzed and outputted in a proper format.
 
-        self._gc_logic.set_counting_mode(mode='gated')
-        self._gc_logic.set_count_length()
-        self._gc_logic.set_counting_samples(self.gc_number_of_samples)
+        # Check whether proper mode is active and if not activated that:
+        if self._gc_logic.get_counting_mode() != 'finite-gated':
+            self._gc_logic.set_counting_mode(mode='finite-gated')
+
+        self._gc_logic.set_count_length(self.gc_number_of_samples)
+        self._gc_logic.set_counting_samples(self.gc_samples_per_readout)
         self._gc_logic.startCount()
+        time.sleep(2)
 
         # wait until the gated counter is done or available to start:
-        while self._counter_logic.getState() == 'locked' or not self._stop_requested:
+        while self._gc_logic.getState() != 'idle' and not self._stop_requested:
+            # print('in SSR measure')
             time.sleep(1)
+
+        # for safety reasons, stop also the counter if it is still running:
+        # self._gc_logic.stopCount()
 
         name_tag = '{0}_{1}'.format(self.current_meas_asset_name, self.current_meas_point)
         self._gc_logic.save_current_count_trace(name_tag=name_tag)
 
         if meas_type in ['Nuclear_Rabi', 'Nuclear_Frequency_Scan']:
-            flip_prop, param = self._trace_ana_logic.analyze_flip_prob(self._gc_logic.countdata)
-            # flip_prop = [flip_prop]
+
+
+            entry_indices = np.where(self._gc_logic.countdata>50)
+            trunc_countdata = self._gc_logic.countdata[entry_indices]
+
+            flip_prop, param = self._trace_ana_logic.analyze_flip_prob(trunc_countdata)
+
         elif meas_type in ['QSD_-_Artificial_Drive', 'QSD_-_SWAP_FID',
                            'QSD_-_Entanglement_FID']:
             # do something measurement specific
             pass
-
 
         return flip_prop, param
 
@@ -637,13 +684,13 @@ class NuclearOperationsLogic(GenericLogic):
         """
         return [1, 2, 3]
 
-
     def prepare_measurement_protocols(self, meas_type):
         """ Prepare and create all measurement protocols for the specified
             measurement type
 
         @param str meas_type: a measurement type from the list get_meas_type_list
         """
+
         self._create_laser_on()
         self._create_pulsed_odmr()
 
@@ -654,10 +701,10 @@ class NuclearOperationsLogic(GenericLogic):
             # generate:
             self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
                                                           rf_length_ns=self.current_meas_point*1e9,
-                                                          rf_freq_MHz=self.pulser_rf_freq0,
-                                                          rf_amp_V=self.pulser_rf_amp,
+                                                          rf_freq_MHz=self.pulser_rf_freq0/1e6,
+                                                          rf_amp_V=self.pulser_rf_amp0,
                                                           rf_channel=self.pulser_rf_ch,
-                                                          mw_freq_MHz=self.pulser_mw_freq,
+                                                          mw_freq_MHz=self.pulser_mw_freq/1e6,
                                                           mw_amp_V=self.pulser_mw_amp,
                                                           mw_rabi_period_ns=self.electron_rabi_periode*1e9,
                                                           mw_channel=self.pulser_mw_ch,
@@ -665,23 +712,23 @@ class NuclearOperationsLogic(GenericLogic):
                                                           laser_channel=self.pulser_laser_ch,
                                                           laser_amp_V=self.pulser_laser_amp,
                                                           detect_channel=self.pulser_detect_ch,
-                                                          wait_time_ns=self.pulser_idle_time,
+                                                          wait_time_ns=self.pulser_idle_time*1e9,
                                                           num_singleshot_readout=self.num_singleshot_readout)
             # sample:
-            self._seq_gen_logic.sample_pulse_sequence(ensemble_name=meas_type,
+            self._seq_gen_logic.sample_pulse_sequence(sequence_name=meas_type,
                                                       write_to_file=True,
                                                       chunkwise=False)
             # upload:
-            self._seq_gen_logic.upload_asset(asset_name=meas_type)
+            self._seq_gen_logic.upload_sequence(seq_name=meas_type)
 
         elif meas_type == 'Nuclear_Frequency_Scan':
             # generate:
             self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
-                                                          rf_length_ns=(self.nuclear_rabi_period*1e9)/2,
-                                                          rf_freq_MHz=self.current_meas_point*1e-6,
-                                                          rf_amp_V=self.pulser_rf_amp,
+                                                          rf_length_ns=(self.nuclear_rabi_period0*1e9)/2,
+                                                          rf_freq_MHz=self.current_meas_point/1e6,
+                                                          rf_amp_V=self.pulser_rf_amp0,
                                                           rf_channel=self.pulser_rf_ch,
-                                                          mw_freq_MHz=self.pulser_mw_freq,
+                                                          mw_freq_MHz=self.pulser_mw_freq/1e6,
                                                           mw_amp_V=self.pulser_mw_amp,
                                                           mw_rabi_period_ns=self.electron_rabi_periode*1e9,
                                                           mw_channel=self.pulser_mw_ch,
@@ -689,22 +736,22 @@ class NuclearOperationsLogic(GenericLogic):
                                                           laser_channel=self.pulser_laser_ch,
                                                           laser_amp_V=self.pulser_laser_amp,
                                                           detect_channel=self.pulser_detect_ch,
-                                                          wait_time_ns=self.pulser_idle_time,
+                                                          wait_time_ns=self.pulser_idle_time*1e9,
                                                           num_singleshot_readout=self.num_singleshot_readout)
             # sample:
-            self._seq_gen_logic.sample_pulse_sequence(ensemble_name=meas_type,
+            self._seq_gen_logic.sample_pulse_sequence(sequence_name=meas_type,
                                                       write_to_file=True,
                                                       chunkwise=False)
             # upload:
-            self._seq_gen_logic.upload_asset(asset_name=meas_type)
+            self._seq_gen_logic.upload_sequence(seq_name=meas_type)
 
-        elif meas_type == 'QSD - Artificial Drive':
+        elif meas_type == 'QSD_-_Artificial_Drive':
             pass
 
-        elif meas_type == 'QSD - SWAP FID':
+        elif meas_type == 'QSD_-_SWAP_FID':
             pass
 
-        elif meas_type == 'QSD - Entanglement FID':
+        elif meas_type == 'QSD_-_Entanglement_FID':
             pass
 
     def adjust_measurement(self, meas_type):
@@ -723,8 +770,8 @@ class NuclearOperationsLogic(GenericLogic):
             # generate the new pulse (which will overwrite the Ensemble)
             self._seq_gen_logic.generate_rf_pulse_ens(name='RF_pulse',
                                                       rf_length_ns=(self.current_meas_point*1e9)/2,
-                                                      rf_freq_MHz=self.pulser_rf_freq0*1e6,
-                                                      rf_amp_V=self.pulser_rf_amp,
+                                                      rf_freq_MHz=self.pulser_rf_freq0/1e6,
+                                                      rf_amp_V=self.pulser_rf_amp0,
                                                       rf_channel=self.pulser_rf_ch)
 
             # sample the ensemble (and maybe save it to file, which will
@@ -740,9 +787,9 @@ class NuclearOperationsLogic(GenericLogic):
 
             # generate the new pulse (which will overwrite the Ensemble)
             self._seq_gen_logic.generate_rf_pulse_ens(name='RF_pulse',
-                                                      rf_length_ns=(self.nuclear_rabi_period*1e9)/2,
-                                                      rf_freq_MHz=self.current_meas_point*1e6,
-                                                      rf_amp_V=self.pulser_rf_amp,
+                                                      rf_length_ns=(self.nuclear_rabi_period0*1e9)/2,
+                                                      rf_freq_MHz=self.current_meas_point/1e6,
+                                                      rf_amp_V=self.pulser_rf_amp0,
                                                       rf_channel=self.pulser_rf_ch)
 
             # sample the ensemble (and maybe save it to file, which will
@@ -804,38 +851,103 @@ class NuclearOperationsLogic(GenericLogic):
         self._seq_gen_logic.load_asset(asset_name='Laser_On')
 
     def _pulser_on(self):
-        """ switch on the pulsing device.
+        """ Switch on the pulser output. """
 
-        @return:
-        """
-        #FIXME: Move this creation routine to the tasks!
-
-        config_name = self._seq_gen_logic.get_activation_config()
-        config = self._seq_gen_logic.get_hardware_constraints()['activation_config'][config_name]
-
-        active_ch = {}
-        for entry in config:
-            active_ch[entry] = True
-        self._seq_gen_logic.set_active_channels(active_ch)
+        self._set_channel_activation(active=True, apply_to_device=True)
         self._seq_gen_logic.pulser_on()
 
     def _pulser_off(self):
-        """ switch off the pulsing device.
+        """ Switch off the pulser output. """
 
-        @return:
-        """
-        #FIXME: Move this creation routine to the tasks!
-
+        self._set_channel_activation(active=False, apply_to_device=False)
         self._seq_gen_logic.pulser_off()
 
-        config_name = self._seq_gen_logic.get_activation_config()
-        config = self._seq_gen_logic.get_hardware_constraints()['activation_config'][config_name]
+    def _set_channel_activation(self, active=True, apply_to_device=False):
+        """ Set the channels according to the current activation config to be either active or not.
 
-        active_ch = {}
-        for entry in config:
-            active_ch[entry] = False
-        self._seq_gen_logic.set_active_channels(active_ch)
+        @param bool active: the activation according to the current activation
+                            config will be checked and if channel
+                            is not active and active=True, then channel will be
+                            activated. Otherwise if channel is active and
+                            active=False channel will be deactivated.
+                            All other channels, which are not in activation
+                            config will be deactivated if they are not already
+                            deactivated.
+        @param bool apply_to_device: Apply the activation or deactivation of the
+                                     current activation_config either to the
+                                     device and the viewboxes, or just to the
+                                     viewboxes.
+        """
 
+        pulser_const = self._seq_gen_logic.get_hardware_constraints()
+
+        curr_config_name = self._seq_gen_logic.current_activation_config_name
+        activation_config = pulser_const['activation_config'][curr_config_name]
+
+        # here is the current activation pattern of the pulse device:
+        active_ch = self._seq_gen_logic.get_active_channels()
+
+        ch_to_change = {} # create something like  a_ch = {1:True, 2:True} to switch
+
+        # check whether the correct channels are already active, and if not
+        # correct for that and activate and deactivate the appropriate ones:
+        available_ch = self._get_available_ch()
+        for ch_name in available_ch:
+
+            # if the channel is in the activation, check whether it is active:
+            if ch_name in activation_config:
+
+                if apply_to_device:
+                    # if channel is not active but activation is needed (active=True),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if not active_ch[ch_name] and active:
+                        ch_to_change[ch_name] = active
+
+                    # if channel is active but deactivation is needed (active=False),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if active_ch[ch_name] and not active:
+                        ch_to_change[ch_name] = active
+
+
+            else:
+                # all other channel which are active should be deactivated:
+                if active_ch[ch_name]:
+                    ch_to_change[ch_name] = False
+
+        self._seq_gen_logic.set_active_channels(ch_to_change)
+
+    def _get_available_ch(self):
+        """ Helper method to get a list of all available channels.
+
+        @return list: entries are the generic string names of the channels.
+        """
+        config = self._seq_gen_logic.get_hardware_constraints()['activation_config']
+
+        available_ch = []
+        all_a_ch = []
+        all_d_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_a_ch = [entry for entry in config[conf] if 'a_ch' in entry]
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_a_ch:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+            # append all new digital channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        all_a_ch.sort()
+        all_d_ch.sort()
+        available_ch.extend(all_a_ch)
+        available_ch.extend(all_d_ch)
+
+        return available_ch
 
     def do_optimize_pos(self):
         """ Perform an optimize position. """
@@ -861,7 +973,7 @@ class NuclearOperationsLogic(GenericLogic):
         # generate:
         self._seq_gen_logic.generate_pulsedodmr(name='PulsedODMR',
                                                 mw_time_ns=(self.electron_rabi_periode*1e9)/2,
-                                                mw_freq_MHz=self.pulser_mw_freq*1e-6,
+                                                mw_freq_MHz=self.pulser_mw_freq/1e6,
                                                 mw_amp_V=self.pulser_mw_amp,
                                                 mw_channel=self.pulser_mw_ch,
                                                 laser_time_ns=self.pulser_laser_length*1e9,
@@ -914,10 +1026,15 @@ class NuclearOperationsLogic(GenericLogic):
         self.odmr_meas_freq1 = param['Freq. 1']['value']
         self.odmr_meas_freq2 = param['Freq. 2']['value']
 
-        self.measured_odmr_list.append([self.odmr_meas_freq0,
+        curr_time = (datetime.datetime.now() - self.start_time).total_seconds()
+
+        self.measured_odmr_list.append([curr_time,
+                                        self.odmr_meas_freq0,
                                         self.odmr_meas_freq1,
                                         self.odmr_meas_freq2])
 
+        while self._odmr_logic.getState() != 'idle' and not self._stop_requested:
+            time.sleep(0.5)
 
     def mw_on(self):
         """ Start the microwave device. """
