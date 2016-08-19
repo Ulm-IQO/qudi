@@ -150,7 +150,7 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        logger.warning('Please implement and specify the activation method '
+        self.log.warning('Please implement and specify the activation method '
                 'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
@@ -159,7 +159,7 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        logger.warning('Please implement and specify the deactivation method '
+        self.log.warning('Please implement and specify the deactivation method '
                 '{0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
@@ -185,7 +185,7 @@ class Base(QtCore.QObject, Fysom):
 
         """
         if not isinstance(variableDict, (dict, OrderedDict)):
-            logger.error('Did not pass a dict or OrderedDict to '
+            self.log.error('Did not pass a dict or OrderedDict to '
                     'setStatusVariables in {0}.'.format(
                         self.__class__.__name__))
             return

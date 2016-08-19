@@ -40,7 +40,7 @@ import socket
 
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.reload as reload
-import pyqtgraph.configfile as configfile
+from . import config
 
 from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
@@ -221,7 +221,7 @@ class Manager(QtCore.QObject):
             logger.info('load.cfg config file found at {0}'.format(
                 loadConfigFile))
             try:
-                confDict = configfile.readConfigFile(loadConfigFile)
+                confDict = config.load(loadConfigFile)
                 if ('configfile' in confDict
                         and isinstance(confDict['configfile'], str)):
                     # check if this config file is existing
@@ -273,8 +273,7 @@ class Manager(QtCore.QObject):
         print("============= Starting Manager configuration from {0} =================".format(configFile) )
         logger.info("Starting Manager configuration from {0}".format(
             configFile))
-        cfg = configfile.readConfigFile(configFile)
-
+        cfg = config.load(configFile)
         # Read modules, devices, and stylesheet out of config
         self.configure(cfg)
 
@@ -299,7 +298,7 @@ class Manager(QtCore.QObject):
         for key in cfg:
             try:
                 # hardware
-                if key == 'hardware':
+                if key == 'hardware' and cfg['hardware'] is not None:
                     for m in cfg['hardware']:
                         if 'module.Class' in cfg['hardware'][m]:
                             self.tree['defined']['hardware'][m] = cfg['hardware'][m]
@@ -308,7 +307,7 @@ class Manager(QtCore.QObject):
                                     'no module specified'.format(m))
 
                 # logic
-                elif key == 'logic':
+                elif key == 'logic' and cfg['logic'] is not None:
                     for m in cfg['logic']:
                         if 'module.Class' in cfg['logic'][m]:
                             self.tree['defined']['logic'][m] = cfg['logic'][m]
@@ -317,7 +316,7 @@ class Manager(QtCore.QObject):
                                     'no module specified'.format(m))
 
                 # GUI
-                elif key == 'gui' and self.hasGui:
+                elif key == 'gui' and cfg['gui'] is not None and self.hasGui:
                     for m in cfg['gui']:
                         if 'module.Class' in cfg['gui'][m]:
                             self.tree['defined']['gui'][m] = cfg['gui'][m]
@@ -331,7 +330,7 @@ class Manager(QtCore.QObject):
                             'Please update your config file.')
 
                 # global config
-                elif key == 'global':
+                elif key == 'global' and cfg['global'] is not None:
                     for m in cfg['global']:
                         if m == 'startup':
                             self.tree['global']['startup'] = cfg['global']['startup']
@@ -385,11 +384,11 @@ class Manager(QtCore.QObject):
         """
         with self.lock:
             if os.path.isfile(fileName):
-                return configfile.readConfigFile(fileName)
+                return config.load(fileName)
             else:
                 fileName = self.configFileName(fileName)
                 if os.path.isfile(fileName):
-                    return configfile.readConfigFile(fileName)
+                    return config.load(fileName)
                 else:
                     if missingOk:
                         return {}
@@ -407,7 +406,7 @@ class Manager(QtCore.QObject):
             dirName = os.path.dirname(fileName)
             if not os.path.exists(dirName):
                 os.makedirs(dirName)
-            configfile.writeConfigFile(data, fileName)
+            config.save(fileName, data)
 
     def configFileName(self, name):
         """Get the full path of a configuration file from its filename.
@@ -426,7 +425,6 @@ class Manager(QtCore.QObject):
         """
         saveconfig = OrderedDict()
         saveconfig.update(self.tree['defined'])
-        saveconfig['startup'] = self.tree['start']
         saveconfig['global'] = self.tree['global']
 
         self.writeConfigFile(saveconfig, filename)
@@ -443,7 +441,7 @@ class Manager(QtCore.QObject):
         if filename.startswith(configdir):
             filename = re.sub('^'+re.escape('/'), '', re.sub('^'+re.escape(configdir), '', filename))
         loadData = {'configfile': filename}
-        configfile.writeConfigFile(loadData, loadFile)
+        config.save(loadFile, loadData)
         logger.info('Set loaded configuration to {0}'.format(filename))
         if restart:
             logger.info('Restarting QuDi after configuration reload.')
@@ -1157,10 +1155,15 @@ class Manager(QtCore.QObject):
             try:
                 statusdir = self.getStatusDir()
                 classname = self.tree['loaded'][base][module].__class__.__name__
-                filename = os.path.join(statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
-                configfile.writeConfigFile(variables, filename)
+                filename = os.path.join(statusdir,
+                        'status-{0}_{1}_{2}.cfg'.format(classname, base,
+                            module))
+                config.save(filename, variables)
             except:
-                logger.exception('Failed to save status variables.')
+                print(variables)
+                logger.exception('Failed to save status variables of module '
+                        '{0}.{1}:\n'
+                        '{2}'.format(base, module, repr(variables)))
 
     def loadStatusVariables(self, base, module):
         """ If a status variable file exists for a module, load it into a dictionary.
@@ -1175,13 +1178,23 @@ class Manager(QtCore.QObject):
             classname = self.tree['loaded'][base][module].__class__.__name__
             filename = os.path.join(statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
             if os.path.isfile(filename):
-                variables = configfile.readConfigFile(filename)
+                variables = config.load(filename)
             else:
                 variables = OrderedDict()
         except:
             logger.exception('Failed to load status variables.')
             variables = OrderedDict()
         return variables
+
+    def removeStatusFile(self, base, module):
+        try:
+            statusdir = self.getStatusDir()
+            classname = self.tree['defined'][base][module]['module.Class'].split('.')[-1]
+            filename = os.path.join(statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+            if os.path.isfile(filename):
+                os.remove(filename)
+        except:
+            logger.exception('Failed to remove module status file.')
 
     def quit(self):
         """Nicely request that all modules shut down."""

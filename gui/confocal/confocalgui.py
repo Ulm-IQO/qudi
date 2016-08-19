@@ -1411,18 +1411,18 @@ class ConfocalGui(GUIBase):
 
     def use_tiltcorrection_clicked(self, e):
         """ """
-        self._scanning_logic.TiltCorrection = e
-        self._optimizer_logic.tiltcorrection = e
+        if e:
+            self._scanning_logic.activate_tiltcorrection()
+        else:
+            self._scanning_logic.deactivate_tiltcorrection()
 
     def calculate_tiltcorrection_clicked(self):
         """ """
         self._scanning_logic.calc_tilt_correction()
-        self._optimizer_logic.calc_tilt_correction()
 
     def set_tiltpoint_01_clicked(self):
         """Set the crosshair position as the first reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point1()
-        self._optimizer_logic.set_tilt_point1()
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
         self._mw.tilt_01_z_pos_doubleSpinBox.setValue(self._scanning_logic.point1[2])
@@ -1430,7 +1430,6 @@ class ConfocalGui(GUIBase):
     def set_tiltpoint_02_clicked(self):
         """Set the crosshair position as the second reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point2()
-        self._optimizer_logic.set_tilt_point2()
         self._mw.tilt_02_x_pos_doubleSpinBox.setValue(self._scanning_logic.point2[0])
         self._mw.tilt_02_y_pos_doubleSpinBox.setValue(self._scanning_logic.point2[1])
         self._mw.tilt_02_z_pos_doubleSpinBox.setValue(self._scanning_logic.point2[2])
@@ -1438,7 +1437,6 @@ class ConfocalGui(GUIBase):
     def set_tiltpoint_03_clicked(self):
         """Set the crosshair position as the third reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point3()
-        self._optimizer_logic.set_tilt_point3()
         self._mw.tilt_03_x_pos_doubleSpinBox.setValue(self._scanning_logic.point3[0])
         self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])

@@ -16,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 
 Contains code that used to be distributed under the terms of the Modified BSD License.
 See documentation/BSDLicense_IPython.md for details.
@@ -60,6 +61,9 @@ while True:
             continue
         elif retval == 2:
             # invalid commandline argument
+            break
+        elif retval == -6:
+            # called if QFatal occurs
             break
         else:
             print('Unexpected return value {0}. Exiting.'.format(retval))

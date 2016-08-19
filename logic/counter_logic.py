@@ -291,9 +291,10 @@ class CounterLogic(GenericLogic):
                                        parameters=parameters,
                                        filelabel=filelabel,
                                        as_text=True,
-                                       plotfig = fig
+                                       plotfig=fig
                                        )
             #, as_xml=False, precision=None, delimiter=None)
+            plt.close(fig)
             self.log.debug('Counter Trace saved to:\n{0}'.format(filepath))
 
         return self._data_to_save, parameters

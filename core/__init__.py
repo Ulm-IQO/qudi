@@ -83,36 +83,3 @@ if sys.platform == 'win32':
 # a module being moved and may interfere with expected operation.
 compiledModuleDir = os.path.abspath(os.path.split(__file__)[0])
 pg.renamePyc(compiledModuleDir)
-
-# Install a simple message handler for Qt errors:
-def messageHandler(msgType, msg):
-    import traceback
-    print("Qt Error: (traceback follows)")
-    print(msg)
-    traceback.print_stack()
-    try:
-        logf = "crash.log"
-
-        fh = open(logf, 'a')
-        fh.write(str(msg)+'\n')
-        fh.write('\n'.join(traceback.format_stack()))
-        fh.close()
-    except:
-        print("Failed to write crash log:")
-        traceback.print_exc()
-
-    if msgType == pg.Qt.QtCore.QtFatalMsg:
-        try:
-            print("Fatal error occurred; asking manager to quit.")
-            global man
-            man.quit()
-            QtCore.QCoreApplication.instance().processEvents()
-        except:
-            pass
-
-if 'PyQt4' in sys.modules:
-    pg.QtCore.qInstallMsgHandler(messageHandler)
-else:
-    def qt5_messageHandler(msgType, context, msg):
-        messageHandler(msgType, msg)
-    pg.QtCore.qInstallMessageHandler(qt5_messageHandler)
