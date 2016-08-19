@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1917,6 +1917,9 @@
    <property name="text">
     <string>Zoom</string>
    </property>
+   <property name="shortcut">
+    <string>Z</string>
+   </property>
   </action>
   <action name="actionXY_scan_view">
    <property name="checkable">
@@ -2125,6 +2128,9 @@
    <property name="toolTip">
     <string>Go forward in scan history</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
   </action>
   <action name="actionBack">
    <property name="enabled">
@@ -2139,6 +2145,9 @@
    </property>
    <property name="toolTip">
     <string>Go back in scan history</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
    </property>
   </action>
  </widget>

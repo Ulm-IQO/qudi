@@ -24,7 +24,6 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from lmfit import Parameters
-import core.util.numpyhelpers as nphelp
 import numpy as np
 import time
 import datetime
@@ -846,6 +845,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
                                    timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6f')
+        plt.close(fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####

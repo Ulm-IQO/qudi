@@ -222,4 +222,5 @@ class QdplotLogic(GenericLogic):
                                    as_text=True,
                                    plotfig=fig
                                    )
+        plt.close(fig)
         self.log.debug('Data saved to:\n{0}'.format(filepath))

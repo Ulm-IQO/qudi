@@ -63,11 +63,7 @@ if set_api:
                'Implement the error handling!')
         pass  # no sip; probably pyside will be imported later..
 
-# Import pyqtgraph
-import pyqtgraph as pg
-
-# Do not use scipy.weave to rescale data (FIXME: review why this is here)
-pg.setConfigOptions(useWeave=False)
+from qtpy import QtCore
 
 # Make icons work on non-X11 platforms, import a custom theme
 #print('Platform is', sys.platform)
@@ -78,11 +74,6 @@ if sys.platform == 'win32':
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except:
         print('SetCurrentProcessExplicitAppUserModelID failed! This is probably not Microsoft Windows!')
-
-# rename any orphaned .pyc files -- these are probably leftover from
-# a module being moved and may interfere with expected operation.
-compiledModuleDir = os.path.abspath(os.path.split(__file__)[0])
-pg.renamePyc(compiledModuleDir)
 
 # Install a simple message handler for Qt errors:
 def messageHandler(msgType, msg):
@@ -101,18 +92,16 @@ def messageHandler(msgType, msg):
         print("Failed to write crash log:")
         traceback.print_exc()
 
-    if msgType == pg.Qt.QtCore.QtFatalMsg:
+    if msgType == QtCore.QtFatalMsg:
         try:
-            print("Fatal error occurred; asking manager to quit.")
-            global man
-            man.quit()
+            sys.exit()
             QtCore.QCoreApplication.instance().processEvents()
         except:
             pass
 
 if 'PyQt4' in sys.modules:
-    pg.QtCore.qInstallMsgHandler(messageHandler)
+    QtCore.qInstallMsgHandler(messageHandler)
 else:
     def qt5_messageHandler(msgType, context, msg):
         messageHandler(msgType, msg)
-    pg.QtCore.qInstallMessageHandler(qt5_messageHandler)
+    QtCore.qInstallMessageHandler(qt5_messageHandler)
