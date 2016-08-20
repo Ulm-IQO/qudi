@@ -23,6 +23,8 @@ import logging
 import core.logger
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
+from qtpy.QtGui import QPalette
+from qtpy.QtWidgets import QWidget
 try:
     from qtconsole.inprocess import QtInProcessKernelManager
 except ImportError:
@@ -34,9 +36,14 @@ except:
 from collections import OrderedDict
 from .errordialog import ErrorDialog
 import threading
-import pyqtgraph as pg
 import numpy as np
 import os
+
+try:
+    import pyqtgraph as pg
+    _has_pyqtgraph = True
+except:
+    _has_pyqtgraph = False
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
@@ -85,6 +92,20 @@ class ManagerGui(GUIBase):
 
         This method creates the Manager main window.
         """
+        if _has_pyqtgraph:
+            # set background of pyqtgraph
+            testwidget = QWidget()
+            testwidget.ensurePolished()
+            bgcolor = testwidget.palette().color(QPalette.Normal,
+                                                 testwidget.backgroundRole())
+            # set manually the background color in hex code according to our
+            # color scheme:
+            pg.setConfigOption('background', bgcolor)
+
+            # opengl usage
+            if 'useOpenGL' in self._manager.tree['global']:
+                pg.setConfigOption('useOpenGL',
+                                   self._manager.tree['global']['useOpenGL'])
         self._mw = ManagerMainWindow()
         self.restoreWindowPos(self._mw)
         self.errorDialog = ErrorDialog(self)
@@ -219,11 +240,12 @@ class ManagerGui(GUIBase):
         self.kernel = self.kernel_manager.kernel
         self.namespace = self.kernel.shell.user_ns
         self.namespace.update({
-            'pg': pg,
             'np': np,
             'config': self._manager.tree['defined'],
             'manager': self._manager
         })
+        if _has_pyqtgraph:
+            self.namespace['pg'] = pg
         self.updateIPythonModuleList()
         self.kernel.gui = 'qt4'
         self.log.info('IPython has kernel {0}'.format(
@@ -236,12 +258,18 @@ class ManagerGui(GUIBase):
         """ Create an IPython console widget and connect it to an IPython
         kernel.
         """
+        if (_has_pyqtgraph):
+            banner_modules = 'The numpy and pyqtgraph modules have already ' \
+                             'been imported as ''np'' and ''pg''.'
+        else:
+            banner_modules = 'The numpy module has already been imported ' \
+                             'as ''np''.'
         banner = """
-This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'.
+This is an interactive IPython console. {0}
 Configuration is in 'config', the manager is 'manager' and all loaded modules are in this namespace with their configured name.
 View the current namespace with dir().
 Go, play.
-"""
+""".format(banner_modules)
         self._mw.consolewidget.banner = banner
         # font size
         if 'console_font_size' in self._statusVariables:

@@ -22,11 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy.QtCore import QObject
 from qtpy.QtWidgets import QApplication
 from qtpy.QtGui import QIcon
-from qtpy.QtGui import QPalette
 from qtpy.QtCore import QSize
-from qtpy.QtWidgets import QWidget
-
-import pyqtgraph as pg
 
 
 class Gui(QObject):
@@ -60,13 +56,6 @@ class Gui(QObject):
 
     def setStyleSheet(self, stylesheet):
         QApplication.instance().setStyleSheet(stylesheet)
-        testwidget = QWidget()
-        testwidget.ensurePolished()
-        bgcolor = testwidget.palette().color(QPalette.Normal,
-                                             testwidget.backgroundRole())
-        # set manually the background color in hex code according to our
-        # color scheme:
-        pg.setConfigOption('background', bgcolor)
 
     def closeWindows(self):
         QApplication.instance().closeAllWindows()

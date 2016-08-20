@@ -44,7 +44,6 @@ from . import config
 from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from collections import OrderedDict
-import pyqtgraph as pg
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
@@ -335,13 +334,6 @@ class Manager(QtCore.QObject):
                         if m == 'startup':
                             self.tree['global']['startup'] = cfg[
                                 'global']['startup']
-                        elif m == 'useOpenGL' and self.hasGui:
-                            # use accelerated drawing
-                            pg.setConfigOption(
-                                'useOpenGL', cfg['global']['useOpenGl'])
-                            self.tree['global']['useOpenGL'] = cfg[
-                                'global']['useOpenGL']
-
                         elif m == 'stylesheet' and self.hasGui:
                             self.tree['global']['stylesheet'] = cfg[
                                 'global']['stylesheet']
