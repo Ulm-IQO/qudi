@@ -297,7 +297,7 @@ class Manager(QtCore.QObject):
         for key in cfg:
             try:
                 # hardware
-                if key == 'hardware':
+                if key == 'hardware' and cfg['hardware'] is not None:
                     for m in cfg['hardware']:
                         if 'module.Class' in cfg['hardware'][m]:
                             self.tree['defined']['hardware'][
@@ -307,7 +307,7 @@ class Manager(QtCore.QObject):
                                            'no module specified'.format(m))
 
                 # logic
-                elif key == 'logic':
+                elif key == 'logic' and cfg['logic'] is not None:
                     for m in cfg['logic']:
                         if 'module.Class' in cfg['logic'][m]:
                             self.tree['defined']['logic'][m] = cfg['logic'][m]
@@ -316,7 +316,7 @@ class Manager(QtCore.QObject):
                                            'no module specified'.format(m))
 
                 # GUI
-                elif key == 'gui' and self.hasGui:
+                elif key == 'gui' and cfg['gui'] is not None and self.hasGui:
                     for m in cfg['gui']:
                         if 'module.Class' in cfg['gui'][m]:
                             self.tree['defined']['gui'][m] = cfg['gui'][m]
@@ -330,7 +330,7 @@ class Manager(QtCore.QObject):
                                    'Please update your config file.')
 
                 # global config
-                elif key == 'global':
+                elif key == 'global' and cfg['global'] is not None:
                     for m in cfg['global']:
                         if m == 'startup':
                             self.tree['global']['startup'] = cfg[
