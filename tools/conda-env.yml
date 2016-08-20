@@ -72,6 +72,7 @@ dependencies:
   - pyqtgraph==0.9.10
   - pyvisa==1.8
   - pyvisa-py==0.2
+  - qtpy==1.1.2
   - rpyc==3.3.0
   - ruamel.yaml==0.11.15
   - smmap==0.9.0
