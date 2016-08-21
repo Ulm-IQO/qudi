@@ -129,8 +129,8 @@ except:
 
 # Disable standard garbage collector and run it from the event loop to
 # improve stability.
-# (see pyqtgraph.util.garbage_collector in the doc for more information)
-from pyqtgraph.util.garbage_collector import GarbageCollector
+# (see garbage_collector in the doc for more information)
+from .garbage_collector import GarbageCollector
 gc = GarbageCollector(interval=1.0, debug=False)
 
 
