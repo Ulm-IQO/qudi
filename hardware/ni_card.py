@@ -178,6 +178,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                                 # mainly used for gated counter
 
         config = self.getConfiguration()
+        print(config)
         # handle all the parameters given by the config
         # FIXME: Suggestion: and  partially set the parameters to default values
         # if not given by the config
