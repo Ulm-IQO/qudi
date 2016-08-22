@@ -551,7 +551,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.analysis_timer = QtCore.QTimer()
                 self.analysis_timer.setSingleShot(False)
                 self.analysis_timer.setInterval(int(1000. * self.timer_interval))
-                self.analysis_timer.timeout.connect(self._pulsed_analysis_loop)
+                self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
 
                 self.lock()
                 self.elapsed_time = 0.0
