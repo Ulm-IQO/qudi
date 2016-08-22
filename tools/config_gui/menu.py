@@ -14,22 +14,38 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 import os
 from qtpy import QtCore, QtWidgets
-import listmods
+
+class ModuleObject(QtCore.QObject):
+
+    sigAddModule = QtCore.Signal(object)
+
+    def __init__(self, name, conn_in, conn_out):
+        super().__init__()
+        self.name = name
+        self.conn_in = conn_in
+        self.conn_out = conn_out
+
+    def addModule(self):
+        self.sigAddModule.emit(self)
 
 class ModMenu(QtWidgets.QMenu):
 
-    def __init__(self):
+    def __init__(self, m):
         super().__init__()
+
+        self.modules = []
+
+        self.hwmenu = QtWidgets.QMenu('Hardware')
         self.logicmenu = QtWidgets.QMenu('Logic')
         self.guimenu = QtWidgets.QMenu('Gui')
-        self.hwmenu = QtWidgets.QMenu('Hardware')
+        self.addMenu(self.hwmenu)
         self.addMenu(self.logicmenu)
         self.addMenu(self.guimenu)
-        self.addMenu(self.hwmenu)
 
         self.hwmenuitems = {
             'menu': self.hwmenu,
@@ -47,20 +63,17 @@ class ModMenu(QtWidgets.QMenu):
             'actions': {}
         }
 
-        modules = listmods.find_pyfiles(os.getcwd())
-        m, i_s, ie, oe = listmods.check_qudi_modules(modules)
-
-        for k,v in m['hardware'].items():
-            self.build_submenu(self.hwmenuitems, k)
+        for k,v in sorted(m['hardware'].items()):
+            self.build_submenu(self.hwmenuitems, k, v)
             
-        for k,v in m['logic'].items():
-            self.build_submenu(self.logicmenuitems, k)
+        for k,v in sorted(m['logic'].items()):
+            self.build_submenu(self.logicmenuitems, k, v)
 
-        for k,v in m['gui'].items():
-            self.build_submenu(self.guimenuitems, k)
+        for k,v in sorted(m['gui'].items()):
+            self.build_submenu(self.guimenuitems, k, v)
 
-    def build_submenu(self, mlist, mod) :
-        k_parts = mod.split('.')
+    def build_submenu(self, mlist, modname, moddef) :
+        k_parts = modname.split('.')
         if len(k_parts) > 3:
             for part in k_parts[1:-2]:
                 if part in mlist['children']:
@@ -73,5 +86,10 @@ class ModMenu(QtWidgets.QMenu):
                         'actions': {}
                         }
                     mlist = mlist['children'][part]
-        mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
+        action = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
+        mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = action
+        module = ModuleObject(modname, moddef['in'], moddef['out'])
+        action.triggered.connect(module.addModule)
+        self.modules.append(module)
+
  
