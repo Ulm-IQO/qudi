@@ -26,6 +26,7 @@ from collections import OrderedDict
 import numpy as np
 from scipy import ndimage
 from core.util.network import netobtain
+import time
 
 class PulseExtractionLogic(GenericLogic):
     """unstable: Nikolas Tomek  """
@@ -66,6 +67,7 @@ class PulseExtractionLogic(GenericLogic):
         """
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._check_if_counter_gated()
+        self._iter = 0
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -99,7 +101,7 @@ class PulseExtractionLogic(GenericLogic):
         #       It should also be possible to display the bare laserpulse,
         #       without cutting away something.
 
-        conv_deriv = self._convolve_derive(timetrace_sum, self.conv_std_dev)
+        conv_deriv = self._convolve_derive(timetrace_sum.astype(float), self.conv_std_dev)
         # get indices of rising and falling flank
 
         rising_ind = conv_deriv.argmax()
@@ -156,7 +158,7 @@ class PulseExtractionLogic(GenericLogic):
 
         # apply gaussian filter to remove noise and compute the gradient of the
         # timetrace
-        conv_deriv = self._convolve_derive(count_data, self.conv_std_dev)
+        conv_deriv = self._convolve_derive(count_data.astype(float), self.conv_std_dev)
 
         # use a reference for array, because the exact position of the peaks or
         # dips (i.e. maxima or minima, which are the inflection points in the
@@ -243,7 +245,13 @@ class PulseExtractionLogic(GenericLogic):
         # find the maximum laser length to use as size for the laser array
         laser_length = np.max(falling_ind-rising_ind)
 
-        # initialize the zero output array
+        #Todo: Find better method, here the idea is to take a histogram to find
+        # length of pulses
+        #diff = (falling_ind-rising_ind)[np.where( falling_ind-rising_ind > 0)]
+        #self.histo = np.histogram(diff)
+        #laser_length = int(self.histo[1][self.histo[0].argmax()])
+
+        # initialize the empty output array
         laser_arr = np.zeros([num_of_lasers, laser_length],int)
         # slice the detected laser pulses of the timetrace and save them in the
         # output array according to the found rising edge
@@ -299,6 +307,12 @@ class PulseExtractionLogic(GenericLogic):
         if self.old_raw_data is not None:
             #if raw_data.shape == self.old_raw_data.shape:
             raw_data = np.add(raw_data, self.old_raw_data)
+
+        # Saving data for testing
+        
+        # name = str(self._iter) + '.dat'
+        # self._iter = self._iter + 1
+        # np.savetxt(name, raw_data.transpose())
 
         # call appropriate laser extraction method depending on if the fast
         # counter is gated or not.
