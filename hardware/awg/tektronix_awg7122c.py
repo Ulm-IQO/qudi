@@ -473,8 +473,8 @@ class AWG7122C(Base, PulserInterface):
             #self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch{0}'.format(int(channel_num)), asset_name + '_ch{0}.wfm'.format(int(channel_num))))
             #self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch{0}'.format(int(channel_num))))
 
-        if len(list(load_dict)) > 0:
-            self.current_loaded_asset = asset_name
+        #if len(list(load_dict)) > 0:
+        self.current_loaded_asset = asset_name
 
         return 0
 
