@@ -4063,27 +4063,27 @@ class PulsedMeasurementGui(GUIBase):
         """ React when the start signal line get moved by the user. """
         sig_start = self.sig_start_line.value()
         self._mw.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pulsed_meas_logic.signal_start_bin = sig_start
+        self._pulsed_meas_logic.signal_start_bin = int(sig_start)
 
     def analysis_window_sig_line_stop_changed(self):
         """ React when the stop signal line get moved by the user. """
         sig_start = self.sig_start_line.value()
         sig_length = self.sig_end_line.value() - sig_start
         self._mw.extract_param_ana_window_width_SpinBox.setValue(sig_length)
-        self._pulsed_meas_logic.signal_width_bin = sig_length
+        self._pulsed_meas_logic.signal_width_bin = int(sig_length)
 
     def analysis_window_ref_line_start_changed(self):
         """ React when the reference start line get moved by the user. """
         ref_start = self.ref_start_line.value()
         self._mw.extract_param_ref_window_start_SpinBox.setValue(ref_start)
-        self._pulsed_meas_logic.norm_start_bin = ref_start
+        self._pulsed_meas_logic.norm_start_bin = int(ref_start)
 
     def analysis_window_ref_line_stop_changed(self):
         """ React when the reference stop line get moved by the user. """
         ref_start = self.ref_start_line.value()
         ref_length = self.ref_end_line.value()-ref_start
         self._mw.extract_param_ref_window_width_SpinBox.setValue(ref_length)
-        self._pulsed_meas_logic.norm_width_bin = ref_length
+        self._pulsed_meas_logic.norm_width_bin = int(ref_length)
 
     def refresh_laser_pulses_display(self):
         """ Refresh the extracted laser pulse display. """
