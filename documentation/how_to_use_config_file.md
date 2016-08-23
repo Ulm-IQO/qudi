@@ -1,9 +1,20 @@
-How to use and understand a config file  {#config-explanation}
-===============
+# How to use and understand a config file  {#config-explanation}
 
 Config files are essential in our software, since they tell basically which
 modules you want to connect to each other. The config file is also the place
-where needed parameters can be saved individually for a module of you needs.
+where the required parameters are specified individually for a module.
+
+## YAML implementation in QuDi
+
+Our config file uses the [YAML](http://yaml.org/) format, a data serialization format designed for
+human readability and interaction with scripting languages. QuDi modifies the
+PyYAML implementation, which serves as a YAML parser. Therefore QuDi has
+implemented a loader and a dumper using an collections.OrderedDict() instead of
+the regular python dict() used by PyYAML.
+Additionally, it fixes a bug in PyYAML with scientific notation and allows
+to dump numpy.dtypes and numpy.ndarrays.
+
+## Example of a config file
 
 Each module is defined in a predetermined category i.e. in
 
@@ -24,7 +35,14 @@ Let's have a look on an example scenario of an (incomplete) configuration:
             attribute_int_example:      12345
             attribute_float_example:    1.234
             attribute_boolean_example:  True
-            attribute_list_example:     ['first', 'second']
+            attribute_list_example:
+                                    - 'first'
+                                    - 'second'
+                                    - 'another'
+            attribute_list_floats:
+                                    - -200.0    # the second minus belongs to the number
+                                    - 0.0
+                                    - 200.0
 
 
     logic:
@@ -45,7 +63,8 @@ Each of this categories contains an `<identifier>`, i.e.
 a name which is used for a module. This identifier is relevant in order to
 separate and distinguish between the different modules. The `<identifier>`
 represents a reference to the constructed object of the module. Therefore the
-keyword `module.Class` indicates the path to the construction class.
+keyword `module.Class` indicates the path to the construction class in pythonic
+notation (directory separated by points).
 
 For instance:
 In the category `hardware` you can specify the attribute `module.Class` in the
