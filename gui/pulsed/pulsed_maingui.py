@@ -20,12 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtGui, QtCore, uic
+from qtpy import QtGui
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import numpy as np
 import os
 from collections import OrderedDict
 import pyqtgraph as pg
-import pyqtgraph.exporters
 import re
 import inspect
 import datetime
@@ -36,9 +38,16 @@ from gui.colordefs import QudiPalettePale as palette
 from gui.colordefs import QudiPalette as palettedark
 from core.util.mutex import Mutex
 from core.util import units
-from .qradiobutton_custom import CustomQRadioButton
 
-from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
+from logic.pulse_objects import Pulse_Block_Element
+from logic.pulse_objects import Pulse_Block
+from logic.pulse_objects import Pulse_Block_Ensemble
+from logic.pulse_objects import Pulse_Sequence
+
+from .spinbox_delegate import SpinBoxDelegate
+from .doublespinbox_delegate import DoubleSpinBoxDelegate
+from .combobox_delegate import ComboBoxDelegate
+from .checkbox_delegate import CheckBoxDelegate
 
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
@@ -103,12 +112,8 @@ from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_En
 # custom definition of QTableView with a Model is not needed.
 
 
-from .spinbox_delegate import SpinBoxDelegate
-from .doublespinbox_delegate import DoubleSpinBoxDelegate
-from .combobox_delegate import ComboBoxDelegate
-from .checkbox_delegate import CheckBoxDelegate
 
-class PulsedMeasurementMainWindow(QtGui.QMainWindow):
+class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -120,7 +125,7 @@ class PulsedMeasurementMainWindow(QtGui.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-class BlockSettingDialog(QtGui.QDialog):
+class BlockSettingDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -131,7 +136,7 @@ class BlockSettingDialog(QtGui.QDialog):
 
         uic.loadUi(ui_file, self)
 
-class AnalysisSettingDialog(QtGui.QDialog):
+class AnalysisSettingDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -142,7 +147,7 @@ class AnalysisSettingDialog(QtGui.QDialog):
 
         uic.loadUi(ui_file, self)
 
-class PredefinedMethodsDialog(QtGui.QDialog):
+class PredefinedMethodsDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -153,7 +158,7 @@ class PredefinedMethodsDialog(QtGui.QDialog):
 
         uic.loadUi(ui_file, self)
 
-class PredefinedMethodsConfigDialog(QtGui.QDialog):
+class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -263,7 +268,7 @@ class PulsedMeasurementGui(GUIBase):
     def show(self):
         """Make main window visible and put it above all other windows. """
 
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -286,7 +291,7 @@ class PulsedMeasurementGui(GUIBase):
         self._bs = BlockSettingDialog() # initialize the block settings
         self._bs.accepted.connect(self.apply_block_settings)
         self._bs.rejected.connect(self.keep_former_block_settings)
-        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.apply_block_settings)
+        self._bs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_block_settings)
 
         # # load in the possible channel configurations into the config
         # pulser_constr = self.get_hardware_constraints()
@@ -320,23 +325,23 @@ class PulsedMeasurementGui(GUIBase):
         # FIXME: Make a nicer way of displaying the available functions, maybe
         #        with a Table!
 
-        _encoding = QtGui.QApplication.UnicodeUTF8
+        _encoding = QtWidgets.QApplication.UnicodeUTF8
         objectname = self._bs.objectName()
         for index, func_name in enumerate(self.get_func_config_list()):
 
             name_label = 'func_'+ str(index)
-            setattr(self._bs, name_label, QtGui.QLabel(self._bs.groupBox))
+            setattr(self._bs, name_label, QtWidgets.QLabel(self._bs.groupBox))
             label = getattr(self._bs, name_label)
             label.setObjectName(name_label)
             self._bs.gridLayout_3.addWidget(label, index, 0, 1, 1)
-            label.setText(QtGui.QApplication.translate(objectname, func_name, None, _encoding))
+            label.setText(QtWidgets.QApplication.translate(objectname, func_name, None, _encoding))
 
             name_checkbox = 'checkbox_'+ str(index)
-            setattr(self._bs, name_checkbox, QtGui.QCheckBox(self._bs.groupBox))
+            setattr(self._bs, name_checkbox, QtWidgets.QCheckBox(self._bs.groupBox))
             checkbox = getattr(self._bs, name_checkbox)
             checkbox.setObjectName(name_checkbox)
             self._bs.gridLayout_3.addWidget(checkbox, index, 1, 1, 1)
-            checkbox.setText(QtGui.QApplication.translate(objectname, '', None, _encoding))
+            checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None, _encoding))
 
         # make the first 4 Functions as default.
         # FIXME: the default functions, must be passed as a config
@@ -355,7 +360,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         self._bs.accepted.disconnect()
         self._bs.rejected.disconnect()
-        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.disconnect()
+        self._bs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
         self._bs.close()
 
     def _interleave_changed(self, state):
@@ -499,9 +504,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.actionConfigure_Predefined_Methods.triggered.connect(self.show_predefined_methods_config)
 
         # emit a trigger event when for all mouse click and keyboard click events:
-        self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
-        self._mw.block_organizer_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
-        # self._mw.seq_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        self._mw.block_editor_TableWidget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+        self._mw.block_organizer_TableWidget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+        # self._mw.seq_editor_TableWidget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
 
         # connect update signals of the sequence_generator_logic
         self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
@@ -566,7 +571,7 @@ class PulsedMeasurementGui(GUIBase):
         # connect the actions of the Config for Predefined methods:
         self._pm_cfg.accepted.connect(self.update_predefined_methods)
         self._pm_cfg.rejected.connect(self.keep_former_predefined_methods)
-        self._pm_cfg.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_predefined_methods)
+        self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_predefined_methods)
 
         # set the chosen predefined method to be visible:
         for predefined_method in self._predefined_methods_list:
@@ -603,14 +608,14 @@ class PulsedMeasurementGui(GUIBase):
 
     def _create_save_tag_input(self):
         """ Add save file tag input box. """
-        self._mw.save_tag_LineEdit = QtGui.QLineEdit()
+        self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
 
     def _create_pulser_on_off_buttons(self):
         """ Create Buttons for Pulser on and Pulser Off and add to toolbar. """
 
-        self._mw.pulser_on_PushButton =  QtGui.QPushButton(self._mw)
+        self._mw.pulser_on_PushButton =  QtWidgets.QPushButton(self._mw)
         self._mw.pulser_on_PushButton.setText('Pulser On')
         self._mw.pulser_on_PushButton.setToolTip('Switch on the device.\n'
                                                  'The channels, which will be activated\n'
@@ -618,7 +623,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.control_ToolBar.addWidget(self._mw.pulser_on_PushButton)
 
 
-        self._mw.pulser_off_PushButton = QtGui.QPushButton(self._mw)
+        self._mw.pulser_off_PushButton = QtWidgets.QPushButton(self._mw)
         self._mw.pulser_off_PushButton.setText('Pulser Off')
         self._mw.pulser_off_PushButton.setToolTip('Switch off the device.\n'
                                                   'The channels, which will be deactivated\n'
@@ -628,7 +633,7 @@ class PulsedMeasurementGui(GUIBase):
     def _create_pushbutton_clear_device(self):
         """ Create the  Clear Button to clear the device. """
 
-        self._mw.clear_device_PushButton = QtGui.QPushButton(self._mw)
+        self._mw.clear_device_PushButton = QtWidgets.QPushButton(self._mw)
         self._mw.clear_device_PushButton.setText('Clear Pulser')
         self._mw.clear_device_PushButton.setToolTip('Clear the Pulser Device Memory\n'
                                                     'from all loaded files.')
@@ -1464,7 +1469,7 @@ class PulsedMeasurementGui(GUIBase):
         for channel in channel_active_config:
             if 'a_ch' in channel:
                 self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column_count,
-                    QtGui.QTableWidgetItem())
+                    QtWidgets.QTableWidgetItem())
                 self._mw.block_editor_TableWidget.horizontalHeaderItem(column_count).setText(
                     'ACh{0}\nfunction'.format(channel.split('ch')[-1]))
                 self._mw.block_editor_TableWidget.setColumnWidth(column_count, 70)
@@ -1486,7 +1491,7 @@ class PulsedMeasurementGui(GUIBase):
                     unit_text = item_dict['unit_prefix'] + item_dict['unit']
 
                     self._mw.block_editor_TableWidget.setHorizontalHeaderItem(
-                        column_count, QtGui.QTableWidgetItem())
+                        column_count, QtWidgets.QTableWidgetItem())
                     self._mw.block_editor_TableWidget.horizontalHeaderItem(column_count).setText(
                         'ACh{0}\n{1} ({2})'.format(channel.split('ch')[-1], parameter,
                                                      unit_text))
@@ -1502,7 +1507,7 @@ class PulsedMeasurementGui(GUIBase):
 
             elif 'd_ch' in channel:
                 self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column_count,
-                    QtGui.QTableWidgetItem())
+                    QtWidgets.QTableWidgetItem())
                 self._mw.block_editor_TableWidget.horizontalHeaderItem(column_count).setText(
                     'DCh{0}'.format(channel.split('ch')[-1]))
                 self._mw.block_editor_TableWidget.setColumnWidth(column_count, 40)
@@ -1527,7 +1532,7 @@ class PulsedMeasurementGui(GUIBase):
 
             self._mw.block_editor_TableWidget.insertColumn(num_of_columns + column)
             self._mw.block_editor_TableWidget.setHorizontalHeaderItem(num_of_columns + column,
-                                                                      QtGui.QTableWidgetItem())
+                                                                      QtWidgets.QTableWidgetItem())
             self._mw.block_editor_TableWidget.horizontalHeaderItem(
                 num_of_columns + column).setText('{0} ({1})'.format(parameter, unit_text))
             self._mw.block_editor_TableWidget.setColumnWidth(num_of_columns + column, 90)
@@ -2099,7 +2104,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.setColumnCount(num_column)
 
         column = 0
-        self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+        self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtWidgets.QTableWidgetItem())
         self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('Pulse Block')
         self._mw.block_organizer_TableWidget.setColumnWidth(column, 100)
 
@@ -2119,7 +2124,7 @@ class PulsedMeasurementGui(GUIBase):
             unit_text = item_dict['unit_prefix'] + item_dict['unit']
 
             self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtWidgets.QTableWidgetItem())
             self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
             self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
 
@@ -2225,8 +2230,8 @@ class PulsedMeasurementGui(GUIBase):
             inspected = inspect.signature(method)
 
 
-            gridLayout = QtGui.QGridLayout()
-            groupBox = QtGui.QGroupBox(self._pm)
+            gridLayout = QtWidgets.QGridLayout()
+            groupBox = QtWidgets.QGroupBox(self._pm)
 
             obj_list = []
 
@@ -2289,7 +2294,7 @@ class PulsedMeasurementGui(GUIBase):
             gridLayout.addWidget(gen_button, 0, pos, 1, 1)
             gridLayout.addWidget(gen_upload_button, 1, pos, 1, 1)
 
-            horizontalLayout = QtGui.QHBoxLayout(groupBox)
+            horizontalLayout = QtWidgets.QHBoxLayout(groupBox)
 
             horizontalLayout.addLayout(gridLayout)
 
@@ -2329,8 +2334,8 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QLabel: a predefined label for the GUI.
         """
 
-        label = QtGui.QLabel(parent)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
+        label = QtWidgets.QLabel(parent)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(label.sizePolicy().hasHeightForWidth())
@@ -2347,12 +2352,12 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QDoubleSpinBox: a predefined QDoubleSpinBox for the GUI.
         """
 
-        doublespinbox = QtGui.QDoubleSpinBox(parent)
+        doublespinbox = QtWidgets.QDoubleSpinBox(parent)
         doublespinbox.setMaximum(np.inf)
         doublespinbox.setMinimum(-np.inf)
 
         # set a size for vertivcal an horizontal dimensions
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(doublespinbox.sizePolicy().hasHeightForWidth())
@@ -2370,7 +2375,7 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QSpinBox: a predefined QSpinBox for the GUI.
         """
 
-        spinBox = QtGui.QSpinBox(parent)
+        spinBox = QtWidgets.QSpinBox(parent)
         spinBox.setMaximum(2**31 -1)
         spinBox.setMinimum(-2**31 +1)
         spinBox.setValue(default_val)
@@ -2385,7 +2390,7 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QCheckBox: a predefined QCheckBox for the GUI.
         """
 
-        checkBox = QtGui.QCheckBox(parent)
+        checkBox = QtWidgets.QCheckBox(parent)
         checkBox.setChecked(default_val)
         return checkBox
 
@@ -2398,11 +2403,11 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QLineEdit: a predefined QLineEdit for the GUI.
         """
 
-        lineedit = QtGui.QLineEdit(parent)
+        lineedit = QtWidgets.QLineEdit(parent)
         lineedit.setText(default_val)
 
         # set a size for vertivcal an horizontal dimensions
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(lineedit.sizePolicy().hasHeightForWidth())
@@ -2421,7 +2426,7 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QPushButton: a predefined QPushButton for the GUI.
         """
 
-        pushbutton = QtGui.QPushButton(parent)
+        pushbutton = QtWidgets.QPushButton(parent)
         pushbutton.setText(text)
         return pushbutton
 
@@ -2505,7 +2510,7 @@ class PulsedMeasurementGui(GUIBase):
         self._as = AnalysisSettingDialog()
         self._as.accepted.connect(self.update_analysis_settings)
         self._as.rejected.connect(self.keep_former_analysis_settings)
-        self._as.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
+        self._as.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
 
         if 'ana_param_x_axis_name_LineEdit' in self._statusVariables:
             self._as.ana_param_x_axis_name_LineEdit.setText(self._statusVariables['ana_param_x_axis_name_LineEdit'])
@@ -3405,7 +3410,7 @@ class PulsedMeasurementGui(GUIBase):
 
         column = 0
         # set the name for the column:
-        self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+        self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtWidgets.QTableWidgetItem())
         self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText('ensemble')
         self._mw.seq_editor_TableWidget.setColumnWidth(column, 100)
 
@@ -3423,7 +3428,7 @@ class PulsedMeasurementGui(GUIBase):
             param = seq_param[seq_param_name]
 
             # self._mw.seq_editor_TableWidget.insertColumn(column)
-            self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+            self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtWidgets.QTableWidgetItem())
             header_name = seq_param_name.replace('_',' ')
             self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText(header_name)
             self._mw.seq_editor_TableWidget.setColumnWidth(column, 80)
