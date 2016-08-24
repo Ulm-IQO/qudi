@@ -21,7 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from pyqtgraph import PlotWidget
-from pyqtgraph.Qt import QtGui, QtCore
+from qtpy import QtCore
+from qtpy import QtWidgets
+
 
 class PlotWidgetModified(PlotWidget):
     """ Extend the PlotWidget Class with more adjustment possibilities.
@@ -50,9 +52,9 @@ class PlotWidgetModified(PlotWidget):
         of the PlotWidget.
         """
 
-        # Extend the received event ev with all the properties of a QT mouse
+        # Extend the received event ev with all the properties of a Qt mouse
         # press event.
-        QtGui.QGraphicsView.mousePressEvent(self, ev)
+        QtWidgets.QGraphicsView.mousePressEvent(self, ev)
 
         # this signal will be catched by other methods if the mouse was clicked
         # inside the PlotWidget.
@@ -77,9 +79,9 @@ class PlotWidgetModified(PlotWidget):
         That is basically a reimplementation of the mouseReleaseEvent function
         of the PlotWidget.
         """
-        # Extend the received event ev with all the properties of a QT mouse
+        # Extend the received event ev with all the properties of a Qt mouse
         # press event.
-        QtGui.QGraphicsView.mouseReleaseEvent(self, ev)
+        QtWidgets.QGraphicsView.mouseReleaseEvent(self, ev)
 
         # this signal will be catched by other methods if the mouse was clicked
         # and afterwards release inside the PlotWidget.
