@@ -68,7 +68,6 @@ class FastCounterDummy(Base, FastCounterInterface):
             self.log.warning('No parameter "choose_trace" was specified in '
                     'the config. The default configuration choose_trace={0} '
                     'will be taken instead.'.format(self._choose_trace))
-        self._iter = 0
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -84,14 +83,6 @@ class FastCounterDummy(Base, FastCounterInterface):
         self.statusvar = 0
         self._binwidth = 1
         self._gate_length_bins = 8192
-
-        filename = os.path.abspath(r'C:\Users\astark\Documents\20160822\pulse-test')
-
-        self.filename_list = [0]*324
-
-        for ii in range(324):
-            self.filename_list[ii] = os.path.join(filename,str(ii)+'.dat')
-
         return
 
     def on_deactivate(self, e):
@@ -188,11 +179,10 @@ class FastCounterDummy(Base, FastCounterInterface):
             defaultconfigpath = os.path.join(self.get_main_dir())
 
             # choose the filename via the Qt Dialog window:
-            # filename = QtGui.QFileDialog.getOpenFileName(None,
-            #                                              'Load Pulsed File',
-            #                                              defaultconfigpath)#,
-            #                                              # 'Configuration files (*.cfg)')
-            filename = self.filename_list[0]
+            filename = QtGui.QFileDialog.getOpenFileName(None,
+                                                         'Load Pulsed File',
+                                                         defaultconfigpath)#,
+                                                         # 'Configuration files (*.cfg)')
 
             if filename == '':
                 self._count_data = np.loadtxt(
@@ -266,18 +256,7 @@ class FastCounterDummy(Base, FastCounterInterface):
         """
 
         # include an artificial waiting time
-        # time.sleep(0.5)
-
-        filename = self.filename_list[self._iter]
-
-        if self._iter+2 > len(self.filename_list):
-            self._iter = 0
-        else:
-            self._iter = self._iter + 1
-
-        self.log.info(('iter:', self._iter))
-
-        self._count_data = np.loadtxt(filename).transpose()
+        time.sleep(0.5)
         return self._count_data
 
     def get_frequency(self):
