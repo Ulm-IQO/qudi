@@ -30,7 +30,7 @@ import logging.handlers
 import sys
 import traceback
 import functools
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 
 
 class QtLogFormatter(logging.Formatter):
