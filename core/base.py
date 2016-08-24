@@ -126,12 +126,17 @@ class Base(QtCore.QObject, Fysom):
         """
         Attribute getter.
 
-        We'll reimplement it here because otherwise only __getattr__ of the
-        first base class (QObject) is called and the second base class is
-        never looked up.
-        Here we look up the first base class first and if the attribute is
-        not found, we'll look into the second base class.
+        If name is an IN connector we return the corresponding object which
+        gives you simpler access. Otherwise we look for attributes in the
+        two base classes. We check attributes of QObject first and if not
+        existing we check Fysom.
+
+        Note, that we'll reimplement it here because otherwise only
+        __getattr__ of the first base class (QObject) is called and the
+        second base class is never looked up.
         """
+        if name in self.connector['in']:
+            return self.connector['in'][name]['object']
         try:
             return QtCore.QObject.__getattr__(self, name)
         except AttributeError:
