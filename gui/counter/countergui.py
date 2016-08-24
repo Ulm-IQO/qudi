@@ -24,13 +24,15 @@ import numpy as np
 import pyqtgraph as pg
 import os
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 
 
-class CounterMainWindow(QtGui.QMainWindow):
+class CounterMainWindow(QtWidgets.QMainWindow):
 
     """ Create the Main Window based on the *.ui file. """
 
@@ -157,7 +159,7 @@ class CounterGui(GUIBase):
     def show(self):
         """Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
