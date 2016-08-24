@@ -20,10 +20,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import numpy as np
-from collections import OrderedDict
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
+
 
 class AutomationGui(GUIBase):
     """ """
@@ -75,7 +76,7 @@ class AutomationGui(GUIBase):
         self.saveWindowPos(self._mw)
         self._mw.close()
 
-class AutomationMainWindow(QtGui.QMainWindow):
+class AutomationMainWindow(QtWidgets.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):

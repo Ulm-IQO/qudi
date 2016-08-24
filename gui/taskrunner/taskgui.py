@@ -20,10 +20,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-import numpy as np
-from collections import OrderedDict
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import uic
+
 
 class TaskGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
@@ -118,7 +119,7 @@ class TaskGui(GUIBase):
                 self._mw.actionStop_Task.setEnabled(False)
                 self._mw.actionPause_Task.setEnabled(False)
 
-class TaskMainWindow(QtGui.QMainWindow):
+class TaskMainWindow(QtWidgets.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):
