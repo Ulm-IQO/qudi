@@ -107,6 +107,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # pulse extraction parameters
         self.conv_std_dev = 10
+        self.conv_std_dev_range_min = 1
+        self.conv_std_dev_range_max = 500
 
         # threading
         self.threadlock = Mutex()

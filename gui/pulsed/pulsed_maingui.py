@@ -4008,13 +4008,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
         # Setting standard deviation of gaussian convolution
-        # Todo: set range somewhere appropiate
-        self._mw.conv_std_dev.setRange(1, 10000)
+        self._mw.conv_std_dev.setRange(self._pulsed_meas_logic.conv_std_dev_range_min, self._pulsed_meas_logic.conv_std_dev_range_max)
         self._mw.conv_std_dev.setValue(self._pulsed_meas_logic.conv_std_dev)
         self._mw.conv_std_dev.valueChanged.connect(self.conv_std_dev_changed)
 
-        # Todo: set range somewhere appropiate
-        self._mw.slider_conv_std_dev.setRange(1, 500)
+        self._mw.slider_conv_std_dev.setRange(self._pulsed_meas_logic.conv_std_dev_range_min, self._pulsed_meas_logic.conv_std_dev_range_max)
         self._mw.slider_conv_std_dev.sliderMoved.connect(self.slider_conv_std_dev_changed)
 
     def _deactivate_pulse_extraction_ui(self, e):
