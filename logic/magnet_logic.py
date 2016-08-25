@@ -20,12 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import numpy as np
 import time
-import os
-import pyqtgraph as pg
-import pyqtgraph.exporters
 import datetime
 from collections import OrderedDict
 

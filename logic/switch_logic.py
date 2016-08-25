@@ -20,9 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
 from collections import OrderedDict
-from pyqtgraph.Qt import QtCore
+
 
 class SwitchLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.

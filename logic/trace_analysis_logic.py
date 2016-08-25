@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import numpy as np
 from scipy.signal import gaussian
 from scipy.ndimage import filters

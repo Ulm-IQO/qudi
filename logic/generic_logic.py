@@ -21,8 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from core.util.mutex import Mutex
-from pyqtgraph.Qt import QtCore
 from core.util.models import DictTableModel
+
 
 class GenericLogic(Base):
     """A generic logic interface class.

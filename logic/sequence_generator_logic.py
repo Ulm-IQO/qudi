@@ -24,15 +24,19 @@ import numpy as np
 import pickle
 import os
 import time
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from collections import OrderedDict
 import inspect
 import importlib
 
-from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
+from logic.pulse_objects import Pulse_Block_Element
+from logic.pulse_objects import Pulse_Block
+from logic.pulse_objects import Pulse_Block_Ensemble
+from logic.pulse_objects import Pulse_Sequence
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
 from logic.samples_write_methods import SamplesWriteMethods
+
 
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethods):
     """unstable: Nikolas Tomek
