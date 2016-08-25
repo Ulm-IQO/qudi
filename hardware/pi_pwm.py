@@ -22,11 +22,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.process_control_interface import ProcessControlInterface
-from collections import OrderedDict
 from core.util.mutex import Mutex
 
-from pyqtgraph.Qt import QtCore
 import RPi.GPIO as GPIO
+
 
 class PiPWM(Base, ProcessControlInterface):
     _modclass = 'ProcessControlInterface'

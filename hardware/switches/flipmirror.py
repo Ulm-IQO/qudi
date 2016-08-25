@@ -25,6 +25,7 @@ from core.base import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
 
+
 class FlipMirror(Base, SwitchInterface):
     """ This class is implements communication with the Radiant Dyes flip mirror driver
         through pyVISA.
