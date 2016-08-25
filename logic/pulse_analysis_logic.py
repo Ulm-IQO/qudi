@@ -80,7 +80,7 @@ class PulseAnalysisLogic(GenericLogic):
 
 
     def _analyze_data(self, norm_start_bin, norm_end_bin, signal_start_bin,
-                      signal_end_bin, num_of_lasers):
+                      signal_end_bin, num_of_lasers,conv_std_dev):
 
         """ Analysis the laser,pulses and computes the measuring error given by photon shot noise
 
@@ -89,6 +89,7 @@ class PulseAnalysisLogic(GenericLogic):
         @param int signal_start_bin: Bin where the signal starts
         @param int signal_end_bin: Bin where the signal stops
         @param int number_of_lasers: Number of laser pulses
+        @param int conv_std_dev: Standard deviation of gaussian convolution
 
         @return: float array signal_data: Array with the computed signal
         @return: float array laser_data: Array with the laser data
@@ -96,7 +97,7 @@ class PulseAnalysisLogic(GenericLogic):
         """
 
         # acquire data from the pulse extraction logic
-        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
+        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers, conv_std_dev)
 
         # Initialize the signal and normalization mean data arrays
         reference_mean = np.zeros(num_of_lasers, dtype=float)
