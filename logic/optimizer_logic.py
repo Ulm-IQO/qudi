@@ -21,12 +21,12 @@ Copyright (c) 2016 Christoph Müller  cmueller2603@gmail.com
 Copyright (c) 2016 Florian Frank  florian.frank@uni-ulm.de
 """
 
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from lmfit import Parameters
+from qtpy import QtCore
 import numpy as np
 import time
+
+from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
 
 
 class OptimizerLogic(GenericLogic):

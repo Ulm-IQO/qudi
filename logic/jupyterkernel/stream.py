@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 import zmq
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 QtCore.Signal = QtCore.pyqtSignal
 import logging
 
@@ -31,7 +31,7 @@ class QZMQStream(QtCore.QObject):
 
     def __init__(self, zmqsocket):
         """ Make a stream from a socket.
-        
+
         @param socket: ZMQ socket
         """
         super().__init__()

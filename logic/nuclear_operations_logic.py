@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from pyqtgraph.Qt import QtCore
 import time
 from collections import OrderedDict
+from qtpy import QtCore
 
 from logic.generic_logic import GenericLogic
 
@@ -104,8 +104,6 @@ class NuclearOperationsLogic(GenericLogic):
         self.x_axis_step = 10e-3                     # in s
         self.x_axis_num_points = 50
 
-
-
         self.current_meas_point = self.x_axis_start
         self.current_meas_index = 0
         self.num_of_current_meas_runs = 0
@@ -114,7 +112,6 @@ class NuclearOperationsLogic(GenericLogic):
         self.start_time = 0
         self.optimize_period = 200
         self.next_optimize_time = self.start_time
-
 
         self._stop_requested = False
 
@@ -132,7 +129,6 @@ class NuclearOperationsLogic(GenericLogic):
         self.odmr_time_for_next_optimize = 300      # in s
 
         self.electron_rabi_periode = 1800e-9        # in s
-
 
 
         # store here all the measured odmr peaks

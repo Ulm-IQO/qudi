@@ -19,14 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from collections import OrderedDict
 import numpy as np
 from scipy import ndimage
+
 from core.util.network import netobtain
-import time
+from logic.generic_logic import GenericLogic
+
 
 class PulseExtractionLogic(GenericLogic):
     """unstable: Nikolas Tomek  """
@@ -309,7 +307,7 @@ class PulseExtractionLogic(GenericLogic):
             raw_data = np.add(raw_data, self.old_raw_data)
 
         # Saving data for testing
-        
+
         # name = str(self._iter) + '.dat'
         # self._iter = self._iter + 1
         # np.savetxt(name, raw_data.transpose())

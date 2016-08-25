@@ -19,11 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from collections import OrderedDict
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import numpy as np
+
+from logic.generic_logic import GenericLogic
+
 
 class SimpleDataLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.

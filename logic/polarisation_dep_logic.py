@@ -20,11 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-import numpy as np
-import time
-import datetime
+from qtpy import QtCore
+
 
 class PolarisationDepLogic(GenericLogic):
     """This logic module rotates polarisation and records signal as a function of angle.

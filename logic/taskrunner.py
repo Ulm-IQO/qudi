@@ -19,12 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from pyqtgraph.Qt import QtCore
-from core.util.models import ListTableModel
-import logic.generic_task as gt
+
+from qtpy import QtCore
 import importlib
+
+from core.util.models import ListTableModel
+from logic.generic_logic import GenericLogic
+import logic.generic_task as gt
+
 
 class TaskListTableModel(ListTableModel):
     """ An extension of the ListTableModel for keeping a task list in a TaskRunner.

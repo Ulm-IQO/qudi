@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from collections import OrderedDict
 
+
 class Pulse_Block_Element(object):
     """ Object representing a single atomic element in a pulse block.
 
