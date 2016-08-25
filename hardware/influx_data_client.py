@@ -19,11 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from influxdb import InfluxDBClient
+
 from core.base import Base
 from interface.process_interface import ProcessInterface
 
-from pyqtgraph.Qt import QtCore
-from influxdb import InfluxDBClient
 
 class InfluxDataClient(Base, ProcessInterface):
     _modclass = 'InfluxDataClient'

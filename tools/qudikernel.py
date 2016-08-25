@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import sys
 import rpyc
-import time
 import json
 import logging
 import signal

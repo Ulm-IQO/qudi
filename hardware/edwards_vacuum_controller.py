@@ -22,8 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
 import visa
 
 class EdwardsVacuumController(Base):

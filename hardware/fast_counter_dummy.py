@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import os
 import numpy as np
-from pyqtgraph.Qt import QtGui
+from qtpy import QtWidgets
 
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
@@ -179,7 +179,7 @@ class FastCounterDummy(Base, FastCounterInterface):
             defaultconfigpath = os.path.join(self.get_main_dir())
 
             # choose the filename via the Qt Dialog window:
-            filename = QtGui.QFileDialog.getOpenFileName(None,
+            filename = QtWidgets.QFileDialog.getOpenFileName(None,
                                                          'Load Pulsed File',
                                                          defaultconfigpath)#,
                                                          # 'Configuration files (*.cfg)')

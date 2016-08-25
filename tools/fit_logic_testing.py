@@ -30,18 +30,11 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 import sys
-import scipy.optimize as opt
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.interpolate import splrep, sproot, splev
-from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
-import scipy
-import matplotlib
 import matplotlib.pylab as plt
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
-import time
-import random
 import importlib
 from os import listdir,getcwd
 from os.path import isfile, join

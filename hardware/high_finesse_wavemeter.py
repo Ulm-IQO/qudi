@@ -22,7 +22,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtGui, QtCore
+from qtpy import QtCore
 import ctypes   # is a foreign function library for Python. It provides C
                 # compatible data types, and allows calling functions in DLLs
                 # or shared libraries. It can be used to wrap these libraries
