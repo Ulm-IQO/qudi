@@ -48,7 +48,6 @@ class PulseExtractionLogic(GenericLogic):
             self.log.info('{}: {}'.format(key,config[key]))
 
         self.is_counter_gated = False
-        self.conv_std_dev = 200
         self.old_raw_data = None    # This is used to pause and continue a measurement.
                                     # Is added to the new data.
 
@@ -76,7 +75,7 @@ class PulseExtractionLogic(GenericLogic):
         """
         pass
 
-    def _gated_extraction(self, count_data):
+    def _gated_extraction(self, count_data, conv_std_dev):
         """ Detects the rising flank in the gated timetrace data and extracts
             just the laser pulses.
 
@@ -84,6 +83,8 @@ class PulseExtractionLogic(GenericLogic):
                                          gated fast counter, dimensions:
                                             0: gate number,
                                             1: time bin)
+        @param float conv_std_dev: standard deviation of the gaussian filter to be
+                              applied for smoothing
 
         @return numpy.ndarray: The extracted laser pulses of the timetrace
                                dimensions:
@@ -100,7 +101,7 @@ class PulseExtractionLogic(GenericLogic):
         #       It should also be possible to display the bare laserpulse,
         #       without cutting away something.
 
-        conv_deriv = self._convolve_derive(timetrace_sum.astype(float), self.conv_std_dev)
+        conv_deriv = self._convolve_derive(timetrace_sum.astype(float), conv_std_dev)
         # get indices of rising and falling flank
 
         rising_ind = conv_deriv.argmax()
@@ -110,7 +111,7 @@ class PulseExtractionLogic(GenericLogic):
         return laser_arr
 
 
-    def _ungated_extraction(self, count_data, num_of_lasers):
+    def _ungated_extraction(self, count_data, num_of_lasers, conv_std_dev):
         """ Detects the laser pulses in the ungated timetrace data and extracts
             them.
 
@@ -118,6 +119,8 @@ class PulseExtractionLogic(GenericLogic):
                                          ungated fast counter
         @param int num_of_lasers: The total number of laser pulses inside the
                                   pulse sequence
+        @param float conv_std_dev: standard deviation of the gaussian filter to be
+                              applied for smoothing
 
         @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the
                                   timetrace, dimensions:
@@ -126,7 +129,7 @@ class PulseExtractionLogic(GenericLogic):
         """
         # apply gaussian filter to remove noise and compute the gradient of the
         # timetrace
-        conv_deriv = self._convolve_derive(count_data.astype(float), self.conv_std_dev)
+        conv_deriv = self._convolve_derive(count_data.astype(float), conv_std_dev)
         # initialize arrays to contain indices for all rising and falling
         # flanks, respectively
         rising_ind = np.empty([num_of_lasers],int)
@@ -139,14 +142,14 @@ class PulseExtractionLogic(GenericLogic):
             rising_ind[i] = np.argmax(conv_deriv)
             # set this position and the sourrounding of the saved flank to 0 to
             # avoid a second detection
-            if rising_ind[i] < 2*self.conv_std_dev:
+            if rising_ind[i] < 2*conv_std_dev:
                 del_ind_start = 0
             else:
-                del_ind_start = rising_ind[i] - 2*self.conv_std_dev
-            if (conv_deriv.size - rising_ind[i]) < 2*self.conv_std_dev:
+                del_ind_start = rising_ind[i] - 2*conv_std_dev
+            if (conv_deriv.size - rising_ind[i]) < 2*conv_std_dev:
                 del_ind_stop = conv_deriv.size-1
             else:
-                del_ind_stop = rising_ind[i] + 2*self.conv_std_dev
+                del_ind_stop = rising_ind[i] + 2*conv_std_dev
             conv_deriv[del_ind_start:del_ind_stop] = 0
 
             # save the index of the absolute minimum of the derived timetrace
@@ -154,14 +157,14 @@ class PulseExtractionLogic(GenericLogic):
             falling_ind[i] = np.argmin(conv_deriv)
             # set this position and the sourrounding of the saved flank to 0 to
             #  avoid a second detection
-            if falling_ind[i] < 2*self.conv_std_dev:
+            if falling_ind[i] < 2*conv_std_dev:
                 del_ind_start = 0
             else:
-                del_ind_start = falling_ind[i] - 2*self.conv_std_dev
-            if (conv_deriv.size - falling_ind[i]) < 2*self.conv_std_dev:
+                del_ind_start = falling_ind[i] - 2*conv_std_dev
+            if (conv_deriv.size - falling_ind[i]) < 2*conv_std_dev:
                 del_ind_stop = conv_deriv.size-1
             else:
-                del_ind_stop = falling_ind[i] + 2*self.conv_std_dev
+                del_ind_stop = falling_ind[i] + 2*conv_std_dev
             conv_deriv[del_ind_start:del_ind_stop] = 0
         # sort all indices of rising and falling flanks
         rising_ind.sort()
@@ -210,11 +213,14 @@ class PulseExtractionLogic(GenericLogic):
         return conv_deriv
 
 
-    def get_data_laserpulses(self, num_of_lasers):
+    def get_data_laserpulses(self, num_of_lasers, conv_std_dev):
         """ Capture the fast counter data and extracts the laser pulses.
 
         @param int num_of_lasers: The total number of laser pulses inside the
                                   pulse sequence
+        @param int conv_std_dev: Standard deviation of gaussian convolution
+
+
         @return tuple (numpy.ndarray, numpy.ndarray):
                     Explanation of the return value:
 
@@ -233,7 +239,7 @@ class PulseExtractionLogic(GenericLogic):
             raw_data = np.add(raw_data, self.old_raw_data)
 
         # Saving data for testing
-        
+
         # name = str(self._iter) + '.dat'
         # self._iter = self._iter + 1
         # np.savetxt(name, raw_data.transpose())
@@ -241,9 +247,9 @@ class PulseExtractionLogic(GenericLogic):
         # call appropriate laser extraction method depending on if the fast
         # counter is gated or not.
         if self.is_counter_gated:
-            laser_data = self._gated_extraction(raw_data)
+            laser_data = self._gated_extraction(raw_data, conv_std_dev)
         else:
-            laser_data = self._ungated_extraction(raw_data, num_of_lasers)
+            laser_data = self._ungated_extraction(raw_data, num_of_lasers, conv_std_dev)
         return laser_data.astype(dtype=int), raw_data.astype(dtype=int)
 
 
