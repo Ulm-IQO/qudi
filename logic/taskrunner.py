@@ -257,7 +257,7 @@ class TaskRunner(GenericLogic):
             # print(task['name'], ppok, pok, modok)
             task['ok'] = ppok and pok and modok
 
-    @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
+    @QtCore.Slot(QtCore.QModelIndex, int, int)
     def modelChanged(self, parent, first, last):
         """ React to model changes (right now debug only) """
         # print('Inserted into task list: {} {}'.format(first, last))
