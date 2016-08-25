@@ -3795,9 +3795,10 @@ class PulsedMeasurementGui(GUIBase):
 
         # Get the asset name to be uploaded from the ComboBox
         seq_name = self._mw.upload_seq_ComboBox.currentText()
+        print(seq_name)
 
         # Upload the asset via logic module
-        self._seq_gen_logic.upload_sequence(seq_name)
+        self._pulsed_meas_logic.upload_asset(seq_name)
         return
 
     def load_seq_into_channel_clicked(self):
@@ -3813,7 +3814,7 @@ class PulsedMeasurementGui(GUIBase):
         load_dict = {}
 
         # Load asset into channles via logic module
-        self._seq_gen_logic.load_asset(asset_name, load_dict)
+        self._pulsed_meas_logic.load_asset(asset_name, load_dict)
         return
 
     def get_element_in_sequence_table(self, row, column):
@@ -4006,6 +4007,16 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
+        # Setting standard deviation of gaussian convolution
+        # Todo: set range somewhere appropiate
+        self._mw.conv_std_dev.setRange(1, 10000)
+        self._mw.conv_std_dev.setValue(self._pulsed_meas_logic.conv_std_dev)
+        self._mw.conv_std_dev.valueChanged.connect(self.conv_std_dev_changed)
+
+        # Todo: set range somewhere appropiate
+        self._mw.slider_conv_std_dev.setRange(1, 500)
+        self._mw.slider_conv_std_dev.sliderMoved.connect(self.slider_conv_std_dev_changed)
+
     def _deactivate_pulse_extraction_ui(self, e):
         """ Disconnects the configuration for 'Pulse Extraction' Tab.
 
@@ -4038,6 +4049,25 @@ class PulsedMeasurementGui(GUIBase):
         """
         new_laser_length = self._mw.ana_param_laser_length_SpinBox.value()/1e9
         self._pulsed_meas_logic.set_laser_length(new_laser_length)
+
+    def conv_std_dev_changed(self):
+        """
+        Uodate new value of standard deviation of gaussian filter
+        """
+
+        std_dev = self._mw.conv_std_dev.value()
+        self._mw.slider_conv_std_dev.setValue(std_dev)
+        self._pulsed_meas_logic.conv_std_dev = std_dev
+
+    def slider_conv_std_dev_changed(self):
+        """
+        Uodate new value of standard deviation of gaussian filter
+        from slider
+        """
+
+        std_dev = self._mw.slider_conv_std_dev.value()
+        self._mw.conv_std_dev.setValue(std_dev)
+        self._pulsed_meas_logic.conv_std_dev = std_dev
 
     def analysis_window_values_changed(self):
         """ If the boarders or the lines are changed update the other parameters
