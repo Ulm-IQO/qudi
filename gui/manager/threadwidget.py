@@ -18,10 +18,12 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from pyqtgraph.Qt import QtGui, QtCore, uic
+from qtpy.QtWidgets import QWidget
+from qtpy import uic
 import os
 
-class ThreadWidget(QtGui.QWidget):
+
+class ThreadWidget(QWidget):
 
     def __init__(self):
         super().__init__()
@@ -30,4 +32,3 @@ class ThreadWidget(QtGui.QWidget):
 
         # Load it
         uic.loadUi(ui_file, self)
-

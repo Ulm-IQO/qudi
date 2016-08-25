@@ -23,80 +23,84 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from pyqtgraph.Qt import QtGui, QtCore
+from qtpy import QtWidgets, QtCore
 import re
 
-class ErrorDialog(QtGui.QDialog):
+
+class ErrorDialog(QtWidgets.QDialog):
     """This class provides a popup window for notification with the option to
       show the next error popup in the queue and to show the log window where
       you can see the traceback for an exception.
     """
+
     def __init__(self, logWindow):
         """ Create an ErrorDialog object
 
-          @param object logWindow: reference to LogWindow object that this popup belongs to
-
+          @param object logWindow: reference to LogWindow object that this
+                                   popup belongs to
         """
         super().__init__()
         self.logWindow = logWindow
         self.setWindowFlags(QtCore.Qt.Window)
-        #self.setWindowModality(QtCore.Qt.NonModal)
+        # self.setWindowModality(QtCore.Qt.NonModal)
         self.setWindowTitle('QuDi Error')
-        wid = QtGui.QDesktopWidget()
+        wid = QtWidgets.QDesktopWidget()
         screenWidth = wid.screen(wid.primaryScreen()).width()
         screenHeight = wid.screen(wid.primaryScreen()).height()
-        self.setGeometry((screenWidth-500)/2,(screenHeight-100)/2,500,100)
-        self.layout = QtGui.QVBoxLayout()
-        self.layout.setContentsMargins(3,3,3,3)
+        self.setGeometry((screenWidth - 500) / 2,
+                         (screenHeight - 100) / 2, 500, 100)
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.setContentsMargins(3, 3, 3, 3)
         self.setLayout(self.layout)
         self.messages = []
-        
-        self.msgLabel = QtGui.QLabel()
-        #self.msgLabel.setWordWrap(False)
-        #self.msgLabel.setMaximumWidth(800)
-        self.msgLabel.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
-        #self.msgLabel.setFrameStyle(QtGui.QFrame.Box)
+
+        self.msgLabel = QtWidgets.QLabel()
+        # self.msgLabel.setWordWrap(False)
+        # self.msgLabel.setMaximumWidth(800)
+        self.msgLabel.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # self.msgLabel.setFrameStyle(QtGui.QFrame.Box)
         #self.msgLabel.setStyleSheet('QLabel { font-weight: bold }')
         self.layout.addWidget(self.msgLabel)
         self.msgLabel.setMaximumWidth(800)
         self.msgLabel.setMinimumWidth(500)
         self.msgLabel.setWordWrap(True)
         self.layout.addStretch()
-        self.disableCheck = QtGui.QCheckBox('Disable error message popups')
+        self.disableCheck = QtWidgets.QCheckBox(
+            'Disable error message popups')
         self.layout.addWidget(self.disableCheck)
-        
-        self.btnLayout = QtGui.QHBoxLayout()
+
+        self.btnLayout = QtWidgets.QHBoxLayout()
         self.btnLayout.addStretch()
-        self.okBtn = QtGui.QPushButton('OK')
+        self.okBtn = QtWidgets.QPushButton('OK')
         self.btnLayout.addWidget(self.okBtn)
-        self.nextBtn = QtGui.QPushButton('Show next error')
+        self.nextBtn = QtWidgets.QPushButton('Show next error')
         self.btnLayout.addWidget(self.nextBtn)
         self.nextBtn.hide()
-        self.logBtn = QtGui.QPushButton('Show Log...')
+        self.logBtn = QtWidgets.QPushButton('Show Log...')
         self.btnLayout.addWidget(self.logBtn)
-        self.btnLayoutWidget = QtGui.QWidget()
+        self.btnLayoutWidget = QtWidgets.QWidget()
         self.layout.addWidget(self.btnLayoutWidget)
         self.btnLayoutWidget.setLayout(self.btnLayout)
         self.btnLayout.addStretch()
-        
+
         self.okBtn.clicked.connect(self.okClicked)
         self.nextBtn.clicked.connect(self.nextMessage)
         self.logBtn.clicked.connect(self.logClicked)
-        
-        
+
     def show(self, entry):
         """ Show a log entry in a popup window.
 
           @param dict entry: log entry in dictionary form
 
         """
-        ## rules are:
-        ##   - Try to show friendly error messages
-        ##   - If there are any helpfulExceptions, ONLY show those
-        ##     otherwise, show everything
+        # rules are:
+        # - Try to show friendly error messages
+        # - If there are any helpfulExceptions, ONLY show those
+        # otherwise, show everything
         self.lastEntry = entry
-        
-        ## extract list of exceptions
+
+        # extract list of exceptions
         exceptions = []
         #helpful = []
         key = 'exception'
@@ -105,79 +109,86 @@ class ErrorDialog(QtGui.QDialog):
             exc = exc[key]
             if exc is None:
                 break
-            ## ignore this error if it was generated on the command line.
-            tb = exc.get('traceback', ['',''])
+            # ignore this error if it was generated on the command line.
+            tb = exc.get('traceback', ['', ''])
             if len(tb) > 1 and 'File "<stdin>"' in tb[1]:
                 return False
-            
+
             if exc is None:
                 break
             key = 'oldExc'
             if exc['message'].startswith('HelpfulException'):
-                exceptions.append('<b>' + self.cleanText(re.sub(r'^HelpfulException: ', '', exc['message'])) + '</b>')
+                exceptions.append(
+                    '<b>' + self.cleanText(re.sub(r'^HelpfulException: ', '',
+                                                  exc['message'])) + '</b>')
             elif exc['message'] == 'None':
                 continue
             else:
                 exceptions.append(self.cleanText(exc['message']))
-                
+
         msg = '<b>' + entry['message'] + '</b><br>' + '<br>'.join(exceptions)
-        
+
         if self.disableCheck.isChecked():
             return False
         if self.isVisible():
             self.messages.append(msg)
             self.nextBtn.show()
             self.nextBtn.setEnabled(True)
-            self.nextBtn.setText('Show next error (%d more)' % len(self.messages))
+            self.nextBtn.setText('Show next error (%d more)' %
+                                 len(self.messages))
         else:
-            w = QtGui.QApplication.activeWindow()
+            w = QtWidgets.QApplication.activeWindow()
             self.nextBtn.hide()
             self.msgLabel.setText(msg)
             self.open()
             if w is not None:
                 cp = w.geometry().center()
-                self.setGeometry(cp.x() - self.width()/2., cp.y() - self.height()/2., self.width(), self.height())
-        #self.activateWindow()
+                self.setGeometry(cp.x() - self.width() / 2., cp.y() -
+                                 self.height() / 2., self.width(),
+                                 self.height())
+        # self.activateWindow()
         self.raise_()
-            
+
     @staticmethod
     def cleanText(text):
         """ Return a string with some special characters escaped for HTML.
 
           @param str text: string to sanitize
 
-          @return str: string with spechial characters replaced by HTML escape sequences
+          @return str: string with spechial characters replaced by HTML
+                       escape sequences
 
           FIXME: there is probably a pre-defined function for this, use it!
         """
         text = re.sub(r'&', '&amp;', text)
-        text = re.sub(r'>','&gt;', text)
+        text = re.sub(r'>', '&gt;', text)
         text = re.sub(r'<', '&lt;', text)
         text = re.sub(r'\n', '<br/>\n', text)
         return text
-        
+
     def closeEvent(self, ev):
         """ Specify close event action.
           @param QEvent ev: event from event handler
 
-          Extends the parent class closeEvent hndling function to delete pending messages.
+          Extends the parent class closeEvent hndling function to delete
+          pending messages.
         """
-        QtGui.QDialog.closeEvent(self, ev)
+        QtWidgets.QDialog.closeEvent(self, ev)
         self.messages = []
-        
+
     def okClicked(self):
         """ Marks message as acceped and closes popup.
         """
         self.accept()
         self.messages = []
-        
+
     def logClicked(self):
         """ Marks message as accepted and shows log window.
         """
         self.accept()
         self.logWindow.show()
         self.messages = []
-        
+
     def nextMessage(self):
         """ Shows the next error message popup.
         """
@@ -185,11 +196,10 @@ class ErrorDialog(QtGui.QDialog):
         self.nextBtn.setText('Show next error (%d more)' % len(self.messages))
         if len(self.messages) == 0:
             self.nextBtn.setEnabled(False)
-        
+
     def disable(self, disable):
         """ Disables popups.
 
           @param bool disable: disable popups if true, enables if false
         """
         self.disableCheck.setChecked(disable)
-
