@@ -100,36 +100,24 @@ class AcqStatus(ctypes.Structure):
                 ('stevents', ctypes.c_double),
                 ('maxval', ctypes.c_ulong), ]
 
+
 class AcqSettings(ctypes.Structure):
-    """ Create a structured Data type with ctypes where the dll can write into.
-
-    This object handles and retrieves the acquisition settings of the Fastcomtec.
-    """
-
-    _fields_ = [('range',       ctypes.c_ulong),
-                ('prena',       ctypes.c_long),
+    _fields_ = [('range',       ctypes.c_long),
                 ('cftfak',      ctypes.c_long),
-                ('roimin',      ctypes.c_ulong),
-                ('roimax',      ctypes.c_ulong),
-                ('eventpreset', ctypes.c_double),
-                ('timepreset',  ctypes.c_double),
-                ('savedata',    ctypes.c_long),
-                ('fmt',         ctypes.c_long),
-                ('autoinc',     ctypes.c_long),
-                ('cycles',      ctypes.c_long),
-                ('sweepmode',   ctypes.c_long),
-                ('syncout',     ctypes.c_long),
-                ('bitshift',    ctypes.c_long),
-                ('digval',      ctypes.c_long),
-                ('digio',       ctypes.c_long),
-                ('dac0',        ctypes.c_long),
-                ('dac1',        ctypes.c_long),
-                ('swpreset',    ctypes.c_double),
+                ('roimin',      ctypes.c_long),
+                ('roimax',      ctypes.c_long),
                 ('nregions',    ctypes.c_long),
                 ('caluse',      ctypes.c_long),
-                ('fstchan',     ctypes.c_double),
+                ('calpoints',   ctypes.c_long),
+                ('param',       ctypes.c_long),
+                ('offset',      ctypes.c_long),
+                ('xdim',        ctypes.c_long),
+                ('bitshift',    ctypes.c_ulong),
                 ('active',      ctypes.c_long),
-                ('calpoints',   ctypes.c_long), ]
+                ('eventpreset', ctypes.c_double),
+                ('dummy1',      ctypes.c_double),
+                ('dummy2',      ctypes.c_double),
+                ('dummy3',      ctypes.c_double), ]
 
 class ACQDATA(ctypes.Structure):
     """ Create a structured Data type with ctypes where the dll can write into.

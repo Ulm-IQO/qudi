@@ -23,19 +23,18 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from pyqtgraph.Qt import QtGui, QtCore, uic
+import qtpy
+from qtpy import QtCore, QtGui, QtWidgets, uic
 import os
 import html
 
 import sys
-if 'PyQt5' in sys.modules:
-    # pyqtgraph.Qt doesn't define it
-    QtGui.QSortFilterProxyModel = QtCore.QSortFilterProxyModel
 
 
 class LogModel(QtCore.QAbstractTableModel):
     """ This is a Qt model that represents the log for dislpay in a QTableView.
     """
+
     def __init__(self, **kwargs):
         """ Set up the model.
         """
@@ -50,14 +49,14 @@ class LogModel(QtCore.QAbstractTableModel):
         }
         self.entries = list()
 
-    def rowCount(self, parent = QtCore.QModelIndex()):
+    def rowCount(self, parent=QtCore.QModelIndex()):
         """ Gives th number of log entries  stored in the model.
 
           @return int: number of log entries stored
         """
         return len(self.entries)
 
-    def columnCount(self, parent = QtCore.QModelIndex()):
+    def columnCount(self, parent=QtCore.QModelIndex()):
         """ Gives the number of columns each log entry has.
 
           @return int: number of log entry columns
@@ -72,7 +71,7 @@ class LogModel(QtCore.QAbstractTableModel):
           @return Qt.ItemFlags: actins allowed fotr this cell
         """
         return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable | \
-                QtCore.Qt.ItemIsEditable
+            QtCore.Qt.ItemIsEditable
 
     def data(self, index,  role):
         """ Get data from model for a given cell. Data can have a role that
@@ -98,7 +97,7 @@ class LogModel(QtCore.QAbstractTableModel):
         else:
             return None
 
-    def setData(self, index, value, role = QtCore.Qt.EditRole):
+    def setData(self, index, value, role=QtCore.Qt.EditRole):
         """ Set data in model for a given cell. Data can have a role that
             affects display.
 
@@ -119,7 +118,7 @@ class LogModel(QtCore.QAbstractTableModel):
             self.dataChanged.emit(topleft, bottomright)
             return True
 
-    def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
 
           @param int section: number of the column to get header data for
@@ -128,7 +127,7 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
           """
-        if section < 0 and section > len(self.header)-1:
+        if section < 0 and section > len(self.header) - 1:
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -137,7 +136,7 @@ class LogModel(QtCore.QAbstractTableModel):
         else:
             return self.header[section]
 
-    def insertRows(self, row, count, parent = QtCore.QModelIndex()):
+    def insertRows(self, row, count, parent=QtCore.QModelIndex()):
         """ Insert empty rows (log entries) into the model.
 
           @param int row: before which row to insert new rows
@@ -154,7 +153,7 @@ class LogModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
         return True
 
-    def addRow(self, row, data, parent = QtCore.QModelIndex()):
+    def addRow(self, row, data, parent=QtCore.QModelIndex()):
         """ Add a single log entry to model.
           @param int row: row before which to insert log entry
           @param list data: log entry in list format (5 elements)
@@ -164,7 +163,7 @@ class LogModel(QtCore.QAbstractTableModel):
         """
         return self.addRows(row, [data], parent)
 
-    def addRows(self, row, data, parent = QtCore.QModelIndex()):
+    def addRows(self, row, data, parent=QtCore.QModelIndex()):
         """ Add a log entries to model.
           @param int row: row before which to insert log entry
           @param list data: log entries in list format (list of lists of
@@ -182,7 +181,7 @@ class LogModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(topleft, bottomright)
         return True
 
-    def removeRows(self, row, count, parent = QtCore.QModelIndex() ):
+    def removeRows(self, row, count, parent=QtCore.QModelIndex()):
         """ Remove rows (log entries) from model.
 
           @param int row: from which row on to remove rows
@@ -192,15 +191,16 @@ class LogModel(QtCore.QAbstractTableModel):
           @return bool: True if removal succeeded, False otherwise
         """
         self.beginRemoveRows(parent, row, row + count - 1)
-        self.entries[row:row+count] = []
+        self.entries[row:row + count] = []
         self.endRemoveRows()
         return True
 
 
-class LogFilter(QtGui.QSortFilterProxyModel):
+class LogFilter(QtCore.QSortFilterProxyModel):
     """ A subclass of QProxyFilterModel that determines which log entries
         contained in the log model are shown in the view.
     """
+
     def __init__(self, parent=None):
         """ Create the LogFilter.
 
@@ -221,7 +221,7 @@ class LogFilter(QtGui.QSortFilterProxyModel):
         """
         indexLevel = self.sourceModel().index(sourceRow, 2)
         level = self.sourceModel().data(indexLevel,
-                QtCore.Qt.DisplayRole)
+                                        QtCore.Qt.DisplayRole)
         if level is None:
             return False
         return level in self.show_levels
@@ -251,7 +251,7 @@ class LogFilter(QtGui.QSortFilterProxyModel):
         self.invalidateFilter()
 
 
-class AutoToolTipDelegate(QtGui.QStyledItemDelegate):
+class AutoToolTipDelegate(QtWidgets.QStyledItemDelegate):
     """ A subclass of QStyledItemDelegate to display a tooltip if the text
         doesn't fit into the cell.
     """
@@ -271,24 +271,24 @@ class AutoToolTipDelegate(QtGui.QStyledItemDelegate):
 
         if e.type() == QtCore.QEvent.ToolTip:
             rect = view.visualRect(index)
-            size = self.sizeHint(option, index);
+            size = self.sizeHint(option, index)
             if rect.width() < size.width():
                 tooltip = index.data(QtCore.Qt.DisplayRole)
-                QtGui.QToolTip.showText(
-                        e.globalPos(),
-                        '<div>{0}</div>'.format(html.escape(tooltip)),
-                        view)
+                QtWidgets.QToolTip.showText(
+                    e.globalPos(),
+                    '<div>{0}</div>'.format(html.escape(tooltip)),
+                    view)
             else:
-                QtGui.QToolTip.hideText()
+                QtWidgets.QToolTip.hideText()
             return True
         return super().helpEvent(e, view, option, index)
 
 
-class LogWidget(QtGui.QWidget):
+class LogWidget(QtWidgets.QWidget):
     """A widget to show log entries and filter them.
     """
-    sigDisplayEntry = QtCore.Signal(object) ## for thread-safetyness
-    sigAddEntry = QtCore.Signal(object) ## for thread-safetyness
+    sigDisplayEntry = QtCore.Signal(object)  # for thread-safetyness
+    sigAddEntry = QtCore.Signal(object)  # for thread-safetyness
     sigScrollToAnchor = QtCore.Signal(object)  # for internal use.
 
     def __init__(self, manager=None, **kwargs):
@@ -316,34 +316,34 @@ class LogWidget(QtGui.QWidget):
         # set up able view properties
         # setResizeMode is deprecated in Qt5 (and therefore not available
         # in pyqt5
-        if 'PyQt4' in sys.modules:
-            self.output.horizontalHeader().setResizeMode(0,
-                    QtGui.QHeaderView.Interactive)
-            self.output.horizontalHeader().setResizeMode(1,
-                    QtGui.QHeaderView.ResizeToContents)
-            self.output.horizontalHeader().setResizeMode(2,
-                    QtGui.QHeaderView.ResizeToContents)
-            self.output.horizontalHeader().setResizeMode(3,
-                    QtGui.QHeaderView.ResizeToContents)
+        if qtpy.PYQT4 or qtpy.PYSIDE:
+            self.output.horizontalHeader().setResizeMode(
+                0, QtWidgets.QHeaderView.Interactive)
+            self.output.horizontalHeader().setResizeMode(
+                1, QtWidgets.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setResizeMode(
+                2, QtWidgets.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setResizeMode(
+                3, QtWidgets.QHeaderView.ResizeToContents)
             self.output.verticalHeader().setResizeMode(
-                    QtGui.QHeaderView.ResizeToContents)
+                QtWidgets.QHeaderView.ResizeToContents)
         else:
-            self.output.horizontalHeader().setSectionResizeMode(0,
-                    QtGui.QHeaderView.Interactive)
-            self.output.horizontalHeader().setSectionResizeMode(1,
-                    QtGui.QHeaderView.ResizeToContents)
-            self.output.horizontalHeader().setSectionResizeMode(2,
-                    QtGui.QHeaderView.ResizeToContents)
-            self.output.horizontalHeader().setSectionResizeMode(3,
-                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setSectionResizeMode(
+                0, QtWidgets.QHeaderView.Interactive)
+            self.output.horizontalHeader().setSectionResizeMode(
+                1, QtWidgets.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setSectionResizeMode(
+                2, QtWidgets.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setSectionResizeMode(
+                3, QtWidgets.QHeaderView.ResizeToContents)
             self.output.verticalHeader().setSectionResizeMode(
-                    QtGui.QHeaderView.ResizeToContents)
+                QtWidgets.QHeaderView.ResizeToContents)
         self.output.setTextElideMode(QtCore.Qt.ElideRight)
         self.output.setItemDelegate(AutoToolTipDelegate(self.output))
 
         # connect signals
         self.sigDisplayEntry.connect(self.displayEntry,
-                QtCore.Qt.QueuedConnection)
+                                     QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
         self.filterTree.itemChanged.connect(self.setCheckStates)
 
@@ -373,10 +373,10 @@ class LogWidget(QtGui.QWidget):
 
           @param dict entry: log entry in dict format
         """
-        ## All incoming messages begin here
-        ## for thread-safetyness:
+        # All incoming messages begin here
+        # for thread-safetyness:
         isGuiThread = QtCore.QThread.currentThread(
-                ) == QtCore.QCoreApplication.instance().thread()
+        ) == QtCore.QCoreApplication.instance().thread()
         if not isGuiThread:
             self.sigAddEntry.emit(entry)
             return
@@ -425,7 +425,7 @@ class LogWidget(QtGui.QWidget):
         elif item.parent() == self.filterTree.topLevelItem(1):
             if not item.checkState(0):
                 self.filterTree.topLevelItem(1).setCheckState(0,
-                        QtCore.Qt.Unchecked)
+                                                              QtCore.Qt.Unchecked)
 
         # level filter
         levelFilter = []
