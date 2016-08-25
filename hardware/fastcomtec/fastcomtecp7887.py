@@ -330,7 +330,7 @@ class FastComtec(Base, FastCounterInterface):
         N = setting.range
         data = np.empty((N,), dtype=np.uint32)
         self.dll.LVGetDat(data.ctypes.data, 0)
-
+        #np.savetxt(np.int64(data))
         return np.int64(data)
 
 
