@@ -18,8 +18,10 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from core.util.customexceptions import *
-from enum import Enum
+
+from core.util.customexceptions import InterfaceImplementationError
+from core.util.customexceptions import function_signature
+
 
 class VacuumPumpInterface:
     _modtype = 'PumpInterface'
@@ -27,7 +29,7 @@ class VacuumPumpInterface:
 
     def get_extra_info(self):
         """ Present extra information about pump controller/device.
-        
+
           @return str: arbitrary information about pump, like model nr, hardware version, firmware version
         """
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
@@ -41,7 +43,7 @@ class VacuumPumpInterface:
 
     def get_pump_speeds(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-        
+
     def get_pump_powers(self):
         """ All available pump powers in watts.
 

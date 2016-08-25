@@ -24,11 +24,11 @@ import ctypes
 import platform
 import os
 import numpy as np
-from collections import OrderedDict
 
 from interface.pulser_interface import PulserInterface
 from core.base import Base
 from core.util.mutex import Mutex
+
 
 class PulseBlasterESRPRO(Base, PulserInterface):
     """ UNSTABLE: ALEX

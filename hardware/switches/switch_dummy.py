@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 from core.base import Base
-from collections import OrderedDict
 from interface.switch_interface import SwitchInterface
 import time
 

@@ -28,9 +28,7 @@ from interface.spectrometer_interface import SpectrometerInterface
 
 import os
 import sys
-import time
 from enum import Enum
-import numpy as np
 
 # .Net imports
 import clr

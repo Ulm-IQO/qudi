@@ -20,7 +20,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-from interface.simple_laser_interface import *
+from interface.simple_laser_interface import SimpleLaserInterface
+from interface.simple_laser_interface import ControlMode
+from interface.simple_laser_interface import ShutterState
+from interface.simple_laser_interface import LaserState
 from enum import Enum
 import visa
 

@@ -27,17 +27,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.spectrometer_interface import SpectrometerInterface
-from collections import OrderedDict
-from core.util.mutex import Mutex
-
-from pyqtgraph.Qt import QtCore
-
 import numpy as np
 import comtypes.client as ctc
 import win32com.client as w32c
-from win32com.client import constants
 from ctypes import byref, pointer, c_long, c_float, c_bool
-from time import strftime, localtime
 
 import datetime
 
