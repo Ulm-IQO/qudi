@@ -21,7 +21,6 @@ Copyright (C) 2016 Florian Frank alexander.stark@uni-ulm.de
 
 from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
-import numpy as np
 import copy
 
 

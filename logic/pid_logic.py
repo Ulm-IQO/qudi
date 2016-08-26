@@ -20,14 +20,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from interface.pid_controller_interface import PIDControllerInterface
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from collections import OrderedDict
+from qtpy import QtCore
 import numpy as np
-import time
-import datetime
+
+from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
+
 
 class PIDLogic(GenericLogic):
     """
@@ -130,7 +128,7 @@ class PIDLogic(GenericLogic):
 
     def set_kp(self, kp):
         return self._controller.set_kp(kp)
-        
+
 
     def get_ki(self):
         return self._controller.get_ki()
@@ -155,7 +153,7 @@ class PIDLogic(GenericLogic):
 
     def set_manual_value(self, manualvalue):
         return self._controller.set_manual_value(manualvalue)
-        
+
     def get_enabled(self):
         return self.enabled
 

@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from collections import OrderedDict
 from .mutex import Mutex
 
@@ -98,7 +98,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
-        
+
           @param int section: number of the column to get header data for
           @param Qt.Orientation: orientation of header (horizontal or vertical)
           @param ItemDataRole: role for which to get data

@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 # Test gui (test)
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui
+from qtpy import QtWidgets
+
 
 class TestGui(GUIBase):
     """A class to test gui module loading.
@@ -46,15 +47,15 @@ class TestGui(GUIBase):
         """This creates all the necessary UI elements.
           @param object e: Fysom state change
         """
-        self._mw = QtGui.QMainWindow()
+        self._mw = QtWidgets.QMainWindow()
         self._mw.setGeometry(300,300,500,100)
         self._mw.setWindowTitle('TEST')
-        self.cwdget = QtGui.QWidget()
-        self.button = QtGui.QPushButton(self.buttonText)
-        self.buttonerror = QtGui.QPushButton('Giff Error!')
+        self.cwdget = QtWidgets.QWidget()
+        self.button = QtWidgets.QPushButton(self.buttonText)
+        self.buttonerror = QtWidgets.QPushButton('Giff Error!')
         self.button.clicked.connect(self.handleButton)
         self.buttonerror.clicked.connect(self.handleButtonError)
-        self.layout = QtGui.QVBoxLayout()
+        self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.button)
         self.layout.addWidget(self.buttonerror)
         self.cwdget.setLayout(self.layout)

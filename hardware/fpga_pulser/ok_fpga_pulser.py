@@ -20,14 +20,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-from core.util.mutex import Mutex
 from interface.pulser_interface import PulserInterface
 import thirdparty.opal_kelly.ok64 as ok
 import time
 import os
-import numpy as np
 from collections import OrderedDict
-from fnmatch import fnmatch
 
 
 class OkFpgaPulser(Base, PulserInterface):

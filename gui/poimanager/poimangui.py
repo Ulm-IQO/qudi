@@ -19,7 +19,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
+
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
 import numpy as np
 import time
@@ -186,7 +189,7 @@ class CustomViewBox(pg.ViewBox):
             ev.ignore()
 
 
-class PoiManagerMainWindow(QtGui.QMainWindow):
+class PoiManagerMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         # Get the path to the *.ui file
@@ -199,7 +202,7 @@ class PoiManagerMainWindow(QtGui.QMainWindow):
         self.show()
 
 
-class ReorientRoiDialog(QtGui.QDialog):
+class ReorientRoiDialog(QtWidgets.QDialog):
 
     def __init__(self):
         # Get the path to the *.ui file
@@ -437,7 +440,7 @@ class PoiManagerGui(GUIBase):
         self._mw.show()
 
     def initReorientRoiDialogUI(self, e):
-        """Definition, configuration and initialization fo the Reorient ROI Dialog GUI.
+        """ Definition, configuration and initialization fo the Reorient ROI Dialog GUI.
 
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
@@ -481,9 +484,8 @@ class PoiManagerGui(GUIBase):
         self._mw.close()
 
     def show(self):
-        """Make main window visible and put it above all other windows.
-        """
-        QtGui.QMainWindow.show(self._mw)
+        """Make main window visible and put it above all other windows. """
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -554,9 +556,7 @@ class PoiManagerGui(GUIBase):
         return cb_min, cb_max
 
     def set_new_poi(self):
-        ''' This method sets a new poi from the current crosshair position
-
-        '''
+        """ This method sets a new poi from the current crosshair position."""
         key = self._poi_manager_logic.add_poi()
 
         # Set the newly added poi as the selected poi to manage.
@@ -565,14 +565,12 @@ class PoiManagerGui(GUIBase):
 #        self.populate_poi_list()
 
     def delete_last_point(self):
-        ''' This method deletes the last track position of a chosen poi
-        '''
+        """ Delete the last track position of a chosen poi. """
 
         self._poi_manager_logic.delete_last_point(poikey=self.selected_poi_key)
 
     def delete_poi(self):
-        '''This method deletes a poi from the list of managed points
-        '''
+        """ Delete a poi from the list of managed points. """
         key = self.selected_poi_key
 
         self._markers[key].delete_from_viewwidget()
@@ -604,16 +602,14 @@ class PoiManagerGui(GUIBase):
             self._poi_manager_logic.stop_periodic_refocus()
 
     def goto_poi(self, key):
-        ''' Go to the last known position of poi <key>
-        '''
+        """ Go to the last known position of poi <key>."""
 
         self._poi_manager_logic.go_to_poi(poikey=self.selected_poi_key)
 
 #        print(self._poi_manager_logic.get_last_point(poikey=key))
 
     def populate_poi_list(self):
-        ''' Populate the dropdown box for selecting a poi
-        '''
+        """ Populate the dropdown box for selecting a poi. """
         print('started populate_poi_list at ', time.time())
         self._mw.active_poi_ComboBox.clear()
         self._mw.offset_anchor_ComboBox.clear()
@@ -640,8 +636,7 @@ class PoiManagerGui(GUIBase):
         print('finished populating at ', time.time())
 
     def change_refind_method(self):
-        ''' Make appropriate changes in the GUI to reflect the newly chosen refind method.
-        '''
+        """ Make appropriate changes in the GUI to reflect the newly chosen refind method."""
 
         if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
             self._mw.offset_anchor_ComboBox.setEnabled(False)
@@ -652,14 +647,12 @@ class PoiManagerGui(GUIBase):
             print('error 123')
 
     def set_roi_name(self):
-        '''Set the name of a ROI (useful when saving)
-        '''
+        """ Set the name of a ROI (useful when saving)."""
 
         self._poi_manager_logic.roi_name = self._mw.roi_name_LineEdit.text().replace(" ", "_")
 
     def change_poi_name(self):
-        '''Change the name of a poi
-        '''
+        """ Change the name of a poi."""
 
         newname = self._mw.poi_name_LineEdit.text()
 
@@ -669,7 +662,7 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_name_LineEdit.setText('')
 
     def handle_active_poi_ComboBox_index_change(self):
-        """Handle the change of index in the active POI combobox"""
+        """ Handle the change of index in the active POI combobox."""
 
         key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
@@ -680,8 +673,7 @@ class PoiManagerGui(GUIBase):
             self._redraw_poi_markers()
 
     def select_poi_from_marker(self, poikey=None):
-        '''Process the selection of a POI from click on POImark
-        '''
+        """ Process the selection of a POI from click on POImark."""
 
         # Keep track of selected POI
         self.selected_poi_key = poikey
@@ -714,8 +706,7 @@ class PoiManagerGui(GUIBase):
         self._mw.time_till_next_update_ProgressBar.setValue(self._poi_manager_logic.time_left)
 
     def change_track_period(self):
-        """Change the progress bar and update the timer duration.
-        """
+        """ Change the progress bar and update the timer duration."""
 
         new_track_period = self._mw.track_period_SpinBox.value()
 
@@ -845,8 +836,7 @@ class PoiManagerGui(GUIBase):
         print('finished redraw at ', time.time())
 
     def make_new_roi(self):
-        '''Start new ROI by removing all POIs and resetting the sample history.
-        '''
+        """ Start new ROI by removing all POIs and resetting the sample history."""
 
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
@@ -860,16 +850,14 @@ class PoiManagerGui(GUIBase):
         self.populate_poi_list()
 
     def save_roi(self):
-        '''Save ROI to file
-        '''
+        """ Save ROI to file."""
 
         self._poi_manager_logic.save_poi_map_as_roi()
 
     def load_roi(self):
-        '''Load a saved ROI from file.
-        '''
+        """ Load a saved ROI from file."""
 
-        this_file = QtGui.QFileDialog.getOpenFileName(
+        this_file = QtWidgets.QFileDialog.getOpenFileName(
             self._mw, str("Open ROI"), None, str("Data files (*.dat)"))
 
         self._poi_manager_logic.load_roi_from_file(filename=this_file)
@@ -877,28 +865,24 @@ class PoiManagerGui(GUIBase):
         self.populate_poi_list()
 
     def open_reorient_roi_dialog(self):
-        """Open the dialog for reorienting the ROI.
-        """
+        """ Open the dialog for reorienting the ROI. """
         self._rrd.show()
 
     def ref_a_at_crosshair(self):
-        """ Set the newpos for ref A from the current crosshair position.
-        """
+        """ Set the newpos for ref A from the current crosshair position. """
         # TODO: get the range for these spinboxes from the hardware scanner range!
         self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
         self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
         self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
 
     def ref_b_at_crosshair(self):
-        """ Set the newpos for ref B from the current crosshair position.
-        """
+        """ Set the newpos for ref B from the current crosshair position. """
         self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
         self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
         self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
 
     def ref_c_at_crosshair(self):
-        """ Set the newpos for ref C from the current crosshair position.
-        """
+        """ Set the newpos for ref C from the current crosshair position. """
         self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
         self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
         self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
@@ -915,8 +899,7 @@ class PoiManagerGui(GUIBase):
         self.reset_reorientation_dialog()
 
     def _read_reorient_roi_dialog_values(self):
-        """ This reads the values from reorient ROI Dialog, and returns them
-        """
+        """ This reads the values from reorient ROI Dialog, and returns them. """
 
         # Get POI keys for the chosen ref points
         ref_a_key = self._rrd.ref_a_poi_ComboBox.itemData(self._rrd.ref_a_poi_ComboBox.currentIndex())
@@ -941,8 +924,7 @@ class PoiManagerGui(GUIBase):
         return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos
 
     def reset_reorientation_dialog(self):
-        """ Reset all the values in the reorient roi dialog.
-        """
+        """ Reset all the values in the reorient roi dialog. """
 
         self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(0)
         self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(0)

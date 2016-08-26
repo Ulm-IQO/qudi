@@ -21,16 +21,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.spectrometer_interface import SpectrometerInterface
-from collections import OrderedDict
-from core.util.mutex import Mutex
-
-from pyqtgraph.Qt import QtCore
 
 from time import strftime, localtime
 
-import random
 import time
 import numpy as np
+
 
 class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
     _in = {'fitlogic': 'FitLogic'}
