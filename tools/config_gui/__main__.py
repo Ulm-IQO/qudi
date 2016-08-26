@@ -37,6 +37,7 @@ from gui.colordefs import QudiPalettePale as palette
 import core.config
 from menu import ModMenu
 import listmods
+import logging
 
 
 class ConfigMainWindow(QtWidgets.QMainWindow):
@@ -48,10 +49,12 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_config_window.ui')
+        self.log = logging.getLogger(__name__)
 
         # Load it
         super().__init__()
         uic.loadUi(ui_file, self)
+        self.mods = dict()
 
         # init 
         self.setupUi()
@@ -73,6 +76,11 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             mod.sigAddModule.connect(self.addModule)
         self.actionAdd_Module.setMenu(self.mmroot)
 
+        # node change signals
+        self.graphView.nodeAdded.connect(self.nodeAdded)
+        self.graphView.nodeRemoved.connect(self.nodeRemoved)
+        self.graphView.nodeNameChanged.connect(self.nodeNameChanged)
+
     def findModules(self):
         modules = listmods.find_pyfiles(os.getcwd())
         m, i_s, ie, oe = listmods.check_qudi_modules(modules)
@@ -89,9 +97,17 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
                 print(e[1], file=sys.stderr)
        #  print(self.m)
 
-    def addModule(self, module, pos=(0,0)):
+    def addModule(self, module, name=None, pos=(0,0)):
+        if name is None:
+            name = 'new_module'
+        n = 1
+        if self.graphView.hasNode(name):
+            while self.graphView.hasNode('{}{}'.format(name, n)):
+                n += 1
+            name = '{}{}'.format(name, n)
+
         g = self.graphView
-        node = Node(g, module.name)
+        node = Node(g, name)
         if module.name.startswith('hardware'):
             node.setColor(palette.c2)
         elif module.name.startswith('logic'):
@@ -108,6 +124,10 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
 
         node.setGraphPos(QtCore.QPointF(pos[0], pos[1]))
 
+        self.mods[name] = {
+            'node': node,
+            'module': module,
+            }
         g.addNode(node)
 
     def openConfigFile(self):
@@ -146,14 +166,60 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
                 continue
             for k,v in m.items():
                 mc = 'module.Class'
-                print(b, k, v)
-                if mc in v and b + '.' + v[mc] in [mod.name for mod in self.mmroot.modules]:
-                    mod = next(x for x in self.mmroot.modules if x.name ==  b + '.' + v[mc])
-                    self.addModule(mod, pos)
+                #print(b, k, v)
+                if mc in v and self.mmroot.hasModule(b + '.' + v[mc]):
+                    mod = self.mmroot.getModule(b + '.' + v[mc])
+                    self.addModule(mod, k, pos)
                 pos[1] += 100
             pos[0] += 600
             pos[1] = 0
 
+        for b,m in config.items():
+            if b not in ['hardware', 'logic', 'gui']:
+                continue
+            for k,v in m.items():
+                if 'connect' in v:
+                    for conn_in, conn_out in v['connect'].items():
+                        cl = conn_out.split('.')
+                        src = '.'.join(cl[:-1])
+
+                        if k not in self.mods:
+                            self.log.error(
+                                'Target module {} not present while connecting {}.{} to {}'
+                                ''.format(k, conn_in, src, cl[-1]))
+                            continue
+                        if conn_in not in [c[0] for c in self.mods[k]['module'].conn_in]:
+                            self.log.error(
+                                'Target connector {} not present while connecting {}.{} to {}.{}'
+                                ''.format(conn_in, src, cl[-1], k, conn_in))
+                            continue
+                        if src not in self.mods:
+                            self.log.error(
+                                'Source module {} not present while connecting {} to {}.{}'
+                                ''.format(src, cl[-1], k, conn_in))
+                            continue
+                        if cl[-1] not in [c[0] for c in self.mods[src]['module'].conn_out]:
+                            self.log.error(
+                                'Source connector {} not present while connecting {}.{} to {}.{}'
+                                ''.format(conn_in, src, cl[-1], k, conn_in))
+                            continue
+
+                        try:
+                            self.graphView.connectPorts(self.mods[src]['node'], cl[-1], self.mods[k]['node'], conn_in)
+                        except:
+                            self.log.error(
+                                'pyflowgraph failed while connecting {}.{} to {}.{}'
+                                ''.format(src, cl[-1], k, conn_in))
+                            
+
+    def nodeAdded(self):
+        pass
+
+    def nodeRemoved(self):
+        pass
+
+    def nodeNameChanged(self):
+        pass
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
