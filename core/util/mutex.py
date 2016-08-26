@@ -26,7 +26,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 import logging
 logger = logging.getLogger(__name__)
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import traceback
 import collections
 
@@ -79,7 +79,7 @@ class Mutex(QtCore.QMutex):
                 try:
                     logger.debug('Waiting for mutex lock ({:.1} sec). '
                     'Traceback follows:'.format(c*waitTime/1000.))
-                    logger.debug(''.joint(traceback.format_stack()))
+                    logger.debug(''.join(traceback.format_stack()))
                     if len(self.tb) > 0:
                         logger.debug('Mutex is currently locked from: {0}\n'
                                 ''.format(self.tb[-1]))

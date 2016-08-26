@@ -18,11 +18,13 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
+
 import os
-import numpy as np
-from collections import OrderedDict
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import uic
+
 
 class SwitchGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
@@ -47,11 +49,11 @@ class SwitchGui(GUIBase):
         lsw =  self.connector['in']['switchlogic']['object']
         # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
-            frame = QtGui.QGroupBox(hw, self._mw.scrollAreaWidgetContents)
+            frame = QtWidgets.QGroupBox(hw, self._mw.scrollAreaWidgetContents)
             frame.setAlignment(QtCore.Qt.AlignLeft)
             frame.setFlat(False)
             self._mw.layout.addWidget(frame)
-            layout = QtGui.QVBoxLayout(frame)
+            layout = QtWidgets.QVBoxLayout(frame)
             for switch in lsw.switches[hw]:
                 swidget = SwitchWidget(switch, lsw.switches[hw][switch])
                 layout.addWidget(swidget)
@@ -74,7 +76,7 @@ class SwitchGui(GUIBase):
         self._mw.close()
 
 
-class SwitchMainWindow(QtGui.QMainWindow):
+class SwitchMainWindow(QtWidgets.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):
@@ -90,9 +92,9 @@ class SwitchMainWindow(QtGui.QMainWindow):
         self.show()
 
         # Add layout that we want to fill
-        self.layout = QtGui.QVBoxLayout(self.scrollArea)
+        self.layout = QtWidgets.QVBoxLayout(self.scrollArea)
 
-class SwitchWidget(QtGui.QWidget):
+class SwitchWidget(QtWidgets.QWidget):
     """ A widget that shows all data associated to a switch.
     """
     def __init__(self, switch, hwobject):

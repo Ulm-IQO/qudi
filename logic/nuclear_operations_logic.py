@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from pyqtgraph.Qt import QtCore
 import time
 from collections import OrderedDict
+from qtpy import QtCore
 import datetime
 
 from logic.generic_logic import GenericLogic
@@ -270,6 +270,10 @@ class NuclearOperationsLogic(GenericLogic):
             self.mw_cw_power = self._statusVariables['mw_cw_power']
         else:
             self.mw_cw_power = -30                         # in dBm
+
+
+        # store here all the measured odmr peaks
+        self.measured_odmr_list = []
 
         # on which odmr peak the manipulation is going to be applied:
         if 'mw_on_odmr_peak' in self._statusVariables:

@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.base import Base
 from interface.data_logger_interface import DataLoggerInterface
 
-from pyqtgraph.Qt import QtCore
 from influxdb import InfluxDBClient
 
 class InfluxLogger(Base, DataLoggerInterface):

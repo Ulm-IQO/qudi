@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 from ftplib import FTP
 from socket import socket, AF_INET, SOCK_STREAM
-import numpy as np
 import os
 from collections import OrderedDict
 from fnmatch import fnmatch
@@ -473,8 +472,8 @@ class AWG7122C(Base, PulserInterface):
             #self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch{0}'.format(int(channel_num)), asset_name + '_ch{0}.wfm'.format(int(channel_num))))
             #self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch{0}'.format(int(channel_num))))
 
-        if len(list(load_dict)) > 0:
-            self.current_loaded_asset = asset_name
+        #if len(list(load_dict)) > 0:
+        self.current_loaded_asset = asset_name
 
         return 0
 

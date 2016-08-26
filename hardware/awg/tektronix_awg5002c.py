@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 from ftplib import FTP
 from socket import socket, AF_INET, SOCK_STREAM
-import numpy as np
 import os
 from collections import OrderedDict
 from fnmatch import fnmatch

@@ -18,8 +18,11 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from core.util.customexceptions import *
+
+from core.util.customexceptions import function_signature
+from core.util.customexceptions import InterfaceImplementationError
 from enum import Enum
+
 
 class ControlMode(Enum):
     MIXED = 0
@@ -47,7 +50,7 @@ class SimpleLaserInterface:
         @return float: Actual laser power in watts
         """
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-        
+
     def set_power(self, power):
         """ Set laer power ins watts
           @param float power: laser power setpoint in watts
@@ -61,7 +64,7 @@ class SimpleLaserInterface:
         @return float: Laser power setpoint in watts
         """
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-    
+
     def get_current(self):
         """ Return laser current
         @return float: Actual laser current in amperes
@@ -93,7 +96,7 @@ class SimpleLaserInterface:
           @return enum ControlMode: actual control mode
         """
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-        
+
     def on(self):
         """ Turn on laser. Does not open shutter if one is present.
           @return enum LaserState: actual laser state
@@ -111,7 +114,7 @@ class SimpleLaserInterface:
           @return enum LaserState: laser state
         """
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-    
+
     def set_laser_state(self, state):
         """ Set laser state.
           @param enum state: desired laser state

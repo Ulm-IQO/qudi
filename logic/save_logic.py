@@ -19,10 +19,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-import logging
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
 from collections import OrderedDict
 from cycler import cycler
 import logging
@@ -32,7 +28,8 @@ import inspect
 import time
 import numpy as np
 
-from core.util import units
+from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
 
 
 class DailyLogHandler(logging.FileHandler):

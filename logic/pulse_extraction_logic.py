@@ -19,13 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from collections import OrderedDict
 import numpy as np
 from scipy import ndimage
+
 from core.util.network import netobtain
+from logic.generic_logic import GenericLogic
+
 
 class PulseExtractionLogic(GenericLogic):
     """unstable: Nikolas Tomek  """
@@ -47,7 +46,8 @@ class PulseExtractionLogic(GenericLogic):
             self.log.info('{}: {}'.format(key,config[key]))
 
         self.is_counter_gated = False
-        self.conv_std_dev = 5
+        self.conv_std_dev = 200     # standard deviation of the gaussian filter
+                                    # in bins
         self.old_raw_data = None    # This is used to pause and continue a measurement.
                                     # Is added to the new data.
 
@@ -65,6 +65,7 @@ class PulseExtractionLogic(GenericLogic):
         """
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._check_if_counter_gated()
+        self._iter = 0
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -74,7 +75,7 @@ class PulseExtractionLogic(GenericLogic):
         """
         pass
 
-    def _gated_extraction(self, count_data):
+    def _gated_extraction(self, count_data, conv_std_dev):
         """ Detects the rising flank in the gated timetrace data and extracts
             just the laser pulses.
 
@@ -82,6 +83,8 @@ class PulseExtractionLogic(GenericLogic):
                                          gated fast counter, dimensions:
                                             0: gate number,
                                             1: time bin)
+        @param float conv_std_dev: standard deviation of the gaussian filter to be
+                              applied for smoothing
 
         @return numpy.ndarray: The extracted laser pulses of the timetrace
                                dimensions:
@@ -98,7 +101,7 @@ class PulseExtractionLogic(GenericLogic):
         #       It should also be possible to display the bare laserpulse,
         #       without cutting away something.
 
-        conv_deriv = self._convolve_derive(timetrace_sum, self.conv_std_dev)
+        conv_deriv = self._convolve_derive(timetrace_sum.astype(float), conv_std_dev)
         # get indices of rising and falling flank
 
         rising_ind = conv_deriv.argmax()
@@ -108,7 +111,8 @@ class PulseExtractionLogic(GenericLogic):
         return laser_arr
 
 
-    def _ungated_extraction(self, count_data, num_of_lasers):
+
+    def _ungated_extraction(self, count_data, num_of_lasers, conv_std_dev):
         """ Detects the laser pulses in the ungated timetrace data and extracts
             them.
 
@@ -116,60 +120,141 @@ class PulseExtractionLogic(GenericLogic):
                                          ungated fast counter
         @param int num_of_lasers: The total number of laser pulses inside the
                                   pulse sequence
+        @param float conv_std_dev: standard deviation of the gaussian filter to be
+                              applied for smoothing
 
         @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the
                                   timetrace, dimensions:
                                         0: laser number,
                                         1: time bin
+
+        Procedure:
+            Edge Detection:
+            ---------------
+
+            The count_data array with the laser pulses is smoothed with a
+            gaussian filter (convolution), which used a defined standard
+            deviation of 10 entries (bins). Then the derivation of the convolved
+            time trace is taken to obtain the maxima and minima, which
+            corresponds to the rising and falling edge of the pulses.
+
+            The convolution with a gaussian removes nasty peaks due to count
+            fluctuation within a laser pulse and at the same time ensures a
+            clear distinction of the maxima and minima in the derived convolved
+            trace.
+
+            The maxima and minima are not found sequentially, pulse by pulse,
+            but are rather globally obtained. I.e. the convolved and derived
+            array is searched iteratively for a maximum and a minimum, and after
+            finding those the array entries within the 4 times
+            self.conv_std_dev (2*self.conv_std_dev to the left and
+            2*self.conv_std_dev) are set to zero.
+
+            The crucial part is the knowledge of the number of laser pulses and
+            the choice of the appropriate std_dev for the gauss filter.
+
+            To ensure a good performance of the edge detection, you have to
+            ensure a steep rising and falling edge of the laser pulse! Be also
+            careful in choosing a large conv_std_dev value and using a small
+            laser pulse (rule of thumb: conv_std_dev < laser_length/10).
         """
+
         # apply gaussian filter to remove noise and compute the gradient of the
         # timetrace
-        conv_deriv = self._convolve_derive(count_data, self.conv_std_dev)
+
+        conv_deriv = self._convolve_derive(count_data.astype(float), conv_std_dev)
+
+        # use a reference for array, because the exact position of the peaks or
+        # dips (i.e. maxima or minima, which are the inflection points in the
+        # pulse) are distorted by a large conv_std_dev value.
+        conv_deriv_ref = self._convolve_derive(count_data, 10)
+
         # initialize arrays to contain indices for all rising and falling
         # flanks, respectively
         rising_ind = np.empty([num_of_lasers],int)
         falling_ind = np.empty([num_of_lasers],int)
+
         # Find as many rising and falling flanks as there are laser pulses in
-        # the timetrace
+        # the trace:
         for i in range(num_of_lasers):
-            # save the index of the absolute maximum of the derived timetrace as
-            #  rising flank position
+
+            # save the index of the absolute maximum of the derived time trace
+            # as rising edge position
             rising_ind[i] = np.argmax(conv_deriv)
-            # set this position and the sourrounding of the saved flank to 0 to
+
+            # refine the rising edge detection, by using a small and fixed
+            # conv_std_dev parameter to find the inflection point more precise
+            start_ind = int(rising_ind[i]-conv_std_dev)
+            if start_ind < 0:
+                start_ind = 0
+
+            stop_ind = int(rising_ind[i]+conv_std_dev)
+            if stop_ind > len(conv_deriv):
+                stop_ind = len(conv_deriv)
+
+            if start_ind == stop_ind:
+                stop_ind = start_ind+1
+
+            rising_ind[i] = start_ind + np.argmax(conv_deriv_ref[start_ind:stop_ind])
+
+            # set this position and the surrounding of the saved edge to 0 to
             # avoid a second detection
-            if rising_ind[i] < 2*self.conv_std_dev:
-                del_ind_start = 0
+            if rising_ind[i] < 2*conv_std_dev:                del_ind_start = 0
             else:
-                del_ind_start = rising_ind[i] - 2*self.conv_std_dev
-            if (conv_deriv.size - rising_ind[i]) < 2*self.conv_std_dev:
+                del_ind_start = rising_ind[i] - 2*conv_std_dev
+            if (conv_deriv.size - rising_ind[i]) < 2*conv_std_dev:
                 del_ind_stop = conv_deriv.size-1
             else:
-                del_ind_stop = rising_ind[i] + 2*self.conv_std_dev
-            conv_deriv[del_ind_start:del_ind_stop] = 0
+                del_ind_stop = rising_ind[i] + 2*conv_std_dev
+                conv_deriv[del_ind_start:del_ind_stop] = 0
 
-            # save the index of the absolute minimum of the derived timetrace
-            # as falling flank position
+            # save the index of the absolute minimum of the derived time trace
+            # as falling edge position
             falling_ind[i] = np.argmin(conv_deriv)
+
+            # refine the falling edge detection, by using a small and fixed
+            # conv_std_dev parameter to find the inflection point more precise
+            start_ind = int(falling_ind[i]-conv_std_dev)
+            if start_ind < 0:
+                start_ind = 0
+
+            stop_ind = int(falling_ind[i]+conv_std_dev)
+            if stop_ind > len(conv_deriv):
+                stop_ind = len(conv_deriv)
+
+            if start_ind == stop_ind:
+                stop_ind = start_ind+1
+
+            falling_ind[i] = start_ind + np.argmin(conv_deriv_ref[start_ind:stop_ind])
+
             # set this position and the sourrounding of the saved flank to 0 to
             #  avoid a second detection
-            if falling_ind[i] < 2*self.conv_std_dev:
-                del_ind_start = 0
+            if falling_ind[i] < 2*conv_std_dev:                del_ind_start = 0
             else:
-                del_ind_start = falling_ind[i] - 2*self.conv_std_dev
-            if (conv_deriv.size - falling_ind[i]) < 2*self.conv_std_dev:
+                del_ind_start = falling_ind[i] - 2*conv_std_dev
+            if (conv_deriv.size - falling_ind[i]) < 2*conv_std_dev:
                 del_ind_stop = conv_deriv.size-1
             else:
-                del_ind_stop = falling_ind[i] + 2*self.conv_std_dev
+                del_ind_stop = falling_ind[i] + 2*conv_std_dev
             conv_deriv[del_ind_start:del_ind_stop] = 0
+
         # sort all indices of rising and falling flanks
         rising_ind.sort()
         falling_ind.sort()
+
         # find the maximum laser length to use as size for the laser array
         laser_length = np.max(falling_ind-rising_ind)
+
+        #Todo: Find better method, here the idea is to take a histogram to find
+        # length of pulses
+        #diff = (falling_ind-rising_ind)[np.where( falling_ind-rising_ind > 0)]
+        #self.histo = np.histogram(diff)
+        #laser_length = int(self.histo[1][self.histo[0].argmax()])
+
         # initialize the empty output array
         laser_arr = np.zeros([num_of_lasers, laser_length],int)
         # slice the detected laser pulses of the timetrace and save them in the
-        #  output array
+        # output array according to the found rising edge
         for i in range(num_of_lasers):
             if (rising_ind[i]+laser_length > count_data.size):
                 lenarr = count_data[rising_ind[i]:].size
@@ -201,11 +286,15 @@ class PulseExtractionLogic(GenericLogic):
         return conv_deriv
 
 
-    def get_data_laserpulses(self, num_of_lasers):
+
+    def get_data_laserpulses(self, num_of_lasers, conv_std_dev):
         """ Capture the fast counter data and extracts the laser pulses.
 
         @param int num_of_lasers: The total number of laser pulses inside the
                                   pulse sequence
+        @param int conv_std_dev: Standard deviation of gaussian convolution
+
+
         @return tuple (numpy.ndarray, numpy.ndarray):
                     Explanation of the return value:
 
@@ -223,12 +312,20 @@ class PulseExtractionLogic(GenericLogic):
             #if raw_data.shape == self.old_raw_data.shape:
             raw_data = np.add(raw_data, self.old_raw_data)
 
+        # Saving data for testing
+
+        # name = str(self._iter) + '.dat'
+        # self._iter = self._iter + 1
+        # np.savetxt(name, raw_data.transpose())
+
         # call appropriate laser extraction method depending on if the fast
         # counter is gated or not.
         if self.is_counter_gated:
-            laser_data = self._gated_extraction(raw_data)
+
+            laser_data = self._gated_extraction(raw_data, conv_std_dev)
         else:
-            laser_data = self._ungated_extraction(raw_data, num_of_lasers)
+
+            laser_data = self._ungated_extraction(raw_data, num_of_lasers, conv_std_dev)
         return laser_data.astype(dtype=int), raw_data.astype(dtype=int)
 
 

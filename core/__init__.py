@@ -17,69 +17,30 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-Derived form ACQ4:
-Copyright 2010  Luke Campagnola
-Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
 __version__ = '0.1'
 
+# import Qt
 import os
-import sys
-
-# If we are using PyQt, ACQ4 requires API version 2 for QString and QVariant.
-# Check for those here..
-set_api = True
-if 'PyQt4' in sys.modules:
-    import sip
-    for api in ['QString', 'QVariant']:
-        try:
-            v = sip.getapi(api)
-            if v != 2:
-                raise Exception("We require the usage of API version 2 for "
-                                "QString and QVariant, but {0}={1}. "
-                                "Correct this by calling\n\n import sip;\n "
-                                "sip.setapi('QString', 2);\n "
-                                "sip.setapi('QVariant', 2);\n\n "
-                                "_before_ importing PyQt4.".format(str(api),str(v))
-                                )
-            else:
-                set_api = False
-        except ValueError:
-            set_api = True
-elif 'PySide' in sys.modules:
-    set_api = False
-
-if set_api:
-    try:
-        import sip
-        sip.setapi('QString', 2)
-        sip.setapi('QVariant', 2)
-        # IPython needs this
+if not 'QT_API' in os.environ:
+    # use PyQt4 as default
+    os.environ['QT_API'] = 'pyqt'
+else:
+    # if pyqt4 check environment variable is 'pyqt' and not 'pyqt4' (ipython,
+    # matplotlib, etc)
+    if os.environ['QT_API'].lower() == 'pyqt4':
         os.environ['QT_API'] = 'pyqt'
-    except ImportError:
-        print('Import Error in core/__init__.py: no sip module found. '
-               'Implement the error handling!')
-        pass  # no sip; probably pyside will be imported later..
 
-# Import pyqtgraph
-import pyqtgraph as pg
+import qtpy
 
-# Do not use scipy.weave to rescale data (FIXME: review why this is here)
-pg.setConfigOptions(useWeave=False)
-
+import sys
 # Make icons work on non-X11 platforms, import a custom theme
-#print('Platform is', sys.platform)
 if sys.platform == 'win32':
     try:
         import ctypes
-        myappid = 'quantumoptics.quantumdiamond.mainapp' # arbitrary string
+        myappid = 'quantumoptics.quantumdiamond.mainapp'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except:
-        print('SetCurrentProcessExplicitAppUserModelID failed! This is probably not Microsoft Windows!')
-
-# rename any orphaned .pyc files -- these are probably leftover from
-# a module being moved and may interfere with expected operation.
-compiledModuleDir = os.path.abspath(os.path.split(__file__)[0])
-pg.renamePyc(compiledModuleDir)
+        print('SetCurrentProcessExplicitAppUserModelID failed! This is '
+              'probably not Microsoft Windows!')

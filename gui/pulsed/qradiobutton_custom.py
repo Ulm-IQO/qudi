@@ -20,11 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtGui
-from pyqtgraph.Qt import QtCore
+from qtpy import QtWidgets
+from qtpy import QtCore
 
 
-class CustomQRadioButton(QtGui.QRadioButton):
+class CustomQRadioButton(QtWidgets.QRadioButton):
     """ Class which customize QRadioButton behaviour.
 
     The following customization have been applied:

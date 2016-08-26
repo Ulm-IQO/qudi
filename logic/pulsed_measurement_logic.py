@@ -19,15 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
+from qtpy import QtCore
 from collections import OrderedDict
-from lmfit import Parameters
 import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
+
+from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
 
 class PulsedMeasurementLogic(GenericLogic):
     """unstable: Nikolas Tomek
@@ -105,6 +105,11 @@ class PulsedMeasurementLogic(GenericLogic):
         self.norm_start_bin = 300
         self.norm_width_bin = 200
 
+        # pulse extraction parameters
+        self.conv_std_dev = 10
+        self.conv_std_dev_range_min = 1
+        self.conv_std_dev_range_max = 500
+
         # threading
         self.threadlock = Mutex()
 
@@ -158,6 +163,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.norm_width_bin = self._statusVariables['norm_width_bin']
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
+        if 'conv_std_dev' in self._statusVariables:
+            self.conv_std_dev = self._statusVariables['conv_std_dev']
         if 'laser_trigger_delay_s' in self._statusVariables:
             self.laser_trigger_delay_s = self._statusVariables['laser_trigger_delay_s']
         if 'laser_length_s' in self._statusVariables:
@@ -226,6 +233,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['norm_start_bin'] = self.norm_start_bin
         self._statusVariables['norm_width_bin'] = self.norm_width_bin
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
+        self._statusVariables['conv_std_dev'] = self.conv_std_dev
         self._statusVariables['laser_trigger_delay_s'] = self.laser_trigger_delay_s
         self._statusVariables['laser_length_s'] = self.laser_length_s
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
@@ -551,7 +559,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.analysis_timer = QtCore.QTimer()
                 self.analysis_timer.setSingleShot(False)
                 self.analysis_timer.setInterval(int(1000. * self.timer_interval))
-                self.analysis_timer.timeout.connect(self._pulsed_analysis_loop)
+                self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
 
                 self.lock()
                 self.elapsed_time = 0.0
@@ -569,9 +577,15 @@ class PulsedMeasurementLogic(GenericLogic):
             sig_end = self.signal_start_bin + self.signal_width_bin
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
+            conv_std_dev = self.conv_std_dev
 
             # analyze pulses and get data points for signal plot
-            tmp_signal,self.laser_data,self.raw_data,tmp_error = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
+            tmp_signal,self.laser_data,self.raw_data,tmp_error = self._pulse_analysis_logic._analyze_data(norm_start,
+                                                                                                          norm_end,
+                                                                                                          sig_start,
+                                                                                                          sig_end,
+                                                                                                          self.number_of_lasers,
+                                                                                                          conv_std_dev)
 
             if self.alternating:
                 self.signal_plot_y = tmp_signal[::2]
@@ -830,6 +844,7 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Signal width (bins)'] = self.signal_width_bin
         parameters['Normalization start (bin)'] = self.norm_start_bin
         parameters['Normalization width (bins)'] = self.norm_width_bin
+        parameters['Standard deviation of gaussian convolution'] = self.conv_std_dev
 
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)

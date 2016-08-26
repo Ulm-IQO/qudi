@@ -22,11 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, uic
+from qtpy import QtWidgets
+from qtpy import uic
 import os
 
 
-class SpectrometerWindow(QtGui.QMainWindow):
+class SpectrometerWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         """ Create the laser scanner window.
@@ -132,7 +133,7 @@ class SpectrometerGui(GUIBase):
     def show(self):
         """Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

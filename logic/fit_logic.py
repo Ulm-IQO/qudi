@@ -20,14 +20,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import importlib
+from os import listdir
+from os.path import isfile, join
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
-import importlib
-
-from os import listdir
-from os.path import isfile, join
 
 class FitLogic(GenericLogic):
     """

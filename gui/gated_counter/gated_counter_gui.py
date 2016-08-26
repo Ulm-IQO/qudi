@@ -22,17 +22,18 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import numpy as np
-from collections import OrderedDict
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.colordefs import QudiPalette as palettedark
 from core.util import units
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 
-class GatedCounterMainWindow(QtGui.QMainWindow):
+class GatedCounterMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self):

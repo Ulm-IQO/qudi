@@ -20,7 +20,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import QtGui
+
 
 class TrayIcon(GUIBase):
     """ This module contains a tray icon implementation for QuDi.
@@ -55,24 +58,24 @@ class TrayIcon(GUIBase):
         """
         pass
 
-class SystemTrayIcon(QtGui.QSystemTrayIcon):
+class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray icon class subclassing QSystemTrayIcon for custom functionality.
     """
     def __init__(self):
         """Tray icon constructor.
         Adds all the appropriate menus and actions.
         """
-        QtGui.QSystemTrayIcon.__init__(self)
-        self.setIcon(QtGui.QApplication.instance().windowIcon())
-        self.right_menu = QtGui.QMenu('Quit')
-        self.left_menu = QtGui.QMenu('Manager')
+        QtWidgets.QSystemTrayIcon.__init__(self)
+        self.setIcon(QtWidgets.QApplication.instance().windowIcon())
+        self.right_menu = QtWidgets.QMenu('Quit')
+        self.left_menu = QtWidgets.QMenu('Manager')
         iconpath = 'artwork/icons/oxygen'
         self.managericon = QtGui.QIcon()
         self.managericon.addFile('{0}/22x22/go-home.png'.format(iconpath), QtCore.QSize(16,16))
         self.exiticon = QtGui.QIcon()
         self.exiticon.addFile('{0}/22x22/application-exit.png'.format(iconpath), QtCore.QSize(16,16))
-        self.quitAction = QtGui.QAction(self.exiticon, "&Quit", self.right_menu)
-        self.managerAction = QtGui.QAction(self.managericon, "&Manager", self.left_menu)
+        self.quitAction = QtWidgets.QAction(self.exiticon, "&Quit", self.right_menu)
+        self.managerAction = QtWidgets.QAction(self.managericon, "&Manager", self.left_menu)
         self.left_menu.addAction(self.managerAction)
         self.right_menu.addAction(self.quitAction)
         self.setContextMenu(self.right_menu)
@@ -87,5 +90,5 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
             it opens a menu at the position of the left click.
         """
         if value == self.Trigger:
-            self.left_menu.exec_(QtGui.QCursor.pos())
+            self.left_menu.exec_(QtWidgets.QCursor.pos())
 

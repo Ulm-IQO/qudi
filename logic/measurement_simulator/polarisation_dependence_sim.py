@@ -19,13 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
-from interface.slow_counter_interface import SlowCounterInterface
-from interface.motor_interface import MotorInterface
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import time
 import random
 import numpy as np
+
+from core.base import Base
+from interface.slow_counter_interface import SlowCounterInterface
+from interface.motor_interface import MotorInterface
+
 
 class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 

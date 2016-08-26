@@ -47,9 +47,8 @@ import uuid
 import errno
 import hashlib
 import datetime
-import threading
 import logging
-import builtins
+from warnings import warn
 
 import ast
 import traceback
@@ -66,8 +65,9 @@ from .redirect import redirect_stdout, redirect_stderr
 from .stream import QZMQStream
 from .helpers import *
 from .events import EventManager, available_events
+from IPython.core.error import InputRejected
 
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 QtCore.Signal = QtCore.pyqtSignal
 
 
