@@ -92,4 +92,9 @@ class ModMenu(QtWidgets.QMenu):
         action.triggered.connect(module.addModule)
         self.modules.append(module)
 
- 
+    def hasModule(self, modname):
+        return modname in (x.name for x in self.modules)
+
+    def getModule(self, modname):
+        return next(x for x in self.modules if x.name == modname)
+

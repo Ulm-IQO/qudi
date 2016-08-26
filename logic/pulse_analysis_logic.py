@@ -82,7 +82,7 @@ class PulseAnalysisLogic(GenericLogic):
 
 
     def _analyze_data(self, norm_start_bin, norm_end_bin, signal_start_bin,
-                      signal_end_bin, num_of_lasers):
+                      signal_end_bin, num_of_lasers,conv_std_dev):
 
         """ Analysis the laser,pulses and computes the measuring error given by photon shot noise
 
@@ -91,6 +91,7 @@ class PulseAnalysisLogic(GenericLogic):
         @param int signal_start_bin: Bin where the signal starts
         @param int signal_end_bin: Bin where the signal stops
         @param int number_of_lasers: Number of laser pulses
+        @param int conv_std_dev: Standard deviation of gaussian convolution
 
         @return: float array signal_data: Array with the computed signal
         @return: float array laser_data: Array with the laser data
@@ -98,7 +99,7 @@ class PulseAnalysisLogic(GenericLogic):
         """
 
         # acquire data from the pulse extraction logic
-        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
+        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers, conv_std_dev)
 
         # Initialize the signal and normalization mean data arrays
         reference_mean = np.zeros(num_of_lasers, dtype=float)
@@ -124,13 +125,13 @@ class PulseAnalysisLogic(GenericLogic):
             signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
             reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
 
-            measuring_error[jj] = self.calculate_measuring_error(signal_area[jj], reference_area[jj])
+            measuring_error[jj] = self.calculate_measuring_error(signal_area[jj], reference_area[jj],signal_data[jj])
 
         return signal_data, laser_data, raw_data, measuring_error
 
 
 
-    def calculate_measuring_error(self, signal_area, reference_area):
+    def calculate_measuring_error(self, signal_area, reference_area, signal_data):
         """ Computes the measuring error given by photon shot noise.
 
         @param float signal_area: Numerical integral over the photon count in the signal area
@@ -144,7 +145,7 @@ class PulseAnalysisLogic(GenericLogic):
             measuring_error = 0.
         else:
             #with respect to gaußian error 'evolution'
-            measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
+            measuring_error=signal_data*np.sqrt(1/signal_area+1/reference_area)
 
         return measuring_error
 
