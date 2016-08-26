@@ -634,6 +634,9 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
+            # set the horizontal size to 100 pixel:
+            dspinbox_ref.setMaximumSize(QtCore.QSize(80, 16777215))
+
             self._mw.move_abs_GridLayout.addWidget(dspinbox_ref, index, 2, 1, 1)
 
             # build a function to change the dspinbox value and connect a

@@ -108,7 +108,7 @@
              <enum>QTabWidget::Rounded</enum>
             </property>
             <property name="currentIndex">
-             <number>0</number>
+             <number>2</number>
             </property>
             <property name="documentMode">
              <bool>false</bool>
@@ -609,13 +609,22 @@ at each point?</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="0" colspan="2">
+                 <item row="6" column="0">
                   <widget class="QCheckBox" name="align_2d_odmr_save_after_measure_CheckBox">
                    <property name="text">
-                    <string>Save after measure</string>
+                    <string>Save after 
+measure</string>
                    </property>
                    <property name="checked">
                     <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QCheckBox" name="odmr_2d_single_trans_CheckBox">
+                   <property name="text">
+                    <string>Single transition
+contrast alignment</string>
                    </property>
                   </widget>
                  </item>
