@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 import zmq
 from qtpy import QtCore
-QtCore.Signal = QtCore.pyqtSignal
 import logging
 
 class QZMQStream(QtCore.QObject):
@@ -32,7 +31,7 @@ class QZMQStream(QtCore.QObject):
     def __init__(self, zmqsocket):
         """ Make a stream from a socket.
 
-        @param socket: ZMQ socket
+        @param zmqsocket: ZMQ socket
         """
         super().__init__()
         self.socket = zmqsocket
