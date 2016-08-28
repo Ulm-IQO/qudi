@@ -26,6 +26,7 @@ from qtpy.QtCore import QThread
 from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import QAbstractButton
 from qtpy.QtWidgets import QAbstractSlider
+from qtpy.QtWidgets import QComboBox
 from qtpy.QtWidgets import QDoubleSpinBox
 from qtpy.QtWidgets import QLineEdit
 from qtpy.QtWidgets import QSpinBox
@@ -128,6 +129,8 @@ class Mapper(QObject):
                   or isinstance(widget, QDoubleSpinBox)
                   or isinstance(widget, QAbstractSlider)):
                 widget_property_name = 'value'
+            elif isinstance(widget, QComboBox):
+                widget_property_name = 'currentIndex'
             else:
                 raise Exception('Property of widget {0} could not be '
                                 'guessed.'.format(repr(widget)))
