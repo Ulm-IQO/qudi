@@ -1,0 +1,35 @@
+language: python
+python:
+  # We don't actually use the Travis Python, but this keeps it organized.
+  - "3.4"
+  - "3.5"
+addons:
+ apt:
+   sources:
+   - ubuntu-toolchain-r-test
+   packages:
+   - python3-pip
+   - python3-wheel
+   - python3-setuptools
+   - python3-fysom
+   - python3-lmfit
+   - python3-pyqt4
+   - python3-numpy
+   - python3-scipy
+   - python3-h5py
+   - python3-tables
+   - python3-zmq
+   - python3-sip
+   - python3-tornado
+   - python3-pygments
+   - python3-openssl
+   - python3-lxml
+   - build-essential
+   - devscripts
+env:
+  - DISPLAY=:99.0
+before_install:
+  - sh -e /etc/init.d/xvfb start
+install:
+  - pip install --user -r tools/requirements.txt
+  - python tools/qudikernel.py install
