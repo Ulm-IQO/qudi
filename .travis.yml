@@ -12,7 +12,7 @@ before_install:
   - sudo apt-get install -y python3-pip python3-wheel python3-setuptools python3-pyqt4 python3-numpy python3-scipy python3-h5py python3-tables python3-zmq python3-sip python3-tornado python3-pygments python3-openssl build-essential devscripts
 
 install:
-  - pip install --user -r tools/requirements.txt
+  - sudo pip3 install -r tools/requirements.txt
   - python tools/qudikernel.py install
 before_script:
   - "sh -e /etc/init.d/xvfb start"
