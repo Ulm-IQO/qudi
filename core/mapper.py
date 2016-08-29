@@ -39,6 +39,13 @@ SUBMIT_POLICY_MANUAL = 1
 """wait with submitting changes until submit() is called"""
 
 
+class Converter():
+    def widget_to_model(self, data):
+        return data
+
+    def model_to_widget(self, data):
+        return data
+
 class Mapper(QObject):
     """
     The Mapper connects a Qt widget for displaying and editing certain data
@@ -80,12 +87,15 @@ class Mapper(QObject):
         super().__init__(**kwargs)
         self._submit_policy = SUBMIT_POLICY_AUTO
         self._mappings = {}
-        self._widget_property_notifications_disabled = False
-        self._model_notifications_disabled = False
 
-    def add_mapping(self, widget, model, model_setter,
-                    model_property_notifier=None, model_getter=None,
-                    widget_property_name=''):
+    def add_mapping(self,
+                    widget,
+                    model,
+                    model_setter,
+                    model_property_notifier=None,
+                    model_getter=None,
+                    widget_property_name='',
+                    converter=None):
         """
         Adds a mapping.
 
@@ -115,6 +125,9 @@ class Mapper(QObject):
                                  Default: ''
                                  If it is an empty string the relevant
                                  property is guessed from the widget's type.
+        converter Converter converter instance for converting data between
+                            widget display and model.
+                            Default: None
 
         """
         if widget in self._mappings:
@@ -208,11 +221,14 @@ class Mapper(QObject):
             'widget_property_setter': widget_property_setter,
             'widget_property_notifier': widget_property_notifier,
             'widget_property_notifier_slot': widget_property_notifier_slot,
+            'widget_property_notifications_disabled': False,
             'model': model,
             'model_property_setter': model_setter,
             'model_property_getter': model_getter,
             'model_property_notifier': model_property_notifier,
-            'model_property_notifier_slot': model_property_notifier_slot}
+            'model_property_notifier_slot': model_property_notifier_slot,
+            'model_property_notifications_disabled': False,
+            'converter': converter}
 
     def _on_widget_property_notification(self, widget, *args):
         """
@@ -225,16 +241,24 @@ class Mapper(QObject):
                          emitted from.
         args*: List list of event parameters
         """
-        if self._widget_property_notifications_disabled:
+        if self._mappings[widget]['widget_property_notifications_disabled']:
             return
         if self._submit_policy == SUBMIT_POLICY_AUTO:
-            self._model_notifications_disabled = True
+            self._mappings[widget][
+                'model_property_notifications_disabled'] = True
             try:
-                setter = self._mappings[widget]['model_property_setter']
-                setter(self._mappings[widget]['widget_property_getter'](
-                    widget))
+                # get value
+                value = self._mappings[widget]['widget_property_getter'](
+                    widget)
+                # convert it if requested
+                if self._mappings[widget]['converter'] is not None:
+                    value = self._mappings[widget][
+                        'converter'].widget_to_model(value)
+                # set it to model
+                self._mappings[widget]['model_property_setter'](value)
             finally:
-                self._model_notifications_disabled = False
+                self._mappings[widget][
+                    'model_property_notifications_disabled'] = False
         else:
             pass
 
@@ -249,16 +273,35 @@ class Mapper(QObject):
                          emitted from.
         args*: List list of event parameters
         """
-        if self._model_notifications_disabled:
-            return
-        getter = self._mappings[widget]['model_property_getter']
-        widget_property_setter = self._mappings[widget][
-            'widget_property_setter']
-        self._widget_property_notifications_disabled = True
+        # get value from model
+        value = self._mappings[widget]['model_property_getter']()
+
+        # are updates disabled?
+        if self._mappings[widget]['model_property_notifications_disabled']:
+            # but check if value has changed first
+            # get value from widget
+            value_widget = self._mappings[widget]['widget_property_getter'](
+                widget)
+            # convert it if requested
+            if self._mappings[widget]['converter'] is not None:
+                value_widget = self._mappings[widget][
+                    'converter'].widget_to_model(value_widget)
+            # accept changes, stop if nothing has changed
+            if (value == value_widget):
+                return
+
+        # convert value if requested
+        if self._mappings[widget]['converter'] is not None:
+            value = self._mappings[widget]['converter'].model_to_widget(value)
+
+        # update widget
+        self._mappings[widget][
+            'widget_property_notifications_disabled'] = True
         try:
-            widget_property_setter(widget, getter())
+            self._mappings[widget]['widget_property_setter'](widget, value)
         finally:
-            self._widget_property_notifications_disabled = False
+            self._mappings[widget][
+                'widget_property_notifications_disabled'] = False
 
     def clear_mapping(self):
         """
