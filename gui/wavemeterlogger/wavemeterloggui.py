@@ -27,13 +27,15 @@ import pyqtgraph.exporters
 import datetime
 import os
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import uic
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 
 
-class WavemeterLogWindow(QtGui.QMainWindow):
+class WavemeterLogWindow(QtWidgets.QMainWindow):
     def __init__(self):
         """ Create the laser scanner window.
         """
@@ -67,7 +69,6 @@ class WavemeterLogGui(GUIBase):
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
-
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -183,7 +184,7 @@ class WavemeterLogGui(GUIBase):
     def show(self):
         """ Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

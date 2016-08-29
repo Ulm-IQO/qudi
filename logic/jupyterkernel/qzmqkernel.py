@@ -47,9 +47,8 @@ import uuid
 import errno
 import hashlib
 import datetime
-import threading
 import logging
-import builtins
+from warnings import warn
 
 import ast
 import traceback
@@ -66,10 +65,9 @@ from .redirect import redirect_stdout, redirect_stderr
 from .stream import QZMQStream
 from .helpers import *
 from .events import EventManager, available_events
+from IPython.core.error import InputRejected
 
-from pyqtgraph.Qt import QtCore
-QtCore.Signal = QtCore.pyqtSignal
-
+from qtpy import QtCore
 
 class QZMQHeartbeat(QtCore.QObject):
     """ Echo Messages on a ZMQ stream. """
@@ -143,7 +141,7 @@ class QZMQKernel(QtCore.QObject):
             digestmod=self.signature_schemes[self.config["signature_scheme"]])
         logging.info('New Kernel {}'.format(self.engine_id))
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def connect_kernel(self):
         # Heartbeat:
         self.ctx = zmq.Context()
@@ -194,7 +192,7 @@ class QZMQKernel(QtCore.QObject):
         self.builtin_trap = BuiltinTrap()
         setup_matplotlib(self)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def shutdown(self):
         self.iopub_stream.close()
         self.stdin_stream.close()

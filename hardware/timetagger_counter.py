@@ -21,9 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from TimeTagger import createTimeTagger, Counter
+import time
+
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
-import time
 
 
 class TimeTaggerCounter(Base, SlowCounterInterface):

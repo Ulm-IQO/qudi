@@ -19,18 +19,19 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
+from qtpy import QtCore
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
 from io import BytesIO
+
+from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
+
+
 def numpy_from_b(compressed_b):
     f = BytesIO(bytes(compressed_b))
     np_file = np.load(f)

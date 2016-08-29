@@ -21,8 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, \
-    Pulse_Sequence
+from logic.pulse_objects import Pulse_Block_Element
+from logic.pulse_objects import Pulse_Block
+from logic.pulse_objects import Pulse_Block_Ensemble
+from logic.pulse_objects import Pulse_Sequence
 import numpy as np
 
 

@@ -20,11 +20,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtCore, QtGui
+from qtpy import QtWidgets
 from pyqtgraph import SpinBox
 import numpy as np
 
-class FitSettingsWidget(QtGui.QWidget):
+
+class FitSettingsWidget(QtWidgets.QWidget):
 
     def __init__(self, parameters):
         """ Definition, configuration and initialisation of the optimizer settings GUI. Adds a row
@@ -32,14 +33,14 @@ class FitSettingsWidget(QtGui.QWidget):
         """
         super().__init__()
 
-        self._Layout = QtGui.QGridLayout(self)  # Creation of the grid Layout
-        self.custom_params_checkbox = QtGui.QCheckBox('Use custom values')
+        self._Layout = QtWidgets.QGridLayout(self)  # Creation of the grid Layout
+        self.custom_params_checkbox = QtWidgets.QCheckBox('Use custom values')
         self._Layout.addWidget(self.custom_params_checkbox, 0, 0)
-        self.valueLabel = QtGui.QLabel('Value')
-        self.minimumLabel = QtGui.QLabel('Min')
-        self.maximumLabel = QtGui.QLabel('Max')
-        self.varyLabel = QtGui.QLabel('Vary')
-        self.exprLabel = QtGui.QLabel('Expr')
+        self.valueLabel = QtWidgets.QLabel('Value')
+        self.minimumLabel = QtWidgets.QLabel('Min')
+        self.maximumLabel = QtWidgets.QLabel('Max')
+        self.varyLabel = QtWidgets.QLabel('Vary')
+        self.exprLabel = QtWidgets.QLabel('Expr')
         self._Layout.addWidget(self.valueLabel, 1, 1)
         self._Layout.addWidget(self.minimumLabel, 1, 2)
         self._Layout.addWidget(self.maximumLabel, 1, 3)
@@ -49,12 +50,12 @@ class FitSettingsWidget(QtGui.QWidget):
         self.widgets = {}
         n = 2
         for name, param in parameters.items():
-            self.widgets[name+"_label"] = parameterNameLabel = QtGui.QLabel(str(name))
+            self.widgets[name+"_label"] = parameterNameLabel = QtWidgets.QLabel(str(name))
             self.widgets[name+'_value'] = valueSpinbox =  SpinBox()
             self.widgets[name+'_min'] = minimumSpinbox = SpinBox()
             self.widgets[name+'_max'] = maximumSpinbox = SpinBox()
-            self.widgets[name+'_expr'] = expressionLineEdit = QtGui.QLineEdit()
-            self.widgets[name+'_vary'] = varyCheckbox = QtGui.QCheckBox()
+            self.widgets[name+'_expr'] = expressionLineEdit = QtWidgets.QLineEdit()
+            self.widgets[name+'_vary'] = varyCheckbox = QtWidgets.QCheckBox()
             valueSpinbox.setDecimals(3)
             valueSpinbox.setSingleStep(0.01)
             valueSpinbox.setMaximum(np.inf)
@@ -73,7 +74,7 @@ class FitSettingsWidget(QtGui.QWidget):
                 minimumSpinbox.setValue(param.max)
                 expressionLineEdit.setText(param.expr)
                 varyCheckbox.setChecked(param.vary)
-            
+
             self._Layout.addWidget(parameterNameLabel, n, 0)
             self._Layout.addWidget(valueSpinbox, n, 1)
             self._Layout.addWidget(minimumSpinbox, n, 2)

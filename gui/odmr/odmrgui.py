@@ -20,14 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
-import pyqtgraph.exporters
 import numpy as np
-import datetime
 import os
-from collections import OrderedDict
-
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -36,7 +34,7 @@ from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
 from core.util import units
 
-class ODMRMainWindow(QtGui.QMainWindow):
+class ODMRMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -47,7 +45,7 @@ class ODMRMainWindow(QtGui.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-class ODMRSettingDialog(QtGui.QDialog):
+class ODMRSettingDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -101,21 +99,21 @@ class ODMRGui(GUIBase):
         self._mw = ODMRMainWindow()
         self._sd = ODMRSettingDialog()
 
-        # Adjust range of scientific spinboxes above what is possible in QT Designer
+        # Adjust range of scientific spinboxes above what is possible in Qt Designer
         self._mw.frequency_DoubleSpinBox.setMaximum(100e9)
         self._mw.start_freq_DoubleSpinBox.setMaximum(100e9)
         self._mw.step_freq_DoubleSpinBox.setMaximum(100e9)
         self._mw.stop_freq_DoubleSpinBox.setMaximum(100e9)
 
         # Add save file tag input box
-        self._mw.save_tag_LineEdit = QtGui.QLineEdit(self._mw)
+        self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
                                               'added to the filename.')
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
 
         # add a clear button to clear the ODMR plots:
-        self._mw.clear_odmr_PushButton = QtGui.QPushButton(self._mw)
+        self._mw.clear_odmr_PushButton = QtWidgets.QPushButton(self._mw)
 
         self._mw.clear_odmr_PushButton.setText('Clear ODMR')
         self._mw.clear_odmr_PushButton.setToolTip('Clear the plots of the\n'
@@ -274,7 +272,7 @@ class ODMRGui(GUIBase):
         self._mw.action_Settings.triggered.connect(self.menu_settings)
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.reject_settings)
-        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
         self._odmr_logic.sigOdmrFinished.connect(self.odmr_stopped)
@@ -304,7 +302,7 @@ class ODMRGui(GUIBase):
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

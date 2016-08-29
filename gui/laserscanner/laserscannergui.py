@@ -19,8 +19,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-#from PyQt4 import QtCore, QtGui
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtGui
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
 import numpy as np
 import os
@@ -31,14 +33,14 @@ from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 
 
-class VoltScanMainWindow(QtGui.QMainWindow):
+class VoltScanMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_odmrgui.ui')
 
         # Load it
-        super(ODMRMainWindow, self).__init__()
+        super(VoltScanMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
         self.show()
 
@@ -214,7 +216,7 @@ class VoltScanGui(GUIBase):
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.reject_settings)
-        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
         # self._odmr_logic.sigOdmrFinished.connect(self._mw.idle_StateWidget.click)
@@ -233,7 +235,7 @@ class VoltScanGui(GUIBase):
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

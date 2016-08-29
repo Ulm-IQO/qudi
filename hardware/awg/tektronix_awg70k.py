@@ -24,7 +24,6 @@ import os
 import time
 from socket import socket, AF_INET, SOCK_STREAM
 from ftplib import FTP
-import numpy as np
 from collections import OrderedDict
 from fnmatch import fnmatch
 

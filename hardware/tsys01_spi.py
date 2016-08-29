@@ -22,14 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.process_interface import ProcessInterface
-from collections import OrderedDict
 from core.util.mutex import Mutex
-
-from pyqtgraph.Qt import QtCore
 
 import spidev
 import struct
 import time
+
 
 class TSYS01SPI(Base, ProcessInterface):
     _modclass = 'TSYS01'

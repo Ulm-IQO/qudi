@@ -22,14 +22,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import numpy as np
 import pyqtgraph as pg
 import os
 
 
-class PIDMainWindow(QtGui.QMainWindow):
+class PIDMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self):
@@ -187,7 +188,7 @@ class PIDGui(GUIBase):
     def show(self):
         """Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

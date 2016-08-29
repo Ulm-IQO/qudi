@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import pyqtgraph as pg
-import numpy as np
+
 
 class ColorBar(pg.GraphicsObject):
     """ Create a ColorBar according to a previously defined color map.
