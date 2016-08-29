@@ -1210,6 +1210,7 @@ class Manager(QtCore.QObject):
         except:
             logger.exception('Failed to remove module status file.')
 
+    @QtCore.Slot()
     def quit(self):
         """Nicely request that all modules shut down."""
         for mbase in ['gui', 'logic', 'hardware']:
