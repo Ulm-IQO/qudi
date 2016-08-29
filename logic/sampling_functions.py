@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from collections import OrderedDict
 
+
 class SamplingFunctions():
     """ Collection of mathematical functions used for sampling of the pulse
         sequences.

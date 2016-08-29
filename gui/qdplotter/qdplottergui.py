@@ -20,17 +20,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
-import pyqtgraph as pg
 import os
-
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import uic
 
 from gui.guibase import GUIBase
 
 
-class QdplotMainWindow(QtGui.QMainWindow):
+class QdplotMainWindow(QtWidgets.QMainWindow):
 
     """ Create the Main Window based on the *.ui file. """
 
@@ -103,10 +101,10 @@ class QdplotterGui(GUIBase):
 
         #####################
         # Setting default parameters
-        self._mw.domain_min_DoubleSpinBox.setValue( self._qdplot_logic.get_domain()[0] )
-        self._mw.domain_max_DoubleSpinBox.setValue( self._qdplot_logic.get_domain()[1] )
-        self._mw.range_min_DoubleSpinBox.setValue( self._qdplot_logic.get_range()[0] )
-        self._mw.range_max_DoubleSpinBox.setValue( self._qdplot_logic.get_range()[1] )
+        self._mw.domain_min_DoubleSpinBox.setValue(self._qdplot_logic.get_domain()[0])
+        self._mw.domain_max_DoubleSpinBox.setValue(self._qdplot_logic.get_domain()[1])
+        self._mw.range_min_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[0])
+        self._mw.range_max_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[1])
 
         self._mw.horizontal_label_lineEdit.setText(self._qdplot_logic.h_label)
         self._mw.horizontal_units_lineEdit.setText(self._qdplot_logic.h_units)
@@ -136,7 +134,7 @@ class QdplotterGui(GUIBase):
     def show(self):
         """Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

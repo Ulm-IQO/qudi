@@ -21,11 +21,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import logging
+from qtpy import QtCore
+import sys
+
 from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
-from pyqtgraph.Qt import QtCore
 from core.FysomAdapter import Fysom
-import sys
+
 
 class TaskResult(QtCore.QObject):
     def __init__(self, **kwargs):
@@ -267,7 +269,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 self.log('Cannot start task {} as pre/post task {} is not in a state to run.'.format(self.name, task), msgType='error')
                 return False
         for task in self.pauseTasks:
-            if not (isinstance(self.pauseTasks[task], InterruptibleTask)
+            if not (isinstance(self.pauseTasks[task], InterruptableTask)
                     and (
                         self.pauseTasks[task].can('pause')
                         or self.pauseTasks[task].isstate('stopped')

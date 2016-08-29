@@ -20,13 +20,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
+from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
 
 
 class QdplotLogic(GenericLogic):

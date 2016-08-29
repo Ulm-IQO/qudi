@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 logger = logging.getLogger(__name__)
 
-from pyqtgraph.Qt import QtCore
+from qtpy.QtCore import QObject
 from urllib.parse import urlparse
 from rpyc.utils.server import ThreadedServer
 from rpyc.utils.authenticators import SSLAuthenticator
@@ -33,7 +33,7 @@ import rpyc
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
-class RemoteObjectManager(QtCore.QObject):
+class RemoteObjectManager(QObject):
     """ This shares modules with other computers and is resonsible
         for obtaining modules shared by other computer.
     """
@@ -176,7 +176,7 @@ class RemoteObjectManager(QtCore.QObject):
         return module.module
 
 
-class RPyCServer(QtCore.QObject):
+class RPyCServer(QObject):
     """ Contains a RPyC server that serves modules to remote computers. Runs in a QThread.
     """
     def __init__(self, serviceClass, host, port, certfile=None, keyfile=None):

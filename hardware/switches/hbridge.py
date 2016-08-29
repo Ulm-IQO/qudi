@@ -25,6 +25,7 @@ from core.base import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
 
+
 class HBridge(Base, SwitchInterface):
     """ Methods to control slow laser switching devices.
     """

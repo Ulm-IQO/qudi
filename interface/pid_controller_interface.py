@@ -18,8 +18,9 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from core.util.customexceptions import *
-from enum import Enum
+
+from core.util.customexceptions import function_signature
+from core.util.customexceptions import InterfaceImplementationError
 
 class PIDControllerInterface:
     _modtype = 'PIDControllerInterface'
@@ -51,7 +52,7 @@ class PIDControllerInterface:
 
     def get_manual_value(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-        
+
     def set_manual_value(self, manualvalue):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 
@@ -63,7 +64,7 @@ class PIDControllerInterface:
 
     def get_control_limits(self):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
-    
+
     def set_control_limits(self, limits):
         raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
 

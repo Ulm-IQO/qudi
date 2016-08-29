@@ -19,50 +19,43 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
+from qtpy.QtCore import QObject
+from qtpy.QtWidgets import QApplication
+from qtpy.QtGui import QIcon
+from qtpy.QtCore import QSize
 
-class Gui(QtCore.QObject):
+
+class Gui(QObject):
 
     def __init__(self):
         super().__init__()
-        QtGui.QApplication.instance().setQuitOnLastWindowClosed(False)
-
-    def makePyQtGraphQApplication(self):
-        # Every Qt application must have ONE AND ONLY ONE QApplication object. The 
-        # command mkQpp makes a QApplication object, which is a class to manage the GUI
-        # application's control flow, events and main settings:
-        return pg.mkQApp()
+        QApplication.instance().setQuitOnLastWindowClosed(False)
 
     def setAppIcon(self):
         iconpath = 'artwork/logo/logo-qudi-'
-        self.appIcon = QtGui.QIcon()
-        self.appIcon.addFile('{0}16x16.png'.format(iconpath), QtCore.QSize(16,16))
-        self.appIcon.addFile('{0}24x24.png'.format(iconpath), QtCore.QSize(24,24))
-        self.appIcon.addFile('{0}32x32.png'.format(iconpath), QtCore.QSize(32,32))
-        self.appIcon.addFile('{0}48x48.png'.format(iconpath), QtCore.QSize(48,48))
-        self.appIcon.addFile('{0}256x256.png'.format(iconpath), QtCore.QSize(256,256))
-        QtGui.QApplication.instance().setWindowIcon(self.appIcon)
+        self.appIcon = QIcon()
+        self.appIcon.addFile('{0}16x16.png'.format(iconpath), QSize(16, 16))
+        self.appIcon.addFile('{0}24x24.png'.format(iconpath), QSize(24, 24))
+        self.appIcon.addFile('{0}32x32.png'.format(iconpath), QSize(32, 32))
+        self.appIcon.addFile('{0}48x48.png'.format(iconpath), QSize(48, 48))
+        self.appIcon.addFile('{0}256x256.png'.format(iconpath),
+                             QSize(256, 256))
+        QApplication.instance().setWindowIcon(self.appIcon)
 
     def setTheme(self):
         # Make icons work on non-X11 platforms, set custom theme
-        #if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
+        # if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
         #
         # To enable the use of custom action icons, for now the above if statement has been
-        # removed and the QT theme is being set to our artwork/icons folder for all OSs.
-        themepaths = pg.Qt.QtGui.QIcon.themeSearchPaths()
+        # removed and the QT theme is being set to our artwork/icons folder for
+        # all OSs.
+        themepaths = QIcon.themeSearchPaths()
         themepaths.append('artwork/icons')
-        pg.Qt.QtGui.QIcon.setThemeSearchPaths(themepaths)
-        pg.Qt.QtGui.QIcon.setThemeName('qudiTheme')
+        QIcon.setThemeSearchPaths(themepaths)
+        QIcon.setThemeName('qudiTheme')
 
     def setStyleSheet(self, stylesheet):
-        QtGui.QApplication.instance().setStyleSheet(stylesheet)
-        testwidget = QtGui.QWidget()
-        testwidget.ensurePolished()
-        bgcolor = testwidget.palette().color(QtGui.QPalette.Normal, testwidget.backgroundRole())
-        # set manually the background color in hex code according to our color scheme: 
-        pg.setConfigOption('background', bgcolor)   
+        QApplication.instance().setStyleSheet(stylesheet)
 
     def closeWindows(self):
-        QtGui.QApplication.instance().closeAllWindows()
-
+        QApplication.instance().closeAllWindows()

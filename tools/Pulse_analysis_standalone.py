@@ -23,11 +23,12 @@ import numpy as np
 from scipy import ndimage
 from matplotlib.pyplot import plot
 
+
 class PulseAnalysis():
-    
+
     def __init__(self):
         self.is_counter_gated = False
-        # std. deviation of the gaussian filter. 
+        # std. deviation of the gaussian filter.
         #Too small and the filtered data is too noisy to analyze; too big and the pulse edges are filtered out...
         self.conv_std_dev = 5
         # set windows for signal and normalization of the laser pulses
@@ -46,7 +47,7 @@ class PulseAnalysis():
     def _gated_extraction(self, count_data):
         """ This method detects the rising flank in the gated timetrace data and extracts just the laser pulses
           @param 2D numpy.ndarray count_data: the raw timetrace data from a gated fast counter (dimensions 0: gate number, 1: time bin)
-          @return  2D numpy.ndarray: The extracted laser pulses of the timetrace (dimensions 0: laser number, 1: time bin) 
+          @return  2D numpy.ndarray: The extracted laser pulses of the timetrace (dimensions 0: laser number, 1: time bin)
         """
         # sum up all gated timetraces to ease flank detection
         timetrace_sum = np.sum(count_data, 0)
@@ -59,12 +60,12 @@ class PulseAnalysis():
         laser_arr = count_data[:, rising_ind:falling_ind]
         return laser_arr
 
-    
+
     def _ungated_extraction(self, count_data, num_of_lasers):
         """ This method detects the laser pulses in the ungated timetrace data and extracts them
           @param 1D numpy.ndarray count_data: the raw timetrace data from an ungated fast counter
           @param int num_of_lasers: The total number of laser pulses inside the pulse sequence
-          @return 2D numpy.ndarray: The extracted laser pulses of the timetrace (dimensions 0: laser number, 1: time bin) 
+          @return 2D numpy.ndarray: The extracted laser pulses of the timetrace (dimensions 0: laser number, 1: time bin)
         """
         # apply gaussian filter to remove noise and compute the gradient of the timetrace
         conv_deriv = self._convolve_derive(count_data, self.conv_std_dev)
@@ -75,7 +76,7 @@ class PulseAnalysis():
         for i in range(num_of_lasers):
             # save the index of the absolute maximum of the derived timetrace as rising flank position
             rising_ind[i] = np.argmax(conv_deriv)
-            # set this position and the sourrounding of the saved flank to 0 to avoid a second detection 
+            # set this position and the sourrounding of the saved flank to 0 to avoid a second detection
             if rising_ind[i] < 2*self.conv_std_dev:
                 del_ind_start = 0
             else:
@@ -85,7 +86,7 @@ class PulseAnalysis():
             else:
                 del_ind_stop = rising_ind[i] + 2*self.conv_std_dev
             conv_deriv[del_ind_start:del_ind_stop] = 0
-            
+
             # save the index of the absolute minimum of the derived timetrace as falling flank position
             falling_ind[i] = np.argmin(conv_deriv)
             # set this position and the sourrounding of the saved flank to 0 to avoid a second detection
@@ -98,7 +99,7 @@ class PulseAnalysis():
             else:
                 del_ind_stop = falling_ind[i] + 2*self.conv_std_dev
             conv_deriv[del_ind_start:del_ind_stop] = 0
-        # sort all indices of rising and falling flanks 
+        # sort all indices of rising and falling flanks
         rising_ind.sort()
         falling_ind.sort()
         # find the maximum laser length to use as size for the laser array
@@ -113,22 +114,22 @@ class PulseAnalysis():
             else:
                 laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
         return laser_arr
-        
-    
-    def _convolve_derive(self, data, std_dev):    
-        """ This method smoothes the input data by applying a gaussian filter (convolution) with 
+
+
+    def _convolve_derive(self, data, std_dev):
+        """ This method smoothes the input data by applying a gaussian filter (convolution) with
             specified standard deviation. The derivative of the smoothed data is computed afterwards and returned.
-            If the input data is some kind of rectangular signal containing high frequency noise, 
-            the output data will show sharp peaks corresponding to the rising and falling flanks of the input signal. 
+            If the input data is some kind of rectangular signal containing high frequency noise,
+            the output data will show sharp peaks corresponding to the rising and falling flanks of the input signal.
           @param 1D numpy.ndarray timetrace: the raw data to be smoothed and derived
           @param float std_dev: standard deviation of the gaussian filter to be applied for smoothing
-          @return 1D numpy.ndarray: The smoothed and derived data 
+          @return 1D numpy.ndarray: The smoothed and derived data
         """
         conv = ndimage.filters.gaussian_filter1d(data, std_dev)
         conv_deriv = np.gradient(conv)
         return conv_deriv
 
-    
+
     def analyze_data(self, raw_data):
         """ This method captures the fast counter data and extracts the laser pulses.
           @param int num_of_lasers: The total number of laser pulses inside the pulse sequence
@@ -140,7 +141,7 @@ class PulseAnalysis():
             self.laser_data = self._gated_extraction(raw_data)
         else:
             self.laser_data = self._ungated_extraction(raw_data, self.number_of_lasers)
-        
+
         #analyze data
         norm_mean = np.zeros(self.number_of_lasers, dtype=float)
         signal_mean = np.zeros(self.number_of_lasers, dtype=float)
@@ -159,7 +160,7 @@ class PulseAnalysis():
             self.signal_vector[i] = 1. + (signal_mean[i]/norm_mean[i])
         return
 
-if __name__ == "__main__":  
+if __name__ == "__main__":
     tool = PulseAnalysis()
     data = np.loadtxt('FastComTec_demo_timetrace.asc')
     tool.analyze_data(data)

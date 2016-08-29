@@ -19,13 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from collections import OrderedDict
-from interface.simple_data_interface import SimpleDataInterface
 import numpy as np
 import time
+
+from core.base import Base
+from interface.simple_data_interface import SimpleDataInterface
+
 
 class SimpleDummy(Base, SimpleDataInterface):
     """

@@ -19,13 +19,13 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from collections import OrderedDict
-from pyqtgraph.Qt import QtCore
-import pyqtgraph.configfile as configfile
-import numpy as np
 import os
+from collections import OrderedDict
+from qtpy import QtCore
+import pyqtgraph.configfile as configfile
+
+from logic.generic_logic import GenericLogic
+
 
 class TreeItem:
     def __init__(self, data, parent=None):

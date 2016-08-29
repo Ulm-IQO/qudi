@@ -21,15 +21,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
-import numpy as np
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import time
 import os
 
-class LaserScanWindow(QtGui.QMainWindow):
+class LaserScanWindow(QtWidgets.QMainWindow):
     def __init__(self):
         """ Create the laser scanner window.
         """
@@ -169,7 +169,7 @@ class LaserScanningGui(GUIBase):
     def show(self):
         """ Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
