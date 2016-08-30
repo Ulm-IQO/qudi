@@ -1,26 +1,38 @@
-language: python
-python:
-  # We don't actually use the Travis Python, but this keeps it organized.
-  - "3.4"
-  - "3.5"
-sudo: required
-dist: trusty
+language: c
+
 env:
-  - DISPLAY=:99.0
+  global:
+    - SETUP_XVFB=True
+    - CONDA_CHANNELS="qttesting"
+    - CONDA_DEPENDENCIES="backports_abc cycler decorator jedi jinja2 jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
+    - PIP_DEPENDENCIES="backports-abc fysom gitpython hdf5storage lmfit pydaqmx pyqtgraph pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap spidev i2cdev"
+  matrix:
+    - PYTHON_VERSION=3.5 USE_QT_API=PyQt4
+    - PYTHON_VERSION=3.5 USE_QT_API=PyQt5
+
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y python3-pip python3-wheel python3-setuptools python3-pyqt4 python3-numpy python3-scipy python3-h5py python3-tables python3-zmq python3-sip python3-tornado python3-pygments python3-openssl build-essential devscripts
+  # Test environments for different Qt bindings
+  - if [[ "$USE_QT_API" == "PyQt5" ]]; then
+      export CONDA_DEPENDENCIES='qt=5.* pyqt=5.* '$CONDA_DEPENDENCIES;
+    elif [[ "$USE_QT_API" == "PyQt4" ]]; then
+      export CONDA_DEPENDENCIES='qt=4.* pyqt=4.* '$CONDA_DEPENDENCIES;
+    elif [[ "$USE_QT_API" == "PySide" ]]; then
+      export CONDA_DEPENDENCIES='qt=4.* pyside '$CONDA_DEPENDENCIES;
+    fi
 
 install:
-  - sudo pip3 install -r tools/requirements.txt
+  - git clone git://github.com/astropy/ci-helpers.git
+  - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
   - python tools/qudikernel.py install
+
 before_script:
-  - "sh -e /etc/init.d/xvfb start"
-  - sleep 3 # give xvfb some time to start
   - "python start.py &"
+  - sleep 5
+
 script:
   - jupyter-nbconvert --execute notebooks/debug.ipynb
   - jupyter-nbconvert --execute notebooks/matplotlib.ipynb
+
 after_script:
   - jupyter-nbconvert --execute notebooks/shutdown.ipynb
   - sleep 10
