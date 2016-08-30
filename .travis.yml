@@ -15,13 +15,11 @@ env:
 
 before_install:
   # Test environments for different Qt bindings
-  - if [[ "$USE_QT_API" == "PyQt5" ]]; then
-      export CONDA_DEPENDENCIES='qt=5.* pyqt=5.* '$CONDA_DEPENDENCIES;
-    elif [[ "$USE_QT_API" == "PyQt4" ]]; then
-      export CONDA_DEPENDENCIES='qt=4.* pyqt=4.* '$CONDA_DEPENDENCIES;
-    elif [[ "$USE_QT_API" == "PySide" ]]; then
-      export CONDA_DEPENDENCIES='qt=4.* pyside '$CONDA_DEPENDENCIES;
+  - if [[ "$USE_QT_API" == "PyQt5" ]]; then export CONDA_DEPENDENCIES='qt=5.* pyqt=5.* '$CONDA_DEPENDENCIES;
+    elif [[ "$USE_QT_API" == "PyQt4" ]]; then export CONDA_DEPENDENCIES='qt=4.* pyqt=4.* '$CONDA_DEPENDENCIES;
+    elif [[ "$USE_QT_API" == "PySide" ]]; then export CONDA_DEPENDENCIES='qt=4.* pyside '$CONDA_DEPENDENCIES;
     fi
+  - echo "$CONDA_DEPENDENCIES"
   - git clone git://github.com/astropy/ci-helpers.git
   - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
 
