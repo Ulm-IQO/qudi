@@ -24,7 +24,7 @@ before_install:
   - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
   - if [[ "$USE_QT_API" == "PyQt5" ]]; then
     git clone https://github.com/pyqtgraph/pyqtgraph.git;
-    python pyqtgraph/setup.py install;
+    (cd pyqtgraph; python setup.py install;)
     fi
 
 install:
@@ -32,7 +32,7 @@ install:
 
 before_script:
   - "python start.py &"
-  - sleep 5
+  - sleep 10
 
 script:
   - jupyter-nbconvert --execute notebooks/debug.ipynb
