@@ -17,7 +17,7 @@ environment:
     # Qt4
     - PYTHON_VERSION: "3.4"
       CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyqtgraph pyzmq scipy sip six traitlets qt=4.* pyqt=4.*"
-      PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyqtgraph pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap spidev i2cdev"
+      PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
     - PYTHON_VERSION: "3.5"
       CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyqtgraph pyzmq scipy sip six traitlets qt=4.* pyqt=4.*"
       PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
@@ -45,7 +45,7 @@ install:
 build: false
 
 test_script:
-  - "%CMD_IN_ENV% START /B python start.py"
+  - "START /B %CMD_IN_ENV% python start.py"
   - "TIMEOUT /t 10"
   - "%CMD_IN_ENV% jupyter-nbconvert --execute notebooks\\matplotlib.ipynb"
   - "%CMD_IN_ENV% jupyter-nbconvert --execute notebooks\\shutdown.ipynb"
