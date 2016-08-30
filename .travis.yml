@@ -1,11 +1,11 @@
-language: c
+language: python
 
 env:
   global:
     - SETUP_XVFB=True
     - CONDA_CHANNELS="qttesting"
-    - CONDA_DEPENDENCIES="backports_abc cycler decorator jedi jinja2 jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
-    - PIP_DEPENDENCIES="backports-abc fysom gitpython hdf5storage lmfit pydaqmx pyqtgraph pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap spidev i2cdev"
+    - CONDA_DEPENDENCIES="jedi jinja2 jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
+    - PIP_DEPENDENCIES="fysom gitpython hdf5storage lmfit pydaqmx pyqtgraph pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap spidev i2cdev"
   matrix:
     - PYTHON_VERSION=3.5 USE_QT_API=PyQt4
     - PYTHON_VERSION=3.5 USE_QT_API=PyQt5
@@ -19,10 +19,10 @@ before_install:
     elif [[ "$USE_QT_API" == "PySide" ]]; then
       export CONDA_DEPENDENCIES='qt=4.* pyside '$CONDA_DEPENDENCIES;
     fi
-
-install:
   - git clone git://github.com/astropy/ci-helpers.git
   - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
+
+install:
   - python tools/qudikernel.py install
 
 before_script:
@@ -38,4 +38,7 @@ after_script:
   - sleep 10
   - echo "======== QuDi Logfile ========"
   - cat qudi.log
-  - if [ -e crash.log ]; then echo "======== QuDi Crashfile ========"; cat crash.log; fi
+  - if [ -e crash.log ]; then
+      echo "======== QuDi Crashfile ========";
+      cat crash.log;
+    fi
