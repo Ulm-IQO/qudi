@@ -6,7 +6,10 @@ env:
     - CONDA_CHANNELS="qttesting"
     - CONDA_DEPENDENCIES="jedi jinja2 jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
     - PIP_DEPENDENCIES="fysom gitpython hdf5storage lmfit pydaqmx pyqtgraph pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap spidev i2cdev"
+
   matrix:
+    - PYTHON_VERSION=3.4 USE_QT_API=PyQt4
+    - PYTHON_VERSION=3.4 USE_QT_API=PyQt5
     - PYTHON_VERSION=3.5 USE_QT_API=PyQt4
     - PYTHON_VERSION=3.5 USE_QT_API=PyQt5
 
