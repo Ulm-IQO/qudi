@@ -30,7 +30,7 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-
+from core.util import units
 
 class DailyLogHandler(logging.FileHandler):
     """
