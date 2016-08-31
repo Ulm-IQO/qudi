@@ -34,6 +34,8 @@ from gui.colordefs import ColorScaleInferno
 from core.util.units import get_unit_prefix_dict
 from tools.scientific_spinbox import ScienSpinBox
 from tools.scientific_spinbox import ScienDSpinBox
+import pyqtgraph.exporters
+
 
 class MagnetMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -239,7 +241,7 @@ class MagnetGui(GUIBase):
 
 
         # Add save file tag input box
-        self._mw.alignment_2d_nametag_LineEdit = QtGui.QLineEdit(self._mw)
+        self._mw.alignment_2d_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
         self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag which will be\n'
                                                           'added to the filename.')
@@ -393,19 +395,19 @@ class MagnetGui(GUIBase):
         @return:
         """
 
-        self._mw.alignment_2d_ButtonGroup = QtGui.QButtonGroup(self._mw)
+        self._mw.alignment_2d_ButtonGroup = QtWidgets.QButtonGroup(self._mw)
 
-        self._mw.meas_type_fluorescence_RadioButton = QtGui.QRadioButton(parent=self._mw)
+        self._mw.meas_type_fluorescence_RadioButton = QtWidgets.QRadioButton(parent=self._mw)
         self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_fluorescence_RadioButton)
         self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_fluorescence_RadioButton)
         self._mw.meas_type_fluorescence_RadioButton.setText('Fluorescence')
 
-        self._mw.meas_type_odmr_RadioButton = QtGui.QRadioButton(parent=self._mw)
+        self._mw.meas_type_odmr_RadioButton = QtWidgets.QRadioButton(parent=self._mw)
         self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_odmr_RadioButton)
         self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_odmr_RadioButton)
         self._mw.meas_type_odmr_RadioButton.setText('ODMR')
 
-        self._mw.meas_type_nuclear_spin_RadioButton = QtGui.QRadioButton(parent=self._mw)
+        self._mw.meas_type_nuclear_spin_RadioButton = QtWidgets.QRadioButton(parent=self._mw)
         self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_nuclear_spin_RadioButton)
         self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_nuclear_spin_RadioButton)
         self._mw.meas_type_nuclear_spin_RadioButton.setText('Nuclear Spin')
@@ -1228,7 +1230,7 @@ class MagnetGui(GUIBase):
         else:
             filename = os.path.join(filepath, '{0}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
-        exporter_graph = pg.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
+        exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
         #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
         exporter_graph.export(filename  + '.svg')
 
