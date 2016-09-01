@@ -6,14 +6,14 @@ but has utility in a far broader range of experimental contexts.
 ## Features
   * A modular and extendable architecture
   * Access to devices on other computers over network
-  * XYZ piezo or galvo control for confocal flourescence microscopy via National Instruments X-Series devices
-  * Position optimization for flourescent spots
-  * Tracking of flourescent spots
+  * XYZ piezo or galvo control for confocal fluorescence microscopy via National Instruments X-Series devices
+  * Position optimization for fluorescent spots
+  * Tracking of fluorescent spots
   * Tektronix AWG 5000 7000 and 70000 support for pulsed microwave experiments
   * Anritsu MG37022A and MG3696B, R&S SMIQ and SMR support for ODMR measurements
   * Getting spectra from the WinSpec32 spectroscopy software
   * Thorlabs APT motor control
-  * Magnetic field alignment for NV- in diamond via flourescence, ODMR and nuclear spin
+  * Magnetic field alignment for NV- in diamond via fluorescence, ODMR and nuclear spin
   * etc.
 
 ## Citation
