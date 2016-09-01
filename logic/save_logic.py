@@ -30,7 +30,7 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-
+from core.util import units
 
 class DailyLogHandler(logging.FileHandler):
     """
@@ -601,7 +601,10 @@ class SaveLogic(GenericLogic):
 
         for row in trace_data:
             for entry in row:
-                opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
+                if units.is_number(entry):
+                    opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
+                else:
+                    opened_file.write(str(entry).encode('utf-8'))
             opened_file.write('\n')
 
         if close_file_flag:

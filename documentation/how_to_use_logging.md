@@ -10,7 +10,7 @@ developer, especially if the program grows in size and complexity.
 
 QuDi implements a core logger, which will carry together all child logger (from
 the QuDi modules and from external module, who are using the logging module like
-mentioned in the section [Logger in external file](@ref log_external)). The main
+mentioned in the section [Logger in external file](#log_external)). The main
 advantage of this procedure is that third party modules, which
 are using the Standard Python Logger, are transferred to the core logger and
 are logged too. This includes also self defined modules, which can be imported
@@ -27,7 +27,7 @@ The print() function in python is only a better option whenever the main
 application lies in **displaying a help** statement, which might often be the
 case in command line applications and sometimes for on the fly scripts.
 
-There are some arguments, why logging is better than print [[1](@ref lit_1)]:
+There are some arguments, why logging is better than print [[1](#lit_1)]:
 
 - Events logged in included modules are automatically accessible via the root
   logger to your application’s logging stream, unless you filter them out.
@@ -38,7 +38,7 @@ There are some arguments, why logging is better than print [[1](@ref lit_1)]:
   logging.Logger.setLevel() or disabled by setting the attribute
   logging.Logger.disabled to True.
 
-## Logger in external file {#log_external}
+## <a name="log_external"> </a>Logger in external file
 
 If you want to use the logging module in external file, which are not collected
 to QuDi, then it is pretty easy to do that! Just add these following three lines
@@ -91,34 +91,38 @@ access the logger of the specific module. If you take for instance the
 CounterLogic, situated in the file logic/counter_logic.py, then you can use the
 logger like
 
-    #(...some import stuff...)
+```python
+# (...some import stuff...)
 
-    class CounterLogic(GenericLogic):
+class CounterLogic(GenericLogic):
 
-        # (...) some code
-        def __init__(self, config, **kwargs):
-            """ Create CounterLogic object with connectors.
+    # (...) some code
+    def __init__(self, config, **kwargs):
+        """ Create CounterLogic object with connectors.
 
-            @param dict config: module configuration
-            @param dict kwargs: optional parameters
-            """
-            super().__init__(config=config, **kwargs)
+        @param dict config: module configuration
+        @param dict kwargs: optional parameters
+        """
+        super().__init__(config=config, **kwargs)
 
-        def my_test_method(self):
+    def my_test_method(self):
 
-            # some log methods.
+        # some log methods.
 
-            self.log.debug('That is an unneeded debug message.')
-            self.log.info('That is an info message.')
-            self.log.warning('That is a warning!')
+        self.log.debug('That is an unneeded debug message.')
+        self.log.info('That is an info message.')
+        self.log.warning('That is a warning!')
+```
 
 ## Location of the log file
 
 The log file will be situated either in the root directory of QuDi or in the
 current directory where the external module is loaded. With
 
-    import os
-    print(os.getcwd())
+```python
+import os
+print(os.getcwd())
+```
 
 you can find out the current directory, where the file is executed. There the
 log file should be situated.
@@ -129,13 +133,13 @@ log file should be situated.
 Unlike the build-in print method python, which accepts arbitrary input arguments,
 the log methods only accept one argument. The input argument will be converted
 to a string by default.
+```python
+import logging
+logger = logging.getLogger(__name__)
 
-    import logging
-    logger = logging.getLogger(__name__)
-
-    import os
-    logger.info(os)
-
+import os
+logger.info(os)
+```
     >>> <module 'os' from '...\\Anaconda3\\lib\\os.py'>
 
 
@@ -161,6 +165,6 @@ meltdown,... . In many other cases the error level will serve well.
 
 ## Further information concerning the logging package
 
-[1]: http://docs.python-guide.org/en/latest/writing/logging/#or-print {#lit_1}
-[2]: https://docs.python.org/3/library/logging.html {#lit_2}
-[3]: https://docs.python.org/3/howto/logging.html   {#lit_3}
+<a name="lit_1">[1]</a>: http://docs.python-guide.org/en/latest/writing/logging/#or-print <br />
+<a name="lit_2">[2]</a>: https://docs.python.org/3/library/logging.html <br />
+<a name="lit_3"></a>[3]: https://docs.python.org/3/howto/logging.html <br />

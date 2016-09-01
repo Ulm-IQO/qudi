@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1216</width>
-    <height>665</height>
+    <width>984</width>
+    <height>575</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,983 +24,932 @@
        <string>2D Alignment</string>
       </property>
       <widget class="QWidget" name="dockWidgetContents_3">
-       <layout class="QGridLayout" name="gridLayout_8">
-        <item row="4" column="0">
-         <layout class="QGridLayout" name="gridLayout_9">
-          <item row="4" column="3" colspan="2">
-           <widget class="QDoubleSpinBox" name="alignment_2d_cb_min_centiles_DSpinBox">
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="5" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_min_centiles_DSpinBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>1000000000.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_high_centiles_DSpinBox">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+          <property name="value">
+           <double>100.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" rowspan="9">
+         <widget class="PlotWidget" name="alignment_2d_GraphicsView">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3" rowspan="9">
+         <layout class="QGridLayout" name="gridLayout_22">
+          <item row="0" column="0">
+           <widget class="QTabWidget" name="tabWidget_3">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <sizepolicy hsizetype="Fixed" vsizetype="MinimumExpanding">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
             <property name="maximumSize">
              <size>
-              <width>80</width>
+              <width>220</width>
               <height>16777215</height>
              </size>
             </property>
-            <property name="layoutDirection">
-             <enum>Qt::LeftToRight</enum>
+            <property name="tabShape">
+             <enum>QTabWidget::Rounded</enum>
             </property>
-            <property name="maximum">
-             <double>1000000000.000000000000000</double>
+            <property name="currentIndex">
+             <number>2</number>
             </property>
-            <property name="singleStep">
-             <double>100.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="3" colspan="2">
-           <widget class="QRadioButton" name="alignment_2d_centiles_RadioButton">
-            <property name="text">
-             <string>Centiles</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item row="7" column="1">
-           <widget class="QLineEdit" name="alignment_2d_nametag_LineEdit"/>
-          </item>
-          <item row="3" column="4">
-           <widget class="QDoubleSpinBox" name="alignment_2d_cb_low_centiles_DSpinBox">
-            <property name="maximumSize">
-             <size>
-              <width>50</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="decimals">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <double>100.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>1.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3" colspan="2">
-           <widget class="QDoubleSpinBox" name="alignment_2d_cb_max_centiles_DSpinBox">
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="maximum">
-             <double>2100000000.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>100.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>1000.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="3" colspan="2">
-           <widget class="PlotWidget" name="alignment_2d_cb_GraphicsView"/>
-          </item>
-          <item row="7" column="2">
-           <widget class="QPushButton" name="alignment_2d_save_PushButton">
-            <property name="text">
-             <string>Save Data</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="4">
-           <widget class="QDoubleSpinBox" name="alignment_2d_cb_high_centiles_DSpinBox">
-            <property name="maximumSize">
-             <size>
-              <width>50</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="decimals">
-             <number>1</number>
-            </property>
-            <property name="singleStep">
-             <double>1.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>100.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="5" rowspan="5">
-           <layout class="QGridLayout" name="gridLayout_22">
-            <item row="0" column="0">
-             <widget class="QTabWidget" name="tabWidget_3">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="MinimumExpanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>250</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="tabShape">
-               <enum>QTabWidget::Rounded</enum>
-              </property>
-              <property name="currentIndex">
-               <number>0</number>
-              </property>
-              <property name="documentMode">
-               <bool>false</bool>
-              </property>
-              <widget class="QWidget" name="tab_4">
-               <attribute name="title">
-                <string>Axes</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_25">
-                <item row="0" column="0">
-                 <widget class="QGroupBox" name="groupBox">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="title">
-                   <string>Axis 0 Configuration</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_12">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label">
-                     <property name="text">
-                      <string>Axis Name:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="align_2d_axes0_range_Label">
-                     <property name="text">
-                      <string>Range:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="align_2d_axes0_step_Label">
-                     <property name="text">
-                      <string>Step:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QComboBox" name="align_2d_axes0_name_ComboBox"/>
-                   </item>
-                   <item row="3" column="0">
-                    <widget class="QCheckBox" name="align_2d_axis0_set_vel_CheckBox">
-                     <property name="text">
-                      <string>Set Velocity?</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes0_vel_DSpinBox"/>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes0_range_DSpinBox"/>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes0_step_DSpinBox"/>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QGroupBox" name="groupBox_2">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="title">
-                   <string>Axis 1 Configuration</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_14">
-                   <item row="0" column="1">
-                    <widget class="QComboBox" name="align_2d_axes1_name_ComboBox"/>
-                   </item>
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="align_2d_axes1_step_Label">
-                     <property name="text">
-                      <string>Step:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes1_range_DSpinBox"/>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_2">
-                     <property name="text">
-                      <string>Axis Name:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes1_step_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="align_2d_axes1_range_Label">
-                     <property name="text">
-                      <string>Range:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="0">
-                    <widget class="QCheckBox" name="align_2d_axis1_set_vel_CheckBox">
-                     <property name="text">
-                      <string>Set Velocity?</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes1_vel_DSpinBox"/>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QGroupBox" name="groupBox_10">
-                  <property name="title">
-                   <string>ODMR peak shift (for ODMR Alignment)</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_2">
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="label_35">
-                     <property name="text">
-                      <string>Axis0 (MHz/micron):</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="label_37">
-                     <property name="text">
-                      <string>Axis1 (MHz/micronm):</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes1_shift_DSpinBox">
-                     <property name="decimals">
-                      <number>4</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100000.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>1000000.000000000000000</double>
-                     </property>
-                     <property name="value">
-                      <double>-0.600000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes0_shift_DSpinBox">
-                     <property name="decimals">
-                      <number>4</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100000.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100000.000000000000000</double>
-                     </property>
-                     <property name="value">
-                      <double>-1.300000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="tab_5">
-               <attribute name="title">
-                <string>Fluorescence</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_13">
-                <item row="2" column="0">
-                 <widget class="QLabel" name="label_7">
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Integration&lt;br/&gt;Time (s):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QCheckBox" name="align_2d_fluorescence_continous_CheckBox">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string>Continuous?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QCheckBox" name="align_2d_fluorescence_optimize_CheckBox">
-                  <property name="text">
-                   <string>Optimize Pos 
-at each point?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QDoubleSpinBox" name="align_2d_fluorescence_integrationtime_DSpinBox">
-                  <property name="suffix">
-                   <string/>
-                  </property>
-                  <property name="decimals">
-                   <number>1</number>
-                  </property>
-                  <property name="maximum">
-                   <double>10000.000000000000000</double>
-                  </property>
-                  <property name="value">
-                   <double>5.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="tab_6">
-               <attribute name="title">
-                <string>ODMR</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_23">
-                <item row="0" column="1" colspan="2">
-                 <widget class="QGroupBox" name="groupBox_7">
-                  <property name="title">
-                   <string>lower transition:</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_24">
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="label_14">
-                     <property name="text">
-                      <string>Range Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_13">
-                     <property name="text">
-                      <string>Center Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="5" column="1">
-                    <widget class="QComboBox" name="align_2d_odmr_low_fit_func_ComboBox"/>
-                   </item>
-                   <item row="3" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_power_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="label_15">
-                     <property name="text">
-                      <string>Step Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_center_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="0">
-                    <widget class="QLabel" name="label_16">
-                     <property name="text">
-                      <string>power (dBm)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="4" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_runtime_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>1000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="4" column="0">
-                    <widget class="QLabel" name="label_20">
-                     <property name="text">
-                      <string>Runtime (s):</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="5" column="0">
-                    <widget class="QLabel" name="label_23">
-                     <property name="text">
-                      <string>Fit func:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_range_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_step_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100000000.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="1" column="1" colspan="2">
-                 <widget class="QGroupBox" name="groupBox_8">
-                  <property name="title">
-                   <string>upper transition:</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_26">
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="label_18">
-                     <property name="text">
-                      <string>Step Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_21">
-                     <property name="text">
-                      <string>Center Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="4" column="0">
-                    <widget class="QLabel" name="label_19">
-                     <property name="text">
-                      <string>Runtime (s):</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_center_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="5" column="1">
-                    <widget class="QComboBox" name="align_2d_odmr_high_fit_func_ComboBox"/>
-                   </item>
-                   <item row="3" column="0">
-                    <widget class="QLabel" name="label_17">
-                     <property name="text">
-                      <string>power (dBm)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="3" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_power_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="4" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_runtime_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>10000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="label_22">
-                     <property name="text">
-                      <string>Range Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="5" column="0">
-                    <widget class="QLabel" name="label_24">
-                     <property name="text">
-                      <string>Fit func:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_range_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_step_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100000000.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="6" column="0">
-                    <widget class="QCheckBox" name="align_2d_odmr_save_after_measure_CheckBox">
-                     <property name="text">
-                      <string>Save after measure</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="tab_3">
-               <attribute name="title">
-                <string>Nuclear Spin</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_27">
-                <item row="0" column="1">
-                 <widget class="QDoubleSpinBox" name="align_2d_nuclear_rabi_periode_DSpinBox">
-                  <property name="decimals">
-                   <number>3</number>
-                  </property>
-                  <property name="maximum">
-                   <double>1000000.000000000000000</double>
-                  </property>
-                  <property name="value">
-                   <double>1600.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-                <item row="8" column="0">
-                 <widget class="QLabel" name="label_31">
-                  <property name="text">
-                   <string>idle time (ns)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_25">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The Rabi period must be long enough to be frequency specific on one of the hyperfine tranisitions, i.e. the pi pulse (half of the rabi period) should be longer than 700ns.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>Rabi periode (ns)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QDoubleSpinBox" name="align_2d_nuclear_mw_freq_DSpinBox">
-                  <property name="decimals">
-                   <number>3</number>
-                  </property>
-                  <property name="maximum">
-                   <double>10000000.000000000000000</double>
-                  </property>
-                  <property name="value">
-                   <double>9000.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="1">
-                 <widget class="QDoubleSpinBox" name="align_2d_nuclear_laser_time_DSpinBox">
-                  <property name="maximum">
-                   <double>1000000000.000000000000000</double>
-                  </property>
-                  <property name="value">
-                   <double>800.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLabel" name="label_27">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Channels are currently selected like:&lt;br/&gt;negative numbers are analog channels, positive are digital channels, zero is not used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>MW channel</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_26">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That must be one of the frequencies of the hyperfine transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>MW freq (MHz):</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0">
-                 <widget class="QLabel" name="label_28">
-                  <property name="text">
-                   <string>Laser time (ns):</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="0">
-                 <widget class="QLabel" name="label_30">
-                  <property name="text">
-                   <string>Detect channel</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QSpinBox" name="align_2d_nuclear_mw_channel_SpinBox">
-                  <property name="minimum">
-                   <number>-10</number>
-                  </property>
-                  <property name="maximum">
-                   <number>10</number>
-                  </property>
-                  <property name="value">
-                   <number>-1</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="8" column="1">
-                 <widget class="QDoubleSpinBox" name="align_2d_nuclear_idle_time_DSpinBox">
-                  <property name="maximum">
-                   <double>100000000.000000000000000</double>
-                  </property>
-                  <property name="value">
-                   <double>1500.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="0">
-                 <widget class="QLabel" name="label_29">
-                  <property name="text">
-                   <string>Laser channel</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="1">
-                 <widget class="QSpinBox" name="align_2d_nuclear_laser_channel_SpinBox">
-                  <property name="minimum">
-                   <number>-10</number>
-                  </property>
-                  <property name="maximum">
-                   <number>10</number>
-                  </property>
-                  <property name="value">
-                   <number>2</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="1">
-                 <widget class="QSpinBox" name="align_2d_nuclear_detect_channel_SpinBox">
-                  <property name="minimum">
-                   <number>-10</number>
-                  </property>
-                  <property name="maximum">
-                   <number>10</number>
-                  </property>
-                  <property name="value">
-                   <number>1</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="10" column="0">
-                 <widget class="QLabel" name="label_33">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many times a single shot measurement is recorded to obtain a proper statistics, where the relavant parameters can be extracted.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="lineWidth">
-                   <number>0</number>
-                  </property>
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;num of single&lt;br/&gt;shot readouts&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="9" column="1">
-                 <widget class="QSpinBox" name="align_2d_nuclear_reps_within_ssr_SpinBox">
-                  <property name="maximum">
-                   <number>100000000</number>
-                  </property>
-                  <property name="value">
-                   <number>1000</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="9" column="0">
-                 <widget class="QLabel" name="label_32">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The number of runs within one measurement point in the gated counter.&lt;br/&gt;That number depends on the T1 time of the nuclear spin.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Reps within the&lt;br/&gt;single shot&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="10" column="1">
-                 <widget class="QSpinBox" name="align_2d_nuclear_num_of_ssr_SpinBox">
-                  <property name="maximum">
-                   <number>10000000</number>
-                  </property>
-                  <property name="value">
-                   <number>3000</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QDoubleSpinBox" name="align_2d_nuclear_mw_power_DSpinBox">
-                  <property name="decimals">
-                   <number>3</number>
-                  </property>
-                  <property name="minimum">
-                   <double>-100.000000000000000</double>
-                  </property>
-                  <property name="maximum">
-                   <double>100.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_34">
-                  <property name="text">
-                   <string>MW power(dBm):</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="3" column="3">
-           <widget class="QLabel" name="label_8">
-            <property name="maximumSize">
-             <size>
-              <width>30</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>%:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QLabel" name="label_9">
-            <property name="maximumSize">
-             <size>
-              <width>30</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>%:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="label_10">
-            <property name="text">
-             <string>NameTag:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0" rowspan="7" colspan="3">
-           <widget class="PlotWidget" name="alignment_2d_GraphicsView">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="5" rowspan="3">
-           <widget class="QGroupBox" name="groupBox_9">
-            <property name="title">
-             <string>2D Alignment Control Measurement</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_28">
-             <item row="1" column="1">
-              <widget class="QPushButton" name="align_2d_continue_PushButton">
-               <property name="maximumSize">
-                <size>
-                 <width>65</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Continue
-Alignment</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QPushButton" name="align_2d_start_PushButton">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>65</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Start 
-Alignment</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QPushButton" name="align_2d_abort_PushButton">
-               <property name="maximumSize">
-                <size>
-                 <width>65</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Abort 
-Alignment</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2">
-              <widget class="QRadioButton" name="meas_type_nuclear_spin_RadioButton">
-               <property name="text">
-                <string>Nuclear Spin</string>
-               </property>
-               <attribute name="buttonGroup">
-                <string notr="true">buttonGroup_2</string>
-               </attribute>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QRadioButton" name="meas_type_odmr_RadioButton">
-               <property name="text">
-                <string>ODMR</string>
-               </property>
-               <property name="checked">
-                <bool>false</bool>
-               </property>
-               <attribute name="buttonGroup">
-                <string notr="true">buttonGroup_2</string>
-               </attribute>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QRadioButton" name="meas_type_fluorescence_RadioButton">
-               <property name="text">
-                <string>Fluorescence</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <attribute name="buttonGroup">
-                <string notr="true">buttonGroup_2</string>
-               </attribute>
-              </widget>
-             </item>
-            </layout>
-            <zorder>align_2d_continue_PushButton</zorder>
-            <zorder>align_2d_abort_PushButton</zorder>
-            <zorder>align_2d_start_PushButton</zorder>
-            <zorder>meas_type_fluorescence_RadioButton</zorder>
-            <zorder>meas_type_odmr_RadioButton</zorder>
-            <zorder>meas_type_nuclear_spin_RadioButton</zorder>
-           </widget>
-          </item>
-          <item row="6" column="3" colspan="2">
-           <widget class="QRadioButton" name="alignment_2d_manual_RadioButton">
-            <property name="text">
-             <string>Manual</string>
-            </property>
-            <property name="checked">
+            <property name="documentMode">
              <bool>false</bool>
             </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item row="7" column="3" colspan="2">
-           <widget class="QLabel" name="alignment_2d_status_Label">
-            <property name="text">
-             <string>Stopped</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
+            <widget class="QWidget" name="tab_4">
+             <attribute name="title">
+              <string>Axes</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_25">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="title">
+                 <string>Axis 0 Configuration</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_12">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>Axis Name:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="align_2d_axes0_range_Label">
+                   <property name="text">
+                    <string>Range:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="align_2d_axes0_step_Label">
+                   <property name="text">
+                    <string>Step:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="align_2d_axes0_name_ComboBox"/>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QCheckBox" name="align_2d_axis0_set_vel_CheckBox">
+                   <property name="text">
+                    <string>Set Velocity?</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_axes0_vel_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_axes0_range_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_axes0_step_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QGroupBox" name="groupBox_2">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="title">
+                 <string>Axis 1 Configuration</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_14">
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="align_2d_axes1_name_ComboBox"/>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="align_2d_axes1_step_Label">
+                   <property name="text">
+                    <string>Step:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_axes1_range_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Axis Name:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_axes1_step_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="align_2d_axes1_range_Label">
+                   <property name="text">
+                    <string>Range:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QCheckBox" name="align_2d_axis1_set_vel_CheckBox">
+                   <property name="text">
+                    <string>Set Velocity?</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_axes1_vel_DSpinBox">
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QGroupBox" name="groupBox_10">
+                <property name="title">
+                 <string>ODMR peak shift (for ODMR Alignment)</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_2">
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_35">
+                   <property name="text">
+                    <string>Axis0 (MHz/micron):</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_37">
+                   <property name="text">
+                    <string>Axis1 (MHz/micronm):</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QDoubleSpinBox" name="align_2d_axes1_shift_DSpinBox">
+                   <property name="decimals">
+                    <number>4</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100000.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>1000000.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>-0.600000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QDoubleSpinBox" name="align_2d_axes0_shift_DSpinBox">
+                   <property name="decimals">
+                    <number>4</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100000.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>100000.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>-1.300000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_5">
+             <attribute name="title">
+              <string>Fluorescence</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_13">
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Integration&lt;br/&gt;Time:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="align_2d_fluorescence_continous_CheckBox">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>Continuous?</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="align_2d_fluorescence_optimize_CheckBox">
+                <property name="text">
+                 <string>Optimize Pos 
+at each point?</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="ScienDSpinBox" name="align_2d_fluorescence_integrationtime_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <double>10000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>5.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_6">
+             <attribute name="title">
+              <string>ODMR</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_23">
+              <item row="0" column="1" colspan="2">
+               <widget class="QGroupBox" name="groupBox_7">
+                <property name="title">
+                 <string>lower transition:</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_24">
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_14">
+                   <property name="text">
+                    <string>Range Freq:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_13">
+                   <property name="text">
+                    <string>Center Freq:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QComboBox" name="align_2d_odmr_low_fit_func_ComboBox"/>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_power_DSpinBox">
+                   <property name="suffix">
+                    <string>dBm</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>100.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_15">
+                   <property name="text">
+                    <string>Step Freq:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_center_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_16">
+                   <property name="text">
+                    <string>Power:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_runtime_DSpinBox">
+                   <property name="suffix">
+                    <string>s</string>
+                   </property>
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="maximum">
+                    <double>1000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_20">
+                   <property name="text">
+                    <string>Runtime:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_23">
+                   <property name="text">
+                    <string>Fit func:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_range_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_low_step_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100000000.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="1" colspan="2">
+               <widget class="QGroupBox" name="groupBox_8">
+                <property name="title">
+                 <string>upper transition:</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_26">
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_18">
+                   <property name="text">
+                    <string>Step Freq:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_21">
+                   <property name="text">
+                    <string>Center Freq:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_19">
+                   <property name="text">
+                    <string>Runtime:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_center_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QComboBox" name="align_2d_odmr_high_fit_func_ComboBox"/>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_17">
+                   <property name="text">
+                    <string>Power:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_power_DSpinBox">
+                   <property name="suffix">
+                    <string>dBm</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>100.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_runtime_DSpinBox">
+                   <property name="suffix">
+                    <string>s</string>
+                   </property>
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="maximum">
+                    <double>10000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_22">
+                   <property name="text">
+                    <string>Range Freq:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_24">
+                   <property name="text">
+                    <string>Fit func:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_range_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="ScienDSpinBox" name="align_2d_odmr_high_step_freq_DSpinBox">
+                   <property name="suffix">
+                    <string>Hz</string>
+                   </property>
+                   <property name="decimals">
+                    <number>5</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100000000.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="0">
+                  <widget class="QCheckBox" name="align_2d_odmr_save_after_measure_CheckBox">
+                   <property name="text">
+                    <string>Save after 
+measure</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QCheckBox" name="odmr_2d_single_trans_CheckBox">
+                   <property name="text">
+                    <string>Single transition
+contrast alignment</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_3">
+             <attribute name="title">
+              <string>Nuclear Spin</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_27">
+              <item row="0" column="1">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_rabi_periode_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>5</number>
+                </property>
+                <property name="maximum">
+                 <double>1000000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLabel" name="label_31">
+                <property name="text">
+                 <string>idle time:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_25">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The Rabi period must be long enough to be frequency specific on one of the hyperfine tranisitions, i.e. the pi pulse (half of the rabi period) should be longer than 700ns.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="text">
+                 <string>Rabi period:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_mw_freq_DSpinBox">
+                <property name="suffix">
+                 <string>Hz</string>
+                </property>
+                <property name="decimals">
+                 <number>5</number>
+                </property>
+                <property name="maximum">
+                 <double>10000000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_laser_time_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>5</number>
+                </property>
+                <property name="maximum">
+                 <double>1000000000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_27">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Channels are currently selected like:&lt;br/&gt;negative numbers are analog channels, positive are digital channels, zero is not used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="text">
+                 <string>MW channel</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_26">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That must be one of the frequencies of the hyperfine transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="text">
+                 <string>MW freq:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="label_28">
+                <property name="text">
+                 <string>Laser time:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="0">
+               <widget class="QLabel" name="label_30">
+                <property name="text">
+                 <string>Detect channel</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_mw_channel_SpinBox">
+                <property name="minimum">
+                 <number>-10</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>-1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <widget class="QDoubleSpinBox" name="align_2d_nuclear_idle_time_DSpinBox">
+                <property name="suffix">
+                 <string>s</string>
+                </property>
+                <property name="decimals">
+                 <number>5</number>
+                </property>
+                <property name="maximum">
+                 <double>100000000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="label_29">
+                <property name="text">
+                 <string>Laser channel</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_laser_channel_SpinBox">
+                <property name="minimum">
+                 <number>-10</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>2</number>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_detect_channel_SpinBox">
+                <property name="minimum">
+                 <number>-10</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QLabel" name="label_33">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many times a single shot measurement is recorded to obtain a proper statistics, where the relavant parameters can be extracted.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="lineWidth">
+                 <number>0</number>
+                </property>
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;num of single&lt;br/&gt;shot readouts&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_reps_within_ssr_SpinBox">
+                <property name="maximum">
+                 <number>100000000</number>
+                </property>
+                <property name="value">
+                 <number>1000</number>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0">
+               <widget class="QLabel" name="label_32">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The number of runs within one measurement point in the gated counter.&lt;br/&gt;That number depends on the T1 time of the nuclear spin.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Reps within the&lt;br/&gt;single shot&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <widget class="ScienSpinBox" name="align_2d_nuclear_num_of_ssr_SpinBox">
+                <property name="maximum">
+                 <number>10000000</number>
+                </property>
+                <property name="value">
+                 <number>3000</number>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="ScienDSpinBox" name="align_2d_nuclear_mw_power_DSpinBox">
+                <property name="suffix">
+                 <string>dBm</string>
+                </property>
+                <property name="decimals">
+                 <number>3</number>
+                </property>
+                <property name="minimum">
+                 <double>-100.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>100.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_34">
+                <property name="text">
+                 <string>MW power:</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </widget>
           </item>
          </layout>
+        </item>
+        <item row="3" column="1">
+         <widget class="PlotWidget" name="alignment_2d_cb_GraphicsView">
+          <property name="maximumSize">
+           <size>
+            <width>90</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_low_centiles_DSpinBox">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QRadioButton" name="alignment_2d_centiles_RadioButton">
+          <property name="text">
+           <string>Centiles</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QRadioButton" name="alignment_2d_manual_RadioButton">
+          <property name="text">
+           <string>Manual</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="ScienDSpinBox" name="alignment_2d_cb_max_centiles_DSpinBox">
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="maximum">
+           <double>2100000000.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="value">
+           <double>1000.000000000000000</double>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -1013,7 +962,7 @@ Alignment</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1216</width>
+     <width>984</width>
      <height>21</height>
     </rect>
    </property>
@@ -1021,14 +970,14 @@ Alignment</string>
     <property name="title">
      <string>Menu</string>
     </property>
-    <addaction name="actionMagnet_Settings"/>
-    <addaction name="actionClose"/>
+    <addaction name="magnet_settings_Action"/>
+    <addaction name="close_Action"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="actionDefault_View"/>
+    <addaction name="default_view_Action"/>
    </widget>
    <addaction name="menuMenu"/>
    <addaction name="menuView"/>
@@ -1204,7 +1153,36 @@ Alignment</string>
     </layout>
    </widget>
   </widget>
-  <action name="actionMagnet_Settings">
+  <widget class="QToolBar" name="save_ToolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="save_Action"/>
+   <addaction name="separator"/>
+  </widget>
+  <widget class="QToolBar" name="alignment_2d_ToolBar">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <property name="toolTip">
+    <string>2D Alignment Control ToolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="run_stop_2d_alignment_Action"/>
+   <addaction name="continue_2d_alignment_Action"/>
+  </widget>
+  <action name="magnet_settings_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
@@ -1213,18 +1191,65 @@ Alignment</string>
     <string>Magnet Settings</string>
    </property>
   </action>
-  <action name="actionDefault_View">
+  <action name="default_view_Action">
    <property name="text">
     <string>Default View</string>
    </property>
   </action>
-  <action name="actionClose">
+  <action name="close_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>Close</string>
+   </property>
+  </action>
+  <action name="save_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save alignment data</string>
+   </property>
+  </action>
+  <action name="run_stop_2d_alignment_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>run_stop_2d_alignment</string>
+   </property>
+   <property name="toolTip">
+    <string>Run or stop a 2D alignment</string>
+   </property>
+  </action>
+  <action name="continue_2d_alignment_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/restart-counter.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/restart-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>continue_2d_alignment</string>
+   </property>
+   <property name="toolTip">
+    <string>Continue or Stop a 2D alignment</string>
    </property>
   </action>
  </widget>
@@ -1234,11 +1259,21 @@ Alignment</string>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
   </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>tools.scientific_spinbox</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>tools.scientific_spinbox</header>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections>
   <connection>
-   <sender>actionClose</sender>
+   <sender>close_Action</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
    <slot>close()</slot>
@@ -1255,7 +1290,6 @@ Alignment</string>
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
