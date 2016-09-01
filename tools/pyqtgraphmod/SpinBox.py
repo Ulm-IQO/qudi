@@ -70,6 +70,9 @@ class SpinBox(QtGui.QAbstractSpinBox):
         minStep        (float) When dec=True, this specifies the minimum allowable step size.
         int            (bool) if True, the value is forced to integer type. Default is False
         decimals       (int) Number of decimal values to display. Default is 2.
+        readonly       (bool) If True, then mouse and keyboard interactions are caught and
+                       will not produce a valueChanged signal, but the value can be still
+                       changed programmatic via the setValue method. Default is False.
         ============== ========================================================================
         """
         QtGui.QAbstractSpinBox.__init__(self, parent)
@@ -115,10 +118,11 @@ class SpinBox(QtGui.QAbstractSpinBox):
             ## for compatibility with QDoubleSpinBox and QSpinBox
             'decimals': 2,
 
+            'readonly': False,
+
         }
 
         self.decOpts = ['step', 'minStep']
-
         self.val = D(asUnicode(value))  ## Value is precise decimal. Ordinary math not allowed.
         self.updateText()
         self.skipValidate = False
@@ -129,6 +133,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         self.editingFinished.connect(self.editingFinishedEvent)
         self.proxy = SignalProxy(self.sigValueChanging, slot=self.delayedChange, delay=self.opts['delay'])
+
 
     def event(self, ev):
         ret = QtGui.QAbstractSpinBox.event(self, ev)
@@ -194,6 +199,9 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         if 'delay' in opts:
             self.proxy.setDelay(opts['delay'])
+
+        if 'readonly' in opts:
+            self.opts['readonly'] = opts['readonly']
 
         self.updateText()
 
@@ -577,3 +585,84 @@ class SpinBox(QtGui.QAbstractSpinBox):
     #def widgetGroupInterface(self):
         #return (self.valueChanged, SpinBox.value, SpinBox.setValue)
 
+    def isReadOnly(self):
+        """ Overwrite the QAbstractSpinBox method to obtain the ReadOnly state.
+        """
+        return self.opts['readonly']
+
+    def mousePressEvent(self, event):
+        """ Handle what happens on press event of the mouse.
+
+        @param event: QEvent of a Mouse Release action
+        """
+
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super(SpinBox, self).mousePressEvent(event)
+
+    # Comment out this method, since it is called, if QToolTip is going to be
+    # displayed. You would not see any QTooltip if you catch that signal.
+    # def mouseMoveEvent(self, event):
+    #     """ Handle what happens on move (over) event of the mouse.
+    #
+    #     @param event: QEvent of a Mouse Move action
+    #     """
+    #
+    #     if ( self.isReadOnly() ):
+    #         event.accept()
+    #     else:
+    #         super(SpinBox, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """ Handle what happens on release of the mouse.
+
+        @param event: QEvent of a Mouse Release action
+        """
+
+        if self.isReadOnly() :
+            event.accept()
+        else:
+            super(SpinBox, self).mouseReleaseEvent(event)
+
+    # Handle event in which the widget has focus and the spacebar is pressed.
+    def keyPressEvent(self, event):
+        """ Handle what happens on keypress.
+
+        @param event: QEvent of a key press Action
+        """
+
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super(SpinBox, self).keyPressEvent(event)
+
+    def wheelEvent(self, event):
+        """ Handle what happens on a wheel event of the mouse.
+
+        @param event: QEvent of a Mouse Wheel event
+        """
+
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super(SpinBox, self).wheelEvent(event)
+
+
+    @QtCore.pyqtSlot(bool)
+    def setReadOnly(self, state):
+        """ Overwrite the QAbstractSpinBox method to set the ReadOnly state.
+
+        @param bool state: True or False, for having a readonly QRadioButton.
+
+        Important, declare that slot as a qt slot to provide a C++ signature for
+        that. The advantage is less memory consumption and slightly faster
+        performance.
+        Note: Not using the slot decorator causes that the signal connection
+        mechanism is forced to work out manually the type conversion to map from
+        the underlying C++ function signatures to the Python functions. When the
+        slot decorators are used, the type mapping can be explicit!
+        """
+
+        self.setOpts(readonly=state)
+    readOnly = QtCore.pyqtProperty(bool, isReadOnly, setReadOnly)

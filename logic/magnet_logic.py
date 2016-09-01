@@ -72,7 +72,10 @@ class MagnetLogic(GenericLogic):
            'counterlogic': 'CounterLogic',
            'odmrlogic': 'ODMRLogic',
            'savelogic': 'SaveLogic',
-           'scannerlogic':'ScannerLogic'}
+           'scannerlogic':'ScannerLogic',
+           'traceanalysis':'TraceAnalysisLogic',
+           'gatedcounterlogic': 'GatedCounterLogic',
+           'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
     _out = {'magnetlogic': 'MagnetLogic'}
 
     # General Signals, used everywhere:
@@ -116,49 +119,7 @@ class MagnetLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
-
-        self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
-        self.curr_2d_pathway_mode = 'snake-wise'    # choose that as default
-        self._checktime = 0.5 # in seconds
-
-
-        # The data matrices and arrays. For the 1D case, self._axis0_data
-        # is the actual data trace. Create also arrays for the additional
-        # data, which was measured during the alignment.
-
-        # for each axis, make a default value:
-        self._1D_axis0_data = np.zeros(2)
-
-        self._2D_axis0_data = np.zeros(2)
-        self._2D_axis1_data = np.zeros(2)
-
-        self._3D_axis0_data = np.zeros(2)
-        self._3D_axis1_data = np.zeros(2)
-        self._3D_axis2_data = np.zeros(2)
-
-        self._1D_add_data_matrix = np.zeros(shape=np.shape(self._1D_axis0_data), dtype=object)
-
-        self._2D_data_matrix = np.zeros((2, 2))
-        self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
-
-        self._3D_data_matrix = np.zeros((2, 2, 2))
-        self._3D_add_data_matrix = np.zeros(shape=np.shape(self._3D_data_matrix), dtype=object)
-
         self._stop_measure = False
-
-        #FIXME: I am right now not quite sure how to combine the passed
-        #       parameters in an elegant way, therefore all the different values
-        #       are stored.
-
-        # put all the alignment methods together
-        self.curr_alignment_method = '2d_fluorescence'
-        self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
-
 
     def on_activate(self, e):
         """ Definition and initialisation of the GUI.
@@ -175,12 +136,24 @@ class MagnetLogic(GenericLogic):
         self._magnet_device = self.connector['in']['magnetstage']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
+        self.log.info('The following configuration was found.')
+        # checking for the right configuration
+        config = self.getConfiguration()
+        for key in config.keys():
+            self.log.info('{}: {}'.format(key,config[key]))
+
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
         self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
         self._counter_logic = self.connector['in']['counterlogic']['object']
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
+
+        self._gc_logic = self.connector['in']['gatedcounterlogic']['object']
+        self._ta_logic = self.connector['in']['traceanalysis']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+
+        self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
 
 
         # EXPERIMENTAL:
@@ -190,59 +163,241 @@ class MagnetLogic(GenericLogic):
         self.sigMoveRel.connect(self._magnet_device.move_rel)
         self.sigAbort.connect(self._magnet_device.abort)
 
-
         # signal connect for alignment:
 
         self._sigInitializeMeasPos.connect(self._move_to_curr_pathway_index)
         self._sigStepwiseAlignmentNext.connect(self._stepwise_loop_body,
                                                QtCore.Qt.QueuedConnection)
 
+        self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
 
-        # connect the optimizer signals:
+        if 'curr_2d_pathway_mode' in self._statusVariables:
+            self.curr_2d_pathway_mode = self._statusVariables['curr_2d_pathway_mode']
+        else:
+            self.curr_2d_pathway_mode = 'snake-wise'    # choose that as default
+
+        if '_checktime' in self._statusVariables:
+            self._checktime = self._statusVariables['_checktime']
+        else:
+            self._checktime = 0.5 # in seconds
 
         self.sigTest.connect(self._do_premeasurement_proc)
 
+        if '_1D_axis0_data' in self._statusVariables:
+            self._1D_axis0_data = self._statusVariables['_1D_axis0_data']
+        else:
+            self._1D_axis0_data = np.zeros(2)
+
+        if '_2D_axis0_data' in self._statusVariables:
+            self._2D_axis0_data = self._statusVariables['_2D_axis0_data']
+        else:
+            self._2D_axis0_data = np.zeros(2)
+
+        if '_2D_axis1_data' in self._statusVariables:
+            self._2D_axis1_data = self._statusVariables['_2D_axis1_data']
+        else:
+            self._2D_axis1_data = np.zeros(2)
+
+        if '_3D_axis0_data' in self._statusVariables:
+            self._3D_axis0_data = self._statusVariables['_3D_axis0_data']
+        else:
+            self._3D_axis0_data = np.zeros(2)
+
+        if '_3D_axis1_data' in self._statusVariables:
+            self._3D_axis1_data = self._statusVariables['_3D_axis1_data']
+        else:
+            self._3D_axis1_data = np.zeros(2)
+
+        if '_3D_axis2_data' in self._statusVariables:
+            self._3D_axis2_data = self._statusVariables['_3D_axis2_data']
+        else:
+            self._3D_axis2_data = np.zeros(2)
+
+        if '_1D_add_data_matrix' in self._statusVariables:
+            self._1D_add_data_matrix = self._statusVariables['_1D_add_data_matrix']
+        else:
+            self._1D_add_data_matrix = np.zeros(shape=np.shape(self._1D_axis0_data), dtype=object)
+
+
+        if '_2D_data_matrix' in self._statusVariables:
+            self._2D_data_matrix = self._statusVariables['_2D_data_matrix']
+        else:
+            self._2D_data_matrix = np.zeros((2, 2))
+
+        if '_2D_add_data_matrix' in self._statusVariables:
+            self._2D_add_data_matrix = self._statusVariables['_2D_add_data_matrix']
+        else:
+            self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
+
+        if '_3D_data_matrix' in self._statusVariables:
+            self._3D_data_matrix = self._statusVariables['_3D_data_matrix']
+        else:
+            self._3D_data_matrix = np.zeros((2, 2, 2))
+
+        if '_3D_add_data_matrix' in self._statusVariables:
+            self._3D_add_data_matrix = self._statusVariables['_3D_add_data_matrix']
+        else:
+            self._3D_add_data_matrix = np.zeros(shape=np.shape(self._3D_data_matrix), dtype=object)
+
+        if 'curr_alignment_method' in self._statusVariables:
+            self.curr_alignment_method = self._statusVariables['curr_alignment_method']
+        else:
+            self.curr_alignment_method = '2d_fluorescence'
+
+        self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
+
         # Fluorescence alignment settings:
-        self._optimize_pos = False
-        self.fluorescence_integration_time = 5  # integration time in s
+        if '_optimize_pos' in self._statusVariables:
+            self._optimize_pos = self._statusVariables['_optimize_pos']
+        else:
+            self._optimize_pos = False
+
+        if 'fluorescence_integration_time' in self._statusVariables:
+            self.fluorescence_integration_time = self._statusVariables['fluorescence_integration_time']
+        else:
+            self.fluorescence_integration_time = 5  # integration time in s
 
         # ODMR alignment settings (ALL IN SI!!!):
-        self.odmr_2d_low_center_freq = 11028e6
-        self.odmr_2d_low_step_freq = 0.15e6
-        self.odmr_2d_low_range_freq = 25e6
-        self.odmr_2d_low_power = 4
-        self.odmr_2d_low_runtime = 40
+
+        if 'odmr_2d_low_center_freq' in self._statusVariables:
+            self.odmr_2d_low_center_freq = self._statusVariables['odmr_2d_low_center_freq']
+        else:
+            self.odmr_2d_low_center_freq = 11028e6
+
+        if 'odmr_2d_low_step_freq' in self._statusVariables:
+            self.odmr_2d_low_step_freq = self._statusVariables['odmr_2d_low_step_freq']
+        else:
+            self.odmr_2d_low_step_freq = 0.15e6
+
+        if 'odmr_2d_low_range_freq' in self._statusVariables:
+            self.odmr_2d_low_range_freq = self._statusVariables['odmr_2d_low_range_freq']
+        else:
+            self.odmr_2d_low_range_freq = 25e6
+
+        if 'odmr_2d_low_power' in self._statusVariables:
+            self.odmr_2d_low_power = self._statusVariables['odmr_2d_low_power']
+        else:
+            self.odmr_2d_low_power = 4
+
+        if 'odmr_2d_low_runtime' in self._statusVariables:
+            self.odmr_2d_low_runtime = self._statusVariables['odmr_2d_low_runtime']
+        else:
+            self.odmr_2d_low_runtime = 40
+
         self.odmr_2d_low_fitfunction_list = self._odmr_logic.get_fit_functions()
-        self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
 
-        self.odmr_2d_high_center_freq = 16768e6
-        self.odmr_2d_high_step_freq = 0.15e6
-        self.odmr_2d_high_range_freq = 25e6
-        self.odmr_2d_high_power = 2
-        self.odmr_2d_high_runtime = 40
+        if 'odmr_2d_low_fitfunction' in self._statusVariables:
+            self.odmr_2d_low_fitfunction = self._statusVariables['odmr_2d_low_fitfunction']
+        else:
+            self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
+
+
+
+        if 'odmr_2d_high_center_freq' in self._statusVariables:
+            self.odmr_2d_high_center_freq = self._statusVariables['odmr_2d_high_center_freq']
+        else:
+            self.odmr_2d_high_center_freq = 16768e6
+
+        if 'odmr_2d_high_step_freq' in self._statusVariables:
+            self.odmr_2d_high_step_freq = self._statusVariables['odmr_2d_high_step_freq']
+        else:
+            self.odmr_2d_high_step_freq = 0.15e6
+
+        if 'odmr_2d_high_range_freq' in self._statusVariables:
+            self.odmr_2d_high_range_freq = self._statusVariables['odmr_2d_high_range_freq']
+        else:
+            self.odmr_2d_high_range_freq = 25e6
+
+        if 'odmr_2d_high_power' in self._statusVariables:
+            self.odmr_2d_high_power = self._statusVariables['odmr_2d_high_power']
+        else:
+            self.odmr_2d_high_power = 2
+
+        if 'odmr_2d_high_runtime' in self._statusVariables:
+            self.odmr_2d_high_runtime = self._statusVariables['odmr_2d_high_runtime']
+        else:
+            self.odmr_2d_high_runtime = 40
+
         self.odmr_2d_high_fitfunction_list = self._odmr_logic.get_fit_functions()
-        self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
 
-        self.odmr_2d_save_after_measure = True
-        self.odmr_2d_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
-        self.odmr_2d_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
+        if 'odmr_2d_high_fitfunction' in self._statusVariables:
+            self.odmr_2d_high_fitfunction = self._statusVariables['odmr_2d_high_fitfunction']
+        else:
+            self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
+
+        if 'odmr_2d_save_after_measure' in self._statusVariables:
+            self.odmr_2d_save_after_measure = self._statusVariables['odmr_2d_save_after_measure']
+        else:
+            self.odmr_2d_save_after_measure = True
+
+        if 'odmr_2d_peak_axis0_move_ratio' in self._statusVariables:
+            self.odmr_2d_peak_axis0_move_ratio = self._statusVariables['odmr_2d_peak_axis0_move_ratio']
+        else:
+            self.odmr_2d_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
+
+        if 'odmr_2d_peak_axis1_move_ratio' in self._statusVariables:
+            self.odmr_2d_peak_axis1_move_ratio = self._statusVariables['odmr_2d_peak_axis1_move_ratio']
+        else:
+            self.odmr_2d_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
 
         # that is just a normalization value, which is needed for the ODMR
         # alignment, since the colorbar cannot display values greater (2**32)/2.
         # A solution has to found for that!
         self.norm = 1000
 
+        self.odmr_2d_single_trans = False   # use that if only one ODMR
+                                            # transition is available.
+
         # single shot alignment on nuclear spin settings (ALL IN SI!!!):
-        self.nuclear_2d_rabi_periode = 1000e-9
-        self.nuclear_2d_mw_freq = 100e6
-        self.nuclear_2d_mw_channel = -1
-        self.nuclear_2d_mw_power = -30
-        self.nuclear_2d_laser_time = 900e-9
-        self.nuclear_2d_laser_channel = 2
-        self.nuclear_2d_detect_channel = 1
-        self.nuclear_2d_idle_time = 1500e-9
-        self.nuclear_2d_reps_within_ssr = 1000
-        self.nuclear_2d_num_ssr = 3000
+        if 'nuclear_2d_rabi_periode' in self._statusVariables:
+            self.nuclear_2d_rabi_periode = self._statusVariables['nuclear_2d_rabi_periode']
+        else:
+            self.nuclear_2d_rabi_periode = 1000e-9
+
+        if 'nuclear_2d_mw_freq' in self._statusVariables:
+            self.nuclear_2d_mw_freq = self._statusVariables['nuclear_2d_mw_freq']
+        else:
+            self.nuclear_2d_mw_freq = 100e6
+
+        if 'nuclear_2d_mw_channel' in self._statusVariables:
+            self.nuclear_2d_mw_channel = self._statusVariables['nuclear_2d_mw_channel']
+        else:
+            self.nuclear_2d_mw_channel = -1
+
+        if 'nuclear_2d_mw_power' in self._statusVariables:
+            self.nuclear_2d_mw_power = self._statusVariables['nuclear_2d_mw_power']
+        else:
+            self.nuclear_2d_mw_power = -30
+
+        if 'nuclear_2d_laser_time' in self._statusVariables:
+            self.nuclear_2d_laser_time = self._statusVariables['nuclear_2d_laser_time']
+        else:
+            self.nuclear_2d_laser_time = 900e-9
+
+        if 'nuclear_2d_laser_channel' in self._statusVariables:
+            self.nuclear_2d_laser_channel = self._statusVariables['nuclear_2d_laser_channel']
+        else:
+            self.nuclear_2d_laser_channel = 2
+
+        if 'nuclear_2d_detect_channel' in self._statusVariables:
+            self.nuclear_2d_detect_channel = self._statusVariables['nuclear_2d_detect_channel']
+        else:
+            self.nuclear_2d_detect_channel = 1
+
+        if 'nuclear_2d_idle_time' in self._statusVariables:
+            self.nuclear_2d_idle_time = self._statusVariables['nuclear_2d_idle_time']
+        else:
+            self.nuclear_2d_idle_time = 1500e-9
+
+        if 'nuclear_2d_reps_within_ssr' in self._statusVariables:
+            self.nuclear_2d_reps_within_ssr = self._statusVariables['nuclear_2d_reps_within_ssr']
+        else:
+            self.nuclear_2d_reps_within_ssr = 1000
+
+        if 'nuclear_2d_num_ssr' in self._statusVariables:
+            self.nuclear_2d_num_ssr = self._statusVariables['nuclear_2d_num_ssr']
+        else:
+            self.nuclear_2d_num_ssr = 3000
 
 
     def on_deactivate(self, e):
@@ -251,7 +406,36 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        pass
+        self._statusVariables['optimize_pos'] =  self._optimize_pos
+        self._statusVariables['fluorescence_integration_time'] =  self.fluorescence_integration_time
+
+        self._statusVariables['odmr_2d_low_center_freq'] =  self.odmr_2d_low_center_freq
+        self._statusVariables['odmr_2d_low_step_freq'] =  self.odmr_2d_low_step_freq
+        self._statusVariables['odmr_2d_low_range_freq'] =  self.odmr_2d_low_range_freq
+        self._statusVariables['odmr_2d_low_power'] =  self.odmr_2d_low_power
+        self._statusVariables['odmr_2d_low_runtime'] =  self.odmr_2d_low_runtime
+        self._statusVariables['odmr_2d_low_fitfunction'] =  self.odmr_2d_low_fitfunction
+
+        self._statusVariables['odmr_2d_high_center_freq'] =  self.odmr_2d_high_center_freq
+        self._statusVariables['odmr_2d_high_step_freq'] =  self.odmr_2d_high_step_freq
+        self._statusVariables['odmr_2d_high_range_freq'] =  self.odmr_2d_high_range_freq
+        self._statusVariables['odmr_2d_high_power'] =  self.odmr_2d_high_power
+        self._statusVariables['odmr_2d_high_runtime'] =  self.odmr_2d_high_runtime
+        self._statusVariables['odmr_2d_high_fitfunction'] =  self.odmr_2d_high_fitfunction
+        self._statusVariables['odmr_2d_save_after_measure'] =  self.odmr_2d_save_after_measure
+        self._statusVariables['odmr_2d_peak_axis0_move_ratio'] =  self.odmr_2d_peak_axis0_move_ratio
+        self._statusVariables['odmr_2d_peak_axis1_move_ratio'] =  self.odmr_2d_peak_axis1_move_ratio
+
+        self._statusVariables['nuclear_2d_rabi_periode'] =  self.nuclear_2d_rabi_periode
+        self._statusVariables['nuclear_2d_mw_freq'] =  self.nuclear_2d_mw_freq
+        self._statusVariables['nuclear_2d_mw_channel'] =  self.nuclear_2d_mw_channel
+        self._statusVariables['nuclear_2d_mw_power'] =  self.nuclear_2d_mw_power
+        self._statusVariables['nuclear_2d_laser_time'] =  self.nuclear_2d_laser_time
+        self._statusVariables['nuclear_2d_laser_channel'] =  self.nuclear_2d_laser_channel
+        self._statusVariables['nuclear_2d_detect_channel'] =  self.nuclear_2d_detect_channel
+        self._statusVariables['nuclear_2d_idle_time'] =  self.nuclear_2d_idle_time
+        self._statusVariables['nuclear_2d_reps_within_ssr'] =  self.nuclear_2d_reps_within_ssr
+        self._statusVariables['nuclear_2d_num_ssr'] =  self.nuclear_2d_num_ssr
 
     def get_hardware_constraints(self):
         """ Retrieve the hardware constraints.
@@ -1024,7 +1208,10 @@ class MagnetLogic(GenericLogic):
             data, add_data = self._perform_fluorescence_measure()
 
         elif self.curr_alignment_method == '2d_odmr':
-            data, add_data = self._perform_odmr_measure()
+            if self.odmr_2d_single_trans:
+                data, add_data = self._perform_single_trans_contrast_measure()
+            else:
+                data, add_data = self._perform_odmr_measure()
 
         elif self.curr_alignment_method == '2d_nuclear':
             data, add_data = self._perform_nuclear_measure()
@@ -1038,6 +1225,9 @@ class MagnetLogic(GenericLogic):
 
         #FIXME: that should be run through the TaskRunner! Implement the call
         #       by not using this connection!
+
+        if self._counter_logic.get_counting_mode != 'continuous':
+            self._counter_logic.set_counting_mode(mode='continuous')
 
         self._counter_logic.start_saving()
         time.sleep(self.fluorescence_integration_time)
@@ -1241,15 +1431,402 @@ class MagnetLogic(GenericLogic):
 
         return diff, store_dict
 
+    def _perform_single_trans_contrast_measure(self):
+        """ Make an ODMR measurement on one single transition and use the
+            contrast as a measure.
+        """
+
+        store_dict = {}
+
+        # optimize at first the position:
+        self._do_optimize_pos()
+
+        # correct the ODMR alignment the shift of the ODMR lines due to movement
+        # in axis0 and axis1, therefore find out how much you will move in each
+        # distance:
+        if self._pathway_index == 0:
+            axis0_pos_start = self._saved_pos_before_align[self._axis0_name]
+            axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
+
+            axis1_pos_start = self._saved_pos_before_align[self._axis1_name]
+            axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
+        else:
+            axis0_pos_start = self._backmap[self._pathway_index-1][self._axis0_name]
+            axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
+
+            axis1_pos_start = self._backmap[self._pathway_index-1][self._axis1_name]
+            axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
+
+        # that is the current distance the magnet has moved:
+        axis0_move = axis0_pos_stop - axis0_pos_start
+        axis1_move = axis1_pos_stop - axis1_pos_start
+        # print('axis0_move', axis0_move, 'axis1_move', axis1_move)
+
+        # in essence, get the last measurement value for odmr freq and calculate
+        # the odmr peak shift for axis0 and axis1 based on the already measured
+        # peaks and update the values odmr_2d_peak_axis0_move_ratio and
+        # odmr_2d_peak_axis1_move_ratio:
+        if self._pathway_index > 1:
+            # in essence, get the last measurement value for odmr freq:
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('Frequency') is not None:
+                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Frequency']['value']*1e6
+                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Frequency']['value']*1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('Freq. 1') is not None:
+                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Freq. 1']['value']*1e6
+                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Freq. 1']['value']*1e6
+            else:
+                self.logMsg('No previous saved lower odmr freq found in '
+                            'ODMR alignment data! Cannot do the ODMR '
+                            'Alignment!', msgType='error')
+
+
+            # only if there was a non zero movement, the if make sense to
+            # calculate the shift for either the axis0 or axis1.
+            # BE AWARE THAT FOR A MOVEMENT IN AXIS0 AND AXIS1 AT THE SAME TIME
+            # NO PROPER CALCULATION OF THE OMDR LINES CAN BE PROVIDED!
+            if not np.isclose(axis0_move, 0.0):
+                # update the correction ratio:
+                peak_axis0_move_ratio = (odmr_freq1 - odmr_freq2)/axis0_move
+
+                # calculate the average shift of the odmr lines for the lower
+                # and the upper transition:
+                self.odmr_2d_peak_axis0_move_ratio = peak_axis0_move_ratio
+
+                print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio/1e12)
+            if not np.isclose(axis1_move, 0.0):
+                # update the correction ratio:
+                peak_axis1_move_ratio = (odmr_freq1 - odmr_freq2)/axis1_move
+
+
+                # calculate the shift of the odmr lines for the transition:
+                self.odmr_2d_peak_axis1_move_ratio = peak_axis1_move_ratio
+
+        # Measurement of one transition:
+        # -------------------------------------
+
+        freq_shift_axis0 = axis0_move * self.odmr_2d_peak_axis0_move_ratio
+        freq_shift_axis1 = axis1_move * self.odmr_2d_peak_axis1_move_ratio
+
+        # correct here the center freq with the estimated corrections:
+        self.odmr_2d_low_center_freq += (freq_shift_axis0 + freq_shift_axis1)
+        # print('self.odmr_2d_low_center_freq',self.odmr_2d_low_center_freq)
+
+        # create a unique nametag for the current measurement:
+        name_tag = 'trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
+                   +'_'+ str(self._backmap[self._pathway_index]['index'][1])
+
+        # of course the shift of the ODMR peak is not linear for a movement in
+        # axis0 and axis1, but we need just an estimate how to set the boundary
+        # conditions for the first scan, since the first scan will move to a
+        # start position and then it need to know where to search for the ODMR
+        # peak(s).
+
+        # calculate the parameters for the odmr scan:
+        start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq/2
+        step_freq = self.odmr_2d_low_step_freq
+        stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq/2
+
+        param = self._odmr_logic.perform_odmr_measurement(start_freq,
+                                                          step_freq,
+                                                          stop_freq,
+                                                          self.odmr_2d_low_power,
+                                                          self.odmr_2d_low_runtime,
+                                                          self.odmr_2d_low_fitfunction,
+                                                          self.odmr_2d_save_after_measure,
+                                                          name_tag)
+
+        param['ODMR peak/Magnet move ratio axis0'] = self.odmr_2d_peak_axis0_move_ratio
+        param['ODMR peak/Magnet move ratio axis1'] = self.odmr_2d_peak_axis1_move_ratio
+
+        # extract the frequency meausure:
+        if param.get('Frequency') is not None:
+            odmr_freq_meas = param['Frequency']['value']*1e6
+            cont_meas = param['Contrast']['value']
+        elif param.get('Freq. 1') is not None:
+            odmr_freq_meas = param['Freq. 1']['value']*1e6
+            cont_meas = param['Contrast 0']['value'] + param['Contrast 1']['value'] + param['Contrast 2']['value']
+        else:
+            # a default value for testing and debugging:
+            odmr_freq_meas = 1000e6
+            cont_meas = 0.0
+
+        self.odmr_2d_low_center_freq = odmr_freq_meas
+
+        while self._odmr_logic.getState() != 'idle' and not self._stop_measure:
+            time.sleep(0.5)
+
+        return cont_meas, param
+
     def _perform_nuclear_measure(self):
         """ Make a single shot alignment. """
-        pass
+
+        # possible parameters for the nuclear measurement:
+        # self.nuclear_2d_rabi_periode
+        # self.nuclear_2d_mw_freq
+        # self.nuclear_2d_mw_channel
+        # self.nuclear_2d_mw_power
+        # self.nuclear_2d_laser_time
+        # self.nuclear_2d_laser_channel
+        # self.nuclear_2d_detect_channel
+        # self.nuclear_2d_idle_time
+        # self.nuclear_2d_reps_within_ssr
+        # self.nuclear_2d_num_ssr
+        self._load_pulsed_odmr()
+        self._pulser_on()
+
+        # self.odmr_2d_low_center_freq
+        # self.odmr_2d_low_step_freq
+        # self.odmr_2d_low_range_freq
+        #
+        # self.odmr_2d_low_power,
+        # self.odmr_2d_low_runtime,
+        # self.odmr_2d_low_fitfunction,
+        # self.odmr_2d_save_after_measure,
+
+        # Use the parameters from the ODMR alignment!
+        cont_meas, param = self._perform_single_trans_contrast_measure()
+
+        odmr_freq = param['Freq. ' + str(self.nuclear_2d_mw_on_peak-1)]['value']*1e6
+
+        self._set_cw_mw(switch_on=True, freq=odmr_freq, power=self.nuclear_2d_mw_power)
+        self._load_nuclear_spin_readout()
+        self._pulser_on()
+
+        # Check whether proper mode is active and if not activated that:
+        if self._gc_logic.get_counting_mode() != 'finite-gated':
+            self._gc_logic.set_counting_mode(mode='finite-gated')
+
+        # Set the count length for the single shot and start counting:
+        self._gc_logic.set_count_length(self.nuclear_2d_num_ssr)
+
+        self._run_gated_counter()
+
+        self._set_cw_mw(switch_on=False)
+
+        # try with single poissonian:
+
+
+        num_bins = (self._gc_logic.countdata.max() - self._gc_logic.countdata.min())
+        self._ta_logic.set_num_bins_histogram(num_bins)
+
+        hist_fit_x, hist_fit_y, param_single_poisson = self._ta_logic.do_fit('Poisson')
+
+
+        param['chi_sqr_single'] = param_single_poisson['chi_sqr']['value']
+
+
+        # try with normal double poissonian:
+
+        # better performance by starting with half of number of bins:
+        num_bins = int((self._gc_logic.countdata.max() - self._gc_logic.countdata.min())/2)
+        self._ta_logic.set_num_bins_histogram(num_bins)
+
+        flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
+
+        # self._pulser_off()
+        #
+        # self._load_pulsed_odmr()
+        # self._pulser_on()
+
+        out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
+                       (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
+
+        while (np.isnan(param2['fidelity'] or out_of_range) and num_bins > 4):
+            # Reduce the number of bins if the calculation yields an invalid
+            # number
+            num_bins = int(num_bins/2)
+            self._ta_logic.set_num_bins_histogram(num_bins)
+            flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
+
+
+            # reduce the number of bins by one, so that the fitting algorithm
+            # work. Eventually, that has to go in the fit constaints of the
+            # algorithm.
+
+            out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
+                           (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
+
+            if out_of_range:
+                num_bins = num_bins-1
+                self._ta_logic.set_num_bins_histogram(num_bins)
+                self.logMsg('Fitted values {0},{1} are out of range [{2},{3}]! '
+                            'Change the histogram a '
+                            'bit.'.format(param2['\u03BB0']['value'],
+                                          param2['\u03BB1']['value'],
+                                          self._gc_logic.countdata.min(),
+                                          self._gc_logic.countdata.max()))
+
+                flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
+
+        # run the lifetime calculatiion:
+        #        In order to calculate the T1 time one needs the length of one SingleShot readout
+        dt = (self.nuclear_2d_rabi_periode/2 + self.nuclear_2d_laser_time + self.nuclear_2d_idle_time) * self.nuclear_2d_reps_within_ssr
+        # param_lifetime = self._ta_logic.analyze_lifetime(self._gc_logic.countdata, dt, self.nuclear_2d_estimated_lifetime)
+        # param.update(param_lifetime)
+
+
+        # If everything went wrong, then put at least a reasonable number:
+        if np.isnan(param2['fidelity']):
+            param2['fidelity'] = 0.5    # that fidelity means that
+
+        # add the flip probability as a parameter to the parameter dict and add
+        # also all the other parameters to that dict:
+        param['flip_probability'] =  flip_prob
+        param.update(param2)
+
+        if self.nuclear_2d_use_single_poisson:
+            # print(param)
+            # print(param['chi_sqr'])
+            return param['chi_sqr_single'], param
+
+        else:
+            return param['fidelity'], param
+
+    def _run_gated_counter(self):
+
+        self._gc_logic.startCount()
+        time.sleep(2)
+
+        # wait until the gated counter is done
+        while self._gc_logic.getState() != 'idle' and not self._stop_measure:
+            # print('in SSR measure')
+            time.sleep(1)
+
+
+    def _set_cw_mw(self, switch_on, freq=2.87e9, power=-40):
+
+        if switch_on:
+            self._odmr_logic.set_frequency(freq)
+            self._odmr_logic.set_power(power)
+            self._odmr_logic.MW_on()
+        else:
+            self._odmr_logic.MW_off()
+
+    def _load_pulsed_odmr(self):
+        """ Load a pulsed ODMR asset. """
+        #FIXME: Move this creation routine to the tasks!
+
+        self._seq_gen_logic.load_asset(asset_name='PulsedODMR')
+
+    def _load_nuclear_spin_readout(self):
+        """ Load a nuclear spin readout asset. """
+        #FIXME: Move this creation routine to the tasks!
+
+        self._seq_gen_logic.load_asset(asset_name='SSR')
+
+    def _pulser_on(self):
+        """ Switch on the pulser output. """
+
+        self._set_channel_activation(active=True, apply_to_device=True)
+        self._seq_gen_logic.pulser_on()
+
+    def _pulser_off(self):
+        """ Switch off the pulser output. """
+
+        self._set_channel_activation(active=False, apply_to_device=False)
+        self._seq_gen_logic.pulser_off()
+
+    def _set_channel_activation(self, active=True, apply_to_device=False):
+        """ Set the channels according to the current activation config to be either active or not.
+
+        @param bool active: the activation according to the current activation
+                            config will be checked and if channel
+                            is not active and active=True, then channel will be
+                            activated. Otherwise if channel is active and
+                            active=False channel will be deactivated.
+                            All other channels, which are not in activation
+                            config will be deactivated if they are not already
+                            deactivated.
+        @param bool apply_to_device: Apply the activation or deactivation of the
+                                     current activation_config either to the
+                                     device and the viewboxes, or just to the
+                                     viewboxes.
+        """
+
+        pulser_const = self._seq_gen_logic.get_hardware_constraints()
+
+        curr_config_name = self._seq_gen_logic.current_activation_config_name
+        activation_config = pulser_const['activation_config'][curr_config_name]
+
+        # here is the current activation pattern of the pulse device:
+        active_ch = self._seq_gen_logic.get_active_channels()
+
+        ch_to_change = {} # create something like  a_ch = {1:True, 2:True} to switch
+
+        # check whether the correct channels are already active, and if not
+        # correct for that and activate and deactivate the appropriate ones:
+        available_ch = self._get_available_ch()
+        for ch_name in available_ch:
+
+            # if the channel is in the activation, check whether it is active:
+            if ch_name in activation_config:
+
+                if apply_to_device:
+                    # if channel is not active but activation is needed (active=True),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if not active_ch[ch_name] and active:
+                        ch_to_change[ch_name] = active
+
+                    # if channel is active but deactivation is needed (active=False),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if active_ch[ch_name] and not active:
+                        ch_to_change[ch_name] = active
+
+
+            else:
+                # all other channel which are active should be deactivated:
+                if active_ch[ch_name]:
+                    ch_to_change[ch_name] = False
+
+        self._seq_gen_logic.set_active_channels(ch_to_change)
+
+    def _get_available_ch(self):
+        """ Helper method to get a list of all available channels.
+
+        @return list: entries are the generic string names of the channels.
+        """
+        config = self._seq_gen_logic.get_hardware_constraints()['activation_config']
+
+        available_ch = []
+        all_a_ch = []
+        all_d_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_a_ch = [entry for entry in config[conf] if 'a_ch' in entry]
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_a_ch:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+            # append all new digital channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        all_a_ch.sort()
+        all_d_ch.sort()
+        available_ch.extend(all_a_ch)
+        available_ch.extend(all_d_ch)
+
+        return available_ch
 
     def _do_postmeasurement_proc(self):
 
         # do a selected post measurement procedure,
 
         return
+
+
+    def get_available_odmr_peaks(self):
+        """ Retrieve the information on which odmr peak the microwave can be
+            applied.
+
+        @return list: with string entries denoting the peak number
+        """
+        return [1, 2, 3]
 
     def save_1d_data(self):
 

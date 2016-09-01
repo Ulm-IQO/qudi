@@ -24,8 +24,10 @@ import numpy as np
 import time
 from collections import OrderedDict
 from qtpy import QtCore
+import datetime
 
 from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
 
 
 class NuclearOperationsLogic(GenericLogic):
@@ -71,7 +73,7 @@ class NuclearOperationsLogic(GenericLogic):
 
     sigNextMeasPoint = QtCore.Signal()
     sigCurrMeasPointUpdated = QtCore.Signal()
-    sigMeasValueUpdated = QtCore.Signal()
+    sigMeasurementStopped = QtCore.Signal()
 
     sigMeasStarted = QtCore.Signal()
 
@@ -84,7 +86,7 @@ class NuclearOperationsLogic(GenericLogic):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-
+        self.threadlock = Mutex()
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -98,76 +100,211 @@ class NuclearOperationsLogic(GenericLogic):
                          had happened.
         """
 
+        # Retrieve the status variables or use default values:
+        # ==========================
 
-        # choose default values:
-        self.x_axis_start = 1e-3                    # in s
-        self.x_axis_step = 10e-3                     # in s
-        self.x_axis_num_points = 50
+        # pulser parameters:
+        # ==================
 
+        if 'electron_rabi_periode' in self._statusVariables:
+            self.electron_rabi_periode = self._statusVariables['electron_rabi_periode']
+        else:
+            self.electron_rabi_periode = 1800e-9        # in s
+
+        # pulser microwave:
+
+        if 'pulser_mw_freq' in self._statusVariables:
+            self.pulser_mw_freq = self._statusVariables['pulser_mw_freq']
+        else:
+            self.pulser_mw_freq = 200e6     # in Hz
+
+        if 'pulser_mw_amp' in self._statusVariables:
+            self.pulser_mw_amp = self._statusVariables['pulser_mw_amp']
+        else:
+            self.pulser_mw_amp = 2.25          # in V
+
+        if 'pulser_mw_ch' in self._statusVariables:
+            self.pulser_mw_ch = self._statusVariables['pulser_mw_ch']
+        else:
+            self.pulser_mw_ch = -1
+
+        # pulser rf:
+        if 'nuclear_rabi_period0' in self._statusVariables:
+            self.nuclear_rabi_period0 = self._statusVariables['nuclear_rabi_period0']
+        else:
+            self.nuclear_rabi_period0 = 30e-6   # in s
+
+        if 'pulser_rf_freq0' in self._statusVariables:
+            self.pulser_rf_freq0 = self._statusVariables['pulser_rf_freq0']
+        else:
+            self.pulser_rf_freq0 = 6.32e6   # in Hz
+
+        if 'pulser_rf_amp0' in self._statusVariables:
+            self.pulser_rf_amp0 = self._statusVariables['pulser_rf_amp0']
+        else:
+            self.pulser_rf_amp0 = 0.1
+
+        if 'nuclear_rabi_period1' in self._statusVariables:
+            self.nuclear_rabi_period1 = self._statusVariables['nuclear_rabi_period1']
+        else:
+            self.nuclear_rabi_period1 = 30e-6   # in s
+
+        if 'pulser_rf_freq1' in self._statusVariables:
+            self.pulser_rf_freq1 = self._statusVariables['pulser_rf_freq1']
+        else:
+            self.pulser_rf_freq1 = 3.24e6   # in Hz
+
+        if 'pulser_rf_amp1' in self._statusVariables:
+            self.pulser_rf_amp1 = self._statusVariables['pulser_rf_amp1']
+        else:
+            self.pulser_rf_amp1 = 0.1
+
+        if 'pulser_rf_ch' in self._statusVariables:
+            self.pulser_rf_ch = self._statusVariables['pulser_rf_ch']
+        else:
+            self.pulser_rf_ch = -2
+
+        # laser options:
+        if 'pulser_laser_length' in self._statusVariables:
+            self.pulser_laser_length = self._statusVariables['pulser_laser_length']
+        else:
+            self.pulser_laser_length = 3e-6 # in s
+        if 'pulser_laser_amp' in self._statusVariables:
+            self.pulser_laser_amp = self._statusVariables['pulser_laser_amp']
+        else:
+            self.pulser_laser_amp = 1       # in V
+        if 'pulser_laser_ch' in self._statusVariables:
+            self.pulser_laser_ch = self._statusVariables['pulser_laser_ch']
+        else:
+            self.pulser_laser_ch = 1
+
+        if 'num_singleshot_readout' in self._statusVariables:
+            self.num_singleshot_readout = self._statusVariables['num_singleshot_readout']
+        else:
+            self.num_singleshot_readout = 3000
+
+        if 'pulser_idle_time' in self._statusVariables:
+            self.pulser_idle_time = self._statusVariables['pulser_idle_time']
+        else:
+            self.pulser_idle_time = 1.5e-6  # in s
+        # detection gated counter:
+        if 'pulser_detect_ch' in self._statusVariables:
+            self.pulser_detect_ch = self._statusVariables['pulser_detect_ch']
+        else:
+            self.pulser_detect_ch = 1
+
+        # measurement parameters:
+        if 'current_meas_asset_name' in self._statusVariables:
+            self.current_meas_asset_name = self._statusVariables['current_meas_asset_name']
+        else:
+            self.current_meas_asset_name = ''
+        if 'x_axis_start' in self._statusVariables:
+            self.x_axis_start = self._statusVariables['x_axis_start']
+        else:
+            self.x_axis_start = 1e-3                    # in s
+        if 'x_axis_step' in self._statusVariables:
+            self.x_axis_step = self._statusVariables['x_axis_step']
+        else:
+            self.x_axis_step = 10e-3                     # in s
+        if 'x_axis_num_points' in self._statusVariables:
+            self.x_axis_num_points = self._statusVariables['x_axis_num_points']
+        else:
+            self.x_axis_num_points = 50
+        if 'num_of_meas_runs' in self._statusVariables:
+            self.num_of_meas_runs = self._statusVariables['num_of_meas_runs']
+        else:
+            self.num_of_meas_runs   = 1 # How often the measurement should be repeated.
+
+        # current measurement information:
         self.current_meas_point = self.x_axis_start
         self.current_meas_index = 0
         self.num_of_current_meas_runs = 0
-        self.num_of_meas_runs   = 1 # How often the measurement should be repeated.
         self.elapsed_time = 0
-        self.start_time = 0
-        self.optimize_period = 200
+        self.start_time = datetime.datetime.now()
         self.next_optimize_time = self.start_time
 
-        self._stop_requested = False
+        # parameters for confocal and odmr optimization:
+        if 'optimize_period_odmr' in self._statusVariables:
+            self.optimize_period_odmr = self._statusVariables['optimize_period_odmr']
+        else:
+            self.optimize_period_odmr = 200
+        if 'optimize_period_confocal' in self._statusVariables:
+            self.optimize_period_confocal = self._statusVariables['optimize_period_confocal']
+        else:
+            self.optimize_period_confocal = 300      # in s
+        if 'odmr_meas_freq0' in self._statusVariables:
+            self.odmr_meas_freq0 = self._statusVariables['odmr_meas_freq0']
+        else:
+            self.odmr_meas_freq0 = 10000e6              # in Hz
+        if 'odmr_meas_freq1' in self._statusVariables:
+            self.odmr_meas_freq1 = self._statusVariables['odmr_meas_freq1']
+        else:
+            self.odmr_meas_freq1 = 10002.1e6            # in Hz
+        if 'odmr_meas_freq2' in self._statusVariables:
+            self.odmr_meas_freq2 = self._statusVariables['odmr_meas_freq2']
+        else:
+            self.odmr_meas_freq2 = 10004.2e6            # in Hz
+        if 'odmr_meas_runtime' in self._statusVariables:
+            self.odmr_meas_runtime = self._statusVariables['odmr_meas_runtime']
+        else:
+            self.odmr_meas_runtime = 30             # in s
+        if 'odmr_meas_freq_range' in self._statusVariables:
+            self.odmr_meas_freq_range = self._statusVariables['odmr_meas_freq_range']
+        else:
+            self.odmr_meas_freq_range = 30e6            # in Hz
+        if 'odmr_meas_step' in self._statusVariables:
+            self.odmr_meas_step = self._statusVariables['odmr_meas_step']
+        else:
+            self.odmr_meas_step = 0.15e6                # in Hz
+        if 'odmr_meas_power' in self._statusVariables:
+            self.odmr_meas_power = self._statusVariables['odmr_meas_power']
+        else:
+            self.odmr_meas_power = -30                  # in dBm
 
-        self.mw_cw_freq = 10e9                      # in Hz
-        self.mw_power = -30                         # in dBm
-
-        # parameters for pulsed ODMR:
-        self.odmr_meas_freq0 = 10000e6              # in Hz
-        self.odmr_meas_freq1 = 10002.1e6            # in Hz
-        self.odmr_meas_freq2 = 10004.2e6            # in Hz
-        self.odmr_meas_runtime = 30             # in s
-        self.odmr_meas_freq_range = 30e6            # in Hz
-        self.odmr_meas_step = 0.15e6                # in Hz
-        self.odmr_meas_power = -30                  # in dBm
-        self.odmr_time_for_next_optimize = 300      # in s
-
-        self.electron_rabi_periode = 1800e-9        # in s
+        # Microwave measurment parameters:
+        if 'mw_cw_freq' in self._statusVariables:
+            self.mw_cw_freq = self._statusVariables['mw_cw_freq']
+        else:
+            self.mw_cw_freq = 10e9                      # in Hz
+        if 'mw_cw_power' in self._statusVariables:
+            self.mw_cw_power = self._statusVariables['mw_cw_power']
+        else:
+            self.mw_cw_power = -30                         # in dBm
 
 
         # store here all the measured odmr peaks
         self.measured_odmr_list = []
 
         # on which odmr peak the manipulation is going to be applied:
-        self.mw_on_odmr_peak = 1
+        if 'mw_on_odmr_peak' in self._statusVariables:
+            self.mw_on_odmr_peak = self._statusVariables['mw_on_odmr_peak']
+        else:
+            self.mw_on_odmr_peak = 1
 
-        # laser options:
-        self.pulser_laser_ch = 1
-        self.pulser_laser_amp = 1       # in V
-        self.pulser_laser_length = 3e-6 # in s
-        self.pulser_mw_ch = -1
-        self.pulser_mw_freq = 200e6     # in Hz
-        self.pulser_mw_amp = 2.25          # in V
-        self.pulser_idle_time = 1.5e-6  # in s
-        self.pulser_rf_ch = -2
-        self.pulser_rf_amp = 0.1
+        # Gated counter:
+        if 'gc_number_of_samples' in self._statusVariables:
+            self.gc_number_of_samples = self._statusVariables['gc_number_of_samples']
+        else:
+            self.gc_number_of_samples = 3000    # in counts
 
-        self.pulser_detect_ch = 1
+        if 'gc_samples_per_readout' in self._statusVariables:
+            self.gc_samples_per_readout = self._statusVariables['gc_samples_per_readout']
+        else:
+            self.gc_samples_per_readout = 10    # in counts
 
-        self.nuclear_rabi_period = 30e-6
-        self.pulser_rf_freq0 = 6.32e6   # in Hz
 
-        self.num_singleshot_readout = 3000
 
-        self.gc_number_of_samples = 3000    # in counts
-        self.gc_samples_per_readout = 50    # in counts
-
-        # self.rf_length_measure_point = 10e-6
-        # self.rf_freq_measure_point =
 
         self._optimize_now = False
+        self._stop_requested = False
 
+        # store here all the measured odmr peaks
+        self.measured_odmr_list = []
+
+        # Perform initialization routines:
         self.initialize_x_axis()
         self.initialize_y_axis()
         self.initialize_meas_param()
-
-        self.current_meas_asset_name = ''
 
         # establish the access to all connectors:
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -191,7 +328,72 @@ class NuclearOperationsLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        pass
+
+
+        # Save the status variables:
+        # ==========================
+
+        # Pulser parameter:
+        # electron Rabi:
+        self._statusVariables['electron_rabi_periode'] = self.electron_rabi_periode
+
+        # pulser microwave:
+        self._statusVariables['pulser_mw_freq'] = self.pulser_mw_freq
+        self._statusVariables['pulser_mw_amp'] = self.pulser_mw_amp
+        self._statusVariables['pulser_mw_ch'] = self.pulser_mw_ch
+
+        # pulser radiofrequency:
+        self._statusVariables['nuclear_rabi_period0'] = self.nuclear_rabi_period0
+        self._statusVariables['pulser_rf_freq0'] = self.pulser_rf_freq0
+        self._statusVariables['pulser_rf_amp0'] = self.pulser_rf_amp0
+        self._statusVariables['nuclear_rabi_period1'] = self.nuclear_rabi_period1
+        self._statusVariables['pulser_rf_freq1'] = self.pulser_rf_freq1
+        self._statusVariables['pulser_rf_amp1'] = self.pulser_rf_amp1
+        self._statusVariables['pulser_rf_ch'] = self.pulser_rf_ch
+
+        # pulser laser parameters:
+        self._statusVariables['pulser_laser_length'] = self.pulser_laser_length
+        self._statusVariables['pulser_laser_amp'] = self.pulser_laser_amp
+        self._statusVariables['pulser_laser_ch'] = self.pulser_laser_ch
+        self._statusVariables['num_singleshot_readout'] = self.num_singleshot_readout
+
+        # pulser idle status:
+        self._statusVariables['pulser_idle_time'] = self.pulser_idle_time
+        # detect channel:
+        self._statusVariables['pulser_detect_ch'] = self.pulser_detect_ch
+
+
+        # Measurement parameter:
+        self._statusVariables['current_meas_asset_name'] = self.current_meas_asset_name
+
+        # x-axis value:
+        self._statusVariables['x_axis_start'] = self.x_axis_start
+        self._statusVariables['x_axis_step'] = self.x_axis_step
+        self._statusVariables['x_axis_num_points'] = self.x_axis_num_points
+        self._statusVariables['num_of_meas_runs'] = self.num_of_meas_runs
+
+
+        # Optimization parameter
+        self._statusVariables['optimize_period_odmr'] = self.optimize_period_odmr
+        self._statusVariables['optimize_period_confocal'] = self.optimize_period_confocal
+        # parameters for pulsed ODMR:
+        self._statusVariables['odmr_meas_freq0'] = self.odmr_meas_freq0
+        self._statusVariables['odmr_meas_freq1'] = self.odmr_meas_freq1
+        self._statusVariables['odmr_meas_freq2'] = self.odmr_meas_freq2
+        self._statusVariables['odmr_meas_runtime'] = self.odmr_meas_runtime
+        self._statusVariables['odmr_meas_freq_range'] = self.odmr_meas_freq_range
+        self._statusVariables['odmr_meas_step'] = self.odmr_meas_step
+        self._statusVariables['odmr_meas_power'] = self.odmr_meas_power
+
+
+        # Microwave measurment parameters:
+        self._statusVariables['mw_cw_freq'] = self.mw_cw_freq
+        self._statusVariables['mw_cw_power'] = self.mw_cw_power
+        self._statusVariables['mw_on_odmr_peak'] = self.mw_on_odmr_peak
+
+        # Gated counter parameter
+        self._statusVariables['gc_number_of_samples'] = self.gc_number_of_samples
+        self._statusVariables['gc_samples_per_readout'] = self.gc_samples_per_readout
 
 
     def initialize_x_axis(self):
@@ -200,20 +402,19 @@ class NuclearOperationsLogic(GenericLogic):
         stop = self.x_axis_start + self.x_axis_step*self.x_axis_num_points
         self.x_axis_list = np.arange(self.x_axis_start, stop+(self.x_axis_step/2), self.x_axis_step)
         self.current_meas_point = self.x_axis_start
-        self.current_meas_index = 0
-        self.sigCurrMeasPointUpdated.emit()
 
     def initialize_y_axis(self):
         """ Initialize the y axis. """
-        self.y_axis_list = np.zeros(self.x_axis_list.shape)
-        self.y_axis_fit_list = np.zeros(self.x_axis_list.shape)
+
+        self.y_axis_list = np.zeros(self.x_axis_list.shape)     # y axis where current data are stored
+        self.y_axis_fit_list = np.zeros(self.x_axis_list.shape) # y axis where fit is stored.
 
         # here all consequutive measurements are saved, where the
         # self.num_of_meas_runs determines the measurement index for the row.
-        self.y_axis_matrix = np.zeros(1, len(self.x_axis_list))
+        self.y_axis_matrix = np.zeros((1, len(self.x_axis_list)))
 
         # here all the measurement parameters per measurement point are stored:
-        self.parameter_matrix = np.zeros(1, len(self.x_axis_list), dtype=object)
+        self.parameter_matrix = np.zeros((1, len(self.x_axis_list)), dtype=object)
 
     def initialize_meas_param(self):
         """ Initialize the measurement param containter. """
@@ -221,30 +422,43 @@ class NuclearOperationsLogic(GenericLogic):
         # nuclear measurement.
         self._meas_param = OrderedDict()
 
-
     def start_nuclear_meas(self, continue_meas=False):
         """ Start the nuclear operation measurement. """
+
+        self._stop_requested = False
 
         if not continue_meas:
             # prepare here everything for a measurement and go to the measurement
             # loop.
-            self.prepare_measurement_protocols()
+            self.prepare_measurement_protocols(self.current_meas_asset_name)
 
             self.initialize_x_axis()
             self.initialize_y_axis()
 
+            self.current_meas_index = 0
+            self.sigCurrMeasPointUpdated.emit()
+            self.num_of_current_meas_runs = 0
+
+            self.measured_odmr_list = []
+
+            self.elapsed_time = 0
+            self.start_time = datetime.datetime.now()
+            self.next_optimize_time = 0
+
         # load the measurement sequence:
         self._load_measurement_seq(self.current_meas_asset_name)
         self._pulser_on()
-        self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_power)
+        self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_cw_power)
         self.mw_on()
+
+        self.lock()
 
         self.sigMeasStarted.emit()
         self.sigNextMeasPoint.emit()
 
     def _meas_point_loop(self):
-
         """ Run this loop continuously until the an abort criterium is reached. """
+
         if self._stop_requested:
             with self.threadlock:
                 # end measurement and switch all devices off
@@ -254,10 +468,15 @@ class NuclearOperationsLogic(GenericLogic):
                 self.mw_off()
                 self._pulser_off()
                 # emit all needed signals for the update:
-                self.sigMeasValueUpdated.emit()
+                self.sigCurrMeasPointUpdated.emit()
+                self.sigMeasurementStopped.emit()
                 return
 
-        if self._optimize_now:
+        # if self._optimize_now:
+
+        self.elapsed_time = (datetime.datetime.now() - self.start_time).total_seconds()
+
+        if self.next_optimize_time < self.elapsed_time:
             current_meas_asset = self.current_meas_asset_name
             self.mw_off()
 
@@ -273,26 +492,29 @@ class NuclearOperationsLogic(GenericLogic):
 
             # use the new measured frequencies for the microwave:
 
-            if self.mw_on_odmr_peak == 0:
+            if self.mw_on_odmr_peak == 1:
                 self.mw_cw_freq = self.odmr_meas_freq0
-            elif self.mw_on_odmr_peak == 1:
-                self.mw_cw_freq = self.odmr_meas_freq1
             elif self.mw_on_odmr_peak == 2:
+                self.mw_cw_freq = self.odmr_meas_freq1
+            elif self.mw_on_odmr_peak == 3:
                 self.mw_cw_freq = self.odmr_meas_freq2
             else:
                 self.log.error('The maximum number of odmr can only be 3, '
-                        'therfore only the peaks with number 0, 1 or 2 can '
-                        'be selected but an number of "{0}" was set. '
-                        'Measurement stopped!'.format(self.mw_on_odmr_peak))
+                            'therfore only the peaks with number 0, 1 or 2 can '
+                            'be selected but an number of "{0}" was set. '
+                            'Measurement stopped!'.format(self.mw_on_odmr_peak))
                 self.stop_nuclear_meas()
                 self.sigNextMeasPoint.emit()
                 return
 
-            self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_power)
+            self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_cw_power)
             # establish the previous measurement conditions
             self.mw_on()
             self._load_measurement_seq(current_meas_asset)
             self._pulser_on()
+
+            self.elapsed_time = (datetime.datetime.now() - self.start_time).total_seconds()
+            self.next_optimize_time = self.elapsed_time + self.optimize_period_odmr
 
         # if stop request was done already here, do not perform the current
         # measurement but jump to the switch off procedure at the top of this
@@ -303,23 +525,31 @@ class NuclearOperationsLogic(GenericLogic):
 
         # this routine will return a desired measurement value and the
         # measurement parameters, which belong to it.
-        curr_meas_points, meas_param = self._get_meas_point()
+        curr_meas_points, meas_param = self._get_meas_point(self.current_meas_asset_name)
 
         # this routine will handle the saving and storing of the measurement
         # results:
-        self._set_meas_point(self.current_meas_index, self.num_of_current_meas_runs, curr_meas_points, meas_param)
+        self._set_meas_point(num_of_meas_runs=self.num_of_current_meas_runs,
+                             meas_index=self.current_meas_index,
+                             meas_points=curr_meas_points,
+                             meas_param=meas_param)
+
+
+        if self._stop_requested:
+            self.sigNextMeasPoint.emit()
+            return
 
         # increment the measurement index or set it back to zero if it exceed
         # the maximal number of x axis measurement points. The measurement index
         # will be used for the next measurement
-        if self.current_meas_index + 1 > self.x_axis_num_points:
+        if self.current_meas_index + 1 >= len(self.x_axis_list):
             self.current_meas_index = 0
 
             # If the next measurement run begins, add a new matrix line to the
             # self.y_axis_matrix
             self.num_of_current_meas_runs += 1
 
-            new_row = np.zeros(self.x_axis_num_points)
+            new_row = np.zeros(len(self.x_axis_list))
 
             # that vertical stack command behaves similar to the append method
             # in python lists, where the new_row will be appended to the matrix:
@@ -329,6 +559,10 @@ class NuclearOperationsLogic(GenericLogic):
         else:
             self.current_meas_index += 1
 
+
+
+        # check if measurement is at the end, and if not, adjust the measurement
+        # sequence to the next measurement point.
         if self.num_of_current_meas_runs < self.num_of_meas_runs:
 
             # take the next measurement index from the x axis as the current
@@ -337,6 +571,7 @@ class NuclearOperationsLogic(GenericLogic):
 
             # adjust the measurement protocol with the new current_meas_point
             self.adjust_measurement(self.current_meas_asset_name)
+            self._load_measurement_seq(self.current_meas_asset_name)
         else:
             self.stop_nuclear_meas()
 
@@ -375,26 +610,38 @@ class NuclearOperationsLogic(GenericLogic):
         # here the actual measurement is going to be started and stoped and
         # then analyzed and outputted in a proper format.
 
-        self._gc_logic.set_counting_mode(mode='gated')
-        self._gc_logic.set_count_length()
-        self._gc_logic.set_counting_samples(self.gc_number_of_samples)
+        # Check whether proper mode is active and if not activated that:
+        if self._gc_logic.get_counting_mode() != 'finite-gated':
+            self._gc_logic.set_counting_mode(mode='finite-gated')
+
+        self._gc_logic.set_count_length(self.gc_number_of_samples)
+        self._gc_logic.set_counting_samples(self.gc_samples_per_readout)
         self._gc_logic.startCount()
+        time.sleep(2)
 
         # wait until the gated counter is done or available to start:
-        while self._counter_logic.getState() == 'locked' or not self._stop_requested:
+        while self._gc_logic.getState() != 'idle' and not self._stop_requested:
+            # print('in SSR measure')
             time.sleep(1)
+
+        # for safety reasons, stop also the counter if it is still running:
+        # self._gc_logic.stopCount()
 
         name_tag = '{0}_{1}'.format(self.current_meas_asset_name, self.current_meas_point)
         self._gc_logic.save_current_count_trace(name_tag=name_tag)
 
         if meas_type in ['Nuclear_Rabi', 'Nuclear_Frequency_Scan']:
-            flip_prop, param = self._trace_ana_logic.analyze_flip_prob(self._gc_logic.countdata)
-            # flip_prop = [flip_prop]
+
+
+            entry_indices = np.where(self._gc_logic.countdata>50)
+            trunc_countdata = self._gc_logic.countdata[entry_indices]
+
+            flip_prop, param = self._trace_ana_logic.analyze_flip_prob(trunc_countdata)
+
         elif meas_type in ['QSD_-_Artificial_Drive', 'QSD_-_SWAP_FID',
                            'QSD_-_Entanglement_FID']:
             # do something measurement specific
             pass
-
 
         return flip_prop, param
 
@@ -441,13 +688,13 @@ class NuclearOperationsLogic(GenericLogic):
         """
         return [1, 2, 3]
 
-
     def prepare_measurement_protocols(self, meas_type):
         """ Prepare and create all measurement protocols for the specified
             measurement type
 
         @param str meas_type: a measurement type from the list get_meas_type_list
         """
+
         self._create_laser_on()
         self._create_pulsed_odmr()
 
@@ -458,10 +705,10 @@ class NuclearOperationsLogic(GenericLogic):
             # generate:
             self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
                                                           rf_length_ns=self.current_meas_point*1e9,
-                                                          rf_freq_MHz=self.pulser_rf_freq0,
-                                                          rf_amp_V=self.pulser_rf_amp,
+                                                          rf_freq_MHz=self.pulser_rf_freq0/1e6,
+                                                          rf_amp_V=self.pulser_rf_amp0,
                                                           rf_channel=self.pulser_rf_ch,
-                                                          mw_freq_MHz=self.pulser_mw_freq,
+                                                          mw_freq_MHz=self.pulser_mw_freq/1e6,
                                                           mw_amp_V=self.pulser_mw_amp,
                                                           mw_rabi_period_ns=self.electron_rabi_periode*1e9,
                                                           mw_channel=self.pulser_mw_ch,
@@ -469,23 +716,23 @@ class NuclearOperationsLogic(GenericLogic):
                                                           laser_channel=self.pulser_laser_ch,
                                                           laser_amp_V=self.pulser_laser_amp,
                                                           detect_channel=self.pulser_detect_ch,
-                                                          wait_time_ns=self.pulser_idle_time,
+                                                          wait_time_ns=self.pulser_idle_time*1e9,
                                                           num_singleshot_readout=self.num_singleshot_readout)
             # sample:
-            self._seq_gen_logic.sample_pulse_sequence(ensemble_name=meas_type,
+            self._seq_gen_logic.sample_pulse_sequence(sequence_name=meas_type,
                                                       write_to_file=True,
                                                       chunkwise=False)
             # upload:
-            self._seq_gen_logic.upload_asset(asset_name=meas_type)
+            self._seq_gen_logic.upload_sequence(seq_name=meas_type)
 
         elif meas_type == 'Nuclear_Frequency_Scan':
             # generate:
             self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
-                                                          rf_length_ns=(self.nuclear_rabi_period*1e9)/2,
-                                                          rf_freq_MHz=self.current_meas_point*1e-6,
-                                                          rf_amp_V=self.pulser_rf_amp,
+                                                          rf_length_ns=(self.nuclear_rabi_period0*1e9)/2,
+                                                          rf_freq_MHz=self.current_meas_point/1e6,
+                                                          rf_amp_V=self.pulser_rf_amp0,
                                                           rf_channel=self.pulser_rf_ch,
-                                                          mw_freq_MHz=self.pulser_mw_freq,
+                                                          mw_freq_MHz=self.pulser_mw_freq/1e6,
                                                           mw_amp_V=self.pulser_mw_amp,
                                                           mw_rabi_period_ns=self.electron_rabi_periode*1e9,
                                                           mw_channel=self.pulser_mw_ch,
@@ -493,22 +740,22 @@ class NuclearOperationsLogic(GenericLogic):
                                                           laser_channel=self.pulser_laser_ch,
                                                           laser_amp_V=self.pulser_laser_amp,
                                                           detect_channel=self.pulser_detect_ch,
-                                                          wait_time_ns=self.pulser_idle_time,
+                                                          wait_time_ns=self.pulser_idle_time*1e9,
                                                           num_singleshot_readout=self.num_singleshot_readout)
             # sample:
-            self._seq_gen_logic.sample_pulse_sequence(ensemble_name=meas_type,
+            self._seq_gen_logic.sample_pulse_sequence(sequence_name=meas_type,
                                                       write_to_file=True,
                                                       chunkwise=False)
             # upload:
-            self._seq_gen_logic.upload_asset(asset_name=meas_type)
+            self._seq_gen_logic.upload_sequence(seq_name=meas_type)
 
-        elif meas_type == 'QSD - Artificial Drive':
+        elif meas_type == 'QSD_-_Artificial_Drive':
             pass
 
-        elif meas_type == 'QSD - SWAP FID':
+        elif meas_type == 'QSD_-_SWAP_FID':
             pass
 
-        elif meas_type == 'QSD - Entanglement FID':
+        elif meas_type == 'QSD_-_Entanglement_FID':
             pass
 
     def adjust_measurement(self, meas_type):
@@ -527,8 +774,8 @@ class NuclearOperationsLogic(GenericLogic):
             # generate the new pulse (which will overwrite the Ensemble)
             self._seq_gen_logic.generate_rf_pulse_ens(name='RF_pulse',
                                                       rf_length_ns=(self.current_meas_point*1e9)/2,
-                                                      rf_freq_MHz=self.pulser_rf_freq0*1e6,
-                                                      rf_amp_V=self.pulser_rf_amp,
+                                                      rf_freq_MHz=self.pulser_rf_freq0/1e6,
+                                                      rf_amp_V=self.pulser_rf_amp0,
                                                       rf_channel=self.pulser_rf_ch)
 
             # sample the ensemble (and maybe save it to file, which will
@@ -544,9 +791,9 @@ class NuclearOperationsLogic(GenericLogic):
 
             # generate the new pulse (which will overwrite the Ensemble)
             self._seq_gen_logic.generate_rf_pulse_ens(name='RF_pulse',
-                                                      rf_length_ns=(self.nuclear_rabi_period*1e9)/2,
-                                                      rf_freq_MHz=self.current_meas_point*1e6,
-                                                      rf_amp_V=self.pulser_rf_amp,
+                                                      rf_length_ns=(self.nuclear_rabi_period0*1e9)/2,
+                                                      rf_freq_MHz=self.current_meas_point/1e6,
+                                                      rf_amp_V=self.pulser_rf_amp0,
                                                       rf_channel=self.pulser_rf_ch)
 
             # sample the ensemble (and maybe save it to file, which will
@@ -608,38 +855,103 @@ class NuclearOperationsLogic(GenericLogic):
         self._seq_gen_logic.load_asset(asset_name='Laser_On')
 
     def _pulser_on(self):
-        """ switch on the pulsing device.
+        """ Switch on the pulser output. """
 
-        @return:
-        """
-        #FIXME: Move this creation routine to the tasks!
-
-        config_name = self._seq_gen_logic.get_activation_config()
-        config = self._seq_gen_logic.get_hardware_constraints()['activation_config'][config_name]
-
-        active_ch = {}
-        for entry in config:
-            active_ch[entry] = True
-        self._seq_gen_logic.set_active_channels(active_ch)
+        self._set_channel_activation(active=True, apply_to_device=True)
         self._seq_gen_logic.pulser_on()
 
     def _pulser_off(self):
-        """ switch off the pulsing device.
+        """ Switch off the pulser output. """
 
-        @return:
-        """
-        #FIXME: Move this creation routine to the tasks!
-
+        self._set_channel_activation(active=False, apply_to_device=False)
         self._seq_gen_logic.pulser_off()
 
-        config_name = self._seq_gen_logic.get_activation_config()
-        config = self._seq_gen_logic.get_hardware_constraints()['activation_config'][config_name]
+    def _set_channel_activation(self, active=True, apply_to_device=False):
+        """ Set the channels according to the current activation config to be either active or not.
 
-        active_ch = {}
-        for entry in config:
-            active_ch[entry] = False
-        self._seq_gen_logic.set_active_channels(active_ch)
+        @param bool active: the activation according to the current activation
+                            config will be checked and if channel
+                            is not active and active=True, then channel will be
+                            activated. Otherwise if channel is active and
+                            active=False channel will be deactivated.
+                            All other channels, which are not in activation
+                            config will be deactivated if they are not already
+                            deactivated.
+        @param bool apply_to_device: Apply the activation or deactivation of the
+                                     current activation_config either to the
+                                     device and the viewboxes, or just to the
+                                     viewboxes.
+        """
 
+        pulser_const = self._seq_gen_logic.get_hardware_constraints()
+
+        curr_config_name = self._seq_gen_logic.current_activation_config_name
+        activation_config = pulser_const['activation_config'][curr_config_name]
+
+        # here is the current activation pattern of the pulse device:
+        active_ch = self._seq_gen_logic.get_active_channels()
+
+        ch_to_change = {} # create something like  a_ch = {1:True, 2:True} to switch
+
+        # check whether the correct channels are already active, and if not
+        # correct for that and activate and deactivate the appropriate ones:
+        available_ch = self._get_available_ch()
+        for ch_name in available_ch:
+
+            # if the channel is in the activation, check whether it is active:
+            if ch_name in activation_config:
+
+                if apply_to_device:
+                    # if channel is not active but activation is needed (active=True),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if not active_ch[ch_name] and active:
+                        ch_to_change[ch_name] = active
+
+                    # if channel is active but deactivation is needed (active=False),
+                    # then add that to ch_to_change to change the state of the channels:
+                    if active_ch[ch_name] and not active:
+                        ch_to_change[ch_name] = active
+
+
+            else:
+                # all other channel which are active should be deactivated:
+                if active_ch[ch_name]:
+                    ch_to_change[ch_name] = False
+
+        self._seq_gen_logic.set_active_channels(ch_to_change)
+
+    def _get_available_ch(self):
+        """ Helper method to get a list of all available channels.
+
+        @return list: entries are the generic string names of the channels.
+        """
+        config = self._seq_gen_logic.get_hardware_constraints()['activation_config']
+
+        available_ch = []
+        all_a_ch = []
+        all_d_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_a_ch = [entry for entry in config[conf] if 'a_ch' in entry]
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_a_ch:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+            # append all new digital channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        all_a_ch.sort()
+        all_d_ch.sort()
+        available_ch.extend(all_a_ch)
+        available_ch.extend(all_d_ch)
+
+        return available_ch
 
     def do_optimize_pos(self):
         """ Perform an optimize position. """
@@ -665,7 +977,7 @@ class NuclearOperationsLogic(GenericLogic):
         # generate:
         self._seq_gen_logic.generate_pulsedodmr(name='PulsedODMR',
                                                 mw_time_ns=(self.electron_rabi_periode*1e9)/2,
-                                                mw_freq_MHz=self.pulser_mw_freq*1e-6,
+                                                mw_freq_MHz=self.pulser_mw_freq/1e6,
                                                 mw_amp_V=self.pulser_mw_amp,
                                                 mw_channel=self.pulser_mw_ch,
                                                 laser_time_ns=self.pulser_laser_length*1e9,
@@ -718,10 +1030,15 @@ class NuclearOperationsLogic(GenericLogic):
         self.odmr_meas_freq1 = param['Freq. 1']['value']
         self.odmr_meas_freq2 = param['Freq. 2']['value']
 
-        self.measured_odmr_list.append([self.odmr_meas_freq0,
+        curr_time = (datetime.datetime.now() - self.start_time).total_seconds()
+
+        self.measured_odmr_list.append([curr_time,
+                                        self.odmr_meas_freq0,
                                         self.odmr_meas_freq1,
                                         self.odmr_meas_freq2])
 
+        while self._odmr_logic.getState() != 'idle' and not self._stop_requested:
+            time.sleep(0.5)
 
     def mw_on(self):
         """ Start the microwave device. """
@@ -729,11 +1046,149 @@ class NuclearOperationsLogic(GenericLogic):
 
     def mw_off(self):
         """ Stop the microwave device. """
-        self.MW_off()
+        self._odmr_logic.MW_off()
 
     def set_mw_on_odmr_freq(self, freq, power):
         """ Set the microwave on a the specified freq with the specified power. """
 
-        self.set_frequency(freq)
-        self.set_power(power)
+        self._odmr_logic.set_frequency(freq)
+        self._odmr_logic.set_power(power)
+
+    def save_nuclear_operation_measurement(self, name_tag=None, timestamp=None):
+        """ Save the nuclear operation data.
+
+        @param str name_tag:
+        @param object timestamp: datetime.datetime object, from which everything
+                                 can be created.
+        """
+
+        filepath = self._save_logic.get_path_for_module(module_name='NuclearOperations')
+
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        if name_tag is not None and len(name_tag) > 0:
+            filelabel1 = name_tag + '_nuclear_ops_xy_data'
+            filelabel2 = name_tag + '_nuclear_ops_data_y_matrix'
+            filelabel3 = name_tag + '_nuclear_ops_add_data_matrix'
+            filelabel4 = name_tag + '_nuclear_ops_odmr_data'
+        else:
+            filelabel1 = '_nuclear_ops_data'
+            filelabel2 = '_nuclear_ops_data_matrix'
+            filelabel3 = '_nuclear_ops_add_data_matrix'
+            filelabel4 = '_nuclear_ops_odmr_data'
+
+        param = OrderedDict()
+        param['Electron Rabi Period (ns)'] = self.electron_rabi_periode*1e9
+        param['Pulser Microwave Frequency (MHz)'] = self.pulser_mw_freq/1e6
+        param['Pulser MW amp (V)'] = self.pulser_mw_amp
+        param['Pulser MW channel'] = self.pulser_mw_ch
+        param['Nuclear Rabi period Trans 0 (micro-s)'] = self.nuclear_rabi_period0*1e6
+        param['Nuclear Trans freq 0 (MHz)'] = self.pulser_rf_freq0/1e6
+        param['Pulser RF amp 0 (V)'] = self.pulser_rf_amp0
+        param['Nuclear Rabi period Trans 1 (micro-s)'] = self.nuclear_rabi_period1*1e6
+        param['Nuclear Trans freq 1 (MHz)'] = self.pulser_rf_freq1/1e6
+        param['Pulser RF amp 1 (V)'] = self.pulser_rf_amp1
+        param['Pulser Rf channel'] = self.pulser_rf_ch
+        param['Pulser Laser length (ns)'] = self.pulser_laser_length*1e9
+        param['Pulser Laser amp (V)'] = self.pulser_laser_amp
+        param['Pulser Laser channel'] = self.pulser_laser_ch
+        param['Number of single shot readouts per pulse'] = self.num_singleshot_readout
+        param['Pulser idle Time (ns)'] = self.pulser_idle_time*1e9
+        param['Pulser Detect channel'] = self.pulser_detect_ch
+
+        data1 = OrderedDict()
+        data2 = OrderedDict()
+        data3 = OrderedDict()
+        data4 = OrderedDict()
+
+        # Measurement Parameter:
+        param[''] = self.current_meas_asset_name
+        if self.current_meas_asset_name in ['Nuclear_Frequency_Scan']:
+            param['x axis start (MHz)'] = self.x_axis_start/1e6
+            param['x axis step (MHz)'] = self.x_axis_step/1e6
+            param['Current '] = self.current_meas_point/1e6
+
+            data1['RF pulse frequency (MHz)'] = self.x_axis_list
+            data1['Flip Probability'] = self.y_axis_list
+
+            data2['RF pulse frequency matrix (MHz)'] = self.y_axis_matrix
+
+        elif self.current_meas_asset_name in ['Nuclear_Rabi','QSD_-_Artificial_Drive', 'QSD_-_SWAP_FID','QSD_-_Entanglement_FID']:
+            param['x axis start (micro-s)'] = self.x_axis_start*1e6
+            param['x axis step (micro-s)'] = self.x_axis_step*1e6
+            param['Current '] = self.current_meas_point*1e6
+
+            data1['RF pulse length (micro-s)'] = self.x_axis_list
+            data1['Flip Probability'] = self.y_axis_list
+
+            data2['RF pulse length matrix (micro-s)'] = self.y_axis_matrix
+
+        else:
+            param['x axis start'] = self.x_axis_start
+            param['x axis step'] = self.x_axis_step
+            param['Current '] = self.current_meas_point
+
+            data1['x axis'] = self.x_axis_list
+            data1['y axis'] = self.y_axis_list
+
+            data2['y axis matrix)'] = self.y_axis_matrix
+
+        data3['Additional Data Matrix'] = self.parameter_matrix
+        data4['Measured ODMR Data Matrix'] = np.array(self.measured_odmr_list)
+
+        param['Number of expected measurement points per run'] = self.x_axis_num_points
+        param['Number of expected measurement runs'] = self.num_of_meas_runs
+        param['Number of current measurement runs'] = self.num_of_current_meas_runs
+
+        param['Current measurement index'] = self.current_meas_index
+        param['Optimize Period ODMR (s)'] = self.optimize_period_odmr
+        param['Optimize Period Confocal (s)'] = self.optimize_period_confocal
+
+        param['current ODMR trans freq0 (MHz)'] = self.odmr_meas_freq0/1e6
+        param['current ODMR trans freq1 (MHz)'] = self.odmr_meas_freq1/1e6
+        param['current ODMR trans freq2 (MHz)'] = self.odmr_meas_freq2/1e6
+        param['Runtime of ODMR optimization (s)'] = self.odmr_meas_runtime
+        param['Frequency Range ODMR optimization (MHz)'] = self.odmr_meas_freq_range/1e6
+        param['Frequency Step ODMR optimization (MHz)'] = self.odmr_meas_step/1e6
+        param['Power of ODMR optimization (dBm)'] = self.odmr_meas_power
+
+        param['Selected ODMR trans freq (MHz)'] = self.mw_cw_freq/1e6
+        param['Selected ODMR trans power (dBm)'] = self.mw_cw_power
+        param['Selected ODMR trans Peak'] = self.mw_on_odmr_peak
+
+        param['Number of samples in the gated counter'] = self.gc_number_of_samples
+        param['Number of samples per readout'] = self.gc_samples_per_readout
+
+        param['Elapsed Time (s)'] = self.elapsed_time
+        param['Start of measurement'] = self.start_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        self._save_logic.save_data(data1,
+                                   filepath,
+                                   parameters=param,
+                                   filelabel=filelabel1,
+                                   timestamp=timestamp,
+                                   as_text=True)
+
+        self._save_logic.save_data(data2,
+                                   filepath,
+                                   filelabel=filelabel2,
+                                   timestamp=timestamp,
+                                   as_text=True)
+
+        self._save_logic.save_data(data4,
+                                   filepath,
+                                   filelabel=filelabel4,
+                                   timestamp=timestamp,
+                                   as_text=True)
+
+        # self._save_logic.save_data(data3,
+        #                            filepath,
+        #                            filelabel=filelabel3,
+        #                            timestamp=timestamp,
+        #                            as_text=True)
+
+
+
+        self.logMsg('Nuclear Operation data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
