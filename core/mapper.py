@@ -91,9 +91,9 @@ class Mapper(QObject):
     def add_mapping(self,
                     widget,
                     model,
-                    model_setter,
+                    model_getter,
                     model_property_notifier=None,
-                    model_getter=None,
+                    model_setter=None,
                     widget_property_name='',
                     converter=None):
         """
@@ -105,18 +105,19 @@ class Mapper(QObject):
                         widget to model data
         model  object   Instance of a class holding model data (e.g. a logic
                         or hardware module)
-        model_setter property/callable either a property holding the data to
-                                       be displayed in widget or a setter
-                                       method called if the data in the widget
-                                       was changed
+        model_getter property/callable either a property holding the data to
+                                       be displayed in widget or a getter
+                                       method to retrieve data from the model
+                                       was changed.
         model_property_notifier SIGNAL A signal that is fired when the data
                                        was changed.
                                        Default: None. If None then data
                                        changes are not monitored and the
                                        widget is not updated.
-        model_getter callable A getter method to retrieve data from the model.
-                              If model_setter is a property the getter can be
-                              determined from this property and model_getter
+        model_setter callable A setter method which is called to set data to
+                              the model.
+                              If model_getter is a property the setter can be
+                              determined from this property and model_setter
                               is ignored if it is None. If it is not None
                               always this callable is used.
                               Default: None
@@ -155,7 +156,7 @@ class Mapper(QObject):
                                                 widget.__class__.__name__))
 
         meta_property = widget.metaObject().property(index)
-        # check that property as a notify signal
+        # check that widget property as a notify signal
         if not meta_property.hasNotifySignal():
             raise Exception('Property ''{0}'' of widget ''{1}'' has '
                             'no notify signal.'.format(
@@ -178,28 +179,28 @@ class Mapper(QObject):
                                                widget.__class__.__name__))
         widget_property_setter = meta_property.write
 
-        if isinstance(model_setter, str):
+        if isinstance(model_getter, str):
             # check if it is a property
-            attr = getattr(model.__class__, model_setter, None)
+            attr = getattr(model.__class__, model_getter, None)
             if attr is None:
                 raise Exception('Model has no attribute {0}'.format(
-                    model_setter))
+                    model_getter))
             if isinstance(attr, property):
-                # retrieve setter from property
-                model_property_name = model_setter
-                model_setter = functools.partial(attr.fset, model)
+                # retrieve getter from property
+                model_property_name = model_getter
+                model_getter = functools.partial(attr.fget, model)
+                # if no setter was specified, get it from the property
                 if model_setter is None:
-                    raise Exception('Attribute {0} of model is readonly.'
-                                    ''.format(model_property_name))
-                # if no getter was specified, get it from the property
-                if model_getter is None:
-                    model_getter = functools.partial(attr.fget, model)
-        if isinstance(model_getter, str):
-            model_getter_name = model_getter
-            model_getter = getattr(model, model_getter)
-            if not callable(model_getter):
+                    model_setter = functools.partial(attr.fset, model)
+                    if model_getter is None:
+                        raise Exception('Attribute {0} of model is readonly.'
+                                        ''.format(model_property_name))
+        if isinstance(model_setter, str):
+            model_setter_name = model_setter
+            model_setter = getattr(model, model_setter)
+            if not callable(model_setter):
                 raise Exception('{0} is not callable'.format(
-                    model_getter_name))
+                    model_setter_name))
         if isinstance(model_property_notifier, str):
             model_property_notifier = getattr(model, model_property_notifier)
 
