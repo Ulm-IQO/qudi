@@ -29,6 +29,7 @@ from qtpy.QtWidgets import QAbstractSlider
 from qtpy.QtWidgets import QComboBox
 from qtpy.QtWidgets import QDoubleSpinBox
 from qtpy.QtWidgets import QLineEdit
+from qtpy.QtWidgets import QPlainTextEdit
 from qtpy.QtWidgets import QSpinBox
 
 import functools
@@ -172,16 +173,18 @@ class Mapper():
             raise Exception('Widget {0} already mapped.'.format(repr(widget)))
         # guess widget property if not specified
         if widget_property_name == '':
-            if isinstance(widget, QLineEdit):
-                widget_property_name = 'text'
-            elif isinstance(widget, QAbstractButton):
+            if isinstance(widget, QAbstractButton):
                 widget_property_name = 'checked'
+            elif isinstance(widget, QComboBox):
+                widget_property_name = 'currentIndex'
+            elif isinstance(widget, QLineEdit):
+                widget_property_name = 'text'
             elif (isinstance(widget, QSpinBox)
                   or isinstance(widget, QDoubleSpinBox)
                   or isinstance(widget, QAbstractSlider)):
                 widget_property_name = 'value'
-            elif isinstance(widget, QComboBox):
-                widget_property_name = 'currentIndex'
+            elif isinstance(widget, QPlainTextEdit):
+                widget_property_name = 'plainText'
             else:
                 raise Exception('Property of widget {0} could not be '
                                 'guessed.'.format(repr(widget)))
