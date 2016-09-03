@@ -40,13 +40,42 @@ SUBMIT_POLICY_MANUAL = 1
 
 
 class Converter():
+    """
+    Class for converting data between display and storage (i.e. widget and
+    model).
+    """
     def widget_to_model(self, data):
+        """
+        Converts data in the format given by the widget and converts it
+        to the model data format.
+
+        Parameter:
+        ==========
+        data: object data to be converted
+
+        Returns:
+        ========
+        out: object converted data
+        """
         return data
 
     def model_to_widget(self, data):
+        """
+        Converts data in the format given by the model and converts it
+        to the widget data format.
+
+        Parameter:
+        ==========
+        data: object data to be converted
+
+        Returns:
+        ========
+        out: object converted data
+        """
         return data
 
-class Mapper(QObject):
+
+class Mapper():
     """
     The Mapper connects a Qt widget for displaying and editing certain data
     types with a model property or setter and getter functions. The model can
@@ -79,7 +108,7 @@ class Mapper(QObject):
     If the GUI module is deactivated we can delete all mappings:
     ```
     def on_deactivate(self, e):
-        self.mapper.clear_mappings()
+        self.mapper.clear_mapping()
     ```
     """
 
@@ -95,6 +124,7 @@ class Mapper(QObject):
                     model_property_notifier=None,
                     model_setter=None,
                     widget_property_name='',
+                    widget_property_notifier=None,
                     converter=None):
         """
         Adds a mapping.
@@ -109,7 +139,7 @@ class Mapper(QObject):
                                        be displayed in widget or a getter
                                        method to retrieve data from the model
                                        was changed.
-        model_property_notifier SIGNAL A signal that is fired when the data
+        model_property_notifier Signal A signal that is fired when the data
                                        was changed.
                                        Default: None. If None then data
                                        changes are not monitored and the
@@ -126,6 +156,13 @@ class Mapper(QObject):
                                  Default: ''
                                  If it is an empty string the relevant
                                  property is guessed from the widget's type.
+        widget_property_notifier Signal Notifier signal which is fired by the
+                                        widget when the data changed. If None
+                                        this is determined directly from the
+                                        property.
+                                        Example usage:
+                                        QLineEdit().editingFinished
+                                        Default: None
         converter Converter converter instance for converting data between
                             widget display and model.
                             Default: None
@@ -156,15 +193,18 @@ class Mapper(QObject):
                                                 widget.__class__.__name__))
 
         meta_property = widget.metaObject().property(index)
-        # check that widget property as a notify signal
-        if not meta_property.hasNotifySignal():
-            raise Exception('Property ''{0}'' of widget ''{1}'' has '
-                            'no notify signal.'.format(
-                                widget_property_name,
-                                widget.__class__.__name__))
-        widget_property_notifier = getattr(
-            widget,
-            meta_property.notifySignal().name().data().decode('utf8'))
+
+        # widget property notifier
+        if widget_property_notifier is None:
+            # check that widget property as a notify signal
+            if not meta_property.hasNotifySignal():
+                raise Exception('Property ''{0}'' of widget ''{1}'' has '
+                                'no notify signal.'.format(
+                                    widget_property_name,
+                                    widget.__class__.__name__))
+            widget_property_notifier = getattr(
+                widget,
+                meta_property.notifySignal().name().data().decode('utf8'))
 
         # check that widget property is readable
         if not meta_property.isReadable():
