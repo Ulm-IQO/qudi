@@ -79,11 +79,13 @@ class QZMQHeartbeat(QtCore.QObject):
     def beat(self, msg):
         """ Send a message back.
 
-          @param msg: messae to be sent back
+          @param msg: message to be sent back
         """
         logging.debug( "HB: %s" % msg)
+        if len(msg) > 0:
+            retmsg = msg[0]
         try:
-            self.stream.socket.send(msg)
+            self.stream.socket.send(retmsg)
         except zmq.ZMQError as e:
             if e.errno != errno.EINTR:
                 raise
