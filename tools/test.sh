@@ -21,17 +21,31 @@ QUDIPID=$!
 
 sleep 10
 
+if ! kill -0 $QUDIPID; then
+    echo "Start has failed: $QUDIPID not here" >&2
+    print_log
+    exit 1
+fi
+
 jupyter-nbconvert --execute notebooks/debug.ipynb
 jupyter-nbconvert --execute notebooks/matplotlib.ipynb
+
+
+if ! kill -0 $QUDIPID; then
+    echo "Test run has failed: $QUDIPID not here" >&2
+    print_log
+    exit 1
+fi
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
 sleep 20
 
-if kill $PID; then
-    echo "Shutdown has failed: $PID was killed" >&2
+if kill $QUDIPID; then
+    echo "Shutdown has failed: $QUDIPID was killed" >&2
     print_log
     exit 1
 fi
 
 print_log
+
