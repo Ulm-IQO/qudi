@@ -30,20 +30,5 @@ before_install:
 install:
   - python tools/qudikernel.py install
 
-before_script:
-  - "python start.py &"
-  - sleep 10
-
 script:
-  - jupyter-nbconvert --execute notebooks/debug.ipynb
-  - jupyter-nbconvert --execute notebooks/matplotlib.ipynb
-
-after_script:
-  - jupyter-nbconvert --execute notebooks/shutdown.ipynb
-  - sleep 10
-  - echo "======== QuDi Logfile ========"
-  - cat qudi.log
-  - if [ -e crash.log ]; then
-      echo "======== QuDi Crashfile ========";
-      cat crash.log;
-    fi
+  - ./tools/test.sh

@@ -45,10 +45,5 @@ install:
 build: false
 
 test_script:
-  - "START /B %CMD_IN_ENV% python start.py"
-  - "TIMEOUT /t 10"
-  - "%CMD_IN_ENV% jupyter-nbconvert --execute notebooks\\matplotlib.ipynb"
-  - "%CMD_IN_ENV% jupyter-nbconvert --execute notebooks\\shutdown.ipynb"
-  - "TIMEOUT /t 10"
-
+    - sh tools/test.py
 
