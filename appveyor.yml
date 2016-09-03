@@ -42,8 +42,14 @@ install:
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
     - "python tools\\qudikernel.py install"
-    - "git clone https://github.com/pyqtgraph/pyqtgraph.git pyqtgraph-github"
-
+    - ps: |
+        if ($env:QT_API -eq "pyqt5") {
+            push-location
+            git clone "https://github.com/pyqtgraph/pyqtgraph.git" pyqtgraph-github
+            cd pyqtgraph-github
+            python setup.py install
+            pop-location
+        }
 
 # Not a .NET project, we build in the install step instead
 build: false
