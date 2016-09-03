@@ -1,15 +1,22 @@
-#!/bin/sh
+#!/bin/bash
 
-function print_log {
+function print_log () {
 echo "======== QuDi Logfile ========"
 cat qudi.log
+
 if [ -e crash.log ]; then
-  echo "======== QuDi Crashfile ========";
-  cat crash.log;
+    echo "======== QuDi Crashfile ========"
+    cat crash.log
 fi
 }
 
-python start.py &
+if [[ $(python --version 2>&1) == *"2.7"* ]]; then
+    PYCMD=python3
+else
+    PYCMD=python
+fi
+
+$PYCMD start.py &
 QUDIPID=$!
 
 sleep 10

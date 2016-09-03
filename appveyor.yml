@@ -45,5 +45,5 @@ install:
 build: false
 
 test_script:
-    - sh tools/test.py
+    - sh "tools\\test.py"
 
