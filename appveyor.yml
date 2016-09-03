@@ -45,9 +45,9 @@ install:
     - ps: |
         if ($env:QT_API -eq "pyqt5") {
             push-location
-            git clone "https://github.com/pyqtgraph/pyqtgraph.git" pyqtgraph-github
+            cmd /c 'git clone https://github.com/pyqtgraph/pyqtgraph.git pyqtgraph-github 2>&1'
             cd pyqtgraph-github
-            python setup.py install
+            cmd /c 'python setup.py install 2>&1'
             pop-location
         }
 
