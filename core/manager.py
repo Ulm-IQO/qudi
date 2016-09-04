@@ -638,8 +638,8 @@ class Manager(QtCore.QObject):
                 continue
             outputs = self.tree['loaded'][destbase][destmod].connector['out']
             if destcon not in outputs:
-                logger.error('OUT connector {} not declared in module {}.{} '
-                             'but connected to IN connector {} of module {}.'
+                logger.error('OUT connector {0} not declared in module {1}.{2} '
+                             'but connected to IN connector {3} of module {4}.'
                              ''.format(destcon, destbase, destmod, c,
                                        thismodule['module.Class']))
                 continue
@@ -957,7 +957,7 @@ class Manager(QtCore.QObject):
                 logger.error('Value for class key is not a string.')
                 return None
             if not '.' in connections[c]:
-                logger.error('{}.{}: connection {}: {} has wrong format'
+                logger.error('{0}.{1}: connection {2}: {3} has wrong format'
                              'for connection target'.format(
                                  base, key, c, connections[c]))
                 return None
