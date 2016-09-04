@@ -118,6 +118,26 @@ class Mapper():
         self._submit_policy = SUBMIT_POLICY_AUTO
         self._mappings = {}
 
+    def _get_property_from_widget(self, widget):
+        """
+        Returns the property name we determined from the widget's type.
+        """
+        if isinstance(widget, QAbstractButton):
+            return 'checked'
+        elif isinstance(widget, QComboBox):
+            return 'currentIndex'
+        elif isinstance(widget, QLineEdit):
+            return 'text'
+        elif (isinstance(widget, QSpinBox)
+              or isinstance(widget, QDoubleSpinBox)
+              or isinstance(widget, QAbstractSlider)):
+            return 'value'
+        elif isinstance(widget, QPlainTextEdit):
+            return 'plainText'
+        else:
+            raise Exception('Property of widget {0} could not be '
+                            'determined.'.format(repr(widget)))
+
     def add_mapping(self,
                     widget,
                     model,
@@ -169,25 +189,18 @@ class Mapper():
                             Default: None
 
         """
-        if widget in self._mappings:
-            raise Exception('Widget {0} already mapped.'.format(repr(widget)))
         # guess widget property if not specified
         if widget_property_name == '':
-            if isinstance(widget, QAbstractButton):
-                widget_property_name = 'checked'
-            elif isinstance(widget, QComboBox):
-                widget_property_name = 'currentIndex'
-            elif isinstance(widget, QLineEdit):
-                widget_property_name = 'text'
-            elif (isinstance(widget, QSpinBox)
-                  or isinstance(widget, QDoubleSpinBox)
-                  or isinstance(widget, QAbstractSlider)):
-                widget_property_name = 'value'
-            elif isinstance(widget, QPlainTextEdit):
-                widget_property_name = 'plainText'
-            else:
-                raise Exception('Property of widget {0} could not be '
-                                'guessed.'.format(repr(widget)))
+            widget_property_name = self._get_property_from_widget(widget)
+
+        # define key of mapping
+        key = (widget, widget_property_name)
+
+        # check if already exists
+        if key in self._mappings:
+            raise Exception('Property {0} of widget {1} already mapped.'
+                            ''.format(widget_property_name, repr(widget)))
+
         # check if widget property is available
         index = widget.metaObject().indexOfProperty(widget_property_name)
         if index == -1:
@@ -249,17 +262,17 @@ class Mapper():
 
         # connect to widget property notifier
         widget_property_notifier_slot = functools.partial(
-            self._on_widget_property_notification, widget)
+            self._on_widget_property_notification, key)
         widget_property_notifier.connect(widget_property_notifier_slot)
 
         # if model_notify_signal was specified, connect to it
         model_property_notifier_slot = None
         if model_property_notifier is not None:
             model_property_notifier_slot = functools.partial(
-                self._on_model_notification, widget)
+                self._on_model_notification, key)
             model_property_notifier.connect(model_property_notifier_slot)
         # save mapping
-        self._mappings[widget] = {
+        self._mappings[key] = {
             'widget_property_name': widget_property_name,
             'widget_property_getter': widget_property_getter,
             'widget_property_setter': widget_property_setter,
@@ -274,105 +287,123 @@ class Mapper():
             'model_property_notifications_disabled': False,
             'converter': converter}
 
-    def _on_widget_property_notification(self, widget, *args):
+    def _on_widget_property_notification(self, key, *args):
         """
         Event handler for widget property change notification. Used with
         functools.partial to get the widget as first parameter.
 
         Parameters
         ==========
-        widget: QtWidget The widget the property notification signal was
-                         emitted from.
+        key: (QtWidget, str) The key consisting of widget and property name,
+                             the notification signal was emitted from.
         args*: List list of event parameters
         """
-        if self._mappings[widget]['widget_property_notifications_disabled']:
+        widget, widget_property_name = key
+        if self._mappings[key]['widget_property_notifications_disabled']:
             return
         if self._submit_policy == SUBMIT_POLICY_AUTO:
-            self._mappings[widget][
+            self._mappings[key][
                 'model_property_notifications_disabled'] = True
             try:
                 # get value
-                value = self._mappings[widget]['widget_property_getter'](
+                value = self._mappings[key]['widget_property_getter'](
                     widget)
                 # convert it if requested
-                if self._mappings[widget]['converter'] is not None:
-                    value = self._mappings[widget][
+                if self._mappings[key]['converter'] is not None:
+                    value = self._mappings[key][
                         'converter'].widget_to_model(value)
                 # set it to model
-                self._mappings[widget]['model_property_setter'](value)
+                self._mappings[key]['model_property_setter'](value)
             finally:
-                self._mappings[widget][
+                self._mappings[key][
                     'model_property_notifications_disabled'] = False
         else:
             pass
 
-    def _on_model_notification(self, widget, *args):
+    def _on_model_notification(self, key, *args):
         """
         Event handler for model data change notification. Used with
         functools.partial to get the widget as first parameter.
 
         Parameters
         ==========
-        widget: QtWidget The widget the property notification signal was
-                         emitted from.
+        key: (QtWidget, str) The key consisting of widget and property name
+                             the notification signal was emitted from.
         args*: List list of event parameters
         """
+        widget, widget_property_name = key
+        mapping = self._mappings[key]
         # get value from model
-        value = self._mappings[widget]['model_property_getter']()
+        value = self._mappings[key]['model_property_getter']()
 
         # are updates disabled?
-        if self._mappings[widget]['model_property_notifications_disabled']:
+        if self._mappings[key]['model_property_notifications_disabled']:
             # but check if value has changed first
             # get value from widget
-            value_widget = self._mappings[widget]['widget_property_getter'](
+            value_widget = self._mappings[key]['widget_property_getter'](
                 widget)
             # convert it if requested
-            if self._mappings[widget]['converter'] is not None:
-                value_widget = self._mappings[widget][
+            if self._mappings[key]['converter'] is not None:
+                value_widget = self._mappings[key][
                     'converter'].widget_to_model(value_widget)
             # accept changes, stop if nothing has changed
             if (value == value_widget):
                 return
 
         # convert value if requested
-        if self._mappings[widget]['converter'] is not None:
-            value = self._mappings[widget]['converter'].model_to_widget(value)
+        if self._mappings[key]['converter'] is not None:
+            value = self._mappings[key]['converter'].model_to_widget(value)
 
         # update widget
-        self._mappings[widget][
+        self._mappings[key][
             'widget_property_notifications_disabled'] = True
         try:
-            self._mappings[widget]['widget_property_setter'](widget, value)
+            self._mappings[key]['widget_property_setter'](widget, value)
         finally:
-            self._mappings[widget][
+            self._mappings[key][
                 'widget_property_notifications_disabled'] = False
 
     def clear_mapping(self):
         """
         Clears all mappings.
         """
+        # convert iterator to list because the _mappings dictionary will
+        # change its size during iteration
         for key in list(self._mappings.keys()):
             self.remove_mapping(key)
 
-    def remove_mapping(self, widget):
+    def remove_mapping(self, widget, widget_property_name=''):
         """
         Removes the mapping which maps the QtWidget widget to some model data.
 
         Parameters
         ==========
-        widget: QtWidget widget the mapping is attached to
+        widget: QtWidget/(QtWidget, str) widget the mapping is attached to
+                                  or a tuple containing the widget and the
+                                  widget's property name
+        widget_property_name: str name of the property of the widget we are
+                                  dealing with. If '' it will be determined
+                                  from the widget.
+                                  Default: ''
         """
-        # check that widget has a mapping
-        if not widget in self._mappings:
+        if isinstance(widget, tuple):
+            widget, widget_property_name = widget
+        # guess widget property if not specified
+        if widget_property_name == '':
+            widget_property_name = self._get_property_from_widget(widget)
+        # define key
+        key = (widget, widget_property_name)
+        # check that key has a mapping
+        if not key in self._mappings:
             raise Exception('Widget {0} is not mapped.'.format(repr(widget)))
         # disconnect signals
-        self._mappings[widget]['widget_property_notifier'].disconnect(
-            self._mappings[widget]['widget_property_notifier_slot'])
-        if self._mappings[widget]['model_property_notifier'] is not None:
-            self._mappings[widget]['model_property_notifier'].disconnect(
-                self._mappings[widget]['model_property_notifier_slot'])
+        self._mappings[key]['widget_property_notifier'].disconnect(
+            self._mappings[key]['widget_property_notifier_slot'])
+        if self._mappings[key]['model_property_notifier'] is not None:
+            self._mappings[key]['model_property_notifier'].disconnect(
+                self._mappings[key]['model_property_notifier_slot'])
         # remove from dictionary
-        del self._mappings[widget]
+        del self._mappings[key]
 
     @property
     def submit_policy(self):
@@ -412,8 +443,8 @@ class Mapper():
         submit_policy = self._submit_policy
         self.submit_policy = SUBMIT_POLICY_AUTO
         try:
-            for widget in self._mappings:
-                self._on_widget_property_notification(widget)
+            for key in self._mappings:
+                self._on_widget_property_notification(key)
         finally:
             self.submit_policy = submit_policy
 
@@ -427,5 +458,5 @@ class Mapper():
             QTimer.singleShot(0, self.revert)
             return
 
-        for widget in self._mappings:
-            self._on_model_notification(widget)
+        for key in self._mappings:
+            self._on_model_notification(key)
