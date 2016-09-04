@@ -289,7 +289,7 @@ class APTMotor():
             raise Exception('Connection Failed. Check Serial Number!')
         return True
 
-        ''' Interfacing with the motor settings '''
+    # Interfacing with the motor settings
 
     def getHardwareInformation(self):
         ''' Get information from the hardware'''
