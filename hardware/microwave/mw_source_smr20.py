@@ -89,12 +89,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._MAX_LIST_ENTRIES = 4000
         
         self._gpib_connection.write('*WAI')
-        self._FREQ_MAX = eval(self._gpib_connection.ask('FREQuency? MAX'))
-        self._FREQ_MIN = eval(self._gpib_connection.ask('FREQuency? MIN'))  
-        self._POWER_MAX = eval(self._gpib_connection.ask('POWER? MAX'))
-        self._POWER_MIN = eval(self._gpib_connection.ask('POWER? MIN'))
-
-        
+        self._FREQ_MAX = float(self._gpib_connection.ask('FREQuency? MAX'))
+        self._FREQ_MIN = float(self._gpib_connection.ask('FREQuency? MIN'))
+        self._POWER_MAX = float(self._gpib_connection.ask('POWER? MAX'))
+        self._POWER_MIN = float(self._gpib_connection.ask('POWER? MIN'))
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.

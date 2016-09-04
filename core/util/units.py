@@ -104,7 +104,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
                 elif np.isinf(np.float(str_val)):
                     value = np.inf
                 else:
-                    value = eval('{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1))
+                    value = float('{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1))
 
             else:
                 # the factor 10 moves the displayed digit by one to the right,
