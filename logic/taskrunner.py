@@ -129,7 +129,7 @@ class TaskRunner(GenericLogic):
             t['name'] = task
             # print('tsk:', task)
             if not 'module' in config['tasks'][task]:
-                self.log.error('No module given for task {}'.format(task))
+                self.log.error('No module given for task {0}'.format(task))
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
@@ -161,10 +161,10 @@ class TaskRunner(GenericLogic):
                     if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
                         success = self._manager.startModule('logic', mod)
                         if success < 0:
-                            raise Exception('Loading module {} failed.'.format(mod))
+                            raise Exception('Loading module {0} failed.'.format(mod))
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
                 # print('Attempting to import: logic.tasks.{}'.format(t['module']))
-                mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
+                mod = importlib.__import__('logic.tasks.{0}'.format(t['module']), fromlist=['*'])
                 # print('loaded:', mod)
                 # print('dir:', dir(mod))
                 t['object'] = mod.Task(name=t['name'], runner=self,
@@ -217,7 +217,7 @@ class TaskRunner(GenericLogic):
             ):
             self.model.append(t)
         else:
-            self.log.error('Not a subclass of allowd task classes {}'.format(
+            self.log.error('Not a subclass of allowd task classes {0}'.format(
                 task))
             return False
         return True
@@ -299,7 +299,7 @@ class TaskRunner(GenericLogic):
         elif task['object'].can('postrun'):
             task['object'].postrun()
         else:
-            self.log.error('Task cannot be run: {}'.format(task.name))
+            self.log.error('Task cannot be run: {0}'.format(task.name))
 
     def pauseTaskByIndex(self, index):
         """ Try pausing a task identified by its list index.
@@ -326,7 +326,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('pause'):
             task['object'].pause()
         else:
-            self.log.error('Task cannot be paused:  {}'.format(task['name']))
+            self.log.error('Task cannot be paused:  {0}'.format(task['name']))
 
     def stopTaskByIndex(self, index):
         """ Try stopping a task identified by its list index.
@@ -349,7 +349,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('finish'):
             task['object'].finish()
         else:
-            self.log.error('Task cannot be stopped: {}'.format(task['name']))
+            self.log.error('Task cannot be stopped: {0}'.format(task['name']))
 
     def getTaskByName(self, taskname):
         """ Get task dictionary for a given task name.

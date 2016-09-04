@@ -46,7 +46,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']

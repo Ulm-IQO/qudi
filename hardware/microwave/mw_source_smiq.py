@@ -184,7 +184,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if power is not None:
-            self._gpib_connection.write(':POW {:f}'.format(power))
+            self._gpib_connection.write(':POW {0:f}'.format(power))
             return 0
         else:
             return -1
@@ -204,7 +204,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if freq is not None:
-            self._gpib_connection.write(':FREQ {:e}'.format(freq))
+            self._gpib_connection.write(':FREQ {0:e}'.format(freq))
             return 0
         else:
             return -1
@@ -252,10 +252,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # put al frequencies into a string, first element is doubled
         # so there are n+1 list entries for scanning n frequencies
         # due to counter/trigger issues
-        freqstring = ' {:f},'.format(freq[0])
+        freqstring = ' {0:f},'.format(freq[0])
         for f in freq[:-1]:
-            freqstring += ' {:f},'.format(f)
-        freqstring += ' {:f}'.format(freq[-1])
+            freqstring += ' {0:f},'.format(f)
+        freqstring += ' {0:f}'.format(freq[-1])
 
         freqcommand = ':LIST:FREQ' + freqstring
         #print(freqcommand)
@@ -264,7 +264,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         # there are n+1 list entries for scanning n frequencies
         # due to counter/trigger issues
-        powcommand = ':LIST:POW {}{}'.format(power, (', ' + str(power)) * len(freq))
+        powcommand = ':LIST:POW {0}{1}'.format(power, (', ' + str(power)) * len(freq))
         #print(powcommand)
         self._gpib_connection.write(powcommand)
 

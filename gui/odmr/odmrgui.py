@@ -74,7 +74,7 @@ class ODMRGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -223,7 +223,7 @@ class ODMRGui(GUIBase):
             try:
                 self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
             except:
-                self.log.warning('Could not load fitmodel {}'.format(name))
+                self.log.warning('Could not load fitmodel {0}'.format(name))
             else:
                 self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
 

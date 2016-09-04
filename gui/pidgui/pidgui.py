@@ -63,7 +63,7 @@ class PIDGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
@@ -93,7 +93,7 @@ class PIDGui(GUIBase):
         self.plot1 = self._pw.plotItem
         self.plot1.setLabel(
             'left',
-            '<font color={}>Process Value</font> and <font color={}>Setpoint</font>'.format(
+            '<font color={0}>Process Value</font> and <font color={1}>Setpoint</font>'.format(
                 palette.c1.name(),
                 palette.c2.name()),
              units='unit')
@@ -207,15 +207,15 @@ class PIDGui(GUIBase):
 
         if self._pid_logic.get_enabled():
             self._mw.process_value_Label.setText(
-                '<font color={}>{:,.3f}</font>'.format(
+                '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c1.name(),
                 self._pid_logic.history[0, -1]))
             self._mw.control_value_Label.setText(
-                '<font color={}>{:,.3f}</font>'.format(
+                '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c3.name(),
                 self._pid_logic.history[1, -1]))
             self._mw.setpoint_value_Label.setText(
-                '<font color={}>{:,.3f}</font>'.format(
+                '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c2.name(),
                 self._pid_logic.history[2, -1]))
             extra = self._pid_logic._controller.get_extra()

@@ -26,7 +26,7 @@ def function_signature():
     name = traceback.extract_stack(None, 2)[0][2]
     frame = inspect.currentframe().f_back
     args, _, _, values = inspect.getargvalues(frame)
-    return  '{}{}'.format(name, ([(i, values[i]) for i in args]))
+    return  '{0}{1}'.format(name, ([(i, values[i]) for i in args]))
 
 class InterfaceImplementationError(Exception):
     def __init__(self, value):

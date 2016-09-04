@@ -64,7 +64,7 @@ class ODMRLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         # number of lines in the matrix plot
         self.number_of_lines = 50
@@ -663,10 +663,10 @@ class ODMRLogic(GenericLogic):
             offset = estimate[7]
 
             if lorentz0_center < lorentz1_center:
-                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{:+f}'.format(splitting_from_gui_config)}
+                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{0:+f}'.format(splitting_from_gui_config)}
             else:
                 splitting_from_gui_config *= -1
-                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{:+f}'.format(splitting_from_gui_config)}
+                additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{0:+f}'.format(splitting_from_gui_config)}
 
             kwargs['add_parameters'] = additional_parameters
 
