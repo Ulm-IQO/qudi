@@ -127,7 +127,7 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
           """
-        if section < 0 and section > len(self.header) - 1:
+        if not(0 <= section < len(self.header)):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
