@@ -19,20 +19,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 import os
-import pyqtgraph as pg
-from PyQt4 import QtGui
-from PyQt4 import QtCore
-from PyQt4 import uic
 import datetime
 import pyqtgraph as pg
 import pyqtgraph.exporters
+from qtpy import QtGui, QtWidgets, QtCore, uic
 
 from gui.guibase import GUIBase
 
 
-class NuclearOperationsMainWindow(QtGui.QMainWindow):
+class NuclearOperationsMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -90,7 +86,7 @@ class NuclearOperationsGui(GUIBase):
         self._mw = NuclearOperationsMainWindow()
 
         # Add save file tag input box
-        self._mw.save_tag_LineEdit = QtGui.QLineEdit(self._mw)
+        self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
                                               'added to the filename.')
@@ -198,7 +194,7 @@ class NuclearOperationsGui(GUIBase):
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
