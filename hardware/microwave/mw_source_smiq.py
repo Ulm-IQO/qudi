@@ -183,7 +183,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if power != None:
+        if power is not None:
             self._gpib_connection.write(':POW {:f}'.format(power))
             return 0
         else:
@@ -203,7 +203,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if freq != None:
+        if freq is not None:
             self._gpib_connection.write(':FREQ {:e}'.format(freq))
             return 0
         else:
