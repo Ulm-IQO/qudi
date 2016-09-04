@@ -211,7 +211,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if clock_frequency != None:
+        if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
         self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner_clock')

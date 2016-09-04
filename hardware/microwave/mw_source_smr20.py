@@ -188,10 +188,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         self._gpib_connection.write(':FREQ:MODE CW')
 
-        if freq != None:
+        if freq is not None:
             self.set_frequency(freq)
 
-        if power != None:
+        if power is not None:
             self.set_power(power)
 
         self.on()

@@ -173,12 +173,12 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         """
         error = 0
         print("set cw")
-        if freq != None:
+        if freq is not None:
             error = self.set_frequency(freq)
         else:
             return -1
 
-        if power != None:
+        if power is not None:
             error = self.set_power(power)
         else:
             return -1
