@@ -366,13 +366,10 @@ class MotorStagePI(Base, MotorInterface):
         @param float move: desired position in millimeter
         """
         constraints = self.get_constraints()
-        if move > constraints[axis]['pos_max'] or move < constraints[axis]['pos_min']:
+        if not(constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
             self.log.warning('Cannot make the movement of the axis "{0}"'
-                    'since the border [{1},{2}] '
-                    'would be crossed! Ignore '
-                    'command!'.format(axis,
-                        constraints[axis]['pos_min'],
-                        constraints[axis]['pos_max']))
+                'since the border [{1},{2}] would be crossed! Ignore command!'
+                ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
         else:
             self._go_to_pos(axis, move)
 

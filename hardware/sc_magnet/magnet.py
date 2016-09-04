@@ -1328,19 +1328,19 @@ class Magnet(Base, MagnetInterface):
                 phi = coord_dict_rad['rad'][2]
                 theta = coord_dict_rad['rad'][1]
                 # Sides of the rectangular intersecting with position vector
-                if (0.9553166181245093 <= theta) and (theta < np.pi - 0.9553166181245093):
+                if 0.9553166181245093 <= theta < np.pi - 0.9553166181245093:
                     if (7*np.pi/4 < phi < 0) or (0 <= phi <= np.pi/4):
                         max_pos = self.x_constr/(np.cos(phi)*np.sin(theta))
-                    elif (np.pi/4 < phi) and (phi <= 3*np.pi/4):
+                    elif np.pi/4 < phi <= 3*np.pi/4:
                         max_pos = self.y_constr / (np.sin(phi)*np.sin(theta))
-                    elif (3*np.pi/4 < phi) and (phi <= 5*np.pi/4):
+                    elif 3*np.pi/4 < phi <= 5*np.pi/4:
                         max_pos = -self.x_constr/(np.cos(phi)*np.sin(theta))
-                    elif (5*np.pi/4 < phi) and (phi <= 7*np.pi/4):
+                    elif 5*np.pi/4 < phi <= 7*np.pi/4:
                         max_pos = -self.y_constr / (np.sin(phi)*np.sin(theta))
                     # Top and bottom of the rectangular
-                elif (0 <= theta) and ( theta < 0.9553166181245093):
+                elif 0 <= theta < 0.9553166181245093:
                     max_pos = self.x_constr / np.cos(theta)
-                elif (np.pi - 0.9553166181245093 <= theta) and (theta <= np.pi):
+                elif np.pi - 0.9553166181245093 <= theta <= np.pi:
                     max_pos = - self.x_constr / np.cos(theta)
         return max_pos
 
