@@ -345,8 +345,7 @@ class ODMRGui(GUIBase):
         if index >= 0:
             self._mw.mode_ComboBox.setCurrentIndex(index)
         else:
-            self.logMsg('No proper state to display was found in the combobox!',
-                        msgType='warning')
+            self.log.warning('No proper state to display was found in the combobox!')
 
     def update_run_stop_display(self, run_odmr):
         """ Update the display for the odmr measurement.

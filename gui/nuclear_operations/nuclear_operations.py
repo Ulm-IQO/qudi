@@ -57,12 +57,11 @@ class NuclearOperationsGui(GUIBase):
                          config,
                          c_dict)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{0}: {1}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -354,7 +353,7 @@ class NuclearOperationsGui(GUIBase):
             self._no_logic.x_axis_start = self._mw.x_axis_start_DSpinBox.value()*1e6
             self._no_logic.x_axis_step = self._mw.x_axis_step_DSpinBox.value()*1e6
         else:
-            self.logMsg('This measurement does not have any units associated to!', msgType='error')
+            self.log.error('This measurement does not have any units associated to it!')
 
         self._no_logic.x_axis_num_points = self._mw.x_axis_num_points_SpinBox.value()
         self._no_logic.num_of_meas_runs = self._mw.num_of_meas_runs_SpinBox.value()
