@@ -439,7 +439,7 @@ class AWG7122C(Base, PulserInterface):
             file_name = asset_name + '.seq'
 
             # self.tell('MMEMORY:IMPORT "{0}","{1}",SEQ \n'.format(asset_name , asset_name + '.seq'))
-            self.tell('SOUR1:FUNC:USER "%s/%s"\n' % (path, file_name))
+            self.tell('SOUR1:FUNC:USER "{0!s}/{1!s}"\n'.format(path, file_name))
             # self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, file_name))
             # set the AWG to the event jump mode:
             self.tell('AWGCONTROL:EVENT:JMODE EJUMP')
@@ -1322,7 +1322,7 @@ class AWG7122C(Base, PulserInterface):
                    'E': 'ENH',
                    'S': 'SEQ'
                    }
-        self.tell('AWGC:RMOD %s\n' % look_up[mode.upper()])
+        self.tell('AWGC:RMOD {0!s}\n'.format(look_up[mode.upper()]))
 
     # works
     def get_sequencer_mode(self, output_as_int=False):
