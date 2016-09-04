@@ -348,7 +348,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
 
     # if the dip is exactly at one of the boarders that means
     # the dips are most probably overlapping
-    if dip1_arg == sigma0_argleft or dip1_arg == sigma0_argright:
+    if dip1_arg in (sigma0_argleft, sigma0_argright):
         #print('Dips are overlapping')
         distance_left  = abs(dip0_arg - sigma0_argleft)
         distance_right = abs(dip0_arg - sigma0_argright)

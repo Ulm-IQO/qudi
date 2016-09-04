@@ -594,7 +594,7 @@ class MotorStagePI(Base, MotorInterface):
         print('fast movement finished')
 
         time.sleep(0.1)
-        if axis == 'x' or axis == 'y':
+        if axis in ('x', 'y'):
             self._serial_connection_xyz.write(axis_ID+'FE1\n')
             print(self._serial_connection_xyz.read(6))
             [a, b, c] = self._in_movement_xyz()

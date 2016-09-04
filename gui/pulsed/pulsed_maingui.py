@@ -1171,7 +1171,7 @@ class PulsedMeasurementGui(GUIBase):
             bin_length += curr_bin_length
 
             laser_val =self.get_element_in_block_table(row_ind, laser_column)
-            if (laser_val=='DC') or (laser_val==2):
+            if laser_val in ('DC', 2):
                 if not laser_on:
                     num_laser_ch += 1
                     laser_on = True

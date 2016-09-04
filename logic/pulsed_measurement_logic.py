@@ -988,7 +988,7 @@ class PulsedMeasurementLogic(GenericLogic):
             pulsed_fit_x = []
             pulsed_fit_y = []
 
-        elif fit_function == 'Sine' or fit_function == 'Cos_FixedPhase':
+        elif fit_function in ('Sine', 'Cos_FixedPhase'):
             update_dict = {}
             if fit_function == 'Cos_FixedPhase':
                 # set some custom defined constraints for this module and for
