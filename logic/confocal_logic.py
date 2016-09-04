@@ -970,7 +970,7 @@ class ConfocalLogic(GenericLogic):
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
-    def draw_figure(self, data, image_extent, scan_axis=['X', 'Y'], cbar_range=None, percentile_range=None,  crosshair_pos=None):
+    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
@@ -988,6 +988,8 @@ class ConfocalLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
+        if scan_axis is None:
+            scan_axis = ['X', 'Y']
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
