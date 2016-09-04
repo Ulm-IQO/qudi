@@ -1188,7 +1188,5 @@ class NuclearOperationsLogic(GenericLogic):
         #                            timestamp=timestamp,
         #                            as_text=True)
 
-
-
-        self.logMsg('Nuclear Operation data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.info('Nuclear Operation data saved to:\n{0}'.format(filepath))
 
