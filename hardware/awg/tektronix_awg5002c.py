@@ -340,7 +340,7 @@ class AWG5002C(Base, PulserInterface):
             with open(filepath, 'rb') as uploaded_file:
                 ftp.storbinary('STOR '+filename, uploaded_file)
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
@@ -362,6 +362,8 @@ class AWG5002C(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+        if load_dict is None:
+            load_dict = {}
 
         path = self.ftp_path + self.get_asset_dir_on_device()
 
@@ -493,7 +495,7 @@ class AWG5002C(Base, PulserInterface):
         time.sleep(0.2)
         return self.get_sample_rate()
 
-    def get_analog_level(self, amplitude=[], offset=[]):
+    def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
         @param list amplitude: optional, if a specific amplitude value (in Volt
@@ -530,6 +532,10 @@ class AWG5002C(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if amplitude is None:
+            amplitude = []
+        if offset is None:
+            offset = []
         amp = {}
         off = {}
 
@@ -569,7 +575,7 @@ class AWG5002C(Base, PulserInterface):
         return amp, off
 
 
-    def set_analog_level(self, amplitude={}, offset={}):
+    def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
         @param dict amplitude: dictionary, with key being the channel and items
@@ -598,6 +604,10 @@ class AWG5002C(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if amplitude is None:
+            amplitude = {}
+        if offset is None:
+            offset = {}
 
         constraints = self.get_constraints()
 
@@ -655,7 +665,7 @@ class AWG5002C(Base, PulserInterface):
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
-    def get_digital_level(self, low=[], high=[]):
+    def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
         @param list low: optional, if a specific low value (in Volt) of a
@@ -690,6 +700,10 @@ class AWG5002C(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = []
+        if high is None:
+            high = []
 
         low_val = {}
         high_val = {}
@@ -748,7 +762,7 @@ class AWG5002C(Base, PulserInterface):
 
         return low_val, high_val
 
-    def set_digital_level(self, low={}, high={}):
+    def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
         @param dict low: dictionary, with key being the channel and items being
@@ -775,6 +789,10 @@ class AWG5002C(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
 
         constraints = self.get_constraints()
 
@@ -843,7 +861,7 @@ class AWG5002C(Base, PulserInterface):
 
         return self.get_digital_level(low=list(low), high=list(high))
 
-    def get_active_channels(self, ch=[]):
+    def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
         @param list ch: optional, if specific analog or digital channels are
@@ -860,6 +878,8 @@ class AWG5002C(Base, PulserInterface):
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
+        if ch is None:
+            ch = []
 
         active_ch = {}
 
@@ -923,7 +943,7 @@ class AWG5002C(Base, PulserInterface):
 
         return active_ch
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the analog or digital
@@ -952,6 +972,8 @@ class AWG5002C(Base, PulserInterface):
         other devices the deactivation of digital channels increase the DAC
         resolution of the analog channels.
         """
+        if ch is None:
+            ch = {}
 
         for channel in ch:
 

@@ -52,7 +52,7 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, config={}, callbacks={},
+    def __init__(self, manager, name, config=None, callbacks=None,
                  **kwargs):
         """ Initialise Base class object and set up its state machine.
 
@@ -64,6 +64,10 @@ class Base(QtCore.QObject, Fysom):
                                  on state machine transitions
 
         """
+        if config is None:
+            config = {}
+        if callbacks is None:
+            callbacks = {}
 
         default_callbacks = {
             'onactivate': self.on_activate,
