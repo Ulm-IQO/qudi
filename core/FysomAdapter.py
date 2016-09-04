@@ -30,5 +30,5 @@ class Fysom():
         if hasattr(self._fysom, name):
             return getattr(self._fysom, name)
         else:
-            raise AttributeError("'{}' object has no attribute '{}'".format(
+            raise AttributeError("'{0}' object has no attribute '{1}'".format(
                 self.__class__, name))

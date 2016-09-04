@@ -235,10 +235,10 @@ class EdwardsVacuumController(Base):
         return parsed
 
     def _get_pstate(self, register):
-        g = self.inst.ask('?V{}'.format(register))
+        g = self.inst.ask('?V{0}'.format(register))
         param = g.split()[0]
         value = g.split()[1]
-        if param == '=V{}'.format(register):
+        if param == '=V{0}'.format(register):
             values = value.split(';')
             parsed = {
                 'state': self.PUMP_STATE[int(values[0])],
@@ -250,10 +250,10 @@ class EdwardsVacuumController(Base):
             return
 
     def _get_pval(self, register):
-        g = self.inst.ask('?V{}'.format(register))
+        g = self.inst.ask('?V{0}'.format(register))
         param = g.split()[0]
         value = g.split()[1]
-        if param == '=V{}'.format(register):
+        if param == '=V{0}'.format(register):
             values = value.split(';')
             parsed = {
                 'value': float(values[0]),
@@ -265,10 +265,10 @@ class EdwardsVacuumController(Base):
             return {}
 
     def _get_gauge(self, gauge):
-         g = self.inst.ask('?V{}'.format(gauge))
+         g = self.inst.ask('?V{0}'.format(gauge))
          param = g.split()[0]
          values = g.split()[1]
-         if param == '=V{}'.format(gauge):
+         if param == '=V{0}'.format(gauge):
              return self._parse_gauge_answer(values)
          else:
              return
@@ -307,7 +307,7 @@ class EdwardsVacuumController(Base):
         return self._get_gauge(915)
 
     def get_extra_info(self):
-        return 'Controller: {}\nTurbo: {}\nBacking: {}'.format(
+        return 'Controller: {0}\nTurbo: {1}\nBacking: {2}'.format(
             self.inst.ask('?S902'),
             self.inst.ask('?S904'),
             self.inst.ask('?S910'))
@@ -324,14 +324,14 @@ class EdwardsVacuumController(Base):
     def set_pump_states(self, states):
         new_state = {}
         if 'turbo' in states:
-            reply = self.inst.ask('!C904 {}'.format(1 if states['turbo'] else 0))
+            reply = self.inst.ask('!C904 {0}'.format(1 if states['turbo'] else 0))
 
         if 'backing' in states:
-            reply = self.inst.ask('!C910 {}'.format(1 if states['backing'] else 0))
+            reply = self.inst.ask('!C910 {0}'.format(1 if states['backing'] else 0))
         return new_state
 
     def get_system_state(self):
         return self.inst.ask('?V933')
 
     def set_system_state(self, state):
-        return self.inst.ask('!C933 {}'.format(1 if state else 0))
+        return self.inst.ask('!C933 {0}'.format(1 if state else 0))

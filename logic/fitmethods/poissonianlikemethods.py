@@ -98,11 +98,11 @@ def make_poissonian_model(self, no_of_functions=None):
         model = ( Model(poisson_function, prefix='poissonian_') *
                   Model(amplitude_function, prefix='poissonian_') )
     else:
-        model = (Model(poisson_function, prefix='poissonian{}_'.format('0')) *
-                 Model(amplitude_function, prefix='poissonian{}_'.format('0')))
+        model = (Model(poisson_function, prefix='poissonian{0}_'.format('0')) *
+                 Model(amplitude_function, prefix='poissonian{0}_'.format('0')))
         for ii in range(no_of_functions-1):
-            model += (Model(poisson_function, prefix='poissonian{}_'.format(ii+1)) *
-                      Model(amplitude_function, prefix='poissonian{}_'.format(ii+1)))
+            model += (Model(poisson_function, prefix='poissonian{0}_'.format(ii+1)) *
+                      Model(amplitude_function, prefix='poissonian{0}_'.format(ii+1)))
     params = model.make_params()
 
     return model, params

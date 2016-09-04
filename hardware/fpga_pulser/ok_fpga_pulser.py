@@ -358,7 +358,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         self.sample_rate = sample_rate
         self.fpga.ConfigureFPGA(bitfile_path)
-        self.log.info('FPGA pulse generator configured with {}'.format(
+        self.log.info('FPGA pulse generator configured with {0}'.format(
             bitfile_path))
         return 0
 
@@ -480,7 +480,7 @@ class OkFpgaPulser(Base, PulserInterface):
         d_ch_dict = {}
         if len(ch) < 1:
             for chnr in range(8):
-                d_ch_dict['d_ch{}'.format(chnr+1)] = True
+                d_ch_dict['d_ch{0}'.format(chnr+1)] = True
         else:
             for channel in ch:
                 d_ch_dict[channel] = True

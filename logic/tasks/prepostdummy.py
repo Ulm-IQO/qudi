@@ -25,14 +25,14 @@ class Task(PrePostTask):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        print('PrePost init task {}'.format(name))
+        print('PrePost init task {0}'.format(name))
         print(self.config)
 
     def preExecute(self):
         time.sleep(1)
-        print('pre action of task {}'.format(self.name))
+        print('pre action of task {0}'.format(self.name))
 
     def postExecute(self):
         time.sleep(1)
-        print('post action of task {}'.format(self.name))
+        print('post action of task {0}'.format(self.name))
 

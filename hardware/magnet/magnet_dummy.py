@@ -51,7 +51,7 @@ class MagnetDummy(Base, MagnetInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #these label should be actually set by the config.
         self._x_axis = MagnetAxisDummy('x')

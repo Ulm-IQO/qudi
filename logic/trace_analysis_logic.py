@@ -59,7 +59,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.hist_data = None
         self._hist_num_bins = None

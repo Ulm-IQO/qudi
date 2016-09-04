@@ -274,7 +274,7 @@ class ConfocalLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -319,7 +319,7 @@ class ConfocalLogic(GenericLogic):
                 for i in reversed(range(1, self.max_history_length)):
                     try:
                         new_history_item = ConfocalHistoryEntry(self)
-                        new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
+                        new_history_item.deserialize(self._statusVariables['history_{0}'.format(i)])
                         self.history.append(new_history_item)
                     except KeyError:
                         pass
@@ -365,7 +365,7 @@ class ConfocalLogic(GenericLogic):
         self.history.append(closing_state)
         histindex = 0
         for state in reversed(self.history):
-            self._statusVariables['history_{}'.format(histindex)] = state.serialize()
+            self._statusVariables['history_{0}'.format(histindex)] = state.serialize()
             histindex += 1
         return 0
 
