@@ -211,7 +211,7 @@ def round_value_to_error(value, error):
 
     first_err_digit = '{:e}'.format(error)[0]
 
-    if first_err_digit == '1' or first_err_digit == '2':
+    if first_err_digit in ('1', '2'):
         round_digit += 1
 
     # Use the python round function, since np.round uses the __repr__ conversion
