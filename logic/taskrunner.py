@@ -230,13 +230,14 @@ class TaskRunner(GenericLogic):
             pok = True
             modok = False
 
-            #check if all required pre/post action tasks tasks are present
+            # check if we require pre/post actions
             if len(task['preposttasks']) == 0:
                 ppok = True
-            for pptask in task['preposttasks']:
-                for t in self.model.storage:
-                    if t['name'] == pptask:
-                        ppok =True
+
+            # check if all required pre/post action tasks tasks are present
+            for t in self.model.storage:
+                if t['name'] in task['preposttasks']:
+                    ppok =True
 
             #check if all required pause tasks are present
             #if len(task['pausetasks']) == 0:
