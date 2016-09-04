@@ -385,7 +385,7 @@ class MotorStagePI(Base, MotorInterface):
         """
         constraints = self.get_constraints()
         axis_ID = constraints[axis]['ID']
-        self._serial_connection_xyz.write(axis_ID+'SP%s'%move)
+        self._serial_connection_xyz.write(axis_ID+'SP{0!s}'.format(move))
         self._serial_connection_xyz.write(axis_ID+'MP')
 
 
@@ -656,13 +656,13 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if 'x' in param_dict:
                 vel = int(param_dict['x']*10000)
-                self._serial_connection_xyz.write(constraints['x']['ID']+'SV%i\n'%(vel))
+                self._serial_connection_xyz.write(constraints['x']['ID']+'SV{0:d}\n'.format((vel)))
             if 'y' in param_dict:
                 vel = int(param_dict['y']*10000)
-                self._serial_connection_xyz.write(constraints['y']['ID']+'SV%i\n'%(vel))
+                self._serial_connection_xyz.write(constraints['y']['ID']+'SV{0:d}\n'.format((vel)))
             if 'z' in param_dict:
                 vel = int(param_dict['z']*10000)
-                self._serial_connection_xyz.write(constraints['z']['ID']+'SV%i\n'%(vel))
+                self._serial_connection_xyz.write(constraints['z']['ID']+'SV{0:d}\n'.format((vel)))
             if 'phi' in param_dict:
                 vel = param_dict['phi']
                 data = self._speed_to_data_rot(vel)

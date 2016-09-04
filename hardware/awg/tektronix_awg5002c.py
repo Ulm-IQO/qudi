@@ -1248,7 +1248,7 @@ class AWG5002C(Base, PulserInterface):
                    'E' : 'ENH' ,
                    'S' : 'SEQ'
                   }
-        self.tell('AWGC:RMOD %s\n' % look_up[mode.upper()])
+        self.tell('AWGC:RMOD {0!s}\n'.format(look_up[mode.upper()]))
 
 
     def get_sequencer_mode(self,output_as_int=False):

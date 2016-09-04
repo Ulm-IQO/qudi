@@ -52,7 +52,7 @@ class EventManager():
           If ``event`` is not one of the known events.
         """
         if not callable(function):
-            raise TypeError('Need a callable, got %r' % function)
+            raise TypeError('Need a callable, got {0!r}'.format(function))
         self.callbacks[event].append(function)
     
     def unregister(self, event, function):
