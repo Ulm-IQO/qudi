@@ -90,13 +90,15 @@ class PoI(object):
                         'dimensions.')
             self._coords_in_sample = [coords[0], coords[1], coords[2]]
 
-    def add_position_to_trace(self, position=[]):
+    def add_position_to_trace(self, position=None):
         """ Adds an explicitly known position+time to the time trace of the POI.
 
         @param float[3] point: position coordinates of the poi
 
         @return int: error code (0:OK, -1:error)
         """
+        if position is None:
+            position = []
         if isinstance(position, (np.ndarray,)) and not position.size == 3:
             return -1
         elif isinstance(position, (list, tuple)) and not len(position) == 3:
