@@ -360,16 +360,14 @@ class MotorStageMicos(Base, MotorInterface):
 
         if param_dict.get(self._micos_a.label_x) is not None:
             desired_pos = param_dict[self._micos_a.label_x]
+            constr = constraints[self._micos_a.label_x]
 
-            if  (desired_pos > constraints[self._micos_a.label_x]['pos_max'] ) or\
-                (desired_pos < constraints[self._micos_a.label_x]['pos_min']):
-
+            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_a.label_x, desired_pos,
-                            constraints[self._micos_a.label_x]['pos_min'],
-                            constraints[self._micos_a.label_x]['pos_max']))
+                    '"{0}" to possition {1}, since it exceeds the limts '
+                    '[{2},{3}] ! Command is ignored!'
+                    ''.format(self._micos_a.label_x, desired_pos,
+                         constr['pos_min'], constr['pos_max']))
             else:
                 self._micos_a.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
                 self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
@@ -381,16 +379,15 @@ class MotorStageMicos(Base, MotorInterface):
 
         if param_dict.get(self._micos_a.label_y) is not None:
             desired_pos = param_dict[self._micos_a.label_y]
+            constr = constraints[self._micos_a.label_y]
 
-            if  (desired_pos > constraints[self._micos_a.label_y]['pos_max'] ) or\
-                (desired_pos < constraints[self._micos_a.label_y]['pos_min']):
-
+            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_a.label_y, desired_pos,
-                            constraints[self._micos_a.label_y]['pos_min'],
-                            constraints[self._micos_a.label_y]['pos_max']))
+                            constr['pos_min'],
+                            constr['pos_max']))
             else:
                 self._micos_a.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
                 self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
@@ -401,41 +398,39 @@ class MotorStageMicos(Base, MotorInterface):
 
         if param_dict.get(self._micos_b.label_z) is not None:
             desired_pos = param_dict[self._micos_b.label_z]
+            constr = constraints[self._micos_b.label_z]
 
-            if  (desired_pos > constraints[self._micos_b.label_z]['pos_max'] ) or\
-                (desired_pos < constraints[self._micos_b.label_z]['pos_min']):
-
+            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_b.label_z, desired_pos,
-                            constraints[self._micos_b.label_z]['pos_min'],
-                            constraints[self._micos_b.label_z]['pos_max']))
+                            constr['pos_min'],
+                            constr['pos_max']))
             else:
                 self._micos_b.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
                 self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
             try:
-                statusB = int(self._micos_a.ask('st'))
+                statusB = int(self._micos_b.ask('st'))
             except:
                 statusB = 0
 
         if param_dict.get(self._micos_b.label_phi) is not None:
             desired_pos = param_dict[self._micos_b.label_phi]
+            constr = constraints[self._micos_b.label_phi]
 
-            if  (desired_pos > constraints[self._micos_b.label_phi]['pos_max'] ) or\
-                (desired_pos < constraints[self._micos_b.label_phi]['pos_min']):
-
+            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_b.label_phi, desired_pos,
-                            constraints[self._micos_b.label_phi]['pos_min'],
-                            constraints[self._micos_b.label_phi]['pos_max']))
+                            constr['pos_min'],
+                            constr['pos_max']))
             else:
                 self._micos_b.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
                 self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
             try:
-                statusB = int(self._micos_a.ask('st'))
+                statusB = int(self._micos_b.ask('st'))
             except:
                 statusB = 0
 
@@ -672,62 +667,57 @@ class MotorStageMicos(Base, MotorInterface):
 
         if param_dict.get(self._micos_a.label_x) is not None:
             desired_vel = param_dict[self._micos_a.label_x]
+            constr = constraints[self._micos_a.label_x]
 
-            if  (desired_vel > constraints[self._micos_a.label_x]['vel_max'] ) or\
-                (desired_vel < constraints[self._micos_a.label_x]['vel_min']):
-
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_a.label_x, desired_vel,
-                            constraints[self._micos_a.label_x]['vel_min'],
-                            constraints[self._micos_a.label_x]['vel_max']))
+                            constr['vel_min'],
+                            constr['vel_max']))
             else:
                 self._micos_a.write('{0:f} 0.0 0.0 sv'.format(desired_vel))
 
         if param_dict.get(self._micos_a.label_y) is not None:
             desired_vel = param_dict[self._micos_a.label_y]
+            constr = constraints[self._micos_a.label_y]
 
-            if  (desired_vel > constraints[self._micos_a.label_y]['vel_max'] ) or\
-                (desired_vel < constraints[self._micos_a.label_y]['vel_min']):
-
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_a.label_y, desired_vel,
-                            constraints[self._micos_a.label_y]['vel_min'],
-                            constraints[self._micos_a.label_y]['vel_max']))
+                            constr['vel_min'],
+                            constr['vel_max']))
             else:
                 self._micos_a.write('0.0 {0:f} 0.0 sv'.format(desired_vel))
 
         if param_dict.get(self._micos_b.label_z) is not None:
             desired_vel = param_dict[self._micos_b.label_z]
+            constr = constraints[self._micos_b.label_z]
 
-            if  (desired_vel > constraints[self._micos_b.label_z]['vel_max'] ) or\
-                (desired_vel < constraints[self._micos_b.label_z]['vel_min']):
-
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_b.label_z, desired_vel,
-                            constraints[self._micos_b.label_z]['pos_min'],
-                            constraints[self._micos_b.label_z]['pos_max']))
+                            constr['vel_min'],
+                            constr['vel_max']))
             else:
                 self._micos_b.write('{0:f} 0.0 0.0 sv'.format(desired_vel))
 
         if param_dict.get(self._micos_b.label_phi) is not None:
             desired_vel = param_dict[self._micos_b.label_phi]
+            constr = constraints[self._micos_b.label_phi]
 
-            if  (desired_vel > constraints[self._micos_b.label_phi]['vel_max'] ) or\
-                (desired_vel < constraints[self._micos_b.label_phi]['vel_min']):
-
+            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
                         '"{0}" to possition {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
                             self._micos_b.label_phi, desired_vel,
-                            constraints[self._micos_b.label_phi]['pos_min'],
-                            constraints[self._micos_b.label_phi]['pos_max']))
+                            constr['vel_min'],
+                            constr['vel_max']))
             else:
                 self._micos_b.write('0.0 {0:f} 0.0 sv'.format(desired_vel))
-
 
