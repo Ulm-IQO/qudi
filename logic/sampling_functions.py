@@ -139,7 +139,9 @@ class SamplingFunctions():
         self.func_config['TripleSin']['phase3']     = phase_def
 
 
-    def _idle(self, time_arr, parameters={}):
+    def _idle(self, time_arr, parameters=None):
+        if parameters is None:
+            parameters = {}
         result_arr = np.zeros(len(time_arr))
         return result_arr
 

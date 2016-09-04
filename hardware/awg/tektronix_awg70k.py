@@ -336,7 +336,7 @@ class AWG70K(Base, PulserInterface):
 
         return 0
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
@@ -358,6 +358,8 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+        if load_dict is None:
+            load_dict = {}
 
         # Find all files associated with the specified asset name
         file_list = self._get_filenames_on_device()
@@ -505,7 +507,7 @@ class AWG70K(Base, PulserInterface):
         """
         return self.sample_rate
 
-    def get_analog_level(self, amplitude=[], offset=[]):
+    def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
         @param list amplitude: optional, if a specific amplitude value (in Volt
@@ -533,6 +535,10 @@ class AWG70K(Base, PulserInterface):
         levels are defined by an amplitude (here total signal span, denoted in
         Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
         """
+        if amplitude is None:
+            amplitude = []
+        if offset is None:
+            offset = []
 
         #FIXME: implement this method properly for this AWG type. Exploit of
         #       having now the possibility to set individual or a group of
@@ -563,7 +569,7 @@ class AWG70K(Base, PulserInterface):
 
         return amp, off
 
-    def set_analog_level(self, amplitude={}, offset={}):
+    def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
         @param dict amplitude: dictionary, with key being the channel and items
@@ -584,6 +590,10 @@ class AWG70K(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
+        if amplitude is None:
+            amplitude = {}
+        if offset is None:
+            offset = {}
 
         #Check the inputs by using the constraints:
         constraints = self.get_constraints()
@@ -638,7 +648,7 @@ class AWG70K(Base, PulserInterface):
             # self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
             pass
 
-    def get_digital_level(self, low=[], high=[]):
+    def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
         @param list low: optional, if a specific low value (in Volt) of a
@@ -668,6 +678,10 @@ class AWG70K(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
+        if low is None:
+            low = []
+        if high is None:
+            high = []
 
         low_val = {}
         high_val = {}
@@ -698,7 +712,7 @@ class AWG70K(Base, PulserInterface):
         return low_val, high_val
 
 
-    def set_digital_level(self, low={}, high={}):
+    def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
         @param dict low: dictionary, with key being the channel and items being
@@ -717,6 +731,10 @@ class AWG70K(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
@@ -731,7 +749,7 @@ class AWG70K(Base, PulserInterface):
             # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
             pass
 
-    def get_active_channels(self, ch=[]):
+    def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
         @param list ch: optional, if specific analog or digital channels are
@@ -748,6 +766,8 @@ class AWG70K(Base, PulserInterface):
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
+        if ch is None:
+            ch = []
 
         # If you want to check the input use the constraints:
 
@@ -799,7 +819,7 @@ class AWG70K(Base, PulserInterface):
 
         return return_ch
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the analog or digital
@@ -825,6 +845,8 @@ class AWG70K(Base, PulserInterface):
         other devices the deactivation of digital channels increase the DAC
         resolution of the analog channels.
         """
+        if ch is None:
+            ch = {}
 
         # update active channels variable
         for channel in ch:

@@ -275,7 +275,7 @@ class OkFpgaPulser(Base, PulserInterface):
         self.current_loaded_asset = asset_name
         return 0
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
@@ -297,6 +297,8 @@ class OkFpgaPulser(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+        if load_dict is None:
+            load_dict = {}
         self.log.info('FPGA pulser has no own storage capability.\n'
                     '"load_asset" call ignored.')
         return 0
@@ -362,7 +364,7 @@ class OkFpgaPulser(Base, PulserInterface):
             bitfile_path))
         return 0
 
-    def get_analog_level(self, amplitude=[], offset=[]):
+    def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
         @param list amplitude: optional, if a specific amplitude value (in Volt
@@ -377,9 +379,13 @@ class OkFpgaPulser(Base, PulserInterface):
                                Volt-peak-to-peak and Offset in (absolute)
                                Voltage.
         """
+        if amplitude is None:
+            amplitude = []
+        if offset is None:
+            offset = []
         return {}, {}
 
-    def set_analog_level(self, amplitude={}, offset={}):
+    def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
         @param dict amplitude: dictionary, with key being the channel and items
@@ -394,10 +400,14 @@ class OkFpgaPulser(Base, PulserInterface):
 
         If nothing is passed then the command will return two empty dicts.
         """
+        if amplitude is None:
+            amplitude = {}
+        if offset is None:
+            offset = {}
 
         return {}, {}
 
-    def get_digital_level(self, low=[], high=[]):
+    def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
         @param list low: optional, if a specific low value (in Volt) of a
@@ -432,6 +442,10 @@ class OkFpgaPulser(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = []
+        if high is None:
+            high = []
         low_dict = {}
         high_dict = {}
         if low is [] and high is []:
@@ -445,7 +459,7 @@ class OkFpgaPulser(Base, PulserInterface):
                 high_dict[channel] = 3.3
         return low_dict, high_dict
 
-    def set_digital_level(self, low={}, high={}):
+    def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
         @param dict low: dictionary, with key being the channel and items being
@@ -472,11 +486,17 @@ class OkFpgaPulser(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
         self.log.warning('FPGA pulse generator logic level cannot be '
                 'adjusted!')
         return 0
 
-    def get_active_channels(self,  ch={}):
+    def get_active_channels(self,  ch=None):
+        if ch is None:
+            ch = {}
         d_ch_dict = {}
         if len(ch) < 1:
             for chnr in range(8):
@@ -486,7 +506,9 @@ class OkFpgaPulser(Base, PulserInterface):
                 d_ch_dict[channel] = True
         return d_ch_dict
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
+        if ch is None:
+            ch = {}
         d_ch_dict = {
             'd_ch1': True,
             'd_ch2': True,
