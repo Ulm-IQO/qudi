@@ -360,7 +360,7 @@ def make_multiplegaussian_model(self, no_of_gauss=None):
 
     model = ConstantModel()
     for ii in range(no_of_gauss):
-        model += GaussianModel(prefix='gaussian{}_'.format(ii))
+        model += GaussianModel(prefix='gaussian{0}_'.format(ii))
 
     params = model.make_params()
 

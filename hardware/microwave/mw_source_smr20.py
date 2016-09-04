@@ -149,7 +149,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         """
 
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':POW {:f};'.format(power))
+        self._gpib_connection.write(':POW {0:f};'.format(power))
         return 0
 
     def get_frequency(self):
@@ -170,7 +170,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         """
 
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':FREQ {:e}'.format(freq))
+        self._gpib_connection.write(':FREQ {0:e}'.format(freq))
         # {:e} meens a representation in float with exponential style
         return 0
 
@@ -245,10 +245,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         PowerString = ''
 
         for f in freq[:-1]:
-            FreqString += ' {:f}Hz,'.format(f)
-            PowerString +=' {:f}dBm,'.format(power)
-        FreqString += ' {:f}Hz'.format(freq[-1])
-        PowerString +=' {:f}dBm'.format(power)
+            FreqString += ' {0:f}Hz,'.format(f)
+            PowerString +=' {0:f}dBm,'.format(power)
+        FreqString += ' {0:f}Hz'.format(freq[-1])
+        PowerString +=' {0:f}dBm'.format(power)
 
         self._gpib_connection.write(':SOUR:LIST:FREQ' + FreqString)
         self._gpib_connection.write('*WAI')
@@ -317,7 +317,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write('AM:SOUR EXT')
         self._gpib_connection.write('AM:EXT:COUP DC')
-        self._gpib_connection.write('AM {:f}'.format(float(depth)))
+        self._gpib_connection.write('AM {0:f}'.format(float(depth)))
         self._gpib_connection.write('AM:STAT ON')
 
         return 0

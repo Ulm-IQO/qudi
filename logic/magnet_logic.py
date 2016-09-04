@@ -140,7 +140,7 @@ class MagnetLogic(GenericLogic):
         # checking for the right configuration
         config = self.getConfiguration()
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!

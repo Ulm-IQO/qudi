@@ -64,7 +64,7 @@ class FitLogic(GenericLogic):
 
         for files in filenames:
 
-            mod = importlib.import_module('logic.fitmethods.{}'.format(files))
+            mod = importlib.import_module('logic.fitmethods.{0}'.format(files))
             for method in dir(mod):
                 try:
                     if callable(getattr(mod, method)):

@@ -163,7 +163,7 @@ class FastComtec(Base, FastCounterInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.GATED = False
         self.MINIMAL_BINWIDTH = 0.25e-9    # in seconds per bin
@@ -445,7 +445,7 @@ class FastComtec(Base, FastCounterInterface):
         #~ setting.fstchan = t/6.4
         #~ self.dll.StoreSettingData(ctypes.byref(setting), 0)
         #~ self.dll.NewSetting(0)
-        self.dll.RunCmd(0, 'DELAY=%f' % t)
+        self.dll.RunCmd(0, 'DELAY={0:f}'.format(t))
         return self.GetDelay()
 
     def GetDelay(self):
@@ -482,7 +482,7 @@ class FastComtec(Base, FastCounterInterface):
         fil = open(filename + '.asc', 'w')
         for i in laser_index:
             for n in data[i:i+int(round(3000/(0.25*2**self.GetBitshift())))+int(round(1000/(0.25*2**self.GetBitshift())))]:
-                fil.write('%s\n'%n)
+                fil.write('{0!s}\n'.format(n))
         fil.close()
 
     def SaveData(self, filename):
@@ -490,7 +490,7 @@ class FastComtec(Base, FastCounterInterface):
         data = self.get_data()
         fil = open(filename + '.asc', 'w')
         for n in data:
-            fil.write('%s\n'%n)
+            fil.write('{0!s}\n'.format(n))
         fil.close()
 
     def GetState(self):

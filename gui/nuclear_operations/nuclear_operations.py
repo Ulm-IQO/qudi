@@ -65,7 +65,7 @@ class NuclearOperationsGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{0}: {1}'.format(key,config[key]),
                         msgType='status')
 
     def initUI(self, e=None):
@@ -396,9 +396,9 @@ class NuclearOperationsGui(GUIBase):
         filepath = self._save_logic.get_path_for_module(module_name='NuclearOperations')
 
         if len(filetag) > 0:
-            filename = os.path.join(filepath, '{}_{}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+            filename = os.path.join(filepath, '{0}_{1}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
         else:
-            filename = os.path.join(filepath, '{}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+            filename = os.path.join(filepath, '{0}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
         exporter_graph = pg.exporters.SVGExporter(self._mw.nulcear_ops_GraphicsView.plotItem.scene())
 

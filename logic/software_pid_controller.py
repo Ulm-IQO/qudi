@@ -50,7 +50,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.debug('{}: {}'.format(key,config[key]))
+            self.log.debug('{0}: {1}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
