@@ -610,7 +610,7 @@ class SaveLogic(GenericLogic):
         if close_file_flag:
             opened_file.close()
 
-    def _save_1d_traces_as_xml():
+    def _save_1d_traces_as_xml(self):
         """ Save 1d data trace in xml conding. """
         pass
 #        if as_xml:
@@ -682,7 +682,7 @@ class SaveLogic(GenericLogic):
 #            tree = ET.ElementTree(root)
 #            tree.write('output.xml', pretty_print=True, xml_declaration=True)
 
-    def _save_2d_data_as_xml():
+    def _save_2d_data_as_xml(self):
         """ Save 2d data in xml conding."""
         pass
 
