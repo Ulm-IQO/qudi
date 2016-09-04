@@ -434,7 +434,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         current_functions = []
 
-        for index in range(len(self.get_func_config_list())):
+        for index, func_name in enumerate(self.get_func_config_list()):
             name_checkbox = 'checkbox_'+ str(index)
             checkbox = getattr(self._bs, name_checkbox)
             if checkbox.isChecked():
@@ -2446,15 +2446,15 @@ class PulsedMeasurementGui(GUIBase):
 
             ensemble_name = ''
             parameters = [None]*len(object_list)
-            for index, object in enumerate(object_list):
-                if hasattr(object,'isChecked'):
-                    parameters[index] = object.isChecked()
-                elif hasattr(object,'value'):
-                    parameters[index] = object.value()
-                elif hasattr(object,'text'):
+            for index, obj in enumerate(object_list):
+                if hasattr(obj,'isChecked'):
+                    parameters[index] = obj.isChecked()
+                elif hasattr(obj,'value'):
+                    parameters[index] = obj.value()
+                elif hasattr(obj,'text'):
 
-                    parameters[index] = object.text()
-                    ensemble_name = object.text()
+                    parameters[index] = obj.text()
+                    ensemble_name = obj.text()
                 else:
                     self.log.error('Not possible to get the value from the '
                             'viewbox, since it does not have one of the'
