@@ -551,22 +551,20 @@ class AWG5002C(Base, PulserInterface):
 
         else:
             for a_ch in amplitude:
-                if (a_ch <= self._get_num_a_ch()) and \
-                   (a_ch >= 0):
+                if 0 <= a_ch <= self._get_num_a_ch():
                     amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
                 else:
-                    self.log.warning('The device does not have that much '
+                    self.log.warning('The device does not have that many '
                             'analog channels! A channel number "{0}" was '
                             'passed, but only "{1}" channels are available!\n'
                             'Command will be ignored.'.format(
                                 a_ch, self._get_num_a_ch()))
 
             for a_ch in offset:
-                if (a_ch <= self._get_num_a_ch()) and \
-                   (a_ch >= 0):
+                if 0 <= a_ch <= self._get_num_a_ch():
                     off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
                 else:
-                    self.log.warning('The device does not have that much '
+                    self.log.warning('The device does not have that many '
                             'analog channels! A channel number "{0}" was '
                             'passed, but only "{1}" channels are available!\n'
                             'Command will be ignored.'.format(
@@ -612,26 +610,20 @@ class AWG5002C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for a_ch in amplitude:
-            if (a_ch <= self._get_num_a_ch()) and \
-               (a_ch >= 0):
+            if 0 <= a_ch <= self._get_num_a_ch():
+                constr = constraints['a_ch_amplitude']
 
-                if amplitude[a_ch] < constraints['a_ch_amplitude']['min'] or \
-                   amplitude[a_ch] > constraints['a_ch_amplitude']['max']:
-
+                if not(constr['min'] <= amplitude[a_ch] <= constr['max']):
                     self.log.warning('Not possible to set for analog channel '
                             '{0} the amplitude value {1}Vpp, since it is not '
                             'within the interval [{2},{3}]! Command will '
                             'be ignored.'.format(
                                 a_ch,
                                 amplitude[a_ch],
-                                constraints['a_ch_amplitude']['min'],
-                                constraints['a_ch_amplitude']['max']))
+                                constr['min'],
+                                constr['max']))
                 else:
-
-                    self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch,
-                                                                       amplitude[a_ch]))
-
-
+                    self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
             else:
                 self.log.warning('The device does not support that much analog '
                         'channels! A channel number "{0}" was passed, but '
@@ -639,24 +631,20 @@ class AWG5002C(Base, PulserInterface):
                         'be ignored.'.format(a_ch, self._get_num_a_ch()))
 
         for a_ch in offset:
-            if (a_ch <= self._get_num_a_ch()) and \
-               (a_ch >= 0):
+            if 0 <= a_ch <= self._get_num_a_ch():
+                constr = constraints['a_ch_offset']
 
-                if offset[a_ch] < constraints['a_ch_offset']['min'] or \
-                   offset[a_ch] > constraints['a_ch_offset']['max']:
-
+                if not(constr['min'] <= offset[a_ch] <= constr['max']):
                     self.log.warning('Not possible to set for analog channel '
                             '{0} the offset value {1}V, since it is not '
                             'within the interval [{2},{3}]! Command will '
                             'be ignored.'.format(
                                 a_ch,
                                 offset[a_ch],
-                                constraints['a_ch_offset']['min'],
-                                constraints['a_ch_offset']['max']))
+                                constr['min'],
+                                constr['max']))
                 else:
-                    self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch,
-                                                                    offset[a_ch]))
-
+                    self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
             else:
                 self.log.warning('The device does not support that much analog '
                         'channels! A channel number "{0}" was passed, but '
@@ -722,43 +710,34 @@ class AWG5002C(Base, PulserInterface):
         else:
 
             for d_ch in low:
-                if (d_ch <= self._get_num_d_ch()) and \
-                   (d_ch >= 0):
-
+                if 0 <= d_ch <= self._get_num_d_ch():
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
                     if (d_ch-2) <= 0:
                         # the conversion to integer is just for safety.
                         low_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch))))
-
                     else:
                         low_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch-2))))
                 else:
                     self.log.warning('The device does not have that much '
                             'digital channels! A channel number "{0}" was '
                             'passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'.format(
-                                d_ch, self._get_num_d_ch()))
+                            'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
             for d_ch in high:
-
-                if (d_ch <= self._get_num_d_ch()) and \
-                   (d_ch >= 0):
-
+                if 0 <= d_ch <= self._get_num_d_ch():
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
                     if (d_ch-2) <= 0:
                         # the conversion to integer is just for safety.
                         high_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch))))
-
                     else:
                         high_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch-2))))
                 else:
                     self.log.warning('The device does not have that much '
                             'digital channels! A channel number "{0}" was '
                             'passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'.format(
-                                d_ch, self._get_num_d_ch()))
+                            'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
         return low_val, high_val
 
@@ -797,67 +776,56 @@ class AWG5002C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for d_ch in low:
-            if (d_ch <= self._get_num_d_ch()) and \
-               (d_ch >=0):
+            if 0 <= d_ch <= self._get_num_d_ch():
+                constr = constraints['d_ch_low']
 
-                if low[d_ch] < constraints['d_ch_low']['min'] or \
-                   low[d_ch] > constraints['d_ch_low']['max']:
-
+                if not(constr['min'] <= low[d_ch] <= constr['max']):
                     self.log.warning('Not possible to set for analog channel '
                             '{0} the amplitude value {1}Vpp, since it is not '
                             'within the interval [{2},{3}]! Command will '
                             'be ignored.'.format(
                                 d_ch,
                                 low[d_ch],
-                                constraints['d_ch_low']['min'],
-                                constraints['d_ch_low']['max']))
+                                constr['min'],
+                                constr['max']))
                 else:
-
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
                     if (d_ch-2) <= 0:
                         self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
                     else:
                         self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch-2, low[d_ch]))
-
             else:
                 self.log.warning('The device does not support that much '
                         'digital channels! A channel number "{0}" was '
                         'passed, but only "{1}" channels are available!\n'
-                        'Command will be ignored.'.format(
-                            d_ch, self._get_num_d_ch()))
+                        'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
         for d_ch in high:
-            if (d_ch <= self._get_num_d_ch()) and \
-               (d_ch >=0):
+            if 0 <= d_ch <= self._get_num_d_ch():
+                constr = constraints['d_ch_high']
 
-                if high[d_ch] < constraints['d_ch_high']['min'] or \
-                   high[d_ch] > constraints['d_ch_high']['max']:
-
+                if not(constr['min'] <= high[d_ch] <= constr['max']):
                     self.log.warning('Not possible to set for analog channel '
                             '{0} the amplitude value {1}Vpp, since it is not '
                             'within the interval [{2},{3}]! Command will '
                             'be ignored.'.format(
                                 d_ch,
                                 high[d_ch],
-                                constraints['d_ch_high']['min'],
-                                constraints['d_ch_high']['max']))
+                                constr['min'],
+                                constr['max']))
                 else:
-
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
                     if (d_ch-2) <= 0:
                         self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
                     else:
                         self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch-2, high[d_ch]))
-
-
             else:
                 self.log.warning('The device does not support that much '
                         'digital channels! A channel number "{0}" was '
                         'passed, but only "{1}" channels are available!\n'
-                        'Command will be ignored.'.format(
-                            d_ch, self._get_num_d_ch()))
+                        'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
         return self.get_digital_level(low=list(low), high=list(high))
 
@@ -901,46 +869,33 @@ class AWG5002C(Base, PulserInterface):
             active_ch['d_ch2'] = True
             active_ch['d_ch3'] = True
             active_ch['d_ch4'] = True
-
         else:
             for channel in ch:
-
                 if 'a_ch' in channel:
-
                     ana_chan = int(channel[4:])
-
-                    if (ana_chan <= self._get_num_a_ch()) and \
-                       (ana_chan >= 0):
-
+                    if 0 <= ana_chan <= self._get_num_a_ch():
                         # because 0 = False and 1 = True
                         active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
-
                     else:
                         self.log.warning('The device does not support that '
-                                'much analog channels! A channel number "{0}"'
+                                'many analog channels! A channel number "{0}"'
                                 ' was passed, but only "{1}" channels are '
                                 'available!\n'
                                 'Command will be ignored.'.format(
                                     ana_chan,
                                     self._get_num_a_ch()))
                 elif 'd_ch'in channel:
-
                     digi_chan = int(channel[4:])
-
-                    if (digi_chan <= self._get_num_d_ch()) and \
-                       (digi_chan >= 0):
-
+                    if 0 <= digi_chan <= self._get_num_d_ch():
                         active_ch[channel] = True
-
                     else:
                         self.log.warning('The device does not support that '
-                                'much digital channels! A channel number '
+                                'many digital channels! A channel number '
                                 '"{0}" was passed, but only "{1}" channels '
                                 'are available!\n'
                                 'Command will be ignored.'.format(
                                     digi_chan,
                                     self._get_num_d_ch()))
-
         return active_ch
 
     def set_active_channels(self, ch=None):
@@ -976,24 +931,17 @@ class AWG5002C(Base, PulserInterface):
             ch = {}
 
         for channel in ch:
-
-
             if 'a_ch' in channel:
-
                 ana_chan = int(channel[4:])
-
-                if (ana_chan <= self._get_num_a_ch()) and \
-                   (ana_chan >= 0):
-
+                if 0 <= ana_chan <= self._get_num_a_ch():
                     if ch[channel]:
                         state = 'ON'
                     else:
                         state = 'OFF'
-
                     self.tell('OUTPUT{0}:STATE {1}'.format(ana_chan, state))
 
                 else:
-                    self.log.warning('The device does not support that much '
+                    self.log.warning('The device does not support that many '
                             'analog channels! A channel number "{0}" was '
                             'passed, but only "{1}" channels are available!\n'
                             'Command will be ignored.'.format(
