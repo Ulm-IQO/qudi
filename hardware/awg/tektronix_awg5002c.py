@@ -1407,4 +1407,3 @@ class AWG5002C(Base, PulserInterface):
         # count the number of entries in that array
         return len(all_d_ch)
 
-        return num_d_ch
