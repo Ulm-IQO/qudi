@@ -27,11 +27,11 @@ class DataLoggerInterface:
     _modclass = 'interface'
 
     def get_log_channels(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_log_channels(self, channelspec):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def log_to_channel(self, channel, value):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 

@@ -334,7 +334,7 @@ def make_multiplelorentzian_model(self, no_of_lor=None):
 
     model=ConstantModel()
     for ii in range(no_of_lor):
-        model += LorentzianModel(prefix='lorentz{}_'.format(ii))
+        model += LorentzianModel(prefix='lorentz{0}_'.format(ii))
 
     params = model.make_params()
 

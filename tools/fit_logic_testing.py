@@ -89,7 +89,7 @@ class FitLogic():
 
             for files in filenames:
 
-                mod = importlib.import_module('{}'.format(files))
+                mod = importlib.import_module('{0}'.format(files))
                 for method in dir(mod):
                     try:
                         if callable(getattr(mod, method)):

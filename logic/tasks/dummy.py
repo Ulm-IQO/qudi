@@ -25,7 +25,7 @@ class Task(InterruptableTask):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        print('Task {} added!'.format(self.name))
+        print('Task {0} added!'.format(self.name))
         self.ctr = 0
 
     def startTask(self):
@@ -36,7 +36,7 @@ class Task(InterruptableTask):
         time.sleep(0.1)
         print('one task step', self.ctr)
         self.ctr += 1
-        self._result = '{} lines printed!'.format(self.ctr)
+        self._result = '{0} lines printed!'.format(self.ctr)
         return self.ctr < 50
 
     def pauseTask(self):

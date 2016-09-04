@@ -69,7 +69,7 @@ class EventManager():
             try:
                 func(*args, **kwargs)
             except Exception:
-                print("Error in callback {} (for {}):".format(func, event))
+                print("Error in callback {0} (for {1}):".format(func, event))
                 self.kernel.showtraceback()
 
 # event_name -> prototype mapping

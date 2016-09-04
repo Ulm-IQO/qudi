@@ -192,7 +192,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -4142,9 +4142,9 @@ class PulsedMeasurementGui(GUIBase):
         filetag = self._mw.save_tag_LineEdit.text()
         filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
         if len(filetag) > 0:
-            filename = os.path.join(filepath, '{}_{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+            filename = os.path.join(filepath, '{0}_{1}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
         else:
-            filename = os.path.join(filepath, '{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
+            filename = os.path.join(filepath, '{0}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
 
         # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
         # pulse plot

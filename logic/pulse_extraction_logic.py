@@ -43,7 +43,7 @@ class PulseExtractionLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.is_counter_gated = False
         self.conv_std_dev = 200     # standard deviation of the gaussian filter
