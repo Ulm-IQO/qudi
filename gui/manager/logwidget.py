@@ -383,7 +383,7 @@ class LogWidget(QtWidgets.QWidget):
         if self.model.rowCount() > self.logLength:
             self.model.removeRows(0, self.model.rowCount() - self.logLength)
         text = entry['message']
-        if entry.get('exception', None) is not None:
+        if entry.get('exception') is not None:
             if 'reasons' in entry['exception']:
                 text += '\n' + entry['exception']['reasons']
             if 'message' in entry['exception']:
