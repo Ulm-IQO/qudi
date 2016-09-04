@@ -398,9 +398,9 @@ class AWG70K(Base, PulserInterface):
         for asset in filename:
             file_path  = os.path.join(self.ftp_root_directory, self.asset_directory, asset)
             if asset.endswith('.mat'):
-                self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
+                self.tell('MMEM:OPEN:SASS:WAV "{0!s}"\n'.format(file_path))
             else:
-                self.tell('MMEM:OPEN "%s"\n' % file_path)
+                self.tell('MMEM:OPEN "{0!s}"\n'.format(file_path))
             self.ask('*OPC?\n')
         self.soc.settimeout(timeout)
 
@@ -409,16 +409,16 @@ class AWG70K(Base, PulserInterface):
             for asset in filename:
                 # load waveforms into channels
                 name = asset_name + '_ch1'
-                self.tell('SOUR1:CASS:WAV "%s"\n' % name)
+                self.tell('SOUR1:CASS:WAV "{0!s}"\n'.format(name))
                 name = asset_name + '_ch2'
-                self.tell('SOUR2:CASS:WAV "%s"\n' % name)
+                self.tell('SOUR2:CASS:WAV "{0!s}"\n'.format(name))
                 self.current_loaded_asset = asset_name
                 # self.soc.settimeout(3)
         else:
             for channel in load_dict:
                 # load waveforms into channels
                 name = load_dict[channel]
-                self.tell('SOUR'+str(channel)+':CASS:WAV "%s"\n' % name)
+                self.tell('SOUR'+str(channel)+':CASS:WAV "{0!s}"\n'.format(name))
             self.current_loaded_asset = asset_name
 
         return 0
@@ -492,7 +492,7 @@ class AWG70K(Base, PulserInterface):
 
         @return foat: the sample rate returned from the device (-1:error)
         """
-        self.tell('CLOCK:SRATE %.4G\n' % sample_rate)
+        self.tell('CLOCK:SRATE {0:.4G}\n'.format(sample_rate))
         time.sleep(3)
         return_rate = float(self.ask('CLOCK:SRATE?\n'))
         self.sample_rate = return_rate

@@ -520,7 +520,7 @@ class Manager(QtCore.QObject):
 
         # FIXME: Check if the class we just obtained has the right inheritance
         if not issubclass(modclass, Base):
-            raise Exception('Bad inheritance, for instance %s from %s.%s.' % (
+            raise Exception('Bad inheritance, for instance {0!s} from {1!s}.{2!s}.'.format(
                 instanceName, baseName, className))
 
         # Create object from class
