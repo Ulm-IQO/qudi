@@ -16,7 +16,7 @@ environment:
   matrix:
     # Qt4
     - PYTHON_VERSION: "3.4"
-      CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyqtgraph pyzmq scipy sip six traitlets qt=4.* pyqt=4.*"
+      CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyqtgraph pyzmq scipy sip six traitlets qt=4.8.7 pyqt=4.10.4"
       PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
       QT_API: "pyqt4"
     - PYTHON_VERSION: "3.5"
