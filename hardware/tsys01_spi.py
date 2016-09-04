@@ -64,13 +64,13 @@ class TSYS01SPI(Base, ProcessInterface):
 
     def diag(self):
         print('==== SPI Diagnostics ====')
-        print('Bits per word: {:>10}'.format(self.spi.bits_per_word))
-        print('CS is active high: {!s:>6}'.format(self.spi.cshigh))
-        print('Loopback: {!s:>15}'.format(self.spi.loop))
-        print('LSB first: {!s:>14}'.format(self.spi.lsbfirst))
-        print('Max clock speed: {:>8}'.format(self.spi.max_speed_hz))
-        print('Clock mode: {:>13}'.format(self.spi.mode))
-        print('SI/SO shared: {!s:>11}'.format(self.spi.threewire))
+        print('Bits per word: {0:>10}'.format(self.spi.bits_per_word))
+        print('CS is active high: {0!s:>6}'.format(self.spi.cshigh))
+        print('Loopback: {0!s:>15}'.format(self.spi.loop))
+        print('LSB first: {0!s:>14}'.format(self.spi.lsbfirst))
+        print('Max clock speed: {0:>8}'.format(self.spi.max_speed_hz))
+        print('Clock mode: {0:>13}'.format(self.spi.mode))
+        print('SI/SO shared: {0!s:>11}'.format(self.spi.threewire))
         print('=========================')
 
     def reset(self):

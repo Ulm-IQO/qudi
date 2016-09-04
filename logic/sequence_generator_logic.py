@@ -77,7 +77,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
@@ -197,7 +197,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 filename_list.append(entry[:-3])
 
         for filename in filename_list:
-            mod = importlib.import_module('logic.predefined_methods.{}'.format(filename))
+            mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
 
             for method in dir(mod):
                 try:

@@ -67,7 +67,7 @@ class MotorStageMicos(Base, MotorInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e):
 
@@ -280,7 +280,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_a.label_x]['pos_min'],
                             constraints[self._micos_a.label_x]['pos_max']))
             else:
-                self._micos_a.write('{:f} 0.0 0.0 r'.format(move_x))
+                self._micos_a.write('{0:f} 0.0 0.0 r'.format(move_x))
 
         # Check if value for the new y position is valid and move to the new y position, else return an error msg
 
@@ -298,7 +298,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_a.label_y]['pos_min'],
                             constraints[self._micos_a.label_y]['pos_max']))
             else:
-                self._micos_a.write('0.0 {:f} 0.0 r'.format(move_y))
+                self._micos_a.write('0.0 {0:f} 0.0 r'.format(move_y))
 
         # Check if value for the new z position is valid and move to the new z position, else return an error msg
 
@@ -316,7 +316,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_b.label_z]['pos_min'],
                             constraints[self._micos_b.label_z]['pos_max']))
             else:
-                self._micos_b.write('{:f} 0.0 0.0 r'.format(move_z))
+                self._micos_b.write('{0:f} 0.0 0.0 r'.format(move_z))
 
         # Check if value for the new phi position is valid and move to the new phi position, else return an error msg
 
@@ -334,7 +334,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_b.label_phi]['pos_min'],
                             constraints[self._micos_b.label_phi]['pos_max']))
             else:
-                self._micos_b.write('0.0 {:f} 0.0 r'.format(move_phi))
+                self._micos_b.write('0.0 {0:f} 0.0 r'.format(move_phi))
 
     def move_abs(self, param_dict):
         """ Moves stage to absolute position (absolute movement)
@@ -371,7 +371,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_a.label_x]['pos_min'],
                             constraints[self._micos_a.label_x]['pos_max']))
             else:
-                self._micos_a.write('{:f} 0.0 0.0 move'.format(desired_pos) )
+                self._micos_a.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
                 self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
             try:
                 statusA = int(self._micos_a.ask('st'))
@@ -392,7 +392,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_a.label_y]['pos_min'],
                             constraints[self._micos_a.label_y]['pos_max']))
             else:
-                self._micos_a.write('0.0 {:f} 0.0 move'.format(desired_pos) )
+                self._micos_a.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
                 self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
             try:
                 statusA = int(self._micos_a.ask('st'))
@@ -412,7 +412,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_b.label_z]['pos_min'],
                             constraints[self._micos_b.label_z]['pos_max']))
             else:
-                self._micos_b.write('{:f} 0.0 0.0 move'.format(desired_pos) )
+                self._micos_b.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
                 self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
             try:
                 statusB = int(self._micos_a.ask('st'))
@@ -432,7 +432,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_b.label_phi]['pos_min'],
                             constraints[self._micos_b.label_phi]['pos_max']))
             else:
-                self._micos_b.write('0.0 {:f} 0.0 move'.format(desired_pos) )
+                self._micos_b.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
                 self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
             try:
                 statusB = int(self._micos_a.ask('st'))
@@ -683,7 +683,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_a.label_x]['vel_min'],
                             constraints[self._micos_a.label_x]['vel_max']))
             else:
-                self._micos_a.write('{:f} 0.0 0.0 sv'.format(desired_vel))
+                self._micos_a.write('{0:f} 0.0 0.0 sv'.format(desired_vel))
 
         if param_dict.get(self._micos_a.label_y) is not None:
             desired_vel = param_dict[self._micos_a.label_y]
@@ -698,7 +698,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_a.label_y]['vel_min'],
                             constraints[self._micos_a.label_y]['vel_max']))
             else:
-                self._micos_a.write('0.0 {:f} 0.0 sv'.format(desired_vel))
+                self._micos_a.write('0.0 {0:f} 0.0 sv'.format(desired_vel))
 
         if param_dict.get(self._micos_b.label_z) is not None:
             desired_vel = param_dict[self._micos_b.label_z]
@@ -713,7 +713,7 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_b.label_z]['pos_min'],
                             constraints[self._micos_b.label_z]['pos_max']))
             else:
-                self._micos_b.write('{:f} 0.0 0.0 sv'.format(desired_vel))
+                self._micos_b.write('{0:f} 0.0 0.0 sv'.format(desired_vel))
 
         if param_dict.get(self._micos_b.label_phi) is not None:
             desired_vel = param_dict[self._micos_b.label_phi]
@@ -728,6 +728,6 @@ class MotorStageMicos(Base, MotorInterface):
                             constraints[self._micos_b.label_phi]['pos_min'],
                             constraints[self._micos_b.label_phi]['pos_max']))
             else:
-                self._micos_b.write('0.0 {:f} 0.0 sv'.format(desired_vel))
+                self._micos_b.write('0.0 {0:f} 0.0 sv'.format(desired_vel))
 
 

@@ -135,7 +135,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if power is not None:
-            self._gpib_connection.write('L0 {:f} DM'.format(power))
+            self._gpib_connection.write('L0 {0:f} DM'.format(power))
             return 0
         else:
             return -1
@@ -155,7 +155,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if freq is not None:
-            self._gpib_connection.write('F0 {:f} HZ'.format(freq))
+            self._gpib_connection.write('F0 {0:f} HZ'.format(freq))
             return 0
         else:
             return -1
@@ -198,22 +198,22 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         if self.set_cw(freq[0], power) != 0:
             error = -1
 
-        flist = '{:f} HZ, '.format(freq[0])
-        plist = '{:f} DM, '.format(power)
+        flist = '{0:f} HZ, '.format(freq[0])
+        plist = '{0:f} DM, '.format(power)
 
         for f in freq[:-1]:
-            flist += '{:f} HZ, '.format(f)
-            plist += '{:f} DM, '.format(power)
+            flist += '{0:f} HZ, '.format(f)
+            plist += '{0:f} DM, '.format(power)
 
-        flist += '{:f} HZ'.format(freq[-1])
-        plist += '{:f} DM'.format(power)
+        flist += '{0:f} HZ'.format(freq[-1])
+        plist += '{0:f} DM'.format(power)
         stop = len(freq)
 
         self._gpib_connection.write(
             'ELN0 ELI0000 '
             'LF ' + flist
             + ' LP ' + plist
-            + 'LIB0000 LIE{:04d}'.format(stop))
+            + 'LIB0000 LIE{0:04d}'.format(stop))
         return error
 
     def reset_listpos(self):
@@ -256,7 +256,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         """
         print("sweep on")
         self.set_power(power)
-        self._gpib_connection.write('F1 {} Hz, SYZ {} Hz, F2 {} Hz, SF1'.format(start - step, step, stop))
+        self._gpib_connection.write('F1 {0} Hz, SYZ {1} Hz, F2 {2} Hz, SF1'.format(start - step, step, stop))
         nrsteps = int(self._gpib_connection.query('OSS'))
         print('steps', nrsteps)
         return nrsteps - 1

@@ -62,7 +62,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # microwave parameters
         self.use_ext_microwave = False

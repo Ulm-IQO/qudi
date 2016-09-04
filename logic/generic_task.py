@@ -182,7 +182,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigStarted.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            self.log.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {0}. {1}'.format(
                 self.name, e))
             self.result.update(None, False)
 
@@ -201,7 +201,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 self.finish()
                 self.sigDoFinish.emit()
         except Exception as e:
-            self.log.exception('Exception during task step {}. {}'.format(
+            self.log.exception('Exception during task step {0}. {1}'.format(
                 self.name, e))
             self.result.update(None, False)
             self.finish()
@@ -266,7 +266,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         """
         for task in self.prePostTasks:
             if not ( isinstance(self.prePostTasks[task], PrePostTask) and self.prePostTasks[task].can('prerun') ):
-                self.log('Cannot start task {} as pre/post task {} is not in a state to run.'.format(self.name, task), msgType='error')
+                self.log('Cannot start task {0} as pre/post task {1} is not in a state to run.'.format(self.name, task), msgType='error')
                 return False
         for task in self.pauseTasks:
             if not (isinstance(self.pauseTasks[task], InterruptableTask)
@@ -274,7 +274,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                         self.pauseTasks[task].can('pause')
                         or self.pauseTasks[task].isstate('stopped')
                     )):
-                self.log('Cannot start task {} as interruptable task {} is not stopped or able to pause.'.format(self.name, task), msgType='error')
+                self.log('Cannot start task {0} as interruptable task {1} is not stopped or able to pause.'.format(self.name, task), msgType='error')
                 return False
         if not self.checkExtraStartPrerequisites():
             return False
@@ -432,7 +432,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.preExecute()
         except Exception as e:
-            self.log.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {0}. {1}'.format(
                 self.name, e))
 
         self.sigPreExecFinish.emit()
@@ -446,7 +446,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.postExecute()
         except Exception as e:
-            self.log.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {0}. {1}'.format(
                 self.name, e))
 
         self.sigPostExecFinish.emit()

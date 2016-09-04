@@ -859,11 +859,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
         if match:
             device = match.group('device')
-            self.log.warning('NI Device "{}" will be reset.'.format(device))
+            self.log.warning('NI Device "{0}" will be reset.'.format(device))
             daq.DAQmxResetDevice(device)
             return 0
         else:
-            self.log.error('Did not find device name in {}.'.format(
+            self.log.error('Did not find device name in {0}.'.format(
                 self._clock_channel))
             return -1
 
