@@ -122,7 +122,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if power is not None:
-            self._gpib_connection.write(':POW {:f} DBM'.format(power))
+            self._gpib_connection.write(':POW {0:f} DBM'.format(power))
             return 0
         else:
             return -1
@@ -145,7 +145,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if freq is not None:
-            self._gpib_connection.write(':FREQ {:e}'.format(freq))
+            self._gpib_connection.write(':FREQ {0:e}'.format(freq))
             return 0
         else:
             return -1
@@ -194,11 +194,11 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         self._gpib_connection.write(':LIST:DEL:LIST 1')
         FreqString = ' '
         for f in freq[:-1]:
-            FreqString += '{:f},'.format(f)
-        FreqString += '{:f}'.format(freq(-1))
+            FreqString += '{0:f},'.format(f)
+        FreqString += '{0:f}'.format(freq(-1))
         self._gpib_connection.write(':LIST:FREQ' + FreqString)
-        self._gpib_connection.write(':LIST:POW' + (' {:f},'.format(power * len(freq[:-1]))))
-        self._gpib_connection.write(':LIST:DWEL' + (' {:f},'.format(0.3 * len(freq[:-1]))))
+        self._gpib_connection.write(':LIST:POW' + (' {0:f},'.format(power * len(freq[:-1]))))
+        self._gpib_connection.write(':LIST:DWEL' + (' {0:f},'.format(0.3 * len(freq[:-1]))))
         # ask crashes on Gigatronics, so we have to omit the sanity check
         self._gpib_connection.write(':LIST:PREC 1')
         self._gpib_connection.write(':LIST:REP STEP')

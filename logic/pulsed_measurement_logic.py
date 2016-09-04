@@ -62,7 +62,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # microwave parameters
         self.use_ext_microwave = False
@@ -404,7 +404,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.current_channel_config_name = activation_config_name
         return err
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the string generic analog
@@ -420,6 +420,8 @@ class PulsedMeasurementLogic(GenericLogic):
         Additionally the variables which hold this values are updated in the
         logic.
         """
+        if ch is None:
+            ch = {}
         self._pulse_generator_device.set_active_channels(ch)
         return 0
 
@@ -487,7 +489,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self._pulse_generator_device.has_sequence_mode()
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
         Emmits a signal that the current sequence/ensemble (asset) has changed.
 
@@ -504,6 +506,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        if load_dict is None:
+            load_dict = {}
         # load asset in channels
         err = self._pulse_generator_device.load_asset(asset_name, load_dict)
         # set the loaded_asset_name variable.

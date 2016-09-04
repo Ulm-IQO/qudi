@@ -482,7 +482,7 @@ class Manager(QtCore.QObject):
         return mod
 
     def configureModule(self, moduleObject, baseName, className, instanceName,
-                        configuration={}):
+                        configuration=None):
         """Instantiate an object from the class that makes up a QuDi module
            from a loaded python module object.
 
@@ -500,6 +500,8 @@ class Manager(QtCore.QObject):
           This method will add the resulting QuDi module instance to internal
           bookkeeping.
         """
+        if configuration is None:
+            configuration = {}
         logger.info('Configuring {0} as {1}'.format(
             className, instanceName))
         with self.lock:
@@ -520,7 +522,7 @@ class Manager(QtCore.QObject):
 
         # FIXME: Check if the class we just obtained has the right inheritance
         if not issubclass(modclass, Base):
-            raise Exception('Bad inheritance, for instance %s from %s.%s.' % (
+            raise Exception('Bad inheritance, for instance {0!s} from {1!s}.{2!s}.'.format(
                 instanceName, baseName, className))
 
         # Create object from class

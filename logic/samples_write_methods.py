@@ -304,7 +304,7 @@ class SamplesWriteMethods():
 
                 if is_last_chunk:
                     # the footer encodes the sample rate, which was used for that file:
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.sample_rate))
+                    footer = str.encode('CLOCK {0:16.10E}\r\n'.format(self.sample_rate))
                     wfm_file.write(footer)
         return created_files
 
