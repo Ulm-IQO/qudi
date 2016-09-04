@@ -140,8 +140,6 @@ class SamplingFunctions():
 
 
     def _idle(self, time_arr, parameters=None):
-        if parameters is None:
-            parameters = {}
         result_arr = np.zeros(len(time_arr))
         return result_arr
 
