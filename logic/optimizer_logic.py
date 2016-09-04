@@ -579,9 +579,9 @@ class OptimizerLogic(GenericLogic):
 
     def set_position(self, tag, x=None, y=None, z=None, a=None):
 
-        if x != None:
+        if x is not None:
             self._current_x = x
-        if y != None:
+        if y is not None:
             self._current_y = y
-        if z != None:
+        if z is not None:
             self._current_z = z
