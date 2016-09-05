@@ -63,7 +63,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
                 self._gpib_address,
                 timeout=self._gpib_timeout*1000)
         except:
-            log.error('This is MWanritsu70GHz: could not connect to the GPIB '
+            self.log.error('This is MWanritsu70GHz: could not connect to the GPIB '
                       'address >>{}<<.'.format(self._gpib_address))
             raise
         # native command mode, some things are missing in SCPI mode
@@ -210,7 +210,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         stop = len(freq)
 
         self._gpib_connection.write(
-            'ELN0 ELI0000 '
+            'LST ELN0 ELI0000 '
             'LF ' + flist
             + ' LP ' + plist
             + 'LIB0000 LIE{0:04d}'.format(stop))
