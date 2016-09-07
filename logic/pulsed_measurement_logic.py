@@ -545,6 +545,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         with self.threadlock:
             if self.getState() == 'idle':
+                self.elapsed_time = 0.0
                 # initialize plots
                 self._initialize_signal_plot()
                 self._initialize_laser_plot()
@@ -566,7 +567,6 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
 
                 self.lock()
-                self.elapsed_time = 0.0
                 self.start_time = time.time()
                 self.analysis_timer.start()
         return
