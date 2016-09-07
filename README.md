@@ -1,7 +1,6 @@
 # qudi
-QuDi is a suite of tools for operating laboratory experiments built around a confocal fluorescence microscope.
-It was designed initially to perform *Qu*antum optics experiments on *Di*amond color centres,
-but has utility in a far broader range of experimental contexts.
+QuDi is a suite of tools for operating multi-instrument and multi-computer laboratory experiments.
+Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicaple framework for controlling experiments.
 
 ## Features
   * A modular and extendable architecture
