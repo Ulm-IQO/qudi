@@ -23,6 +23,10 @@ We are preparing a paper about the software and DOIs for releases, which will ma
 ## Documentation
 User and code documentation about Qudi is located at http://qosvn2.physik.uni-ulm.de/qudi-docs .
 
+## Continuous integration 
+[![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
+[![Build status](https://ci.appveyor.com/api/projects/status/xbrn22i4jdda3t8e?svg=true)](https://ci.appveyor.com/project/drogenlied/qudi-3s43k)
+
 ## Collaboration
 Feel free to register and add issues to our trac at http://qosvn2.physik.uni-ulm.de/trac/qudi .
 and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
