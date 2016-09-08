@@ -1,7 +1,6 @@
 # qudi
-QuDi is a suite of tools for operating laboratory experiments built around a confocal fluorescence microscope.
-It was designed initially to perform *Qu*antum optics experiments on *Di*amond color centres,
-but has utility in a far broader range of experimental contexts.
+QuDi is a suite of tools for operating multi-instrument and multi-computer laboratory experiments.
+Originally built around a confocal fluorescence microscope experiments, it has grown to be a generally applicaple framework for controlling experiments.
 
 ## Features
   * A modular and extendable architecture
@@ -22,6 +21,10 @@ We are preparing a paper about the software and DOIs for releases, which will ma
 
 ## Documentation
 User and code documentation about Qudi is located at http://qosvn2.physik.uni-ulm.de/qudi-docs .
+
+## Continuous integration 
+[![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
+[![Build status](https://ci.appveyor.com/api/projects/status/xbrn22i4jdda3t8e?svg=true)](https://ci.appveyor.com/project/drogenlied/qudi-3s43k)
 
 ## Collaboration
 Feel free to register and add issues to our trac at http://qosvn2.physik.uni-ulm.de/trac/qudi .

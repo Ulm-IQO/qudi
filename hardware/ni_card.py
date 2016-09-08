@@ -859,11 +859,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
         if match:
             device = match.group('device')
-            self.log.warning('NI Device "{}" will be reset.'.format(device))
+            self.log.warning('NI Device "{0}" will be reset.'.format(device))
             daq.DAQmxResetDevice(device)
             return 0
         else:
-            self.log.error('Did not find device name in {}.'.format(
+            self.log.error('Did not find device name in {0}.'.format(
                 self._clock_channel))
             return -1
 
@@ -1117,25 +1117,25 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
 
         if x is not None:
-            if x < self._position_range[0][0] or x > self._position_range[0][1]:
+            if not(self._position_range[0][0] <= x <= self._position_range[0][1]):
                 self.log.error('You want to set x out of range: {0:f}.'.format(x))
                 return -1
             self._current_position[0] = np.float(x)
 
         if y is not None:
-            if y < self._position_range[1][0] or y > self._position_range[1][1]:
+            if not(self._position_range[1][0] <= y <= self._position_range[1][1]):
                 self.log.error('You want to set y out of range: {0:f}.'.format(y))
                 return -1
             self._current_position[1] = np.float(y)
 
         if z is not None:
-            if z < self._position_range[2][0] or z > self._position_range[2][1]:
+            if not(self._position_range[2][0] <= z <= self._position_range[2][1]):
                 self.log.error('You want to set z out of range: {0:f}.'.format(z))
                 return -1
             self._current_position[2] = np.float(z)
 
         if a is not None:
-            if a < self._position_range[3][0] or a > self._position_range[3][1]:
+            if not(self._position_range[3][0] <= a <= self._position_range[3][1]):
                 self.log.error('You want to set a out of range: {0:f}.'.format(a))
                 return -1
             self._current_position[3] = np.float(a)

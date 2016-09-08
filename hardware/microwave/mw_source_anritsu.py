@@ -149,7 +149,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
 
         if power is not None:
-            self._gpib_connection.write(':POW {:f}'.format(power))
+            self._gpib_connection.write(':POW {0:f}'.format(power))
             return 0
         else:
             return -1
@@ -171,7 +171,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
 
         if freq is not None:
-            self._gpib_connection.write(':FREQ {:f}'.format(freq))
+            self._gpib_connection.write(':FREQ {0:f}'.format(freq))
             return 0
         else:
             return -1
@@ -280,9 +280,9 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @return:
         """
         self._gpib_connection.write(':SWE:GEN STEP')
-        self._gpib_connection.write(':FREQ:START {}'.format(start-step))
-        self._gpib_connection.write(':FREQ:STOP {}'.format(stop))
-        self._gpib_connection.write(':SWE:FREQ:STEP {}'.format(step))
+        self._gpib_connection.write(':FREQ:START {0}'.format(start-step))
+        self._gpib_connection.write(':FREQ:STOP {0}'.format(stop))
+        self._gpib_connection.write(':SWE:FREQ:STEP {0}'.format(step))
         nrpoints = int(self._gpib_connection.query(':SWE:POIN?'))
         return nrpoints - 1
 

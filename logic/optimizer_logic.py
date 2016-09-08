@@ -64,7 +64,7 @@ class OptimizerLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         # setting standard parameter for refocus
         self.refocus_XY_size = 0.6
@@ -579,9 +579,9 @@ class OptimizerLogic(GenericLogic):
 
     def set_position(self, tag, x=None, y=None, z=None, a=None):
 
-        if x != None:
+        if x is not None:
             self._current_x = x
-        if y != None:
+        if y is not None:
             self._current_y = y
-        if z != None:
+        if z is not None:
             self._current_z = z

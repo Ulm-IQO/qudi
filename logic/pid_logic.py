@@ -48,7 +48,7 @@ class PIDLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100

@@ -84,7 +84,7 @@ class NuclearOperationsLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.threadlock = Mutex()
 
@@ -1188,7 +1188,5 @@ class NuclearOperationsLogic(GenericLogic):
         #                            timestamp=timestamp,
         #                            as_text=True)
 
-
-
-        self.logMsg('Nuclear Operation data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.info('Nuclear Operation data saved to:\n{0}'.format(filepath))
 

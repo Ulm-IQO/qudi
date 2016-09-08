@@ -59,7 +59,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.hist_data = None
         self._hist_num_bins = None
@@ -590,9 +590,9 @@ class TraceAnalysisLogic(GenericLogic):
         hist_fit_x, hist_fit_y, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
 
         if param_dict.get('lambda_0') is None:
-            self.logMsg('The double poissonian fit does not work! Take at '
+            self.log.error('The double poissonian fit does not work! Take at '
                         'least a dummy value, in order not to break the '
-                        'routine.', msgType='error')
+                        'routine.')
             amp0 = 1
             amp1 = 1
 

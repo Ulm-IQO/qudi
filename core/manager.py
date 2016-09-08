@@ -482,7 +482,7 @@ class Manager(QtCore.QObject):
         return mod
 
     def configureModule(self, moduleObject, baseName, className, instanceName,
-                        configuration={}):
+                        configuration=None):
         """Instantiate an object from the class that makes up a QuDi module
            from a loaded python module object.
 
@@ -500,6 +500,8 @@ class Manager(QtCore.QObject):
           This method will add the resulting QuDi module instance to internal
           bookkeeping.
         """
+        if configuration is None:
+            configuration = {}
         logger.info('Configuring {0} as {1}'.format(
             className, instanceName))
         with self.lock:
@@ -520,7 +522,7 @@ class Manager(QtCore.QObject):
 
         # FIXME: Check if the class we just obtained has the right inheritance
         if not issubclass(modclass, Base):
-            raise Exception('Bad inheritance, for instance %s from %s.%s.' % (
+            raise Exception('Bad inheritance, for instance {0!s} from {1!s}.{2!s}.'.format(
                 instanceName, baseName, className))
 
         # Create object from class
@@ -636,8 +638,8 @@ class Manager(QtCore.QObject):
                 continue
             outputs = self.tree['loaded'][destbase][destmod].connector['out']
             if destcon not in outputs:
-                logger.error('OUT connector {} not declared in module {}.{} '
-                             'but connected to IN connector {} of module {}.'
+                logger.error('OUT connector {0} not declared in module {1}.{2} '
+                             'but connected to IN connector {3} of module {4}.'
                              ''.format(destcon, destbase, destmod, c,
                                        thismodule['module.Class']))
                 continue
@@ -955,7 +957,7 @@ class Manager(QtCore.QObject):
                 logger.error('Value for class key is not a string.')
                 return None
             if not '.' in connections[c]:
-                logger.error('{}.{}: connection {}: {} has wrong format'
+                logger.error('{0}.{1}: connection {2}: {3} has wrong format'
                              'for connection target'.format(
                                  base, key, c, connections[c]))
                 return None

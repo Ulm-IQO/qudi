@@ -140,7 +140,7 @@ class MagnetLogic(GenericLogic):
         # checking for the right configuration
         config = self.getConfiguration()
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
@@ -1475,9 +1475,9 @@ class MagnetLogic(GenericLogic):
                 odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Freq. 1']['value']*1e6
                 odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Freq. 1']['value']*1e6
             else:
-                self.logMsg('No previous saved lower odmr freq found in '
+                self.log.error('No previous saved lower odmr freq found in '
                             'ODMR alignment data! Cannot do the ODMR '
-                            'Alignment!', msgType='error')
+                            'Alignment!')
 
 
             # only if there was a non zero movement, the if make sense to
@@ -1649,7 +1649,7 @@ class MagnetLogic(GenericLogic):
             if out_of_range:
                 num_bins = num_bins-1
                 self._ta_logic.set_num_bins_histogram(num_bins)
-                self.logMsg('Fitted values {0},{1} are out of range [{2},{3}]! '
+                self.log.warning('Fitted values {0},{1} are out of range [{2},{3}]! '
                             'Change the histogram a '
                             'bit.'.format(param2['\u03BB0']['value'],
                                           param2['\u03BB1']['value'],
