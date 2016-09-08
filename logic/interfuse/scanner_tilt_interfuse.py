@@ -46,7 +46,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
 
         self.tilt_variable_ax = 1
         self.tilt_variable_ay = 1

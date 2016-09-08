@@ -70,8 +70,8 @@ class LaserScannerLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!

@@ -74,7 +74,7 @@ class SimpleDataGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._simple_logic = self.connector['in']['simplelogic']['object']
+        self._simple_logic = self.get_in_connector('simplelogic')
 
         #####################
         # Configuring the dock widgets

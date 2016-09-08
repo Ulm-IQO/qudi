@@ -57,8 +57,8 @@ class PulseAnalysisLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._pulse_extraction_logic = self.get_in_connector('pulseextractionlogic')
+        self._fit_logic = self.get_in_connector('fitlogic')
         return
 
 

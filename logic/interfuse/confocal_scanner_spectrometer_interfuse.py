@@ -70,9 +70,9 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._scanner_hw = self.connector['in']['confocalscanner1']['object']
-        self._spectrometer_hw = self.connector['in']['spectrometer1']['object']
+        self._fit_logic = self.get_in_connector('fitlogic')
+        self._scanner_hw = self.get_in_connector('confocalscanner1')
+        self._spectrometer_hw = self.get_in_connector('spectrometer1')
 
 
     def on_deactivate(self, e):

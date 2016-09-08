@@ -65,7 +65,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._fit_logic = self.get_in_connector('fitlogic')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.

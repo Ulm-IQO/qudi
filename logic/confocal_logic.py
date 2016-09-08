@@ -291,10 +291,10 @@ class ConfocalLogic(GenericLogic):
 
         @param e: error code
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
 #        print("Scanning device is", self._scanning_device)
 
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line

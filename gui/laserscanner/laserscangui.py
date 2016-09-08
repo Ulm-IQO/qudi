@@ -77,8 +77,8 @@ class LaserScanningGui(GUIBase):
                          had happened.
         """
 
-        self._scanning_logic = self.connector['in']['laserscanninglogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_logic = self.get_in_connector('laserscanninglogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # setting up the window
         self._mw = LaserScanWindow()

@@ -76,7 +76,7 @@ class PIDGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._pid_logic = self.connector['in']['pidlogic']['object']
+        self._pid_logic = self.get_in_connector('pidlogic')
 
         #####################
         # Configuring the dock widgets

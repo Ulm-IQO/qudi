@@ -82,8 +82,8 @@ class WavemeterLogGui(GUIBase):
                          had happened.
         """
 
-        self._wm_logger_logic = self.connector['in']['wavemeterloggerlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._wm_logger_logic = self.get_in_connector('wavemeterloggerlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # setting up the window
         self._mw = WavemeterLogWindow()

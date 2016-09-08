@@ -84,11 +84,11 @@ class ODMRLogic(GenericLogic):
                          had happened.
         """
 
-        self._mw_device = self.connector['in']['microwave1']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._odmr_counter = self.connector['in']['odmrcounter']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._taskrunner = self.connector['in']['taskrunner']['object']
+        self._mw_device = self.get_in_connector('microwave1')
+        self._fit_logic = self.get_in_connector('fitlogic')
+        self._odmr_counter = self.get_in_connector('odmrcounter')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._taskrunner = self.get_in_connector('taskrunner')
 
         config = self.getConfiguration()
         self.limits = self._mw_device.get_limits()
