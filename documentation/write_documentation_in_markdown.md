@@ -6,16 +6,22 @@ documentation is written in a so called Markdown format, an lightweight
 markup language, which should be easily readable as a plain file, but also
 convertible to html.
 
-Inserting images
-----------------
+## Lookup Guide
+
+A really nice collection of the (simple and advanced) markdown notations can be
+found here:
+
+https://help.github.com/categories/writing-on-github/
+
+## Inserting images
+
 
 Images can be inserted using their path relative to the documentation directory
-in the qudi source.  For example, 
+in the qudi source.  For example,
 
 ![Settings window](gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
 
-More WYSIWYG editing with markdown plugin in PyCharm
-----------------------------------------------------
+## More WYSIWYG editing with markdown plugin in PyCharm
 
 Since it might be a bit unusual to write directly in Markdown without having an
 immediate comparison how the result is going to look like, there is an easy way

@@ -95,7 +95,7 @@ class TaskGui(GUIBase):
     def setRunToolState(self, index, index2=None):
         selected = self._mw.taskTableView.selectedIndexes()
         try:
-            if not index2 is None and selected[0].row() != index2.row():
+            if index2 is not None and selected[0].row() != index2.row():
                 return
         except:
             return

@@ -44,7 +44,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
@@ -152,7 +152,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         return self._position_range
 
-    def set_position_range(self, myrange=[[0, 1], [0, 1], [0, 1], [0, 1]]):
+    def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
         @param float [4][2] myrange: array of 4 ranges with an array containing
@@ -160,6 +160,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [[0, 1], [0, 1], [0, 1], [0, 1]]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')
@@ -186,13 +188,15 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         return 0
 
-    def set_voltage_range(self, myrange=[-10.,10.]):
+    def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
         @param float [2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [-10.,10.]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')
@@ -229,7 +233,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if clock_frequency != None:
+        if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
         self.log.warning('ConfocalScannerDummy>set_up_scanner_clock')

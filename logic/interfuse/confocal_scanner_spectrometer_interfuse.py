@@ -46,7 +46,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
@@ -94,7 +94,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """
         return self._scanner_hw.get_position_range()
 
-    def set_position_range(self, myrange=[[0,1],[0,1],[0,1],[0,1]]):
+    def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
         This is a direct pass-through to the scanner HW
 
@@ -102,12 +102,14 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [[0,1],[0,1],[0,1],[0,1]]
 
         self._scanner_hw.set_position_range(myrange=myrange)
 
         return 0
 
-    def set_voltage_range(self, myrange=[-10.,10.]):
+    def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
         This is a direct pass-through to the scanner HW
 
@@ -115,6 +117,8 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [-10.,10.]
 
         self._scanner_hw.set_voltage_range(myrange=myrange)
 

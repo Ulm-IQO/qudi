@@ -137,7 +137,9 @@ class PiPWM(Base, ProcessControlInterface):
 
 
 class PiPWMHalf(PiPWM):
-    def __init__(self, manager, name, config = {}, **kwargs):
+    def __init__(self, manager, name, config = None, **kwargs):
+        if config is None:
+            config = {}
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         PiPWM.__init__(self, manager, name, **kwargs)
         #locking for thread safety

@@ -90,5 +90,5 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             it opens a menu at the position of the left click.
         """
         if value == self.Trigger:
-            self.left_menu.exec_(QtWidgets.QCursor.pos())
+            self.left_menu.exec_(QtGui.QCursor.pos())
 

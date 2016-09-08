@@ -30,7 +30,7 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-
+from core.util import units
 
 class DailyLogHandler(logging.FileHandler):
     """
@@ -196,7 +196,7 @@ class SaveLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
@@ -560,17 +560,17 @@ class SaveLogic(GenericLogic):
         max_trace_length = max(np.shape(trace_data))
 
         for row in range(max_trace_length):
-            for column in range(len(trace_data)):
+            for column in trace_data:
                 try:
                     # TODO: Lachlan has inserted the if-else in here,
                     # but it should be properly integrated with the try
 
                     # If entry is a string, then print directly
-                    if isinstance(trace_data[column][row], str):
-                        opened_file.write(str('{0}' + delimiter).format(trace_data[column][row]))
+                    if isinstance(column[row], str):
+                        opened_file.write(str('{0}' + delimiter).format(column[row]))
                     # Otherwise, format number to requested precision
                     else:
-                        opened_file.write(str('{0' + precision + '}' + delimiter).format(trace_data[column][row]))
+                        opened_file.write(str('{0' + precision + '}' + delimiter).format(column[row]))
                 except:
                     opened_file.write(str('{0}' + delimiter).format('NaN'))
             opened_file.write('\n')
@@ -601,13 +601,16 @@ class SaveLogic(GenericLogic):
 
         for row in trace_data:
             for entry in row:
-                opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
+                if units.is_number(entry):
+                    opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
+                else:
+                    opened_file.write(str(entry).encode('utf-8'))
             opened_file.write('\n')
 
         if close_file_flag:
             opened_file.close()
 
-    def _save_1d_traces_as_xml():
+    def _save_1d_traces_as_xml(self):
         """ Save 1d data trace in xml conding. """
         pass
 #        if as_xml:
@@ -679,7 +682,7 @@ class SaveLogic(GenericLogic):
 #            tree = ET.ElementTree(root)
 #            tree.write('output.xml', pretty_print=True, xml_declaration=True)
 
-    def _save_2d_data_as_xml():
+    def _save_2d_data_as_xml(self):
         """ Save 2d data in xml conding."""
         pass
 

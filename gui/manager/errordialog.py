@@ -134,8 +134,8 @@ class ErrorDialog(QtWidgets.QDialog):
             self.messages.append(msg)
             self.nextBtn.show()
             self.nextBtn.setEnabled(True)
-            self.nextBtn.setText('Show next error (%d more)' %
-                                 len(self.messages))
+            self.nextBtn.setText('Show next error ({0:d} more)'.format(
+                                 len(self.messages)))
         else:
             w = QtWidgets.QApplication.activeWindow()
             self.nextBtn.hide()
@@ -193,7 +193,7 @@ class ErrorDialog(QtWidgets.QDialog):
         """ Shows the next error message popup.
         """
         self.msgLabel.setText(self.messages.pop(0))
-        self.nextBtn.setText('Show next error (%d more)' % len(self.messages))
+        self.nextBtn.setText('Show next error ({0:d} more)'.format(len(self.messages)))
         if len(self.messages) == 0:
             self.nextBtn.setEnabled(False)
 
