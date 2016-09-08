@@ -192,7 +192,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -434,7 +434,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         current_functions = []
 
-        for index in range(len(self.get_func_config_list())):
+        for index, func_name in enumerate(self.get_func_config_list()):
             name_checkbox = 'checkbox_'+ str(index)
             checkbox = getattr(self._bs, name_checkbox)
             if checkbox.isChecked():
@@ -1171,7 +1171,7 @@ class PulsedMeasurementGui(GUIBase):
             bin_length += curr_bin_length
 
             laser_val =self.get_element_in_block_table(row_ind, laser_column)
-            if (laser_val=='DC') or (laser_val==2):
+            if laser_val in ('DC', 2):
                 if not laser_on:
                     num_laser_ch += 1
                     laser_on = True
@@ -2446,15 +2446,15 @@ class PulsedMeasurementGui(GUIBase):
 
             ensemble_name = ''
             parameters = [None]*len(object_list)
-            for index, object in enumerate(object_list):
-                if hasattr(object,'isChecked'):
-                    parameters[index] = object.isChecked()
-                elif hasattr(object,'value'):
-                    parameters[index] = object.value()
-                elif hasattr(object,'text'):
+            for index, obj in enumerate(object_list):
+                if hasattr(obj,'isChecked'):
+                    parameters[index] = obj.isChecked()
+                elif hasattr(obj,'value'):
+                    parameters[index] = obj.value()
+                elif hasattr(obj,'text'):
 
-                    parameters[index] = object.text()
-                    ensemble_name = object.text()
+                    parameters[index] = obj.text()
+                    ensemble_name = obj.text()
                 else:
                     self.log.error('Not possible to get the value from the '
                             'viewbox, since it does not have one of the'
@@ -4142,9 +4142,9 @@ class PulsedMeasurementGui(GUIBase):
         filetag = self._mw.save_tag_LineEdit.text()
         filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
         if len(filetag) > 0:
-            filename = os.path.join(filepath, '{}_{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+            filename = os.path.join(filepath, '{0}_{1}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
         else:
-            filename = os.path.join(filepath, '{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
+            filename = os.path.join(filepath, '{0}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
 
         # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
         # pulse plot

@@ -161,9 +161,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['FPU']:
-            self.inst.query('POWER={:f}'.format(power))
+            self.inst.query('POWER={0:f}'.format(power))
         else:
-            self.inst.query('POWER={:f}'.format(power*1000))
+            self.inst.query('POWER={0:f}'.format(power*1000))
 
     def get_current(self):
         """
@@ -191,7 +191,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @param current_percent:
         @return:
         """
-        self.inst.query('CURRENT={}'.format(current_percent))
+        self.inst.query('CURRENT={0}'.format(current_percent))
         return self.get_current()
 
     def get_shutter_state(self):

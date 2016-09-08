@@ -38,7 +38,7 @@ class QZMQStream(QtCore.QObject):
         self.readnotifier = QtCore.QSocketNotifier(
             self.socket.get(zmq.FD),
             QtCore.QSocketNotifier.Read)
-        logging.debug( "Notifier: %s" % self.readnotifier.socket())
+        logging.debug( "Notifier: {0!s}".format(self.readnotifier.socket()))
         self.readnotifier.activated.connect(self.checkForMessage)
 
     def checkForMessage(self, socket):
@@ -46,14 +46,14 @@ class QZMQStream(QtCore.QObject):
 
           @param socket: ZMQ socket
         """
-        logging.debug( "Check: %s" % self.readnotifier.socket())
+        logging.debug( "Check: {0!s}".format(self.readnotifier.socket()))
         self.readnotifier.setEnabled(False)
         check = True
         try:
             while check:
                 events = self.socket.get(zmq.EVENTS)
                 check = events & zmq.POLLIN
-                logging.debug( "EVENTS: %s" % events)
+                logging.debug( "EVENTS: {0!s}".format(events))
                 if check:
                     try:
                         msg = self.socket.recv_multipart(zmq.NOBLOCK)
@@ -62,9 +62,9 @@ class QZMQStream(QtCore.QObject):
                             # state changed since poll event
                             pass
                         else:
-                            logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
+                            logging.info( "RECV Error: {0!s}".format(zmq.strerror(e.errno)))
                     else:
-                        logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
+                        logging.debug( "MSG: {0!s} {1!s}".format(self.readnotifier.socket(), msg))
                         self.sigMsgRecvd.emit(msg)
         except:
             pass

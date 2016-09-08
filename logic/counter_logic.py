@@ -69,7 +69,7 @@ class CounterLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self._count_length = 300
         self._count_frequency = 50
@@ -344,6 +344,16 @@ class CounterLogic(GenericLogic):
             'finite-gated'  = finite measurement with predefined number of samples
         """
         self._counting_mode = mode
+
+    def get_counting_mode(self):
+        """ Retrieve the current counting mode.
+
+        @return str: one of the possible counting options:
+                'continuous'    = counts continuously
+                'gated'         = bins the counts according to a gate signal
+                'finite-gated'  = finite measurement with predefined number of samples
+        """
+        return self._counting_mode
 
     def startCount(self):
         """ This is called externally, and is basically a wrapper that

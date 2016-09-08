@@ -32,7 +32,7 @@ class Pulse_Block_Element(object):
     a GUI as single rows of a Pulse_Block.
     """
     def __init__(self, init_length_bins, increment_bins=0, pulse_function=None, digital_high=None,
-                 parameters=[], use_as_tick=False):
+                 parameters=None, use_as_tick=False):
         """ The constructor for a Pulse_Block_Element needs to have:
 
         @param int init_length_bins: an initial length of a bins, this
@@ -61,6 +61,8 @@ class Pulse_Block_Element(object):
                            be used as a tick (i.e. the parameter for the x axis)
                            for the later plot in the analysis.
         """
+        if parameters is None:
+            parameters = []
         # FIXME: Sanity checks need to be implemented here
         self.init_length_bins   = init_length_bins
         self.increment_bins     = increment_bins
