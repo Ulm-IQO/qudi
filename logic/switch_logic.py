@@ -52,10 +52,10 @@ class SwitchLogic(GenericLogic):
         """
         self.switches = dict()
         for connector in self.connector['in']:
-            hwname = self.connector['in'][connector]['object']._name
+            hwname = self.get_in_connector(connector)._name
             self.switches[hwname] = dict()
-            for i in range(self.connector['in'][connector]['object'].getNumberOfSwitches()):
-                self.switches[hwname][i] = self.connector['in'][connector]['object']
+            for i in range(self.get_in_connector(connector).getNumberOfSwitches()):
+                self.switches[hwname][i] = self.get_in_connector(connector)
 
     def on_deactivate(self, e):
         """ Deactivate modeule.

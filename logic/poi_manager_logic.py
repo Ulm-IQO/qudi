@@ -213,11 +213,11 @@ class PoiManagerLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
 
-        self._optimizer_logic = self.connector['in']['optimizer1']['object']
+        self._optimizer_logic = self.get_in_connector('optimizer1')
 #        print("Optimizer Logic is", self._optimizer_logic)
-        self._confocal_logic = self.connector['in']['scannerlogic']['object']
+        self._confocal_logic = self.get_in_connector('scannerlogic')
 #        print("Confocal Logic is", self._confocal_logic)
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
         # initally add crosshair to the pois
         crosshair = PoI(point=[0, 0, 0], name='crosshair')

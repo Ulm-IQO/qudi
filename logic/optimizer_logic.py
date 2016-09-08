@@ -96,8 +96,8 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._fit_logic = self.get_in_connector('fitlogic')
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line

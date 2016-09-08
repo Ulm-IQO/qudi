@@ -215,9 +215,9 @@ class PulsedMeasurementGui(GUIBase):
         GUI.
         """
 
-        self._pulsed_meas_logic  = self.connector['in']['pulsedmeasurementlogic']['object']
-        self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._pulsed_meas_logic  = self.get_in_connector('pulsedmeasurementlogic')
+        self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self._mw = PulsedMeasurementMainWindow()
 

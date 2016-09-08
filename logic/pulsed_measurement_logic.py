@@ -145,12 +145,12 @@ class PulsedMeasurementLogic(GenericLogic):
         """
 
         # get all the connectors:
-        self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-        self._fast_counter_device = self.connector['in']['fastcounter']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
-        self._mycrowave_source_device = self.connector['in']['microwave']['object']
+        self._pulse_analysis_logic = self.get_in_connector('pulseanalysislogic')
+        self._fast_counter_device = self.get_in_connector('fastcounter')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._fit_logic = self.get_in_connector('fitlogic')
+        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
+        self._mycrowave_source_device = self.get_in_connector('microwave')
 
         # Recall saved status variables
         if 'signal_start_bin' in self._statusVariables:

@@ -91,8 +91,8 @@ class ODMRGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
-        self._odmr_logic = self.connector['in']['odmrlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._odmr_logic = self.get_in_connector('odmrlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # Use the inherited class 'Ui_ODMRGuiUI' to create now the
         # GUI element:
