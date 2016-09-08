@@ -108,7 +108,8 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
           @param object record: :logging.LogRecord:
         """
         record = self.format(record)
-        if record: self.sigLoggedMessage.emit(record)
+        if record:
+            self.sigLoggedMessage.emit(record)
 
 
 def initialize_logger():
