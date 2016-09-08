@@ -25,6 +25,7 @@ User and code documentation about Qudi is located at http://qosvn2.physik.uni-ul
 ## Continuous integration 
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
 [![Build status](https://ci.appveyor.com/api/projects/status/xbrn22i4jdda3t8e?svg=true)](https://ci.appveyor.com/project/drogenlied/qudi-3s43k)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/?branch=master)
 
 ## Collaboration
 Feel free to register and add issues to our trac at http://qosvn2.physik.uni-ulm.de/trac/qudi .
