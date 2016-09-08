@@ -251,7 +251,10 @@ class Base(QtCore.QObject, Fysom):
         return os.path.abspath(os.path.expanduser('~'))
 
     def get_in_connector(self, connector_name):
-        """
+        """ Return module connected to the given named connector.
+          @param str connector_name: name of the connector
+
+          @return obj: module that is connected to the named connector
         """
         obj = self.connector['in'][connector_name]['object']
         if obj is None:
