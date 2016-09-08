@@ -366,13 +366,10 @@ class MotorStagePI(Base, MotorInterface):
         @param float move: desired position in millimeter
         """
         constraints = self.get_constraints()
-        if move > constraints[axis]['pos_max'] or move < constraints[axis]['pos_min']:
+        if not(constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
             self.log.warning('Cannot make the movement of the axis "{0}"'
-                    'since the border [{1},{2}] '
-                    'would be crossed! Ignore '
-                    'command!'.format(axis,
-                        constraints[axis]['pos_min'],
-                        constraints[axis]['pos_max']))
+                'since the border [{1},{2}] would be crossed! Ignore command!'
+                ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
         else:
             self._go_to_pos(axis, move)
 
@@ -385,7 +382,7 @@ class MotorStagePI(Base, MotorInterface):
         """
         constraints = self.get_constraints()
         axis_ID = constraints[axis]['ID']
-        self._serial_connection_xyz.write(axis_ID+'SP%s'%move)
+        self._serial_connection_xyz.write(axis_ID+'SP{0!s}'.format(move))
         self._serial_connection_xyz.write(axis_ID+'MP')
 
 
@@ -419,16 +416,16 @@ class MotorStagePI(Base, MotorInterface):
         """
         param_dict = {}
         try:
-            if param_list != None and 'x' in param_list or param_list == None:
+            if param_list is not None and 'x' in param_list or param_list is None:
                 x_value = self._internal_get_pos('x')
                 param_dict['x'] = x_value
-            if param_list != None and 'y' in param_list or param_list == None:
+            if param_list is not None and 'y' in param_list or param_list is None:
                 y_value = self.internal_get_pos('y')
                 param_dict['y'] = y_value
-            if param_list != None and 'z' in param_list or param_list == None:
+            if param_list is not None and 'z' in param_list or param_list is None:
                 z_value = self.internal_get_pos('z')
                 param_dict['z'] = z_value
-            if param_list != None and 'phi' in param_list or param_list == None:
+            if param_list is not None and 'phi' in param_list or param_list is None:
                 phi_temp = self._ask_rot([1,60,0])
                 phi_value = phi_temp * self._MicroStepSize
                 param_dict['phi'] = phi_value
@@ -463,19 +460,19 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         param_dict = {}
         try:
-            if param_list != None and 'x' in param_list or param_list == None:
+            if param_list is not None and 'x' in param_list or param_list is None:
                 x_status = self._serial_connection_xyz.ask(constraints['x']['ID']+'TS')[8:]
                 time.sleep(0.1)
                 param_dict['x'] = x_status
-            if param_list != None and 'y' in param_list or param_list == None:
+            if param_list is not None and 'y' in param_list or param_list is None:
                 y_status = self._serial_connection_xyz.ask(constraints['y']['ID']+'TS')[8:]
                 time.sleep(0.1)
                 param_dict['y'] = y_status
-            if param_list != None and 'z' in param_list or param_list == None:
+            if param_list is not None and 'z' in param_list or param_list is None:
                 z_status = self._serial_connection_xyz.ask(constraints['z']['ID']+'TS')[8:]
                 time.sleep(0.1)
                 param_dict['z'] = z_status
-            if param_list != None and 'phi' in param_list or param_list == None:
+            if param_list is not None and 'phi' in param_list or param_list is None:
                 phi_status = self._ask_rot([1,54,0])
                 param_dict['phi'] = phi_status
             return param_dict
@@ -499,15 +496,15 @@ class MotorStagePI(Base, MotorInterface):
         """
         #TODO: implement calibration x, y and z
         try:
-            if param_list != None and set(['x','y','z']) <= set(param_list) or param_list == None:
+            if param_list is not None and set(['x','y','z']) <= set(param_list) or param_list is None:
                 self._calibrate_xyz()
-            if param_list != None and 'x' in param_list or param_list == None:
+            if param_list is not None and 'x' in param_list or param_list is None:
                 self._calibrate_axis('x')
-            if param_list != None and 'y' in param_list or param_list == None:
+            if param_list is not None and 'y' in param_list or param_list is None:
                 self._calibrate_axis('y')
-            if param_list != None and 'z' in param_list or param_list == None:
+            if param_list is not None and 'z' in param_list or param_list is None:
                 self._calibrate_axis('z')
-            if param_list != None and 'phi' in param_list or param_list == None:
+            if param_list is not None and 'phi' in param_list or param_list is None:
                 self._calibrate_rot()
             return 0
         except:
@@ -597,7 +594,7 @@ class MotorStagePI(Base, MotorInterface):
         print('fast movement finished')
 
         time.sleep(0.1)
-        if axis == 'x' or axis == 'y':
+        if axis in ('x', 'y'):
             self._serial_connection_xyz.write(axis_ID+'FE1\n')
             print(self._serial_connection_xyz.read(6))
             [a, b, c] = self._in_movement_xyz()
@@ -623,16 +620,16 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         param_dict = {}
         try:
-            if param_list != None and 'x' in param_list or param_list == None:
+            if param_list is not None and 'x' in param_list or param_list is None:
                 x_vel = int(self._serial_connection_xyz.ask(constraints['x']['ID']+'TY')[8:])
                 param_dict['x'] = x_vel/10000.
-            if param_list != None and 'y' in param_list or param_list == None:
+            if param_list is not None and 'y' in param_list or param_list is None:
                 y_vel = int(self._serial_connection_xyz.ask(constraints['y']['ID']+'TY')[8:])
                 param_dict['y'] = y_vel/10000.
-            if param_list != None and 'z' in param_list or param_list == None:
+            if param_list is not None and 'z' in param_list or param_list is None:
                 z_vel = int(self._serial_connection_xyz.ask(constraints['z']['ID']+'TY')[8:])
                 param_dict['z'] = z_vel/10000.
-            if param_list != None and 'phi' in param_list or param_list == None:
+            if param_list is not None and 'phi' in param_list or param_list is None:
                 data = self._ask_rot([1,53,42])
                 phi_vel = self._data_to_speed_rot(data)
                 param_dict['phi'] = phi_vel
@@ -656,13 +653,13 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if 'x' in param_dict:
                 vel = int(param_dict['x']*10000)
-                self._serial_connection_xyz.write(constraints['x']['ID']+'SV%i\n'%(vel))
+                self._serial_connection_xyz.write(constraints['x']['ID']+'SV{0:d}\n'.format((vel)))
             if 'y' in param_dict:
                 vel = int(param_dict['y']*10000)
-                self._serial_connection_xyz.write(constraints['y']['ID']+'SV%i\n'%(vel))
+                self._serial_connection_xyz.write(constraints['y']['ID']+'SV{0:d}\n'.format((vel)))
             if 'z' in param_dict:
                 vel = int(param_dict['z']*10000)
-                self._serial_connection_xyz.write(constraints['z']['ID']+'SV%i\n'%(vel))
+                self._serial_connection_xyz.write(constraints['z']['ID']+'SV{0:d}\n'.format((vel)))
             if 'phi' in param_dict:
                 vel = param_dict['phi']
                 data = self._speed_to_data_rot(vel)

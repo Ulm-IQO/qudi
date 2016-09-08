@@ -289,7 +289,7 @@ class APTMotor():
             raise Exception('Connection Failed. Check Serial Number!')
         return True
 
-        ''' Interfacing with the motor settings '''
+    # Interfacing with the motor settings
 
     def getHardwareInformation(self):
         ''' Get information from the hardware'''
@@ -961,18 +961,13 @@ class APTStage(Base, MotorInterface):
             if param_dict.get(label_axis) is not None:
                 desired_pos = param_dict[label_axis]
 
-
-                if  (desired_pos > constraints[label_axis]['pos_max'] ) or\
-                    (desired_pos < constraints[label_axis]['pos_min']):
+                constr = constraints[label_axis]
+                if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
 
                     self.log.warning('Cannot make absolute movement of the '
-                            'axis "{0}" to position {1}, since it exceeds '
-                            'the limts [{2},{3}]. Movement is ignored!'
-                            ''.format(
-                                label_axis,
-                                desired_pos,
-                                constraints[label_axis]['pos_min'],
-                                constraints[label_axis]['pos_max']))
+                        'axis "{0}" to position {1}, since it exceeds '
+                        'the limts [{2},{3}]. Movement is ignored!'
+                        ''.format(label_axis, desired_pos, constr['pos_min'], constr['pos_max']))
                 else:
                     self._save_pos({label_axis:desired_pos})
                     self._axis_dict[label_axis].move_abs(desired_pos)
@@ -1135,21 +1130,15 @@ class APTStage(Base, MotorInterface):
         for label_axis in param_dict:
             if label_axis in self._axis_dict:
                 desired_vel = param_dict[label_axis]
-
-                if  (desired_vel > constraints[label_axis]['vel_max'] ) or\
-                    (desired_vel < constraints[label_axis]['vel_min']):
+                constr = constraints[label_axis]
+                if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
 
                     self.log.warning('Cannot set velocity of the axis "{0}" '
-                            'to the desired velocity of "{1}", since it '
-                            'exceeds the limts [{2},{3}] ! Command is '
-                            'ignored!'.format(
-                                        label_axis,
-                                        desired_vel,
-                                        constraints[label_axis]['vel_min'],
-                                        constraints[label_axis]['vel_max']))
+                        'to the desired velocity of "{1}", since it '
+                        'exceeds the limts [{2},{3}] ! Command is ignored!'
+                        ''.format(label_axis, desired_vel, constr['vel_min'], constr['vel_max']))
             else:
                 self._axis_dict[label_axis].set_velocity(desired_vel)
-
 
 
 class APTOneAxisStage(APTStage):

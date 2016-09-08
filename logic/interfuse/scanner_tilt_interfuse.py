@@ -149,7 +149,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
             z += self._calc_dz(x, y)
             z_min = self.get_position_range()[2][0]
             z_max = self.get_position_range()[2][1]
-            if z < z_min or z > z_max:
+            if not(z_min <= z <= z_max):
                 z = min(max(z, z_min), z_max)
                 self.log.warning(
                     'The entered z position is out of scanner '
