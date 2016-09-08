@@ -85,28 +85,28 @@ class Mapper():
     Usage Example:
     ==============
 
-    We assume to have a hardware module which is connected to our GUI via a
-    connector and we can access it by the `hardware_model` variable. We
-    further assume that this hardware module has a string property called
-    `property` and a signal `property_changed` which is emitted when the
+    We assume to have a logic module which is connected to our GUI via a
+    connector and we can access it by the `logic_module` variable. We
+    further assume that this logic module has a string property called
+    `some_value` and a signal `some_value_changed` which is emitted when the
     property is changed programmatically.
     In the GUI module we have defined a QLineEdit, e.g. by
     ```
     lineedit = QLineEdit()
     ```
     In the on_activate method of the GUI module, we define the following
-    mapping between the line edit and the hardware property:
+    mapping between the line edit and the logic property:
     ```
     def on_activate(self, e):
         self.mapper = Mapper()
-        self.mapper.add_mapping(self.lineedit, self.hardware_model,
-                'property', 'property_changed')
+        self.mapper.add_mapping(self.lineedit, self.logic_module,
+                'some_value', 'some_value_changed')
     ```
     Now, if the user changes the string in the lineedit, the property of the
-    hardware module gets changed. If the hardware module property is changed
-    programmatically, the change is displayed in the GUI.
+    logic module is changed. If the logic module's property is changed
+    programmatically, the change is automatically displayed in the GUI.
 
-    If the GUI module is deactivated we can delete all mappings:
+    If the GUI module is deactivated we should delete all mappings:
     ```
     def on_deactivate(self, e):
         self.mapper.clear_mapping()
