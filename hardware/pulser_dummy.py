@@ -648,7 +648,7 @@ class PulserDummy(Base, PulserInterface):
 
         return self.get_active_channels(ch=list(ch))
 
-    def get_uploaded_assets_names(self):
+    def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
 
         @return list: List of all uploaded asset name strings in the current
