@@ -50,7 +50,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.debug('{}: {}'.format(key,config[key]))
+            self.log.debug('{0}: {1}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -59,8 +59,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._process = self.connector['in']['process']['object']
-        self._control = self.connector['in']['control']['object']
+        self._process = self.get_in_connector('process')
+        self._control = self.get_in_connector('control')
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()

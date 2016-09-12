@@ -57,7 +57,7 @@ class SpectrometerGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -71,7 +71,7 @@ class SpectrometerGui(GUIBase):
                          had happened.
         """
 
-        self._spectrum_logic = self.connector['in']['spectrumlogic1']['object']
+        self._spectrum_logic = self.get_in_connector('spectrumlogic1')
 
         # setting up the window
         self._mw = SpectrometerWindow()

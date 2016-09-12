@@ -42,7 +42,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
@@ -65,7 +65,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._fit_logic = self.get_in_connector('fitlogic')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -84,7 +84,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if clock_frequency != None:
+        if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
         self.log.warning('ODMRCounterDummy>set_up_odmr_clock')
@@ -108,7 +108,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self.log.warning('ODMRCounterDummy>set_up_odmr')
 
-        if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
+        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
             self.log.error('Another odmr is already running, close this one '
                     'first.')
             return -1

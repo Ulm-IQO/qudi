@@ -51,7 +51,7 @@ class TaskGui(GUIBase):
         """
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
-        self.logic = self.connector['in']['tasklogic']['object']
+        self.logic = self.get_in_connector('tasklogic')
         self._mw.taskTableView.setModel(self.logic.model)
         self._mw.taskTableView.clicked.connect(self.setRunToolState)
         self._mw.actionStart_Task.triggered.connect(self.manualStart)
@@ -95,7 +95,7 @@ class TaskGui(GUIBase):
     def setRunToolState(self, index, index2=None):
         selected = self._mw.taskTableView.selectedIndexes()
         try:
-            if not index2 is None and selected[0].row() != index2.row():
+            if index2 is not None and selected[0].row() != index2.row():
                 return
         except:
             return

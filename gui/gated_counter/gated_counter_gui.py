@@ -67,7 +67,7 @@ class GatedCounterGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -81,8 +81,8 @@ class GatedCounterGui(GUIBase):
                          had happened.
         """
 
-        self._counter_logic = self.connector['in']['gatedcounterlogic1']['object']
-        self._trace_analysis = self.connector['in']['traceanalysislogic1']['object']
+        self._counter_logic = self.get_in_connector('gatedcounterlogic1')
+        self._trace_analysis = self.get_in_connector('traceanalysislogic1')
 
         self._mw = GatedCounterMainWindow()
         self._mw.centralwidget.hide()

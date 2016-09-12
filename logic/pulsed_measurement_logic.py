@@ -71,7 +71,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # microwave parameters
         self.use_ext_microwave = False
@@ -156,12 +156,12 @@ class PulsedMeasurementLogic(GenericLogic):
         """
 
         # get all the connectors:
-        self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-        self._fast_counter_device = self.connector['in']['fastcounter']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
-        self._mycrowave_source_device = self.connector['in']['microwave']['object']
+        self._pulse_analysis_logic = self.get_in_connector('pulseanalysislogic')
+        self._fast_counter_device = self.get_in_connector('fastcounter')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._fit_logic = self.get_in_connector('fitlogic')
+        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
+        self._mycrowave_source_device = self.get_in_connector('microwave')
 
         # Recall saved status variables
         if 'signal_start_bin' in self._statusVariables:
@@ -1058,7 +1058,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if fit_function == 'No Fit':
             pulsed_fit_y = np.zeros(len(pulsed_fit_x), dtype=float)
 
-        elif fit_function == 'Sine' or fit_function == 'Cos_FixedPhase':
+        elif fit_function in ('Sine', 'Cos_FixedPhase'):
             update_dict = {}
             if fit_function == 'Cos_FixedPhase':
                 # set some custom defined constraints for this module and for

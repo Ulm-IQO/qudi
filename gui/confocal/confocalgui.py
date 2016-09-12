@@ -196,7 +196,7 @@ class ConfocalGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
         self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
@@ -230,10 +230,10 @@ class ConfocalGui(GUIBase):
         """
 
         # Getting an access to all connectors:
-        self._scanning_logic = self.connector['in']['confocallogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._optimizer_logic = self.connector['in']['optimizerlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_logic = self.get_in_connector('confocallogic1')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._optimizer_logic = self.get_in_connector('optimizerlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self._hardware_state = True
 

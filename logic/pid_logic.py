@@ -48,7 +48,7 @@ class PIDLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -57,8 +57,8 @@ class PIDLogic(GenericLogic):
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._controller = self.connector['in']['controller']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._controller = self.get_in_connector('controller')
+        self._save_logic = self.get_in_connector('savelogic')
 
         config = self.getConfiguration()
 

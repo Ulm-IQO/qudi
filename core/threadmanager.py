@@ -103,8 +103,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
     def getItemByNumber(self, n):
         i = 0
-        length = len(self._threads)
-        if n < 0 or n >= length:
+        if not(0 <= n < len(self._threads)):
             raise IndexError
         it = iter(self._threads)
         key = next(it)
@@ -175,7 +174,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
         """
-        if section < 0 and section > 1:
+        if not(0 <= section <= 1):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
