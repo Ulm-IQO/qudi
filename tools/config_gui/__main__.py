@@ -212,6 +212,11 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
                                 ''.format(src, cl[-1], k, conn_in))
                             
 
+    def nodesToConfig(self, graphview):
+        nodes = self.graphView.getAllNodes()
+        for name, node in nodes.items():
+            print(name, node)
+
     def nodeAdded(self):
         pass
 

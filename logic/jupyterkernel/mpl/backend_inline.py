@@ -141,8 +141,8 @@ def flush_figures():
                 return
     try:
         # exclude any figures that were closed:
-        active = set([fm.canvas.figure for fm in Gcf.get_all_fig_managers()])
-        for fig in [ fig for fig in show._to_draw if fig in active ]:
+        active = {fm.canvas.figure for fm in Gcf.get_all_fig_managers()}
+        for fig in [fig for fig in show._to_draw if fig in active]:
             try:
                 display(fig)
             except Exception as e:

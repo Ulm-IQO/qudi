@@ -269,7 +269,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
                 #val = val.toDouble()[0]
             self.setValue(val)
         else:
-            print("Warning: SpinBox.setProperty('%s', ..) not supported." % prop)
+            print("Warning: SpinBox.setProperty('{0!s}', ..) not supported.".format(prop))
 
     def setSuffix(self, suf):
         self.setOpts(suffix=suf)
@@ -429,14 +429,14 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if self.opts['siPrefix']:
             if self.val == 0 and prev is not None:
                 (s, p) = fn.siScale(prev)
-                txt = "0.0 %s%s" % (p, self.opts['suffix'])
+                txt = "0.0 {0!s}{1!s}".format(p, self.opts['suffix'])
             else:
                 txt = fn.siFormat(float(self.val),
                                   precision=self.opts['decimals']+1,
                                   suffix=self.opts['suffix']
                                   )
         else:
-            txt = '%.14g%s' % (self.val , self.opts['suffix'])
+            txt = '{0:.14g}{1!s}'.format(self.val , self.opts['suffix'])
         self.lineEdit().setText(txt)
         self.lastText = txt
         self.skipValidate = False

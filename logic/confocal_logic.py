@@ -274,7 +274,7 @@ class ConfocalLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -291,10 +291,10 @@ class ConfocalLogic(GenericLogic):
 
         @param e: error code
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
 #        print("Scanning device is", self._scanning_device)
 
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -319,7 +319,7 @@ class ConfocalLogic(GenericLogic):
                 for i in reversed(range(1, self.max_history_length)):
                     try:
                         new_history_item = ConfocalHistoryEntry(self)
-                        new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
+                        new_history_item.deserialize(self._statusVariables['history_{0}'.format(i)])
                         self.history.append(new_history_item)
                     except KeyError:
                         pass
@@ -365,7 +365,7 @@ class ConfocalLogic(GenericLogic):
         self.history.append(closing_state)
         histindex = 0
         for state in reversed(self.history):
-            self._statusVariables['history_{}'.format(histindex)] = state.serialize()
+            self._statusVariables['history_{0}'.format(histindex)] = state.serialize()
             histindex += 1
         return 0
 
@@ -970,7 +970,7 @@ class ConfocalLogic(GenericLogic):
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
-    def draw_figure(self, data, image_extent, scan_axis=['X', 'Y'], cbar_range=None, percentile_range=None,  crosshair_pos=None):
+    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
@@ -988,6 +988,8 @@ class ConfocalLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
+        if scan_axis is None:
+            scan_axis = ['X', 'Y']
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:

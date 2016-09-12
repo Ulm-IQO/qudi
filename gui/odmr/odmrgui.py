@@ -74,7 +74,7 @@ class ODMRGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -91,8 +91,8 @@ class ODMRGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
-        self._odmr_logic = self.connector['in']['odmrlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._odmr_logic = self.get_in_connector('odmrlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # Use the inherited class 'Ui_ODMRGuiUI' to create now the
         # GUI element:
@@ -223,7 +223,7 @@ class ODMRGui(GUIBase):
             try:
                 self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
             except:
-                self.log.warning('Could not load fitmodel {}'.format(name))
+                self.log.warning('Could not load fitmodel {0}'.format(name))
             else:
                 self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
 
@@ -345,8 +345,7 @@ class ODMRGui(GUIBase):
         if index >= 0:
             self._mw.mode_ComboBox.setCurrentIndex(index)
         else:
-            self.logMsg('No proper state to display was found in the combobox!',
-                        msgType='warning')
+            self.log.warning('No proper state to display was found in the combobox!')
 
     def update_run_stop_display(self, run_odmr):
         """ Update the display for the odmr measurement.

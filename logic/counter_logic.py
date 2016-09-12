@@ -69,7 +69,7 @@ class CounterLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self._count_length = 300
         self._count_frequency = 50
@@ -103,10 +103,10 @@ class CounterLogic(GenericLogic):
         self._data_to_save=[]
         self._saving_start_time=time.time()
 
-        self._counting_device = self.connector['in']['counter1']['object']
+        self._counting_device = self.get_in_connector('counter1')
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
         #QSignals
         self.sigCountContinuousNext.connect(self.countLoopBody_continuous, QtCore.Qt.QueuedConnection)

@@ -62,7 +62,7 @@ class VoltScanGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_deactivate(self, e):
         """ Reverse steps of activation
@@ -85,7 +85,7 @@ class VoltScanGui(GUIBase):
 
         """
 
-        self._voltscan_logic = self.connector['in']['odmrlogic1']['object']
+        self._voltscan_logic = self.get_in_connector('odmrlogic1')
         print("ODMR logic is", self._odmr_logic)
 
         # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the

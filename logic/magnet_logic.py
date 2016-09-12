@@ -133,27 +133,27 @@ class MagnetLogic(GenericLogic):
                          had happened.
         """
 
-        self._magnet_device = self.connector['in']['magnetstage']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._magnet_device = self.get_in_connector('magnetstage')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self.log.info('The following configuration was found.')
         # checking for the right configuration
         config = self.getConfiguration()
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
-        self._confocal_logic = self.connector['in']['scannerlogic']['object']
-        self._counter_logic = self.connector['in']['counterlogic']['object']
-        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+        self._optimizer_logic = self.get_in_connector('optimizerlogic')
+        self._confocal_logic = self.get_in_connector('scannerlogic')
+        self._counter_logic = self.get_in_connector('counterlogic')
+        self._odmr_logic = self.get_in_connector('odmrlogic')
 
-        self._gc_logic = self.connector['in']['gatedcounterlogic']['object']
-        self._ta_logic = self.connector['in']['traceanalysis']['object']
-        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+        self._gc_logic = self.get_in_connector('gatedcounterlogic')
+        self._ta_logic = self.get_in_connector('traceanalysis')
+        self._odmr_logic = self.get_in_connector('odmrlogic')
 
-        self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
+        self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
 
 
         # EXPERIMENTAL:
@@ -1475,9 +1475,9 @@ class MagnetLogic(GenericLogic):
                 odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Freq. 1']['value']*1e6
                 odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Freq. 1']['value']*1e6
             else:
-                self.logMsg('No previous saved lower odmr freq found in '
+                self.log.error('No previous saved lower odmr freq found in '
                             'ODMR alignment data! Cannot do the ODMR '
-                            'Alignment!', msgType='error')
+                            'Alignment!')
 
 
             # only if there was a non zero movement, the if make sense to
@@ -1649,7 +1649,7 @@ class MagnetLogic(GenericLogic):
             if out_of_range:
                 num_bins = num_bins-1
                 self._ta_logic.set_num_bins_histogram(num_bins)
-                self.logMsg('Fitted values {0},{1} are out of range [{2},{3}]! '
+                self.log.warning('Fitted values {0},{1} are out of range [{2},{3}]! '
                             'Change the histogram a '
                             'bit.'.format(param2['\u03BB0']['value'],
                                           param2['\u03BB1']['value'],
