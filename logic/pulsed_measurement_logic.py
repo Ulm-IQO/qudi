@@ -46,14 +46,23 @@ class PulsedMeasurementLogic(GenericLogic):
             }
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
-    signal_time_updated = QtCore.Signal()
-    sigSinglePulsesUpdated = QtCore.Signal()
-    sigPulseAnalysisUpdated = QtCore.Signal()
-    sigMeasuringErrorUpdated = QtCore.Signal()
-    sigLoadedAssetUpdated = QtCore.Signal()
-    sigUploadAssetComplete = QtCore.Signal()
-    sigLoadAssetComplete = QtCore.Signal()
-    sigFitUpdated = QtCore.Signal()
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
+    sigLaserToShowUpdated = QtCore.Signal(int, bool)
+    sigElapsedTimeUpdated = QtCore.Signal(float, str)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, dict, object)
+    sigMeasurementRunningUpdated = QtCore.Signal(bool, bool)
+    sigPulserRunningUpdated = QtCore.Signal(bool)
+    sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
+    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
+    sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
+    sigUploadedAssetsUpdated = QtCore.Signal(list)
+    sigLoadedAssetUpdated = QtCore.Signal(str)
+    sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
+    sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
+    sigTimerIntervalUpdated = QtCore.Signal(float)
+    sigAnalysisWindowsUpdated = QtCore.Signal(int, int, int, int)
+    sigAnalysisMethodUpdated = QtCore.Signal(float)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -73,18 +82,21 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_status = None     # 0=unconfigured, 1=idle, 2=running, 3=paused, -1=error
         self.fast_counter_gated = None      # gated=True, ungated=False
         self.fast_counter_binwidth = 1e-9   # in seconds
+        self.fast_counter_record_length = 3.e-6     # in seconds
 
         # parameters of the currently running sequence
-        self.measurement_ticks_list = np.array(range(50))
+        self.measurement_ticks_list = np.array(range(50), dtype=float)
+        self.laser_ignore_list = []
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
-        self.laser_length_s = 3.e-6
         self.loaded_asset_name = None
         self.alternating = False
 
         # Pulse generator parameters
         self.current_channel_config_name = None
         self.sample_rate = 25e9
+        self.analogue_amplitude = None
+        self.interleave_on = False
 
         # setup parameters
         self.laser_trigger_delay_s = 0.7e-6
@@ -97,7 +109,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.start_time = 0
         self.elapsed_time = 0
         self.elapsed_time_str = '00:00:00:00'
-        self.elapsed_sweeps = 0
 
         # analyze windows for laser pulses
         self.signal_start_bin = 5
@@ -107,8 +118,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # pulse extraction parameters
         self.conv_std_dev = 10
-        self.conv_std_dev_range_min = 1
-        self.conv_std_dev_range_max = 500
 
         # threading
         self.threadlock = Mutex()
@@ -119,18 +128,20 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_y2 = None
         self.measuring_error_plot_x = None
         self.measuring_error_plot_y = None
+        self.measuring_error_plot_y2 = None
         self.laser_plot_x = None
         self.laser_plot_y = None
 
         # raw data
         self.laser_data = np.zeros((10, 20))
         self.raw_data = np.zeros((10, 20))
-        self.raw_laser_pulse = False
+        self.show_raw_data = False
+        self.show_laser_index = 0
 
         # for fit:
         self._fit_param = {}
-        self.signal_plot_x_fit = None
-        self.signal_plot_y_fit = None
+        self.signal_plot_x_fit = np.arange(10, dtype=float)
+        self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -167,8 +178,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.conv_std_dev = self._statusVariables['conv_std_dev']
         if 'laser_trigger_delay_s' in self._statusVariables:
             self.laser_trigger_delay_s = self._statusVariables['laser_trigger_delay_s']
-        if 'laser_length_s' in self._statusVariables:
-            self.laser_length_s = self._statusVariables['laser_length_s']
+        if 'fast_counter_record_length' in self._statusVariables:
+            self.fast_counter_record_length = self._statusVariables['fast_counter_record_length']
         if 'sequence_length_s' in self._statusVariables:
             self.sequence_length_s = self._statusVariables['sequence_length_s']
         if 'measurement_ticks_list' in self._statusVariables:
@@ -185,36 +196,51 @@ class PulsedMeasurementLogic(GenericLogic):
             self.current_channel_config_name = self._statusVariables['current_channel_config_name']
         if 'sample_rate' in self._statusVariables:
             self.sample_rate = self._statusVariables['sample_rate']
+        if 'analogue_amplitude' in self._statusVariables:
+            self.analogue_amplitude = self._statusVariables['analogue_amplitude']
+        if 'interleave_on' in self._statusVariables:
+            self.interleave_on = self._statusVariables['interleave_on']
         if 'timer_interval' in self._statusVariables:
             self.timer_interval = self._statusVariables['timer_interval']
         if 'alternating' in self._statusVariables:
             self.alternating = self._statusVariables['alternating']
+        if 'show_raw_data' in self._statusVariables:
+            self.show_raw_data = self._statusVariables['show_raw_data']
+        if 'show_laser_index' in self._statusVariables:
+            self.show_laser_index = self._statusVariables['show_laser_index']
 
         # Check and configure pulse generator
+        self.pulse_generator_off()
+        self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
         avail_activation_configs = self.get_pulser_constraints()['activation_config']
-        if self.get_sample_rate() != self.sample_rate:
-            self.sample_rate = self.set_sample_rate(self.sample_rate)
         if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
-        self.set_activation_config(self.current_channel_config_name)
-        self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
+        if self.analogue_amplitude is None:
+            self.analogue_amplitude, dummy = self._pulse_generator_device.get_analog_level()
+        if self.interleave_on is None:
+            self.interleave_on = self._pulse_generator_device.get_interleave()
+        # FIXME: Analog level and interleave
+        self.set_pulse_generator_settings(self.sample_rate, self.current_channel_config_name,
+                                          self.analogue_amplitude, self.interleave_on)
 
         # Check and configure fast counter
         self.fast_counter_gated = self._fast_counter_device.is_gated()
         binning_constraints = self.get_fastcounter_constraints()['hardware_binwidth_list']
         if self.fast_counter_binwidth not in binning_constraints:
             self.fast_counter_binwidth = binning_constraints[0]
+        if self.fast_counter_record_length is None or self.fast_counter_record_length <= 0:
+            self.fast_counter_record_length = 3e-6
         self.configure_fast_counter()
+        self.fast_counter_off()
 
         # Check and configure external microwave
         if self.use_ext_microwave:
-            self.microwave_off()
-            self.set_microwave_params(self.microwave_freq, self.microwave_power)
+            self.microwave_on_off(False)
+            self.set_microwave_params(self.microwave_freq, self.microwave_power,
+                                      self.use_ext_microwave)
 
         # initialize arrays for the plot data
-        self._initialize_signal_plot()
-        self._initialize_laser_plot()
-        self._initialize_measuring_error_plot()
+        self._initialize_plots()
 
 
     def on_deactivate(self, e):
@@ -235,7 +261,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
         self._statusVariables['conv_std_dev'] = self.conv_std_dev
         self._statusVariables['laser_trigger_delay_s'] = self.laser_trigger_delay_s
-        self._statusVariables['laser_length_s'] = self.laser_length_s
+        self._statusVariables['fast_counter_record_length'] = self.fast_counter_record_length
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
         self._statusVariables['measurement_ticks_list'] = list(self.measurement_ticks_list)
         self._statusVariables['fast_counter_binwidth'] = self.fast_counter_binwidth
@@ -244,55 +270,118 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['use_ext_microwave'] = self.use_ext_microwave
         self._statusVariables['current_channel_config_name'] = self.current_channel_config_name
         self._statusVariables['sample_rate'] = self.sample_rate
+        self._statusVariables['analogue_amplitude'] = self.analogue_amplitude
+        self._statusVariables['interleave_on'] = self.interleave_on
         self._statusVariables['timer_interval'] = self.timer_interval
         self._statusVariables['alternating'] = self.alternating
+        self._statusVariables['show_raw_data'] = self.show_raw_data
+        self._statusVariables['show_laser_index'] = self.show_laser_index
+
+    def request_init_values(self):
+        """
+
+        @return:
+        """
+        self.sigMeasurementRunningUpdated.emit(False, False)
+        self.sigPulserRunningUpdated.emit(False)
+        self.sigExtMicrowaveRunningUpdated.emit(False)
+        self.sigFastCounterSettingsUpdated.emit(self.fast_counter_binwidth,
+                                                self.fast_counter_record_length)
+        self.sigPulseSequenceSettingsUpdated.emit(self.measurement_ticks_list,
+                                                  self.number_of_lasers, self.sequence_length_s,
+                                                  self.laser_ignore_list, self.alternating,
+                                                  self.laser_trigger_delay_s)
+        self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
+                                                   self.current_channel_config_name,
+                                                   self.analogue_amplitude, self.interleave_on)
+        self.sigExtMicrowaveSettingsUpdated.emit(self.microwave_freq, self.microwave_power,
+                                                 self.use_ext_microwave)
+        self.sigLaserToShowUpdated.emit(self.show_laser_index, self.show_raw_data)
+        self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
+        self.sigTimerIntervalUpdated.emit(self.timer_interval)
+        self.sigAnalysisWindowsUpdated.emit(self.signal_start_bin, self.signal_width_bin,
+                                            self.norm_start_bin, self.norm_width_bin)
+        self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
+        self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
+        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2, self.measuring_error_plot_y, self.measuring_error_plot_y2)
+        self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit, {}, {})
+        self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
+        return
 
     ############################################################################
     # Fast counter control methods
     ############################################################################
-    def update_fast_counter_status(self):
-        """ Captures the fast counter status and update the corresponding class variables
-        """
-        self.fast_counter_status = self._fast_counter_device.get_status()
-        return
-
     def configure_fast_counter(self):
         """ Configure the fast counter and updates the actually set values in
             the class variables.
         """
         if self.fast_counter_gated:
-            record_length_s = self.laser_trigger_delay_s + self.laser_length_s
             number_of_gates = self.number_of_lasers
         else:
-            record_length_s = self.laser_trigger_delay_s + self.sequence_length_s
             number_of_gates = 0
 
-        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , record_length_s, number_of_gates)
+        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
 
         # use the actual parameters returned by the hardware
         self.fast_counter_binwidth = actual_binwidth_s
-        self.update_fast_counter_status()
-        return
+        self.fast_counter_record_length = actual_recordlength_s
+        # update fast counter status variable
+        self.fast_counter_status = self._fast_counter_device.get_status()
+        return actual_binwidth_s, actual_recordlength_s, actual_numofgates
 
-    def set_fc_binning(self, fc_binning):
-        """ If the FC binning has be changed in the GUI, inform analysis
-
-        @param float fc_binning: Binning of fast counter in s
-
+    def set_fast_counter_settings(self, bin_width_s, record_length_s):
         """
-        self.fast_counter_binwidth = fc_binning
-        self.configure_fast_counter()
-        return
 
-    def set_laser_trigger_delay(self, laser_trigger_delay_s):
+        @param bin_width_s:
+        @param record_length_s:
+        @return:
         """
-        Sets the delay between the laser trigger going high and the actual optical laser output
-        rising.
-        @param laser_trigger_delay_s: float, The delay to set in seconds
-        """
+        # get hardware constraints
+        fc_constraints = self.get_fastcounter_constraints()
+        # check and set bin width
+        self.fast_counter_binwidth = bin_width_s
+        # check and set record length
+        self.fast_counter_record_length = record_length_s
+        self.fast_counter_binwidth, self.fast_counter_record_length, num_of_gates = self.configure_fast_counter()
+        # if self.fast_counter_gated:
+        #    self.number_of_lasers = num_of_gates
+        # emit update signal for master (GUI or other logic module)
+        self.sigFastCounterSettingsUpdated.emit(self.fast_counter_binwidth,
+                                                self.fast_counter_record_length)
+        return self.fast_counter_binwidth, self.fast_counter_record_length
+
+    def set_pulse_sequence_properties(self, measurement_ticks_list, number_of_lasers,
+                                      sequence_length_s, laser_ignore_list, is_alternating,
+                                      laser_trigger_delay_s):
+
+        if is_alternating and len(measurement_ticks_list) != (
+            number_of_lasers - len(laser_ignore_list)) / 2:
+            self.log.warning('Number of measurement ticks ({0}) does not match the number of laser '
+                             'pulses to analyze ({1}).'
+                             ''.format(len(measurement_ticks_list),
+                                       (number_of_lasers - len(laser_ignore_list))/2))
+        elif not is_alternating and len(measurement_ticks_list) != (
+        number_of_lasers - len(laser_ignore_list)):
+            self.log.warning('Number of measurement ticks ({0}) does not match the number of laser '
+                             'pulses to analyze ({1}).'
+                             ''.format(len(measurement_ticks_list),
+                                       number_of_lasers - len(laser_ignore_list)))
+        self.measurement_ticks_list = measurement_ticks_list
+        self.number_of_lasers = number_of_lasers
+        self.sequence_length_s = sequence_length_s
+        self.laser_ignore_list = laser_ignore_list
+        self.alternating = is_alternating
         self.laser_trigger_delay_s = laser_trigger_delay_s
-        self.configure_fast_counter()
-        return
+        if self.fast_counter_gated:
+            self.set_fast_counter_settings(self.fast_counter_binwidth,
+                                           self.fast_counter_record_length)
+        # emit update signal for master (GUI or other logic module)
+        self.sigPulseSequenceSettingsUpdated.emit(self.measurement_ticks_list,
+                                                  self.number_of_lasers, self.sequence_length_s,
+                                                  self.laser_ignore_list, self.alternating,
+                                                  self.laser_trigger_delay_s)
+        return self.measurement_ticks_list, self.number_of_lasers, self.sequence_length_s, \
+               self.laser_ignore_list, self.alternating, self.laser_trigger_delay_s
 
     def get_fastcounter_constraints(self):
         """ Request the constrains from the hardware, in order to pass them
@@ -308,7 +397,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.start_measure()
-        self.update_fast_counter_status()
+        self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
 
     def fast_counter_off(self):
@@ -317,7 +406,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.stop_measure()
-        self.update_fast_counter_status()
+        self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
 
     def fast_counter_pause(self):
@@ -326,7 +415,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.pause_measure()
-        self.update_fast_counter_status()
+        self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
 
     def fast_counter_continue(self):
@@ -335,7 +424,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.continue_measure()
-        self.update_fast_counter_status()
+        self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
     ############################################################################
 
@@ -345,14 +434,14 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     def pulse_generator_on(self):
         """Switching on the pulse generator. """
-
         err = self._pulse_generator_device.pulser_on()
+        self.sigPulserRunningUpdated.emit(True)
         return err
 
     def pulse_generator_off(self):
         """Switching off the pulse generator. """
-
         err = self._pulse_generator_device.pulser_off()
+        self.sigPulserRunningUpdated.emit(False)
         return err
 
     def get_pulser_constraints(self):
@@ -362,66 +451,61 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self._pulse_generator_device.get_constraints()
 
-    def set_sample_rate(self, freq_Hz):
+    def set_pulse_generator_settings(self, sample_rate_Hz, activation_config_name, amplitude_dict, use_interleave=None):
         """
-        Sets the sampling frequency of the pulse generator device in Hz.
-        """
-        actual_sample_rate = self._pulse_generator_device.set_sample_rate(freq_Hz)
-        return actual_sample_rate
 
-    def get_sample_rate(self):
+        @param sample_rate_Hz:
+        @param activation_config_name:
+        @param amplitude_dict:
+        @param use_interleave:
+        @return:
         """
-        Gets the sampling frequency from the pulse generator device in Hz.
-        """
-        sample_rate = self._pulse_generator_device.get_sample_rate()
-        return sample_rate
-
-    def set_activation_config(self, activation_config_name):
-        """
-        Set a new channel config in the logic and activate the proper channels in the pulse
-        generator device.
-
-        @param activation_config: strings representing the channels config as described in the
-        constraint dictionary of the hardware.
-        @return: error code (0: OK, -1: error)
-        """
-        avail_activation_configs = self.get_pulser_constraints()['activation_config']
-        if activation_config_name not in avail_activation_configs:
-            self.log.error('Chosen activation_config "{0}" is not available '
-                    'in the pulser constraints. Please select one of the '
-                    'following activation_configs:\n{1}'.format(
-                        activation_config_name,
-                        list(avail_activation_configs)))
-            return -1
-        config_to_set = avail_activation_configs[activation_config_name]
+        # get hardware constraints
+        pulser_constraints = self.get_pulser_constraints()
+        # check and set sample rate
+        samplerate_constr = pulser_constraints['sample_rate']
+        if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
+            self.log.error('Desired sample rate of {0:.0e} Hz not within pulse generator '
+                           'constraints. Setting {1:.0e} Hz instead.'
+                           ''.format(sample_rate_Hz, samplerate_constr['max']))
+            sample_rate_Hz = samplerate_constr['max']
+        self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
+        # check and set activation_config
+        config_constr = pulser_constraints['activation_config']
+        if activation_config_name not in config_constr:
+            new_config_name = list(config_constr.keys())[0]
+            self.log.error('Desired activation config "{0}" is no part of the pulse generator '
+                           'constraints. Using "{1}" instead.'
+                           ''.format(activation_config_name, new_config_name))
+            activation_config_name = new_config_name
+        activation_config = config_constr[activation_config_name]
         channel_activation = self.get_active_channels()
         for chnl in channel_activation:
-            if chnl in config_to_set:
+            if chnl in activation_config:
                 channel_activation[chnl] = True
             else:
                 channel_activation[chnl] = False
-        err = self.set_active_channels(channel_activation)
+        self._pulse_generator_device.set_active_channels(channel_activation)
         self.current_channel_config_name = activation_config_name
-        return err
-
-    def set_active_channels(self, ch={}):
-        """ Set the active channels for the pulse generator hardware.
-
-        @param dict ch: dictionary with keys being the string generic analog
-                          and digital names and items being its boolean value.
-
-        @return int: error code (0:OK, -1:error)
-
-        Example for possible input:
-            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
-        to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        Additionally the variables which hold this values are updated in the
-        logic.
-        """
-        self._pulse_generator_device.set_active_channels(ch)
-        return 0
+        # check and set analogue amplitude dict
+        amplitude_constr = pulser_constraints['a_ch_amplitude']
+        for chnl in amplitude_dict:
+            if amplitude_dict[chnl] > amplitude_constr['max'] or amplitude_dict[chnl] < amplitude_constr['min']:
+                self.log.error('Desired analogue voltage of {0} V for channel "{1}" is not within '
+                               'pulse generator constraints. Using min voltage {2} V instead to '
+                               'avoid damage.'
+                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr['min']))
+                amplitude_dict[chnl] = amplitude_constr['min']
+        self._pulse_generator_device.set_analog_level(amplitude=amplitude_dict)
+        self.analogue_amplitude = amplitude_dict
+        # check and set interleave
+        if use_interleave is not None:
+            self.interleave_on = self._pulse_generator_device.set_interleave(use_interleave)
+        # emit update signal for master (GUI or other logic module)
+        self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
+                                                   self.current_channel_config_name,
+                                                   self.analogue_amplitude, self.interleave_on)
+        return self.sample_rate, self.current_channel_config_name, self.analogue_amplitude, self.interleave_on
 
     def get_active_channels(self):
         """ Get the currently active channels from the pulse generator hardware.
@@ -437,8 +521,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def clear_pulser(self):
         """ Delete all loaded files in the device's current memory. """
+        self.pulse_generator_off()
         err = self._pulse_generator_device.clear_all()
         self.loaded_asset_name = None
+        self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         return err
 
     def get_interleave(self):
@@ -448,14 +534,6 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self._pulse_generator_device.get_interleave()
 
-    def set_interleave(self, interleave_state=False):
-        """ Set the interleave state.
-
-        @param bool interleave_state: If nothing passed, interleave will be switched off.
-        """
-        err = self._pulse_generator_device.set_interleave(interleave_state)
-        return err
-
     def upload_asset(self, asset_name):
         """ Upload an already sampled Ensemble or Sequence object to the device.
             Does NOT load it into channels.
@@ -463,7 +541,8 @@ class PulsedMeasurementLogic(GenericLogic):
         @param asset_name: string, name of the ensemble/sequence to upload
         """
         err = self._pulse_generator_device.upload_asset(asset_name)
-        self.sigUploadAssetComplete.emit()
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
     def upload_sequence(self, seq_name):
@@ -471,14 +550,14 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @param str seq_name: name of the sequence to be uploaded
         """
-
         current_sequence = self.get_pulse_sequence(seq_name)
 
         for ensemble_name in current_sequence.get_sampled_ensembles():
             self._pulse_generator_device.upload_asset(ensemble_name)
-
-        self._pulse_generator_device.upload_asset(seq_name)
-        self.sigUploadAssetComplete.emit()
+        err = self._pulse_generator_device.upload_asset(seq_name)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
+        return err
 
     def has_sequence_mode(self):
         """ Retrieve from the hardware, whether sequence mode is present or not.
@@ -504,11 +583,13 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        # stop the pulser hardware output if it is running
+        self.pulse_generator_off()
         # load asset in channels
         err = self._pulse_generator_device.load_asset(asset_name, load_dict)
         # set the loaded_asset_name variable.
         self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
-        self.sigLoadAssetComplete.emit()
+        self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         return err
 
     ############################################################################
@@ -516,18 +597,31 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     # External microwave control methods
     ############################################################################
-    def microwave_on(self):
-        self._mycrowave_source_device.on()
+    def microwave_on_off(self, switch_on):
+        """
+
+        @param switch_on:
+        @return:
+        """
+        if switch_on:
+            self._mycrowave_source_device.on()
+            self.sigExtMicrowaveRunningUpdated.emit(True)
+        else:
+            self._mycrowave_source_device.off()
+            self.sigExtMicrowaveRunningUpdated.emit(False)
         return
 
-    def microwave_off(self):
-        self._mycrowave_source_device.off()
-        return
-
-    def set_microwave_params(self, frequency=None, power=None):
-        self._mycrowave_source_device.set_cw(freq=frequency, power=power)
-        self.microwave_freq = frequency
-        self.microwave_power = power
+    def set_microwave_params(self, frequency=None, power=None, use_ext_mw=None):
+        if frequency is not None:
+            self.microwave_freq = frequency
+        if power is not None:
+            self.microwave_power = power
+        if use_ext_mw is not None:
+            self.use_ext_microwave = use_ext_mw
+        if self.use_ext_microwave:
+            self._mycrowave_source_device.set_cw(freq=frequency, power=power)
+        self.sigExtMicrowaveSettingsUpdated.emit(self.microwave_freq, self.microwave_power,
+                                                 self.use_ext_microwave)
         return
 
     ############################################################################
@@ -538,17 +632,19 @@ class PulsedMeasurementLogic(GenericLogic):
         #FIXME: Describe the idea of how the measurement is intended to be run
         #       and how the used thread principle was used in this method (or
         #       will be use in another method).
-
+        self.sigMeasurementRunningUpdated.emit(True, False)
         with self.threadlock:
             if self.getState() == 'idle':
+                self.lock()
+                self.elapsed_time = 0.0
+                self.elapsed_time_str = '00:00:00:00'
+                self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
                 # initialize plots
-                self._initialize_signal_plot()
-                self._initialize_laser_plot()
-                self._initialize_measuring_error_plot()
+                self._initialize_plots()
 
                 # start microwave generator
                 if self.use_ext_microwave:
-                    self.microwave_on()
+                    self.microwave_on_off(True)
 
                 # start fast counter
                 self.fast_counter_on()
@@ -561,8 +657,6 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.analysis_timer.setInterval(int(1000. * self.timer_interval))
                 self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
 
-                self.lock()
-                self.elapsed_time = 0.0
                 self.start_time = time.time()
                 self.analysis_timer.start()
         return
@@ -580,20 +674,29 @@ class PulsedMeasurementLogic(GenericLogic):
             conv_std_dev = self.conv_std_dev
 
             # analyze pulses and get data points for signal plot
-            tmp_signal,self.laser_data,self.raw_data,tmp_error = self._pulse_analysis_logic._analyze_data(norm_start,
+            tmp_signal, self.laser_data, self.raw_data, tmp_error = self._pulse_analysis_logic._analyze_data(norm_start,
                                                                                                           norm_end,
                                                                                                           sig_start,
                                                                                                           sig_end,
                                                                                                           self.number_of_lasers,
                                                                                                           conv_std_dev)
-
+            if len(self.laser_ignore_list) > 0:
+                ignore_indices = self.laser_ignore_list
+                if -1 in ignore_indices:
+                    ignore_indices[ignore_indices.index(-1)] = len(ignore_indices) - 1
+                tmp_signal = np.delete(tmp_signal, ignore_indices)
+                tmp_error = np.delete(tmp_error, ignore_indices)
             if self.alternating:
                 self.signal_plot_y = tmp_signal[::2]
                 self.signal_plot_y2 = tmp_signal[1::2]
-                self.measuring_error = tmp_error[::2]
+                self.measuring_error_plot_y = tmp_error[::2]
+                self.measuring_error_plot_y2 = tmp_error[1::2]
             else:
                 self.signal_plot_y = tmp_signal
-                self.measuring_error = tmp_error
+                self.measuring_error_plot_y = tmp_error
+
+            # set laser to show
+            self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
 
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
@@ -602,65 +705,64 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time)//3600).zfill(2) + ':' # hours
             self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
-            # has to be changed. just for testing purposes
 
             # emit signals
-            self.sigSinglePulsesUpdated.emit()
-            self.sigPulseAnalysisUpdated.emit()
-            self.sigMeasuringErrorUpdated.emit()
-            self.signal_time_updated.emit()
+            self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
+            self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
+                                           self.signal_plot_y2, self.measuring_error_plot_y,
+                                          self.measuring_error_plot_y2)
             return
 
-    def get_laserpulse(self, laser_num=0):
-        """ Get the laserpulse with the appropriate number.
-
-        @param int num: number of laserpulse, to be displayed, if zero is passed
-                        then the sum off all laserpulses is calculated.
-        @return: tuple of 1D arrays, first one is x data, second is y data of
-                                     currently selected laser.
+    def set_laser_to_show(self, laser_index, show_raw_data):
         """
 
-        if self.raw_laser_pulse:
-
+        @param laser_index:
+        @param show_raw_data:
+        @return:
+        """
+        self.show_raw_data = show_raw_data
+        self.show_laser_index = laser_index
+        if show_raw_data:
             if self.fast_counter_gated:
-                if laser_num > 0:
-                    self.laser_plot_y = self.raw_data[laser_num-1]
+                if laser_index > 0:
+                    self.laser_plot_y = self.raw_data[laser_index - 1]
                 else:
-                    self.laser_plot_y = np.sum(self.raw_data,0)
+                    self.laser_plot_y = np.sum(self.raw_data, 0)
             else:
                 self.laser_plot_y = self.raw_data
-
         else:
-            # set laser plot
-            if laser_num > 0:
-                self.laser_plot_y = self.laser_data[laser_num-1]
+            if laser_index > 0:
+                self.laser_plot_y = self.laser_data[laser_index - 1]
             else:
-                self.laser_plot_y = np.sum(self.laser_data,0)
+                self.laser_plot_y = np.sum(self.laser_data, 0)
 
-        self.laser_plot_x = np.arange(1, len(self.laser_plot_y)+1)
+        self.laser_plot_x = np.arange(1, len(self.laser_plot_y) + 1)
 
+        self.sigLaserToShowUpdated.emit(self.show_laser_index, self.show_raw_data)
+        self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return self.laser_plot_x, self.laser_plot_y
 
     def stop_pulsed_measurement(self):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
-        with self.threadlock:
-            if self.getState() == 'locked':
-                #stopping and disconnecting the timer
-                self.analysis_timer.stop()
-                self.analysis_timer.timeout.disconnect()
-                self.analysis_timer = None
+        if self.getState() == 'locked':
+            #stopping and disconnecting the timer
+            self.analysis_timer.stop()
+            self.analysis_timer.timeout.disconnect()
+            self.analysis_timer = None
 
-                self.fast_counter_off()
-                self.pulse_generator_off()
+            self.manually_pull_data()
 
-                if self.use_ext_microwave:
-                    self.microwave_off()
+            self.fast_counter_off()
+            self.pulse_generator_off()
 
-                self.sigPulseAnalysisUpdated.emit()
-                self.sigMeasuringErrorUpdated.emit()
-                self.unlock()
+            if self.use_ext_microwave:
+                self.microwave_on_off(False)
+
+            self.unlock()
+        self.sigMeasurementRunningUpdated.emit(False, False)
+        return
 
     def pause_pulsed_measurement(self):
         """ Pauses the measurement
@@ -675,11 +777,10 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_off()
 
                 if self.use_ext_microwave:
-                    self.microwave_off()
+                    self.microwave_on_off(False)
 
-                self.sigPulseAnalysisUpdated.emit()
-                self.sigMeasuringErrorUpdated.emit()
                 self.unlock()
+        self.sigMeasurementRunningUpdated.emit(True, True)
         return 0
 
     def continue_pulsed_measurement(self):
@@ -690,7 +791,7 @@ class PulsedMeasurementLogic(GenericLogic):
             #if self.getState() == 'pause':
 
             if self.use_ext_microwave:
-                self.microwave_on()
+                self.microwave_on_off(True)
 
             self.fast_counter_continue()
             self.pulse_generator_on()
@@ -699,6 +800,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.analysis_timer.start()
 
             self.lock()
+        self.sigMeasurementRunningUpdated.emit(True, False)
         return 0
 
     def set_timer_interval(self, interval):
@@ -711,6 +813,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.timer_interval = interval
             if self.analysis_timer is not None:
                 self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+        self.sigTimerIntervalUpdated.emit(self.timer_interval)
         return
 
     def manually_pull_data(self):
@@ -720,104 +823,76 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
         return
 
-    def set_num_of_lasers(self, num_of_lasers):
-        """ Sets the number of lasers needed for the pulse extraction and the fast counter.
-
-        @param int num_of_lasers: Number of laser pulses
+    def set_analysis_windows(self, signal_start_bin, signal_width_bins, norm_start_bin,
+                             norm_width_bins):
         """
-        int_num = int(num_of_lasers)
-        if int_num < 1:
-            self.log.error('Invalid number of laser pulses set in the '
-                    'pulsed_measurement_logic! A value of {0} was provided '
-                    'but an interger value in the range [1,inf) is '
-                    'expected! Set number_of_pulses to '
-                    '1.'.format(int_num))
-            self.number_of_lasers = 1
-        else:
-            self.number_of_lasers = int_num
 
-        self.configure_fast_counter()
-        return
-
-    def set_laser_length(self, laser_length_s):
-        """
-        Sets a new laser length for the measurement and reconfigures the fast counter accordingly
-        if it is gated.
-        @param laser_length_s: float, the laser length in seconds
+        @param signal_start_bin:
+        @param signal_width_bins:
+        @param norm_start_bin:
+        @param norm_width_bins:
         @return:
         """
-        if laser_length_s > 0.:
-            self.laser_length_s = laser_length_s
-        else:
-            self.log.error('Invalid laser length. Tried to set a value of '
-                    '{0}s. Setting laser length to 3000ns instead.'.format(
-                        laser_length_s))
-            self.laser_length_s = 3e-6
+        with self.threadlock:
+            self.signal_start_bin = signal_start_bin
+            self.signal_width_bin = signal_width_bins
+            self.norm_start_bin = norm_start_bin
+            self.norm_width_bin = norm_width_bins
+        self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
+                                            norm_width_bins)
+        return signal_start_bin, signal_width_bins, norm_start_bin, norm_width_bins
 
-        if self.fast_counter_gated:
-            self.configure_fast_counter()
-
-    def set_measurement_ticks_list(self, ticks_array):
-        """ Sets the ticks for the x-axis of the pulsed measurement.
-
-        Handle with care to ensure that the number of ticks is the same as the number of
-        laser pulses to avoid array mismatch conflicts.
-
-        @param ticks_array: a numpy array containing the ticks
+    def analysis_method_changed(self, gaussfilt_std_dev):
         """
-        self.measurement_ticks_list = np.array(ticks_array)
+
+        @param gaussfilt_std_dev:
+        @return:
+        """
+        with self.threadlock:
+            self.conv_std_dev = gaussfilt_std_dev
+        self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
         return
 
-    def _initialize_signal_plot(self):
-        '''Initializing the signal line plot.
-        '''
+    def _initialize_plots(self):
+        """
+        Initializing the signal, error and laser plot data.
+        """
         self.signal_plot_x = self.measurement_ticks_list
         self.signal_plot_y = np.zeros(len(self.measurement_ticks_list))
         self.signal_plot_y2 = np.zeros(len(self.measurement_ticks_list))
+        self.measuring_error_plot_y = np.zeros(len(self.measurement_ticks_list), dtype=float)
+        self.measuring_error_plot_y2 = np.zeros(len(self.measurement_ticks_list), dtype=float)
+        number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
+        self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int)
+        self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
+
+        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
+                                       self.measuring_error_plot_y, self.measuring_error_plot_y2)
+        self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def _initialize_laser_plot(self):
-        '''Initializing the plot of the laser timetrace.
-        '''
-        number_of_bins_per_laser=int(self.laser_length_s/(self.fast_counter_binwidth))
-        self.laser_plot_x = np.arange(1, number_of_bins_per_laser+1, dtype=int)
-        self.laser_plot_y = np.zeros(number_of_bins_per_laser, dtype=int)
-        return
-
-    def _initialize_measuring_error_plot(self):
-        '''Initializing the plot of the laser timetrace.
-        '''
-        self.measuring_error_plot_x = self.measurement_ticks_list
-        self.measuring_error_plot_y =  np.zeros(len(self.measurement_ticks_list), dtype=float)
-        return
-
-
-    def _save_data(self, tag=None, timestamp=None):
-
+    def _save_data(self, tag=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
         filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
-        if timestamp is None:
-            timestamp = datetime.datetime.now()
+        timestamp = datetime.datetime.now()
 
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_laser_pulses'
         else:
             filelabel = 'laser_pulses'
-
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Signal (counts)': self.laser_data.transpose()}
-
+        data['Signal (counts)'] = self.laser_data.transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
         parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':')#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
+                                   timestamp=timestamp, as_text=True, precision=':')
+                                   #, as_xml=False, precision=None, delimiter=None)
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -830,12 +905,12 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         if self.alternating:
-            data = {'Tau (ns), Signal (norm.), Signal2 (norm.)': np.array(
-                [self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2]).transpose()}
+            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = np.array(self.signal_plot_x,
+                                                                         self.signal_plot_y,
+                                                                         self.signal_plot_y2).transpose()
         else:
-            data = {'Tau (ns), Signal (norm.)': np.array(
-                [self.signal_plot_x, self.signal_plot_y]).transpose()}
-
+            data['Tau (ns), Signal (norm.)'] = np.array(self.signal_plot_x,
+                                                        self.signal_plot_y).transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
@@ -845,7 +920,6 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Normalization start (bin)'] = self.norm_start_bin
         parameters['Normalization width (bins)'] = self.norm_width_bin
         parameters['Standard deviation of gaussian convolution'] = self.conv_std_dev
-
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
         fig, ax1 = plt.subplots()
@@ -872,8 +946,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Signal (counts)': self.raw_data.transpose()}
-
+        data['Signal (counts)'] = self.raw_data.transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Is counter gated?'] = self.fast_counter_gated
@@ -882,7 +955,9 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
         parameters['Measurement Ticks start'] = self.measurement_ticks_list[0]
-        parameters['Measurement Ticks increment'] = self.measurement_ticks_list[1] - self.measurement_ticks_list[0]
+        parameters['Measurement Ticks increment'] = (self.measurement_ticks_list[-1] -
+                                                     self.measurement_ticks_list[0]) / (
+                                                    len(self.measurement_ticks_list) - 1)
 
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
@@ -981,8 +1056,7 @@ class PulsedMeasurementLogic(GenericLogic):
         param_dict = OrderedDict()
 
         if fit_function == 'No Fit':
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_y = np.zeros(len(pulsed_fit_x), dtype=float)
 
         elif fit_function == 'Sine' or fit_function == 'Cos_FixedPhase':
             update_dict = {}
@@ -1184,6 +1258,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x_fit = pulsed_fit_x
         self.signal_plot_y_fit = pulsed_fit_y
 
-        self.sigFitUpdated.emit()
+        self.sigFitUpdated.emit(fit_function, self.signal_plot_x_fit, self.signal_plot_y_fit,
+                                param_dict, result)
 
         return pulsed_fit_x, pulsed_fit_y, param_dict, result
