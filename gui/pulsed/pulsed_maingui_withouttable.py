@@ -187,13 +187,6 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
-        # block signals until initialization is complete
-        self._mw.gen_sample_freq_DSpinBox.blockSignals(True)
-        self._mw.gen_laserchannel_ComboBox.blockSignals(True)
-        self._mw.gen_activation_config_ComboBox.blockSignals(True)
-        self._mw.sample_ensemble_PushButton.blockSignals(True)
-        self._mw.sample_sequence_PushButton.blockSignals(True)
-
         # connect signals of input widgets
         self._mw.gen_sample_freq_DSpinBox.editingFinished.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
         self._mw.gen_laserchannel_ComboBox.currentIndexChanged.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
@@ -238,8 +231,6 @@ class PulsedMeasurementGui(GUIBase):
         # disconnect update signals from pulsed_master_logic
         self._pulsed_master_logic.sigBlockEnsembleSampled.disconnect()
         self._pulsed_master_logic.sigSequenceSampled.disconnect()
-        self._pulsed_master_logic.sigUploadedAssetsUpdated.disconnect()
-        self._pulsed_master_logic.sigLoadedAssetUpdated.disconnect()
         self._pulsed_master_logic.sigSavedPulseBlocksUpdated.disconnect()
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.disconnect()
         self._pulsed_master_logic.sigSavedSequencesUpdated.disconnect()
@@ -572,51 +563,6 @@ class PulsedMeasurementGui(GUIBase):
         # set boundaries
         self._mw.slider_conv_std_dev.setRange(1, 200)
         self._mw.conv_std_dev.setRange(1, 200)
-
-        # block all signals until initialization is complete
-        self._mw.upload_ensemble_PushButton.blockSignals(True)
-        self._mw.load_ensemble_PushButton.blockSignals(True)
-        self._mw.upload_sequence_PushButton.blockSignals(True)
-        self._mw.load_sequence_PushButton.blockSignals(True)
-        self._mw.pulser_on_off_PushButton.blockSignals(True)
-        self._mw.clear_device_PushButton.blockSignals(True)
-        self._mw.fit_param_PushButton.blockSignals(True)
-        self._mw.action_run_stop.blockSignals(True)
-        self._mw.action_continue_pause.blockSignals(True)
-        self._mw.action_pull_data.blockSignals(True)
-        self._mw.action_save.blockSignals(True)
-        self._mw.action_Settings_Analysis.blockSignals(True)
-        self._mw.ext_control_use_mw_CheckBox.blockSignals(True)
-        self._mw.ana_param_x_axis_defined_CheckBox.blockSignals(True)
-        self._mw.ana_param_laserpulse_defined_CheckBox.blockSignals(True)
-        self._mw.ana_param_alternating_CheckBox.blockSignals(True)
-        self._mw.ana_param_ignore_first_CheckBox.blockSignals(True)
-        self._mw.ana_param_ignore_last_CheckBox.blockSignals(True)
-        self._mw.laserpulses_display_raw_CheckBox.blockSignals(True)
-        self._mw.ana_param_errorbars_CheckBox.blockSignals(True)
-        self._mw.pulser_use_interleave_CheckBox.blockSignals(True)
-        self._mw.ana_param_num_laser_pulse_SpinBox.blockSignals(True)
-        self._mw.ana_param_record_length_SpinBox.blockSignals(True)
-        self._mw.time_param_ana_periode_DoubleSpinBox.blockSignals(True)
-        self._mw.ext_control_mw_freq_DoubleSpinBox.blockSignals(True)
-        self._mw.ext_control_mw_power_DoubleSpinBox.blockSignals(True)
-        self._mw.pulser_sample_freq_DSpinBox.blockSignals(True)
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.blockSignals(True)
-        self._mw.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(True)
-        self._mw.extract_param_ana_window_start_SpinBox.blockSignals(True)
-        self._mw.extract_param_ana_window_width_SpinBox.blockSignals(True)
-        self._mw.extract_param_ref_window_start_SpinBox.blockSignals(True)
-        self._mw.extract_param_ref_window_width_SpinBox.blockSignals(True)
-        self._mw.conv_std_dev.blockSignals(True)
-        self._mw.ana_param_fc_bins_ComboBox.blockSignals(True)
-        # self._mw.second_plot_ComboBox.blockSignals(True)
-        self._mw.pulser_activation_config_ComboBox.blockSignals(True)
-        self._mw.laserpulses_ComboBox.blockSignals(True)
-        self.sig_start_line.blockSignals(True)
-        self.sig_end_line.blockSignals(True)
-        self.ref_start_line.blockSignals(True)
-        self.ref_end_line.blockSignals(True)
-        self._mw.slider_conv_std_dev.blockSignals(True)
 
         # ---------------------------------------------------------------------
         #                         Connect signals
