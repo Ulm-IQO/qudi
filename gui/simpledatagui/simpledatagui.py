@@ -61,7 +61,7 @@ class SimpleDataGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -74,7 +74,7 @@ class SimpleDataGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._simple_logic = self.connector['in']['simplelogic']['object']
+        self._simple_logic = self.get_in_connector('simplelogic')
 
         #####################
         # Configuring the dock widgets

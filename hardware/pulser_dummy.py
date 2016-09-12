@@ -47,7 +47,7 @@ class PulserDummy(Base, PulserInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.log.info('Dummy Pulser: I will simulate an AWG :) !')
 
@@ -315,7 +315,7 @@ class PulserDummy(Base, PulserInterface):
             self.uploaded_assets_list.append(asset_name)
         return 0
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
@@ -337,6 +337,8 @@ class PulserDummy(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+        if load_dict is None:
+            load_dict = {}
         if asset_name in self.uploaded_assets_list:
             self.current_loaded_asset = asset_name
         return 0
@@ -403,7 +405,7 @@ class PulserDummy(Base, PulserInterface):
         self.sample_rate = sample_rate
         return self.sample_rate
 
-    def get_analog_level(self, amplitude=[], offset=[]):
+    def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
         @param list amplitude: optional, if a specific amplitude value (in Volt
@@ -439,6 +441,10 @@ class PulserDummy(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if amplitude is None:
+            amplitude = []
+        if offset is None:
+            offset = []
 
         ampl = {}
         off = {}
@@ -460,7 +466,7 @@ class PulserDummy(Base, PulserInterface):
 
         return ampl, off
 
-    def set_analog_level(self, amplitude={}, offset={}):
+    def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
         @param dict amplitude: dictionary, with key being the channel and items
@@ -489,6 +495,10 @@ class PulserDummy(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if amplitude is None:
+            amplitude = {}
+        if offset is None:
+            offset = {}
 
         for a_ch in amplitude:
             self.amplitude_list[a_ch] = amplitude[a_ch]
@@ -498,7 +508,7 @@ class PulserDummy(Base, PulserInterface):
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
-    def get_digital_level(self, low=[], high=[]):
+    def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
         @param list low: optional, if a specific low value (in Volt) of a
@@ -533,6 +543,10 @@ class PulserDummy(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = []
+        if high is None:
+            high = []
 
         low_val = {}
         high_val = {}
@@ -554,7 +568,7 @@ class PulserDummy(Base, PulserInterface):
 
         return low_val, high_val
 
-    def set_digital_level(self, low={}, high={}):
+    def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
         @param dict low: dictionary, with key being the channel and items being
@@ -581,6 +595,10 @@ class PulserDummy(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
 
         for d_ch in low:
             self.digital_low_list[d_ch] = low[d_ch]
@@ -590,7 +608,7 @@ class PulserDummy(Base, PulserInterface):
 
         return self.get_digital_level(low=list(low), high=list(high))
 
-    def get_active_channels(self, ch=[]):
+    def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
         @param list ch: optional, if specific analog or digital channels are
@@ -607,6 +625,8 @@ class PulserDummy(Base, PulserInterface):
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
+        if ch is None:
+            ch = []
 
         active_ch = {}
 
@@ -619,7 +639,7 @@ class PulserDummy(Base, PulserInterface):
 
         return active_ch
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the analog or digital
@@ -643,6 +663,8 @@ class PulserDummy(Base, PulserInterface):
         The hardware itself has to handle, whether separate channel activation
         is possible.
         """
+        if ch is None:
+            ch = {}
         for channel in ch:
             self.active_channel[channel] = ch[channel]
 

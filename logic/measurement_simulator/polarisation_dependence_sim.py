@@ -48,7 +48,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         """ Activation of the class
         """
         # name connected modules
-        self._counter_hw = self.connector['in']['counter1']['object']
+        self._counter_hw = self.get_in_connector('counter1')
 
         # Required class variables to pretend to be the counter hardware
         self._photon_source2 = None
@@ -116,7 +116,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
     def move_rel(self, axis=None, distance=None):
         """ Move the polarisation angle by relative degrees
         """
-        if distance == None:
+        if distance is None:
             #TODO warning
             pass
 
@@ -135,7 +135,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
     def move_abs(self, axis=None, position=None):
         """ Move the polarisation angle to absolute degrees
         """
-        if position == None:
+        if position is None:
             #TODO warning
             pass
         self.destination = position

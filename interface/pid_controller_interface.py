@@ -27,52 +27,52 @@ class PIDControllerInterface:
     _modclass = 'interface'
 
     def get_kp(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_kp(self, kp):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_ki(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_ki(self, ki):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_kd(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_kd(self, kd):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_setpoint(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_setpoint(self, setpoint):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_manual_value(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_manual_value(self, manualvalue):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_enabled(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_enabled(self, enabled):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_control_limits(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_control_limits(self, limits):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_process_value(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_control_value(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_extra(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))

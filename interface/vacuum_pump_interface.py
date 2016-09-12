@@ -32,45 +32,45 @@ class VacuumPumpInterface:
 
           @return str: arbitrary information about pump, like model nr, hardware version, firmware version
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_pressures(self):
         """All available pressures in Pascal.
 
           @return dict: dict of gauge name and pressure
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_pump_speeds(self):
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_pump_powers(self):
         """ All available pump powers in watts.
 
           @return dict: dict of pump name and pump power
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_pump_states(self):
         """All available pump states.
 
           @return dict: dict of pump name and pump state
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_pump_states(self, states):
         """Control the pump state.
           @param dict states: dict of pump name and desired state
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def get_system_state(self):
         """Get overall system state.
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
     def set_system_state(self, state):
         """Control the system state.
         """
-        raise InterfaceImplementationError('{}->{}'.format(type(self).__name__, function_signature()))
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 

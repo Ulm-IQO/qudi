@@ -77,7 +77,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        self.log.info('Start {}'.format(realconfig))
+        self.log.info('Start {0}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -88,10 +88,10 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        self.log.info('Kernel is {}'.format(kernel.engine_id))
+        self.log.info('Kernel is {0}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
-        self.log.info('Finished starting Kernel {}'.format(kernel.engine_id))
+        self.log.info('Finished starting Kernel {0}'.format(kernel.engine_id))
         self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
@@ -100,7 +100,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        self.log.info('Stopping {}'.format(realkernelid))
+        self.log.info('Stopping {0}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
 
@@ -110,7 +110,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel reference to remove
           @param callable external: reference to rpyc client exit function
         """
-        self.log.info('Cleanup kernel {}'.format(kernelid))
+        self.log.info('Cleanup kernel {0}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:

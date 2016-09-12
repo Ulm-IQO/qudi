@@ -19,20 +19,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 import os
-import pyqtgraph as pg
-from PyQt4 import QtGui
-from PyQt4 import QtCore
-from PyQt4 import uic
 import datetime
 import pyqtgraph as pg
 import pyqtgraph.exporters
+from qtpy import QtGui, QtWidgets, QtCore, uic
 
 from gui.guibase import GUIBase
 
 
-class NuclearOperationsMainWindow(QtGui.QMainWindow):
+class NuclearOperationsMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -61,12 +57,11 @@ class NuclearOperationsGui(GUIBase):
                          config,
                          c_dict)
 
-        self.logMsg('The following configuration was found.', msgType='status')
+        self.log.info('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -83,14 +78,14 @@ class NuclearOperationsGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
-        self._no_logic = self.connector['in']['nuclearoperationslogic']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._no_logic = self.get_in_connector('nuclearoperationslogic')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # Create the MainWindow to display the GUI
         self._mw = NuclearOperationsMainWindow()
 
         # Add save file tag input box
-        self._mw.save_tag_LineEdit = QtGui.QLineEdit(self._mw)
+        self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
                                               'added to the filename.')
@@ -198,7 +193,7 @@ class NuclearOperationsGui(GUIBase):
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -358,7 +353,7 @@ class NuclearOperationsGui(GUIBase):
             self._no_logic.x_axis_start = self._mw.x_axis_start_DSpinBox.value()*1e6
             self._no_logic.x_axis_step = self._mw.x_axis_step_DSpinBox.value()*1e6
         else:
-            self.logMsg('This measurement does not have any units associated to!', msgType='error')
+            self.log.error('This measurement does not have any units associated to it!')
 
         self._no_logic.x_axis_num_points = self._mw.x_axis_num_points_SpinBox.value()
         self._no_logic.num_of_meas_runs = self._mw.num_of_meas_runs_SpinBox.value()
@@ -396,9 +391,9 @@ class NuclearOperationsGui(GUIBase):
         filepath = self._save_logic.get_path_for_module(module_name='NuclearOperations')
 
         if len(filetag) > 0:
-            filename = os.path.join(filepath, '{}_{}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+            filename = os.path.join(filepath, '{0}_{1}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
         else:
-            filename = os.path.join(filepath, '{}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+            filename = os.path.join(filepath, '{0}_NuclearOps'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
         exporter_graph = pg.exporters.SVGExporter(self._mw.nulcear_ops_GraphicsView.plotItem.scene())
 

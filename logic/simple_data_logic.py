@@ -40,7 +40,7 @@ class SimpleDataLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        self._data_logic = self.connector['in']['simpledata']['object']
+        self._data_logic = self.get_in_connector('simpledata')
         self.stopRequest = False
         self.bufferLength = 1000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)

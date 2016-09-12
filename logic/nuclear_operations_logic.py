@@ -84,7 +84,7 @@ class NuclearOperationsLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.threadlock = Mutex()
 
@@ -307,16 +307,16 @@ class NuclearOperationsLogic(GenericLogic):
         self.initialize_meas_param()
 
         # establish the access to all connectors:
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._seq_gen_logic = self.connector['in']['sequencegenerationlogic']['object']
-        self._trace_ana_logic = self.connector['in']['traceanalysislogic']['object']
-        self._gc_logic = self.connector['in']['gatedcounterlogic']['object']
-        self._odmr_logic = self.connector['in']['odmrlogic']['object']
-        self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
-        self._confocal_logic = self.connector['in']['scannerlogic']['object']
+        self._seq_gen_logic = self.get_in_connector('sequencegenerationlogic')
+        self._trace_ana_logic = self.get_in_connector('traceanalysislogic')
+        self._gc_logic = self.get_in_connector('gatedcounterlogic')
+        self._odmr_logic = self.get_in_connector('odmrlogic')
+        self._optimizer_logic = self.get_in_connector('optimizerlogic')
+        self._confocal_logic = self.get_in_connector('scannerlogic')
 
 
         # connect signals:
@@ -1188,7 +1188,5 @@ class NuclearOperationsLogic(GenericLogic):
         #                            timestamp=timestamp,
         #                            as_text=True)
 
-
-
-        self.logMsg('Nuclear Operation data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+        self.log.info('Nuclear Operation data saved to:\n{0}'.format(filepath))
 

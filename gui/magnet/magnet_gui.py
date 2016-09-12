@@ -79,7 +79,7 @@ class MagnetGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self._continue_2d_fluorescence_alignment = False
 
@@ -95,8 +95,8 @@ class MagnetGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._magnet_logic = self.connector['in']['magnetlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._magnet_logic = self.get_in_connector('magnetlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self._mw = MagnetMainWindow()
 
