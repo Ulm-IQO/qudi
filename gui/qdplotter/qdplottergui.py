@@ -63,7 +63,7 @@ class QdplotterGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
 
     def on_activate(self, e=None):
@@ -78,7 +78,7 @@ class QdplotterGui(GUIBase):
                          had happened.
         """
 
-        self._qdplot_logic = self.connector['in']['qdplotlogic1']['object']
+        self._qdplot_logic = self.get_in_connector('qdplotlogic1')
 
         #####################
         # Configuring the dock widgets

@@ -25,7 +25,7 @@ class Task(PrePostTask):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        print('Task {} added!'.format(self.name))
+        print('Task {0} added!'.format(self.name))
 
     def preExecute(self):
         if ('switchlogic' in self.ref

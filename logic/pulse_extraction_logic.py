@@ -43,7 +43,7 @@ class PulseExtractionLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.is_counter_gated = False
         self.conv_std_dev = 200     # standard deviation of the gaussian filter
@@ -63,7 +63,7 @@ class PulseExtractionLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._fast_counter_device = self.connector['in']['fastcounter']['object']
+        self._fast_counter_device = self.get_in_connector('fastcounter')
         self._check_if_counter_gated()
         self._iter = 0
 

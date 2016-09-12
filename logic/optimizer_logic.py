@@ -64,7 +64,7 @@ class OptimizerLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         # setting standard parameter for refocus
         self.refocus_XY_size = 0.6
@@ -96,8 +96,8 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._fit_logic = self.get_in_connector('fitlogic')
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
@@ -579,9 +579,9 @@ class OptimizerLogic(GenericLogic):
 
     def set_position(self, tag, x=None, y=None, z=None, a=None):
 
-        if x != None:
+        if x is not None:
             self._current_x = x
-        if y != None:
+        if y is not None:
             self._current_y = y
-        if z != None:
+        if z is not None:
             self._current_z = z

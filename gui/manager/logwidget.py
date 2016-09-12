@@ -127,7 +127,7 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
           """
-        if section < 0 and section > len(self.header) - 1:
+        if not(0 <= section < len(self.header)):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -383,7 +383,7 @@ class LogWidget(QtWidgets.QWidget):
         if self.model.rowCount() > self.logLength:
             self.model.removeRows(0, self.model.rowCount() - self.logLength)
         text = entry['message']
-        if entry.get('exception', None) is not None:
+        if entry.get('exception') is not None:
             if 'reasons' in entry['exception']:
                 text += '\n' + entry['exception']['reasons']
             if 'message' in entry['exception']:

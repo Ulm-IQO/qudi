@@ -52,8 +52,7 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, config={}, callbacks={},
-                 **kwargs):
+    def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
@@ -64,6 +63,10 @@ class Base(QtCore.QObject, Fysom):
                                  on state machine transitions
 
         """
+        if config is None:
+            config = {}
+        if callbacks is None:
+            callbacks = {}
 
         default_callbacks = {
             'onactivate': self.on_activate,
@@ -246,3 +249,15 @@ class Base(QtCore.QObject, Fysom):
             @return string: absolute path to the home directory
         """
         return os.path.abspath(os.path.expanduser('~'))
+
+    def get_in_connector(self, connector_name):
+        """ Return module connected to the given named connector.
+          @param str connector_name: name of the connector
+
+          @return obj: module that is connected to the named connector
+        """
+        obj = self.connector['in'][connector_name]['object']
+        if obj is None:
+            raise TypeError('No module connected')
+        return obj
+

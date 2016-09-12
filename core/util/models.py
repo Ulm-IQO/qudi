@@ -33,8 +33,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
 
     def getKeyByNumber(self, n):
         i = 0
-        length = len(self.storage)
-        if n < 0 or n >= length:
+        if not(0 <= n < len(self.storage)):
             raise IndexError
         it = iter(self.storage)
         key = next(it)
@@ -105,7 +104,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
         """
-        if section < 0 and section > len(self.headers):
+        if not(0 <= section < len(self.headers)):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -149,7 +148,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
         """
         return len(self.storage)
 
-    def columnCount(self, parent = QtCore.QModelIndex()):
+    def columnCount(self, parent=QtCore.QModelIndex()):
         """ Gives the number of data fields.
 
           @return int: number of data fields
@@ -163,7 +162,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
 
           @return Qt.ItemFlags: actins allowed fotr this cell
         """
-        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
     def data(self, index, role):
         """ Get data from model for a given cell. Data can have a role that affects display.
@@ -185,7 +184,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
         else:
             return None
 
-    def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
 
           @param int section: number of the column to get header data for
@@ -194,7 +193,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
         """
-        if section < 0 and section > len(self.headers):
+        if not(0 <= section < len(self.headers)):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -205,7 +204,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
 
     def insert(self, n, data):
         with self.lock:
-            if n >= 0 and n <= len(self.storage):
+            if 0 <= n <= len(self.storage):
                 self.beginInsertRows(QtCore.QModelIndex(), n, n)
                 self.storage.insert(n, data)
                 self.endInsertRows()
@@ -219,7 +218,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
 
     def pop(self, n):
         with self.lock:
-            if n >= 0 and n < len(self.storage):
+            if 0 <= n < len(self.storage):
                 self.beginRemoveRows(QtCore.QModelIndex(), n, n)
                 ret = self.storage.pop(n)
                 self.endRemoveRows()

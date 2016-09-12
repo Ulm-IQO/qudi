@@ -51,7 +51,7 @@ class ConfocalScannerInterface:
         raise InterfaceImplementationError('ConfocalScannerInterface>get_position_range')
         return -1
 
-    def set_position_range(self, myrange=[[0, 1], [0, 1], [0, 1], [0, 1]]):
+    def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
         @param float [4][2] myrange: array of 4 ranges with an array containing
@@ -59,17 +59,21 @@ class ConfocalScannerInterface:
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [[0, 1], [0, 1], [0, 1], [0, 1]]
 
         raise InterfaceImplementationError('ConfocalScannerInterface>set_position_range')
         return -1
 
-    def set_voltage_range(self, myrange=[-10., 10.]):
+    def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
         @param float [2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [-10., 10.]
 
         raise InterfaceImplementationError('ConfocalScannerInterface>set_voltage_range')
         return -1

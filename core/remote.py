@@ -89,10 +89,10 @@ class RemoteObjectManager(QObject):
                     return self.modules.storage[name]
                 else:
                     for base in ['hardware', 'logic', 'gui']:
-                        logger.info('remotesearch: {}'.format(name))
+                        logger.info('remotesearch: {0}'.format(name))
                         if name in self._manager.tree['defined'][base] and 'remoteaccess' in self._manager.tree['defined'][base][name]:
                             self._manager.startModule(base, name)
-                            logger.info('remoteload: {}{}'.format(base, name))
+                            logger.info('remoteload: {0}{1}'.format(base, name))
                     if name in self.modules.storage:
                         return self.modules.storage[name]
                     else:
