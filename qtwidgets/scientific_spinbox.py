@@ -19,7 +19,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from tools.pyqtgraphmod.SpinBox import SpinBox
+from qtwidgets.pyqtgraphmod.SpinBox import SpinBox
 
 
 class ScienDSpinBox(SpinBox):
