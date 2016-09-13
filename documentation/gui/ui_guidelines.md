@@ -1,10 +1,10 @@
 # User Interface (GUI) Design Concept {#uiguidelines}
 
-The QuDi suite of tools should have a unified interface concept.  It is important for conceptually different interface elements to be visually separated, and for similar elements to appear in the same (ie the expected) place across all QuDi modules.
+The Qudi suite of tools should have a unified interface concept.  It is important for conceptually different interface elements to be visually separated, and for similar elements to appear in the same (ie the expected) place across all Qudi modules.
 
 ## The Problem of Precedence
 
-Many of the initial users of QuDi will be familiar with similar tools from DiQo, and may expect the new tools to be laid out in a similar "familiar" fashion.  However, not all of the interfaces for the old software were carefully and intentionally designed.  The argument of precedence ("but that's the way it was in the old software...") is therefore not a strong one.
+Many of the initial users of Qudi will be familiar with similar tools from DiQo, and may expect the new tools to be laid out in a similar "familiar" fashion.  However, not all of the interfaces for the old software were carefully and intentionally designed.  The argument of precedence ("but that's the way it was in the old software...") is therefore not a strong one.
 
 ## General GUI design guidelines
 

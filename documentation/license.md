@@ -1,10 +1,10 @@
 # Licensing                {#license}
 
-Some of the base structure and library usage decisions of QuDi were ws taken from
+Some of the base structure and library usage decisions of Qudi were ws taken from
 the ACQ4 project (http://acq4.org and [1]), which is distributed under the
 [MIT License](@ref mitlicense).
 
-Some functions in QuDi are adapted from or inspired by pi3diamond from the
+Some functions in Qudi are adapted from or inspired by pi3diamond from the
 Third Institut für Physik of Stuttgart University and there is definitive evidence
 that pi3diamond is mostly licensed under the [GNU Public License Version 3](@ref gpl),
 it is the easiest solution for each author to also license their contribution
@@ -16,18 +16,18 @@ Please add this header to every Python file that you create manually.
 """
 <short description of file>
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) <year> <Name of Author> <email address>
 """

@@ -4,7 +4,7 @@ Fysom is a Python package that allows the effortless creation of state machines 
 
 ## Module state machine
 
-Each QuDi module contains, via the Base class, a state machine that governs some of its behaviour
+Each Qudi module contains, via the Base class, a state machine that governs some of its behaviour
 regarding activation and deactivation.
 
 ### States
