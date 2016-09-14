@@ -31,9 +31,7 @@ class PulseAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = { 'pulseextractionlogic': 'PulseExtractionLogic',
-            'fitlogic': 'FitLogic'
-            }
+    _in = {'pulseextractionlogic': 'PulseExtractionLogic'}
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
     def __init__(self, config, **kwargs):
@@ -58,7 +56,6 @@ class PulseAnalysisLogic(GenericLogic):
                          had happened.
         """
         self._pulse_extraction_logic = self.get_in_connector('pulseextractionlogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
         return
 
 
@@ -148,39 +145,5 @@ class PulseAnalysisLogic(GenericLogic):
             measuring_error=signal_data*np.sqrt(1/signal_area+1/reference_area)
 
         return measuring_error
-
-#    def get_measurement_ticks_list(self):
-#        """Get the list containing all tau values in ns for the current measurement.
-#
-#        @return numpy array: tau_vector_ns
-#        """
-#        return self._measurement_ticks_list
-#
-#
-#    def get_number_of_laser_pulses(self):
-#        """Get the number of laser pulses for the current measurement.
-#
-#        @return int: number_of_laser_pulses
-#        """
-#        return self._number_of_laser_pulses
-#
-#
-#    def get_laser_length(self):
-#        """Get the laser pulse length in ns for the current measurement.
-#
-#        @return float: laser_length_ns
-#        """
-#        laser_length_ns = self._laser_length_bins * self._binwidth_ns
-#        return laser_length_ns
-#
-#
-#    def get_binwidth(self):
-#        """Get the binwidth of the fast counter in ns for the current measurement.
-#
-#        @return float: binwidth_ns
-#        """
-#        return self._binwidth_ns
-#
-#
 
 

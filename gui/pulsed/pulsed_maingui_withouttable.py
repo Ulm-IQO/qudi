@@ -479,6 +479,8 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        # FIXME: Implement second plot
+        self._mw.second_plot_GroupBox.setVisible(False)
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
@@ -639,7 +641,7 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
         self.ref_start_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
         self.ref_end_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self._mw.slider_conv_std_dev.sliderMoved.connect(self.slider_conv_std_dev_changed)
+        self._mw.slider_conv_std_dev.sliderReleased.connect(self.slider_conv_std_dev_changed)
 
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
@@ -723,7 +725,7 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.sigPositionChanged.disconnect()
         self.ref_start_line.sigPositionChanged.disconnect()
         self.ref_end_line.sigPositionChanged.disconnect()
-        self._mw.slider_conv_std_dev.sliderMoved.disconnect()
+        self._mw.slider_conv_std_dev.sliderReleased.disconnect()
         return
 
     def _analysis_apply_hardware_constraints(self):

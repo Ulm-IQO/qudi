@@ -250,9 +250,8 @@ class PulsedMeasurementLogic(GenericLogic):
                          explanation can be found in the method activation.
         """
 
-        with self.threadlock:
-            if self.getState() != 'idle' and self.getState() != 'deactivated':
-                self.stop_pulsed_measurement()
+        if self.getState() != 'idle' and self.getState() != 'deactivated':
+            self.stop_pulsed_measurement()
 
         self._statusVariables['signal_start_bin'] = self.signal_start_bin
         self._statusVariables['signal_width_bin'] = self.signal_width_bin
@@ -746,22 +745,20 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
-        if self.getState() == 'locked':
-            #stopping and disconnecting the timer
-            self.analysis_timer.stop()
-            self.analysis_timer.timeout.disconnect()
-            self.analysis_timer = None
+        with self.threadlock:
+            if self.getState() == 'locked':
+                #stopping and disconnecting the timer
+                self.analysis_timer.stop()
+                self.analysis_timer.timeout.disconnect()
+                self.analysis_timer = None
 
-            self.manually_pull_data()
+                self.fast_counter_off()
+                self.pulse_generator_off()
+                if self.use_ext_microwave:
+                    self.microwave_on_off(False)
 
-            self.fast_counter_off()
-            self.pulse_generator_off()
-
-            if self.use_ext_microwave:
-                self.microwave_on_off(False)
-
-            self.unlock()
-        self.sigMeasurementRunningUpdated.emit(False, False)
+                self.unlock()
+                self.sigMeasurementRunningUpdated.emit(False, False)
         return
 
     def pause_pulsed_measurement(self):
@@ -775,12 +772,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 self.fast_counter_pause()
                 self.pulse_generator_off()
-
                 if self.use_ext_microwave:
                     self.microwave_on_off(False)
 
-                self.unlock()
-        self.sigMeasurementRunningUpdated.emit(True, True)
+                self.sigMeasurementRunningUpdated.emit(True, True)
         return 0
 
     def continue_pulsed_measurement(self):
@@ -788,19 +783,16 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            #if self.getState() == 'pause':
+            if self.getState() == 'locked':
+                if self.use_ext_microwave:
+                    self.microwave_on_off(True)
+                self.fast_counter_continue()
+                self.pulse_generator_on()
 
-            if self.use_ext_microwave:
-                self.microwave_on_off(True)
+                #unpausing the timer
+                self.analysis_timer.start()
 
-            self.fast_counter_continue()
-            self.pulse_generator_on()
-
-            #unpausing the timer
-            self.analysis_timer.start()
-
-            self.lock()
-        self.sigMeasurementRunningUpdated.emit(True, False)
+                self.sigMeasurementRunningUpdated.emit(True, False)
         return 0
 
     def set_timer_interval(self, interval):
@@ -813,7 +805,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.timer_interval = interval
             if self.analysis_timer is not None:
                 self.analysis_timer.setInterval(int(1000. * self.timer_interval))
-        self.sigTimerIntervalUpdated.emit(self.timer_interval)
+            self.sigTimerIntervalUpdated.emit(self.timer_interval)
         return
 
     def manually_pull_data(self):
@@ -838,8 +830,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_width_bin = signal_width_bins
             self.norm_start_bin = norm_start_bin
             self.norm_width_bin = norm_width_bins
-        self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                            norm_width_bins)
+            self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
+                                                norm_width_bins)
         return signal_start_bin, signal_width_bins, norm_start_bin, norm_width_bins
 
     def analysis_method_changed(self, gaussfilt_std_dev):
@@ -850,7 +842,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self.threadlock:
             self.conv_std_dev = gaussfilt_std_dev
-        self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
+            self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
         return
 
     def _initialize_plots(self):
