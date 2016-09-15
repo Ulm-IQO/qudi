@@ -24,7 +24,7 @@ import numpy as np
 from collections import OrderedDict
 
 
-class Pulse_Block_Element(object):
+class Pulse_Block_Element:
     """ Object representing a single atomic element in a pulse block.
 
     This class can build waiting times, sine waves, etc. The pulse block may
@@ -82,7 +82,7 @@ class Pulse_Block_Element(object):
             self.digital_channels = 0
 
 
-class Pulse_Block(object):
+class Pulse_Block:
     """ Collection of Pulse_Block_Elements which is called a Pulse_Block. """
 
     def __init__(self, name, element_list):
@@ -150,7 +150,7 @@ class Pulse_Block(object):
         return
 
 
-class Pulse_Block_Ensemble(object):
+class Pulse_Block_Ensemble:
     """ Represents a collection of Pulse_Block objects which is called a
         Pulse_Block_Ensemble.
 
@@ -286,7 +286,7 @@ class Pulse_Block_Ensemble(object):
         return
 
 
-class Pulse_Sequence(object):
+class Pulse_Sequence:
     """ Higher order object for sequence capability.
 
     Represents a playback procedure for a number of Pulse_Block_Ensembles.

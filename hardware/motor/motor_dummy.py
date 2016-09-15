@@ -26,7 +26,7 @@ import time
 from core.base import Base
 from interface.motor_interface import MotorInterface
 
-class MotorAxisDummy(object):
+class MotorAxisDummy:
     """ Generic dummy motor representing one axis. """
     def __init__(self, label):
         self.label = label

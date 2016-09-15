@@ -214,7 +214,7 @@ class MutexLocker:
 
 
 
-#class ThreadsafeWrapper(object):
+#class ThreadsafeWrapper:
     #def __init__(self, obj):
         #self.__TSW_object__ = obj
 
@@ -222,7 +222,7 @@ class MutexLocker:
         #return self.__TSW_object__
 
 
-class ThreadsafeWrapper(object):
+class ThreadsafeWrapper:
     """Wrapper that makes access to any object thread-safe (within reasonable limits).
 
        Mostly tested for wrapping lists, dicts, etc.
