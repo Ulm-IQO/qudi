@@ -35,7 +35,7 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
 
-class PoI(object):
+class PoI:
 
     """
     The actual individual poi is saved in this generic object.

@@ -26,7 +26,7 @@ from core.base import Base
 from interface.magnet_interface import MagnetInterface
 
 
-class MagnetAxisDummy(object):
+class MagnetAxisDummy:
     """ Generic dummy magnet representing one axis. """
     def __init__(self, label):
         self.label = label
