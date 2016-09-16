@@ -1175,9 +1175,9 @@ class AWG70K(Base, PulserInterface):
         Gets all waveform names currently loaded into the AWG workspace
         @return: list of names
         """
-        number_of_wfm = int(pulser.ask('WLIS:SIZE?'))
+        number_of_wfm = int(self.ask('WLIS:SIZE?'))
         waveform_list = [None] * number_of_wfm
         for i in range(number_of_wfm):
-            wfm_name = pulser.ask('WLIS:NAME? {0}'.format(i+1))[1:-1]
+            wfm_name = self.ask('WLIS:NAME? {0}'.format(i+1))[1:-1]
             waveform_list[i] = wfm_name
         return waveform_list
