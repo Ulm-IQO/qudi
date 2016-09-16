@@ -285,6 +285,9 @@ class AWG70K(Base, PulserInterface):
         """
 
         self.tell('AWGC:RUN\n')
+        # wait until the AWG is actually running
+        while int(self.ask('AWGC:RST?')) == 0:
+            time.sleep(1)
         self.current_status = 1
         return 0
 
@@ -297,6 +300,9 @@ class AWG70K(Base, PulserInterface):
         """
 
         self.tell('AWGC:STOP\n')
+        # wait until the AWG has actually stopped
+        while int(self.ask('AWGC:RST?')) != 0:
+            time.sleep(1)
         self.current_status = 0
         return 0
 
@@ -403,7 +409,8 @@ class AWG70K(Base, PulserInterface):
                 self.tell('MMEM:OPEN:SASS:WAV "{0!s}"\n'.format(file_path))
             else:
                 self.tell('MMEM:OPEN "{0!s}"\n'.format(file_path))
-            self.ask('*OPC?\n')
+            while int(self.ask('*OPC?\n')) != 1:
+                time.sleep(1)
         self.soc.settimeout(timeout)
 
         # simply use the channel association of the filenames if no load_dict is given
@@ -422,7 +429,8 @@ class AWG70K(Base, PulserInterface):
                 name = load_dict[channel]
                 self.tell('SOUR'+str(channel)+':CASS:WAV "{0!s}"\n'.format(name))
             self.current_loaded_asset = asset_name
-
+        while int(self.ask('*OPC?\n')) != 1:
+            time.sleep(1)
         return 0
 
     def get_loaded_asset(self):
@@ -452,6 +460,7 @@ class AWG70K(Base, PulserInterface):
             ftp.cwd(self.asset_directory)
             with open(filepath, 'rb') as uploaded_file:
                 ftp.storbinary('STOR '+filename, uploaded_file)
+        return 0
 
     def clear_all(self):
         """ Clears the loaded waveform from the pulse generators RAM.
@@ -463,6 +472,8 @@ class AWG70K(Base, PulserInterface):
         storage capability (PulseBlaster, FPGA).
         """
         self.tell('WLIS:WAV:DEL ALL\n')
+        while int(self.ask('*OPC?\n')) != 1:
+            time.sleep(1)
         self.current_loaded_asset = None
         return 0
 
@@ -495,7 +506,8 @@ class AWG70K(Base, PulserInterface):
         @return foat: the sample rate returned from the device (-1:error)
         """
         self.tell('CLOCK:SRATE {0:.4G}\n'.format(sample_rate))
-        time.sleep(3)
+        while int(self.ask('*OPC?\n')) != 1:
+            time.sleep(1)
         return_rate = float(self.ask('CLOCK:SRATE?\n'))
         self.sample_rate = return_rate
         return return_rate
@@ -955,9 +967,12 @@ class AWG70K(Base, PulserInterface):
             for filename in files_to_delete:
                 ftp.delete(filename)
 
-        # clear the AWG if the deleted asset is the currently loaded asset
-        if self.current_loaded_asset == asset_name:
-            self.clear_all()
+        # clear waveforms from AWG workspace
+        wfm_list = self._get_waveform_names_memory()
+        for wfm in wfm_list:
+            for name in asset_name:
+                if fnmatch(wfm, name + '_ch?'):
+                    self.tell('WLIS:WAV:DEL "{0}"'.format(wfm))
         return files_to_delete
 
     def set_asset_dir_on_device(self, dir_path):
@@ -1011,7 +1026,7 @@ class AWG70K(Base, PulserInterface):
         Series does not have an interleave mode and this method exists only for
         compability reasons.
         """
-        self.warning('Interleave mode not available for the AWG 70000 '
+        self.log.warning('Interleave mode not available for the AWG 70000 '
                 'Series!\n'
                 'Method call will be ignored.')
         return 0
@@ -1154,3 +1169,15 @@ class AWG70K(Base, PulserInterface):
         """
         filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat'))]
         return filename_list
+
+    def _get_waveform_names_memory(self):
+        """
+        Gets all waveform names currently loaded into the AWG workspace
+        @return: list of names
+        """
+        number_of_wfm = int(pulser.ask('WLIS:SIZE?'))
+        waveform_list = [None] * number_of_wfm
+        for i in range(number_of_wfm):
+            wfm_name = pulser.ask('WLIS:NAME? {0}'.format(i+1))[1:-1]
+            waveform_list[i] = wfm_name
+        return waveform_list
