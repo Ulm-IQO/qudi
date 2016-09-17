@@ -56,6 +56,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
     sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
     sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
+    sigUploadAssetComplete = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str)
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
@@ -541,6 +542,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         err = self._pulse_generator_device.upload_asset(asset_name)
         uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(asset_name)
         self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 

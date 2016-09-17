@@ -402,7 +402,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.sample_ensemble_PushButton.setEnabled(False)
         return
 
-    def sample_ensemble_finished(self):
+    def sample_ensemble_finished(self, ensemble_name):
         """
 
         @return:
@@ -423,7 +423,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.sample_sequence_PushButton.setEnabled(False)
         return
 
-    def sample_sequence_finished(self):
+    def sample_sequence_finished(self, sequence_name):
         """
 
         @return:
@@ -1162,7 +1162,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         record_length_s = self._pa.ana_param_record_length_SpinBox.value()
         bin_width_s = float(self._pa.ana_param_fc_bins_ComboBox.currentText())
-        print('fc binwidth is: {0}'.format(bin_width_s))
         self._pulsed_master_logic.fast_counter_settings_changed(bin_width_s, record_length_s)
         return
 
@@ -1198,7 +1197,6 @@ class PulsedMeasurementGui(GUIBase):
         alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
         num_of_lasers = self._pa.ana_param_num_laser_pulse_SpinBox.value()
         xaxis_start = self._pa.ana_param_x_axis_start_ScienDSpinBox.value()
-        print('GUI measurement settings changed: ', xaxis_start)
         xaxis_incr = self._pa.ana_param_x_axis_inc_ScienDSpinBox.value()
         laser_trigger_delay = self._as.ana_param_lasertrigger_delay_ScienDSpinBox.value()
         # FIXME: properly implement sequence_length_s
@@ -1231,8 +1229,6 @@ class PulsedMeasurementGui(GUIBase):
         @param laser_trigger_delay:
         @return:
         """
-        print('GUI measurement settings updated: ', measurement_ticks[0])
-
         # block signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(True)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(True)
@@ -1546,7 +1542,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         current_laser = self._pe.laserpulses_ComboBox.currentText()
         show_raw_data = self._pe.laserpulses_display_raw_CheckBox.isChecked()
-        print(current_laser)
         if current_laser == 'sum':
             show_laser_index = 0
         else:
