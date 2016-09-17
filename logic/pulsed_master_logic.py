@@ -77,8 +77,8 @@ class PulsedMasterLogic(GenericLogic):
     sigCurrentPulseBlockUpdated = QtCore.Signal(object)
     sigCurrentBlockEnsembleUpdated = QtCore.Signal(object)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
-    sigBlockEnsembleSampled = QtCore.Signal()
-    sigSequenceSampled = QtCore.Signal()
+    sigBlockEnsembleSampled = QtCore.Signal(str)
+    sigSequenceSampled = QtCore.Signal(str)
     sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str)
 
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
@@ -91,6 +91,7 @@ class PulsedMasterLogic(GenericLogic):
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
     sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
     sigPulserSettingsUpdated = QtCore.Signal(float, str, list, dict, bool)
+    sigAssetUploaded = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
@@ -212,6 +213,8 @@ class PulsedMasterLogic(GenericLogic):
             self.measurement_sequence_settings_updated, QtCore.Qt.QueuedConnection)
         self._measurement_logic.sigPulseGeneratorSettingsUpdated.connect(
             self.pulse_generator_settings_updated, QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigUploadAssetComplete.connect(self.upload_asset_finished,
+                                                                 QtCore.Qt.QueuedConnection)
         self._measurement_logic.sigUploadedAssetsUpdated.connect(self.uploaded_assets_updated,
                                                                  QtCore.Qt.QueuedConnection)
         self._measurement_logic.sigLoadedAssetUpdated.connect(self.loaded_asset_updated,
@@ -246,6 +249,8 @@ class PulsedMasterLogic(GenericLogic):
                                                                 QtCore.Qt.QueuedConnection)
         self._generator_logic.sigSettingsUpdated.connect(self.generator_settings_updated,
                                                          QtCore.Qt.QueuedConnection)
+
+        self.sample_upload_load = False
 
     def on_deactivate(self, e):
         """
@@ -645,6 +650,18 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadAsset.emit(asset_name)
         return
 
+    def upload_asset_finished(self, asset_name):
+        """
+
+        @param asset_name:
+        @return:
+        """
+        if self.sample_upload_load:
+            self.load_asset_into_channels(asset_name)
+        self.log.debug('PULSEDMASTER: Asset "{0}" uploaded!'.format(asset_name))
+        self.sigAssetUploaded.emit(asset_name)
+        return
+
     def uploaded_assets_updated(self, asset_names_list):
         """
 
@@ -694,11 +711,15 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
+        if self.sample_upload_load:
+            self.sample_upload_load = False
         if asset_name is not None:
             asset_object = self._generator_logic.get_saved_asset(asset_name)
             asset_type = type(asset_object).__name__
         else:
             asset_type = 'No asset loaded'
+        self.sample_upload_load = False
+        self.log.debug('PULSEDMASTER: Asset "{0}" of type "{1}" loaded into pulser channel(s)!'.format(asset_name, asset_type))
         self.sigLoadedAssetUpdated.emit(asset_name, asset_type)
         return asset_name, asset_type
 
@@ -913,38 +934,48 @@ class PulsedMasterLogic(GenericLogic):
         self.sigSavedSequencesUpdated.emit(sequence_list)
         return
 
-    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise):
+    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise, sample_upload_load = False):
         """
 
         @param ensemble_name:
         @return:
         """
+        if sample_upload_load:
+            self.sample_upload_load = True
         self.sigSampleBlockEnsemble.emit(ensemble_name, write_to_file, write_chunkwise)
         return
 
-    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise):
+    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False):
         """
 
         @param sequence_name:
         @return:
         """
+        if sample_upload_load:
+            self.sample_upload_load = True
         self.sigSampleSequence.emit(sequence_name, write_to_file, write_chunkwise)
         return
 
-    def sample_ensemble_finished(self):
+    def sample_ensemble_finished(self, ensemble_name):
         """
 
         @return:
         """
-        self.sigBlockEnsembleSampled.emit()
+        if self.sample_upload_load:
+            self.upload_asset(ensemble_name)
+        self.log.debug('PULSEDMASTER: Sampling of ensemble "{0}" finished!'.format(ensemble_name))
+        self.sigBlockEnsembleSampled.emit(ensemble_name)
         return
 
-    def sample_sequence_finished(self):
+    def sample_sequence_finished(self, sequence_name):
         """
 
         @return:
         """
-        self.sigSequenceSampled.emit()
+        if self.sample_upload_load:
+            self.upload_asset(sequence_name)
+        self.log.debug('PULSEDMASTER: Sampling of sequence "{0}" finished!'.format(sequence_name))
+        self.sigSequenceSampled.emit(sequence_name)
         return
 
     def generator_settings_changed(self, activation_config_name, laser_channel, sample_rate,
