@@ -865,7 +865,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def _save_data(self, tag=None):
+    def save_measurement_data(self, tag=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -886,7 +886,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
                                    timestamp=timestamp, as_text=True, precision=':')
-                                   #, as_xml=False, precision=None, delimiter=None)
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -899,12 +898,17 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         if self.alternating:
-            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = np.array(self.signal_plot_x,
-                                                                         self.signal_plot_y,
-                                                                         self.signal_plot_y2).transpose()
+            data_array = np.zeros([3,len(self.signal_plot_x)], dtype=float)
+            data_array[0, :] = self.signal_plot_x
+            data_array[1, :] = self.signal_plot_y
+            data_array[2, :] = self.signal_plot_y2
+            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
         else:
-            data['Tau (ns), Signal (norm.)'] = np.array(self.signal_plot_x,
-                                                        self.signal_plot_y).transpose()
+            data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
+            data_array[0, :] = self.signal_plot_x
+            data_array[1, :] = self.signal_plot_y
+            data['Tau (ns), Signal (norm.)'] = data_array.transpose()
+
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
@@ -927,7 +931,8 @@ class PulsedMeasurementLogic(GenericLogic):
         fig.tight_layout()
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6f')
+                                   timestamp=timestamp, as_text=True, plotfig=fig,
+                                   precision=':3.6e')
         plt.close(fig)
 
         #####################################################################
@@ -953,10 +958,8 @@ class PulsedMeasurementLogic(GenericLogic):
                                                      self.measurement_ticks_list[0]) / (
                                                     len(self.measurement_ticks_list) - 1)
 
-
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':')#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
+                                   timestamp=timestamp, as_text=True, precision=':')
         return
 
     def compute_fft(self):

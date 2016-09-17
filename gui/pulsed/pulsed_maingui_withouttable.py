@@ -844,7 +844,6 @@ class PulsedMeasurementGui(GUIBase):
         # block signals
         self._mw.action_run_stop.blockSignals(True)
         self._mw.action_continue_pause.blockSignals(True)
-        self._mw.pulser_on_off_PushButton.blockSignals(True)
 
         # Enable/Disable widgets
         if is_running:
@@ -870,9 +869,6 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_pull_data.setEnabled(True)
             if not self._mw.action_run_stop.isChecked():
                 self._mw.action_run_stop.toggle()
-            if not self._mw.pulser_on_off_PushButton.isChecked():
-                self._mw.pulser_on_off_PushButton.setText('Pulser OFF')
-                self._mw.pulser_on_off_PushButton.toggle()
         else:
             self._pa.ext_control_use_mw_CheckBox.setEnabled(True)
             self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
@@ -896,27 +892,15 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_pull_data.setEnabled(False)
             if self._mw.action_run_stop.isChecked():
                 self._mw.action_run_stop.toggle()
-            if self._mw.pulser_on_off_PushButton.isChecked():
-                self._mw.pulser_on_off_PushButton.setText('Pulser ON')
-                self._mw.pulser_on_off_PushButton.toggle()
-
         if is_paused:
             if not self._mw.action_continue_pause.isChecked():
                 self._mw.action_continue_pause.toggle()
-            if self._mw.pulser_on_off_PushButton.isChecked():
-                self._mw.pulser_on_off_PushButton.setText('Pulser ON')
-                self._mw.pulser_on_off_PushButton.toggle()
         else:
             if self._mw.action_continue_pause.isChecked():
                 self._mw.action_continue_pause.toggle()
-            if not self._mw.pulser_on_off_PushButton.isChecked():
-                self._mw.pulser_on_off_PushButton.setText('Pulser OFF')
-                self._mw.pulser_on_off_PushButton.toggle()
-
         # unblock signals
         self._mw.action_run_stop.blockSignals(False)
         self._mw.action_continue_pause.blockSignals(False)
-        self._mw.pulser_on_off_PushButton.blockSignals(False)
         return
 
     def pull_data_clicked(self):
@@ -973,7 +957,11 @@ class PulsedMeasurementGui(GUIBase):
     # FIXME: Implement that
     def save_clicked(self):
         """Saves the current data"""
-        pass
+        self._mw.action_save.setEnabled(False)
+        save_tag = self._mw.save_tag_LineEdit.text()
+        self._pulsed_master_logic.save_measurement_data(save_tag)
+        self._mw.action_save.setEnabled(True)
+        return
 
     def fit_clicked(self):
         """Fits the current data"""
