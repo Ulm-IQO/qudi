@@ -36,18 +36,9 @@ import datetime
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.colordefs import QudiPalette as palettedark
+#from gui.pulsed.pulse_editor import PulseEditor
 from core.util.mutex import Mutex
 from core.util import units
-
-from logic.pulse_objects import Pulse_Block_Element
-from logic.pulse_objects import Pulse_Block
-from logic.pulse_objects import Pulse_Block_Ensemble
-from logic.pulse_objects import Pulse_Sequence
-
-from .spinbox_delegate import SpinBoxDelegate
-from .doublespinbox_delegate import DoubleSpinBoxDelegate
-from .combobox_delegate import ComboBoxDelegate
-from .checkbox_delegate import CheckBoxDelegate
 
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
@@ -98,17 +89,6 @@ class PulseExtractionTab(QtWidgets.QWidget):
         uic.loadUi(ui_file, self)
 
 
-class BlockSettingDialog(QtWidgets.QDialog):
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_block_gen.ui')
-
-        # Load it
-        super(BlockSettingDialog, self).__init__()
-
-        uic.loadUi(ui_file, self)
-
 class AnalysisSettingDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
@@ -156,17 +136,21 @@ class PulsedMeasurementGui(GUIBase):
         Establish general connectivity and activate the different tabs of the
         GUI.
         """
-        self._pulsed_master_logic = self.connector['in']['pulsedmasterlogic']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._pulsed_master_logic = self.get_in_connector('pulsedmasterlogic')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self._mw = PulsedMeasurementMainWindow()
         self._pa = PulseAnalysisTab()
         self._pg = SimplePulseGeneratorTab()
+        #self._ped = PulseEditor(
+        #    self._pulsed_master_logic._generator_logic,
+        #    self._pulsed_master_logic._measurement_logic)
         self._pe = PulseExtractionTab()
 
         self._mw.tabWidget.addTab(self._pa, 'Analysis')
-        self._mw.tabWidget.addTab(self._pg, 'Simple Generator')
         self._mw.tabWidget.addTab(self._pe, 'Pulse Extraction')
+        self._mw.tabWidget.addTab(self._pg, 'Simple Generator')
+        #self._mw.tabWidget.addTab(self._ped._pe, 'Pulse Editor')
 
         self.setup_toolbar()
         self._activate_analysis_settings_ui(e)
@@ -692,7 +676,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect combobox changed signals
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
-        #self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
+        #self._pa.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.connect(self.pulse_generator_settings_changed)
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.laser_to_show_changed)
 
@@ -778,7 +762,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ref_window_width_SpinBox.editingFinished.disconnect()
         self._pe.conv_std_dev.valueChanged.disconnect()
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.disconnect()
-        # self._mw.second_plot_ComboBox.currentIndexChanged.disconnect()
+        #self._pa.second_plot_ComboBox.currentIndexChanged.disconnect()
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.disconnect()
         self._pe.laserpulses_ComboBox.currentIndexChanged.disconnect()
         self.sig_start_line.sigPositionChanged.disconnect()
