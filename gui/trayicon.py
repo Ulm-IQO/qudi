@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi GUI module base class.
+This file contains the Qudi GUI module base class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -26,8 +26,8 @@ from qtpy import QtGui
 
 
 class TrayIcon(GUIBase):
-    """ This module contains a tray icon implementation for QuDi.
-    When this module is loaded into QuDi, it will show the QuDi icon in the system tray.
+    """ This module contains a tray icon implementation for Qudi.
+    When this module is loaded into Qudi, it will show the Qudi icon in the system tray.
     Left-clicking this icon will show an action menu that lets you bring the Manager window to the front.
     Right-clicking this icon will bring up a Quit button that will colse the whole application.
     """

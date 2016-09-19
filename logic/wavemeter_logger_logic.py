@@ -3,18 +3,18 @@
 """
 This file contains the logic responsible for coordinating laser scanning.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -158,11 +158,11 @@ class WavemeterLoggerLogic(GenericLogic):
 
         self.stopRequested = False
 
-        self._wavemeter_device = self.connector['in']['wavemeter1']['object']
+        self._wavemeter_device = self.get_in_connector('wavemeter1')
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._counter_logic = self.connector['in']['counterlogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
+        self._counter_logic = self.get_in_connector('counterlogic')
 
         # create a new x axis from xmin to xmax with bins points
         self.histogram_axis = np.arange(self._xmin,

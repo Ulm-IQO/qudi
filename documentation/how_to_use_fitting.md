@@ -1,4 +1,4 @@
-# How to use fitting in QuDi  {#fit_logic}
+# How to use fitting in Qudi  {#fit_logic}
 
 First of all it is important to mention that the naming convention
 of methods is very important! Only if the methods are named right the

@@ -1,18 +1,18 @@
 """
-This file contains the QuDi Interfuse between Magnet Logic and Motor Hardware.
+This file contains the Qudi Interfuse between Magnet Logic and Motor Hardware.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -46,7 +46,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
 
         self.tilt_variable_ax = 1
         self.tilt_variable_ay = 1
