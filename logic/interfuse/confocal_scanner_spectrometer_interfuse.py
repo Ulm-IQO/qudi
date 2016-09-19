@@ -2,18 +2,18 @@
 """
 Interfuse to do confocal scans with spectrometer data rather than APD count rates.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -70,9 +70,9 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._scanner_hw = self.connector['in']['confocalscanner1']['object']
-        self._spectrometer_hw = self.connector['in']['spectrometer1']['object']
+        self._fit_logic = self.get_in_connector('fitlogic')
+        self._scanner_hw = self.get_in_connector('confocalscanner1')
+        self._spectrometer_hw = self.get_in_connector('spectrometer1')
 
 
     def on_deactivate(self, e):

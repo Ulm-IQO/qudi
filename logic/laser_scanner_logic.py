@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-This file contains a QuDi logic module for controlling scans of the
+This file contains a Qudi logic module for controlling scans of the
 fourth analog output channel.  It was originally written for
 scanning laser frequency, but it can be used to control any parameter
 in the experiment that is voltage controlled.  The hardware
 range is typically -10 to +10 V.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -70,8 +70,8 @@ class LaserScannerLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!

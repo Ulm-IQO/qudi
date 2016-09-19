@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Jupyter notebook kernel executable file for QuDi.
+Jupyter notebook kernel executable file for Qudi.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -33,7 +33,7 @@ from parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
-class QuDi:
+class Qudi:
 
     def __init__(self):
         self.host = 'localhost'
@@ -80,7 +80,7 @@ class QuDi:
 
 def install_kernel():
         from jupyter_client.kernelspec import KernelSpecManager
-        logging.info('Installing QuDi kernel.')
+        logging.info('Installing Qudi kernel.')
 
         try:
             # prepare temporary kernelspec folder
@@ -93,7 +93,7 @@ def install_kernel():
 
             kernel_dict = {
                 'argv': [sys.executable, kernelpath, '{connection_file}'],
-                'display_name': 'QuDi',
+                'display_name': 'Qudi',
                 'language': 'python',
                 }
             # write the kernelspe file
@@ -127,7 +127,7 @@ if __name__ == '__main__':
         if sys.argv[1] == 'install':
             install_kernel()
         else:
-            q = QuDi()
+            q = Qudi()
             q.initSignal()
             q.initPoller()
             q.connect()

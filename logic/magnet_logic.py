@@ -3,18 +3,18 @@
 """
 This file contains the general logic for magnet control.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -133,8 +133,8 @@ class MagnetLogic(GenericLogic):
                          had happened.
         """
 
-        self._magnet_device = self.connector['in']['magnetstage']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._magnet_device = self.get_in_connector('magnetstage')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self.log.info('The following configuration was found.')
         # checking for the right configuration
@@ -144,16 +144,16 @@ class MagnetLogic(GenericLogic):
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
-        self._confocal_logic = self.connector['in']['scannerlogic']['object']
-        self._counter_logic = self.connector['in']['counterlogic']['object']
-        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+        self._optimizer_logic = self.get_in_connector('optimizerlogic')
+        self._confocal_logic = self.get_in_connector('scannerlogic')
+        self._counter_logic = self.get_in_connector('counterlogic')
+        self._odmr_logic = self.get_in_connector('odmrlogic')
 
-        self._gc_logic = self.connector['in']['gatedcounterlogic']['object']
-        self._ta_logic = self.connector['in']['traceanalysis']['object']
-        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+        self._gc_logic = self.get_in_connector('gatedcounterlogic')
+        self._ta_logic = self.get_in_connector('traceanalysis')
+        self._odmr_logic = self.get_in_connector('odmrlogic')
 
-        self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
+        self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
 
 
         # EXPERIMENTAL:

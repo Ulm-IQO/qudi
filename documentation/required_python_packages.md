@@ -1,7 +1,7 @@
 # Required Packages  {#required-python-packages}
 
 
-These package have to be installed in order to run QuDi (easily installed with Anaconda console: pip install "packagename"):
+These package have to be installed in order to run Qudi (easily installed with Anaconda console: pip install "packagename"):
 
 | Package  | Minimum Version | URL  | Needed by |
 | ------------- | ---------- | ------------------------------------------- | ----------- |

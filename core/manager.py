@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi Manager class.
+This file contains the Qudi Manager class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -76,7 +76,7 @@ class Manager(QtCore.QObject):
     sigShowManager = QtCore.Signal()
 
     def __init__(self, args, **kwargs):
-        """Constructor for QuDi main management class
+        """Constructor for Qudi main management class
 
           @param args: argparse command line arguments
         """
@@ -172,7 +172,7 @@ class Manager(QtCore.QObject):
                 self.remoteServer = False
                 logger.exception('Remote server could not be started.')
 
-            logger.info('QuDi started.')
+            logger.info('Qudi started.')
 
             # Load startup things from config here
             if 'startup' in self.tree['global']:
@@ -441,7 +441,7 @@ class Manager(QtCore.QObject):
         config.save(loadFile, loadData)
         logger.info('Set loaded configuration to {0}'.format(filename))
         if restart:
-            logger.info('Restarting QuDi after configuration reload.')
+            logger.info('Restarting Qudi after configuration reload.')
             self.restart()
 
     def reloadConfigPart(self, base, mod):
@@ -462,7 +462,7 @@ class Manager(QtCore.QObject):
     ##################
 
     def importModule(self, baseName, module):
-        """Load a python module that is a loadable QuDi module.
+        """Load a python module that is a loadable Qudi module.
 
           @param string baseName: the module base package (hardware, logic, or gui)
           @param string module: the python module name inside the base package
@@ -483,21 +483,21 @@ class Manager(QtCore.QObject):
 
     def configureModule(self, moduleObject, baseName, className, instanceName,
                         configuration=None):
-        """Instantiate an object from the class that makes up a QuDi module
+        """Instantiate an object from the class that makes up a Qudi module
            from a loaded python module object.
 
           @param object moduleObject: loaded python module
           @param string baseName: module base package (hardware, logic or gui)
           @param string className: name of the class we want an object from
                                  (same as module name usually)
-          @param string instanceName: unique name thet the QuDi module instance
+          @param string instanceName: unique name thet the Qudi module instance
                                  was given in the configuration
-          @param dict configuration: configuration options for the QuDi module
+          @param dict configuration: configuration options for the Qudi module
 
-          @return object: QuDi module instance (object of the class derived
+          @return object: Qudi module instance (object of the class derived
                           from Base)
 
-          This method will add the resulting QuDi module instance to internal
+          This method will add the resulting Qudi module instance to internal
           bookkeeping.
         """
         if configuration is None:
@@ -1135,7 +1135,7 @@ class Manager(QtCore.QObject):
                         self.activateModule(mbase, mkey)
 
     def startAllConfiguredModules(self):
-        """Connect all QuDi modules from the currently laoded configuration and
+        """Connect all Qudi modules from the currently laoded configuration and
             activate them.
         """
         # FIXME: actually load all the modules in the correct order and connect
