@@ -6,18 +6,18 @@ functions and estimators. Here one can also do stability checks
  taken into account. This is completely standalone and does not interact with
  qudi. It only will import the fitting methods from qudi.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) 2015-2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de

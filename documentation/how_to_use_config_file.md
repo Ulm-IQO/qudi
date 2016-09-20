@@ -4,11 +4,11 @@ Config files are essential in our software, since they tell basically which
 modules you want to connect to each other. The config file is also the place
 where the required parameters are specified individually for a module.
 
-## YAML implementation in QuDi
+## YAML implementation in Qudi
 
 Our config file uses the [YAML](http://yaml.org/) format, a data serialization format designed for
-human readability and interaction with scripting languages. QuDi modifies the
-PyYAML implementation, which serves as a YAML parser. Therefore QuDi has
+human readability and interaction with scripting languages. Qudi modifies the
+PyYAML implementation, which serves as a YAML parser. Therefore Qudi has
 implemented a loader and a dumper using an collections.OrderedDict() instead of
 the regular python dict() used by PyYAML.
 Additionally, it fixes a bug in PyYAML with scientific notation and allows
