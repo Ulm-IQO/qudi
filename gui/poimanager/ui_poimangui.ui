@@ -969,7 +969,7 @@
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>tools.scientific_spinbox.h</header>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 function print_log () {
-echo "======== QuDi Logfile ========"
+echo "======== Qudi Logfile ========"
 cat qudi.log
 
 if [ -e crash.log ]; then
-    echo "======== QuDi Crashfile ========"
+    echo "======== Qudi Crashfile ========"
     cat crash.log
 fi
 }
