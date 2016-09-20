@@ -56,6 +56,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
     sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
     sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
+    sigUploadAssetComplete = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str)
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
@@ -250,9 +251,8 @@ class PulsedMeasurementLogic(GenericLogic):
                          explanation can be found in the method activation.
         """
 
-        with self.threadlock:
-            if self.getState() != 'idle' and self.getState() != 'deactivated':
-                self.stop_pulsed_measurement()
+        if self.getState() != 'idle' and self.getState() != 'deactivated':
+            self.stop_pulsed_measurement()
 
         self._statusVariables['signal_start_bin'] = self.signal_start_bin
         self._statusVariables['signal_width_bin'] = self.signal_width_bin
@@ -542,6 +542,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         err = self._pulse_generator_device.upload_asset(asset_name)
         uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(asset_name)
         self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
@@ -746,22 +747,20 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
-        if self.getState() == 'locked':
-            #stopping and disconnecting the timer
-            self.analysis_timer.stop()
-            self.analysis_timer.timeout.disconnect()
-            self.analysis_timer = None
+        with self.threadlock:
+            if self.getState() == 'locked':
+                #stopping and disconnecting the timer
+                self.analysis_timer.stop()
+                self.analysis_timer.timeout.disconnect()
+                self.analysis_timer = None
 
-            self.manually_pull_data()
+                self.fast_counter_off()
+                self.pulse_generator_off()
+                if self.use_ext_microwave:
+                    self.microwave_on_off(False)
 
-            self.fast_counter_off()
-            self.pulse_generator_off()
-
-            if self.use_ext_microwave:
-                self.microwave_on_off(False)
-
-            self.unlock()
-        self.sigMeasurementRunningUpdated.emit(False, False)
+                self.unlock()
+                self.sigMeasurementRunningUpdated.emit(False, False)
         return
 
     def pause_pulsed_measurement(self):
@@ -775,12 +774,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 self.fast_counter_pause()
                 self.pulse_generator_off()
-
                 if self.use_ext_microwave:
                     self.microwave_on_off(False)
 
-                self.unlock()
-        self.sigMeasurementRunningUpdated.emit(True, True)
+                self.sigMeasurementRunningUpdated.emit(True, True)
         return 0
 
     def continue_pulsed_measurement(self):
@@ -788,19 +785,16 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            #if self.getState() == 'pause':
+            if self.getState() == 'locked':
+                if self.use_ext_microwave:
+                    self.microwave_on_off(True)
+                self.fast_counter_continue()
+                self.pulse_generator_on()
 
-            if self.use_ext_microwave:
-                self.microwave_on_off(True)
+                #unpausing the timer
+                self.analysis_timer.start()
 
-            self.fast_counter_continue()
-            self.pulse_generator_on()
-
-            #unpausing the timer
-            self.analysis_timer.start()
-
-            self.lock()
-        self.sigMeasurementRunningUpdated.emit(True, False)
+                self.sigMeasurementRunningUpdated.emit(True, False)
         return 0
 
     def set_timer_interval(self, interval):
@@ -813,7 +807,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.timer_interval = interval
             if self.analysis_timer is not None:
                 self.analysis_timer.setInterval(int(1000. * self.timer_interval))
-        self.sigTimerIntervalUpdated.emit(self.timer_interval)
+            self.sigTimerIntervalUpdated.emit(self.timer_interval)
         return
 
     def manually_pull_data(self):
@@ -838,8 +832,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_width_bin = signal_width_bins
             self.norm_start_bin = norm_start_bin
             self.norm_width_bin = norm_width_bins
-        self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                            norm_width_bins)
+            self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
+                                                norm_width_bins)
         return signal_start_bin, signal_width_bins, norm_start_bin, norm_width_bins
 
     def analysis_method_changed(self, gaussfilt_std_dev):
@@ -850,7 +844,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self.threadlock:
             self.conv_std_dev = gaussfilt_std_dev
-        self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
+            self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
         return
 
     def _initialize_plots(self):
@@ -871,7 +865,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def _save_data(self, tag=None):
+    def save_measurement_data(self, tag=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -892,7 +886,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
                                    timestamp=timestamp, as_text=True, precision=':')
-                                   #, as_xml=False, precision=None, delimiter=None)
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -905,16 +898,17 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         if self.alternating:
-            data_arr = np.zeros([3,len(self.signal_plot_x)])
-            data_arr[0, :] = self.signal_plot_x
-            data_arr[1, :] = self.signal_plot_y
-            data_arr[2, :] = self.signal_plot_y2
-            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = data_arr.transpose()
+            data_array = np.zeros([3,len(self.signal_plot_x)], dtype=float)
+            data_array[0, :] = self.signal_plot_x
+            data_array[1, :] = self.signal_plot_y
+            data_array[2, :] = self.signal_plot_y2
+            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
         else:
-            data_arr = np.zeros([2, len(self.signal_plot_x)])
-            data_arr[0, :] = self.signal_plot_x
-            data_arr[1, :] = self.signal_plot_y
-            data['Tau (ns), Signal (norm.)'] = data_arr.transpose()
+            data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
+            data_array[0, :] = self.signal_plot_x
+            data_array[1, :] = self.signal_plot_y
+            data['Tau (ns), Signal (norm.)'] = data_array.transpose()
+
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
@@ -937,7 +931,8 @@ class PulsedMeasurementLogic(GenericLogic):
         fig.tight_layout()
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6f')
+                                   timestamp=timestamp, as_text=True, plotfig=fig,
+                                   precision=':3.6e')
         plt.close(fig)
 
         #####################################################################
@@ -963,10 +958,8 @@ class PulsedMeasurementLogic(GenericLogic):
                                                      self.measurement_ticks_list[0]) / (
                                                     len(self.measurement_ticks_list) - 1)
 
-
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':')#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
+                                   timestamp=timestamp, as_text=True, precision=':')
         return
 
     def compute_fft(self):
