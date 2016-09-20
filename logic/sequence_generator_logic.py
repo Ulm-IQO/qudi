@@ -67,8 +67,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigBlockListUpdated = QtCore.Signal(list)
     sigEnsembleListUpdated = QtCore.Signal(list)
     sigSequenceListUpdated = QtCore.Signal(list)
-    sigSampleEnsembleComplete = QtCore.Signal()
-    sigSampleSequenceComplete = QtCore.Signal()
+    sigSampleEnsembleComplete = QtCore.Signal(str)
+    sigSampleSequenceComplete = QtCore.Signal(str)
     sigCurrentBlockUpdated = QtCore.Signal(object)
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
@@ -239,8 +239,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigBlockListUpdated.emit(self.saved_pulse_blocks)
         self.sigEnsembleListUpdated.emit(self.saved_pulse_block_ensembles)
         self.sigSequenceListUpdated.emit(self.saved_pulse_sequences)
-        self.sigSampleEnsembleComplete.emit()
-        self.sigSampleSequenceComplete.emit()
+        self.sigSampleEnsembleComplete.emit('')
+        self.sigSampleSequenceComplete.emit('')
         self.sigCurrentBlockUpdated.emit(self.current_block)
         self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
         self.sigCurrentSequenceUpdated.emit(self.current_sequence)
@@ -638,7 +638,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         time. This results in more function calls and general overhead causing the much longer time
         to complete.
         """
-
+        # lock module if it's not already locked (sequence sampling in progress)
+        if self.getState() == 'idle':
+            self.lock()
+            sequence_sampling_in_progress = False
+        else:
+            sequence_sampling_in_progress = True
         # check for old files associated with the new ensemble and delete them from host PC
         # if write_to_file = True
         if write_to_file:
@@ -650,9 +655,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 os.remove(os.path.join(self.waveform_dir, file))
 
             if len(filename_list) != 0:
-                self.log.warning('Found old sampled ensembles for name '
-                        '"{0}". Files deleted before sampling: '
-                        '{1}'.format(ensemble_name, filename_list))
+                self.log.info('Found old sampled ensembles for name "{0}". Files deleted before '
+                              'sampling: {1}'.format(ensemble_name, filename_list))
 
         start_time = time.time()
         # get ensemble
@@ -743,8 +747,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.log.info('Time needed for sampling and writing '
                     'Pulse_Block_Ensemble to file as a whole: "{0}" sec'
                     ''.format(str(int(np.rint(time.time() - start_time)))))
-            self.sigSampleEnsembleComplete.emit()
             # return the sample arrays for write_to_file was set to FALSE
+            if not sequence_sampling_in_progress:
+                self.unlock()
+                self.sigSampleEnsembleComplete.emit(ensemble_name)
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
@@ -752,7 +758,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.log.info('Time needed for sampling and writing to file '
                     'chunkwise: "{0}" sec'.format(
                         str(int(np.rint(time.time()-start_time)))))
-            self.sigSampleEnsembleComplete.emit()
+            if not sequence_sampling_in_progress:
+                self.unlock()
+                self.sigSampleEnsembleComplete.emit(ensemble_name)
             return [], [], created_files, offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
@@ -769,7 +777,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.log.info('Time needed for sampling and writing '
                     'Pulse_Block_Ensemble to file as a whole: "{0}" sec'
                     ''.format(str(int(np.rint(time.time()-start_time)))))
-            self.sigSampleEnsembleComplete.emit()
+            if not sequence_sampling_in_progress:
+                self.unlock()
+                self.sigSampleEnsembleComplete.emit(ensemble_name)
             return [], [], created_files, offset_bin
 
     def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):
@@ -796,7 +806,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         More sophisticated sequence sampling method can be implemented here.
         """
-
+        # lock module
+        self.lock()
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
             filename_list = [f for f in os.listdir(self.sequence_dir) if
@@ -898,7 +909,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.log.info('Time needed for sampling and writing Pulse Sequence '
                 'to file as a whole: "{0}" sec'.format(
                     str(int(np.rint(time.time() - start_time)))))
-        self.sigSampleSequenceComplete.emit()
+        self.sigSampleSequenceComplete.emit(sequence_name)
+        # unlock module
+        self.unlock()
         return
 
     def write_seq_to_file(self, a, b):
