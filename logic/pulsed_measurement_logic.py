@@ -905,12 +905,16 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         if self.alternating:
-            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = np.array(self.signal_plot_x,
-                                                                         self.signal_plot_y,
-                                                                         self.signal_plot_y2).transpose()
+            data_arr = np.zeros([3,len(self.signal_plot_x)])
+            data_arr[0, :] = self.signal_plot_x
+            data_arr[1, :] = self.signal_plot_y
+            data_arr[2, :] = self.signal_plot_y2
+            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = data_arr.transpose()
         else:
-            data['Tau (ns), Signal (norm.)'] = np.array(self.signal_plot_x,
-                                                        self.signal_plot_y).transpose()
+            data_arr = np.zeros([2, len(self.signal_plot_x)])
+            data_arr[0, :] = self.signal_plot_x
+            data_arr[1, :] = self.signal_plot_y
+            data['Tau (ns), Signal (norm.)'] = data_arr.transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
