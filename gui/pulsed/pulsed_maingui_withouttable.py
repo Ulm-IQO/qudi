@@ -479,6 +479,7 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        self._mw.second_plot_GroupBox.setVisible(False)
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)

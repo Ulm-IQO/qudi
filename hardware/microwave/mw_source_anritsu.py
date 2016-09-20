@@ -91,21 +91,21 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """ Right now, this is for Anritsu MG37022A with Option 4 only."""
         limits = {
             'frequency': {
-                'min': 10*10e6,
-                'max': 20*10e9
+                'min': 10e6,
+                'max': 20e9
                 },
             'power': {
                 'min': -105,
-                'max': 18
+                'max': 30
                 },
             'list': {
                 'minstep': 0.001,
-                'maxstep': 20*10e9,
+                'maxstep': 20e9,
                 'maxentries': 10001
                 },
             'sweep': {
                 'minstep': 0.001,
-                'maxstep': 20*10e9,
+                'maxstep': 20e9,
                 'maxentries': 10001
                 }
             }
