@@ -47,6 +47,8 @@ class ODMRLogic(GenericLogic):
     _out = {'odmrlogic': 'ODMRLogic'}
 
     sigNextLine = QtCore.Signal()
+    sigOdmrStarted = QtCore.Signal()
+    sigOdmrStopped = QtCore.Signal()
     sigOdmrPlotUpdated = QtCore.Signal()
     sigOdmrFitUpdated = QtCore.Signal()
     sigOdmrMatrixUpdated = QtCore.Signal()
@@ -55,7 +57,6 @@ class ODMRLogic(GenericLogic):
     sigODMRMatrixAxesChanged = QtCore.Signal()
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
-
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -296,6 +297,7 @@ class ODMRLogic(GenericLogic):
 
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
+        self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
 
     def continue_odmr_scan(self):
@@ -315,7 +317,7 @@ class ODMRLogic(GenericLogic):
                 self._mw_device.sweep_on()
             else:
                 self._mw_device.list_on()
-
+        self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
 
     def stop_odmr_scan(self):
@@ -362,7 +364,7 @@ class ODMRLogic(GenericLogic):
 
                 self.sigMicrowaveCWModeChanged.emit(False)
                 self.sigMicrowaveListModeChanged.emit(False)
-
+                self.sigOdmrStopped.emit()
                 return
 
         # reset position so every line starts from the same frequency

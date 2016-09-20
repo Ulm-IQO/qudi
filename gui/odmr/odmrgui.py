@@ -67,6 +67,15 @@ class ODMRGui(GUIBase):
     _in = {'odmrlogic1': 'ODMRLogic',
            'savelogic': 'SaveLogic'}
 
+    sigStartODMRScan = QtCore.Signal()
+    sigStopODMRScan = QtCore.Signal()
+    sigContinueODMRScan = QtCore.Signal()
+    sigClearPlots = QtCore.Signal()
+    sigMWOn = QtCore.Signal()
+    sigMWOff = QtCore.Signal()
+    sigMWPowerChanged = QtCore.Signal(float)
+    sigMWFreqChanged = QtCore.Signal(float)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -74,7 +83,7 @@ class ODMRGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -108,18 +117,18 @@ class ODMRGui(GUIBase):
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
-        self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
-                                              'added to the filename.')
+        self._mw.save_tag_LineEdit.setToolTip(
+            'Enter a nametag which will be\nadded to the filename.')
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
 
         # add a clear button to clear the ODMR plots:
         self._mw.clear_odmr_PushButton = QtWidgets.QPushButton(self._mw)
-
         self._mw.clear_odmr_PushButton.setText('Clear ODMR')
-        self._mw.clear_odmr_PushButton.setToolTip('Clear the plots of the\n'
-                                                    'current ODMR measurements.')
+        self._mw.clear_odmr_PushButton.setToolTip(
+            'Clear the plots of the\ncurrent ODMR measurements.')
         self._mw.clear_odmr_PushButton.setEnabled(False)
         self._mw.save_ToolBar.addWidget(self._mw.clear_odmr_PushButton)
+        self.sigClearPlots.connect(self._odmr_logic.clear_odmr_plots)
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
@@ -257,6 +266,14 @@ class ODMRGui(GUIBase):
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_resume_odmr.toggled.connect(self.resume_odmr)
         self._mw.action_Save.triggered.connect(self.save_data)
+        self.sigStartODMRScan.connect(self._odmr_logic.start_odmr_scan)
+        self.sigStopODMRScan.connect(self._odmr_logic.stop_odmr_scan)
+        self.sigContinueODMRScan.connect(self._odmr_logic.continue_odmr_scan)
+
+        self.sigMWOn.connect(self._odmr_logic.MW_on)
+        self.sigMWOff.connect(self._odmr_logic.MW_off)
+        self.sigMWFreqChanged.connect(self._odmr_logic.set_frequency)
+        self.sigMWPowerChanged.connect(self._odmr_logic.set_power)
 
         # react on an axis change in the logic by adapting the display:
         self._odmr_logic.sigODMRMatrixAxesChanged.connect(self.update_matrix_axes)
@@ -275,7 +292,8 @@ class ODMRGui(GUIBase):
         self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
-        self._odmr_logic.sigOdmrFinished.connect(self.odmr_stopped)
+        self._odmr_logic.sigOdmrStarted.connect(self.odmr_started)
+        self._odmr_logic.sigOdmrStopped.connect(self.odmr_stopped)
         # Combo Widget
         self._mw.mode_ComboBox.activated[str].connect(self.mw_stop)
         self._mw.fit_methods_ComboBox.activated[str].connect(self.update_fit_variable)
@@ -308,20 +326,20 @@ class ODMRGui(GUIBase):
 
     def run_stop(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
-
         if is_checked:
-
             # change the axes appearance according to input values:
-            self._odmr_logic.stop_odmr_scan()
-            self._odmr_logic.start_odmr_scan()
+            self.sigStopODMRScan.emit()
+            self.sigStartODMRScan.emit()
+            self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
             # during scan, enable the clear plot possibility.
             self._mw.clear_odmr_PushButton.setEnabled(True)
         else:
-            self._odmr_logic.stop_odmr_scan()
-            self._mw.action_resume_odmr.setEnabled(True)
+            self.sigStopODMRScan.emit()
+            self._mw.action_run_stop.setEnabled(False)
+            self._mw.action_resume_odmr.setEnabled(False)
             # Disable the clear functionality since that is not needed if no
             # scan is running:
             self._mw.clear_odmr_PushButton.setEnabled(False)
@@ -332,7 +350,6 @@ class ODMRGui(GUIBase):
         @param bool cw_on: for True the mw on display will be shown, otherwise
                            mw off will be displayed.
         """
-
         if cw_on:
             # # prevent any triggering, which results from changing the state of
             # # the combobox:
@@ -363,28 +380,36 @@ class ODMRGui(GUIBase):
 
     def resume_odmr(self, is_checked):
         if is_checked:
-            self._odmr_logic.stop_odmr_scan()
-            self._odmr_logic.continue_odmr_scan()
+            self.sigStopODMRScan.emit()
+            self.sigContinueODMRScan.emit()
             self._mw.action_run_stop.setEnabled(False)
 
             # during scan, enable the clear plot possibility.
             self._mw.clear_odmr_PushButton.setEnabled(True)
         else:
-            self._odmr_logic.stop_odmr_scan()
+            self.sigStopODMRScan.emit()
             self._mw.action_run_stop.setEnabled(True)
             # Disable the clear functionality since that is not needed if no
             # scan is running:
             self._mw.clear_odmr_PushButton.setEnabled(False)
+
+    def odmr_started(self):
+        """ Switch the run/stop button to stop after receiving an odmsStarted
+                    signal """
+        self._mw.action_run_stop.setEnabled(True)
+        self._mw.action_resume_odmr.setEnabled(False)
 
     def odmr_stopped(self):
         """ Switch the run/stop button to stop after receiving an odmr_stoped
             signal """
         self._mw.action_run_stop.setChecked(False)
         self._mw.action_resume_odmr.setChecked(False)
+        self._mw.action_run_stop.setEnabled(True)
+        self._mw.action_resume_odmr.setEnabled(True)
 
     def clear_odmr_plots_clicked(self):
         """ Clear the ODMR plots. """
-        self._odmr_logic.clear_odmr_plots()
+        self.sigClearPlots.emit()
 
     def menu_settings(self):
         """ Open the settings menu """
@@ -428,13 +453,11 @@ class ODMRGui(GUIBase):
                 self._odmr_logic.number_of_lines
             ))
 
-
     def refresh_odmr_colorbar(self):
         """ Update the colorbar to a new scaling.
 
         Calls the refresh method from colorbar.
         """
-
         cb_range = self.get_matrix_cb_range()
         self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
 
@@ -527,11 +550,11 @@ class ODMRGui(GUIBase):
     def mw_stop(self, txt):
         """ Stop frequency sweep and change to CW of off"""
         if txt == 'Off':
-            self._odmr_logic.MW_off()
+            self.sigMWOff.emit()
         if txt == 'CW':
             self.change_frequency()
             self.change_power()
-            self._odmr_logic.MW_on()
+            self.sigMWOn.emit()
 
 
     ############################################################################
@@ -541,7 +564,7 @@ class ODMRGui(GUIBase):
     def change_frequency(self):
         """ Change CW frequency of microwave source """
         frequency = self._mw.frequency_DoubleSpinBox.value()
-        self._odmr_logic.set_frequency(frequency=frequency)
+        self.sigMWFreqChanged.emit(frequency)
 
     def change_start_freq(self):
         """ Change start frequency of frequency sweep """
@@ -558,7 +581,7 @@ class ODMRGui(GUIBase):
     def change_power(self):
         """ Change microwave power """
         power = self._mw.power_DoubleSpinBox.value()
-        self._odmr_logic.set_power(power=power)
+        self.sigMWPowerChanged.emit(power)
 
     def change_runtime(self):
         """ Change time after which microwave sweep is stopped """
