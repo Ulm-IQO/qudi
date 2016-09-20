@@ -121,8 +121,8 @@ class PulsedMasterLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self._measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']
-        self._generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
+        self._measurement_logic = self.get_in_connector('pulsedmeasurementlogic')
+        self._generator_logic = self.get_in_connector('sequencegeneratorlogic')
 
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
