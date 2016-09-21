@@ -1,6 +1,6 @@
-# How to use the logger in QuDi  {#logger_usage}
+# How to use the logger in Qudi  {#logger_usage}
 
-QuDi uses the [Python Logging Module](https://docs.python.org/3/library/logging.html)
+Qudi uses the [Python Logging Module](https://docs.python.org/3/library/logging.html)
 from the Python Standard Library to manage all logging messages.
 
 In general, the logging functionality is an essential feature for any software
@@ -8,17 +8,17 @@ developer, especially if the program grows in size and complexity.
 
 ## General functionality of the logger and why 'print()' is not always a good idea.
 
-QuDi implements a core logger, which will carry together all child logger (from
-the QuDi modules and from external module, who are using the logging module like
+Qudi implements a core logger, which will carry together all child logger (from
+the Qudi modules and from external module, who are using the logging module like
 mentioned in the section [Logger in external file](#log_external)). The main
 advantage of this procedure is that third party modules, which
 are using the Standard Python Logger, are transferred to the core logger and
 are logged too. This includes also self defined modules, which can be imported
-into QuDi modules. That means there is no need for external modules to be
-connected to QuDi to ensure the logging functionality, if the external modules
-are tested and executed independent of QuDi.
+into Qudi modules. That means there is no need for external modules to be
+connected to Qudi to ensure the logging functionality, if the external modules
+are tested and executed independent of Qudi.
 
-Additionally, the manager GUI of QuDi will be able to show all (!) logging
+Additionally, the manager GUI of Qudi will be able to show all (!) logging
 messages from all files, which use the logging module.
 
 That makes is easier and more convenient to use the logging module.
@@ -41,7 +41,7 @@ There are some arguments, why logging is better than print [[1](#lit_1)]:
 ## <a name="log_external"> </a>Logger in external file
 
 If you want to use the logging module in external file, which are not collected
-to QuDi, then it is pretty easy to do that! Just add these following three lines
+to Qudi, then it is pretty easy to do that! Just add these following three lines
 of code
 
     import logging
@@ -76,17 +76,17 @@ Within the code, the logger can then be used like
 
     logger.critical('That is extremly dangerous and will seriouly harm the program or the devide!')
 
-## How to use the logger within QuDi
+## How to use the logger within Qudi
 
-Even before QuDi is started, the core logger of QuDi will be initialized and
+Even before Qudi is started, the core logger of Qudi will be initialized and
 will collect all the log messages and appearing exceptions upon the starting
 procedure. I.e. if there appears an error in the configuration of the modules or
-if modules are not present, which are needed at startup of QuDi, then the error
+if modules are not present, which are needed at startup of Qudi, then the error
 message(s) are collected in the root directory of qudi. Have a look in those
-log files, if you encounter problems with QuDi, or if the QuDi Manager does not
+log files, if you encounter problems with Qudi, or if the Qudi Manager does not
 even appear.
 
-Each module in QuDi will by default have an attribute log, by which you can
+Each module in Qudi will by default have an attribute log, by which you can
 access the logger of the specific module. If you take for instance the
 CounterLogic, situated in the file logic/counter_logic.py, then you can use the
 logger like
@@ -116,7 +116,7 @@ class CounterLogic(GenericLogic):
 
 ## Location of the log file
 
-The log file will be situated either in the root directory of QuDi or in the
+The log file will be situated either in the root directory of Qudi or in the
 current directory where the external module is loaded. With
 
 ```python
@@ -143,11 +143,11 @@ logger.info(os)
     >>> <module 'os' from '...\\Anaconda3\\lib\\os.py'>
 
 
-## Logging Levels in QuDi
+## Logging Levels in Qudi
 
 The logging used throughout qudi are the same defined in description of the logging package, which can be obtained [here](https://docs.python.org/3/library/logging.html#logging-levels).
 
-| log in external module | log within QuDi | Numeric value           |
+| log in external module | log within Qudi | Numeric value           |
 | ------------------- | :---------------------- |:---:|
 | log.critical(...)   | self.log.critical(...)  |  50 |
 | log.error(...)      | self.log.error(...)     |  40 |

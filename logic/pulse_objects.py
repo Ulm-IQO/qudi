@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi data object classes needed for pulse sequence generation.
+This file contains the Qudi data object classes needed for pulse sequence generation.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -24,7 +24,7 @@ import numpy as np
 from collections import OrderedDict
 
 
-class Pulse_Block_Element(object):
+class Pulse_Block_Element:
     """ Object representing a single atomic element in a pulse block.
 
     This class can build waiting times, sine waves, etc. The pulse block may
@@ -82,7 +82,7 @@ class Pulse_Block_Element(object):
             self.digital_channels = 0
 
 
-class Pulse_Block(object):
+class Pulse_Block:
     """ Collection of Pulse_Block_Elements which is called a Pulse_Block. """
 
     def __init__(self, name, element_list):
@@ -150,7 +150,7 @@ class Pulse_Block(object):
         return
 
 
-class Pulse_Block_Ensemble(object):
+class Pulse_Block_Ensemble:
     """ Represents a collection of Pulse_Block objects which is called a
         Pulse_Block_Ensemble.
 
@@ -286,7 +286,7 @@ class Pulse_Block_Ensemble(object):
         return
 
 
-class Pulse_Sequence(object):
+class Pulse_Sequence:
     """ Higher order object for sequence capability.
 
     Represents a playback procedure for a number of Pulse_Block_Ensembles.

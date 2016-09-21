@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -36,14 +36,15 @@ sys.path.append(os.getcwd())
 from gui.colordefs import QudiPalettePale as palette
 import core.config
 from menu import ModMenu
+from collections import OrderedDict
 import listmods
 import logging
-
+import argparse
 
 class ConfigMainWindow(QtWidgets.QMainWindow):
     """ This class represents the Manager Window.
     """
-    def __init__(self):
+    def __init__(self, loadfile=None):
         """ Create the Manager Window.
         """
         # Get the path to the *.ui file
@@ -54,11 +55,17 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         # Load it
         super().__init__()
         uic.loadUi(ui_file, self)
+
         self.mods = dict()
+        self.globalsection = OrderedDict()
+        self.currentFile = ''
 
         # init 
         self.setupUi()
         self.show()
+
+        if loadfile is not None:
+            self.loadConfigFile(loadfile)
 
     def setupUi(self):
         self.actionNew_configuration.triggered.connect(self.newConfigFile)
@@ -108,14 +115,15 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
 
         g = self.graphView
         node = Node(g, name)
-        if module.name.startswith('hardware'):
+        if module.path.startswith('hardware'):
             node.setColor(palette.c2)
-        elif module.name.startswith('logic'):
+        elif module.path.startswith('logic'):
             node.setColor(palette.c1)
-        elif module.name.startswith('gui'):
+        elif module.path.startswith('gui'):
             node.setColor(palette.c4)
         else:
             node.setColor(palette.c3)
+
         for conn in module.conn_in:
             node.addPort(InputPort(node, g, conn[0], palette.c3, conn[1]))
 
@@ -137,9 +145,15 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             'Load Configration',
             defaultconfigpath ,
             'Configuration files (*.cfg)')
-        print('Open:', filename)
+        if len(filename) > 0:
+            print('Open:', filename)
+            self.loadConfigFile(filename)
+
+    def loadConfigFile(self, filename):
         config = core.config.load(filename)
         self.configToNodes(config)
+        self.currentFile = filename
+        self.graphView.frameAllNodes()
 
     def newConfigFile(self):
         self.graphView.reset()
@@ -147,13 +161,27 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         self.updateWindowTitle(self.configFileName, extra='*')
 
     def saveConfigFile(self):
-        pass
+        if os.path.isfile(self.currentFile):
+            config = self.nodesToConfig()
+            core.config.save(self.currentFile, config)
+        else:
+             self.saveConfigFileAs()
 
     def saveConfigFileAs(self):
-        pass
+        defaultconfigpath = os.path.dirname(self.currentFile)
+        filename = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            'Save Configration As',
+            defaultconfigpath ,
+            'Configuration files (*.cfg)')
+        if len(filename) > 0:
+            print('Save:', filename)
+            config = self.nodesToConfig()
+            core.config.save(filename, config)
+            self.currentFile = filename
 
     def updateWindowTitle(self, filename, extra=''):
-        self.setWindowTitle('{}{} - QuDi configuration editor'.format(filename, extra))
+        self.setWindowTitle('{}{} - Qudi configuration editor'.format(filename, extra))
     
     def getModuleInfo(self):
         modules = listmods.find_pyfiles(os.getcwd())
@@ -211,11 +239,42 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
                                 'pyflowgraph failed while connecting {}.{} to {}.{}'
                                 ''.format(src, cl[-1], k, conn_in))
                             
+        self.globalsection = config['global']
 
-    def nodesToConfig(self, graphview):
-        nodes = self.graphView.getAllNodes()
-        for name, node in nodes.items():
-            print(name, node)
+    def nodesToConfig(self):
+        """ Convert nodes into OrderedDict for saving.
+        """
+        config = OrderedDict()
+        config['global'] = OrderedDict()
+        config['hardware'] = OrderedDict()
+        config['logic'] = OrderedDict()
+        config['gui'] = OrderedDict()
+
+        for key,value in self.globalsection.items():
+            config['global'][key] = value
+
+        for mname,mod in self.mods.items():
+            entry = OrderedDict()
+            path = mod['module'].path.split('.')
+
+            if len(path) > 1 and path[0] in ('hardware', 'logic', 'gui'):
+                config[path[0]][mname] = entry
+                entry['module.Class'] = '.'.join(path[1:])
+
+                portin = (mod['node'].getPort(x[0]) for x in mod['module'].conn_in)
+                conndict = OrderedDict()
+                for port in portin:
+                    conns = port.inCircle().getConnections()
+                    if len(conns) == 1:
+                        c = tuple(conns)[0]
+                        src = c.getSrcPort()
+                        node = src.getNode()
+                        conndict[port.getName()] = '{}.{}'.format(node.getName(), src.getName())
+                if len(conndict) > 0:
+                    entry['connect'] = conndict
+            print(entry)
+
+        return config
 
     def nodeAdded(self):
         pass
@@ -227,7 +286,11 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         pass
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='config_gui')
+    parser.add_argument('-c', '--config', default=None, help='configuration file')
+    args = parser.parse_args()
+
     app = QtWidgets.QApplication(sys.argv)
-    mw = ConfigMainWindow()
+    mw = ConfigMainWindow(loadfile=args.config)
     app.exec_()
 

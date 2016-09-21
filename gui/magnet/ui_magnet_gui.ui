@@ -1262,12 +1262,12 @@ contrast alignment</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>tools.scientific_spinbox</header>
+   <header>qtwidgets.scientific_spinbox</header>
   </customwidget>
   <customwidget>
    <class>ScienSpinBox</class>
    <extends>QSpinBox</extends>
-   <header>tools.scientific_spinbox</header>
+   <header>qtwidgets.scientific_spinbox</header>
   </customwidget>
  </customwidgets>
  <resources/>

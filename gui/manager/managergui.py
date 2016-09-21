@@ -2,18 +2,18 @@
 """ This module contains a GUI through which the Manager core class can be controlled.
 It can load and reload modules, show the configuration, and re-open closed windows.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -50,7 +50,7 @@ except:
 
 
 class ManagerGui(GUIBase):
-    """This class provides a GUI to the QuDi manager.
+    """This class provides a GUI to the Qudi manager.
 
       @signal sigStartAll: sent when all modules should be loaded
       @signal str str sigStartThis: load a specific module
@@ -136,7 +136,7 @@ class ManagerGui(GUIBase):
             self._manager.startAllConfiguredModules)
         self._mw.actionAbout_Qt.triggered.connect(
             QtWidgets.QApplication.aboutQt)
-        self._mw.actionAbout_QuDi.triggered.connect(self.showAboutQuDi)
+        self._mw.actionAbout_Qudi.triggered.connect(self.showAboutQudi)
 
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
@@ -201,7 +201,7 @@ class ManagerGui(GUIBase):
         self._mw.actionSave_configuration.triggered.disconnect()
         self._mw.action_Load_all_modules.triggered.disconnect()
         self._mw.actionAbout_Qt.triggered.disconnect()
-        self._mw.actionAbout_QuDi.triggered.disconnect()
+        self._mw.actionAbout_Qudi.triggered.disconnect()
         self.saveWindowPos(self._mw)
         self._mw.close()
 
@@ -212,8 +212,8 @@ class ManagerGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def showAboutQuDi(self):
-        """Show a dialog with details about QuDi.
+    def showAboutQudi(self):
+        """Show a dialog with details about Qudi.
         """
         self._about.show()
 
@@ -503,11 +503,11 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
 
 
 class AboutDialog(QtWidgets.QDialog):
-    """ This class represents the QuDi About dialog.
+    """ This class represents the Qudi About dialog.
     """
 
     def __init__(self):
-        """ Create QuDi About Dialog.
+        """ Create Qudi About Dialog.
         """
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -534,7 +534,7 @@ class ConsoleSettingsDialog(QtWidgets.QDialog):
 
 
 class ModuleListItem(QtWidgets.QFrame):
-    """ This class represents a module widget in the QuDi module list.
+    """ This class represents a module widget in the Qudi module list.
 
       @signal str str sigLoadThis: gives signal with base and name of module
                                    to be loaded

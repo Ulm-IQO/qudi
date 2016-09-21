@@ -1,7 +1,7 @@
 # Keyboard shortcuts  {#shortcuts}
 
 
-Here all key shortcuts of QuDi are listed.
+Here all key shortcuts of Qudi are listed.
 
 ## For all GUIs
 
