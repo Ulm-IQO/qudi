@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi Manager class.
+This file contains the Qudi Manager class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -76,7 +76,7 @@ class Manager(QtCore.QObject):
     sigShowManager = QtCore.Signal()
 
     def __init__(self, args, **kwargs):
-        """Constructor for QuDi main management class
+        """Constructor for Qudi main management class
 
           @param args: argparse command line arguments
         """
@@ -172,7 +172,7 @@ class Manager(QtCore.QObject):
                 self.remoteServer = False
                 logger.exception('Remote server could not be started.')
 
-            logger.info('QuDi started.')
+            logger.info('Qudi started.')
 
             # Load startup things from config here
             if 'startup' in self.tree['global']:
@@ -262,6 +262,7 @@ class Manager(QtCore.QObject):
         else:
             return os.path.expanduser('~/.local/qudi')
 
+    @QtCore.Slot(str)
     def readConfig(self, configFile):
         """Read configuration file and sort entries into categories.
 
@@ -279,6 +280,7 @@ class Manager(QtCore.QObject):
         print("\n============= Manager configuration complete =================\n")
         logger.info('Manager configuration complete.')
 
+    @QtCore.Slot(dict)
     def configure(self, cfg):
         """Sort modules from configuration into categories
 
@@ -391,6 +393,7 @@ class Manager(QtCore.QObject):
                         raise Exception(
                             'Config file {0} not found.'.format(fileName))
 
+    @QtCore.Slot(dict, str)
     def writeConfigFile(self, data, fileName):
         """Write a file into the currently used config directory.
 
@@ -414,6 +417,7 @@ class Manager(QtCore.QObject):
         with self.lock:
             return os.path.join(self.configDir, name)
 
+    @QtCore.Slot(str)
     def saveConfig(self, filename):
         """Save configuration to a file.
 
@@ -426,6 +430,7 @@ class Manager(QtCore.QObject):
         self.writeConfigFile(saveconfig, filename)
         logger.info('Saved configuration to {0}'.format(filename))
 
+    @QtCore.Slot(str, bool)
     def loadConfig(self, filename, restart=False):
         """ Load configuration from file.
 
@@ -441,9 +446,10 @@ class Manager(QtCore.QObject):
         config.save(loadFile, loadData)
         logger.info('Set loaded configuration to {0}'.format(filename))
         if restart:
-            logger.info('Restarting QuDi after configuration reload.')
+            logger.info('Restarting Qudi after configuration reload.')
             self.restart()
 
+    @QtCore.Slot(str, str)
     def reloadConfigPart(self, base, mod):
         """Reread the configuration file and update the internal configuration of module
 
@@ -462,7 +468,7 @@ class Manager(QtCore.QObject):
     ##################
 
     def importModule(self, baseName, module):
-        """Load a python module that is a loadable QuDi module.
+        """Load a python module that is a loadable Qudi module.
 
           @param string baseName: the module base package (hardware, logic, or gui)
           @param string module: the python module name inside the base package
@@ -483,21 +489,21 @@ class Manager(QtCore.QObject):
 
     def configureModule(self, moduleObject, baseName, className, instanceName,
                         configuration=None):
-        """Instantiate an object from the class that makes up a QuDi module
+        """Instantiate an object from the class that makes up a Qudi module
            from a loaded python module object.
 
           @param object moduleObject: loaded python module
           @param string baseName: module base package (hardware, logic or gui)
           @param string className: name of the class we want an object from
                                  (same as module name usually)
-          @param string instanceName: unique name thet the QuDi module instance
+          @param string instanceName: unique name thet the Qudi module instance
                                  was given in the configuration
-          @param dict configuration: configuration options for the QuDi module
+          @param dict configuration: configuration options for the Qudi module
 
-          @return object: QuDi module instance (object of the class derived
+          @return object: Qudi module instance (object of the class derived
                           from Base)
 
-          This method will add the resulting QuDi module instance to internal
+          This method will add the resulting Qudi module instance to internal
           bookkeeping.
         """
         if configuration is None:
@@ -1134,8 +1140,9 @@ class Manager(QtCore.QObject):
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
 
+    @QtCore.Slot()
     def startAllConfiguredModules(self):
-        """Connect all QuDi modules from the currently laoded configuration and
+        """Connect all Qudi modules from the currently laoded configuration and
             activate them.
         """
         # FIXME: actually load all the modules in the correct order and connect
@@ -1156,6 +1163,7 @@ class Manager(QtCore.QObject):
             os.makedirs(appStatusDir)
         return appStatusDir
 
+    @QtCore.Slot(str, str, dict)
     def saveStatusVariables(self, base, module, variables):
         """ If a module has status variables, save them to a file in the application status directory.
 
@@ -1200,6 +1208,7 @@ class Manager(QtCore.QObject):
             variables = OrderedDict()
         return variables
 
+    @QtCore.Slot(str, str)
     def removeStatusFile(self, base, module):
         try:
             statusdir = self.getStatusDir()
@@ -1221,6 +1230,7 @@ class Manager(QtCore.QObject):
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
 
+    @QtCore.Slot()
     def restart(self):
         """Nicely request that all modules shut down for application restart."""
         for mbase in ['hardware', 'logic', 'gui']:

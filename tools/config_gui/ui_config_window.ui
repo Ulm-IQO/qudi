@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>QuDi configuration editor</string>
+   <string>Qudi configuration editor</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -44,7 +44,7 @@
     <property name="title">
      <string>Hel&amp;p</string>
     </property>
-    <addaction name="actionAbout_QuDiConfig"/>
+    <addaction name="actionAbout_QudiConfig"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -110,9 +110,9 @@
     <string>&amp;Exit</string>
    </property>
   </action>
-  <action name="actionAbout_QuDiConfig">
+  <action name="actionAbout_QudiConfig">
    <property name="text">
-    <string>&amp;About QuDiConfig</string>
+    <string>&amp;About QudiConfig</string>
    </property>
   </action>
   <action name="actionAbout_Qt">

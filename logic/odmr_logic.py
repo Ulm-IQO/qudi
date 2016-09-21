@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Logic module base class.
+This file contains the Qudi Logic module base class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -47,6 +47,8 @@ class ODMRLogic(GenericLogic):
     _out = {'odmrlogic': 'ODMRLogic'}
 
     sigNextLine = QtCore.Signal()
+    sigOdmrStarted = QtCore.Signal()
+    sigOdmrStopped = QtCore.Signal()
     sigOdmrPlotUpdated = QtCore.Signal()
     sigOdmrFitUpdated = QtCore.Signal()
     sigOdmrMatrixUpdated = QtCore.Signal()
@@ -55,7 +57,6 @@ class ODMRLogic(GenericLogic):
     sigODMRMatrixAxesChanged = QtCore.Signal()
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
-
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -296,6 +297,7 @@ class ODMRLogic(GenericLogic):
 
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
+        self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
 
     def continue_odmr_scan(self):
@@ -315,7 +317,7 @@ class ODMRLogic(GenericLogic):
                 self._mw_device.sweep_on()
             else:
                 self._mw_device.list_on()
-
+        self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
 
     def stop_odmr_scan(self):
@@ -362,7 +364,7 @@ class ODMRLogic(GenericLogic):
 
                 self.sigMicrowaveCWModeChanged.emit(False)
                 self.sigMicrowaveListModeChanged.emit(False)
-
+                self.sigOdmrStopped.emit()
                 return
 
         # reset position so every line starts from the same frequency

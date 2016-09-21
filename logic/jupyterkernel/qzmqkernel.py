@@ -2,18 +2,18 @@
 """
 Qt-based IPython/jupyter kernel
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 ------------------------------------------------------------------------------
 based on simple_kernel.py (https://github.com/dsblank/simple_kernel)
@@ -301,7 +301,7 @@ class QZMQKernel(QtCore.QObject):
             logging.info( "unknown msg_type: %s" % msg['header']["msg_type"])
 
     def shell_execute(self, identities, msg):
-        logging.info( "simple_kernel Executing: %s" % msg['content']["code"])
+        logging.debug( "simple_kernel Executing: %s" % msg['content']["code"])
         # tell the notebook server that we are busy
         content = {
             'execution_state': "busy",
@@ -486,7 +486,7 @@ class QZMQKernel(QtCore.QObject):
         # complete_request, complete_reply, history_request, history_reply
         # is_complete_request, is_complete_reply, connect_request, connect_reply
         # kernel_info_request, kernel_info_reply, shutdown_request, shutdown_reply
-        logging.info( "control received: %s" % wire_msg)
+        logging.debug( "control received: %s" % wire_msg)
         identities, msg = self.deserialize_wire_msg(wire_msg)
         # Control message handler:
         if msg['header']["msg_type"] == "shutdown_request":
@@ -496,12 +496,12 @@ class QZMQKernel(QtCore.QObject):
         # handle some of these messages:
         # stream, display_data, data_pub, execute_input, execute_result
         # error, status, clear_output
-        logging.info( "iopub received: %s" % msg)
+        logging.debug( "iopub received: %s" % msg)
 
     def stdin_handler(self, msg):
         # handle some of these messages:
         # input_request, input_reply
-        logging.info( "stdin received: %s" % msg)
+        logging.debug( "stdin received: %s" % msg)
 
     def bind(self, socket, connection, port):
         if port <= 0:

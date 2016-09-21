@@ -2160,12 +2160,12 @@
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>tools.scientific_spinbox.h</header>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
    <class>PlotWidgetModified</class>
    <extends>QGraphicsView</extends>
-   <header>gui.confocal.plotwidget_modified.h</header>
+   <header>qtwidgets.plotwidget_modified.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
