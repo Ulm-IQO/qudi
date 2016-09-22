@@ -165,7 +165,6 @@ class QdplotterGui(GUIBase):
         self._mw.range_min_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[0])
         self._mw.range_max_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[1])
 
-        print('v_label in logic when updatePLot',self._qdplot_logic.v_label)
 
         self._mw.horizontal_label_lineEdit.setText(self._qdplot_logic.h_label)
         self._mw.horizontal_units_lineEdit.setText(self._qdplot_logic.h_units)
