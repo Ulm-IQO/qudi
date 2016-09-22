@@ -498,7 +498,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.upload_to_device_PushButton.clicked.connect(self.upload_to_device_clicked)
         self._mw.load_channel_PushButton.clicked.connect(self.load_into_channel_clicked)
 
-        # connect the menue to the actions:
+        # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
         self._mw.actionOpen_Predefined_Methods.triggered.connect(self.show_predefined_methods)
         self._mw.actionConfigure_Predefined_Methods.triggered.connect(self.show_predefined_methods_config)
