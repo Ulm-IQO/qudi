@@ -262,6 +262,7 @@ class Manager(QtCore.QObject):
         else:
             return os.path.expanduser('~/.local/qudi')
 
+    @QtCore.Slot(str)
     def readConfig(self, configFile):
         """Read configuration file and sort entries into categories.
 
@@ -279,6 +280,7 @@ class Manager(QtCore.QObject):
         print("\n============= Manager configuration complete =================\n")
         logger.info('Manager configuration complete.')
 
+    @QtCore.Slot(dict)
     def configure(self, cfg):
         """Sort modules from configuration into categories
 
@@ -391,6 +393,7 @@ class Manager(QtCore.QObject):
                         raise Exception(
                             'Config file {0} not found.'.format(fileName))
 
+    @QtCore.Slot(dict, str)
     def writeConfigFile(self, data, fileName):
         """Write a file into the currently used config directory.
 
@@ -414,6 +417,7 @@ class Manager(QtCore.QObject):
         with self.lock:
             return os.path.join(self.configDir, name)
 
+    @QtCore.Slot(str)
     def saveConfig(self, filename):
         """Save configuration to a file.
 
@@ -426,6 +430,7 @@ class Manager(QtCore.QObject):
         self.writeConfigFile(saveconfig, filename)
         logger.info('Saved configuration to {0}'.format(filename))
 
+    @QtCore.Slot(str, bool)
     def loadConfig(self, filename, restart=False):
         """ Load configuration from file.
 
@@ -444,6 +449,7 @@ class Manager(QtCore.QObject):
             logger.info('Restarting Qudi after configuration reload.')
             self.restart()
 
+    @QtCore.Slot(str, str)
     def reloadConfigPart(self, base, mod):
         """Reread the configuration file and update the internal configuration of module
 
@@ -1134,6 +1140,7 @@ class Manager(QtCore.QObject):
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
 
+    @QtCore.Slot()
     def startAllConfiguredModules(self):
         """Connect all Qudi modules from the currently laoded configuration and
             activate them.
@@ -1156,6 +1163,7 @@ class Manager(QtCore.QObject):
             os.makedirs(appStatusDir)
         return appStatusDir
 
+    @QtCore.Slot(str, str, dict)
     def saveStatusVariables(self, base, module, variables):
         """ If a module has status variables, save them to a file in the application status directory.
 
@@ -1200,6 +1208,7 @@ class Manager(QtCore.QObject):
             variables = OrderedDict()
         return variables
 
+    @QtCore.Slot(str, str)
     def removeStatusFile(self, base, module):
         try:
             statusdir = self.getStatusDir()
@@ -1221,6 +1230,7 @@ class Manager(QtCore.QObject):
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
 
+    @QtCore.Slot()
     def restart(self):
         """Nicely request that all modules shut down for application restart."""
         for mbase in ['hardware', 'logic', 'gui']:
