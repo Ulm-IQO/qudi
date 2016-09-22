@@ -68,7 +68,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
                     '10 seconds.')
 
         # trying to load the visa connection to the module
-        visa.log_to_screen()
         self.rm = visa.ResourceManager()
         try:
             self._gpib_connection = self.rm.open_resource(
