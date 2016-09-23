@@ -109,10 +109,15 @@ class ODMRGui(GUIBase):
         self._sd = ODMRSettingDialog()
 
         # Adjust range of scientific spinboxes above what is possible in Qt Designer
-        self._mw.frequency_DoubleSpinBox.setMaximum(100e9)
-        self._mw.start_freq_DoubleSpinBox.setMaximum(100e9)
+        self._mw.frequency_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_frequency)
+        self._mw.frequency_DoubleSpinBox.setMinimum(self._odmr_logic.limits.min_frequency)
+        self._mw.start_freq_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_frequency)
+        self._mw.start_freq_DoubleSpinBox.setMinimum(self._odmr_logic.limits.min_frequency)
         self._mw.step_freq_DoubleSpinBox.setMaximum(100e9)
-        self._mw.stop_freq_DoubleSpinBox.setMaximum(100e9)
+        self._mw.stop_freq_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_frequency)
+        self._mw.stop_freq_DoubleSpinBox.setMinimum(self._odmr_logic.limits.min_frequency)
+        self._mw.power_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_power)
+        self._mw.power_DoubleSpinBox.setMinimum(self._odmr_logic.limits.min_power)
 
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)

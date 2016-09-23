@@ -29,7 +29,6 @@ import matplotlib.pyplot as plt
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.util.units import in_range
 
 
 class ODMRLogic(GenericLogic):
@@ -128,21 +127,12 @@ class ODMRLogic(GenericLogic):
             'Double Gaussian': False
         }
 
-        self.mw_frequency = in_range(2870e6,
-                                     self.limits['frequency']['min'],
-                                     self.limits['frequency']['max'])  # in Hz
-        self.mw_power = in_range(-30.,
-                                 self.limits['power']['min'],
-                                 self.limits['power']['max'])  # in dBm
-        self.mw_start = in_range(2800e6,
-                                 self.limits['frequency']['min'],
-                                 self.limits['frequency']['max'])  # in Hz
-        self.mw_stop = in_range(2950e6,
-                                self.limits['frequency']['min'],
-                                self.limits['frequency']['max'])  # in Hz
-        self.mw_step = in_range(2e6,
-                                self.limits['list']['minstep'],
-                                self.limits['list']['maxstep'])  # in Hz
+        self.mw_frequency = self.limits.frequency_in_range(2870e6)
+
+        self.mw_power = self.limits.power_in_range(-30)
+        self.mw_start = self.limits.frequency_in_range(2800e6)
+        self.mw_stop = self.limits.frequency_in_range(2950e6)
+        self.mw_step = self.limits.list_step_in_range(2e6)
         self.run_time = 10          # in s
         self.elapsed_time = 0       # in s
         self.current_fit_function = 'No Fit'
@@ -153,25 +143,16 @@ class ODMRLogic(GenericLogic):
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
         if 'mw_frequency' in self._statusVariables:
-            self.mw_frequency = in_range(self._statusVariables['mw_frequency'],
-                                         self.limits['frequency']['min'],
-                                         self.limits['frequency']['max'])  # in Hz
+            self.mw_frequency = self.limits.frequency_in_range(
+                self._statusVariables['mw_frequency'])
         if 'mw_power' in self._statusVariables:
-            self.mw_power = in_range(self._statusVariables['mw_power'],
-                                     self.limits['power']['min'],
-                                     self.limits['power']['max'])  # in dBm
+            self.mw_power = self.limits.power_in_range(self._statusVariables['mw_power'])
         if 'mw_start' in self._statusVariables:
-            self.mw_start = in_range(self._statusVariables['mw_start'],
-                                     self.limits['frequency']['min'],
-                                     self.limits['frequency']['max'])  # in Hz
+            self.mw_start = self.limits.frequency_in_range(self._statusVariables['mw_start'])
         if 'mw_stop' in self._statusVariables:
-            self.mw_stop = in_range(self._statusVariables['mw_stop'],
-                                    self.limits['frequency']['min'],
-                                    self.limits['frequency']['max'])  # in Hz
+            self.mw_stop = self.limits.frequency_in_range(self._statusVariables['mw_stop'])
         if 'mw_step' in self._statusVariables:
-            self.mw_step = in_range(self._statusVariables['mw_step'],
-                                    self.limits['list']['minstep'],
-                                    self.limits['list']['maxstep'])  # in Hz
+            self.mw_step = self.limits.list_step_in_range(self._statusVariables['mw_step'])
         if 'run_time' in self._statusVariables:
             self.run_time = self._statusVariables['run_time']
         if 'safeRawData' in self._statusVariables:
@@ -243,17 +224,15 @@ class ODMRLogic(GenericLogic):
         self._StartTime = time.time()
         self.elapsed_time = 0
         self.sigOdmrElapsedTimeChanged.emit()
-        self.mw_start = in_range(self.mw_start,
-                                 self.limits['frequency']['min'],
-                                 self.limits['frequency']['max'])  # in Hz
-        self.mw_stop = in_range(self.mw_stop,
-                                self.limits['frequency']['min'],
-                                self.limits['frequency']['max'])  # in Hz
+        self.mw_start = self.limits.frequency_in_range(self.mw_start)
+        self.mw_stop = self.limits.frequency_in_range(self.mw_stop)
 
-        mode = 'sweep' if self.scanmode == 'SWEEP' else 'list'
-        self.mw_step = in_range(self.mw_step,
-                                self.limits[mode]['minstep'],
-                                self.limits[mode]['maxstep'])  # in Hz
+        if self.scanmode == 'SWEEP':
+            mode = 'sweep'
+            self.mw_step = self.limits.sweep_step_in_range(self.mw_step)
+        else:
+            mode = 'list'
+            self.mw_step = self.limits.list_step_in_range(self.mw_step)
 
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
 
@@ -276,15 +255,22 @@ class ODMRLogic(GenericLogic):
             self.log.info('Raw data NOT saved.')
 
         self.start_odmr()
-        if len(self._mw_frequency_list) >= self.limits[mode]['maxentries']:
-            self.stopRequested = True
-            self.sigNextLine.emit()
-            return
 
         if self.scanmode == 'SWEEP':
+            if len(self._mw_frequency_list) >= self.limits.sweep_maxentries:
+                self.stopRequested = True
+                self.sigNextLine.emit()
+                return
+
             n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
             return_val = n - len(self._mw_frequency_list)
+
         else:
+            if len(self._mw_frequency_list) >= self.limits.list_maxentries:
+                self.stopRequested = True
+                self.sigNextLine.emit()
+                return
+
             return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
 
         if return_val != 0:
@@ -431,17 +417,14 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         if isinstance(power, (int, float)):
-            self.mw_power = in_range(power,
-                                     self.limits['power']['min'],
-                                     self.limits['power']['max'])  # in Hz
+            self.mw_power = self.limits.power_in_range(power)
         else:
             return -1
         if self.getState() == 'locked':
             return -1
         else:
-            error_code = self._mw_device.set_power(in_range(power,
-                                                            self.limits['power']['min'],
-                                                            self.limits['power']['max']))
+            error_code = self._mw_device.set_power(
+                self.limits.power_in_range(power))
             return error_code
 
     def get_power(self):
@@ -460,18 +443,14 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         if isinstance(frequency, (int, float)):
-            self.mw_frequency = in_range(frequency,
-                                         self.limits['frequency']['min'],
-                                         self.limits['frequency']['max'])  # in Hz
+            self.mw_frequency = self.limits.frequency_in_range(frequency)
         else:
             return -1
-
         if self.getState() == 'locked':
             return -1
         else:
-            error_code = self._mw_device.set_frequency(in_range(frequency,
-                                                       self.limits['frequency']['min'],
-                                                       self.limits['frequency']['max']))  # in Hz
+            error_code = self._mw_device.set_frequency(
+                self.limits.frequency_in_range(frequency))
             return error_code
 
     def get_frequency(self):

@@ -26,7 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
@@ -78,26 +78,22 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
     def get_limits(self):
         """ Right now, this is for Anritsu MG3696B only."""
-        limits = {
-            'frequency': {
-                'min': 10*10e6,
-                'max': 70*10e9
-                },
-            'power': {
-                'min': -20,
-                'max': 10
-                },
-            'list': {
-                'minstep': 0.001,
-                'maxstep': 70*10e9,
-                'maxentries': 2000
-                },
-            'sweep': {
-                'minstep': 0.001,
-                'maxstep': 70*10e9,
-                'maxentries': 10000
-                }
-            }
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST')
+
+        limits.min_frequency = 10e6
+        limits.max_frequency = 70e9
+
+        limits.min_power = -20
+        limits.max_power = 10
+
+        limits.list_minstep = 0.001
+        limits.list_maxstep = 70e9
+        limits.list_maxentries = 2000
+
+        limits.sweep_minstep = 0.001
+        limits.sweep_maxstep = 70e9
+        limits.sweep_maxentries = 10001
         return limits
 
     def on(self):

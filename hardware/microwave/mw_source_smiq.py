@@ -27,7 +27,7 @@ import visa
 import numpy as np
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveSmiq(Base, MicrowaveInterface):
@@ -93,58 +93,42 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self.rm.close()
 
     def get_limits(self):
-        minpower = -144
-        maxpower = 10
-        minfreq = 300 * 10e3
-        maxfreq = 6.4 * 10e9
-        minliststep = 0.1
-        maxliststep = 6.4 * 10e9
-        listentries = 4000
-        minsweepstep = 0.1
-        maxsweepstep = 10e9
-        sweepentries = 10e6
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST', 'SWEEP')
+
+        limits.min_frequency = 300e3
+        limits.max_frequency = 6.4e9
+
+        limits.min_power = -144
+        limits.max_power = 10
+
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 6.4e9
+        limits.list_maxentries = 4000
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 6.4e9
+        limits.sweep_maxentries = 10001
 
         if self.model == 'SMIQ02B':
-            maxfreq = 2.2 * 10e9
-            maxpower = 13
-            maxliststep = 2.2 * 10e9
+            limits.max_frequency = 2.2e9
+            limits.max_power = 13
         elif self.model == 'SMIQ03B':
-            maxfreq = 3.3 * 10e9
-            maxpower = 13
-            maxliststep = 3.3 * 10e9
+            limits.max_frequency = 3.3e9
+            limits.max_power = 13
         elif self.model == 'SMIQ03HD':
-            maxfreq = 3.3 * 10e9
-            maxpower = 13
-            maxliststep = 3.3 * 10e9
+            limits.max_frequency = 3.3e9
+            limits.max_power = 13
         elif self.model == 'SMIQ04B':
-            maxfreq = 4.4 * 10e9
-            maxliststep = 4.4 * 10e9
+            limits.max_frequency = 4.4e9
         elif self.model == 'SMIQ06B':
             pass
         elif self.model == 'SMIQ06ATE':
             pass
         else:
             self.log.warning('Model string unknown, hardware limits may be wrong.')
-        limits = {
-            'frequency': {
-                'min': minfreq,
-                'max': maxfreq
-                },
-            'power': {
-                'min': minpower,
-                'max': maxpower
-                },
-            'list': {
-                'minstep': minliststep,
-                'maxstep': maxliststep,
-                'maxentries': listentries
-                },
-            'sweep': {
-                'minstep': minsweepstep,
-                'maxstep': maxsweepstep,
-                'maxentries': sweepentries
-                }
-            }
+        limits.list_maxstep = limits.max_frequency
+        limits.sweep_maxstep = limits.max_frequency
         return limits
 
     def on(self):
