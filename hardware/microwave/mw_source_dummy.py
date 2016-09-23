@@ -75,26 +75,22 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
     def get_limits(self):
         """Dummy limits"""
-        limits = {
-            'frequency': {
-                'min': 100 * 10e3,
-                'max': 50 * 10e9
-                },
-            'power': {
-                'min': -120,
-                'max': 30
-                },
-            'list': {
-                'minstep': 1,
-                'maxstep': 10 * 10e9,
-                'maxentries': 5000
-                },
-            'sweep': {
-                'minstep': 0.1,
-                'maxstep': 10 * 10e9,
-                'maxentries': 10 * 10e9
-                }
-            }
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST', 'SWEEP', 'AN_SWEEP')
+
+        limits.min_frequency = 100e3
+        limits.max_frequency = 20e9
+
+        limits.min_power = -120
+        limits.max_power = 30
+
+        limits.list_minstep = 0.001
+        limits.list_maxstep = 20e9
+        limits.list_maxentries = 10001
+
+        limits.sweep_minstep = 0.001
+        limits.sweep_maxstep = 20e9
+        limits.sweep_maxentries = 10001
         return limits
 
     def on(self):

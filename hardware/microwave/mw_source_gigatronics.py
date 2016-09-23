@@ -28,7 +28,7 @@ import numpy as np
 import time
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveGigatronics(Base, MicrowaveInterface):
@@ -98,47 +98,38 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         self.rm.close()
 
     def get_limits(self):
-        minpower = -144
-        maxpower = 10
-        minfreq = 100e3
-        maxfreq = 20e9
-        minliststep = 0.1
-        maxliststep = 20e9
-        listentries = 4000
-        minsweepstep = 0.1
-        maxsweepstep = 10e9
-        sweepentries = 10e6
+        """Limits of Gigatronics 2400/2500 microwave source series.
+
+          return MicrowaveLimits: limits of the particular Gigatronics MW source model
+        """
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST')
+
+        limits.min_frequency = 100e3
+        limits.max_frequency = 20e9
+
+        limits.min_power = -144
+        limits.max_power = 10
+
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 20e9
+        limits.list_maxentries = 4000
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 20e9
+        limits.sweep_maxentries = 10001
+
         if self.model.startswith('2508'):
-            maxfreq = 8e9
+            limits.max_frequency = 8e9
         elif self.model.startswith('2520'):
-            maxfreq = 20e9
+            limits.max_frequency = 20e9
         elif self.model.startswith('2526'):
-            maxfreq = 26.5e9
+            limits.max_frequency = 26.5e9
         elif self.model.startswith('2540'):
-            maxfreq = 40e9
+            limits.max_frequency = 40e9
         else:
             self.log.warn('Unknown Gigatronics moel, you are on your own!')
 
-        limits = {
-            'frequency': {
-                'min': minfreq,
-                'max': maxfreq
-            },
-            'power': {
-                'min': minpower,
-                'max': maxpower
-            },
-            'list': {
-                'minstep': minliststep,
-                'maxstep': maxliststep,
-                'maxentries': listentries
-            },
-            'sweep': {
-                'minstep': minsweepstep,
-                'maxstep': maxsweepstep,
-                'maxentries': sweepentries
-            }
-        }
         return limits
 
     def on(self):
