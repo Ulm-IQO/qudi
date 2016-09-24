@@ -28,21 +28,18 @@ logger = logging.getLogger(__name__)
 
 import os
 import sys
-import gc
 import glob
 import re
 import time
-import atexit
-import weakref
 import importlib
 import threading
-import socket
 
 from qtpy import QtCore
 from . import config
 
 from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
+from .util.modules import toposort, isBase
 from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
@@ -84,18 +81,15 @@ class Manager(QtCore.QObject):
         self.lock = Mutex(recursive=True)
         self.tree = OrderedDict()
         self.tree['config'] = OrderedDict()
-        self.tree['start'] = OrderedDict()
         self.tree['defined'] = OrderedDict()
         self.tree['loaded'] = OrderedDict()
 
         self.tree['defined']['hardware'] = OrderedDict()
         self.tree['loaded']['hardware'] = OrderedDict()
 
-        self.tree['start']['gui'] = OrderedDict()
         self.tree['defined']['gui'] = OrderedDict()
         self.tree['loaded']['gui'] = OrderedDict()
 
-        self.tree['start']['logic'] = OrderedDict()
         self.tree['defined']['logic'] = OrderedDict()
         self.tree['loaded']['logic'] = OrderedDict()
 
@@ -440,8 +434,14 @@ class Manager(QtCore.QObject):
         configdir = os.path.join(maindir, 'config')
         loadFile = os.path.join(configdir, 'load.cfg')
         if filename.startswith(configdir):
-            filename = re.sub('^' + re.escape('/'), '',
-                              re.sub('^' + re.escape(configdir), '', filename))
+            filename = re.sub(
+                '^' + re.escape('/'),
+                '',
+                re.sub(
+                    '^' + re.escape(configdir),
+                    '',
+                    filename)
+                )
         loadData = {'configfile': filename}
         config.save(loadFile, loadData)
         logger.info('Set loaded configuration to {0}'.format(filename))
@@ -513,8 +513,8 @@ class Manager(QtCore.QObject):
         with self.lock:
             if baseName in ['hardware', 'logic', 'gui']:
                 if instanceName in self.tree['loaded'][baseName]:
-                    raise Exception('{0} already exists with '
-                                    'name {1}'.format(baseName, instanceName))
+                    raise Exception(
+                        '{0} already exists with name {1}'.format(baseName, instanceName))
             else:
                 raise Exception('You are trying to cheat the system with some '
                                 'category {0}'.format(baseName))
@@ -712,8 +712,7 @@ class Manager(QtCore.QObject):
             else:
                 try:
                     # class_name is the last part of the config entry
-                    class_name = re.split('\.', self.tree['defined'][
-                                          base][key]['module.Class'])[-1]
+                    class_name = re.split('\.', self.tree['defined'][base][key]['module.Class'])[-1]
                     # module_name is the whole line without this last part (and
                     # with the trailing dot removed also)
                     module_name = re.sub(
@@ -810,93 +809,113 @@ class Manager(QtCore.QObject):
                          'declaration in configuration): {0}.{1}'.format(base, key))
         return 0
 
-    def isModuleActive(self, base, key):
+    def isModuleDefined(self, base, name):
+        return (
+            isBase(base)
+            and base in self.tree['defined']
+            and name in self.tree['defined'][base]
+            )
+
+    def isModuleLoaded(self, base, name):
+        return (
+            isBase(base)
+            and base in self.tree['loaded']
+            and name in self.tree['loaded'][base]
+            )
+
+    def isModuleActive(self, base, name):
         """Returns whether a given module is active.
 
           @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be activated.
         """
-        if base not in self.tree['loaded']:
-            logger.error('Unknown module base "{0}"'.format(base))
+        if not self.isModuleLoaded(base, name):
+            logger.error('{0} module {1} not loaded.'.format(base, name))
             return False
-        if key not in self.tree['loaded'][base]:
-            logger.error('{0} module {1} not loaded.'.format(base, key))
-            return False
-        return self.tree['loaded'][base][key].getState() in ('idle',
-                                                             'running')
+        return self.tree['loaded'][base][name].getState() in ('idle', 'running')
 
     @QtCore.Slot(str, str)
-    def activateModule(self, base, key):
+    def activateModule(self, base, name):
         """Activate the module given in key with the help of base class.
 
           @param string base: module base package (hardware, logic or gui)
-          @param string key: module which is going to be activated.
+          @param string name: module which is going to be activated.
 
         """
-        if base not in self.tree['loaded']:
+        loaded = self.tree['loaded']
+        if base not in loaded:
             logger.error('Unknown module base "{0}"'.format(base))
             return
-        if key not in self.tree['loaded'][base]:
-            logger.error('{0} module {1} not loaded.'.format(base, key))
+        loaded_base = loaded[base]
+        if name not in loaded_base:
+            logger.error('{0} module {1} not loaded.'.format(base, name))
             return
-        if self.tree['loaded'][base][key].getState() != 'deactivated' and (
-                (base in self.tree['defined']
-                    and key in self.tree['defined'][base]
-                    and 'remote' in self.tree['defined'][base][key]
-                    and self.remoteServer)
-                or (base in self.tree['start']
-                    and key in self.tree['start'][base])):
+        module = loaded_base[name]
+        if module.getState() != 'deactivated' and (
+                self.isModuleDefined(base, name)
+                and 'remote' in self.tree['defined'][base][name]
+                and self.remoteServer):
+            logger.debug('No need to activate remote module {}.{}.'.format(base, name))
             return
-        if self.tree['loaded'][base][key].getState() != 'deactivated':
-            logger.error('{0} module {1} not deactivated'.format(
-                base, key))
+        if module.getState() != 'deactivated':
+            logger.error('{0} module {1} not deactivated'.format(base, name))
             return
-        # start main loop for qt objects
-        if base == 'logic':
-            modthread = self.tm.newThread('mod-' + base + '-' + key)
-            self.tree['loaded'][base][key].moveToThread(modthread)
-            modthread.start()
         try:
-            self.tree['loaded'][base][key].setStatusVariables(
-                self.loadStatusVariables(base, key))
-            self.tree['loaded'][base][key].activate()
+            module.setStatusVariables(self.loadStatusVariables(base, name))
+            # start main loop for qt objects
+            if base == 'logic':
+                modthread = self.tm.newThread('mod-{}-{}'.format(base, name))
+                module.moveToThread(modthread)
+                modthread.start()
+                success = QtCore.QMetaObject.invokeMethod(
+                    module,
+                    "_wrap_activation",
+                    QtCore.Qt.BlockingQueuedConnection,
+                    QtCore.Q_RETURN_ARG(bool))
+            else:
+                success = module._wrap_activation()
+            logger.debug('Activation success: {}'.format(success))
         except:
             logger.exception(
-                '{0} module {1}: error during activation:'.format(
-                    base, key))
+                '{0} module {1}: error during activation:'.format(base, name))
         QtCore.QCoreApplication.instance().processEvents()
 
     @QtCore.Slot(str, str)
-    def deactivateModule(self, base, key):
+    def deactivateModule(self, base, name):
         """Activated the module given in key with the help of base class.
 
           @param string base: module base package (hardware, logic or gui)
-          @param string key: module which is going to be activated.
+          @param string name: module which is going to be activated.
 
         """
-        logger.info('Deactivating {0}.{1}'.format(base, key))
-        if base not in self.tree['loaded']:
+        logger.info('Deactivating {0}.{1}'.format(base, name))
+        loaded = self.tree['loaded']
+        if base not in loaded:
             logger.error('Unknown module base "{0}"'.format(base))
             return
-        if key not in self.tree['loaded'][base]:
-            logger.error('{0} module {1} not loaded.'.format(base, key))
+        loaded_base = loaded[base]
+        if name not in loaded_base:
+            logger.error('{0} module {1} not loaded.'.format(base, name))
             return
-        if not self.tree['loaded'][base][key].getState() in ('idle',
-                                                             'running'):
-            logger.error('{0} module {1} not active (idle or running).'
-                         ''.format(base, key))
+        module = loaded_base[name]
+        if not module.getState() in ('idle', 'running'):
+            logger.error('{0} module {1} not active (idle or running).'.format(base, name))
             return
         try:
-            self.tree['loaded'][base][key].deactivate()
             if base == 'logic':
-                self.tm.quitThread('mod-' + base + '-' + key)
-                self.tm.joinThread('mod-' + base + '-' + key)
-            self.saveStatusVariables(base, key,
-                                     self.tree['loaded'][base][key].getStatusVariables())
+                success = QtCore.QMetaObject.invokeMethod(
+                    module,
+                    '_wrap_deactivation',
+                    QtCore.Qt.BlockingQueuedConnection,
+                    QtCore.Q_RETURN_ARG(bool))
+                self.tm.quitThread('mod-{}-{}'.format(base, name))
+                self.tm.joinThread('mod-{}-{}'.format(base, name))
+            else:
+                success = module._wrap_deactivation()
+            self.saveStatusVariables(base, name, module.getStatusVariables())
+            logger.debug('Deactivation success: {}'.format(success))
         except:
-            logger.exception(
-                '{0} module {1}: error during deactivation:'.format(
-                    base, key))
+            logger.exception('{0} module {1}: error during deactivation:'.format(base, name))
         QtCore.QCoreApplication.instance().processEvents()
 
     def getSimpleModuleDependencies(self, base, key):
@@ -907,7 +926,7 @@ class Manager(QtCore.QObject):
                           we want the dependencies
 
           @return dict: module dependencies in the right format for the
-                        Manager.toposort function
+                        toposort function
         """
         deplist = list()
         if base not in self.tree['loaded']:
@@ -940,7 +959,7 @@ class Manager(QtCore.QObject):
           @param str base: Module category
           @param str key: Unique configured module name for module where we want the dependencies
 
-          @return dict: module dependencies in the right format for the Manager.toposort function
+          @return dict: module dependencies in the right format for the toposort function
         """
         deps = dict()
         if base not in self.tree['defined']:
@@ -1006,7 +1025,7 @@ class Manager(QtCore.QObject):
             If the module is an active GUI module, show its window.
         """
         deps = self.getRecursiveModuleDependencies(base, key)
-        sorteddeps = Manager.toposort(deps)
+        sorteddeps = toposort(deps)
         if len(sorteddeps) == 0:
             sorteddeps.append(key)
 
@@ -1043,7 +1062,7 @@ class Manager(QtCore.QObject):
 
         """
         deps = self.getRecursiveModuleDependencies(base, key)
-        sorteddeps = Manager.toposort(deps)
+        sorteddeps = toposort(deps)
         if len(sorteddeps) == 0:
             sorteddeps.append(key)
 
@@ -1107,7 +1126,7 @@ class Manager(QtCore.QObject):
 
         """
         deps = self.getSimpleModuleDependencies(base, key)
-        sorteddeps = Manager.toposort(deps)
+        sorteddeps = toposort(deps)
 
         for mkey in sorteddeps:
             for mbase in ['gui', 'logic', 'hardware']:
@@ -1142,7 +1161,7 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot()
     def startAllConfiguredModules(self):
-        """Connect all Qudi modules from the currently laoded configuration and
+        """Connect all Qudi modules from the currently loaded configuration and
             activate them.
         """
         # FIXME: actually load all the modules in the correct order and connect
@@ -1239,101 +1258,6 @@ class Manager(QtCore.QObject):
                     self.deactivateModule(mbase, module)
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
-
-    # Staticmethods are used to group functions which have some logical
-    # connection with a class but they They behave like plain functions except
-    # that you can call them from an instance or the class. Methods covered
-    # with static decorators are an organization/stylistic feature in python.
-    @staticmethod
-    def toposort(deps, cost=None):
-        """Topological sort. Arguments are:
-
-          @param dict deps: Dictionary describing dependencies where a:[b,c]
-                            means "a depends on b and c"
-          @param dict cost: Optional dictionary of per-node cost values. This
-                            will be used to sort independent graph branches by
-                            total cost.
-
-        Examples::
-
-            # Sort the following graph:
-            #
-            #   B ──┬─────> C <── D
-            #       │       │
-            #   E <─┴─> A <─┘
-            #
-            deps = {'a': ['b', 'c'], 'c': ['b', 'd'], 'e': ['b']}
-            toposort(deps)
-            => ['b', 'e', 'd', 'c', 'a']
-
-            # This example is underspecified; there are several orders that
-            # correctly satisfy the graph. However, we may use the 'cost'
-            # argument to impose more constraints on the sort order.
-
-            # Let each node have the following cost:
-            cost = {'a': 0, 'b': 0, 'c': 1, 'e': 1, 'd': 3}
-
-            # Then the total cost of following any node is its own cost plus
-            # the cost of all nodes that follow it:
-            #   A = cost[a]
-            #   B = cost[b] + cost[c] + cost[e] + cost[a]
-            #   C = cost[c] + cost[a]
-            #   D = cost[d] + cost[c] + cost[a]
-            #   E = cost[e]
-            # If we sort independent branches such that the highest cost comes
-            # first, the output is:
-            toposort(deps, cost=cost)
-            => ['d', 'b', 'c', 'e', 'a']
-        """
-        # copy deps and make sure all nodes have a key in deps
-        deps0 = deps
-        deps = {}
-        for k, v in list(deps0.items()):
-            deps[k] = v[:]
-            for k2 in v:
-                if k2 not in deps:
-                    deps[k2] = []
-
-        # Compute total branch cost for each node
-        key = None
-        if cost is not None:
-            order = Manager.toposort(deps)
-            allDeps = {n: set(n) for n in order}
-            for n in order[::-1]:
-                for n2 in deps.get(n, []):
-                    allDeps[n2] |= allDeps.get(n, set())
-
-            totalCost = {n: sum([cost.get(x, 0)
-                                 for x in allDeps[n]]) for n in allDeps}
-            key = lambda x: totalCost.get(x, 0)
-
-        # compute weighted order
-        order = []
-        while len(deps) > 0:
-            # find all nodes with no remaining dependencies
-            ready = [k for k in deps if len(deps[k]) == 0]
-
-            # If no nodes are ready, then there must be a cycle in the graph
-            if len(ready) == 0:
-                print(deps, deps0)
-                raise Exception(
-                    'Cannot resolve requested device configure/start order.')
-
-            # sort by branch cost
-            if key is not None:
-                ready.sort(key=key, reverse=True)
-
-            # add the highest-cost node to the order, then remove it from the
-            # entire set of dependencies
-            order.append(ready[0])
-            del deps[ready[0]]
-            for v in list(deps.values()):
-                try:
-                    v.remove(ready[0])
-                except ValueError:
-                    pass
-
-        return order
 
     def registerTaskRunner(self, reference):
         """ Register/deregister/replace a task runner object.
