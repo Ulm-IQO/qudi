@@ -116,6 +116,8 @@ def toposort(deps, cost=None):
 
 
 def isBase(base):
-    """ """
+    """Is the given base one of the three allowd ones?
+      @return bool: base is allowed
+    """
     return base in ('hardware', 'logic', 'gui')
 
