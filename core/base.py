@@ -70,7 +70,8 @@ class Base(QtCore.QObject, Fysom):
 
         default_callbacks = {
             'onactivate': self.on_activate,
-            'ondeactivate': self.on_deactivate}
+            'ondeactivate': self.on_deactivate
+            }
         default_callbacks.update(callbacks)
 
         # State machine definition
@@ -149,13 +150,31 @@ class Base(QtCore.QObject, Fysom):
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
 
+    @QtCore.Slot(result=bool)
+    def _wrap_activation(self):
+        try:
+            self.activate()
+        except:
+            self.log.exception('Error during activation:')
+            return False
+        return True
+
+    @QtCore.Slot(result=bool)
+    def _wrap_deactivation(self):
+        try:
+            self.deactivate()
+        except:
+            self.log.exception('Error during activation:')
+            return False
+        return True
+
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden
             this method returns an error.
 
         @param object e: Fysom state change descriptor
         """
-        self.log.warning('Please implement and specify the activation method '
+        self.log.error('Please implement and specify the activation method '
                          'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
@@ -164,7 +183,7 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        self.log.warning('Please implement and specify the deactivation '
+        self.log.error('Please implement and specify the deactivation '
                          'method {0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
