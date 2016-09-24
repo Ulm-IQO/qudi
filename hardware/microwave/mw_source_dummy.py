@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):
