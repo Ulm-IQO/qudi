@@ -152,15 +152,17 @@ class Base(QtCore.QObject, Fysom):
 
     @QtCore.Slot(result=bool)
     def _wrap_activation(self):
+        self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
         try:
             self.activate()
         except:
-            self.log.exception('Error during activation:')
+            self.log.exception('Error during activation')
             return False
         return True
 
     @QtCore.Slot(result=bool)
     def _wrap_deactivation(self):
+        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
         try:
             self.deactivate()
         except:

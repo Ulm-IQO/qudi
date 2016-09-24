@@ -32,7 +32,6 @@ import glob
 import re
 import time
 import importlib
-import threading
 
 from qtpy import QtCore
 from . import config
@@ -111,7 +110,7 @@ class Manager(QtCore.QObject):
 
             # Thread management
             self.tm = ThreadManager()
-            logger.debug('Main thread is {0}'.format(threading.get_ident()))
+            logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThreadId()))
 
             # Task runner
             self.tr = None
@@ -855,7 +854,7 @@ class Manager(QtCore.QObject):
                 self.isModuleDefined(base, name)
                 and 'remote' in self.tree['defined'][base][name]
                 and self.remoteServer):
-            logger.debug('No need to activate remote module {}.{}.'.format(base, name))
+            logger.debug('No need to activate remote module {0}.{1}.'.format(base, name))
             return
         if module.getState() != 'deactivated':
             logger.error('{0} module {1} not deactivated'.format(base, name))
@@ -864,7 +863,7 @@ class Manager(QtCore.QObject):
             module.setStatusVariables(self.loadStatusVariables(base, name))
             # start main loop for qt objects
             if base == 'logic':
-                modthread = self.tm.newThread('mod-{}-{}'.format(base, name))
+                modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
                 success = QtCore.QMetaObject.invokeMethod(
@@ -908,8 +907,13 @@ class Manager(QtCore.QObject):
                     '_wrap_deactivation',
                     QtCore.Qt.BlockingQueuedConnection,
                     QtCore.Q_RETURN_ARG(bool))
-                self.tm.quitThread('mod-{}-{}'.format(base, name))
-                self.tm.joinThread('mod-{}-{}'.format(base, name))
+                QtCore.QMetaObject.invokeMethod(
+                    module,
+                    'moveToThread',
+                    QtCore.Qt.BlockingQueuedConnection,
+                    QtCore.Q_ARG(QtCore.QThread, self.tm.thread))
+                self.tm.quitThread('mod-{0}-{1}'.format(base, name))
+                self.tm.joinThread('mod-{0}-{1}'.format(base, name))
             else:
                 success = module._wrap_deactivation()
             self.saveStatusVariables(base, name, module.getStatusVariables())
