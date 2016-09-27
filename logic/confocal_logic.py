@@ -241,7 +241,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
 
 
 class ConfocalLogic(GenericLogic):
-    """unstable: Christoph Müller
+    """
     This is the Logic class for confocal scanning.
     """
     _modclass = 'confocallogic'
@@ -471,7 +471,7 @@ class ConfocalLogic(GenericLogic):
                 return -1
             # creates an array of evenly spaced numbers over the interval
             # z1, z2 and the spacing is equal to z_resolution
-            self._Z = np.linspace(z1, z2, self.z_resolution)
+            self._Z = np.linspace(z1, z2, max(self.z_resolution, 2))
         else:
             # Checks if the y-start and y-end value are ok
             if y2 < y1:
@@ -482,11 +482,11 @@ class ConfocalLogic(GenericLogic):
 
             # prevents distorion of the image
             if (x2 - x1) >= (y2 - y1):
-                self._X = np.linspace(x1, x2, self.xy_resolution)
-                self._Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
+                self._X = np.linspace(x1, x2, max(self.xy_resolution, 2))
+                self._Y = np.linspace(y1, y2, max(int(self.xy_resolution*(y2-y1)/(x2-x1)), 2))
             else:
-                self._Y = np.linspace(y1, y2, self.xy_resolution)
-                self._X = np.linspace(x1, x2, int(self.xy_resolution*(x2-x1)/(y2-y1)))
+                self._Y = np.linspace(y1, y2, max(self.xy_resolution, 2))
+                self._X = np.linspace(x1, x2, max(int(self.xy_resolution*(x2-x1)/(y2-y1)), 2))
 
         self._XL = self._X
         self._YL = self._Y
