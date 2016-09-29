@@ -24,7 +24,7 @@ import visa
 import numpy as np
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveSMR20(Base, MicrowaveInterface):
@@ -354,52 +354,23 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
 
-          @return dict: limits dictionary
-
-            The following structure is absolutely necessary:
-            frequency:
-                min:
-                max:
-            power:
-                min:
-                max:
-            list:
-                minstep:
-                maxstep:
-                maxentries:
-            sweep:
-                minstep:
-                maxstep:
-                maxentries:
-
-           Frequency in Hz, power in dBm, minstep/maxstep in Hz.
+          @return MicrowaveLimits: limits object
         """
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST')
 
-        minliststep = 0.1
-        maxliststep = 6.4 * 10e9
+        limits.min_frequency = self._FREQ_MIN
+        limits.max_frequency = self._FREQ_MAX
 
-        minsweepstep = 0.1
-        maxsweepstep = 10e9
-        sweepentries = 10e6
+        limits.min_power = self._POWER_MIN
+        limits.max_power = self._POWER_MAX
 
-        limits = {
-            'frequency': {
-                'min': self._FREQ_MIN,
-                'max': self._FREQ_MAX
-                },
-            'power': {
-                'min': self._POWER_MIN,
-                'max': self._POWER_MAX
-                },
-            'list': {
-                'minstep': minliststep,
-                'maxstep': maxliststep,
-                'maxentries': self._MAX_LIST_ENTRIES
-                },
-            'sweep': {
-                'minstep': minsweepstep,
-                'maxstep': maxsweepstep,
-                'maxentries': sweepentries
-                }
-            }
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 6.4e9
+        limits.list_maxentries = self._MAX_LIST_ENTRIES
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 10e9
+        limits.sweep_maxentries = 10e6
+
         return limits

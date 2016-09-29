@@ -35,7 +35,6 @@ except:
     pass
 from collections import OrderedDict
 from .errordialog import ErrorDialog
-import threading
 import numpy as np
 import os
 
@@ -234,7 +233,7 @@ class ManagerGui(GUIBase):
         # make sure we only log errors and above from ipython
         logging.getLogger('ipykernel').setLevel(logging.WARNING)
         self.log.debug('IPy activation in thread {0}'.format(
-            threading.get_ident()))
+            QtCore.QThread.currentThreadId()))
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
         self.kernel = self.kernel_manager.kernel
@@ -294,7 +293,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        self.log.debug('IPy deactivation: {0}'.format(threading.get_ident()))
+        self.log.debug('IPy deactivation: {0}'.format(QtCore.QThread.currentThreadId()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):
