@@ -91,7 +91,7 @@ class AnalysisSettingDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui-pulsed-main-gui-settings-analysis.ui')
+        ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_analysis.ui')
 
         # Load it
         super(AnalysisSettingDialog, self).__init__()
