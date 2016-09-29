@@ -1080,66 +1080,6 @@ class PulsedMeasurementGui(GUIBase):
     #           Methods for the Pulse Block Editor
     # -------------------------------------------------------------------------
 
-    def get_element_in_block_table(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell
-            in the block table.
-
-        @param int row: row index
-        @param int column: column index
-        @return: the value of the corresponding cell, which can be a string, a
-                 float or an integer. Remember that the checkbox state
-                 unchecked corresponds to 0 and check to 2. That is Qt
-                 convention.
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        """
-        tab = self._mw.block_editor_TableWidget
-        # Get from the corresponding delegate the data access model
-        access = tab.itemDelegateForColumn(column).model_data_access
-        data = tab.model().index(row, column).data(access)
-        # check whether the value has to be normalized to SI values.
-        if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
-            unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
-            # access the method defined in base for unit prefix:
-            return data * units.get_unit_prefix_dict()[unit_prefix]
-        return data
-
-    def set_element_in_block_table(self, row, column, value):
-        """ Simplified wrapper function to set the data to a specific cell
-            in the block table.
-
-        @param int row: row index
-        @param int column: column index
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        A type check will be performed for the passed value argument. If the
-        type does not correspond to the delegate, then the value will not be
-        changed. You have to ensure that
-        """
-        tab = self._mw.block_editor_TableWidget
-        model = tab.model()
-        access = tab.itemDelegateForColumn(column).model_data_access
-        data = tab.model().index(row, column).data(access)
-
-        if type(data) == type(value):
-            # check whether the SI value has to be adjusted according to the
-            # desired unit prefix of the current viewbox:
-            if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
-                unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
-                # access the method defined in base for unit prefix:
-                value = value / units.get_unit_prefix_dict()[unit_prefix]
-            model.setData(model.index(row,column), value, access)
-        else:
-            self.log.warning('The cell ({0},{1}) in block table could not be '
-                        'assigned with the value="{2}", since the type "{3}" '
-                        'of the cell from the delegated type differs from '
-                        '"{4}" of the value!\nPrevious value will be '
-                        'kept.'.format(row, column, value, type(data),
-                                       type(value)))
-
-
     def _update_current_pulse_block(self):
         """ Update the current Pulse Block Info in the display. """
         length = 0.0 # in ns
@@ -1186,222 +1126,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_bins_SpinBox.setValue(bin_length)
         self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
 
-    def get_pulse_block_table(self):
-        """ Convert block table data to numpy array.
-
-        @return: np.array[rows][columns] which has a structure, i.e. strings
-                 integer and float values are represented by this array.
-                 The structure was taken according to the init table itself.
-        """
-
-        tab = self._mw.block_editor_TableWidget
-
-        # create a structure for the output numpy array:
-        structure = ''
-        for column in range(tab.columnCount()):
-            elem = self.get_element_in_block_table(0,column)
-            if type(elem) is str:
-                structure = structure + '|S20, '
-            elif type(elem) is int:
-                structure = structure + '|i4, '
-            elif type(elem) is float:
-                structure = structure + '|f4, '
-            else:
-                self.log.error('Type definition not found in the block table.'
-                            '\nType is neither a string, integer or float. '
-                            'Include that type in the get_pulse_block_table '
-                            'method!')
-
-        # remove the last two elements since these are a comma and a space:
-        structure = structure[:-2]
-        table = np.zeros(tab.rowCount(), dtype=structure)
-
-        # fill the table:
-        for column in range(tab.columnCount()):
-            for row in range(tab.rowCount()):
-                table[row][column] = self.get_element_in_block_table(row, column)
-
-        return table
-
-    def load_pulse_block_clicked(self, block_name=None):
-        """ Loads the current selected Pulse_Block object from the logic into
-            the editor or a specified Pulse_Block with name block_name.
-
-        @param str block_name: optional, name of the Pulse_Block object, which
-                               should be loaded in the GUI Block Organizer. If
-                               no name passed, the current Pulse_Block from the
-                               Logic is taken to be loaded.
-
-        Unfortuanetly this method needs to know how Pulse_Block objects are
-        looking like and cannot be that general.
-        """
-
-        # NOTE: This method will be connected to the CLICK event of a
-        #       QPushButton, which passes as an optional argument a a bool value
-        #       depending on the checked state of the QPushButton. Therefore
-        #       the passed boolean value has to be handled in addition!
-
-        if (block_name is not None) and (type(block_name) is not bool):
-            current_block_name = block_name
-        else:
-            current_block_name = self._mw.saved_blocks_ComboBox.currentText()
-
-        block = self._seq_gen_logic.get_pulse_block(current_block_name, set_as_current_block=True)
-
-        # of no object was found then block has reference to None
-        if block is None:
-            return -1
-
-        # get the number of currently set analogue and digital channels from the logic.
-        num_analog_chnl = self._seq_gen_logic.analog_channels
-        num_digital_chnl = self._seq_gen_logic.digital_channels
-        # get currently active activation_config and all possible configs.
-        activation_config = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
-        current_config = self._seq_gen_logic.activation_config
-
-        # check if the currently set activation_config has the same number of channels as
-        # the block object to be loaded. If this is not the case, change the config
-        # to something suitable and inform the user.
-        if num_analog_chnl != block.analog_channels or num_digital_chnl != block.digital_channels:
-            # find the first valid activation config
-            config_to_set = None
-            for config in activation_config:
-                num_analog = len([chnl for chnl in activation_config[config] if 'a_ch' in chnl])
-                num_digital = len([chnl for chnl in activation_config[config] if 'd_ch' in chnl])
-                if num_analog == block.analog_channels and num_digital == block.digital_channels:
-                    config_to_set = config
-                    break
-            if config_to_set is None:
-                self.log.error('Mismatch in number of channels between block '
-                        'to load and chosen activation_config. Need {0} '
-                        'digital and {1} analogue channels. Could not find a '
-                        'matching activation_config.'.format(
-                            block.digital_channels, block.analog_channels))
-                return -1
-            # find index of the config inside the ComboBox
-            index_to_set = self._mw.gen_activation_config_ComboBox.findText(config_to_set)
-            self._mw.gen_activation_config_ComboBox.setCurrentIndex(index_to_set)
-            self.log.error('Mismatch in number of channels between block to '
-                    'load and chosen activation_config. Need {0} digital '
-                    'and {1} analogue channels. The following '
-                    'activation_config was chosen: "{2}"'.format(
-                        block.digital_channels,
-                        block.analog_channels,
-                        config_to_set))
-
-            # get currently active activation_config.
-            current_config = activation_config[config_to_set]
-
-        # seperate active analog and digital channels in lists
-        active_analog = [chnl for chnl in current_config if 'a_ch' in chnl]
-        active_digital = [chnl for chnl in current_config if 'd_ch' in chnl]
-
-        self.block_editor_clear_table()  # clear table
-        rows = len(block.element_list)  # get amout of rows needed for display
-
-        # configuration dict from the logic:
-        block_config_dict = self._cfg_param_pbe
-
-        self.block_editor_add_row_after_last(rows - 1)  # since one is already present
-
-        for row_index, elem in enumerate(block.element_list):
-
-            # set at first all digital channels:
-            for digital_ch in range(elem.digital_channels):
-                column = block_config_dict['digital_' + active_digital[digital_ch].split('ch')[-1]]
-                value = elem.digital_high[digital_ch]
-                if value:
-                    value = 2
-                else:
-                    value = 0
-                self.set_element_in_block_table(row_index, column, value)
-
-            # now set all parameters for the analog channels:
-            for analog_ch in range(elem.analog_channels):
-                # the function text:
-                column = block_config_dict['function_' + active_analog[analog_ch].split('ch')[-1]]
-                func_text = elem.pulse_function[analog_ch]
-                self.set_element_in_block_table(row_index, column, func_text)
-
-                # then the parameter dictionary:
-                parameter_dict = elem.parameters[analog_ch]
-                for parameter in parameter_dict:
-                    column = block_config_dict[parameter + '_' + active_analog[analog_ch].split('ch')[-1]]
-                    value = np.float(parameter_dict[parameter])
-                    self.set_element_in_block_table(row_index, column, value)
-
-            # FIXME: that is not really general, since the name 'use_as_tick' is
-            #       directly taken. That must be more general! Right now it is
-            #       hard to make it in a general way.
-
-            # now set use as tick parameter:
-            column = block_config_dict['use']
-            value = elem.use_as_tick
-            # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
-            if value:
-                value = 2
-            else:
-                value = 0
-            self.set_element_in_block_table(row_index, column, value)
-
-            # and set the init_length_bins:
-            column = block_config_dict['length']
-            value = elem.init_length_bins / (self._seq_gen_logic.sample_rate)
-            # the setter method will handle the proper unit for that value!
-            # Just make sure to pass to the function the value in SI units!
-            self.set_element_in_block_table(row_index, column, value)
-
-            # and set the increment parameter
-            column = block_config_dict['increment']
-            value = elem.increment_bins / (self._seq_gen_logic.sample_rate)
-            # the setter method will handle the proper unit for that value!
-            # Just make sure to pass to the function the value in SI units!
-            self.set_element_in_block_table(row_index, column, value)
-
-        self._mw.curr_block_name_LineEdit.setText(current_block_name)
-
-
-    def delete_pulse_block_clicked(self):
-        """
-        Actions to perform when the delete button in the block editor is clicked
-        """
-        name = self._mw.saved_blocks_ComboBox.currentText()
-        self._seq_gen_logic.delete_block(name)
-
-        # update at first the comboboxes within the organizer table and block
-        # all the signals which might cause an error, because during the update
-        # there is access on the table and that happens row by row, i.e. not all
-        # cells are updated if the first signal is emited and there might be
-        # some cells which are basically empty, which would cause an error in
-        # the display of the current ensemble configuration.
-        self._mw.block_organizer_TableWidget.blockSignals(True)
-        self.update_block_organizer_list()
-        self._mw.block_organizer_TableWidget.blockSignals(False)
-        # after everything is fine, perform the update:
-        self._update_current_pulse_block_ensemble()
-        return
-
-    def generate_pulse_block_clicked(self):
-        """ Generate a Pulse_Block object."""
-        objectname = self._mw.curr_block_name_LineEdit.text()
-        if objectname == '':
-            self.log.warning('No Name for Pulse_Block specified. Generation '
-                        'aborted!')
-            return
-        self.generate_pulse_block_object(objectname, self.get_pulse_block_table())
-
-        # update at first the comboboxes within the organizer table and block
-        # all the signals which might cause an error, because during the update
-        # there is access on the table and that happens row by row, i.e. not all
-        # cells are updated if the first signal is emited and there might be
-        # some cells which are basically empty, which would cause an error in
-        # the display of the current ensemble configuration.
-        self._mw.block_organizer_TableWidget.blockSignals(True)
-        self.update_block_organizer_list()
-        self._mw.block_organizer_TableWidget.blockSignals(False)
-        # after everything is fine, perform the update:
-        self._update_current_pulse_block_ensemble()
-
     def _determine_needed_parameters(self):
         """ Determine the maximal number of needed parameters for desired functions.
 
@@ -1428,198 +1152,9 @@ class PulsedMeasurementGui(GUIBase):
 
         return (num_max_param, biggest_func)
 
-    def _set_block_editor_columns(self):
-        """ General function which creates the needed columns in Pulse Block
-            Editor according to the currently set channel activation_config.
-
-        Retreives the curently set activation_config from the sequence generator logic.
-        Every time this function is executed all the table entries are erased
-        and created again to prevent wrong delegation.
-        """
-
-        # get the currently chosen activation_config
-        # config_name = self._seq_gen_logic.current_activation_config_name
-        channel_active_config = self._seq_gen_logic.activation_config
-
-        self._mw.block_editor_TableWidget.blockSignals(True)
-
-        # Determine the function with the most parameters. Use also that
-        # function as a construction plan to create all the needed columns for
-        # the parameters.
-        (num_max_param, biggest_func) = self._determine_needed_parameters()
-
-        # Erase the delegate from the column, pass a None reference:
-        for column in range(self._mw.block_editor_TableWidget.columnCount()):
-            self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, None)
-
-        # clear the number of columns:
-        self._mw.block_editor_TableWidget.setColumnCount(0)
-
-        # total number of analog and digital channels:
-        num_of_columns = 0
-        for channel in channel_active_config:
-            if 'd_ch' in channel:
-                num_of_columns += 1
-            elif 'a_ch' in channel:
-                num_of_columns += num_max_param + 1
-
-        self._mw.block_editor_TableWidget.setColumnCount(num_of_columns)
-
-        column_count = 0
-        for channel in channel_active_config:
-            if 'a_ch' in channel:
-                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column_count,
-                    QtWidgets.QTableWidgetItem())
-                self._mw.block_editor_TableWidget.horizontalHeaderItem(column_count).setText(
-                    'ACh{0}\nfunction'.format(channel.split('ch')[-1]))
-                self._mw.block_editor_TableWidget.setColumnWidth(column_count, 70)
-
-                item_dict = {}
-                item_dict['get_list_method'] = self.get_current_function_list
-
-                delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column_count, delegate)
-
-                column_count += 1
-
-                # fill here all parameter columns for the current analogue channel
-                for parameter in self._seq_gen_logic.func_config[biggest_func]:
-                    # initial block:
-
-                    item_dict = self._seq_gen_logic.func_config[biggest_func][parameter]
-
-                    unit_text = item_dict['unit_prefix'] + item_dict['unit']
-
-                    self._mw.block_editor_TableWidget.setHorizontalHeaderItem(
-                        column_count, QtWidgets.QTableWidgetItem())
-                    self._mw.block_editor_TableWidget.horizontalHeaderItem(column_count).setText(
-                        'ACh{0}\n{1} ({2})'.format(channel.split('ch')[-1], parameter,
-                                                     unit_text))
-                    self._mw.block_editor_TableWidget.setColumnWidth(column_count, 100)
-
-                    # add the new properties to the whole column through delegate:
-
-                    # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-                    self._mw.block_editor_TableWidget.setItemDelegateForColumn(column_count,
-                        delegate)
-                    column_count += 1
-
-            elif 'd_ch' in channel:
-                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column_count,
-                    QtWidgets.QTableWidgetItem())
-                self._mw.block_editor_TableWidget.horizontalHeaderItem(column_count).setText(
-                    'DCh{0}'.format(channel.split('ch')[-1]))
-                self._mw.block_editor_TableWidget.setColumnWidth(column_count, 40)
-
-                # itemlist for checkbox
-                item_dict = {}
-                item_dict['init_val'] = QtCore.Qt.Unchecked
-                checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column_count, checkDelegate)
-
-                column_count += 1
-
-        # Insert the additional parameters given in the add_pbe_param dictionary (length etc.)
-        for column, parameter in enumerate(self._add_pbe_param):
-            # add the new properties to the whole column through delegate:
-            item_dict = self._add_pbe_param[parameter]
-
-            if 'unit_prefix' in item_dict.keys():
-                unit_text = item_dict['unit_prefix'] + item_dict['unit']
-            else:
-                unit_text = item_dict['unit']
-
-            self._mw.block_editor_TableWidget.insertColumn(num_of_columns + column)
-            self._mw.block_editor_TableWidget.setHorizontalHeaderItem(num_of_columns + column,
-                                                                      QtWidgets.QTableWidgetItem())
-            self._mw.block_editor_TableWidget.horizontalHeaderItem(
-                num_of_columns + column).setText('{0} ({1})'.format(parameter, unit_text))
-            self._mw.block_editor_TableWidget.setColumnWidth(num_of_columns + column, 90)
-
-            # Use only DoubleSpinBox as delegate:
-            if item_dict['unit'] == 'bool':
-                delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-            else:
-                delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-            self._mw.block_editor_TableWidget.setItemDelegateForColumn(num_of_columns + column,
-                                                                       delegate)
-
-            # initialize the whole row with default values:
-            for row_num in range(self._mw.block_editor_TableWidget.rowCount()):
-                # get the model, here are the data stored:
-                model = self._mw.block_editor_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, num_of_columns + column)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = delegate.get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
-        self.initialize_cells_block_editor(0, self._mw.block_editor_TableWidget.rowCount())
-
-        self.set_cfg_param_pbe()
-        self._mw.block_editor_TableWidget.blockSignals(False)
-        self._update_current_pulse_block()
-
-    def initialize_cells_block_editor(self, start_row, stop_row=None,
-                                      start_col=None, stop_col=None):
-
-        """ Initialize the desired cells in the block editor table.
-
-        @param start_row: int, index of the row, where the initialization
-                          should start
-        @param stop_row: int, optional, index of the row, where the
-                         initalization should end.
-        @param start_col: int, optional, index of the column where the
-                          initialization should start
-        @param stop_col: int, optional, index of the column, where the
-                         initalization should end.
-
-        With this function it is possible to reinitialize specific elements or
-        part of a row or even the whole row. If start_row is set to 0 the whole
-        row is going to be initialzed to the default value.
-        """
-
-        if stop_row is None:
-            stop_row = start_row + 1
-
-        if start_col is None:
-            start_col = 0
-
-        if stop_col is None:
-            stop_col = self._mw.block_editor_TableWidget.columnCount()
-
-        for col_num in range(start_col, stop_col):
-
-            for row_num in range(start_row, stop_row):
-                # get the model, here are the data stored:
-                model = self._mw.block_editor_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(
-                    col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Organizer
     # -------------------------------------------------------------------------
-
-    def update_block_organizer_list(self):
-        """ If a Pulse_Block object has been deleted, update the list in
-            organizer.
-        """
-
-        column = 0
-        for row in range(self._mw.block_organizer_TableWidget.rowCount()):
-            data = self.get_element_in_organizer_table(row, column)
-            if data not in self._seq_gen_logic.saved_pulse_blocks:
-                self.initialize_cells_block_organizer(start_row=row, stop_row=row+1,
-                                                      start_col=column,stop_col=column+1)
 
     def _update_current_pulse_block_ensemble(self):
         length_mu = 0.0  # in microseconds
@@ -1709,96 +1244,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_ensemble_bins_SpinBox.setValue(length_bin)
         self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
 
-
-    def get_element_in_organizer_table(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell
-            in the organizer table.
-
-        @param int row: row index
-        @param int column: column index
-        @return: the value of the corresponding cell, which can be a string, a
-                 float or an integer. Remember that the checkbox state
-                 unchecked corresponds to 0 and check to 2. That is Qt
-                 convention.
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        """
-
-        tab = self._mw.block_organizer_TableWidget
-
-        # Get from the corresponding delegate the data access model
-        access = tab.itemDelegateForColumn(column).model_data_access
-        data = tab.model().index(row, column).data(access)
-        return data
-
-    def set_element_in_organizer_table(self, row, column, value):
-        """ Simplified wrapper function to set the data to a specific cell
-            in the block organizer table.
-
-        @param int row: row index
-        @param int column: column index
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        A type check will be performed for the passed value argument. If the
-        type does not correspond to the delegate, then the value will not be
-        changed. You have to ensure that
-        """
-
-        tab = self._mw.block_organizer_TableWidget
-        model = tab.model()
-        access = tab.itemDelegateForColumn(column).model_data_access
-        data = tab.model().index(row, column).data(access)
-
-        if type(data) == type(value):
-            model.setData(model.index(row,column), value, access)
-        else:
-            self.log.warning('The cell ({0},{1}) in block organizer table '
-                    'could not be assigned with the value="{2}", since the '
-                    'type "{3}" of the cell from the delegated type differs '
-                    'from "{4}" of the value!\nPrevious value will be '
-                    'kept.'.format(row, column, value, type(data),
-                        type(value)))
-
-    def get_organizer_table(self):
-        """ Convert organizer table data to numpy array.
-
-        @return: np.array[rows][columns] which has a structure, i.e. strings
-                 integer and float values are represented by this array.
-                 The structure was taken according to the init table itself.
-        """
-
-        tab = self._mw.block_organizer_TableWidget
-
-        # create a structure for the output numpy array:
-        structure = ''
-        for column in range(tab.columnCount()):
-            elem = self.get_element_in_organizer_table(0,column)
-            if type(elem) is str:
-                structure = structure + '|S20, '
-            elif type(elem) is int:
-                structure = structure + '|i4, '
-            elif type(elem) is float:
-                structure = structure + '|f4, '
-            else:
-                self.log.error('Type definition not found in the organizer '
-                        'table.'
-                        '\nType is neither a string, integer or float. '
-                        'Include that type in the get_organizer_table '
-                        'method!')
-
-        # remove the last two elements since these are a comma and a space:
-        structure = structure[:-2]
-        table = np.zeros(tab.rowCount(), dtype=structure)
-
-        # fill the table:
-        for column in range(tab.columnCount()):
-            for row in range(tab.rowCount()):
-                table[row][column] = self.get_element_in_organizer_table(row, column)
-
-        return table
-
     def block_editor_add_row_before_selected(self, insert_rows=1):
         """ Add row before selected element. """
 
@@ -1863,170 +1308,170 @@ class PulsedMeasurementGui(GUIBase):
 
         self.initialize_cells_block_editor(start_row=0)
         self._mw.block_editor_TableWidget.blockSignals(False)
-
-    def load_pulse_block_ensemble_clicked(self, ensemble_name=None):
-        """ Loads the current selected Pulse_Block_Ensemble object from the
-            logic into the editor or a specified object with name ensemble_name.
-
-        @param str ensemble_name: optional, name of the Pulse_Block_Element
-                                  object, which should be loaded in the GUI
-                                  Block Organizer. If no name passed, the
-                                  current Pulse_Block_Ensemble from the Logic is
-                                  taken to be loaded.
-
-        Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
-        are looking like and cannot be that general.
-        """
-
-        # NOTE: This method will be connected to the CLICK event of a
-        #       QPushButton, which passes as an optional argument as a bool
-        #       value depending on the checked state of the QPushButton. The
-        #       passed boolean value has to be handled in addition!
-
-        if (ensemble_name is not None) and (type(ensemble_name) is not bool):
-            current_ensemble_name = ensemble_name
-        else:
-            current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
-
-        # get the ensemble object and set as current ensemble
-        ensemble = self._seq_gen_logic.get_pulse_block_ensemble(current_ensemble_name,
-                                                    set_as_current_ensemble=True)
-
-        # Check whether an ensemble is found, otherwise there will be None:
-        if ensemble is None:
-            return
-
-        # set the activation_config to the one defined in the loaded ensemble
-        avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
-        current_activation_config = self._seq_gen_logic.activation_config
-        activation_config_to_set = ensemble.activation_config
-        config_name_to_set = None
-        if current_activation_config != activation_config_to_set:
-            for config in avail_configs:
-                if activation_config_to_set == avail_configs[config]:
-                    config_name_to_set = config
-                    break
-            if config_name_to_set is not None:
-                index = self._mw.gen_activation_config_ComboBox.findText(config_name_to_set)
-                self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
-            self.log.info('Current generator channel activation config '
-                    'did not match the activation config of the '
-                    'Pulse_Block_Ensemble to load. Changed config to "{0}".'
-                    ''.format(config_name_to_set))
-
-        # set the sample rate to the one defined in the loaded ensemble
-        current_sample_rate = self._seq_gen_logic.sample_rate
-        sample_rate_to_set = ensemble.sample_rate
-        if current_sample_rate != sample_rate_to_set:
-            self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate_to_set/1e6)
-            self.generator_sample_rate_changed()
-            self.log.info('Current generator sample rate did not match the '
-                    'sample rate of the Pulse_Block_Ensemble to load. '
-                    'Changed the sample rate to {0}Hz.'
-                    ''.format(sample_rate_to_set))
-
-        # set the laser channel to the one defined in the loaded ensemble
-        current_laser_channel = self._seq_gen_logic.laser_channel
-        laser_channel_to_set = ensemble.laser_channel
-        if current_laser_channel != laser_channel_to_set and laser_channel_to_set is not None:
-            index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel_to_set)
-            self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
-            self.log.info('Current generator laser channel did not match the '
-                    'laser channel of the Pulse_Block_Ensemble to load. '
-                    'Changed the laser channel to "{0}".'
-                    ''.format(laser_channel_to_set))
-
-        self.block_organizer_clear_table()  # clear the block organizer table
-        rows = len(ensemble.block_list)  # get amout of rows needed for display
-
-        # add as many rows as there are blocks in the ensemble
-        # minus 1 because a single row is already present after clear
-        self.block_organizer_add_row_after_last(rows - 1)
-
-        # This dictionary has the information which column number describes
-        # which object, it is a configuration dict between GUI and logic
-        organizer_config_dict = self._cfg_param_pb
-
-        # run through all blocks in the block_elements block_list to fill in the
-        # row informations
-        for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
-            column = organizer_config_dict['pulse_block']
-            self.set_element_in_organizer_table(row_index, column, pulse_block.name)
-
-            column = organizer_config_dict['repetition']
-            self.set_element_in_organizer_table(row_index, column, int(repetitions))
-
-        # set the ensemble name LineEdit to the current ensemble
-        self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
-
-
+    #
+    # def load_pulse_block_ensemble_clicked(self, ensemble_name=None):
+    #     """ Loads the current selected Pulse_Block_Ensemble object from the
+    #         logic into the editor or a specified object with name ensemble_name.
+    #
+    #     @param str ensemble_name: optional, name of the Pulse_Block_Element
+    #                               object, which should be loaded in the GUI
+    #                               Block Organizer. If no name passed, the
+    #                               current Pulse_Block_Ensemble from the Logic is
+    #                               taken to be loaded.
+    #
+    #     Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
+    #     are looking like and cannot be that general.
+    #     """
+    #
+    #     # NOTE: This method will be connected to the CLICK event of a
+    #     #       QPushButton, which passes as an optional argument as a bool
+    #     #       value depending on the checked state of the QPushButton. The
+    #     #       passed boolean value has to be handled in addition!
+    #
+    #     if (ensemble_name is not None) and (type(ensemble_name) is not bool):
+    #         current_ensemble_name = ensemble_name
+    #     else:
+    #         current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
+    #
+    #     # get the ensemble object and set as current ensemble
+    #     ensemble = self._seq_gen_logic.get_pulse_block_ensemble(current_ensemble_name,
+    #                                                 set_as_current_ensemble=True)
+    #
+    #     # Check whether an ensemble is found, otherwise there will be None:
+    #     if ensemble is None:
+    #         return
+    #
+    #     # set the activation_config to the one defined in the loaded ensemble
+    #     avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
+    #     current_activation_config = self._seq_gen_logic.activation_config
+    #     activation_config_to_set = ensemble.activation_config
+    #     config_name_to_set = None
+    #     if current_activation_config != activation_config_to_set:
+    #         for config in avail_configs:
+    #             if activation_config_to_set == avail_configs[config]:
+    #                 config_name_to_set = config
+    #                 break
+    #         if config_name_to_set is not None:
+    #             index = self._mw.gen_activation_config_ComboBox.findText(config_name_to_set)
+    #             self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
+    #         self.log.info('Current generator channel activation config '
+    #                 'did not match the activation config of the '
+    #                 'Pulse_Block_Ensemble to load. Changed config to "{0}".'
+    #                 ''.format(config_name_to_set))
+    #
+    #     # set the sample rate to the one defined in the loaded ensemble
+    #     current_sample_rate = self._seq_gen_logic.sample_rate
+    #     sample_rate_to_set = ensemble.sample_rate
+    #     if current_sample_rate != sample_rate_to_set:
+    #         self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate_to_set/1e6)
+    #         self.generator_sample_rate_changed()
+    #         self.log.info('Current generator sample rate did not match the '
+    #                 'sample rate of the Pulse_Block_Ensemble to load. '
+    #                 'Changed the sample rate to {0}Hz.'
+    #                 ''.format(sample_rate_to_set))
+    #
+    #     # set the laser channel to the one defined in the loaded ensemble
+    #     current_laser_channel = self._seq_gen_logic.laser_channel
+    #     laser_channel_to_set = ensemble.laser_channel
+    #     if current_laser_channel != laser_channel_to_set and laser_channel_to_set is not None:
+    #         index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel_to_set)
+    #         self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
+    #         self.log.info('Current generator laser channel did not match the '
+    #                 'laser channel of the Pulse_Block_Ensemble to load. '
+    #                 'Changed the laser channel to "{0}".'
+    #                 ''.format(laser_channel_to_set))
+    #
+    #     self.block_organizer_clear_table()  # clear the block organizer table
+    #     rows = len(ensemble.block_list)  # get amout of rows needed for display
+    #
+    #     # add as many rows as there are blocks in the ensemble
+    #     # minus 1 because a single row is already present after clear
+    #     self.block_organizer_add_row_after_last(rows - 1)
+    #
+    #     # This dictionary has the information which column number describes
+    #     # which object, it is a configuration dict between GUI and logic
+    #     organizer_config_dict = self._cfg_param_pb
+    #
+    #     # run through all blocks in the block_elements block_list to fill in the
+    #     # row informations
+    #     for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
+    #         column = organizer_config_dict['pulse_block']
+    #         self.set_element_in_organizer_table(row_index, column, pulse_block.name)
+    #
+    #         column = organizer_config_dict['repetition']
+    #         self.set_element_in_organizer_table(row_index, column, int(repetitions))
+    #
+    #     # set the ensemble name LineEdit to the current ensemble
+    #     self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
 
 
-    def block_organizer_add_row_before_selected(self,insert_rows=1):
-        """ Add row before selected element. """
-        self._mw.block_organizer_TableWidget.blockSignals(True)
-        selected_row = self._mw.block_organizer_TableWidget.currentRow()
-
-        # the signal passes a boolean value, which overwrites the insert_rows
-        # parameter. Check that here and use the actual default value:
-        if type(insert_rows) is bool:
-            insert_rows = 1
-
-        for rows in range(insert_rows):
-            self._mw.block_organizer_TableWidget.insertRow(selected_row)
-
-        self.initialize_cells_block_organizer(start_row=selected_row)
-        self._mw.block_organizer_TableWidget.blockSignals(False)
-        self._update_current_pulse_block_ensemble()
 
 
-    def block_organizer_add_row_after_last(self, insert_rows=1):
-        """ Add row after last row in the block editor. """
-        self._mw.block_organizer_TableWidget.blockSignals(True)
+    # def block_organizer_add_row_before_selected(self,insert_rows=1):
+    #     """ Add row before selected element. """
+    #     self._mw.block_organizer_TableWidget.blockSignals(True)
+    #     selected_row = self._mw.block_organizer_TableWidget.currentRow()
+    #
+    #     # the signal passes a boolean value, which overwrites the insert_rows
+    #     # parameter. Check that here and use the actual default value:
+    #     if type(insert_rows) is bool:
+    #         insert_rows = 1
+    #
+    #     for rows in range(insert_rows):
+    #         self._mw.block_organizer_TableWidget.insertRow(selected_row)
+    #
+    #     self.initialize_cells_block_organizer(start_row=selected_row)
+    #     self._mw.block_organizer_TableWidget.blockSignals(False)
+    #     self._update_current_pulse_block_ensemble()
+    #
+    #
+    # def block_organizer_add_row_after_last(self, insert_rows=1):
+    #     """ Add row after last row in the block editor. """
+    #     self._mw.block_organizer_TableWidget.blockSignals(True)
+    #
+    #     # the signal of a QPushButton passes an optional boolean value to this
+    #     # method, which overwrites the insert_rows parameter. Check that here
+    #     # and use the actual default value:
+    #     if type(insert_rows) is bool:
+    #         insert_rows = 1
+    #
+    #     number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
+    #     self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+insert_rows)
+    #
+    #     self.initialize_cells_block_organizer(start_row=number_of_rows,
+    #                                           stop_row=number_of_rows + insert_rows)
+    #
+    #     self._mw.block_organizer_TableWidget.blockSignals(False)
+    #     self._update_current_pulse_block_ensemble()
+    #
+    # def block_organizer_delete_row_selected(self):
+    #     """ Delete row of selected element. """
+    #
+    #     # get the row number of the selected item(s). That will return the
+    #     # lowest selected row
+    #     row_to_remove = self._mw.block_organizer_TableWidget.currentRow()
+    #     self._mw.block_organizer_TableWidget.removeRow(row_to_remove)
+    #     self._update_current_pulse_block_ensemble()
+    #
+    # def block_organizer_delete_row_last(self):
+    #     """ Delete the last row in the block editor. """
+    #
+    #     number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
+    #     # remember, the row index is started to count from 0 and not from 1,
+    #     # therefore one has to reduce the value by 1:
+    #     self._mw.block_organizer_TableWidget.removeRow(number_of_rows-1)
+    #     self._update_current_pulse_block_ensemble()
 
-        # the signal of a QPushButton passes an optional boolean value to this
-        # method, which overwrites the insert_rows parameter. Check that here
-        # and use the actual default value:
-        if type(insert_rows) is bool:
-            insert_rows = 1
-
-        number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
-        self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+insert_rows)
-
-        self.initialize_cells_block_organizer(start_row=number_of_rows,
-                                              stop_row=number_of_rows + insert_rows)
-
-        self._mw.block_organizer_TableWidget.blockSignals(False)
-        self._update_current_pulse_block_ensemble()
-
-    def block_organizer_delete_row_selected(self):
-        """ Delete row of selected element. """
-
-        # get the row number of the selected item(s). That will return the
-        # lowest selected row
-        row_to_remove = self._mw.block_organizer_TableWidget.currentRow()
-        self._mw.block_organizer_TableWidget.removeRow(row_to_remove)
-        self._update_current_pulse_block_ensemble()
-
-    def block_organizer_delete_row_last(self):
-        """ Delete the last row in the block editor. """
-
-        number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
-        # remember, the row index is started to count from 0 and not from 1,
-        # therefore one has to reduce the value by 1:
-        self._mw.block_organizer_TableWidget.removeRow(number_of_rows-1)
-        self._update_current_pulse_block_ensemble()
-
-    def block_organizer_clear_table(self):
-        """ Delete all rows in the block editor table. """
-
-
-        self._mw.block_organizer_TableWidget.blockSignals(True)
-        self._mw.block_organizer_TableWidget.setRowCount(1)
-        self._mw.block_organizer_TableWidget.clearContents()
-        self.initialize_cells_block_organizer(start_row=0)
-        self._mw.block_organizer_TableWidget.blockSignals(False)
-        self._update_current_pulse_block_ensemble()
+    # def block_organizer_clear_table(self):
+    #     """ Delete all rows in the block editor table. """
+    #
+    #
+    #     self._mw.block_organizer_TableWidget.blockSignals(True)
+    #     self._mw.block_organizer_TableWidget.setRowCount(1)
+    #     self._mw.block_organizer_TableWidget.clearContents()
+    #     self.initialize_cells_block_organizer(start_row=0)
+    #     self._mw.block_organizer_TableWidget.blockSignals(False)
+    #     self._update_current_pulse_block_ensemble()
 
     def delete_pulse_block_ensemble_clicked(self):
         """
@@ -2069,122 +1514,69 @@ class PulsedMeasurementGui(GUIBase):
 
         self._cfg_param_pbe = cfg_param_pbe
 
-    def set_cfg_param_pb(self):
-        """ Set the parameter configuration of the Pulse_Block according to the
-        current table configuration and updates the dict in the logic.
-        """
-
-        cfg_param_pb = OrderedDict()
-
-        for column in range(self._mw.block_organizer_TableWidget.columnCount()):
-            text = self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).text()
-            # split_text = text.split()
-            if 'Pulse Block' in text:
-                cfg_param_pb['pulse_block'] = column
-            elif 'length' in text:
-                cfg_param_pb['length'] = column
-            elif 'repetition' in text:
-                cfg_param_pb['repetition'] = column
-            else:
-                print('text:',text)
-                raise NotImplementedError
-        self._cfg_param_pb = cfg_param_pb
-
-    def _set_organizer_columns(self):
-
-        # Erase the delegate from the column, i.e. pass a None reference:
-        for column in range(self._mw.block_organizer_TableWidget.columnCount()):
-            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, None)
-
-        # clear the number of columns:
-        self._mw.block_organizer_TableWidget.setColumnCount(0)
-
-        # total number columns in block organizer:
-        num_column = 1
-        self._mw.block_organizer_TableWidget.setColumnCount(num_column)
-
-        column = 0
-        self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtWidgets.QTableWidgetItem())
-        self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('Pulse Block')
-        self._mw.block_organizer_TableWidget.setColumnWidth(column, 100)
-
-        item_dict = {}
-        item_dict['get_list_method'] = self.get_current_pulse_block_list
-
-        comboDelegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
-        self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, comboDelegate)
-
-        column = 1
-        insert_at_col_pos = column
-        for column, parameter in enumerate(self._add_pb_param):
-
-            # add the new properties to the whole column through delegate:
-            item_dict = self._add_pb_param[parameter]
-
-            unit_text = item_dict['unit_prefix'] + item_dict['unit']
-
-            self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtWidgets.QTableWidgetItem())
-            self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
-            self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
-
-            # Use only DoubleSpinBox  as delegate:
-            if item_dict['unit'] == 'bool':
-                delegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
-            elif parameter == 'repetition':
-                delegate = SpinBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
-            else:
-                delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
-            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-            column += 1
-
-        self.initialize_cells_block_organizer(start_row=0,
-                                              stop_row=self._mw.block_organizer_TableWidget.rowCount())
-
-        self.set_cfg_param_pb()
-        self._update_current_pulse_block_ensemble()
-
-
-    def initialize_cells_block_organizer(self, start_row, stop_row=None,
-                                         start_col=None, stop_col=None):
-        """ Initialize the desired cells in the block organizer table.
-
-        @param start_row: int, index of the row, where the initialization
-                          should start
-        @param stop_row: int, optional, index of the row, where the
-                         initalization should end.
-        @param start_col: int, optional, index of the column where the
-                          initialization should start
-        @param stop_col: int, optional, index of the column, where the
-                         initalization should end.
-
-        With this function it is possible to reinitialize specific elements or
-        part of a row or even the whole row. If start_row is set to 0 the whole
-        row is going to be initialzed to the default value.
-        """
-
-        if stop_row is None:
-            stop_row = start_row +1
-
-        if start_col is None:
-            start_col = 0
-
-        if stop_col is None:
-            stop_col = self._mw.block_organizer_TableWidget.columnCount()
-
-        for col_num in range(start_col, stop_col):
-
-            for row_num in range(start_row,stop_row):
-                # get the model, here are the data stored:
-                model = self._mw.block_organizer_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = self._mw.block_organizer_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
+    # def set_cfg_param_pb(self):
+    #     """ Set the parameter configuration of the Pulse_Block according to the
+    #     current table configuration and updates the dict in the logic.
+    #     """
+    #
+    #     cfg_param_pb = OrderedDict()
+    #
+    #     for column in range(self._mw.block_organizer_TableWidget.columnCount()):
+    #         text = self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).text()
+    #         # split_text = text.split()
+    #         if 'Pulse Block' in text:
+    #             cfg_param_pb['pulse_block'] = column
+    #         elif 'length' in text:
+    #             cfg_param_pb['length'] = column
+    #         elif 'repetition' in text:
+    #             cfg_param_pb['repetition'] = column
+    #         else:
+    #             print('text:',text)
+    #             raise NotImplementedError
+    #     self._cfg_param_pb = cfg_param_pb
+    #
+    #
+    #
+    #
+    # def initialize_cells_block_organizer(self, start_row, stop_row=None,
+    #                                      start_col=None, stop_col=None):
+    #     """ Initialize the desired cells in the block organizer table.
+    #
+    #     @param start_row: int, index of the row, where the initialization
+    #                       should start
+    #     @param stop_row: int, optional, index of the row, where the
+    #                      initalization should end.
+    #     @param start_col: int, optional, index of the column where the
+    #                       initialization should start
+    #     @param stop_col: int, optional, index of the column, where the
+    #                      initalization should end.
+    #
+    #     With this function it is possible to reinitialize specific elements or
+    #     part of a row or even the whole row. If start_row is set to 0 the whole
+    #     row is going to be initialzed to the default value.
+    #     """
+    #
+    #     if stop_row is None:
+    #         stop_row = start_row +1
+    #
+    #     if start_col is None:
+    #         start_col = 0
+    #
+    #     if stop_col is None:
+    #         stop_col = self._mw.block_organizer_TableWidget.columnCount()
+    #
+    #     for col_num in range(start_col, stop_col):
+    #
+    #         for row_num in range(start_row,stop_row):
+    #             # get the model, here are the data stored:
+    #             model = self._mw.block_organizer_TableWidget.model()
+    #             # get the corresponding index of the current element:
+    #             index = model.index(row_num, col_num)
+    #             # get the initial values of the delegate class which was
+    #             # uses for this column:
+    #             ini_values = self._mw.block_organizer_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+    #             # set initial values:
+    #             model.setData(index, ini_values[0], ini_values[1])
 
     def _add_config_for_predefined_methods(self, parent, name):
         """ Create the Config Elements for altering the Predefined Methods
