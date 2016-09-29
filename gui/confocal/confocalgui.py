@@ -420,8 +420,8 @@ class ConfocalGui(GUIBase):
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming
         # from the Logic module must be in micrometer.
-        self.slider_res = 0.001  # 1 nanometer resolution per one change, units
-                                 # are micrometer
+        # 1 nanometer resolution per one change, units are micrometer
+        self.slider_res = 0.001
 
         # How many points are needed for that kind of resolution:
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0]) / self.slider_res

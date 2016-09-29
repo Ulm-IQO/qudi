@@ -35,6 +35,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
         self._threads = OrderedDict()
         self.lock = Mutex()
         self.headers = ['Name', 'Thread']
+        self.thread = QtCore.QThread.currentThread()
 
     def newThread(self, name):
         """ Create a new thread with a name, return its object
@@ -49,7 +50,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
             row = len(self._threads)
             self.beginInsertRows(QtCore.QModelIndex(), row, row)
             self._threads[name] = ThreadItem(name)
-            self._threads[name].sigThreadHasQuit.connect(self.cleanupThread)
+            self._threads[name].sigThreadHasQuit.connect(self.cleanupThread, QtCore.Qt.QueuedConnection)
             self.endInsertRows()
         return self._threads[name].thread
 
@@ -62,8 +63,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
             logger.debug('Quitting thread {0}.'.format(name))
             self._threads[name].thread.quit()
         else:
-            logger.debug('You tried quitting a nonexistent thread {0}.'
-                    ''.format(name))
+            logger.debug('You tried quitting a nonexistent thread {0}.'.format(name))
 
     def joinThread(self, name, time=None):
         """Stop event loop of QThread.
@@ -78,16 +78,15 @@ class ThreadManager(QtCore.QAbstractTableModel):
             else:
                 self._threads[name].thread.wait(time)
         else:
-            logger.debug('You tried waiting for a nonexistent thread {0}.'
-                    ''.format(name))
+            logger.debug('You tried waiting for a nonexistent thread {0}.'.format(name))
 
     def cleanupThread(self, name):
-        """Remove thread from thread list if it is not running anymore.
+        """Remove thread from thread list.
 
           @param str name: unique thread name
         """
-        logger.debug('Cleaning up thread {0}.'.format(name))
-        if 'name' in self._threads and not self._threads[name].thread.isRunning():
+        if name in self._threads and not self._threads[name].thread.isRunning():
+            logger.debug('Cleaning up thread {0}.'.format(name))
             with self.lock:
                 row = self.getItemNumberByKey(name)
                 self.beginRemoveRows(QtCore.QModelIndex(), row, row)
@@ -206,5 +205,6 @@ class ThreadItem(QtCore.QObject):
             Re-emits signal containing the unique thread name.
         """
         self.sigThreadHasQuit.emit(self.name)
+        logger.debug('Thread {0} has quit.'.format(self.name))
 
 
