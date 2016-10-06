@@ -128,9 +128,7 @@ class Mapper():
             return 'currentIndex'
         elif isinstance(widget, QLineEdit):
             return 'text'
-        elif (isinstance(widget, QSpinBox)
-              or isinstance(widget, QDoubleSpinBox)
-              or isinstance(widget, QAbstractSlider)):
+        elif (isinstance(widget, (QSpinBox, QDoubleSpinBox, QAbstractSlider)):
             return 'value'
         elif isinstance(widget, QPlainTextEdit):
             return 'plainText'
