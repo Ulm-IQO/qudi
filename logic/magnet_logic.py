@@ -1938,23 +1938,25 @@ class MagnetLogic(GenericLogic):
         self._save_logic.save_data(add_data, filepath,
                                    filelabel=filelabel2, timestamp=timestamp,
                                    as_text=True)
-        # save also all kinds of data, which are the results during the
-        # alignment measurements
+        # save the data table
 
         count_data = self._2D_data_matrix
         x_val = self._2D_axis0_data
         y_val = self._2D_axis1_data
-        save_dict = dict()
-        save_dict['{0} values ({1})'.format(self._axis0_name, units_axis0)] = []
-        save_dict['{0} values ({1})'.format(self._axis1_name, units_axis1)] = []
-        save_dict['counts (c/s)'] = []
+        save_dict = OrderedDict()
+        axis0_key = '{0} values ({1})'.format(self._axis0_name, units_axis0)
+        axis1_key = '{0} values ({1})'.format(self._axis1_name, units_axis1)
+        counts_key = 'counts (c/s)'
+        save_dict[axis0_key] = []
+        save_dict[axis1_key] = []
+        save_dict[counts_key] = []
 
         for ii, columns in enumerate(count_data):
             for jj, col_counts in enumerate(columns):
                 # x_list = [x_val[ii]] * len(countlist)
-                save_dict['{0} values ({1})'.format(self._axis0_name, units_axis0)].append(x_val[ii])
-                save_dict['{0} values ({1})'.format(self._axis1_name, units_axis1)].append(y_val[jj])
-                save_dict['counts (c/s)'].append(col_counts)
+                save_dict[axis0_key].append(x_val[ii])
+                save_dict[axis1_key].append(y_val[jj])
+                save_dict[counts_key].append(col_counts)
 
         self._save_logic.save_data(save_dict, filepath,
                                    filelabel=filelabel3, timestamp=timestamp,
