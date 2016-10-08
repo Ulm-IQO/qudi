@@ -80,10 +80,11 @@ class InfluxLogger(Base, DataLoggerInterface):
             if spec is None and name in self.log_channels:
                 self.log_channels.pop(name)
             elif name in self.log_channels:
+                pass
             else:
-                if :
-
-
+                pass
+                if True:
+                    pass
 
     def log_to_channel(self, channel, values):
         if channel in self.log_channels.keys() and len(values) == len(self.log_channels[channel][values]):

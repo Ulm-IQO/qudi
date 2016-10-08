@@ -1446,7 +1446,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_zoom"/>
-   <addaction name="action_Tiltcorrection"/>
+   <addaction name="action_TiltCorrection"/>
   </widget>
   <widget class="QDockWidget" name="tilt_correction_dockWidget">
    <property name="enabled">
@@ -2058,7 +2058,7 @@
     <string>&amp;Util Toolbar</string>
    </property>
   </action>
-  <action name="action_Tiltcorrection">
+  <action name="action_TiltCorrection">
    <property name="checkable">
     <bool>true</bool>
    </property>
