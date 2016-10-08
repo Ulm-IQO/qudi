@@ -3,18 +3,18 @@
 """
 This file contains the GUI for magnet control.
 
-Qudi is free software: you can redistribute it and/or modify
+QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Qudi is distributed in the hope that it will be useful,
+QuDi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Qudi. If not, see <http://www.gnu.org/licenses/>.
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -32,8 +32,8 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from core.util.units import get_unit_prefix_dict
-from qtwidgets.scientific_spinbox import ScienSpinBox
-from qtwidgets.scientific_spinbox import ScienDSpinBox
+from tools.scientific_spinbox import ScienSpinBox
+from tools.scientific_spinbox import ScienDSpinBox
 import pyqtgraph.exporters
 
 
@@ -95,8 +95,8 @@ class MagnetGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._magnet_logic = self.get_in_connector('magnetlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._magnet_logic = self.connector['in']['magnetlogic1']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
 
         self._mw = MagnetMainWindow()
 
@@ -313,11 +313,32 @@ class MagnetGui(GUIBase):
                          explanation can be found in the method initUI.
         """
         self._ms = MagnetSettingsWindow()
+        # default config is normal_mode
+        self._ms.normal_mode_checkBox.setChecked(True)
+        self._ms.z_mode_checkBox.setChecked(False)
+        # make sure the buttons are exclusively checked
+        self._ms.normal_mode_checkBox.stateChanged.connect(self.trig_wrapper_normal_mode)
+        self._ms.z_mode_checkBox.stateChanged.connect(self.trig_wrapper_z_mode)
+
+        #self._ms.z_mode_checkBox.stateChanged.connect(self._ms.normal_mode_checkBox.toggle)
         self._ms.accepted.connect(self.update_magnet_settings)
         self._ms.rejected.connect(self.keep_former_magnet_settings)
         self._ms.ButtonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_magnet_settings)
 
         self.keep_former_magnet_settings()
+
+    def trig_wrapper_normal_mode(self):
+        if not self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
+            self._ms.z_mode_checkBox.toggle()
+        elif self._ms.normal_mode_checkBox.isChecked() and self._ms.z_mode_checkBox.isChecked():
+            self._ms.z_mode_checkBox.toggle()
+
+    def trig_wrapper_z_mode(self):
+        if not self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
+            self._ms.normal_mode_checkBox.toggle()
+        elif self._ms.normal_mode_checkBox.isChecked() and self._ms.z_mode_checkBox.isChecked():
+            self._ms.normal_mode_checkBox.toggle()
+
 
     def on_deactivate(self, e=None):
         """ Deactivate the module properly.
@@ -384,6 +405,24 @@ class MagnetGui(GUIBase):
             self._interactive_mode = True
         else:
             self._interactive_mode = False
+
+        if self._ms.interactive_mode_CheckBox.isChecked():
+            self._interactive_mode = True
+        else:
+            self._interactive_mode = False
+        if self._ms.z_mode_checkBox.isChecked():
+            self._z_mode = True
+            self._magnet_logic._magnet_device.mode = 'z_mode'
+        else:
+            self._z_mode = False
+            self._magnet_logic._magnet_device.mode = 'normal_mode'
+
+        if self._ms.normal_mode_checkBox.isChecked():
+            self._normal_mode = True
+            self._magnet_logic._magnet_device.mode = 'normal_mode'
+        else:
+            self._normal_mode = False
+            self._magnet_logic._magnet_device.mode = 'z_mode'
 
     def keep_former_magnet_settings(self):
 
