@@ -2,28 +2,28 @@
 """
 A module to control the QO Raspberry Pi based H-Bridge hardware.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from influxdb import InfluxDBClient
+
 from core.base import Base
 from interface.process_interface import ProcessInterface
 
-from pyqtgraph.Qt import QtCore
-from influxdb import InfluxDBClient
 
 class InfluxDataClient(Base, ProcessInterface):
     _modclass = 'InfluxDataClient'
@@ -71,10 +71,10 @@ class InfluxDataClient(Base, ProcessInterface):
 
     def getProcessValue(self):
         """ Return a measured value """
-        q = 'SELECT last({}) FROM {} WHERE (time > now() - 10m AND {})'.format(self.field, self.series, self.cr)
+        q = 'SELECT last({0}) FROM {1} WHERE (time > now() - 10m AND {2})'.format(self.field, self.series, self.cr)
         #print(q)
         res = self.conn.query(q)
-        return list(res[('{}'.format(self.series), None)])[0]['last']
+        return list(res[('{0}'.format(self.series), None)])[0]['last']
 
     def getProcessUnit(self):
         """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """

@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi logic which controls all pulsed measurements.
+This file contains the Qudi logic which controls all pulsed measurements.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
+from qtpy import QtCore
 from collections import OrderedDict
-from lmfit import Parameters
 import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
+
+from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
 
 class PulsedMeasurementLogic(GenericLogic):
     """unstable: Nikolas Tomek
@@ -62,7 +62,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # microwave parameters
         self.use_ext_microwave = False
@@ -145,12 +145,12 @@ class PulsedMeasurementLogic(GenericLogic):
         """
 
         # get all the connectors:
-        self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-        self._fast_counter_device = self.connector['in']['fastcounter']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
-        self._mycrowave_source_device = self.connector['in']['microwave']['object']
+        self._pulse_analysis_logic = self.get_in_connector('pulseanalysislogic')
+        self._fast_counter_device = self.get_in_connector('fastcounter')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._fit_logic = self.get_in_connector('fitlogic')
+        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
+        self._mycrowave_source_device = self.get_in_connector('microwave')
 
         # Recall saved status variables
         if 'signal_start_bin' in self._statusVariables:
@@ -404,7 +404,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.current_channel_config_name = activation_config_name
         return err
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the string generic analog
@@ -420,6 +420,8 @@ class PulsedMeasurementLogic(GenericLogic):
         Additionally the variables which hold this values are updated in the
         logic.
         """
+        if ch is None:
+            ch = {}
         self._pulse_generator_device.set_active_channels(ch)
         return 0
 
@@ -487,7 +489,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self._pulse_generator_device.has_sequence_mode()
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
         Emmits a signal that the current sequence/ensemble (asset) has changed.
 
@@ -504,6 +506,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        if load_dict is None:
+            load_dict = {}
         # load asset in channels
         err = self._pulse_generator_device.load_asset(asset_name, load_dict)
         # set the loaded_asset_name variable.
@@ -541,6 +545,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         with self.threadlock:
             if self.getState() == 'idle':
+                self.elapsed_time = 0.0
                 # initialize plots
                 self._initialize_signal_plot()
                 self._initialize_laser_plot()
@@ -562,7 +567,6 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
 
                 self.lock()
-                self.elapsed_time = 0.0
                 self.start_time = time.time()
                 self.analysis_timer.start()
         return
@@ -984,7 +988,7 @@ class PulsedMeasurementLogic(GenericLogic):
             pulsed_fit_x = []
             pulsed_fit_y = []
 
-        elif fit_function == 'Sine' or fit_function == 'Cos_FixedPhase':
+        elif fit_function in ('Sine', 'Cos_FixedPhase'):
             update_dict = {}
             if fit_function == 'Cos_FixedPhase':
                 # set some custom defined constraints for this module and for

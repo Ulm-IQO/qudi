@@ -1,27 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This file contains the modified PlotWidget for QuDi.
+This file contains the modified PlotWidget for Qudi.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from pyqtgraph import PlotWidget
-from pyqtgraph.Qt import QtGui, QtCore
+from qtpy import QtCore
+from qtpy import QtWidgets
+
 
 class PlotWidgetModified(PlotWidget):
     """ Extend the PlotWidget Class with more adjustment possibilities.
@@ -50,9 +52,9 @@ class PlotWidgetModified(PlotWidget):
         of the PlotWidget.
         """
 
-        # Extend the received event ev with all the properties of a QT mouse
+        # Extend the received event ev with all the properties of a Qt mouse
         # press event.
-        QtGui.QGraphicsView.mousePressEvent(self, ev)
+        QtWidgets.QGraphicsView.mousePressEvent(self, ev)
 
         # this signal will be catched by other methods if the mouse was clicked
         # inside the PlotWidget.
@@ -77,9 +79,9 @@ class PlotWidgetModified(PlotWidget):
         That is basically a reimplementation of the mouseReleaseEvent function
         of the PlotWidget.
         """
-        # Extend the received event ev with all the properties of a QT mouse
+        # Extend the received event ev with all the properties of a Qt mouse
         # press event.
-        QtGui.QGraphicsView.mouseReleaseEvent(self, ev)
+        QtWidgets.QGraphicsView.mouseReleaseEvent(self, ev)
 
         # this signal will be catched by other methods if the mouse was clicked
         # and afterwards release inside the PlotWidget.

@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware module for AWG70000 Series.
+This file contains the Qudi hardware module for AWG70000 Series.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -24,7 +24,6 @@ import os
 import time
 from socket import socket, AF_INET, SOCK_STREAM
 from ftplib import FTP
-import numpy as np
 from collections import OrderedDict
 from fnmatch import fnmatch
 
@@ -337,7 +336,7 @@ class AWG70K(Base, PulserInterface):
 
         return 0
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
@@ -359,6 +358,8 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+        if load_dict is None:
+            load_dict = {}
 
         # Find all files associated with the specified asset name
         file_list = self._get_filenames_on_device()
@@ -399,9 +400,9 @@ class AWG70K(Base, PulserInterface):
         for asset in filename:
             file_path  = os.path.join(self.ftp_root_directory, self.asset_directory, asset)
             if asset.endswith('.mat'):
-                self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
+                self.tell('MMEM:OPEN:SASS:WAV "{0!s}"\n'.format(file_path))
             else:
-                self.tell('MMEM:OPEN "%s"\n' % file_path)
+                self.tell('MMEM:OPEN "{0!s}"\n'.format(file_path))
             self.ask('*OPC?\n')
         self.soc.settimeout(timeout)
 
@@ -410,16 +411,16 @@ class AWG70K(Base, PulserInterface):
             for asset in filename:
                 # load waveforms into channels
                 name = asset_name + '_ch1'
-                self.tell('SOUR1:CASS:WAV "%s"\n' % name)
+                self.tell('SOUR1:CASS:WAV "{0!s}"\n'.format(name))
                 name = asset_name + '_ch2'
-                self.tell('SOUR2:CASS:WAV "%s"\n' % name)
+                self.tell('SOUR2:CASS:WAV "{0!s}"\n'.format(name))
                 self.current_loaded_asset = asset_name
                 # self.soc.settimeout(3)
         else:
             for channel in load_dict:
                 # load waveforms into channels
                 name = load_dict[channel]
-                self.tell('SOUR'+str(channel)+':CASS:WAV "%s"\n' % name)
+                self.tell('SOUR'+str(channel)+':CASS:WAV "{0!s}"\n'.format(name))
             self.current_loaded_asset = asset_name
 
         return 0
@@ -493,7 +494,7 @@ class AWG70K(Base, PulserInterface):
 
         @return foat: the sample rate returned from the device (-1:error)
         """
-        self.tell('CLOCK:SRATE %.4G\n' % sample_rate)
+        self.tell('CLOCK:SRATE {0:.4G}\n'.format(sample_rate))
         time.sleep(3)
         return_rate = float(self.ask('CLOCK:SRATE?\n'))
         self.sample_rate = return_rate
@@ -506,7 +507,7 @@ class AWG70K(Base, PulserInterface):
         """
         return self.sample_rate
 
-    def get_analog_level(self, amplitude=[], offset=[]):
+    def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
         @param list amplitude: optional, if a specific amplitude value (in Volt
@@ -534,6 +535,10 @@ class AWG70K(Base, PulserInterface):
         levels are defined by an amplitude (here total signal span, denoted in
         Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
         """
+        if amplitude is None:
+            amplitude = []
+        if offset is None:
+            offset = []
 
         #FIXME: implement this method properly for this AWG type. Exploit of
         #       having now the possibility to set individual or a group of
@@ -564,7 +569,7 @@ class AWG70K(Base, PulserInterface):
 
         return amp, off
 
-    def set_analog_level(self, amplitude={}, offset={}):
+    def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
         @param dict amplitude: dictionary, with key being the channel and items
@@ -585,6 +590,10 @@ class AWG70K(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
+        if amplitude is None:
+            amplitude = {}
+        if offset is None:
+            offset = {}
 
         #Check the inputs by using the constraints:
         constraints = self.get_constraints()
@@ -639,7 +648,7 @@ class AWG70K(Base, PulserInterface):
             # self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
             pass
 
-    def get_digital_level(self, low=[], high=[]):
+    def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
         @param list low: optional, if a specific low value (in Volt) of a
@@ -669,6 +678,10 @@ class AWG70K(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
+        if low is None:
+            low = []
+        if high is None:
+            high = []
 
         low_val = {}
         high_val = {}
@@ -699,7 +712,7 @@ class AWG70K(Base, PulserInterface):
         return low_val, high_val
 
 
-    def set_digital_level(self, low={}, high={}):
+    def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
         @param dict low: dictionary, with key being the channel and items being
@@ -718,6 +731,10 @@ class AWG70K(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
@@ -732,7 +749,7 @@ class AWG70K(Base, PulserInterface):
             # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
             pass
 
-    def get_active_channels(self, ch=[]):
+    def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
         @param list ch: optional, if specific analog or digital channels are
@@ -749,6 +766,8 @@ class AWG70K(Base, PulserInterface):
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
+        if ch is None:
+            ch = []
 
         # If you want to check the input use the constraints:
 
@@ -800,7 +819,7 @@ class AWG70K(Base, PulserInterface):
 
         return return_ch
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the analog or digital
@@ -826,6 +845,8 @@ class AWG70K(Base, PulserInterface):
         other devices the deactivation of digital channels increase the DAC
         resolution of the analog channels.
         """
+        if ch is None:
+            ch = {}
 
         # update active channels variable
         for channel in ch:

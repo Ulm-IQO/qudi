@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi log widget class.
+This file contains the Qudi log widget class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -41,7 +41,7 @@ class LogModel(QtCore.QAbstractTableModel):
         super().__init__(**kwargs)
         self.header = ['Name', 'Time', 'Level', 'Message']
         self.fgColor = {
-            'debug':   QtGui.QColor('#11F'),
+            'debug':   QtGui.QColor('#77F'),
             'info':     QtGui.QColor('#1F1'),
             'warning':  QtGui.QColor('#F90'),
             'error':    QtGui.QColor('#F11'),
@@ -127,7 +127,7 @@ class LogModel(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
           """
-        if section < 0 and section > len(self.header) - 1:
+        if not(0 <= section < len(self.header)):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -383,7 +383,7 @@ class LogWidget(QtWidgets.QWidget):
         if self.model.rowCount() > self.logLength:
             self.model.removeRows(0, self.model.rowCount() - self.logLength)
         text = entry['message']
-        if entry.get('exception', None) is not None:
+        if entry.get('exception') is not None:
             if 'reasons' in entry['exception']:
                 text += '\n' + entry['exception']['reasons']
             if 'message' in entry['exception']:

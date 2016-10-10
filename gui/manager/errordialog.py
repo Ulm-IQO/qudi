@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi log window class.
+This file contains the Qudi log window class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -43,7 +43,7 @@ class ErrorDialog(QtWidgets.QDialog):
         self.logWindow = logWindow
         self.setWindowFlags(QtCore.Qt.Window)
         # self.setWindowModality(QtCore.Qt.NonModal)
-        self.setWindowTitle('QuDi Error')
+        self.setWindowTitle('Qudi Error')
         wid = QtWidgets.QDesktopWidget()
         screenWidth = wid.screen(wid.primaryScreen()).width()
         screenHeight = wid.screen(wid.primaryScreen()).height()
@@ -134,8 +134,8 @@ class ErrorDialog(QtWidgets.QDialog):
             self.messages.append(msg)
             self.nextBtn.show()
             self.nextBtn.setEnabled(True)
-            self.nextBtn.setText('Show next error (%d more)' %
-                                 len(self.messages))
+            self.nextBtn.setText('Show next error ({0:d} more)'.format(
+                                 len(self.messages)))
         else:
             w = QtWidgets.QApplication.activeWindow()
             self.nextBtn.hide()
@@ -193,7 +193,7 @@ class ErrorDialog(QtWidgets.QDialog):
         """ Shows the next error message popup.
         """
         self.msgLabel.setText(self.messages.pop(0))
-        self.nextBtn.setText('Show next error (%d more)' % len(self.messages))
+        self.nextBtn.setText('Show next error ({0:d} more)'.format(len(self.messages)))
         if len(self.messages) == 0:
             self.nextBtn.setEnabled(False)
 

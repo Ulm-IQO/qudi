@@ -2,25 +2,28 @@
 """
 This module controls LaserQuantum lasers.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from core.base import Base
-from interface.simple_laser_interface import *
+from interface.simple_laser_interface import SimpleLaserInterface
+from interface.simple_laser_interface import ControlMode
+from interface.simple_laser_interface import ShutterState
+from interface.simple_laser_interface import LaserState
 from enum import Enum
 import visa
 
@@ -158,9 +161,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['FPU']:
-            self.inst.query('POWER={:f}'.format(power))
+            self.inst.query('POWER={0:f}'.format(power))
         else:
-            self.inst.query('POWER={:f}'.format(power*1000))
+            self.inst.query('POWER={0:f}'.format(power*1000))
 
     def get_current(self):
         """
@@ -188,7 +191,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @param current_percent:
         @return:
         """
-        self.inst.query('CURRENT={}'.format(current_percent))
+        self.inst.query('CURRENT={0}'.format(current_percent))
         return self.get_current()
 
     def get_shutter_state(self):

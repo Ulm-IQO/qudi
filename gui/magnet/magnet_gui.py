@@ -22,17 +22,22 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import numpy as np
-from collections import OrderedDict
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import datetime
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from core.util.units import get_unit_prefix_dict
+from tools.scientific_spinbox import ScienSpinBox
+from tools.scientific_spinbox import ScienDSpinBox
+import pyqtgraph.exporters
 
-class MagnetMainWindow(QtGui.QMainWindow):
+
+class MagnetMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self):
@@ -45,7 +50,7 @@ class MagnetMainWindow(QtGui.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
-class MagnetSettingsWindow(QtGui.QDialog):
+class MagnetSettingsWindow(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -74,7 +79,7 @@ class MagnetGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self._continue_2d_fluorescence_alignment = False
 
@@ -97,35 +102,6 @@ class MagnetGui(GUIBase):
 
         config = self.getConfiguration()
 
-        # set the prefix, which determines the representation in the viewboxes
-        # for the linear translations. It can be chosen from the dict obtainable
-        # from get_unit_prefix_dict():
-        self._lin_trans_unit_prefix = 'm'
-        if 'lin_trans_unit_prefix' in config.keys():
-
-            if config['lin_trans_unit_prefix'] in get_unit_prefix_dict():
-                self._lin_trans_unit_prefix = config['lin_trans_unit_prefix']
-            else:
-                self.log.warning('The parameter "lin_trans_unit_prefix" is '
-                        'either not specified in the config or the unit '
-                        'prefix is not in the get_unit_prefix_dict() '
-                        'dictionary! Take the default prefix "{0}" '
-                        'instead.'.format(self._lin_trans_unit_prefix))
-
-        # the rotation representation should be normal, therefore it is not
-        # specified.
-        self._rot_trans_unit_prefix = ''
-        if 'rot_trans_unit_prefix' in config.keys():
-
-            if config['rot_trans_unit_prefix'] in get_unit_prefix_dict():
-                self._rot_trans_unit_prefix = config['rot_trans_unit_prefix']
-            else:
-                self.log.warning('The parameter "rot_trans_unit_prefix" is '
-                        'either not specified in the config or the unit '
-                        'prefix is not in the get_unit_prefix_dict() '
-                        'dictionary! Take the default prefix "{0}" '
-                        'instead.'.format(self._rot_trans_unit_prefix))
-
         # create all the needed control elements. They will manage the
         # connection with each other themselves. Note some buttons are also
         # connected within these functions because they have to be placed at
@@ -133,6 +109,8 @@ class MagnetGui(GUIBase):
         self._create_axis_pos_disp()
         self._create_move_rel_control()
         self._create_move_abs_control()
+
+        self._create_meas_type_RadioButtons()
 
         # Configuring the dock widgets
         # Use the class 'MagnetMainWindow' to create the GUI window
@@ -165,18 +143,15 @@ class MagnetGui(GUIBase):
         self._activate_magnet_settings(e)
 
         # connect the actions of the toolbar:
-        self._mw.actionMagnet_Settings.triggered.connect(self.open_magnet_settings)
-        self._mw.actionDefault_View.triggered.connect(self.set_default_view_main_window)
+        self._mw.magnet_settings_Action.triggered.connect(self.open_magnet_settings)
+        self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
 
         self.update_pos()
         self._magnet_logic.sigPosChanged.connect(self.update_pos)
 
         # Connect alignment GUI elements:
-        self._mw.align_2d_start_PushButton.clicked.connect(self.start_2d_alignment_clicked)
-        self._mw.align_2d_continue_PushButton.clicked.connect(self.continue_2d_alignment_clicked)
-        self._mw.align_2d_abort_PushButton.clicked.connect(self.abort_2d_alignment_clicked)
 
-        self._magnet_logic.sigMeasurementFinished.connect(self._change_to_stop)
+        self._magnet_logic.sigMeasurementFinished.connect(self._change_display_to_stop_2d_alignment)
 
 
 
@@ -221,6 +196,39 @@ class MagnetGui(GUIBase):
 
         self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
 
+        if 'alignment_2d_cb_GraphicsView_text' in self._statusVariables:
+            textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_text']
+
+        else:
+            textlabel = 'Fluorescence'
+
+        if 'alignment_2d_cb_GraphicsView_units' in self._statusVariables:
+            units = self._statusVariables['alignment_2d_cb_GraphicsView_units']
+        else:
+            units = 'counts/s'
+
+        self._mw.alignment_2d_cb_GraphicsView.setLabel('right', textlabel, units=units)
+
+        #FIXME: save that in the logic
+        if 'align_2d_axes0_range_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes0_range_DSpinBox.setValue(self._statusVariables['align_2d_axes0_range_DSpinBox'])
+        if 'align_2d_axes0_step_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes0_step_DSpinBox.setValue(self._statusVariables['align_2d_axes0_step_DSpinBox'])
+        if 'align_2d_axes0_vel_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes0_vel_DSpinBox.setValue(self._statusVariables['align_2d_axes0_vel_DSpinBox'])
+        if 'align_2d_axes1_range_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes1_range_DSpinBox.setValue(self._statusVariables['align_2d_axes1_range_DSpinBox'])
+        if 'align_2d_axes1_step_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes1_step_DSpinBox.setValue(self._statusVariables['align_2d_axes1_step_DSpinBox'])
+        if 'align_2d_axes1_vel_DSpinBox' in self._statusVariables:
+            self._mw.align_2d_axes1_vel_DSpinBox.setValue(self._statusVariables['align_2d_axes1_vel_DSpinBox'])
+
+        #FIXME: that should be actually set in the logic
+        if 'measurement_type' in self._statusVariables:
+            self.measurement_type = self._statusVariables['measurement_type']
+        else:
+            self.measurement_type = 'fluorescence'
+
         self._magnet_logic.sig2DAxisChanged.connect(self._update_2d_graph_axis)
         self._magnet_logic.sig2DMatrixChanged.connect(self._update_2d_graph_data)
 
@@ -231,7 +239,18 @@ class MagnetGui(GUIBase):
         self._update_2d_graph_data()
         self._update_2d_graph_cb()
 
-        self._mw.alignment_2d_save_PushButton.clicked.connect(self.save_2d_plots_and_data)
+
+        # Add save file tag input box
+        self._mw.alignment_2d_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
+        self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
+        self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag which will be\n'
+                                                          'added to the filename.')
+
+        self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
+        self._mw.save_Action.triggered.connect(self.save_2d_plots_and_data)
+
+        self._mw.run_stop_2d_alignment_Action.triggered.connect(self.run_stop_2d_alignment)
+        self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_2d_alignment)
 
         # connect the signals:
         # --------------------
@@ -241,7 +260,6 @@ class MagnetGui(GUIBase):
 
 
         # for odmr alignment:
-        self.measurement_type = 'fluorescence'
         self._mw.meas_type_fluorescence_RadioButton.toggled.connect(self.set_measurement_type)
         self._mw.meas_type_odmr_RadioButton.toggled.connect(self.set_measurement_type)
         self._mw.meas_type_nuclear_spin_RadioButton.toggled.connect(self.set_measurement_type)
@@ -251,22 +269,24 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_odmr_low_fit_func_ComboBox.clear()
         self._mw.align_2d_odmr_low_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_low_fitfunction_list)
         self._mw.align_2d_odmr_low_fit_func_ComboBox.setCurrentIndex(1)
-        self._mw.align_2d_odmr_low_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_center_freq/1e6)
-        self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq/1e6)
-        self._mw.align_2d_odmr_low_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_range_freq/1e6)
+        self._mw.align_2d_odmr_low_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_center_freq)
+        self._mw.align_2d_odmr_low_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_range_freq)
+        self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq)
         self._mw.align_2d_odmr_low_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_power)
         self._mw.align_2d_odmr_low_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_runtime)
 
         self._mw.align_2d_odmr_high_fit_func_ComboBox.clear()
         self._mw.align_2d_odmr_high_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_high_fitfunction_list)
         self._mw.align_2d_odmr_high_fit_func_ComboBox.setCurrentIndex(1)
-        self._mw.align_2d_odmr_high_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_center_freq/1e6)
-        self._mw.align_2d_odmr_high_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_step_freq/1e6)
-        self._mw.align_2d_odmr_high_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_range_freq/1e6)
+        self._mw.align_2d_odmr_high_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_center_freq)
+        self._mw.align_2d_odmr_high_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_range_freq)
+        self._mw.align_2d_odmr_high_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_step_freq)
         self._mw.align_2d_odmr_high_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_power)
         self._mw.align_2d_odmr_high_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_runtime)
 
         self._mw.align_2d_odmr_save_after_measure_CheckBox.setChecked(self._magnet_logic.odmr_2d_save_after_measure)
+
+        self._mw.odmr_2d_single_trans_CheckBox.stateChanged.connect(self._odmr_single_trans_alignment_changed)
 
         # peak shift for odmr:
         self._mw.align_2d_axes0_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_peak_axis0_move_ratio/1e12)
@@ -275,21 +295,16 @@ class MagnetGui(GUIBase):
 
 
         # for single shot alignment of a nuclear spin:
-        self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode*1e9)
-        self._mw.align_2d_nuclear_mw_freq_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_freq/1e6)
+        self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode)
+        self._mw.align_2d_nuclear_mw_freq_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_freq)
         self._mw.align_2d_nuclear_mw_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_mw_channel)
         self._mw.align_2d_nuclear_mw_power_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_power)
-        self._mw.align_2d_nuclear_laser_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_laser_time*1e9)
+        self._mw.align_2d_nuclear_laser_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_laser_time)
         self._mw.align_2d_nuclear_laser_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_laser_channel)
         self._mw.align_2d_nuclear_detect_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_detect_channel)
-        self._mw.align_2d_nuclear_idle_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_idle_time*1e9)
+        self._mw.align_2d_nuclear_idle_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_idle_time)
         self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_reps_within_ssr)
         self._mw.align_2d_nuclear_num_of_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_num_ssr)
-
-
-        self._mw.alignment_2d_status_Label.setText('Stopped')
-        self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
-
 
     def _activate_magnet_settings(self, e):
         """ Activate magnet settings.
@@ -298,11 +313,32 @@ class MagnetGui(GUIBase):
                          explanation can be found in the method initUI.
         """
         self._ms = MagnetSettingsWindow()
+        # default config is normal_mode
+        self._ms.normal_mode_checkBox.setChecked(True)
+        self._ms.z_mode_checkBox.setChecked(False)
+        # make sure the buttons are exclusively checked
+        self._ms.normal_mode_checkBox.stateChanged.connect(self.trig_wrapper_normal_mode)
+        self._ms.z_mode_checkBox.stateChanged.connect(self.trig_wrapper_z_mode)
+
+        #self._ms.z_mode_checkBox.stateChanged.connect(self._ms.normal_mode_checkBox.toggle)
         self._ms.accepted.connect(self.update_magnet_settings)
         self._ms.rejected.connect(self.keep_former_magnet_settings)
-        self._ms.ButtonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_magnet_settings)
+        self._ms.ButtonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_magnet_settings)
 
         self.keep_former_magnet_settings()
+
+    def trig_wrapper_normal_mode(self):
+        if not self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
+            self._ms.z_mode_checkBox.toggle()
+        elif self._ms.normal_mode_checkBox.isChecked() and self._ms.z_mode_checkBox.isChecked():
+            self._ms.z_mode_checkBox.toggle()
+
+    def trig_wrapper_z_mode(self):
+        if not self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
+            self._ms.normal_mode_checkBox.toggle()
+        elif self._ms.normal_mode_checkBox.isChecked() and self._ms.z_mode_checkBox.isChecked():
+            self._ms.normal_mode_checkBox.toggle()
+
 
     def on_deactivate(self, e=None):
         """ Deactivate the module properly.
@@ -310,11 +346,23 @@ class MagnetGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        self._statusVariables['measurement_type'] = self.measurement_type
+        self._statusVariables['alignment_2d_cb_GraphicsView_text'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
+        self._statusVariables['alignment_2d_cb_GraphicsView_units'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
+
+        #FIXME: save that in the logic
+        self._statusVariables['align_2d_axes0_range_DSpinBox'] = self._mw.align_2d_axes0_range_DSpinBox.value()
+        self._statusVariables['align_2d_axes0_step_DSpinBox'] = self._mw.align_2d_axes0_step_DSpinBox.value()
+        self._statusVariables['align_2d_axes0_vel_DSpinBox'] = self._mw.align_2d_axes0_vel_DSpinBox.value()
+        self._statusVariables['align_2d_axes1_range_DSpinBox'] = self._mw.align_2d_axes1_range_DSpinBox.value()
+        self._statusVariables['align_2d_axes1_step_DSpinBox'] = self._mw.align_2d_axes1_step_DSpinBox.value()
+        self._statusVariables['align_2d_axes1_vel_DSpinBox'] = self._mw.align_2d_axes1_vel_DSpinBox.value()
+
         self._mw.close()
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -358,21 +406,65 @@ class MagnetGui(GUIBase):
         else:
             self._interactive_mode = False
 
+        if self._ms.interactive_mode_CheckBox.isChecked():
+            self._interactive_mode = True
+        else:
+            self._interactive_mode = False
+        if self._ms.z_mode_checkBox.isChecked():
+            self._z_mode = True
+            self._magnet_logic._magnet_device.mode = 'z_mode'
+        else:
+            self._z_mode = False
+            self._magnet_logic._magnet_device.mode = 'normal_mode'
+
+        if self._ms.normal_mode_checkBox.isChecked():
+            self._normal_mode = True
+            self._magnet_logic._magnet_device.mode = 'normal_mode'
+        else:
+            self._normal_mode = False
+            self._magnet_logic._magnet_device.mode = 'z_mode'
+
     def keep_former_magnet_settings(self):
 
         self._ms.interactive_mode_CheckBox.setChecked(self._interactive_mode)
+
+    def _create_meas_type_RadioButtons(self):
+        """ Create the measurement Buttons for the desired measurements:
+
+        @return:
+        """
+
+        self._mw.alignment_2d_ButtonGroup = QtWidgets.QButtonGroup(self._mw)
+
+        self._mw.meas_type_fluorescence_RadioButton = QtWidgets.QRadioButton(parent=self._mw)
+        self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_fluorescence_RadioButton)
+        self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_fluorescence_RadioButton)
+        self._mw.meas_type_fluorescence_RadioButton.setText('Fluorescence')
+
+        self._mw.meas_type_odmr_RadioButton = QtWidgets.QRadioButton(parent=self._mw)
+        self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_odmr_RadioButton)
+        self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_odmr_RadioButton)
+        self._mw.meas_type_odmr_RadioButton.setText('ODMR')
+
+        self._mw.meas_type_nuclear_spin_RadioButton = QtWidgets.QRadioButton(parent=self._mw)
+        self._mw.alignment_2d_ButtonGroup.addButton(self._mw.meas_type_nuclear_spin_RadioButton)
+        self._mw.alignment_2d_ToolBar.addWidget(self._mw.meas_type_nuclear_spin_RadioButton)
+        self._mw.meas_type_nuclear_spin_RadioButton.setText('Nuclear Spin')
+
+        self._mw.meas_type_fluorescence_RadioButton.setChecked(True)
+
 
     def _create_axis_pos_disp(self):
         """ Create the axis position display.
 
         The generic variable name for a created QLable is:
             curr_pos_axis{0}_Label
-        The generic variable name for a created QDoubleSpinBox is:
-            curr_pos_axis{0}_DoubleSpinBox
+        The generic variable name for a created ScienDSpinBox is:
+            curr_pos_axis{0}_ScienDSpinBox
         where in {0} the name of the axis will be inserted.
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_curr_pos_DoubleSpinBox with the appropriated
+        Use the method get_ref_curr_pos_ScienDSpinBox with the appropriated
         label, otherwise you will break the generality.
         """
 
@@ -384,45 +476,34 @@ class MagnetGui(GUIBase):
             # Set the QLabel according to the grid
             # this is the name prototype for the label of current position display
             label_var_name = 'curr_pos_axis{0}_Label'.format(axis_label)
-            setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.curr_pos_DockWidgetContents))
+            setattr(self._mw, label_var_name, QtWidgets.QLabel(self._mw.curr_pos_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name)
             label_var.setObjectName(label_var_name)
-
-            if constraints[axis_label]['unit'] == 'm':
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._lin_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-            else:
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._rot_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-
+            label_var.setText('{0}'.format(axis_label))
             self._mw.curr_pos_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the current position display
-            dspinbox_ref_name = 'curr_pos_axis{0}_DoubleSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.curr_pos_DockWidgetContents))
+            dspinbox_ref_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(axis_label)
+
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.curr_pos_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
             dspinbox_ref.setReadOnly(True)
-            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
+            dspinbox_ref.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             dspinbox_ref.setMaximum(np.inf)
             dspinbox_ref.setMinimum(-np.inf)
-            #TODO: set the decimals also from the constraints or make them
-            #      setable in the settings window!
-            dspinbox_ref.setDecimals(3)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
+            # in the ScienDSpinBox the decimals are actually the number of
+            # significant digits, therefore set them here by default:
+            dspinbox_ref.setDecimals(5)
+            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001)
+            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
             self._mw.curr_pos_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
-        extension =  len(constraints)
+        extension = len(constraints)
         self._mw.curr_pos_GridLayout.addWidget(self._mw.curr_pos_get_pos_PushButton, 0, 2, extension, 1)
         self._mw.curr_pos_GridLayout.addWidget(self._mw.curr_pos_stop_PushButton, 0, 3, extension, 1)
         self._mw.curr_pos_get_pos_PushButton.clicked.connect(self.update_pos)
@@ -433,15 +514,15 @@ class MagnetGui(GUIBase):
 
         The generic variable name for a created QLable is:
             move_rel_axis_{0}_Label
-        The generic variable name for a created QDoubleSpinBox is:
-            move_rel_axis_{0}_DoubleSpinBox
+        The generic variable name for a created ScienDSpinBox is:
+            move_rel_axis_{0}_ScienDSpinBox
         The generic variable name for a created QPushButton in negative dir is:
             move_rel_axis_{0}_m_PushButton
         The generic variable name for a created QPushButton in positive dir is:
             move_rel_axis_{0}_p_PushButton
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_move_rel_DoubleSpinBox with the appropriated
+        Use the method get_ref_move_rel_ScienDSpinBox with the appropriated
         label, otherwise you will break the generality.
         """
 
@@ -451,41 +532,31 @@ class MagnetGui(GUIBase):
         for index, axis_label in enumerate(constraints):
 
             label_var_name = 'move_rel_axis_{0}_Label'.format(axis_label)
-            setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_rel_DockWidgetContents))
+            setattr(self._mw, label_var_name, QtWidgets.QLabel(self._mw.move_rel_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
-            # set axis_label for the label:
-            label_var.setObjectName(label_var_name)
-
-            if constraints[axis_label]['unit'] == 'm':
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._lin_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-            else:
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._rot_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-
+            label_var.setObjectName(label_var_name) # set axis_label for the label
+            label_var.setText('{0}'.format(axis_label))
             # add the label to the grid:
             self._mw.move_rel_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.move_rel_DockWidgetContents))
+            dspinbox_ref_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(axis_label)
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.move_rel_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
+            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
 
-            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
-            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
-            #TODO: set the decimals also from the constraints!
-            dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
+            # in the ScienDSpinBox the decimals are actually the number of
+            # significant digits, therefore set them here by default:
+            dspinbox_ref.setDecimals(5)
+            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001)
+            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
+
             self._mw.move_rel_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
 
@@ -497,7 +568,7 @@ class MagnetGui(GUIBase):
 
             # the change of the PushButton is connected to the previous method.
             button_var_name = 'move_rel_axis_{0}_m_PushButton'.format(axis_label)
-            setattr(self._mw, button_var_name, QtGui.QPushButton(self._mw.move_rel_DockWidgetContents))
+            setattr(self._mw, button_var_name, QtWidgets.QPushButton(self._mw.move_rel_DockWidgetContents))
             button_var = getattr(self._mw, button_var_name)
             button_var.setObjectName(button_var_name)
             button_var.setText('-')
@@ -511,7 +582,7 @@ class MagnetGui(GUIBase):
 
             # the change of the PushButton is connected to the previous method.
             button_var_name = 'move_rel_axis_{0}_p_PushButton'.format(axis_label)
-            setattr(self._mw, button_var_name, QtGui.QPushButton(self._mw.move_rel_DockWidgetContents))
+            setattr(self._mw, button_var_name, QtWidgets.QPushButton(self._mw.move_rel_DockWidgetContents))
             button_var = getattr(self._mw, button_var_name)
             button_var.setObjectName(button_var_name)
             button_var.setText('+')
@@ -525,19 +596,19 @@ class MagnetGui(GUIBase):
             move_abs_axis_{0}_Label
         The generic variable name for a created QLable is:
             move_abs_axis_{0}_Slider
-        The generic variable name for a created QDoubleSpinBox is:
-            move_abs_axis_{0}_DoubleSpinBox
+        The generic variable name for a created ScienDSpinBox is:
+            move_abs_axis_{0}_ScienDSpinBox
         The generic variable name for a created QPushButton for move is:
             move_abs_PushButton
 
         These methods should not be called:
-        The generic variable name for a update method for the QDoubleSpinBox:
+        The generic variable name for a update method for the ScienDSpinBox:
             _update_move_abs_{0}_dspinbox
         The generic variable name for a update method for the QSlider:
             _update_move_abs_{0}_slider
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Use the method get_ref_move_abs_DoubleSpinBox with the appropriated
+        Use the method get_ref_move_abs_ScienDSpinBox with the appropriated
         label, otherwise you will break the generality.
         """
 
@@ -546,29 +617,23 @@ class MagnetGui(GUIBase):
         for index, axis_label in enumerate(constraints):
 
             label_var_name = 'move_abs_axis_{0}_Label'.format(axis_label)
-            setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_abs_DockWidgetContents))
+            setattr(self._mw, label_var_name, QtWidgets.QLabel(self._mw.move_abs_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
             # set axis_label for the label:
             label_var.setObjectName(label_var_name)
+            label_var.setText(axis_label)
 
-            if constraints[axis_label]['unit'] == 'm':
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._lin_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-                smallest_step_slider = 1e-9
-            else:
-                label_var.setText('{0} ({1}{2})'.format(axis_label,
-                                                        self._rot_trans_unit_prefix,
-                                                        constraints[axis_label]['unit']))
-                smallest_step_slider = 1e-6
+            # make the steps of the splider as a multiple of 10
+            # smallest_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            smallest_step_slider = constraints[axis_label]['pos_step']
 
             # add the label to the grid:
             self._mw.move_abs_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
             slider_obj_name = 'move_abs_axis_{0}_Slider'.format(axis_label)
-            setattr(self._mw, slider_obj_name, QtGui.QSlider(self._mw.move_abs_DockWidgetContents))
+            setattr(self._mw, slider_obj_name, QtWidgets.QSlider(self._mw.move_abs_DockWidgetContents))
             slider_obj = getattr(self._mw, slider_obj_name)
             slider_obj.setObjectName(slider_obj_name)
             slider_obj.setOrientation(QtCore.Qt.Horizontal)
@@ -591,24 +656,27 @@ class MagnetGui(GUIBase):
 
             self._mw.move_abs_GridLayout.addWidget(slider_obj, index, 1, 1, 1)
 
-            # Set the QDoubleSpinBox according to the grid
+            # Set the ScienDSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_ref_name = 'move_abs_axis_{0}_DoubleSpinBox'.format(axis_label)
-            setattr(self._mw, dspinbox_ref_name, QtGui.QDoubleSpinBox(self._mw.move_abs_DockWidgetContents))
+            dspinbox_ref_name = 'move_abs_axis_{0}_ScienDSpinBox'.format(axis_label)
+            setattr(self._mw, dspinbox_ref_name, ScienDSpinBox(parent=self._mw.move_abs_DockWidgetContents))
             dspinbox_ref = getattr(self._mw, dspinbox_ref_name)
             dspinbox_ref.setObjectName(dspinbox_ref_name)
 #            dspinbox_ref.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
+            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
+            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
 
-            dspinbox_ref.setMaximum(constraints[axis_label]['pos_max']/norm)
-            dspinbox_ref.setMinimum(constraints[axis_label]['pos_min']/norm)
-            #TODO: set the decimals also from the constraints!
-            dspinbox_ref.setDecimals(3)
-            dspinbox_ref.setSingleStep(constraints[axis_label]['pos_step']/norm)
+            # in the ScienDSpinBox the decimals are actually the number of
+            # significant digits, therefore set them here by default:
+            dspinbox_ref.setDecimals(5)
+            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001)
+            dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
+
+            # set the horizontal size to 100 pixel:
+            dspinbox_ref.setMaximumSize(QtCore.QSize(80, 16777215))
+
             self._mw.move_abs_GridLayout.addWidget(dspinbox_ref, index, 2, 1, 1)
 
             # build a function to change the dspinbox value and connect a
@@ -617,8 +685,6 @@ class MagnetGui(GUIBase):
             setattr(self, func_name, self._function_builder_update_viewbox(func_name, axis_label, dspinbox_ref))
             update_func_dspinbox_ref = getattr(self, func_name)
             slider_obj.valueChanged.connect(update_func_dspinbox_ref)
-
-
 
             # build a function to change the slider value and connect a
             # spinbox value change event to it:
@@ -693,14 +759,11 @@ class MagnetGui(GUIBase):
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-                max_step_slider = 1e-9
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-                max_step_slider = 1e-6
-            actual_pos = (constraints[axis_label]['pos_min']+ slider_val * max_step_slider)
-            ref_dspinbox.setValue(actual_pos/norm)
+            # max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            max_step_slider = constraints[axis_label]['pos_step']
+
+            actual_pos = (constraints[axis_label]['pos_min'] + slider_val * max_step_slider)
+            ref_dspinbox.setValue(actual_pos)
 
         func_dummy_name.__name__ = func_name
         return func_dummy_name
@@ -736,7 +799,7 @@ class MagnetGui(GUIBase):
                                         pos_min + slider_step*pos_step
             """
 
-            dspinbox_obj = self.get_ref_move_abs_DoubleSpinBox(axis_label)
+            dspinbox_obj = self.get_ref_move_abs_ScienDSpinBox(axis_label)
             viewbox_val = dspinbox_obj.value()
 
             constraints = self._magnet_logic.get_hardware_constraints()
@@ -744,14 +807,10 @@ class MagnetGui(GUIBase):
             # better for the display behaviour. In the end, that will just make
             # everything smoother but not actually affect the displayed number:
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-                max_step_slider = 1e-9
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-                max_step_slider = 1e-6
+            # max_step_slider = 10**int(np.log10(constraints[axis_label]['pos_step']) -1)
+            max_step_slider = constraints[axis_label]['pos_step']
 
-            slider_val = abs(viewbox_val*norm - constraints[axis_label]['pos_min'])/max_step_slider
+            slider_val = abs(viewbox_val - constraints[axis_label]['pos_min'])/max_step_slider
             ref_slider.setValue(slider_val)
 
         func_dummy_name.__name__ = func_name
@@ -772,14 +831,9 @@ class MagnetGui(GUIBase):
         move_rel_axis_{0}_m with the appropriate label).
         """
         constraints = self._magnet_logic.get_hardware_constraints()
-        dspinbox = self.get_ref_move_rel_DoubleSpinBox(axis_label)
+        dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
 
-        if constraints[axis_label]['unit'] == 'm':
-            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-        else:
-            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-        movement = dspinbox.value()*norm * direction
+        movement = dspinbox.value() * direction
 
         self._magnet_logic.move_rel({axis_label: movement})
         # if self._interactive_mode:
@@ -798,15 +852,11 @@ class MagnetGui(GUIBase):
             self._magnet_logic.move_abs(param_dict)
         else:
             constraints = self._magnet_logic.get_hardware_constraints()
+
+            # create the move_abs dict
             move_abs = {}
             for label in constraints:
-
-                if constraints[label]['unit'] == 'm':
-                    norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-                else:
-                    norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-                move_abs[label] = self.get_ref_move_abs_DoubleSpinBox(label).value()*norm
+                move_abs[label] = self.get_ref_move_abs_ScienDSpinBox(label).value()
 
             self._magnet_logic.move_abs(move_abs)
 
@@ -814,24 +864,24 @@ class MagnetGui(GUIBase):
         #     self.update_pos()
 
 
-    def get_ref_curr_pos_DoubleSpinBox(self, label):
+    def get_ref_curr_pos_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'curr_pos_axis{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
-    def get_ref_move_rel_DoubleSpinBox(self, label):
+    def get_ref_move_rel_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
-    def get_ref_move_abs_DoubleSpinBox(self, label):
+    def get_ref_move_abs_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
-        dspinbox_name = 'move_abs_axis_{0}_DoubleSpinBox'.format(label)
+        dspinbox_name = 'move_abs_axis_{0}_ScienDSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
@@ -849,10 +899,10 @@ class MagnetGui(GUIBase):
         self._magnet_logic.set_optimize_pos(state)
 
     def stop_movement(self):
-        """ Ivokes an immediate stop of the hardware.
+        """ Invokes an immediate stop of the hardware.
 
         MAKE SURE THAT THE HARDWARE CAN BE CALLED DURING AN ACTION!
-        If the parameter _interactive_modev is set to False no stop can be done
+        If the parameter _interactive_mode is set to False no stop can be done
         since the device would anyway not respond to a method call.
         """
 
@@ -866,10 +916,10 @@ class MagnetGui(GUIBase):
     def update_pos(self, param_list=None):
         """ Update the current position.
 
-        @param dict param_dict: optional, if specific positions needed to be
+        @param list param_list: optional, if specific positions needed to be
                                 updated.
 
-        If no value is passed, the current possition is retrieved from the
+        If no value is passed, the current position is retrieved from the
         logic and the display is changed.
         """
         constraints = self._magnet_logic.get_hardware_constraints()
@@ -882,26 +932,42 @@ class MagnetGui(GUIBase):
 
         for axis_label in curr_pos:
             # update the values of the current position viewboxes:
-            dspinbox_pos_ref = self.get_ref_curr_pos_DoubleSpinBox(axis_label)
+            dspinbox_pos_ref = self.get_ref_curr_pos_ScienDSpinBox(axis_label)
 
-            if constraints[axis_label]['unit'] == 'm':
-                norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            else:
-                norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-
-            dspinbox_pos_ref.setValue(curr_pos[axis_label]/norm)
+            dspinbox_pos_ref.setValue(curr_pos[axis_label])
 
             # update the values also of the absolute movement display:
-            dspinbox_move_abs_ref = self.get_ref_move_abs_DoubleSpinBox(axis_label)
-            dspinbox_move_abs_ref.setValue(curr_pos[axis_label]/norm)
+            dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
+            dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
+
+    def run_stop_2d_alignment(self, is_checked):
+        """ Manage what happens if 2d magnet scan is started/stopped
+
+        @param bool is_checked: state if the current scan, True = started,
+                                False = stopped
+        """
+
+        if is_checked:
+            self.start_2d_alignment_clicked()
+
+        else:
+            self.abort_2d_alignment_clicked()
+
+    def _change_display_to_stop_2d_alignment(self):
+        """ Changes every display component back to the stopped state. """
+
+        self._mw.run_stop_2d_alignment_Action.blockSignals(True)
+        self._mw.run_stop_2d_alignment_Action.setChecked(False)
+
+        self._mw.continue_2d_alignment_Action.blockSignals(True)
+        self._mw.continue_2d_alignment_Action.setChecked(False)
+
+        self._mw.run_stop_2d_alignment_Action.blockSignals(False)
+        self._mw.continue_2d_alignment_Action.blockSignals(False)
 
     def start_2d_alignment_clicked(self):
         """ Start the 2d alignment. """
-
-        self._mw.alignment_2d_status_Label.setText('Running')
-        self._mw.alignment_2d_status_Label.setStyleSheet('color: green')
-
 
         if self.measurement_type == '2d_fluorescence':
             self._magnet_logic.curr_alignment_method = self.measurement_type
@@ -913,16 +979,16 @@ class MagnetGui(GUIBase):
         elif self.measurement_type == '2d_odmr':
             self._magnet_logic.curr_alignment_method = self.measurement_type
 
-            self._magnet_logic.odmr_2d_low_center_freq = self._mw.align_2d_odmr_low_center_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_low_range_freq = self._mw.align_2d_odmr_low_range_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_center_freq = self._mw.align_2d_odmr_low_center_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_range_freq = self._mw.align_2d_odmr_low_range_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_power = self._mw.align_2d_odmr_low_power_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_runtime  = self._mw.align_2d_odmr_low_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_fitfunction = self._mw.align_2d_odmr_low_fit_func_ComboBox.currentText()
 
-            self._magnet_logic.odmr_2d_high_center_freq = self._mw.align_2d_odmr_high_center_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_high_step_freq = self._mw.align_2d_odmr_high_step_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_high_range_freq = self._mw.align_2d_odmr_high_range_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_center_freq = self._mw.align_2d_odmr_high_center_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_high_range_freq = self._mw.align_2d_odmr_high_range_freq_DSpinBox.value()
+            self._magnet_logic.odmr_2d_high_step_freq = self._mw.align_2d_odmr_high_step_freq_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_power = self._mw.align_2d_odmr_high_power_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_runtime = self._mw.align_2d_odmr_high_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_fitfunction = self._mw.align_2d_odmr_high_fit_func_ComboBox.currentText()
@@ -930,19 +996,38 @@ class MagnetGui(GUIBase):
             self._magnet_logic.odmr_2d_peak_axis0_move_ratio = self._mw.align_2d_axes0_shift_DSpinBox.value()*1e12
             self._magnet_logic.odmr_2d_peak_axis1_move_ratio = self._mw.align_2d_axes1_shift_DSpinBox.value()*1e12
 
-            self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Half ODMR splitting', units='Hz')
+            self._magnet_logic.odmr_2d_single_trans = self._mw.odmr_2d_single_trans_CheckBox.isChecked()
+
+            if self._mw.odmr_2d_single_trans_CheckBox.isChecked():
+                self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'ODMR transition contrast', units='%')
+            else:
+                self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Half ODMR splitting', units='Hz')
 
         elif self.measurement_type == '2d_nuclear':
             self._magnet_logic.curr_alignment_method = self.measurement_type
 
+            # ODMR stuff:
+            self._magnet_logic.odmr_2d_low_center_freq = self._mw.align_2d_odmr_low_center_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_range_freq = self._mw.align_2d_odmr_low_range_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_power = self._mw.align_2d_odmr_low_power_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_runtime  = self._mw.align_2d_odmr_low_runtime_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_fitfunction = self._mw.align_2d_odmr_low_fit_func_ComboBox.currentText()
+
+            self._magnet_logic.odmr_2d_peak_axis0_move_ratio = self._mw.align_2d_axes0_shift_DSpinBox.value()*1e12
+            self._magnet_logic.odmr_2d_peak_axis1_move_ratio = self._mw.align_2d_axes1_shift_DSpinBox.value()*1e12
+
+            self._magnet_logic.odmr_2d_single_trans = self._mw.odmr_2d_single_trans_CheckBox.isChecked()
+
+            # nuclear ops:
             self._magnet_logic.nuclear_2d_rabi_periode = self._mw.align_2d_nuclear_rabi_periode_DSpinBox.value()*1e-9
             self._magnet_logic.nuclear_2d_mw_freq = self._mw.align_2d_nuclear_mw_freq_DSpinBox.value()*1e6
             self._magnet_logic.nuclear_2d_mw_channel = self._mw.align_2d_nuclear_mw_channel_SpinBox.value()
             self._magnet_logic.nuclear_2d_mw_power = self._mw.align_2d_nuclear_mw_power_DSpinBox.value()
-            self._magnet_logic.nuclear_2d_laser_time = self._mw.align_2d_nuclear_laser_time_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_laser_time = self._mw.align_2d_nuclear_laser_time_DSpinBox.value()
             self._magnet_logic.nuclear_2d_laser_channel = self._mw.align_2d_nuclear_laser_channel_SpinBox.value()
             self._magnet_logic.nuclear_2d_detect_channel = self._mw.align_2d_nuclear_detect_channel_SpinBox.value()
-            self._magnet_logic.nuclear_2d_idle_time = self._mw.align_2d_nuclear_idle_time_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_idle_time = self._mw.align_2d_nuclear_idle_time_DSpinBox.value()
             self._magnet_logic.nuclear_2d_reps_within_ssr = self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.value()
             self._magnet_logic.nuclear_2d_num_ssr = self._mw.align_2d_nuclear_num_of_ssr_SpinBox.value()
 
@@ -952,20 +1037,12 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
 
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
-        if constraints[axis0_name]['unit'] == 'm':
-            norm1 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-        else:
-            norm1 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-        axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()*norm1
-        axis0_step =  self._mw.align_2d_axes0_step_DSpinBox.value()*norm1
+        axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()
+        axis0_step = self._mw.align_2d_axes0_step_DSpinBox.value()
 
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
-        if constraints[axis1_name]['unit'] == 'm':
-            norm2 = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-        else:
-            norm2 = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-        axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()*norm2
-        axis1_step =  self._mw.align_2d_axes1_step_DSpinBox.value()*norm2
+        axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()
+        axis1_step = self._mw.align_2d_axes1_step_DSpinBox.value()
 
         if axis0_name == axis1_name:
             self.log.error('Fluorescence Alignment cannot be started since the '
@@ -976,12 +1053,12 @@ class MagnetGui(GUIBase):
             return
 
         if self._mw.align_2d_axis0_set_vel_CheckBox.isChecked():
-            axis0_vel = self._mw.align_2d_axes0_vel_DSpinBox.value()*norm1
+            axis0_vel = self._mw.align_2d_axes0_vel_DSpinBox.value()
         else:
             axis0_vel = None
 
         if self._mw.align_2d_axis1_set_vel_CheckBox.isChecked():
-            axis1_vel = self._mw.align_2d_axes1_vel_DSpinBox.value()*norm2
+            axis1_vel = self._mw.align_2d_axes1_vel_DSpinBox.value()
         else:
             axis1_vel = None
 
@@ -993,6 +1070,18 @@ class MagnetGui(GUIBase):
 
         self._continue_2d_fluorescence_alignment = False
 
+    def continue_stop_2d_alignment(self, is_checked):
+        """ Manage what happens if 2d magnet scan is continued/stopped
+
+        @param bool is_checked: state if the current scan, True = continue,
+                                False = stopped
+        """
+
+        if is_checked:
+            self.continue_2d_alignment_clicked()
+        else:
+            self.abort_2d_alignment_clicked()
+
 
     def continue_2d_alignment_clicked(self):
 
@@ -1003,13 +1092,8 @@ class MagnetGui(GUIBase):
     def abort_2d_alignment_clicked(self):
         """ Stops the current Fluorescence alignment. """
 
-        self._change_to_stop()
+        self._change_display_to_stop_2d_alignment()
         self._magnet_logic.stop_alignment()
-
-    def _change_to_stop(self):
-        """ Changes every display component back to the stopped state. """
-        self._mw.alignment_2d_status_Label.setText('Stopped')
-        self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
 
     def _update_limits_axis0(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
@@ -1019,40 +1103,26 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
 
-        if constraints[axis0_name]['unit'] == 'm':
-            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
-                                                 constraints[axis0_name]['unit'])
-        else:
-            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
-                                                 constraints[axis0_name]['unit'])
-
-        # set the label text properly:
-        self._mw.align_2d_axes0_range_Label.setText('Range '+unit_text)
-        self._mw.align_2d_axes0_step_Label.setText('Step '+unit_text)
-        vel_unit = unit_text[:-1] + '/s)'
-        self._mw.align_2d_axis0_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
-
         # set the range constraints:
         self._mw.align_2d_axes0_range_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
-        self._mw.align_2d_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
-        # FIXME: obtain the decimals correctly:
-        # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
-        self._mw.align_2d_axes0_range_DSpinBox.setDecimals(3)
-
+        self._mw.align_2d_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
+        self._mw.align_2d_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
+        # self._mw.align_2d_axes0_range_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes0_range_DSpinBox.setSuffix(constraints[axis0_name]['unit'])
 
         # set the step constraints:
         self._mw.align_2d_axes0_step_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
-        self._mw.align_2d_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
-        self._mw.align_2d_axes0_step_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
+        self._mw.align_2d_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
+        # self._mw.align_2d_axes0_step_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes0_step_DSpinBox.setSuffix(constraints[axis0_name]['unit'])
 
         # set the velocity constraints:
-        self._mw.align_2d_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min']/norm)
-        self._mw.align_2d_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max']/norm)
-        self._mw.align_2d_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step']/norm)
+        self._mw.align_2d_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min'])
+        self._mw.align_2d_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max'])
+        self._mw.align_2d_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step'])
+        # self._mw.align_2d_axes0_vel_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes0_vel_DSpinBox.setSuffix(constraints[axis0_name]['unit']+'/s')
 
     def _update_limits_axis1(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
@@ -1062,36 +1132,23 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
 
-        if constraints[axis1_name]['unit'] == 'm':
-            norm = get_unit_prefix_dict()[self._lin_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._lin_trans_unit_prefix,
-                                                 constraints[axis1_name]['unit'])
-        else:
-            norm = get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-            unit_text = '({0}{1})'.format(self._rot_trans_unit_prefix,
-                                                 constraints[axis1_name]['unit'])
-
-        # set the label text properly:
-        self._mw.align_2d_axes1_range_Label.setText('Range '+unit_text)
-        self._mw.align_2d_axes1_step_Label.setText('Step '+unit_text)
-        vel_unit = unit_text[:-1] + '/s)'
-        self._mw.align_2d_axis1_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
-
         self._mw.align_2d_axes1_range_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
-        self._mw.align_2d_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
-        # FIXME: obtain the decimals correctly:
-        # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
-        self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
+        self._mw.align_2d_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
+        # self._mw.align_2d_axes1_range_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes1_range_DSpinBox.setSuffix(constraints[axis1_name]['unit'])
 
         self._mw.align_2d_axes1_step_DSpinBox.setMinimum(0)
-        self._mw.align_2d_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
-        self._mw.align_2d_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
-        self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
+        self._mw.align_2d_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
+        # self._mw.align_2d_axes1_step_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes1_step_DSpinBox.setSuffix(constraints[axis1_name]['unit'])
 
-        self._mw.align_2d_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min']/norm)
-        self._mw.align_2d_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max']/norm)
-        self._mw.align_2d_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step']/norm)
+        self._mw.align_2d_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min'])
+        self._mw.align_2d_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max'])
+        self._mw.align_2d_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step'])
+        # self._mw.align_2d_axes1_vel_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axes1_vel_DSpinBox.setSuffix(constraints[axis1_name]['unit']+'/s')
 
     def _set_vel_display_axis0(self):
         """ Set the visibility of the velocity display for axis 0. """
@@ -1212,7 +1269,7 @@ class MagnetGui(GUIBase):
         else:
             filename = os.path.join(filepath, '{0}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
-        exporter_graph = pg.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
+        exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
         #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
         exporter_graph.export(filename  + '.svg')
 
@@ -1222,6 +1279,8 @@ class MagnetGui(GUIBase):
     def set_measurement_type(self):
         """ According to the selected Radiobox a measurement type will be chosen."""
 
+        #FIXME: the measurement type should actually be set and saved in the logic
+
         if self._mw.meas_type_fluorescence_RadioButton.isChecked():
             self.measurement_type = '2d_fluorescence'
         elif self._mw.meas_type_odmr_RadioButton.isChecked():
@@ -1230,3 +1289,10 @@ class MagnetGui(GUIBase):
             self.measurement_type = '2d_nuclear'
         else:
             self.log.error('No measurement type specified in Magnet GUI!')
+    def _odmr_single_trans_alignment_changed(self):
+        """ Adjust the GUI display if only one ODMR transition is used. """
+
+        if self._mw.odmr_2d_single_trans_CheckBox.isChecked():
+            self._mw.odmr_2d_high_trans_GroupBox.setVisible(False)
+        else:
+            self._mw.odmr_2d_high_trans_GroupBox.setVisible(True)

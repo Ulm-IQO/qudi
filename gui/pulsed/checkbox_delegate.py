@@ -3,26 +3,27 @@
 """
 This file contains a checkbox delegate.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtGui, QtCore
+from qtpy import QtCore
+from qtpy import QtWidgets
 
-class CheckBoxDelegate(QtGui.QStyledItemDelegate):
+class CheckBoxDelegate(QtWidgets.QStyledItemDelegate):
     """
     A delegate that places a fully functioning QCheckBox in every
     cell of the column to which it's applied
@@ -35,7 +36,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
                                 editor. In this class the items must look like:
                                 [default_val]
         """
-        QtGui.QStyledItemDelegate.__init__(self, parent)
+        super().__init__(parent)
         self.item_dict = item_dict
 
         # constant from Qt how to access the specific data type:
@@ -78,7 +79,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
         needed any longer.
         """
 
-        editor = QtGui.QCheckBox(parent)
+        editor = QtWidgets.QCheckBox(parent)
         editor.setCheckState(self.item_dict['init_val'])
         editor.installEventFilter(self)
         return editor

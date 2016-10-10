@@ -3,18 +3,18 @@
 """
 This file contains a gui for the pid controller logic.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -22,14 +22,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import numpy as np
 import pyqtgraph as pg
 import os
 
 
-class PIDMainWindow(QtGui.QMainWindow):
+class PIDMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self):
@@ -62,7 +63,7 @@ class PIDGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
@@ -75,7 +76,7 @@ class PIDGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._pid_logic = self.connector['in']['pidlogic']['object']
+        self._pid_logic = self.get_in_connector('pidlogic')
 
         #####################
         # Configuring the dock widgets
@@ -92,7 +93,7 @@ class PIDGui(GUIBase):
         self.plot1 = self._pw.plotItem
         self.plot1.setLabel(
             'left',
-            '<font color={}>Process Value</font> and <font color={}>Setpoint</font>'.format(
+            '<font color={0}>Process Value</font> and <font color={1}>Setpoint</font>'.format(
                 palette.c1.name(),
                 palette.c2.name()),
              units='unit')
@@ -187,7 +188,7 @@ class PIDGui(GUIBase):
     def show(self):
         """Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -206,15 +207,15 @@ class PIDGui(GUIBase):
 
         if self._pid_logic.get_enabled():
             self._mw.process_value_Label.setText(
-                '<font color={}>{:,.3f}</font>'.format(
+                '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c1.name(),
                 self._pid_logic.history[0, -1]))
             self._mw.control_value_Label.setText(
-                '<font color={}>{:,.3f}</font>'.format(
+                '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c3.name(),
                 self._pid_logic.history[1, -1]))
             self._mw.setpoint_value_Label.setText(
-                '<font color={}>{:,.3f}</font>'.format(
+                '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c2.name(),
                 self._pid_logic.history[2, -1]))
             extra = self._pid_logic._controller.get_extra()

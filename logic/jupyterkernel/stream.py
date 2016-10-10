@@ -2,25 +2,24 @@
 """
 Qt-based ZMQ stream
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 import zmq
-from pyqtgraph.Qt import QtCore
-QtCore.Signal = QtCore.pyqtSignal
+from qtpy import QtCore
 import logging
 
 class QZMQStream(QtCore.QObject):
@@ -31,15 +30,15 @@ class QZMQStream(QtCore.QObject):
 
     def __init__(self, zmqsocket):
         """ Make a stream from a socket.
-        
-        @param socket: ZMQ socket
+
+        @param zmqsocket: ZMQ socket
         """
         super().__init__()
         self.socket = zmqsocket
         self.readnotifier = QtCore.QSocketNotifier(
             self.socket.get(zmq.FD),
             QtCore.QSocketNotifier.Read)
-        logging.debug( "Notifier: %s" % self.readnotifier.socket())
+        logging.debug( "Notifier: {0!s}".format(self.readnotifier.socket()))
         self.readnotifier.activated.connect(self.checkForMessage)
 
     def checkForMessage(self, socket):
@@ -47,14 +46,14 @@ class QZMQStream(QtCore.QObject):
 
           @param socket: ZMQ socket
         """
-        logging.debug( "Check: %s" % self.readnotifier.socket())
+        logging.debug( "Check: {0!s}".format(self.readnotifier.socket()))
         self.readnotifier.setEnabled(False)
         check = True
         try:
             while check:
                 events = self.socket.get(zmq.EVENTS)
                 check = events & zmq.POLLIN
-                logging.debug( "EVENTS: %s" % events)
+                logging.debug( "EVENTS: {0!s}".format(events))
                 if check:
                     try:
                         msg = self.socket.recv_multipart(zmq.NOBLOCK)
@@ -63,9 +62,9 @@ class QZMQStream(QtCore.QObject):
                             # state changed since poll event
                             pass
                         else:
-                            logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
+                            logging.info( "RECV Error: {0!s}".format(zmq.strerror(e.errno)))
                     else:
-                        logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
+                        logging.debug( "MSG: {0!s} {1!s}".format(self.readnotifier.socket(), msg))
                         self.sigMsgRecvd.emit(msg)
         except:
             pass

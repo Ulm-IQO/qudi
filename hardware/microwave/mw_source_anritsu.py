@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file to control Anritsu Microwave Device.
+This file contains the Qudi hardware file to control Anritsu Microwave Device.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Parts of this file were developed from a PI3diamond module which is
 Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
@@ -26,7 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveAnritsu(Base, MicrowaveInterface):
@@ -89,26 +89,22 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
     def get_limits(self):
         """ Right now, this is for Anritsu MG37022A with Option 4 only."""
-        limits = {
-            'frequency': {
-                'min': 10*10e6,
-                'max': 20*10e9
-                },
-            'power': {
-                'min': -105,
-                'max': 18
-                },
-            'list': {
-                'minstep': 0.001,
-                'maxstep': 20*10e9,
-                'maxentries': 10001
-                },
-            'sweep': {
-                'minstep': 0.001,
-                'maxstep': 20*10e9,
-                'maxentries': 10001
-                }
-            }
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST', 'SWEEP')
+
+        limits.min_frequency = 10e6
+        limits.max_frequency = 20e9
+
+        limits.min_power = -105
+        limits.max_power = 30
+
+        limits.list_minstep = 0.001
+        limits.list_maxstep = 20e9
+        limits.list_maxentries = 10001
+
+        limits.sweep_minstep = 0.001
+        limits.sweep_maxstep = 20e9
+        limits.sweep_maxentries = 10001
         return limits
 
     def on(self):
@@ -149,7 +145,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
 
         if power is not None:
-            self._gpib_connection.write(':POW {:f}'.format(power))
+            self._gpib_connection.write(':POW {0:f}'.format(power))
             return 0
         else:
             return -1
@@ -171,7 +167,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
 
         if freq is not None:
-            self._gpib_connection.write(':FREQ {:f}'.format(freq))
+            self._gpib_connection.write(':FREQ {0:f}'.format(freq))
             return 0
         else:
             return -1
@@ -280,9 +276,9 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @return:
         """
         self._gpib_connection.write(':SWE:GEN STEP')
-        self._gpib_connection.write(':FREQ:START {}'.format(start-step))
-        self._gpib_connection.write(':FREQ:STOP {}'.format(stop))
-        self._gpib_connection.write(':SWE:FREQ:STEP {}'.format(step))
+        self._gpib_connection.write(':FREQ:START {0}'.format(start-step))
+        self._gpib_connection.write(':FREQ:STOP {0}'.format(stop))
+        self._gpib_connection.write(':SWE:FREQ:STEP {0}'.format(step))
         nrpoints = int(self._gpib_connection.query(':SWE:POIN?'))
         return nrpoints - 1
 

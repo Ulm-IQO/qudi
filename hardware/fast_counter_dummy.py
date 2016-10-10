@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware dummy for fast counting devices.
+This file contains the Qudi hardware dummy for fast counting devices.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import os
 import numpy as np
-from pyqtgraph.Qt import QtGui
+from qtpy import QtWidgets
 
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
@@ -51,7 +51,7 @@ class FastCounterDummy(Base, FastCounterInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         if 'gated' in config.keys():
             self._gated = config['gated']
@@ -68,7 +68,6 @@ class FastCounterDummy(Base, FastCounterInterface):
             self.log.warning('No parameter "choose_trace" was specified in '
                     'the config. The default configuration choose_trace={0} '
                     'will be taken instead.'.format(self._choose_trace))
-        self._iter = 0
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -84,14 +83,6 @@ class FastCounterDummy(Base, FastCounterInterface):
         self.statusvar = 0
         self._binwidth = 1
         self._gate_length_bins = 8192
-
-        filename = os.path.abspath(r'C:\Users\astark\Documents\20160822\pulse-test')
-
-        self.filename_list = [0]*324
-
-        for ii in range(324):
-            self.filename_list[ii] = os.path.join(filename,str(ii)+'.dat')
-
         return
 
     def on_deactivate(self, e):
@@ -188,11 +179,10 @@ class FastCounterDummy(Base, FastCounterInterface):
             defaultconfigpath = os.path.join(self.get_main_dir())
 
             # choose the filename via the Qt Dialog window:
-            # filename = QtGui.QFileDialog.getOpenFileName(None,
-            #                                              'Load Pulsed File',
-            #                                              defaultconfigpath)#,
-            #                                              # 'Configuration files (*.cfg)')
-            filename = self.filename_list[0]
+            filename = QtWidgets.QFileDialog.getOpenFileName(None,
+                                                         'Load Pulsed File',
+                                                         defaultconfigpath)#,
+                                                         # 'Configuration files (*.cfg)')
 
             if filename == '':
                 self._count_data = np.loadtxt(
@@ -266,18 +256,7 @@ class FastCounterDummy(Base, FastCounterInterface):
         """
 
         # include an artificial waiting time
-        # time.sleep(0.5)
-
-        filename = self.filename_list[self._iter]
-
-        if self._iter+2 > len(self.filename_list):
-            self._iter = 0
-        else:
-            self._iter = self._iter + 1
-
-        self.log.info(('iter:', self._iter))
-
-        self._count_data = np.loadtxt(filename).transpose()
+        time.sleep(0.5)
         return self._count_data
 
     def get_frequency(self):

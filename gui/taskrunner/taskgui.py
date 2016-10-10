@@ -1,29 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner GUI.
+This file contains the Qudi task runner GUI.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import os
-import numpy as np
-from collections import OrderedDict
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import uic
+
 
 class TaskGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
@@ -50,7 +51,7 @@ class TaskGui(GUIBase):
         """
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
-        self.logic = self.connector['in']['tasklogic']['object']
+        self.logic = self.get_in_connector('tasklogic')
         self._mw.taskTableView.setModel(self.logic.model)
         self._mw.taskTableView.clicked.connect(self.setRunToolState)
         self._mw.actionStart_Task.triggered.connect(self.manualStart)
@@ -94,7 +95,7 @@ class TaskGui(GUIBase):
     def setRunToolState(self, index, index2=None):
         selected = self._mw.taskTableView.selectedIndexes()
         try:
-            if not index2 is None and selected[0].row() != index2.row():
+            if index2 is not None and selected[0].row() != index2.row():
                 return
         except:
             return
@@ -118,7 +119,7 @@ class TaskGui(GUIBase):
                 self._mw.actionStop_Task.setEnabled(False)
                 self._mw.actionPause_Task.setEnabled(False)
 
-class TaskMainWindow(QtGui.QMainWindow):
+class TaskMainWindow(QtWidgets.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):

@@ -3,31 +3,30 @@
 """
 A module for controlling processes via PID regulation.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from qtpy import QtCore
+from core.util.mutex import Mutex
+import numpy as np
+
 from logic.generic_logic import GenericLogic
 from interface.pid_controller_interface import PIDControllerInterface
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from collections import OrderedDict
-import numpy as np
-import time
-import datetime
+
 
 class SoftPIDController(GenericLogic, PIDControllerInterface):
     """
@@ -51,7 +50,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.debug('{}: {}'.format(key,config[key]))
+            self.log.debug('{0}: {1}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -60,8 +59,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._process = self.connector['in']['process']['object']
-        self._control = self.connector['in']['control']['object']
+        self._process = self.get_in_connector('process')
+        self._control = self.get_in_connector('control')
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()
@@ -141,10 +140,10 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
             self.countdown = -1
             self.integrated = 0
             self.enable = True
-        
+
         if (self.enable):
             delta = self.setpoint - self.pv
-            self.integrated += delta 
+            self.integrated += delta
             ## Calculate PID controller:
             self.P = self.kP * delta
             self.I = self.kI * self.timestep * self.integrated
@@ -221,7 +220,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
     def get_manual_value(self):
         return self.manualvalue
-        
+
     def set_manual_value(self, manualvalue):
         self.manualvalue = manualvalue
         limits = self._control.getControlLimits()
@@ -241,13 +240,13 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
     def get_control_limits(self):
         return self._control.getControlLimits()
-    
+
     def set_control_limits(self, limits):
         pass
 
     def get_control_value(self):
         return self.cv
-    
+
     def get_process_value(self):
         return self.pv
 

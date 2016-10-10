@@ -1,29 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi automation GUI.
+This file contains the Qudi automation GUI.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import os
-import numpy as np
-from collections import OrderedDict
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
+
 
 class AutomationGui(GUIBase):
     """ """
@@ -49,7 +50,7 @@ class AutomationGui(GUIBase):
         """
         self._mw = AutomationMainWindow()
         self.restoreWindowPos(self._mw)
-        self.logic = self.connector['in']['automationlogic']['object']
+        self.logic = self.get_in_connector('automationlogic')
         self._mw.autoTreeView.setModel(self.logic.model)
         #self._mw.taskTableView.clicked.connect(self.setRunToolState)
         #self._mw.actionStart_Task.triggered.connect(self.manualStart)
@@ -75,7 +76,7 @@ class AutomationGui(GUIBase):
         self.saveWindowPos(self._mw)
         self._mw.close()
 
-class AutomationMainWindow(QtGui.QMainWindow):
+class AutomationMainWindow(QtWidgets.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):

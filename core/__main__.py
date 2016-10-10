@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi Manager class.
+This file contains the Qudi Manager class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -56,8 +56,8 @@ from .logger import initialize_logger
 initialize_logger()
 import logging
 logger = logging.getLogger(__name__)
-logger.info('Loading QuDi...')
-print('Loading QuDi...')
+logger.info('Loading Qudi...')
+print('Loading Qudi...')
 
 
 # this loads Qt and makes sure the API version is right with PyQt4
@@ -200,8 +200,8 @@ class AppWatchdog(QtCore.QObject):
             print('Stopping threads...')
             manager.tm.quitAllThreads()
             QtCore.QCoreApplication.instance().processEvents()
-            logger.info('QuDi is closed!  Ciao.')
-            print('\n  QuDi is closed!  Ciao.')
+            logger.info('Qudi is closed!  Ciao.')
+            print('\n  Qudi is closed!  Ciao.')
         QtCore.QCoreApplication.instance().quit()
 
 

@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi sequence generator logic for general sequence structure.
+This file contains the Qudi sequence generator logic for general sequence structure.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -24,15 +24,19 @@ import numpy as np
 import pickle
 import os
 import time
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from collections import OrderedDict
 import inspect
 import importlib
 
-from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
+from logic.pulse_objects import Pulse_Block_Element
+from logic.pulse_objects import Pulse_Block
+from logic.pulse_objects import Pulse_Block_Ensemble
+from logic.pulse_objects import Pulse_Sequence
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
 from logic.samples_write_methods import SamplesWriteMethods
+
 
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethods):
     """unstable: Nikolas Tomek
@@ -73,7 +77,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
@@ -193,7 +197,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 filename_list.append(entry[:-3])
 
         for filename in filename_list:
-            mod = importlib.import_module('logic.predefined_methods.{}'.format(filename))
+            mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
 
             for method in dir(mod):
                 try:

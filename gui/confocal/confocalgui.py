@@ -1,28 +1,30 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi GUI for general Confocal control.
+This file contains the Qudi GUI for general Confocal control.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtGui
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
-import pyqtgraph.exporters
 import numpy as np
 import time
 import os
@@ -32,14 +34,6 @@ from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
-
-# This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator
-# It is used when specifying the paths to icons for the scanning actions.
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    def _fromUtf8(s):
-        return s
 
 
 class CrossROI(pg.ROI):
@@ -135,7 +129,7 @@ class CrossLine(pg.InfiniteLine):
             self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5)
 
 
-class ConfocalMainWindow(QtGui.QMainWindow):
+class ConfocalMainWindow(QtWidgets.QMainWindow):
 
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
@@ -156,7 +150,7 @@ class ConfocalMainWindow(QtGui.QMainWindow):
         self.sigPressKeyBoard.emit(event)
 
 
-class ConfocalSettingDialog(QtGui.QDialog):
+class ConfocalSettingDialog(QtWidgets.QDialog):
 
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
 
@@ -170,7 +164,7 @@ class ConfocalSettingDialog(QtGui.QDialog):
         uic.loadUi(ui_file, self)
 
 
-class OptimizerSettingDialog(QtGui.QDialog):
+class OptimizerSettingDialog(QtWidgets.QDialog):
 
     def __init__(self):
         # Get the path to the *.ui file
@@ -202,7 +196,7 @@ class ConfocalGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
         self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
@@ -236,10 +230,10 @@ class ConfocalGui(GUIBase):
         """
 
         # Getting an access to all connectors:
-        self._scanning_logic = self.connector['in']['confocallogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._optimizer_logic = self.connector['in']['optimizerlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_logic = self.get_in_connector('confocallogic1')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._optimizer_logic = self.get_in_connector('optimizerlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self._hardware_state = True
 
@@ -426,8 +420,8 @@ class ConfocalGui(GUIBase):
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming
         # from the Logic module must be in micrometer.
-        self.slider_res = 0.001  # 1 nanometer resolution per one change, units
-                                 # are micrometer
+        # 1 nanometer resolution per one change, units are micrometer
+        self.slider_res = 0.001
 
         # How many points are needed for that kind of resolution:
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0]) / self.slider_res
@@ -515,7 +509,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
 
         # Get initial tilt correction values
-        self._mw.action_Tiltcorrection.setChecked(self._scanning_logic.TiltCorrection)
+        self._mw.action_TiltCorrection.setChecked(self._scanning_logic._scanning_device.tiltcorrection)
 
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
@@ -530,7 +524,7 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
         # Connect tiltcorrection stuff
-        self._mw.action_Tiltcorrection.triggered.connect(self.use_tiltcorrection_clicked)
+        self._mw.action_TiltCorrection.triggered.connect(self.use_tiltcorrection_clicked)
         self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)
         self._mw.tilt_set_02_pushButton.clicked.connect(self.set_tiltpoint_02_clicked)
         self._mw.tilt_set_03_pushButton.clicked.connect(self.set_tiltpoint_03_clicked)
@@ -608,16 +602,16 @@ class ConfocalGui(GUIBase):
         ###################################################################
 
         self._scan_xy_single_icon = QtGui.QIcon()
-        self._scan_xy_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-xy-start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_xy_single_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-start.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self._scan_depth_single_icon = QtGui.QIcon()
-        self._scan_depth_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-depth-start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_depth_single_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-start.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self._scan_xy_loop_icon = QtGui.QIcon()
-        self._scan_xy_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-xy-loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_xy_loop_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-loop.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self._scan_depth_loop_icon = QtGui.QIcon()
-        self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-depth-loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-loop.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         #################################################################
         #           Connect the colorbar and their actions              #
@@ -673,7 +667,7 @@ class ConfocalGui(GUIBase):
         # Connect the action of the settings window with the code:
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.keep_former_settings)
-        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self._sd.hardware_switch.clicked.connect(self.switch_hardware)
 
         # write the configuration to the settings window of the GUI.
@@ -694,7 +688,7 @@ class ConfocalGui(GUIBase):
         # Connect the action of the settings window with the code:
         self._osd.accepted.connect(self.update_optimizer_settings)
         self._osd.rejected.connect(self.keep_former_optimizer_settings)
-        self._osd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
+        self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
 
         # Generation of the fit params tab ##################
         self._osd.fit_tab = FitSettingsWidget(self._optimizer_logic.z_params)
@@ -724,9 +718,9 @@ class ConfocalGui(GUIBase):
     def keyPressEvent(self, event):
         """ Handles the passed keyboard events from the main window.
 
-        @param object event: PyQt4.QtCore.QEvent object.
+        @param object event: qtpy.QtCore.QEvent object.
         """
-        modifiers = QtGui.QApplication.keyboardModifiers()
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
 
         x_pos, y_pos, z_pos = self._scanning_logic.get_position()   # in micrometers
 
@@ -1024,40 +1018,29 @@ class ConfocalGui(GUIBase):
         self.disable_scan_actions()
 
     def continue_xy_scan_clicked(self):
-        """ Manages what happens if the xy scan is continued.
-
-        @param bool enabled: continue scan if that is possible
-        """
+        """ Continue xy scan. """
         self._scanning_logic.continue_scanning(zscan=False)
         self.disable_scan_actions()
 
     def continue_depth_scan_clicked(self):
-        """ Manages what happens if the xy scan is continued.
-
-        @param bool enabled: continue scan if that is possible
-        """
+        """ Continue depth scan. """
         self._scanning_logic.continue_scanning(zscan=True)
         self.disable_scan_actions()
 
     def depth_scan_clicked(self):
-        """ Manages what happens if the depth scan is started.
-
-        @param bool enabled: start scan if that is possible
-        """
+        """ Start depth scan. """
         self._scanning_logic.start_scanning(zscan=True)
         self.disable_scan_actions()
 
     def refocus_clicked(self):
-        """ Manages what happens if the optimizer is started.
-
-        @param bool enabled: start optimizer if that is possible
-        """
+        """ Start optimize position. """
         self._scanning_logic.stop_scanning()  # CHECK: is this necessary?
 
         # Get the current crosshair position to send to optimizer
         crosshair_pos = self._scanning_logic.get_position()
 
-        self._optimizer_logic.start_refocus(initial_pos=crosshair_pos, caller_tag='confocalgui')
+        self._optimizer_logic.start_refocus(initial_pos=crosshair_pos,
+                                            caller_tag='confocalgui')
 
         self.disable_scan_actions()
 
@@ -1066,8 +1049,8 @@ class ConfocalGui(GUIBase):
 
         @param str tag: tag indicating the source of the update
 
-        Ignore the update when it is tagged with one of the tags that the confocal gui emits, as the
-        GUI elements were already adjusted.
+        Ignore the update when it is tagged with one of the tags that the
+        confocal gui emits, as the GUI elements were already adjusted.
         """
         if not 'roi' in tag and not 'slider' in tag and not 'key' in tag and not 'input' in tag:
             x_pos, y_pos, z_pos = self._scanning_logic.get_position()
@@ -1090,7 +1073,8 @@ class ConfocalGui(GUIBase):
             self.update_input_z(z_pos)
 
     def roi_xy_bounds_check(self, roi):
-        """Check if the focus cursor is oputside the allowed range after drag and set its position to the limit """
+        """ Check if the focus cursor is oputside the allowed range after drag
+            and set its position to the limit """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
@@ -1114,7 +1098,8 @@ class ConfocalGui(GUIBase):
             self.update_roi_xy(x_pos, y_pos)
 
     def roi_depth_bounds_check(self, roi):
-        """Check if the focus cursor is oputside the allowed range after drag and set its position to the limit """
+        """ Check if the focus cursor is oputside the allowed range after drag
+            and set its position to the limit """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         z_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
@@ -1283,7 +1268,8 @@ class ConfocalGui(GUIBase):
             self._scanning_logic.set_position('zinput', z=z)
 
     def update_from_input_x(self):
-        """The user changed the number in the x position spin box, adjust all other GUI elements."""
+        """ The user changed the number in the x position spin box, adjust all
+            other GUI elements."""
         x_pos = self._mw.x_current_InputWidget.value()
         self.update_roi_xy(x=x_pos)
         self.update_roi_depth(x=x_pos)
@@ -1292,7 +1278,8 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.set_position('xinput', x=x_pos)
 
     def update_from_input_y(self):
-        """The user changed the number in the y position spin box, adjust all other GUI elements."""
+        """ The user changed the number in the y position spin box, adjust all
+            other GUI elements."""
         y_pos = self._mw.y_current_InputWidget.value()
         self.update_roi_xy(y=y_pos)
         self.update_slider_y(y_pos)
@@ -1300,7 +1287,8 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.set_position('yinput', y=y_pos)
 
     def update_from_input_z(self):
-        """The user changed the number in the z position spin box, adjust all other GUI elements."""
+        """ The user changed the number in the z position spin box, adjust all
+           other GUI elements."""
         z_pos = self._mw.z_current_InputWidget.value()
         self.update_roi_depth(z=z_pos)
         self.update_slider_z(z_pos)

@@ -4,18 +4,18 @@ Acquire a spectrum using Winspec through the COM interface.
 This program gets the data from WinSpec, saves them and
 gets the data for plotting.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Derived from the pyPL project (https://github.com/kaseyrussell/pyPL)
 Copyright 2010 Kasey Russell ( email: krussell _at_ post.harvard.edu )
@@ -27,17 +27,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.spectrometer_interface import SpectrometerInterface
-from collections import OrderedDict
-from core.util.mutex import Mutex
-
-from pyqtgraph.Qt import QtCore
-
 import numpy as np
 import comtypes.client as ctc
 import win32com.client as w32c
-from win32com.client import constants
 from ctypes import byref, pointer, c_long, c_float, c_bool
-from time import strftime, localtime
 
 import datetime
 

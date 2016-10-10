@@ -1,26 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi GUI module to operate the voltage (laser) scanner.
+This file contains the Qudi GUI module to operate the voltage (laser) scanner.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-#from PyQt4 import QtCore, QtGui
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtCore
+from qtpy import QtGui
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
 import numpy as np
 import os
@@ -31,14 +33,14 @@ from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 
 
-class VoltScanMainWindow(QtGui.QMainWindow):
+class VoltScanMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_odmrgui.ui')
 
         # Load it
-        super(ODMRMainWindow, self).__init__()
+        super(VoltScanMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
         self.show()
 
@@ -60,7 +62,7 @@ class VoltScanGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_deactivate(self, e):
         """ Reverse steps of activation
@@ -83,7 +85,7 @@ class VoltScanGui(GUIBase):
 
         """
 
-        self._voltscan_logic = self.connector['in']['odmrlogic1']['object']
+        self._voltscan_logic = self.get_in_connector('odmrlogic1')
         print("ODMR logic is", self._odmr_logic)
 
         # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the
@@ -214,7 +216,7 @@ class VoltScanGui(GUIBase):
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.reject_settings)
-        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
         # self._odmr_logic.sigOdmrFinished.connect(self._mw.idle_StateWidget.click)
@@ -233,7 +235,7 @@ class VoltScanGui(GUIBase):
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

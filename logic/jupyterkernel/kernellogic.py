@@ -2,26 +2,24 @@
 """
 IPython compatible kernel launcher module
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from collections import OrderedDict
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import pyqtgraph as pg
 import numpy as np
 
@@ -29,7 +27,7 @@ from .qzmqkernel import QZMQKernel
 from core.util.network import netobtain
 import logging
 #-----------------------------------------------------------------------------
-# The QuDi logic module
+# The Qudi logic module
 #-----------------------------------------------------------------------------
 
 class QudiKernelLogic(GenericLogic):
@@ -79,7 +77,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        self.log.info('Start {}'.format(realconfig))
+        self.log.info('Start {0}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -90,10 +88,10 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        self.log.info('Kernel is {}'.format(kernel.engine_id))
+        self.log.info('Kernel is {0}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
-        self.log.info('Finished starting Kernel {}'.format(kernel.engine_id))
+        self.log.info('Finished starting Kernel {0}'.format(kernel.engine_id))
         self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
@@ -102,7 +100,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        self.log.info('Stopping {}'.format(realkernelid))
+        self.log.info('Stopping {0}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
 
@@ -112,7 +110,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel reference to remove
           @param callable external: reference to rpyc client exit function
         """
-        self.log.info('Cleanup kernel {}'.format(kernelid))
+        self.log.info('Cleanup kernel {0}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:

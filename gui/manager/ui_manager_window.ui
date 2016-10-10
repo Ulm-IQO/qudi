@@ -135,7 +135,7 @@
     <property name="title">
      <string>Abo&amp;ut</string>
     </property>
-    <addaction name="actionAbout_QuDi"/>
+    <addaction name="actionAbout_Qudi"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -307,13 +307,13 @@
     <string>Console settings</string>
    </property>
   </action>
-  <action name="actionAbout_QuDi">
+  <action name="actionAbout_Qudi">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/help-about.png</normaloff>../../artwork/icons/qudiTheme/22x22/help-about.png</iconset>
    </property>
    <property name="text">
-    <string>&amp;About QuDi</string>
+    <string>&amp;About Qudi</string>
    </property>
   </action>
   <action name="actionAbout_Qt">

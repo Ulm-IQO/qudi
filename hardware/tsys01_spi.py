@@ -3,18 +3,18 @@
 A hardware module for acessing the Measurement Systems TSYS01 temperature
 sensor chip via SPI.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -22,14 +22,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.process_interface import ProcessInterface
-from collections import OrderedDict
 from core.util.mutex import Mutex
-
-from pyqtgraph.Qt import QtCore
 
 import spidev
 import struct
 import time
+
 
 class TSYS01SPI(Base, ProcessInterface):
     _modclass = 'TSYS01'
@@ -66,13 +64,13 @@ class TSYS01SPI(Base, ProcessInterface):
 
     def diag(self):
         print('==== SPI Diagnostics ====')
-        print('Bits per word: {:>10}'.format(self.spi.bits_per_word))
-        print('CS is active high: {!s:>6}'.format(self.spi.cshigh))
-        print('Loopback: {!s:>15}'.format(self.spi.loop))
-        print('LSB first: {!s:>14}'.format(self.spi.lsbfirst))
-        print('Max clock speed: {:>8}'.format(self.spi.max_speed_hz))
-        print('Clock mode: {:>13}'.format(self.spi.mode))
-        print('SI/SO shared: {!s:>11}'.format(self.spi.threewire))
+        print('Bits per word: {0:>10}'.format(self.spi.bits_per_word))
+        print('CS is active high: {0!s:>6}'.format(self.spi.cshigh))
+        print('Loopback: {0!s:>15}'.format(self.spi.loop))
+        print('LSB first: {0!s:>14}'.format(self.spi.lsbfirst))
+        print('Max clock speed: {0:>8}'.format(self.spi.max_speed_hz))
+        print('Clock mode: {0:>13}'.format(self.spi.mode))
+        print('SI/SO shared: {0!s:>11}'.format(self.spi.threewire))
         print('=========================')
 
     def reset(self):

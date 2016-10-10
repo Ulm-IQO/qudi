@@ -1,30 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi logic class for performing polarisation dependence measurements.
+This file contains the Qudi logic class for performing polarisation dependence measurements.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-import numpy as np
-import time
-import datetime
+from qtpy import QtCore
+
 
 class PolarisationDepLogic(GenericLogic):
     """This logic module rotates polarisation and records signal as a function of angle.
@@ -50,12 +47,12 @@ class PolarisationDepLogic(GenericLogic):
           @param object e: Fysom state change event
         """
 
-        self._counter_logic = self.connector['in']['counterlogic']['object']
+        self._counter_logic = self.get_in_connector('counterlogic')
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
-        self._hwpmotor = self.connector['in']['motor']['object']
+        self._hwpmotor = self.get_in_connector('motor')
 
         # Initialise measurement parameters
         self.scan_length = 360
