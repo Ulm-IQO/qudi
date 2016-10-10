@@ -1,31 +1,33 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi task base classes.
+This file contains the Qudi task base classes.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 import logging
+from qtpy import QtCore
+import sys
+
 from core.util.customexceptions import InterfaceImplementationError
 from core.util.mutex import Mutex
-from pyqtgraph.Qt import QtCore
 from core.FysomAdapter import Fysom
-import sys
+
 
 class TaskResult(QtCore.QObject):
     def __init__(self, **kwargs):
@@ -180,7 +182,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigStarted.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            self.log.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {0}. {1}'.format(
                 self.name, e))
             self.result.update(None, False)
 
@@ -199,7 +201,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 self.finish()
                 self.sigDoFinish.emit()
         except Exception as e:
-            self.log.exception('Exception during task step {}. {}'.format(
+            self.log.exception('Exception during task step {0}. {1}'.format(
                 self.name, e))
             self.result.update(None, False)
             self.finish()
@@ -264,15 +266,15 @@ class InterruptableTask(QtCore.QObject, Fysom):
         """
         for task in self.prePostTasks:
             if not ( isinstance(self.prePostTasks[task], PrePostTask) and self.prePostTasks[task].can('prerun') ):
-                self.log('Cannot start task {} as pre/post task {} is not in a state to run.'.format(self.name, task), msgType='error')
+                self.log('Cannot start task {0} as pre/post task {1} is not in a state to run.'.format(self.name, task), msgType='error')
                 return False
         for task in self.pauseTasks:
-            if not (isinstance(self.pauseTasks[task], InterruptibleTask)
+            if not (isinstance(self.pauseTasks[task], InterruptableTask)
                     and (
                         self.pauseTasks[task].can('pause')
                         or self.pauseTasks[task].isstate('stopped')
                     )):
-                self.log('Cannot start task {} as interruptable task {} is not stopped or able to pause.'.format(self.name, task), msgType='error')
+                self.log('Cannot start task {0} as interruptable task {1} is not stopped or able to pause.'.format(self.name, task), msgType='error')
                 return False
         if not self.checkExtraStartPrerequisites():
             return False
@@ -430,7 +432,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.preExecute()
         except Exception as e:
-            self.log.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {0}. {1}'.format(
                 self.name, e))
 
         self.sigPreExecFinish.emit()
@@ -444,7 +446,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.postExecute()
         except Exception as e:
-            self.log.exception('Exception during task {}. {}'.format(
+            self.log.exception('Exception during task {0}. {1}'.format(
                 self.name, e))
 
         self.sigPostExecFinish.emit()

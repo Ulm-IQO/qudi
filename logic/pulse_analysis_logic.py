@@ -1,26 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi logic for analysis of laser pulses.
+This file contains the Qudi logic for analysis of laser pulses.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
 import numpy as np
+
+from logic.generic_logic import GenericLogic
+
 
 class PulseAnalysisLogic(GenericLogic):
     """unstable: Nikolas Tomek  """
@@ -41,7 +43,7 @@ class PulseAnalysisLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
 
     def on_activate(self, e):
@@ -55,8 +57,8 @@ class PulseAnalysisLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._pulse_extraction_logic = self.get_in_connector('pulseextractionlogic')
+        self._fit_logic = self.get_in_connector('fitlogic')
         return
 
 

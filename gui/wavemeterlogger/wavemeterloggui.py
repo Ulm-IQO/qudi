@@ -3,18 +3,18 @@
 """
 This file contains a gui to see wavemeter data during laser scanning.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -27,13 +27,15 @@ import pyqtgraph.exporters
 import datetime
 import os
 
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from qtpy import QtWidgets
+from qtpy import QtCore
+from qtpy import uic
 
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 
 
-class WavemeterLogWindow(QtGui.QMainWindow):
+class WavemeterLogWindow(QtWidgets.QMainWindow):
     def __init__(self):
         """ Create the laser scanner window.
         """
@@ -66,8 +68,7 @@ class WavemeterLogGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
-
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
     def on_activate(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -81,8 +82,8 @@ class WavemeterLogGui(GUIBase):
                          had happened.
         """
 
-        self._wm_logger_logic = self.connector['in']['wavemeterloggerlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._wm_logger_logic = self.get_in_connector('wavemeterloggerlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # setting up the window
         self._mw = WavemeterLogWindow()
@@ -183,7 +184,7 @@ class WavemeterLogGui(GUIBase):
     def show(self):
         """ Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

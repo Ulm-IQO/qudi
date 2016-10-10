@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file to control SMIQ microwave device.
+This file contains the Qudi hardware file to control SMIQ microwave device.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Parts of this file were developed from a PI3diamond module which is
 Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
@@ -27,7 +27,7 @@ import visa
 import numpy as np
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveSmiq(Base, MicrowaveInterface):
@@ -56,15 +56,17 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.log.error('This is MWSMIQ: did not find >>gpib_address<< in '
-                        'configration.')
+            self.log.error(
+                'This is MWSMIQ: did not find >>gpib_address<< in '
+                'configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
             self._gpib_timeout = 10*1000
-            self.log.error('This is MWSMIQ: did not find >>gpib_timeout<< in '
-                        'configration. I will set it to 10 seconds.')
+            self.log.error(
+                'This is MWSMIQ: did not find >>gpib_timeout<< in '
+                'configration. I will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -72,8 +74,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            self.log.error('This is MWSMIQ: could not connect to the GPIB '
-                    'address >>{}<<.'.format(self._gpib_address))
+            self.log.error(
+                'This is MWSMIQ: could not connect to the GPIB '
+                'address >>{}<<.'.format(self._gpib_address))
             raise
 
         self.log.info('MWSMIQ initialised and connected to hardware.')
@@ -90,59 +93,42 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self.rm.close()
 
     def get_limits(self):
-        minpower = -144
-        maxpower = 10
-        minfreq = 300 * 10e3
-        maxfreq = 6.4 * 10e9
-        minliststep = 0.1
-        maxliststep = 6.4 * 10e9
-        listentries = 4000
-        minsweepstep = 0.1
-        maxsweepstep = 10e9
-        sweepentries = 10e6
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST', 'SWEEP')
+
+        limits.min_frequency = 300e3
+        limits.max_frequency = 6.4e9
+
+        limits.min_power = -144
+        limits.max_power = 10
+
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 6.4e9
+        limits.list_maxentries = 4000
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 6.4e9
+        limits.sweep_maxentries = 10001
 
         if self.model == 'SMIQ02B':
-            maxfreq = 2.2 * 10e9
-            maxpower = 13
-            maxliststep = 2.2 * 10e9
+            limits.max_frequency = 2.2e9
+            limits.max_power = 13
         elif self.model == 'SMIQ03B':
-            maxfreq = 3.3 * 10e9
-            maxpower = 13
-            maxliststep = 3.3 * 10e9
+            limits.max_frequency = 3.3e9
+            limits.max_power = 13
         elif self.model == 'SMIQ03HD':
-            maxfreq = 3.3 * 10e9
-            maxpower = 13
-            maxliststep = 3.3 * 10e9
+            limits.max_frequency = 3.3e9
+            limits.max_power = 13
         elif self.model == 'SMIQ04B':
-            maxfreq = 4.4 * 10e9
-            maxliststep = 4.4 * 10e9
+            limits.max_frequency = 4.4e9
         elif self.model == 'SMIQ06B':
             pass
         elif self.model == 'SMIQ06ATE':
             pass
         else:
-            self.log.warning('Model string unknown, hardware limits may be '
-                    'wrong.')
-        limits = {
-            'frequency': {
-                'min': minfreq,
-                'max': maxfreq
-                },
-            'power': {
-                'min': minpower,
-                'max': maxpower
-                },
-            'list': {
-                'minstep': minliststep,
-                'maxstep': maxliststep,
-                'maxentries': listentries
-                },
-            'sweep': {
-                'minstep': minsweepstep,
-                'maxstep': maxsweepstep,
-                'maxentries': sweepentries
-                }
-            }
+            self.log.warning('Model string unknown, hardware limits may be wrong.')
+        limits.list_maxstep = limits.max_frequency
+        limits.sweep_maxstep = limits.max_frequency
         return limits
 
     def on(self):
@@ -183,8 +169,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if power != None:
-            self._gpib_connection.write(':POW {:f}'.format(power))
+        if power is not None:
+            self._gpib_connection.write(':POW {0:f}'.format(power))
             return 0
         else:
             return -1
@@ -203,8 +189,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if freq != None:
-            self._gpib_connection.write(':FREQ {:e}'.format(freq))
+        if freq is not None:
+            self._gpib_connection.write(':FREQ {0:e}'.format(freq))
             return 0
         else:
             return -1
@@ -252,10 +238,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # put al frequencies into a string, first element is doubled
         # so there are n+1 list entries for scanning n frequencies
         # due to counter/trigger issues
-        freqstring = ' {:f},'.format(freq[0])
+        freqstring = ' {0:f},'.format(freq[0])
         for f in freq[:-1]:
-            freqstring += ' {:f},'.format(f)
-        freqstring += ' {:f}'.format(freq[-1])
+            freqstring += ' {0:f},'.format(f)
+        freqstring += ' {0:f}'.format(freq[-1])
 
         freqcommand = ':LIST:FREQ' + freqstring
         #print(freqcommand)
@@ -264,7 +250,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         # there are n+1 list entries for scanning n frequencies
         # due to counter/trigger issues
-        powcommand = ':LIST:POW {}{}'.format(power, (', ' + str(power)) * len(freq))
+        powcommand = ':LIST:POW {0}{1}'.format(power, (', ' + str(power)) * len(freq))
         #print(powcommand)
         self._gpib_connection.write(powcommand)
 

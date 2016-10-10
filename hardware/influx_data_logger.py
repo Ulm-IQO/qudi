@@ -2,18 +2,18 @@
 """
 A module to control the QO Raspberry Pi based H-Bridge hardware.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.base import Base
 from interface.data_logger_interface import DataLoggerInterface
 
-from pyqtgraph.Qt import QtCore
 from influxdb import InfluxDBClient
 
 class InfluxLogger(Base, DataLoggerInterface):
@@ -81,10 +80,11 @@ class InfluxLogger(Base, DataLoggerInterface):
             if spec is None and name in self.log_channels:
                 self.log_channels.pop(name)
             elif name in self.log_channels:
+                pass
             else:
-                if :
-
-
+                pass
+                if True:
+                    pass
 
     def log_to_channel(self, channel, values):
         if channel in self.log_channels.keys() and len(values) == len(self.log_channels[channel][values]):

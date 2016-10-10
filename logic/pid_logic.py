@@ -3,31 +3,29 @@
 """
 A module for controlling processes via PID regulation.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from logic.generic_logic import GenericLogic
-from interface.pid_controller_interface import PIDControllerInterface
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
-from collections import OrderedDict
+from qtpy import QtCore
 import numpy as np
-import time
-import datetime
+
+from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
+
 
 class PIDLogic(GenericLogic):
     """
@@ -50,7 +48,7 @@ class PIDLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -59,8 +57,8 @@ class PIDLogic(GenericLogic):
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._controller = self.connector['in']['controller']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._controller = self.get_in_connector('controller')
+        self._save_logic = self.get_in_connector('savelogic')
 
         config = self.getConfiguration()
 
@@ -130,7 +128,7 @@ class PIDLogic(GenericLogic):
 
     def set_kp(self, kp):
         return self._controller.set_kp(kp)
-        
+
 
     def get_ki(self):
         return self._controller.get_ki()
@@ -155,7 +153,7 @@ class PIDLogic(GenericLogic):
 
     def set_manual_value(self, manualvalue):
         return self._controller.set_manual_value(manualvalue)
-        
+
     def get_enabled(self):
         return self.enabled
 

@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>qudi: About QuDi</string>
+   <string>qudi: About Qudi</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
@@ -30,7 +30,7 @@
       </font>
      </property>
      <property name="text">
-      <string>QuDi</string>
+      <string>Qudi</string>
      </property>
     </widget>
    </item>
@@ -67,7 +67,7 @@
        <item>
         <widget class="QLabel" name="aboutText">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;QuDi is a suite of tools for operating laboratory experiments built around a confocal fluorescence microscope.  It is designed primarily to perform &lt;span style=&quot; font-weight:600;&quot;&gt;Qu&lt;/span&gt;antum optics on &lt;span style=&quot; font-weight:600;&quot;&gt;Di&lt;/span&gt;amond color centres.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Qudi is a suite of tools for operating laboratory experiments built around a confocal fluorescence microscope.  It is designed primarily to perform &lt;span style=&quot; font-weight:600;&quot;&gt;Qu&lt;/span&gt;antum optics on &lt;span style=&quot; font-weight:600;&quot;&gt;Di&lt;/span&gt;amond color centres.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>
@@ -99,7 +99,7 @@
            <item>
             <widget class="QLabel" name="aboutText_2">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;QuDi is developed by the Institute for Quantum Optics at Ulm University. &lt;br/&gt;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Kay D. Jahnke&lt;/p&gt;&lt;p&gt;Jan M. Binder&lt;/p&gt;&lt;p&gt;Alex Stark&lt;/p&gt;&lt;p&gt;Lachlan J, Rogers&lt;/p&gt;&lt;p&gt;Nikolas Tomek&lt;/p&gt;&lt;p&gt;Florian S. Frank&lt;/p&gt;&lt;p&gt;Mathias Metsch&lt;/p&gt;&lt;p&gt;Christoph Müller&lt;/p&gt;&lt;p&gt;Simon Schmitt&lt;/p&gt;&lt;p&gt;Thomas Unden&lt;/p&gt;&lt;p&gt;Jochen Scheuer&lt;/p&gt;&lt;p&gt;Ou Wang&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;External Contributors:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Tobias Gehring, DTU Copenhagen&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;Qudi is developed by the Institute for Quantum Optics at Ulm University. &lt;br/&gt;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Kay D. Jahnke&lt;/p&gt;&lt;p&gt;Jan M. Binder&lt;/p&gt;&lt;p&gt;Alex Stark&lt;/p&gt;&lt;p&gt;Lachlan J, Rogers&lt;/p&gt;&lt;p&gt;Nikolas Tomek&lt;/p&gt;&lt;p&gt;Florian S. Frank&lt;/p&gt;&lt;p&gt;Mathias Metsch&lt;/p&gt;&lt;p&gt;Christoph Müller&lt;/p&gt;&lt;p&gt;Simon Schmitt&lt;/p&gt;&lt;p&gt;Thomas Unden&lt;/p&gt;&lt;p&gt;Jochen Scheuer&lt;/p&gt;&lt;p&gt;Ou Wang&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;External Contributors:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Tobias Gehring, DTU Copenhagen&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
@@ -139,23 +139,23 @@
 &lt;head/&gt;
 &lt;body&gt;
 &lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
-QuDi is free software: you can redistribute it and/or modify it under the terms &lt;br/&gt;
+Qudi is free software: you can redistribute it and/or modify it under the terms &lt;br/&gt;
 of the GNU General Public License as published by the Free Software Foundation,&lt;br/&gt;
 either version 3 of the License, or (at your option) any later version.
 &lt;/span&gt;&lt;/p&gt;
 &lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
-QuDi is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;&lt;br/&gt;
+Qudi is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;&lt;br/&gt;
 without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.&lt;br/&gt;
 See the GNU General Public License for more details.&lt;br/&gt;
 &lt;/span&gt;
 &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
-You should have received a copy of the GNU General Public License along with QuDi.&lt;br/&gt;
+You should have received a copy of the GNU General Public License along with Qudi.&lt;br/&gt;
 If not, see
 &lt;/span&gt;
 &lt;a href=&quot;http://www.gnu.org/licenses/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#00ffff;&quot;&gt;http://www.gnu.org/licenses/&lt;/span&gt;&lt;/a&gt;.&lt;br/&gt;
 &lt;/p&gt;
 &lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;
-QuDi is derived in parts from ACQ4, so here is its license:&lt;/span&gt;&lt;/p&gt;
+Qudi is derived in parts from ACQ4, so here is its license:&lt;/span&gt;&lt;/p&gt;
 &lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
 Permission is hereby granted, free of charge, to any person obtaining a copy &lt;br/&gt;
 of this software and associated documentation files (the &amp;quot;Software&amp;quot;), to deal &lt;br/&gt;
@@ -176,7 +176,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE &l
 SOFTWARE.&lt;br/&gt;
 &lt;/span&gt;&lt;/p&gt;
 &lt;p&gt;&lt;span style=&quot; font-family:'monospace'; text-decoration: underline;&quot;&gt;
-Parts of QuDi are derived from IPython, which is licensed as follows:
+Parts of Qudi are derived from IPython, which is licensed as follows:
 &lt;/span&gt;&lt;/p&gt;
 &lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
 &lt;br/&gt;
@@ -220,7 +220,7 @@ This includes all of the IPython subprojects. &lt;br/&gt;&lt;br/&gt;The core tea
 &lt;a href=&quot;https://github.com/ipython/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#2980b9;&quot;&gt;https://github.com/ipython/&lt;/span&gt;&lt;/a&gt;
 &lt;span style=&quot; font-family:'monospace';&quot;&gt;.&lt;br/&gt;&lt;br/&gt;&lt;/span&gt;
 &lt;span style=&quot; font-family:'monospace'; text-decoration: underline;&quot;&gt;
-Parts of QuDi are derived from SciPy, which is licensed as follows:
+Parts of Qudi are derived from SciPy, which is licensed as follows:
 &lt;/span&gt;&lt;/p&gt;
 &lt;p&gt;&lt;span style=&quot; font-family:'monospace';&quot;&gt;
 Copyright (c) 2001, 2002 Enthought, Inc. &lt;br/&gt;

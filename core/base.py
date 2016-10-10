@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi module base class.
+This file contains the Qudi module base class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -52,8 +52,7 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, config={}, callbacks={},
-                 **kwargs):
+    def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
@@ -64,10 +63,15 @@ class Base(QtCore.QObject, Fysom):
                                  on state machine transitions
 
         """
+        if config is None:
+            config = {}
+        if callbacks is None:
+            callbacks = {}
 
         default_callbacks = {
             'onactivate': self.on_activate,
-            'ondeactivate': self.on_deactivate}
+            'ondeactivate': self.on_deactivate
+            }
         default_callbacks.update(callbacks)
 
         # State machine definition
@@ -146,13 +150,33 @@ class Base(QtCore.QObject, Fysom):
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
 
+    @QtCore.Slot(result=bool)
+    def _wrap_activation(self):
+        self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
+        try:
+            self.activate()
+        except:
+            self.log.exception('Error during activation')
+            return False
+        return True
+
+    @QtCore.Slot(result=bool)
+    def _wrap_deactivation(self):
+        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
+        try:
+            self.deactivate()
+        except:
+            self.log.exception('Error during activation:')
+            return False
+        return True
+
     def on_activate(self, e):
         """ Method called when module is activated. If not overridden
             this method returns an error.
 
         @param object e: Fysom state change descriptor
         """
-        self.log.warning('Please implement and specify the activation method '
+        self.log.error('Please implement and specify the activation method '
                          'for {0}.'.format(self.__class__.__name__))
 
     def on_deactivate(self, e):
@@ -161,7 +185,7 @@ class Base(QtCore.QObject, Fysom):
 
         @param object e: Fysom state change descriptor
         """
-        self.log.warning('Please implement and specify the deactivation '
+        self.log.error('Please implement and specify the deactivation '
                          'method {0}.'.format(self.__class__.__name__))
 
     # Do not replace these in subclasses
@@ -246,3 +270,15 @@ class Base(QtCore.QObject, Fysom):
             @return string: absolute path to the home directory
         """
         return os.path.abspath(os.path.expanduser('~'))
+
+    def get_in_connector(self, connector_name):
+        """ Return module connected to the given named connector.
+          @param str connector_name: name of the connector
+
+          @return obj: module that is connected to the named connector
+        """
+        obj = self.connector['in'][connector_name]['object']
+        if obj is None:
+            raise TypeError('No module connected')
+        return obj
+

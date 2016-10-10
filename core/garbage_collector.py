@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger('gc')
 
 
-class GarbageCollector(object):
+class GarbageCollector:
     '''
     Disable automatic garbage collection and instead collect manually
     on a timer.

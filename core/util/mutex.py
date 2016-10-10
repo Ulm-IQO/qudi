@@ -2,18 +2,18 @@
 """
 Mutex.py -  Stand-in extension of Qt's QMutex class
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -26,7 +26,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 import logging
 logger = logging.getLogger(__name__)
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import traceback
 import collections
 
@@ -79,7 +79,7 @@ class Mutex(QtCore.QMutex):
                 try:
                     logger.debug('Waiting for mutex lock ({:.1} sec). '
                     'Traceback follows:'.format(c*waitTime/1000.))
-                    logger.debug(''.joint(traceback.format_stack()))
+                    logger.debug(''.join(traceback.format_stack()))
                     if len(self.tb) > 0:
                         logger.debug('Mutex is currently locked from: {0}\n'
                                 ''.format(self.tb[-1]))
@@ -214,7 +214,7 @@ class MutexLocker:
 
 
 
-#class ThreadsafeWrapper(object):
+#class ThreadsafeWrapper:
     #def __init__(self, obj):
         #self.__TSW_object__ = obj
 
@@ -222,7 +222,7 @@ class MutexLocker:
         #return self.__TSW_object__
 
 
-class ThreadsafeWrapper(object):
+class ThreadsafeWrapper:
     """Wrapper that makes access to any object thread-safe (within reasonable limits).
 
        Mostly tested for wrapping lists, dicts, etc.

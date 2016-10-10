@@ -3,26 +3,27 @@
 """
 This file contains a doublespinbox delegate.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from pyqtgraph.Qt import QtGui, QtCore
+from qtpy import QtWidgets
+from qtpy import QtCore
 
-class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
+class DoubleSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
     """ Make a QDoubleSpinBox delegate for the QTableWidget."""
 
     def __init__(self, parent, item_dict):
@@ -34,7 +35,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
                                     'view_stepsize', 'dec', 'unit_prefix'
 
         """
-        QtGui.QStyledItemDelegate.__init__(self, parent)
+        super().__init__(parent)
         self.item_dict = item_dict
 
         unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
@@ -93,7 +94,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
 
 
 
-        editor = QtGui.QDoubleSpinBox(parent)
+        editor = QtWidgets.QDoubleSpinBox(parent)
         self.editor = editor
         editor.setMinimum(self.item_dict['min']/self.norm_val)
         editor.setMaximum(self.item_dict['max']/self.norm_val)
@@ -120,11 +121,11 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
             value = self.item_dict['init_val']/self.norm_val
         editor.setValue(value)
 
-    def setModelData(self, spinBox, model, index):
+    def setModelData(self, spinBox_ref, model, index):
         """ Save the data of the editor to the model of the QTableWidget.
 
-        @param QDoubleSpinBox editor: QObject which was created in createEditor
-                                      function, here a QDoubleSpinBox.
+        @param QDoubleSpinBox spinBox_ref: QObject which was created in createEditor
+                                           function, here a QDoubleSpinBox.
         @param QtCore.QAbstractTableModel model: That is the object which
                                                  contains the data of the
                                                  QTableWidget.
@@ -136,8 +137,8 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         manipulated for the model.
         """
 
-        spinBox.interpretText()
-        value = spinBox.value()
+        spinBox_ref.interpretText()
+        value = spinBox_ref.value()
         self.value = value
         # set the data to the table model:
         model.setData(index, value, self.model_data_access)

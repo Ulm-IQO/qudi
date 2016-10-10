@@ -3,18 +3,18 @@
 This file contains general methods which are imported by class FitLogic.
 These general methods are available for all different fitting methods.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -79,7 +79,7 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
                 parameters[para].value = update_dict[para]['value']
         return parameters
 
-def create_fit_string(self, result, model, units=dict(), decimal_digits_value_given=None,
+def create_fit_string(self, result, model, units=None, decimal_digits_value_given=None,
                       decimal_digits_err_given=None):
     """ This method can produces a well readable string from the results of a fitted model.
     If units is not given or one unit missing there will be no unit in string.
@@ -94,6 +94,8 @@ def create_fit_string(self, result, model, units=dict(), decimal_digits_value_gi
 
     @return str fit_result: readable string
     """
+    if units is None:
+        units = dict()
     # TODO: Add multiplicator
     # TODO: Add decimal dict
     # TODO: Add sensible output such that e only multiple of 3 and err and value have same exponent
@@ -343,7 +345,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
 
     # if the dip is exactly at one of the boarders that means
     # the dips are most probably overlapping
-    if dip1_arg == sigma0_argleft or dip1_arg == sigma0_argright:
+    if dip1_arg in (sigma0_argleft, sigma0_argright):
         #print('Dips are overlapping')
         distance_left  = abs(dip0_arg - sigma0_argleft)
         distance_right = abs(dip0_arg - sigma0_argright)

@@ -3,33 +3,33 @@
 """
 This file contains a gui to see laser scanning data.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
-import numpy as np
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import time
 import os
 
-class LaserScanWindow(QtGui.QMainWindow):
+class LaserScanWindow(QtWidgets.QMainWindow):
     def __init__(self):
         """ Create the laser scanner window.
         """
@@ -62,7 +62,7 @@ class LaserScanningGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
 
     def on_activate(self, e=None):
@@ -77,8 +77,8 @@ class LaserScanningGui(GUIBase):
                          had happened.
         """
 
-        self._scanning_logic = self.connector['in']['laserscanninglogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_logic = self.get_in_connector('laserscanninglogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         # setting up the window
         self._mw = LaserScanWindow()
@@ -169,7 +169,7 @@ class LaserScanningGui(GUIBase):
     def show(self):
         """ Make window visible and put it above all other windows.
         """
-        QtGui.QMainWindow.show(self._mw)
+        QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 

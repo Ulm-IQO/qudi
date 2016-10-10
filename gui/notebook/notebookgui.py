@@ -2,30 +2,31 @@
 """
 This file contains a webview for ipython notebooks.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from pyqtgraph.Qt import QtCore, QtGui, uic
-import sys
-if 'PyQt4' in sys.modules:
-    from PyQt4 import QtWebKit
-else:
-    from PyQt5 import QtWebKit
-from gui.guibase import GUIBase
+
 import os
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
+from qtpy import QtWebEngineWidgets
+
+from gui.guibase import GUIBase
+
 
 class NotebookWebView(GUIBase):
 
@@ -65,7 +66,7 @@ class NotebookWebView(GUIBase):
     def show(self):
         self._mw.show()
 
-class NotebookMainWindow(QtGui.QMainWindow):
+class NotebookMainWindow(QtWidgets.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):
@@ -93,7 +94,7 @@ class NotebookMainWindow(QtGui.QMainWindow):
         if index > 0:
             self.tabWidget.removeTab(index)
 
-class TabbedWebView(QtWebKit.QWebView):
+class TabbedWebView(QtWebEngineWidgets.QWebEngineView):
 
     def __init__(self, parent=None, tabmanager=None):
         super().__init__(parent)
@@ -102,21 +103,21 @@ class TabbedWebView(QtWebKit.QWebView):
         self.tm = tabmanager
 
     def createWindow(self, windowType):
-        if self.tm is not None and windowType == QtWebKit.QWebPage.WebBrowserWindow:
+        if self.tm is not None and windowType == QtWebEngineWidgets.QWebEnginePage.WebBrowserWindow:
             self.webView = self.tm.newTab()
             self.webView.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
             return self.webView
 
         return super().createWindow(windowType)
 
-class TabbedWebPage(QtWebKit.QWebPage):
+class TabbedWebPage(QtWebEngineWidgets.QWebEnginePage):
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
     def triggerAction(self, action, checked=False):
-        if action == QtWebKit.QWebPage.OpenLinkInNewWindow:
-            self.createWindow(QtWebKit.QWebPage.WebBrowserWindow)
+        if action == QtWebEngineWidgets.QWebEnginePage.OpenLinkInNewWindow:
+            self.createWindow(QtWebEngineWidgets.QWebEnginePage.WebBrowserWindow)
 
         return super().triggerAction(action, checked)
 

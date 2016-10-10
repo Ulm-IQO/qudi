@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file to control the microwave dummy.
+This file contains the Qudi hardware file to control the microwave dummy.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):
@@ -43,7 +43,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info("{}: {}".format(key,config[key]))
+            self.log.info("{0}: {1}".format(key,config[key]))
 
         # trying to load the visa connection
         try:
@@ -75,26 +75,22 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
     def get_limits(self):
         """Dummy limits"""
-        limits = {
-            'frequency': {
-                'min': 100 * 10e3,
-                'max': 50 * 10e9
-                },
-            'power': {
-                'min': -120,
-                'max': 30
-                },
-            'list': {
-                'minstep': 1,
-                'maxstep': 10 * 10e9,
-                'maxentries': 5000
-                },
-            'sweep': {
-                'minstep': 0.1,
-                'maxstep': 10 * 10e9,
-                'maxentries': 10 * 10e9
-                }
-            }
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST', 'SWEEP', 'AN_SWEEP')
+
+        limits.min_frequency = 100e3
+        limits.max_frequency = 20e9
+
+        limits.min_power = -120
+        limits.max_power = 30
+
+        limits.list_minstep = 0.001
+        limits.list_maxstep = 20e9
+        limits.list_maxentries = 10001
+
+        limits.sweep_minstep = 0.001
+        limits.sweep_maxstep = 20e9
+        limits.sweep_maxentries = 10001
         return limits
 
     def on(self):

@@ -11,11 +11,13 @@ class Fysom():
     This provides an adapter class for fysom which makes it compatible with
     cooperative multiple inheritance.
     """
-    def __init__(self, cfg={}, initial=None, events=None, callbacks=None,
+    def __init__(self, cfg=None, initial=None, events=None, callbacks=None,
             final=None, **kwargs):
         """
         Constructor. It creates the Fysom object.
         """
+        if cfg is None:
+            cfg = {}
         self._fysom = fysom.Fysom(cfg, initial, events, callbacks, final)
         super().__init__(**kwargs)
 
@@ -30,5 +32,5 @@ class Fysom():
         if hasattr(self._fysom, name):
             return getattr(self._fysom, name)
         else:
-            raise AttributeError("'{}' object has no attribute '{}'".format(
+            raise AttributeError("'{0}' object has no attribute '{1}'".format(
                 self.__class__, name))

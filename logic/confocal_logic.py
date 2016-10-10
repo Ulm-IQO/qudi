@@ -2,35 +2,36 @@
 """
 This module operates a confocal microsope.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
+from qtpy import QtCore
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
 from io import BytesIO
+
+from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
+
+
 def numpy_from_b(compressed_b):
     f = BytesIO(bytes(compressed_b))
     np_file = np.load(f)
@@ -114,7 +115,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._depth_line_pos = self.depth_line_position
         confocal._xyscan_continuable = self.xy_scan_continuable
         confocal._zscan_continuable = self.depth_scan_continuable
-        confocal.TiltCorrection = self.tilt_correction
+        confocal._scanning_device.tiltcorrection = self.tilt_correction
         confocal.point1 = np.copy(self.point1)
         confocal.point2 = np.copy(self.point2)
         confocal.point3 = np.copy(self.point3)
@@ -154,14 +155,14 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.depth_line_position = confocal._depth_line_pos
         self.xy_scan_continuable = confocal._xyscan_continuable
         self.depth_scan_continuable = confocal._zscan_continuable
-        self.tilt_correction = confocal.TiltCorrection
+        self.tilt_correction = confocal._scanning_device.tiltcorrection
         self.point1 = np.copy(confocal.point1)
         self.point2 = np.copy(confocal.point2)
         self.point3 = np.copy(confocal.point3)
         self.tilt_reference_x = confocal._tiltreference_x
         self.tilt_reference_y = confocal._tiltreference_y
         self.tilt_slope_x = confocal._tilt_variable_ax
-        self.tile_slope_y = confocal._tilt_variable_ay
+        self.tilt_slope_y = confocal._tilt_variable_ay
         self.xy_image = np.copy(confocal.xy_image)
         self.depth_image = np.copy(confocal.depth_image)
 
@@ -240,7 +241,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
 
 
 class ConfocalLogic(GenericLogic):
-    """unstable: Christoph Müller
+    """
     This is the Logic class for confocal scanning.
     """
     _modclass = 'confocallogic'
@@ -273,7 +274,7 @@ class ConfocalLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -290,10 +291,10 @@ class ConfocalLogic(GenericLogic):
 
         @param e: error code
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
 #        print("Scanning device is", self._scanning_device)
 
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._save_logic = self.get_in_connector('savelogic')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -318,7 +319,7 @@ class ConfocalLogic(GenericLogic):
                 for i in reversed(range(1, self.max_history_length)):
                     try:
                         new_history_item = ConfocalHistoryEntry(self)
-                        new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
+                        new_history_item.deserialize(self._statusVariables['history_{0}'.format(i)])
                         self.history.append(new_history_item)
                     except KeyError:
                         pass
@@ -364,7 +365,7 @@ class ConfocalLogic(GenericLogic):
         self.history.append(closing_state)
         histindex = 0
         for state in reversed(self.history):
-            self._statusVariables['history_{}'.format(histindex)] = state.serialize()
+            self._statusVariables['history_{0}'.format(histindex)] = state.serialize()
             histindex += 1
         return 0
 
@@ -470,7 +471,7 @@ class ConfocalLogic(GenericLogic):
                 return -1
             # creates an array of evenly spaced numbers over the interval
             # z1, z2 and the spacing is equal to z_resolution
-            self._Z = np.linspace(z1, z2, self.z_resolution)
+            self._Z = np.linspace(z1, z2, max(self.z_resolution, 2))
         else:
             # Checks if the y-start and y-end value are ok
             if y2 < y1:
@@ -481,11 +482,11 @@ class ConfocalLogic(GenericLogic):
 
             # prevents distorion of the image
             if (x2 - x1) >= (y2 - y1):
-                self._X = np.linspace(x1, x2, self.xy_resolution)
-                self._Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
+                self._X = np.linspace(x1, x2, max(self.xy_resolution, 2))
+                self._Y = np.linspace(y1, y2, max(int(self.xy_resolution*(y2-y1)/(x2-x1)), 2))
             else:
-                self._Y = np.linspace(y1, y2, self.xy_resolution)
-                self._X = np.linspace(x1, x2, int(self.xy_resolution*(x2-x1)/(y2-y1)))
+                self._Y = np.linspace(y1, y2, max(self.xy_resolution, 2))
+                self._X = np.linspace(x1, x2, max(int(self.xy_resolution*(x2-x1)/(y2-y1)), 2))
 
         self._XL = self._X
         self._YL = self._Y
@@ -668,38 +669,28 @@ class ConfocalLogic(GenericLogic):
                 self.history_index = len(self.history) - 1
                 return
 
-        if self._zscan:
-            if self.TiltCorrection:
-                image = copy(self.depth_image)
-                image[:, :, 2] += self._calc_dz(x=image[:, :, 0], y=image[:, :, 1])
-            else:
-                image = self.depth_image
-        else:
-            if self.TiltCorrection:
-                image = copy(self.xy_image)
-                image[:, :, 2] += self._calc_dz(x=image[:, :, 0], y=image[:, :, 1])
-            else:
-                image = self.xy_image
+        image = self.depth_image if self._zscan else self.xy_image
 
         try:
             if self._scan_counter == 0:
-                # defines trace of positions for single line scan
+                # make a line from the current cursor position to 
+                # the starting position of the first scan line of the scan
                 start_line = np.vstack((
                     np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
                     np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
                     np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
                     np.linspace(self._current_a, 0, self.return_slowness)
                     ))
-                # scan of a single line
+                # move to the start position of the scan, counts are thrown away
                 start_line_counts = self._scanning_device.scan_line(start_line)
-            # defines trace of positions for a single line scan
+            # make a line in the scan, _scan_counter says which one it is
             line = np.vstack((image[self._scan_counter, :, 0],
                               image[self._scan_counter, :, 1],
                               image[self._scan_counter, :, 2],
                               image[self._scan_counter, :, 3]))
-            # scan of a single line
+            # scan the line in the scan
             line_counts = self._scanning_device.scan_line(line)
-            # defines trace of positions for a single return line scan
+            # make a line to go to the starting position of the next scan line
             if self.depth_scan_dir_is_xz:
                 return_line = np.vstack((
                     self._return_XL,
@@ -715,11 +706,10 @@ class ConfocalLogic(GenericLogic):
                     self._return_AL
                     ))
 
-            # scan of a single return-line
-            # This is just needed in order to return the scanner to the start of next line
+            # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
 
-            # updating images
+            # update image with counts from the line we just scanned
             if self._zscan:
                 if self.depth_scan_dir_is_xz:
                     self.depth_image[self._scan_counter, :, 3] = line_counts
@@ -730,10 +720,10 @@ class ConfocalLogic(GenericLogic):
                 self.xy_image[self._scan_counter, :, 3] = line_counts
                 self.signal_xy_image_updated.emit()
 
-        # call this again from event loop
+            # next line in scan
             self._scan_counter += 1
-            # stop scanning when last line scan was performed and makes scan not continuable
 
+            # stop scanning when last line scan was performed and makes scan not continuable
             if self._scan_counter >= np.size(self._image_vert_axis):
                 if not self.permanent_scan:
                     self.stop_scanning()
@@ -969,7 +959,7 @@ class ConfocalLogic(GenericLogic):
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
 
-    def draw_figure(self, data, image_extent, scan_axis=['X', 'Y'], cbar_range=None, percentile_range=None,  crosshair_pos=None):
+    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
@@ -987,6 +977,8 @@ class ConfocalLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
+        if scan_axis is None:
+            scan_axis = ['X', 'Y']
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
