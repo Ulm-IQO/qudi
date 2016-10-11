@@ -115,7 +115,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._depth_line_pos = self.depth_line_position
         confocal._xyscan_continuable = self.xy_scan_continuable
         confocal._zscan_continuable = self.depth_scan_continuable
-        confocal.TiltCorrection = self.tilt_correction
+        confocal._scanning_device.tiltcorrection = self.tilt_correction
         confocal.point1 = np.copy(self.point1)
         confocal.point2 = np.copy(self.point2)
         confocal.point3 = np.copy(self.point3)
@@ -155,14 +155,14 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.depth_line_position = confocal._depth_line_pos
         self.xy_scan_continuable = confocal._xyscan_continuable
         self.depth_scan_continuable = confocal._zscan_continuable
-        self.tilt_correction = confocal.TiltCorrection
+        self.tilt_correction = confocal._scanning_device.tiltcorrection
         self.point1 = np.copy(confocal.point1)
         self.point2 = np.copy(confocal.point2)
         self.point3 = np.copy(confocal.point3)
         self.tilt_reference_x = confocal._tiltreference_x
         self.tilt_reference_y = confocal._tiltreference_y
         self.tilt_slope_x = confocal._tilt_variable_ax
-        self.tile_slope_y = confocal._tilt_variable_ay
+        self.tilt_slope_y = confocal._tilt_variable_ay
         self.xy_image = np.copy(confocal.xy_image)
         self.depth_image = np.copy(confocal.depth_image)
 
@@ -669,38 +669,28 @@ class ConfocalLogic(GenericLogic):
                 self.history_index = len(self.history) - 1
                 return
 
-        if self._zscan:
-            if self.TiltCorrection:
-                image = copy(self.depth_image)
-                image[:, :, 2] += self._calc_dz(x=image[:, :, 0], y=image[:, :, 1])
-            else:
-                image = self.depth_image
-        else:
-            if self.TiltCorrection:
-                image = copy(self.xy_image)
-                image[:, :, 2] += self._calc_dz(x=image[:, :, 0], y=image[:, :, 1])
-            else:
-                image = self.xy_image
+        image = self.depth_image if self._zscan else self.xy_image
 
         try:
             if self._scan_counter == 0:
-                # defines trace of positions for single line scan
+                # make a line from the current cursor position to 
+                # the starting position of the first scan line of the scan
                 start_line = np.vstack((
                     np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
                     np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
                     np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
                     np.linspace(self._current_a, 0, self.return_slowness)
                     ))
-                # scan of a single line
+                # move to the start position of the scan, counts are thrown away
                 start_line_counts = self._scanning_device.scan_line(start_line)
-            # defines trace of positions for a single line scan
+            # make a line in the scan, _scan_counter says which one it is
             line = np.vstack((image[self._scan_counter, :, 0],
                               image[self._scan_counter, :, 1],
                               image[self._scan_counter, :, 2],
                               image[self._scan_counter, :, 3]))
-            # scan of a single line
+            # scan the line in the scan
             line_counts = self._scanning_device.scan_line(line)
-            # defines trace of positions for a single return line scan
+            # make a line to go to the starting position of the next scan line
             if self.depth_scan_dir_is_xz:
                 return_line = np.vstack((
                     self._return_XL,
@@ -716,11 +706,10 @@ class ConfocalLogic(GenericLogic):
                     self._return_AL
                     ))
 
-            # scan of a single return-line
-            # This is just needed in order to return the scanner to the start of next line
+            # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
 
-            # updating images
+            # update image with counts from the line we just scanned
             if self._zscan:
                 if self.depth_scan_dir_is_xz:
                     self.depth_image[self._scan_counter, :, 3] = line_counts
@@ -731,10 +720,10 @@ class ConfocalLogic(GenericLogic):
                 self.xy_image[self._scan_counter, :, 3] = line_counts
                 self.signal_xy_image_updated.emit()
 
-        # call this again from event loop
+            # next line in scan
             self._scan_counter += 1
-            # stop scanning when last line scan was performed and makes scan not continuable
 
+            # stop scanning when last line scan was performed and makes scan not continuable
             if self._scan_counter >= np.size(self._image_vert_axis):
                 if not self.permanent_scan:
                     self.stop_scanning()

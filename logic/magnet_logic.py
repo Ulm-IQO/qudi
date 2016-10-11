@@ -132,7 +132,6 @@ class MagnetLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-
         self._magnet_device = self.get_in_connector('magnetstage')
         self._save_logic = self.get_in_connector('savelogic')
 
@@ -154,7 +153,6 @@ class MagnetLogic(GenericLogic):
         self._odmr_logic = self.get_in_connector('odmrlogic')
 
         self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
-
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that
@@ -179,7 +177,7 @@ class MagnetLogic(GenericLogic):
         if '_checktime' in self._statusVariables:
             self._checktime = self._statusVariables['_checktime']
         else:
-            self._checktime = 0.5 # in seconds
+            self._checktime = 2.5 # in seconds
 
         self.sigTest.connect(self._do_premeasurement_proc)
 
@@ -926,7 +924,9 @@ class MagnetLogic(GenericLogic):
 
         self.set_velocity(move_dict_vel)
         self.move_abs(move_dict_abs)
-        self.move_rel(move_dict_rel)
+        # self.move_rel(move_dict_rel)
+
+
 
         # this function will return to this function if position is reached:
         start_pos = self._saved_pos_before_align
@@ -934,8 +934,11 @@ class MagnetLogic(GenericLogic):
         for axis_name in self._saved_pos_before_align:
             end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
-        self._check_position_reached_loop(start_pos_dict=start_pos,
-                                          end_pos_dict=end_pos)
+        while self._check_is_moving():
+            time.sleep(self._checktime)
+            self.log.debug("Went into while loop in _move_to_curr_pathway_index")
+
+        self.log.debug("(first movement) magnet moving ? {0}".format(self._check_is_moving()))
 
 
         if stepwise_meas:
@@ -946,23 +949,19 @@ class MagnetLogic(GenericLogic):
             self._sigContinuousAlignmentNext.emit()
 
 
-
-
     def _stepwise_loop_body(self):
         """ Go one by one through the created path
-
         @return:
-
         The loop body goes through the 1D array
         """
-
 
         if self._stop_measure:
             return
 
         self._do_premeasurement_proc()
-
-
+        pos = self._magnet_device.get_pos()
+        self.log.debug("Current magnetic field before alignment measurement rho:{0}".format(pos['rho'])
+                       + "phi: {0}".format(pos['phi']) + "theta: {0}".format(pos['theta']))
         # perform here one of the chosen alignment measurements
         meas_val, add_meas_val = self._do_alignment_measurement()
 
@@ -974,7 +973,6 @@ class MagnetLogic(GenericLogic):
         # increase the index
         self._pathway_index += 1
 
-
         if (self._pathway_index) < len(self._pathway):
 
             #
@@ -985,24 +983,24 @@ class MagnetLogic(GenericLogic):
 
             self.set_velocity(move_dict_vel)
             self.move_abs(move_dict_abs)
-            self.move_rel(move_dict_rel)
-
 
             # this function will return to this function if position is reached:
             start_pos = dict()
             end_pos = dict()
             for axis_name in self._saved_pos_before_align:
-                start_pos[axis_name] = self._backmap[self._pathway_index-1][axis_name]
+                start_pos[axis_name] = self._backmap[self._pathway_index - 1][axis_name]
                 end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
-            self._check_position_reached_loop(start_pos_dict=start_pos,
-                                              end_pos_dict=end_pos)
+            while self._check_is_moving():
+                time.sleep(self._checktime)
+                self.log.debug("Went into while loop in stepwise_loop_body")
+
+            self.log.debug("stepwise_loop_body reports magnet moving ? {0}".format(self._check_is_moving()))
 
             # rerun this loop again
             self._sigStepwiseAlignmentNext.emit()
 
         else:
-
             self._end_alignment_procedure()
 
 
@@ -1043,7 +1041,8 @@ class MagnetLogic(GenericLogic):
 
         self.move_abs(self._saved_pos_before_align)
 
-        self._check_position_reached_loop(last_pos, self._saved_pos_before_align)
+        while self._check_is_moving():
+            time.sleep(self._checktime)
 
         self.sigMeasurementFinished.emit()
 
@@ -1105,6 +1104,17 @@ class MagnetLogic(GenericLogic):
                 break
 
         #return either pos reached signal of check position
+
+    def _check_is_moving(self):
+        """
+
+        @return bool: True indicates the magnet is moving, False the magnet stopped movement
+        """
+        # get axis names
+        axes = [i for i in self._magnet_device.get_constraints()]
+        state = self._magnet_device.get_status()
+
+        return (state[axes[0]][0] or state[axes[1]][0] or state[axes[2]][0]) is (1 or -1)
 
 
     def _set_meas_point(self, meas_val, add_meas_val, pathway_index, back_map):
@@ -1845,12 +1855,21 @@ class MagnetLogic(GenericLogic):
         if timestamp is None:
             timestamp = datetime.datetime.now()
 
+        # if tag is not None and len(tag) > 0:
+        #     filelabel = tag + '_magnet_alignment_data'
+        #     filelabel2 = tag + '_magnet_alignment_add_data'
+        # else:
+        #     filelabel = 'magnet_alignment_data'
+        #     filelabel2 = 'magnet_alignment_add_data'
+
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_magnet_alignment_data'
             filelabel2 = tag + '_magnet_alignment_add_data'
+            filelabel3 = tag + '_magnet_alignment_data_table'
         else:
             filelabel = 'magnet_alignment_data'
             filelabel2 = 'magnet_alignment_add_data'
+            filelabel3 = 'magnet_alignment_data_table'
 
         # prepare the data in a dict or in an OrderedDict:
 
@@ -1917,8 +1936,29 @@ class MagnetLogic(GenericLogic):
         self._save_logic.save_data(add_data, filepath,
                                    filelabel=filelabel2, timestamp=timestamp,
                                    as_text=True)
-        # save also all kinds of data, which are the results during the
-        # alignment measurements
+        # save the data table
+
+        count_data = self._2D_data_matrix
+        x_val = self._2D_axis0_data
+        y_val = self._2D_axis1_data
+        save_dict = OrderedDict()
+        axis0_key = '{0} values ({1})'.format(self._axis0_name, units_axis0)
+        axis1_key = '{0} values ({1})'.format(self._axis1_name, units_axis1)
+        counts_key = 'counts (c/s)'
+        save_dict[axis0_key] = []
+        save_dict[axis1_key] = []
+        save_dict[counts_key] = []
+
+        for ii, columns in enumerate(count_data):
+            for jj, col_counts in enumerate(columns):
+                # x_list = [x_val[ii]] * len(countlist)
+                save_dict[axis0_key].append(x_val[ii])
+                save_dict[axis1_key].append(y_val[jj])
+                save_dict[counts_key].append(col_counts)
+
+        self._save_logic.save_data(save_dict, filepath,
+                                   filelabel=filelabel3, timestamp=timestamp,
+                                   as_text=True)
 
 
     def _move_to_index(self, pathway_index, pathway):

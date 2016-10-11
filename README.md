@@ -20,7 +20,7 @@ If you are publishing scientific results, mentioning Qudi in your methods decscr
 We are preparing a paper about the software and DOIs for releases, which will make this process easier and more reliable.
 
 ## Documentation
-User and code documentation about Qudi is located at http://qosvn2.physik.uni-ulm.de/qudi-docs .
+User and code documentation about Qudi is located at http://qosvn.physik.uni-ulm.de/qudi-docs .
 
 ## Continuous integration 
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
@@ -28,7 +28,7 @@ User and code documentation about Qudi is located at http://qosvn2.physik.uni-ul
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/?branch=master)
 
 ## Collaboration
-Feel free to register and add issues to our trac at http://qosvn2.physik.uni-ulm.de/trac/qudi .
+Feel free to register and add issues to our trac at http://qosvn.physik.uni-ulm.de/trac/qudi .
 and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
 
 The code in pull requests should be clean, PEP8-compliant and commented, as with every academic institution in Germany,
