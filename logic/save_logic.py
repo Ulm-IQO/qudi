@@ -158,14 +158,14 @@ class SaveLogic(GenericLogic):
 
         # Some default variables concerning the operating system:
         self.os_system = None
-        self.default_unix_data_dir = '$HOME/Data'
+        self.default_unix_data_dir = 'Data'
         self.default_win_data_dir = 'C:/Data/'
 
         # Chech which operation system is used and include a case if the
         # directory was not found in the config:
-        if 'linux' in sys.platform or sys.platform == 'darwin':
+        if sys.platform in ('linux', 'darwin'):
             self.os_system = 'unix'
-            if 'unix_data_directory' in config.keys():
+            if 'unix_data_directory' in config:
                 self.data_dir = config['unix_data_directory']
             else:
                 self.data_dir = self.default_unix_data_dir
@@ -722,7 +722,7 @@ class SaveLogic(GenericLogic):
                     os.makedirs(self.data_dir)
                     self.log.warning('The specified Data Directory in the '
                             'config file does not exist. Using default for '
-                            '{0} system instead. The directory\n{1} was '
+                            '{0} system instead. The directory {1} was '
                             'created'.format(self.os_system, self.data_dir))
 
         # That is now the current directory:

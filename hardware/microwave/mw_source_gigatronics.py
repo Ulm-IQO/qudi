@@ -166,7 +166,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if power != None:
+        if power is not None:
             self._gpib_connection.write(':POW {:f} DBM'.format(power))
             return 0
         else:
@@ -210,11 +210,11 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         error = 0
         self._gpib_connection.write(':MODE CW')
 
-        if freq != None:
+        if freq is not None:
             error = self.set_frequency(freq)
         else:
             return -1
-        if power != None:
+        if power is not None:
             error = self.set_power(power)
         else:
             return -1

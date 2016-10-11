@@ -922,14 +922,14 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         edge = int(edge)
 
         if channel not in range(0, 4):
-            self.log.error('PicoHarp: Invalid channel for routing.\nThe '
-                    'channel must be within the interval [0,3], but a value '
+            self.log.error('PicoHarp: Invalid channel for routing.\n'
+                    'The channel must be within the interval [0,3], but a value '
                     'of {2} was passed.'.format(channel))
             return
         if not(self.PHR800LVMIN <= level <= self.PHR800LVMAX):
-            self.log.error('PicoHarp: Invalid level for routing.\nThe level '
-                'used for channel {0} must be within the interval '
-                '[{1},{2}] mV, but a value of {3} was passed.'.
+            self.log.error('PicoHarp: Invalid level for routing.\n'
+                'The level used for channel {0} must be within the interval '
+                '[{1},{2}] mV, but a value of {3} was passed.'
                 ''.format(channel, self.PHR800LVMIN, self.PHR800LVMAX, level))
             return
         if (edge != 0) or (edge != 1):
