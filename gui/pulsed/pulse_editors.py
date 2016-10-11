@@ -183,16 +183,23 @@ class BlockEditor:
         self._cfg_param_pbe = cfg_param_pbe
         return
 
-    def set_configs(self, activation_config, function_config=None):
+    def set_activation_config(self, activation_config):
         """
 
         @param activation_config:
-        @param function_config:
         @return:
         """
         self.activation_config = activation_config
-        if function_config is not None:
-            self.function_config = function_config
+        self._set_columns()
+        return
+
+    def set_function_config(self, function_config):
+        """
+
+        @param function_config:
+        @return:
+        """
+        self.function_config = function_config
         self._set_columns()
         return
 
