@@ -420,8 +420,8 @@ class ConfocalGui(GUIBase):
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming
         # from the Logic module must be in micrometer.
-        self.slider_res = 0.001  # 1 nanometer resolution per one change, units
-                                 # are micrometer
+        # 1 nanometer resolution per one change, units are micrometer
+        self.slider_res = 0.001
 
         # How many points are needed for that kind of resolution:
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0]) / self.slider_res
@@ -509,7 +509,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
 
         # Get initial tilt correction values
-        self._mw.action_Tiltcorrection.setChecked(self._scanning_logic.TiltCorrection)
+        self._mw.action_TiltCorrection.setChecked(self._scanning_logic._scanning_device.tiltcorrection)
 
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
@@ -524,7 +524,7 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
         # Connect tiltcorrection stuff
-        self._mw.action_Tiltcorrection.triggered.connect(self.use_tiltcorrection_clicked)
+        self._mw.action_TiltCorrection.triggered.connect(self.use_tiltcorrection_clicked)
         self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)
         self._mw.tilt_set_02_pushButton.clicked.connect(self.set_tiltpoint_02_clicked)
         self._mw.tilt_set_03_pushButton.clicked.connect(self.set_tiltpoint_03_clicked)

@@ -73,13 +73,10 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
                 if parameters[para].min is not None:
                     if (parameters[para].min > update_dict[para]['value']):
                         parameters[para].min = update_dict[para]['value']
-                        parameters[para].value = update_dict[para]['value']
                 if parameters[para].max is not None:
                     if (parameters[para].max < update_dict[para]['value']):
                         parameters[para].max = update_dict[para]['value']
-                        parameters[para].value = update_dict[para]['value']
-                else:
-                    parameters[para].value = update_dict[para]['value']
+                parameters[para].value = update_dict[para]['value']
         return parameters
 
 def create_fit_string(self, result, model, units=None, decimal_digits_value_given=None,

@@ -21,9 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.util.customexceptions import InterfaceImplementationError
+from core.util.units import in_range
 
 
-class MicrowaveInterface():
+class MicrowaveInterface:
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
@@ -169,25 +170,57 @@ class MicrowaveInterface():
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
 
-          @return dict: limits dictionary
-
-            The following structure is absolutely necessary:
-            frequency:
-                min:
-                max:
-            power:
-                min:
-                max:
-            list:
-                minstep:
-                maxstep:
-                maxentries:
-            sweep:
-                minstep:
-                maxstep:
-                maxentries:
-
-           Frequency in Hz, power in dBm, minstep/maxstep in Hz.
+          @return MicrowaveLimits: Microwave limits object
         """
         raise InterfaceImplementationError('MicrowaveInterface>get_limits')
 
+
+class MicrowaveLimits:
+    """ A container to hold all limits for microwave sources.
+    """
+    def __init__(self):
+        """Create an instance containing all parameters with default values."""
+
+        # how the microwave source can give you microwaves
+        # CW: can output single frequency continuously
+        # LIST: can load a list where frequencies are changed on trigger
+        # SWEEP: can sweep frequency in form of start, stop, step with each step being triggered
+        # AN_SWEEP: can sweep frequency from start to stop but only one trigger to start sweep
+        self.supported_modes = ('CW', 'LIST', 'SWEEP', 'AN_SWEEP')
+
+        # frequency in Hz
+        self.min_frequency = 1e6
+        self.max_frequency = 1e9
+
+        # power in dBm
+        self.min_power = -10
+        self.max_power = 0
+
+        # list limits, frequencies in Hz, entries are single steps
+        self.list_minstep = 1
+        self.list_maxstep = 1e9
+        self.list_maxentries = 1e3
+
+        # sweep limits, frequencies in Hz, entries are single steps
+        self.sweep_minstep = 1
+        self.sweep_maxstep = 1e9
+        self.sweep_maxentries = 1e3
+
+        # analog sweep limits, slope in Hz/s
+        self.sweep_minslope = 1
+        self.sweep_maxslope = 1e9
+
+    def frequency_in_range(self, frequency):
+        return in_range(frequency, self.min_frequency, self.max_frequency)
+
+    def power_in_range(self, power):
+        return in_range(power, self.min_power, self.max_power)
+
+    def list_step_in_range(self, step):
+        return in_range(step, self.list_minstep, self.list_maxstep)
+
+    def sweep_step_in_range(self, step):
+        return in_range(step, self.sweep_minstep, self.sweep_maxstep)
+
+    def slope_in_range(self, slope):
+        return in_range(slope, self.sweep_minslope, self.sweep_maxslope)
