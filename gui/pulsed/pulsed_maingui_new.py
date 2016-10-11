@@ -40,6 +40,7 @@ from gui.colordefs import QudiPalette as palettedark
 from core.util.mutex import Mutex
 from core.util import units
 from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer
+from logic.sampling_functions import SamplingFunctions
 
 
 #FIXME: Display the Pulse
@@ -60,6 +61,7 @@ class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
+
 class PulseAnalysisTab(QtWidgets.QWidget):
     def __init__(self):
         # Get the path to the *.ui file
@@ -68,6 +70,7 @@ class PulseAnalysisTab(QtWidgets.QWidget):
         # Load it
         super().__init__()
         uic.loadUi(ui_file, self)
+
 
 class PulseGeneratorTab(QtWidgets.QWidget):
     def __init__(self):
@@ -78,6 +81,7 @@ class PulseGeneratorTab(QtWidgets.QWidget):
         super().__init__()
         uic.loadUi(ui_file, self)
 
+
 class PulseExtractionTab(QtWidgets.QWidget):
     def __init__(self):
         # Get the path to the *.ui file
@@ -86,6 +90,7 @@ class PulseExtractionTab(QtWidgets.QWidget):
         # Load it
         super().__init__()
         uic.loadUi(ui_file, self)
+
 
 class AnalysisSettingDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -97,6 +102,19 @@ class AnalysisSettingDialog(QtWidgets.QDialog):
         super(AnalysisSettingDialog, self).__init__()
 
         uic.loadUi(ui_file, self)
+
+
+class GeneratorSettingsDialog(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_block_gen.ui')
+
+        # Load it
+        super(GeneratorSettingsDialog, self).__init__()
+
+        uic.loadUi(ui_file, self)
+
 
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
@@ -151,6 +169,7 @@ class PulsedMeasurementGui(GUIBase):
         self._activate_analysis_ui(e)
         self.setup_extraction_ui()
 
+        self._activate_generator_settings_ui(e)
         self._activate_pulse_generator_ui(e)
 
         self.show()
@@ -168,6 +187,7 @@ class PulsedMeasurementGui(GUIBase):
         self._deactivate_analysis_settings_ui(e)
         self._deactivate_analysis_ui(e)
 
+        self._deactivate_generator_settings_ui(e)
         self._deactivate_pulse_generator_ui(e)
 
         self._mw.close()
@@ -178,27 +198,131 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def get_current_function_list(self):
-        """ Retrieve the functions, which are chosen by the user.
+    ###########################################################################
+    ###   Methods related to Settings for the 'Pulse Generator' tab:        ###
+    ###########################################################################
+    def _activate_generator_settings_ui(self, e):
+        """ Initialize, connect and configure the pulse generator settings to be displayed in the
+        editor.
 
-        @return: list[] with strings of the used functions. Names are based on
-                 the passed func_config dict from the logic. Depending on the
-                 settings, a current function list is generated.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
         """
-        # current_functions = []
-        #
-        # for index in range(len(list(self._pulsed_master_logic._generator_logic.func_config))):
-        #     name_checkbox = 'checkbox_' + str(index)
-        #     checkbox = getattr(self._bs, name_checkbox)
-        #     if checkbox.isChecked():
-        #         name_label = 'func_' + str(index)
-        #         func = getattr(self._bs, name_label)
-        #         current_functions.append(func.text())
-        # return current_functions
-        return list(self._pulsed_master_logic._generator_logic.func_config)
+        self._gs = GeneratorSettingsDialog()
+        self._gs.accepted.connect(self.apply_generator_settings)
+        self._gs.rejected.connect(self.keep_former_generator_settings)
+        self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_generator_settings)
 
-    def get_current_block_list(self):
-        return self._pulsed_master_logic._generator_logic.saved_pulse_blocks
+        # create the Predefined methods Dialog
+        # self._pm = PredefinedMethodsDialog()
+        # self._predefined_methods_list = []  # here are all the names saved of
+        # the created predefined methods.
+
+        # create a config for the predefined methods:
+        # self._pm_cfg = PredefinedMethodsConfigDialog()
+
+        # Add in the settings menu within the groupbox widget all the available math_functions,
+        # based on the list from the Logic. Right now, the GUI objects are inserted the 'hard' way,
+        # like it is done in the Qt-Designer.
+        # FIXME: Make a nicer way of displaying the available functions, maybe with a Table!
+        _encoding = QtWidgets.QApplication.UnicodeUTF8
+        objectname = self._gs.objectName()
+        for index, func_name in enumerate(list(SamplingFunctions().func_config)):
+            name_label = 'func_' + str(index)
+            setattr(self._gs, name_label, QtWidgets.QLabel(self._gs.groupBox))
+            label = getattr(self._gs, name_label)
+            label.setObjectName(name_label)
+            self._gs.gridLayout_3.addWidget(label, index, 0, 1, 1)
+            label.setText(QtWidgets.QApplication.translate(objectname, func_name, None, _encoding))
+
+            name_checkbox = 'checkbox_' + str(index)
+            setattr(self._gs, name_checkbox, QtWidgets.QCheckBox(self._gs.groupBox))
+            checkbox = getattr(self._gs, name_checkbox)
+            checkbox.setObjectName(name_checkbox)
+            self._gs.gridLayout_3.addWidget(checkbox, index, 1, 1, 1)
+            checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None, _encoding))
+        # make the first 4 Functions as default.
+        # FIXME: the default functions, must be passed as a config
+        for index in range(4):
+            name_checkbox = 'checkbox_' + str(index)
+            checkbox = getattr(self._gs, name_checkbox)
+            checkbox.setCheckState(QtCore.Qt.Checked)
+        return
+
+    def _deactivate_generator_settings_ui(self, e):
+        """ Disconnects the configuration of the Settings for the 'Pulse Generator' Tab.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
+        """
+        self._gs.accepted.disconnect()
+        self._gs.rejected.disconnect()
+        self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
+        self._gs.close()
+        return
+
+    def show_generator_settings(self):
+        """
+        Opens the generator settings menu.
+        """
+        self._gs.exec_()
+        return
+
+    def apply_generator_settings(self):
+        """
+        Write new generator settings from the gui to the file.
+        """
+        new_config = SamplingFunctions().func_config
+        for index, func_name in enumerate(list(SamplingFunctions().func_config)):
+            name_checkbox = 'checkbox_' + str(index)
+            checkbox = getattr(self._gs, name_checkbox)
+            if not checkbox.isChecked():
+                name_label = 'func_' + str(index)
+                func = getattr(self._gs, name_label)
+                del new_config[func.text()]
+        if self.block_editor.function_config != new_config:
+            self.block_editor.set_function_config(new_config)
+        return
+
+    def keep_former_generator_settings(self):
+        """
+        Keep the old generator settings and restores them in the gui.
+        """
+        old_config = self.block_editor.function_config
+        for index, func_name in enumerate(list(SamplingFunctions().func_config)):
+            name_checkbox = 'checkbox_' + str(index)
+            checkbox = getattr(self._gs, name_checkbox)
+            if func_name in old_config:
+                checkbox.setChecked(True)
+            else:
+                checkbox.setChecked(False)
+        return
+
+    # def show_predefined_methods(self):
+    #     """ Opens the predefined methods Window."""
+    #     self._pm.show()
+    #     self._pm.raise_()
+    #
+    # def show_predefined_methods_config(self):
+    #     """ Opens the Window for the config of predefined methods."""
+    #     self._pm_cfg.show()
+    #     self._pm_cfg.raise_()
+    #
+    # def keep_former_predefined_methods(self):
+    #
+    #     for method_name in self._predefined_methods_list:
+    #         groupbox = self._get_ref_groupbox_predefined_methods(method_name)
+    #         checkbox = self._get_ref_checkbox_predefined_methods_config(method_name)
+    #
+    #         checkbox.setChecked(groupbox.isVisible())
+    #
+    # def update_predefined_methods(self):
+    #     for method_name in self._predefined_methods_list:
+    #         groupbox = self._get_ref_groupbox_predefined_methods(method_name)
+    #         checkbox = self._get_ref_checkbox_predefined_methods_config(method_name)
+    #
+    #         groupbox.setVisible(checkbox.isChecked())
 
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
@@ -250,14 +374,16 @@ class PulsedMeasurementGui(GUIBase):
 
         self.block_organizer = BlockOrganizer(self._pg.block_organizer_TableWidget)
         self.block_editor = BlockEditor(self._pg.block_editor_TableWidget)
-        self.functions_to_show = ['Idle', 'DC', 'Sin']
+
+        # connect the menu to the actions:
+        self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
+
         # Apply hardware constraints to input widgets
         self._gen_apply_hardware_constraints()
 
         # Fill initial values from logic into input widgets
         self._pulsed_master_logic.request_generator_init_values()
         return
-
 
     def _deactivate_pulse_generator_ui(self, e):
         """ Disconnects the configuration for 'Pulse Generator Tab.
@@ -369,7 +495,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_sample_freq_DSpinBox.setValue(sample_rate)
         # set activation config in block editor
         if self.block_editor.activation_config != activation_config:
-            self.block_editor.set_configs(activation_config)
+            self.block_editor.set_activation_config(activation_config)
         # unblock signals
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
