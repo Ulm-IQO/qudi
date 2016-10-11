@@ -27,6 +27,7 @@ import datetime
 import matplotlib.pyplot as plt
 
 from core.util.mutex import Mutex
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 
 class PulsedMeasurementLogic(GenericLogic):
@@ -38,12 +39,13 @@ class PulsedMeasurementLogic(GenericLogic):
 
     ## declare connectors
     _in = {'pulseanalysislogic': 'PulseAnalysisLogic',
+           'pulseextractionlogic': 'PulseExtractionLogic',
            'fitlogic': 'FitLogic',
            'savelogic': 'SaveLogic',
            'fastcounter': 'FastCounterInterface',
            'microwave': 'MWInterface',
            'pulsegenerator': 'PulserInterface',
-            }
+           }
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
@@ -138,6 +140,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.raw_data = np.zeros((10, 20))
         self.show_raw_data = False
         self.show_laser_index = 0
+        self.saved_raw_data = OrderedDict()  # temporary saved raw data
+        self.measurement_tag = None  # save tag for temporary saved raw data
 
         # for fit:
         self._fit_param = {}
@@ -155,9 +159,9 @@ class PulsedMeasurementLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-
         # get all the connectors:
         self._pulse_analysis_logic = self.get_in_connector('pulseanalysislogic')
+        self._pulse_extraction_logic = self.get_in_connector('pulseextractionlogic')
         self._fast_counter_device = self.get_in_connector('fastcounter')
         self._save_logic = self.get_in_connector('savelogic')
         self._fit_logic = self.get_in_connector('fitlogic')
@@ -242,6 +246,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # initialize arrays for the plot data
         self._initialize_plots()
+
+        # save tag for temporary saved raw data
+        self.measurement_tag = None
 
 
     def on_deactivate(self, e):
@@ -672,21 +679,35 @@ class PulsedMeasurementLogic(GenericLogic):
             sig_end = self.signal_start_bin + self.signal_width_bin
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
-            conv_std_dev = self.conv_std_dev
 
+            # get raw data from fast counter
+            self.raw_data = netobtain(self._fast_counter_device.get_data_trace())
+            print('sum of raw data: ', int(np.sum(self.raw_data)))
+            # add old raw data from previous measurements if necessary
+            if self.measurement_tag in self.saved_raw_data:
+                if self.saved_raw_data[self.measurement_tag].shape == self.raw_data.shape:
+                    self.raw_data = self.raw_data + self.saved_raw_data[self.measurement_tag]
+
+            # extract laser pulses from raw data
+            if self.fast_counter_gated:
+                self.laser_data = self._pulse_extraction_logic.gated_extraction(self.raw_data,
+                                                                                self.conv_std_dev)
+            else:
+                self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
+                                                                                  self.conv_std_dev,
+                                                                                  self.number_of_lasers)
             # analyze pulses and get data points for signal plot
-            tmp_signal, self.laser_data, self.raw_data, tmp_error = self._pulse_analysis_logic._analyze_data(norm_start,
-                                                                                                          norm_end,
-                                                                                                          sig_start,
-                                                                                                          sig_end,
-                                                                                                          self.number_of_lasers,
-                                                                                                          conv_std_dev)
+            tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
+                                                                            norm_start, norm_end,
+                                                                            sig_start, sig_end)
+            # exclude laser pulses to ignore
             if len(self.laser_ignore_list) > 0:
                 ignore_indices = self.laser_ignore_list
                 if -1 in ignore_indices:
                     ignore_indices[ignore_indices.index(-1)] = len(ignore_indices) - 1
                 tmp_signal = np.delete(tmp_signal, ignore_indices)
                 tmp_error = np.delete(tmp_error, ignore_indices)
+            # order data according to alternating flag
             if self.alternating:
                 self.signal_plot_y = tmp_signal[::2]
                 self.signal_plot_y2 = tmp_signal[1::2]
@@ -758,6 +779,10 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_off()
                 if self.use_ext_microwave:
                     self.microwave_on_off(False)
+
+                # save raw data if requested
+                if self.measurement_tag is not None:
+                    self.saved_raw_data[self.measurement_tag] = self.raw_data.copy()
 
                 self.unlock()
                 self.sigMeasurementRunningUpdated.emit(False, False)
