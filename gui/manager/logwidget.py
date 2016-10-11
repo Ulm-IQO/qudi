@@ -41,7 +41,7 @@ class LogModel(QtCore.QAbstractTableModel):
         super().__init__(**kwargs)
         self.header = ['Name', 'Time', 'Level', 'Message']
         self.fgColor = {
-            'debug':   QtGui.QColor('#11F'),
+            'debug':   QtGui.QColor('#77F'),
             'info':     QtGui.QColor('#1F1'),
             'warning':  QtGui.QColor('#F90'),
             'error':    QtGui.QColor('#F11'),

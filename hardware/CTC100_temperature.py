@@ -97,12 +97,12 @@ class CTC100(Base):
             return True
         else:
             result = self.inst.ask('OutputEnable = On').split()[2]
-            return result == 'On':
+            return result == 'On'
 
     def disable_output(self):
         if self.is_output_on():
             result = self.inst.ask('OutputEnable = Off').split()[2]
-            return result == 'Off':
+            return result == 'Off'
         else:
             return True
 

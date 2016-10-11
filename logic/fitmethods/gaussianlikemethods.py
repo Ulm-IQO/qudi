@@ -162,12 +162,14 @@ def estimate_gaussian(self, x_axis=None, data=None, params=None):
 1
 
 def make_twoDgaussian_fit(self, axis=None, data=None,
-                           add_parameters=None):
+                           add_parameters=None, estimator="estimate_twoDgaussian_MLE"):
     """ This method performes a 2D gaussian fit on the provided data.
 
     @param array[] axis: axis values
     @param array[]  x_data: data
     @param dict add_parameters: Additional parameters
+    @param string estimator: the string should contain the name of the function you want to use to estimate
+                             the parameters. The default estimator is estimate_twoDgaussian_MLE.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -177,15 +179,27 @@ def make_twoDgaussian_fit(self, axis=None, data=None,
 
     x_axis, y_axis = axis
 
-    error,      \
-    amplitude,  \
-    x_zero,     \
-    y_zero,     \
-    sigma_x,    \
-    sigma_y,    \
-    theta,      \
-    offset = self.estimate_twoDgaussian(x_axis=x_axis,
-                                          y_axis=y_axis, data=data)
+    if estimator is "estimate_twoDgaussian_MLE":
+        error,      \
+        amplitude,  \
+        x_zero,     \
+        y_zero,     \
+        sigma_x,    \
+        sigma_y,    \
+        theta,      \
+        offset = self.estimate_twoDgaussian_MLE(x_axis=x_axis,
+                                                y_axis=y_axis, data=data)
+    else:
+        error,     \
+        amplitude,  \
+        x_zero,    \
+        y_zero,    \
+        sigma_x,   \
+        sigma_y,   \
+        theta,     \
+        offset = globals()[estimator](0, x_axis=x_axis,
+                                      y_axis=y_axis, data=data)
+
     mod, params = self.make_twoDgaussian_model()
 
     #auxiliary variables
@@ -313,6 +327,88 @@ def estimate_twoDgaussian(self, x_axis=None, y_axis=None, data=None):
 
     x_zero = x_axis[data.argmax()]
     y_zero = y_axis[data.argmax()]
+
+    sigma_x = (x_axis.max() - x_axis.min()) / 3.
+    sigma_y = (y_axis.max() - y_axis.min()) / 3.
+    theta = 0.0
+    offset = float(data.min())
+    error = 0
+    # check for sensible values
+    parameters = [x_axis, y_axis, data]
+    for var in parameters:
+        # FIXME: Why don't you check earlier?
+        # FIXME: Check for 1D array, 2D
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is not an array.')
+            amplitude = 0.
+            x_zero = 0.
+            y_zero = 0.
+            sigma_x = 0.
+            sigma_y = 0.
+            theta = 0.0
+            offset = 0.
+            error = -1
+
+    return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+
+def estimate_twoDgaussian_MLE(self, x_axis=None, y_axis=None, data=None):
+    # TODO: Make good estimates for sigma_x, sigma_y and theta
+    """ This method provides an estimate for the parameters characterizing a
+        two dimensional gaussian. It is based on the maximum likelihood estimation
+        (at the moment only for the x_zero and y_zero values).
+
+    @param array x_axis: x values
+    @param array y_axis: y values
+    @param array data: value of each data point corresponding to
+                        x and y values
+    @return tuple parameters: estimated value of parameters based on the data
+    """
+
+    amplitude = float(data.max() - data.min())
+
+    x_zero = np.sum(x_axis * data) / np.sum(data)
+    y_zero = np.sum(y_axis * data) / np.sum(data)
+
+    sigma_x = (x_axis.max() - x_axis.min()) / 3.
+    sigma_y = (y_axis.max() - y_axis.min()) / 3.
+    theta = 0.0
+    offset = float(data.min())
+    error = 0
+    # check for sensible values
+    parameters = [x_axis, y_axis, data]
+    for var in parameters:
+        # FIXME: Why don't you check earlier?
+        # FIXME: Check for 1D array, 2D
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is not an array.')
+            amplitude = 0.
+            x_zero = 0.
+            y_zero = 0.
+            sigma_x = 0.
+            sigma_y = 0.
+            theta = 0.0
+            offset = 0.
+            error = -1
+
+    return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+
+def estimate_twoDgaussian_MLE(self, x_axis=None, y_axis=None, data=None):
+    # TODO: Make good estimates for sigma_x, sigma_y and theta
+    """ This method provides an estimate for the parameters characterizing a
+        two dimensional gaussian. It is based on the maximum likelihood estimation
+        (at the moment only for the x_zero and y_zero values).
+
+    @param array x_axis: x values
+    @param array y_axis: y values
+    @param array data: value of each data point corresponding to
+                        x and y values
+    @return tuple parameters: estimated value of parameters based on the data
+    """
+
+    amplitude = float(data.max() - data.min())
+
+    x_zero = np.sum(x_axis * data) / np.sum(data)
+    y_zero = np.sum(y_axis * data) / np.sum(data)
 
     sigma_x = (x_axis.max() - x_axis.min()) / 3.
     sigma_y = (y_axis.max() - y_axis.min()) / 3.
