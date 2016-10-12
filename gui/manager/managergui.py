@@ -124,17 +124,12 @@ class ManagerGui(GUIBase):
         self.versionLabel.setOpenExternalLinks(True)
         self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
-        self._mw.loadAllButton.clicked.connect(
-            self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
-        self._mw.actionReload_current_configuration.triggered.connect(
-            self.reloadConfig)
+        self._mw.actionReload_current_configuration.triggered.connect(self.reloadConfig)
         self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
-        self._mw.action_Load_all_modules.triggered.connect(
-            self._manager.startAllConfiguredModules)
-        self._mw.actionAbout_Qt.triggered.connect(
-            QtWidgets.QApplication.aboutQt)
+        self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.actionAbout_Qt.triggered.connect(QtWidgets.QApplication.aboutQt)
         self._mw.actionAbout_Qudi.triggered.connect(self.showAboutQudi)
 
         self._manager.sigShowManager.connect(self.show)
@@ -194,7 +189,6 @@ class ManagerGui(GUIBase):
         self.sigStopModule.disconnect()
         self.sigLoadConfig.disconnect()
         self.sigSaveConfig.disconnect()
-        self._mw.loadAllButton.clicked.disconnect()
         self._mw.actionQuit.triggered.disconnect()
         self._mw.actionLoad_configuration.triggered.disconnect()
         self._mw.actionSave_configuration.triggered.disconnect()
