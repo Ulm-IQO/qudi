@@ -281,6 +281,20 @@ class ConfocalGui(GUIBase):
         # Hide Tiltcorrection window
         self._mw.tilt_correction_dockWidget.hide()
 
+        # Hide scan line display
+        self._mw.scanLineDockWidget.hide()
+
+        # set up scan line plot
+        sc = self._scanning_logic._scan_counter
+        sc = sc - 1 if sc >= 1 else sc
+        if self._scanning_logic._zscan:
+            data = self._scanning_logic.depth_image[sc, :, 0:4:3]
+        else:
+            data = self._scanning_logic.xy_image[sc, :, 0:4:3]
+
+        self.scan_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
+        self._mw.scanLineGraphicsView.addItem(self.scan_line_plot)
+
         ###################################################################
         #               Configuration of the optimizer tab                #
         ###################################################################
@@ -557,6 +571,8 @@ class ConfocalGui(GUIBase):
         # Connect the emitted signal of an image change from the logic with
         # a refresh of the GUI picture:
         self._scanning_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
+        self._scanning_logic.signal_xy_image_updated.connect(self.refresh_scan_line)
+        self._scanning_logic.signal_depth_image_updated.connect(self.refresh_scan_line)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_depth_image)
         self._optimizer_logic.signal_image_updated.connect(self.refresh_refocus_image)
         self._scanning_logic.sigImageXYInitialized.connect(self.adjust_xy_window)
@@ -1584,6 +1600,15 @@ class ConfocalGui(GUIBase):
             )
         )
 
+    def refresh_scan_line(self):
+        """ Get the previously scanned image line and display it in the scan line plot. """
+        sc = self._scanning_logic._scan_counter
+        sc = sc - 1 if sc >= 1 else sc
+        if self._scanning_logic._zscan:
+            self.scan_line_plot.setData(self._scanning_logic.depth_image[sc, :, 0:4:3])
+        else:
+            self.scan_line_plot.setData(self._scanning_logic.xy_image[sc, :, 0:4:3])
+
     def adjust_xy_window(self):
         """ Fit the visible window in the xy scan to full view.
 
@@ -1854,17 +1879,23 @@ class ConfocalGui(GUIBase):
         self._mw.scan_control_dockWidget.show()
         self._mw.depth_scan_dockWidget.show()
         self._mw.optimizer_dockWidget.show()
+        self._mw.tilt_correction_dockWidget.hide()
+        self._mw.scanLineDockWidget.hide()
 
         # re-dock any floating dock widgets
         self._mw.xy_scan_dockWidget.setFloating(False)
         self._mw.scan_control_dockWidget.setFloating(False)
         self._mw.depth_scan_dockWidget.setFloating(False)
         self._mw.optimizer_dockWidget.setFloating(False)
+        self._mw.tilt_correction_dockWidget.setFloating(False)
+        self._mw.scanLineDockWidget.setFloating(False)
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.xy_scan_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.depth_scan_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.optimizer_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.tilt_correction_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
 
         # Resize window to default size
         self._mw.resize(1255, 939)
