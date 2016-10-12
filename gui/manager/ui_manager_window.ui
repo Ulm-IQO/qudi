@@ -16,13 +16,6 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QPushButton" name="loadAllButton">
-      <property name="text">
-       <string>Load all modules</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -48,8 +41,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>962</width>
-             <height>286</height>
+             <width>300</width>
+             <height>288</height>
             </rect>
            </property>
           </widget>
@@ -72,8 +65,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>96</width>
-             <height>26</height>
+             <width>962</width>
+             <height>288</height>
             </rect>
            </property>
           </widget>
@@ -96,8 +89,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>96</width>
-             <height>26</height>
+             <width>962</width>
+             <height>288</height>
             </rect>
            </property>
           </widget>
@@ -125,7 +118,6 @@
     <addaction name="actionLoad_configuration"/>
     <addaction name="actionReload_current_configuration"/>
     <addaction name="actionSave_configuration"/>
-    <addaction name="actionExport_log_as_HTML"/>
     <addaction name="separator"/>
     <addaction name="action_Load_all_modules"/>
     <addaction name="separator"/>
@@ -161,7 +153,7 @@
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="config_display_dockWidget">
+  <widget class="QDockWidget" name="configDisplayDockWidget">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -211,7 +203,7 @@
   </widget>
   <widget class="QDockWidget" name="remoteDockWidget">
    <property name="windowTitle">
-    <string>Remote</string>
+    <string>Remote modules</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -226,6 +218,32 @@
     <number>8</number>
    </attribute>
    <widget class="ThreadWidget" name="threadWidget"/>
+  </widget>
+  <widget class="QToolBar" name="configToolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionLoad_configuration"/>
+   <addaction name="actionSave_configuration"/>
+   <addaction name="actionReload_current_configuration"/>
+  </widget>
+  <widget class="QToolBar" name="moduleToolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_Load_all_modules"/>
   </widget>
   <action name="actionLoad_configuration">
    <property name="icon">
@@ -432,7 +450,7 @@
   <connection>
    <sender>actionConfigurationView</sender>
    <signal>toggled(bool)</signal>
-   <receiver>config_display_dockWidget</receiver>
+   <receiver>configDisplayDockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
