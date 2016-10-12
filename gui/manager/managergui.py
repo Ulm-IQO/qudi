@@ -622,10 +622,8 @@ class ModuleListItem(QtWidgets.QFrame):
         if self.statusLabel.text() != 'exception, cannot get state':
             try:
                 if (self.base in self.manager.tree['loaded']
-                        and self.name in self.manager.tree['loaded'][
-                            self.base]):
-                    state = self.manager.tree['loaded'][
-                        self.base][self.name].getState()
+                        and self.name in self.manager.tree['loaded'][self.base]):
+                    state = self.manager.tree['loaded'][self.base][self.name].getState()
                 else:
                     state = 'not loaded'
             except:
