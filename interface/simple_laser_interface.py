@@ -84,6 +84,12 @@ class SimpleLaserInterface:
         """
         raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
+    def allowed_control_modes(self):
+        """ Get available control mode of laser
+          @return list: list with enum control modes
+        """
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+
     def get_control_mode(self):
         """ Get control mode of laser
           @return enum ControlMode: control mode
