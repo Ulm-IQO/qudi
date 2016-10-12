@@ -41,7 +41,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>318</width>
+             <width>300</width>
              <height>288</height>
             </rect>
            </property>
@@ -65,7 +65,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>318</width>
+             <width>962</width>
              <height>288</height>
             </rect>
            </property>
@@ -89,7 +89,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>318</width>
+             <width>962</width>
              <height>288</height>
             </rect>
            </property>
@@ -153,7 +153,7 @@
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="config_display_dockWidget">
+  <widget class="QDockWidget" name="configDisplayDockWidget">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -203,7 +203,7 @@
   </widget>
   <widget class="QDockWidget" name="remoteDockWidget">
    <property name="windowTitle">
-    <string>Remote</string>
+    <string>Remote modules</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -450,7 +450,7 @@
   <connection>
    <sender>actionConfigurationView</sender>
    <signal>toggled(bool)</signal>
-   <receiver>config_display_dockWidget</receiver>
+   <receiver>configDisplayDockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
