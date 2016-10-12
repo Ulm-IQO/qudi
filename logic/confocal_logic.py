@@ -616,7 +616,6 @@ class ConfocalLogic(GenericLogic):
             self.signal_change_position.emit(tag)
             return 0
 
-
     def _change_position(self, tag):
         """ Threaded method to change the hardware position.
 
@@ -646,7 +645,6 @@ class ConfocalLogic(GenericLogic):
         """scanning an image in either depth or xy
 
         """
-        # TODO: change z_values, if z is changed during scan!
         # stops scanning
         if self.stopRequested:
             with self.threadlock:
@@ -683,6 +681,11 @@ class ConfocalLogic(GenericLogic):
                     ))
                 # move to the start position of the scan, counts are thrown away
                 start_line_counts = self._scanning_device.scan_line(start_line)
+
+            # adjust z of line in image to current z before building the line
+            if not self._zscan:
+                image[self._scan_counter, :, 2] = self._current_z * np.ones(image[self._scan_counter, :, 2].shape)
+
             # make a line in the scan, _scan_counter says which one it is
             line = np.vstack((image[self._scan_counter, :, 0],
                               image[self._scan_counter, :, 1],

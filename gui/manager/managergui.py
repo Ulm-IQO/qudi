@@ -124,18 +124,14 @@ class ManagerGui(GUIBase):
         self.versionLabel.setOpenExternalLinks(True)
         self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
-        self._mw.loadAllButton.clicked.connect(
-            self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
-        self._mw.actionReload_current_configuration.triggered.connect(
-            self.reloadConfig)
+        self._mw.actionReload_current_configuration.triggered.connect(self.reloadConfig)
         self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
-        self._mw.action_Load_all_modules.triggered.connect(
-            self._manager.startAllConfiguredModules)
-        self._mw.actionAbout_Qt.triggered.connect(
-            QtWidgets.QApplication.aboutQt)
+        self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.actionAbout_Qt.triggered.connect(QtWidgets.QApplication.aboutQt)
         self._mw.actionAbout_Qudi.triggered.connect(self.showAboutQudi)
+        self._mw.actionReset_to_default_layout.triggered.connect(self.resetToDefaultLayout)
 
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
@@ -172,10 +168,9 @@ class ManagerGui(GUIBase):
         self._mw.remoteWidget.sharedModuleListView.setModel(
             self._manager.rm.sharedModules)
 
-        self._mw.config_display_dockWidget.hide()
+        self._mw.configDisplayDockWidget.hide()
         self._mw.remoteDockWidget.hide()
         self._mw.threadDockWidget.hide()
-        #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
     def on_deactivate(self, e):
@@ -194,7 +189,6 @@ class ManagerGui(GUIBase):
         self.sigStopModule.disconnect()
         self.sigLoadConfig.disconnect()
         self.sigSaveConfig.disconnect()
-        self._mw.loadAllButton.clicked.disconnect()
         self._mw.actionQuit.triggered.disconnect()
         self._mw.actionLoad_configuration.triggered.disconnect()
         self._mw.actionSave_configuration.triggered.disconnect()
@@ -215,6 +209,32 @@ class ManagerGui(GUIBase):
         """Show a dialog with details about Qudi.
         """
         self._about.show()
+
+    def resetToDefaultLayout(self):
+        """ Return the dockwidget layout and visibility to its default state """
+        self._mw.configDisplayDockWidget.setVisible(False)
+        self._mw.consoleDockWidget.setVisible(True)
+        self._mw.remoteDockWidget.setVisible(False)
+        self._mw.threadDockWidget.setVisible(False)
+        self._mw.logDockWidget.setVisible(True)
+
+        self._mw.actionConfigurationView.setChecked(False)
+        self._mw.actionConsoleView.setChecked(True)
+        self._mw.actionRemoteView.setChecked(False)
+        self._mw.actionThreadsView.setChecked(False)
+        self._mw.actionLogView.setChecked(True)
+
+        self._mw.configDisplayDockWidget.setFloating(False)
+        self._mw.consoleDockWidget.setFloating(False)
+        self._mw.remoteDockWidget.setFloating(False)
+        self._mw.threadDockWidget.setFloating(False)
+        self._mw.logDockWidget.setFloating(False)
+
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.configDisplayDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.consoleDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.remoteDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.threadDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.logDockWidget)
 
     def handleLogEntry(self, entry):
         """ Forward log entry to log widget and show an error popup if it is
