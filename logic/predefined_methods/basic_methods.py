@@ -52,7 +52,7 @@ def generate_laser_on(self, name='Laser_On', length=3.0e-6, amp=1.0):
     @return object: the generated PulseBlockEnsemble object.
     """
     # create the laser element
-    laser_element = self._get_laser_element(length, amp_V=amp)
+    laser_element, delay_element = self._get_laser_element(length, 0.0, False, amp_V=amp)
     # Create the element list
     element_list = [laser_element]
     # create the PulseBlock object.
@@ -86,9 +86,9 @@ def generate_laser_mw_on(self, name='Laser_MW_On', length=3.0e-6, laser_amp=1.0,
     if err_code != 0:
         return
 
-    laser_mw_element = self._get_mw_laser_element(length, 0.0, mw_channel, False,
-                                                  laser_amp=laser_amp, mw_amp=mw_amp,
-                                                  mw_freq=mw_freq)
+    laser_mw_element, delay_element = self._get_mw_laser_element(length, 0.0, mw_channel, False,
+                                                                 laser_amp=laser_amp, mw_amp=mw_amp,
+                                                                 mw_freq=mw_freq)
     # Create the element list.
     element_list = [laser_mw_element]
     # create the PulseBlock object.
@@ -1147,14 +1147,11 @@ def _get_mw_laser_element(self, length, increment, mw_channel, use_as_tick, dela
                                          pulse_function=laser_mw_function,
                                          digital_high=laser_mw_digital, parameters=laser_mw_params,
                                          use_as_tick=use_as_tick)
-    if gate_count_chnl is not None:
-        # Create delay element
-        delay_element = PulseBlockElement(init_length_s=delay_time, increment_s=0.0,
-                                          pulse_function=delay_function, digital_high=delay_digital,
-                                          parameters=delay_params, use_as_tick=False)
-        return laser_mw_element, delay_element
-    else:
-        return laser_mw_element
+    # Create delay element
+    delay_element = PulseBlockElement(init_length_s=delay_time, increment_s=0.0,
+                                      pulse_function=delay_function, digital_high=delay_digital,
+                                      parameters=delay_params, use_as_tick=False)
+    return laser_mw_element, delay_element
 
 
 def _do_channel_sanity_checks(self, **kwargs):
