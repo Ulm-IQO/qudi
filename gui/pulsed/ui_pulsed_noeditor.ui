@@ -39,7 +39,7 @@
      <x>0</x>
      <y>0</y>
      <width>931</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -55,12 +55,14 @@
     </property>
     <addaction name="action_Settings_Analysis"/>
     <addaction name="action_Settings_Block_Generation"/>
-    <addaction name="actionSettings_Sequence_Editor"/>
+    <addaction name="action_Settings_Sequence_Editor"/>
+    <addaction name="action_Predefined_Methods_Config"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
+    <addaction name="action_Show_Predefined_Methods"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
@@ -113,7 +115,7 @@
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>&amp;Settings: Analysis</string>
+    <string>Analysis</string>
    </property>
   </action>
   <action name="action_Settings_Block_Generation">
@@ -122,16 +124,16 @@
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>Settings: &amp;Block Generation</string>
+    <string>Block Generation</string>
    </property>
   </action>
-  <action name="actionSettings_Sequence_Editor">
+  <action name="action_Settings_Sequence_Editor">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>Settings: Sequence &amp;Editor</string>
+    <string>Sequence Editor</string>
    </property>
   </action>
   <action name="actionSave">
@@ -201,6 +203,20 @@
    </property>
    <property name="text">
     <string>&amp;Close</string>
+   </property>
+  </action>
+  <action name="action_Show_Predefined_Methods">
+   <property name="text">
+    <string>Show Predefined Methods</string>
+   </property>
+  </action>
+  <action name="action_Predefined_Methods_Config">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Predefined Methods Config</string>
    </property>
   </action>
  </widget>
