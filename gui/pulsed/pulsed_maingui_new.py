@@ -116,6 +116,29 @@ class GeneratorSettingsDialog(QtWidgets.QDialog):
         uic.loadUi(ui_file, self)
 
 
+class PredefinedMethodsDialog(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_predefined_methods.ui')
+
+        # Load it
+        super(PredefinedMethodsDialog, self).__init__()
+
+        uic.loadUi(ui_file, self)
+
+class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_predefined_methods_config.ui')
+
+        # Load it
+        super(PredefinedMethodsConfigDialog, self).__init__()
+
+        uic.loadUi(ui_file, self)
+
+
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
 
@@ -215,12 +238,11 @@ class PulsedMeasurementGui(GUIBase):
             self.apply_generator_settings)
 
         # create the Predefined methods Dialog
-        # self._pm = PredefinedMethodsDialog()
-        # self._predefined_methods_list = []  # here are all the names saved of
-        # the created predefined methods.
-
+        self._pm = PredefinedMethodsDialog()
+        # here are all the names of the chosen predefined methods are saved.
+        self._predefined_methods_list = []
         # create a config for the predefined methods:
-        # self._pm_cfg = PredefinedMethodsConfigDialog()
+        self._pm_cfg = PredefinedMethodsConfigDialog()
 
         # Add in the settings menu within the groupbox widget all the available math_functions,
         # based on the list from the Logic. Right now, the GUI objects are inserted the 'hard' way,
@@ -299,15 +321,15 @@ class PulsedMeasurementGui(GUIBase):
                 checkbox.setChecked(False)
         return
 
-    # def show_predefined_methods(self):
-    #     """ Opens the predefined methods Window."""
-    #     self._pm.show()
-    #     self._pm.raise_()
-    #
-    # def show_predefined_methods_config(self):
-    #     """ Opens the Window for the config of predefined methods."""
-    #     self._pm_cfg.show()
-    #     self._pm_cfg.raise_()
+    def show_predefined_methods(self):
+        """ Opens the predefined methods Window."""
+        self._pm.show()
+        self._pm.raise_()
+
+    def show_predefined_methods_config(self):
+        """ Opens the Window for the config of predefined methods."""
+        self._pm_cfg.show()
+        self._pm_cfg.raise_()
     #
     # def keep_former_predefined_methods(self):
     #
@@ -377,6 +399,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
+        self._mw.action_Predefined_Methods_Config.triggered.connect(self.show_predefined_methods_config)
+        self._mw.action_Show_Predefined_Methods.triggered.connect(self.show_predefined_methods)
 
         # Apply hardware constraints to input widgets
         self._gen_apply_hardware_constraints()
