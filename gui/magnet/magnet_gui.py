@@ -32,8 +32,8 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from core.util.units import get_unit_prefix_dict
-from tools.scientific_spinbox import ScienSpinBox
-from tools.scientific_spinbox import ScienDSpinBox
+from qtwidgets.scientific_spinbox import ScienSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox
 import pyqtgraph.exporters
 
 
