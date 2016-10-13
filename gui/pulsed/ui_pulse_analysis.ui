@@ -25,7 +25,7 @@
         <item row="3" column="0">
          <widget class="QLabel" name="label_35">
           <property name="text">
-           <string>Pulser sample rate (Hz):</string>
+           <string>Pulser sample rate:</string>
           </property>
          </widget>
         </item>
@@ -33,6 +33,9 @@
          <widget class="ScienDSpinBox" name="ext_control_mw_freq_DoubleSpinBox">
           <property name="enabled">
            <bool>true</bool>
+          </property>
+          <property name="suffix">
+           <string>Hz</string>
           </property>
           <property name="maximum">
            <double>2100000044.000000000000000</double>
@@ -63,7 +66,10 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QDoubleSpinBox" name="ext_control_mw_power_DoubleSpinBox">
+         <widget class="ScienDSpinBox" name="ext_control_mw_power_DoubleSpinBox">
+          <property name="suffix">
+           <string>dBm</string>
+          </property>
           <property name="minimum">
            <double>-999999.000000000000000</double>
           </property>
@@ -78,14 +84,14 @@
         <item row="2" column="0">
          <widget class="QLabel" name="ext_control_mw_power_Label">
           <property name="text">
-           <string>MW Power (dBm)</string>
+           <string>MW Power:</string>
           </property>
          </widget>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="ext_control_mw_freq_Label">
           <property name="text">
-           <string>MW Freq (Hz)</string>
+           <string>MW Freq:</string>
           </property>
          </widget>
         </item>
@@ -108,6 +114,9 @@
         </item>
         <item row="3" column="1">
          <widget class="ScienDSpinBox" name="pulser_sample_freq_DSpinBox">
+          <property name="suffix">
+           <string>Hz</string>
+          </property>
           <property name="decimals">
            <number>3</number>
           </property>
@@ -174,7 +183,7 @@
         <item row="2" column="0">
          <widget class="QLabel" name="ana_param_num_laserpulses_Label">
           <property name="text">
-           <string>Num Laserpulses</string>
+           <string>Num Laserpulses:</string>
           </property>
          </widget>
         </item>
@@ -327,12 +336,15 @@
         <item row="3" column="0">
          <widget class="QLabel" name="ana_param_record_length_Label">
           <property name="text">
-           <string>Counter record length (s)</string>
+           <string>Counter record length:</string>
           </property>
          </widget>
         </item>
         <item row="3" column="1">
          <widget class="ScienDSpinBox" name="ana_param_record_length_SpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
           <property name="decimals">
            <number>1</number>
           </property>
