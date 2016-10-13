@@ -23,7 +23,7 @@
       </size>
      </property>
      <property name="text">
-      <string>Sample Freq. (MHz):</string>
+      <string>Sample Frequency:</string>
      </property>
     </widget>
    </item>
@@ -201,9 +201,12 @@ sel.</string>
     </widget>
    </item>
    <item row="1" column="6">
-    <widget class="QDoubleSpinBox" name="gen_sample_freq_DSpinBox">
+    <widget class="ScienDSpinBox" name="gen_sample_freq_DSpinBox">
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+     <property name="suffix">
+      <string>Hz</string>
      </property>
      <property name="maximum">
       <double>100000.000000000000000</double>
