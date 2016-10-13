@@ -25,7 +25,7 @@ class BlockEditor:
                                             'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
         self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1, 'view_stepsize': 1,
                                                'dec': 0, 'unit_prefix': '', 'type': bool}
-        self.activation_config = []
+        self.activation_config = None
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
         return

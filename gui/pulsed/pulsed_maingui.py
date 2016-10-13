@@ -193,8 +193,8 @@ class PulsedMeasurementGui(GUIBase):
         self._activate_analysis_ui(e)
         self.setup_extraction_ui()
 
-        self._activate_pulse_generator_ui(e)
         self._activate_generator_settings_ui(e)
+        self._activate_pulse_generator_ui(e)
 
         self.show()
 
@@ -337,8 +337,6 @@ class PulsedMeasurementGui(GUIBase):
                 name_checkbox = 'checkbox_' + str(index)
                 checkbox = getattr(self._gs, name_checkbox)
                 checkbox.setCheckState(QtCore.Qt.Checked)
-        # apply settings to editors
-        self.apply_generator_settings()
         return
 
     def apply_generator_settings(self):
@@ -678,7 +676,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_sample_freq_DSpinBox.setValue(sample_rate)
         # set activation config in block editor
         if self.block_editor.activation_config != activation_config:
-            self.block_editor.set_activation_config(activation_config)
+            if self.block_editor.activation_config is None:
+                self.block_editor.set_activation_config(activation_config)
+                self.apply_generator_settings()
+            else:
+                self.block_editor.set_activation_config(activation_config)
         # unblock signals
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
