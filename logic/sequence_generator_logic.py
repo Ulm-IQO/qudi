@@ -73,6 +73,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
     sigSettingsUpdated = QtCore.Signal(list, str, float, dict)
+    sigPredefinedSequencesUpdated = QtCore.Signal(dict)
+    sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -133,15 +135,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.digital_channels = 4
         self.activation_config = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         self.laser_channel = 'd_ch1'
-        self.amplitude_dict = OrderedDict()
-        self.amplitude_dict['a_ch1'] = 0.5
-        self.amplitude_dict['a_ch2'] = 0.5
-        self.amplitude_dict['a_ch3'] = 0.5
-        self.amplitude_dict['a_ch4'] = 0.5
+        self.amplitude_dict = OrderedDict({'a_ch1': 0.5, 'a_ch2': 0.5, 'a_ch3': 0.5, 'a_ch4': 0.5})
         self.sample_rate = 25e9
         # The file format for the sampled hardware-compatible waveforms and sequences
         self.waveform_format = 'wfmx' # can be 'wfmx', 'wfm' or 'fpga'
         self.sequence_format = 'seqx' # can be 'seqx' or 'seq'
+
+        # a dictionary with all predefined generator methods and measurement sequence names
+        self.generate_methods = None
+
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -194,7 +196,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         @return:
         """
-        self.predefined_method_list = []
+        self.generate_methods = OrderedDict()
         filename_list = []
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
@@ -205,7 +207,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         for filename in filename_list:
             mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
-
             for method in dir(mod):
                 try:
                     # Check for callable function or method:
@@ -213,11 +214,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
                         # Bind the method as an attribute to the Class
                         setattr(SequenceGeneratorLogic, method, getattr(mod, method))
-
-                        self.predefined_method_list.append(eval('self.'+method))
+                        # Add method to dictionary if it is a generator method
+                        if method.startswith('generate_'):
+                            self.generate_methods[method[9:]] = eval('self.'+method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
-                                   'SequenceGenerationLogic.'.format(method,filename))
+                                   'SequenceGenerationLogic.'.format(method, filename))
+        self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
     def _get_dir_for_name(self, name):
@@ -246,6 +249,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigCurrentSequenceUpdated.emit(self.current_sequence)
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
                                      self.amplitude_dict)
+        self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
     def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict):
@@ -552,6 +556,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                              'ensembles.\nTherefore nothing is removed.'.format(name))
         return
 
+    def generate_predefined_sequence(self, predefined_sequence_name, args):
+        """
+
+        @param predefined_sequence_name:
+        @param args:
+        @return:
+        """
+        gen_method = self.generate_methods[predefined_sequence_name]
+        try:
+            gen_method(*args)
+        except:
+            self.log.error('Generation of predefined sequence "{0}" failed.'
+                           ''.format(predefined_sequence_name))
+            return
+        self.sigPredefinedSequenceGenerated.emit(predefined_sequence_name)
+        return
+
     def _get_sequences_from_file(self):
         """ Update the saved_pulse_sequences dict from file """
         sequence_files = [f for f in os.listdir(self.sequence_dir) if 'sequence_dict.sequ' in f]
@@ -616,14 +637,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             num_state_changes = (reps+1) * len(block.element_list)
             tmp_length_bins = np.zeros(num_state_changes, dtype=int)
             # Iterate over all repertitions of the current block
+            state_index = 0
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
                 for elem_index, block_element in enumerate(block.element_list):
-                    state_index = rep_no + elem_index
                     init_length_s = block_element.init_length_s
                     increment_s = block_element.increment_s
                     element_length_s = init_length_s + (rep_no * increment_s)
                     tmp_length_bins[state_index] = int(np.rint(element_length_s * self.sample_rate))
+                    state_index += 1
             state_length_bins_arr = np.append(state_length_bins_arr, tmp_length_bins)
         number_of_samples = np.sum(state_length_bins_arr)
         number_of_states = len(state_length_bins_arr)

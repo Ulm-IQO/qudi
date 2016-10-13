@@ -69,6 +69,7 @@ class PulsedMasterLogic(GenericLogic):
     sigSampleSequence = QtCore.Signal(str, bool, bool)
     sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict)
     sigRequestGeneratorInitValues = QtCore.Signal()
+    sigGeneratePredefinedSequence = QtCore.Signal(str, list)
 
     # signals for master module (i.e. GUI)
     sigSavedPulseBlocksUpdated = QtCore.Signal(dict)
@@ -80,6 +81,8 @@ class PulsedMasterLogic(GenericLogic):
     sigBlockEnsembleSampled = QtCore.Signal(str)
     sigSequenceSampled = QtCore.Signal(str)
     sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str)
+    sigPredefinedSequencesUpdated = QtCore.Signal(dict)
+    sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
@@ -191,6 +194,8 @@ class PulsedMasterLogic(GenericLogic):
                                        QtCore.Qt.QueuedConnection)
         self.sigGeneratorSettingsChanged.connect(self._generator_logic.set_settings,
                                                  QtCore.Qt.QueuedConnection)
+        self.sigGeneratePredefinedSequence.connect(
+            self._generator_logic.generate_predefined_sequence, QtCore.Qt.QueuedConnection)
 
         # connect signals coming from the pulsed_measurement_logic
         self._measurement_logic.sigSignalDataUpdated.connect(self.signal_data_updated,
@@ -248,6 +253,10 @@ class PulsedMasterLogic(GenericLogic):
                                                                 QtCore.Qt.QueuedConnection)
         self._generator_logic.sigSettingsUpdated.connect(self.generator_settings_updated,
                                                          QtCore.Qt.QueuedConnection)
+        self._generator_logic.sigPredefinedSequencesUpdated.connect(
+            self.predefined_sequences_updated, QtCore.Qt.QueuedConnection)
+        self._generator_logic.sigPredefinedSequenceGenerated.connect(
+            self.predefined_sequence_generated, QtCore.Qt.QueuedConnection)
 
         self.status_dict = OrderedDict()
         self.status_dict['sauplo_busy'] = False
@@ -300,6 +309,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigSampleBlockEnsemble.disconnect()
         self.sigSampleSequence.disconnect()
         self.sigGeneratorSettingsChanged.disconnect()
+        self.sigGeneratePredefinedSequence.disconnect()
         # Signals coming from the pulsed_measurement_logic
         self._measurement_logic.sigSignalDataUpdated.disconnect()
         self._measurement_logic.sigLaserDataUpdated.disconnect()
@@ -328,6 +338,8 @@ class PulsedMasterLogic(GenericLogic):
         self._generator_logic.sigCurrentEnsembleUpdated.disconnect()
         self._generator_logic.sigCurrentSequenceUpdated.disconnect()
         self._generator_logic.sigSettingsUpdated.disconnect()
+        self._generator_logic.sigPredefinedSequencesUpdated.disconnect()
+        self._generator_logic.sigPredefinedSequenceGenerated.disconnect()
         return
 
     #######################################################################
@@ -1089,4 +1101,32 @@ class PulsedMasterLogic(GenericLogic):
         else:
             self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
                                                   sample_rate, amplitude_dict, laser_channel)
+        return
+
+    def generate_predefined_sequence(self, generator_method_name, arg_list):
+        """
+
+        @param generator_method_name:
+        @param arg_list:
+        @return:
+        """
+        self.sigGeneratePredefinedSequence.emit(generator_method_name, arg_list)
+        return
+
+    def predefined_sequence_generated(self, generator_method_name):
+        """
+
+        @param generator_method_name:
+        @return:
+        """
+        self.sigPredefinedSequenceGenerated.emit(generator_method_name)
+        return
+
+    def predefined_sequences_updated(self, generator_methods_dict):
+        """
+
+        @param generator_methods_dict:
+        @return:
+        """
+        self.sigPredefinedSequencesUpdated.emit(generator_methods_dict)
         return

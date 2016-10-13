@@ -36,6 +36,7 @@ import datetime
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.colordefs import QudiPalette as palettedark
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 #from gui.pulsed.pulse_editor import PulseEditor
 from core.util.mutex import Mutex
 from core.util import units
@@ -192,8 +193,8 @@ class PulsedMeasurementGui(GUIBase):
         self._activate_analysis_ui(e)
         self.setup_extraction_ui()
 
-        self._activate_generator_settings_ui(e)
         self._activate_pulse_generator_ui(e)
+        self._activate_generator_settings_ui(e)
 
         self.show()
 
@@ -236,14 +237,73 @@ class PulsedMeasurementGui(GUIBase):
         self._gs.rejected.connect(self.keep_former_generator_settings)
         self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_generator_settings)
+        # Here the names of all function to show are stored
+        self._functions_to_show = []
 
         # create the Predefined methods Dialog
         self._pm = PredefinedMethodsDialog()
-        # here are all the names of the chosen predefined methods are saved.
+        # here are all the names of the predefined methods are saved.
         self._predefined_methods_list = []
+        # here all names of the chosen predefined methods are saved
+        self._predefined_methods_to_show = []
         # create a config for the predefined methods:
         self._pm_cfg = PredefinedMethodsConfigDialog()
+        self._pm_cfg.accepted.connect(self.apply_predefined_methods_config)
+        self._pm_cfg.rejected.connect(self.keep_former_predefined_methods_config)
+        self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_predefined_methods_config)
 
+        if 'predefined_methods_to_show' in self._statusVariables:
+            self._predefined_methods_to_show = self._statusVariables['predefined_methods_to_show']
+        if 'functions_to_show' in self._statusVariables:
+            self._functions_to_show = self._statusVariables['functions_to_show']
+
+        # connect the menu to the actions:
+        self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
+        self._mw.action_Predefined_Methods_Config.triggered.connect(self.show_predefined_methods_config)
+        self._mw.action_Show_Predefined_Methods.triggered.connect(self.show_predefined_methods)
+
+        self._pulsed_master_logic.sigPredefinedSequencesUpdated.connect(self.predefined_methods_changed)
+
+        # Create function config dialog
+        self._create_function_config()
+        return
+
+    def _deactivate_generator_settings_ui(self, e):
+        """ Disconnects the configuration of the Settings for the 'Pulse Generator' Tab.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
+        """
+        self._statusVariables['predefined_methods_to_show'] = self._predefined_methods_to_show
+        self._statusVariables['functions_to_show'] = self._functions_to_show
+
+        self._gs.accepted.disconnect()
+        self._gs.rejected.disconnect()
+        self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
+        self._gs.close()
+
+        self._pm_cfg.accepted.disconnect()
+        self._pm_cfg.rejected.disconnect()
+        self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
+        self._pm_cfg.close()
+
+        self._pm.close()
+
+        self._pulsed_master_logic.sigPredefinedSequencesUpdated.disconnect()
+        self._mw.action_Settings_Block_Generation.triggered.disconnect()
+        self._mw.action_Predefined_Methods_Config.triggered.disconnect()
+        self._mw.action_Show_Predefined_Methods.triggered.disconnect()
+        return
+
+    def show_generator_settings(self):
+        """
+        Opens the generator settings menu.
+        """
+        self._gs.exec_()
+        return
+
+    def _create_function_config(self):
         # Add in the settings menu within the groupbox widget all the available math_functions,
         # based on the list from the Logic. Right now, the GUI objects are inserted the 'hard' way,
         # like it is done in the Qt-Designer.
@@ -264,31 +324,21 @@ class PulsedMeasurementGui(GUIBase):
             checkbox.setObjectName(name_checkbox)
             self._gs.gridLayout_3.addWidget(checkbox, index, 1, 1, 1)
             checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None, _encoding))
-        # make the first 4 Functions as default.
-        # FIXME: the default functions, must be passed as a config
-        for index in range(4):
-            name_checkbox = 'checkbox_' + str(index)
-            checkbox = getattr(self._gs, name_checkbox)
-            checkbox.setCheckState(QtCore.Qt.Checked)
-        return
-
-    def _deactivate_generator_settings_ui(self, e):
-        """ Disconnects the configuration of the Settings for the 'Pulse Generator' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
-        """
-        self._gs.accepted.disconnect()
-        self._gs.rejected.disconnect()
-        self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
-        self._gs.close()
-        return
-
-    def show_generator_settings(self):
-        """
-        Opens the generator settings menu.
-        """
-        self._gs.exec_()
+        # Check all functions that are in the _functions_to_show list.
+        # If no such list is present take the first 3 functions as default
+        if len(self._functions_to_show) > 0:
+            for func in self._functions_to_show:
+                index = list(SamplingFunctions().func_config).index(func)
+                name_checkbox = 'checkbox_' + str(index)
+                checkbox = getattr(self._gs, name_checkbox)
+                checkbox.setCheckState(QtCore.Qt.Checked)
+        else:
+            for index in range(3):
+                name_checkbox = 'checkbox_' + str(index)
+                checkbox = getattr(self._gs, name_checkbox)
+                checkbox.setCheckState(QtCore.Qt.Checked)
+        # apply settings to editors
+        self.apply_generator_settings()
         return
 
     def apply_generator_settings(self):
@@ -303,6 +353,7 @@ class PulsedMeasurementGui(GUIBase):
                 name_label = 'func_' + str(index)
                 func = getattr(self._gs, name_label)
                 del new_config[func.text()]
+        self._functions_to_show = list(new_config)
         if self.block_editor.function_config != new_config:
             self.block_editor.set_function_config(new_config)
         return
@@ -330,21 +381,134 @@ class PulsedMeasurementGui(GUIBase):
         """ Opens the Window for the config of predefined methods."""
         self._pm_cfg.show()
         self._pm_cfg.raise_()
-    #
-    # def keep_former_predefined_methods(self):
-    #
-    #     for method_name in self._predefined_methods_list:
-    #         groupbox = self._get_ref_groupbox_predefined_methods(method_name)
-    #         checkbox = self._get_ref_checkbox_predefined_methods_config(method_name)
-    #
-    #         checkbox.setChecked(groupbox.isVisible())
-    #
-    # def update_predefined_methods(self):
-    #     for method_name in self._predefined_methods_list:
-    #         groupbox = self._get_ref_groupbox_predefined_methods(method_name)
-    #         checkbox = self._get_ref_checkbox_predefined_methods_config(method_name)
-    #
-    #         groupbox.setVisible(checkbox.isChecked())
+
+    def predefined_methods_changed(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
+        self._predefined_methods_list = list(methods_dict)
+        # create all GUI elements
+        self._create_predefined_methods(methods_dict)
+        # check all checkboxes that correspond to the methods to show in the config dialogue
+        for method_name in self._predefined_methods_to_show:
+            if method_name in self._predefined_methods_list:
+                index = self._predefined_methods_list.index(method_name)
+                checkbox = getattr(self._pm_cfg, 'checkbox_' + str(index))
+                checkbox.setChecked(True)
+            else:
+                del_index = self._predefined_methods_to_show.index(method_name)
+                del self._predefined_methods_to_show[del_index]
+        # apply the chosen methods to the methods dialogue
+        self.apply_predefined_methods_config()
+        return
+
+    def _create_predefined_methods(self, methods_dict):
+        """
+        Initializes the GUI elements for the predefined methods and the corresponding config
+
+        @param methods_dict:
+        @return:
+        """
+        for index, method_name in enumerate(list(methods_dict)):
+            # create checkboxes for the config dialogue
+            name_checkbox = 'checkbox_' + str(index)
+            setattr(self._pm_cfg, name_checkbox, QtWidgets.QCheckBox(self._pm_cfg.scrollArea))
+            checkbox = getattr(self._pm_cfg, name_checkbox)
+            checkbox.setObjectName(name_checkbox)
+            checkbox.setText(method_name)
+            checkbox.setChecked(False)
+            self._pm_cfg.verticalLayout.addWidget(checkbox)
+
+            # Create the widgets for the predefined methods dialogue
+            # Create GroupBox for the method to reside in
+            groupBox = QtWidgets.QGroupBox(self._pm)
+            groupBox.setTitle(method_name)
+            # Create layout within the GroupBox
+            gridLayout = QtWidgets.QGridLayout(groupBox)
+            # Create generate buttons
+            gen_button = QtWidgets.QPushButton(groupBox)
+            gen_button.setText('Generate')
+            gen_button.setObjectName('gen_' + method_name)
+            gen_button.clicked.connect(self.generate_predefined_clicked)
+            sauplo_button = QtWidgets.QPushButton(groupBox)
+            sauplo_button.setText('GenSaUpLo')
+            sauplo_button.setObjectName('sauplo_' + method_name)
+            sauplo_button.clicked.connect(self.generate_sauplo_predefined_clicked)
+            # inspect current method to extract the parameters
+            inspected = inspect.signature(methods_dict[method_name])
+            # run through all parameters of the current method and create the widgets
+            for param_index, param_name in enumerate(inspected.parameters):
+                # get default value of the parameter
+                default_val = inspected.parameters[param_name].default
+                if default_val is inspect._empty:
+                    self.log.error('The method "{0}" in the logic has an argument "{1}" without a '
+                                   'default value!\nAssign a default value to that, otherwise a '
+                                   'type estimation is not possible!\nCreation of the viewbox '
+                                   'aborted.'.format('generate_' + method_name, param_name))
+                    return
+                # create a label for the parameter
+                param_label = QtWidgets.QLabel(groupBox)
+                param_label.setText(param_name)
+                # create proper input widget for the parameter depending on the type of default_val
+                if type(default_val) is bool:
+                    input_obj = QtWidgets.QCheckBox(groupBox)
+                    input_obj.setChecked(default_val)
+                elif type(default_val) is float:
+                    input_obj = ScienDSpinBox(groupBox)
+                    input_obj.setMaximum(np.inf)
+                    input_obj.setMinimum(-np.inf)
+                    if 'amp' in param_name:
+                        input_obj.setSuffix('V')
+                    elif 'freq' in param_name:
+                        input_obj.setSuffix('Hz')
+                    elif 'length' in param_name or 'time' in param_name or 'period' in param_name or 'tau' in param_name:
+                        input_obj.setSuffix('s')
+                    input_obj.setMinimumSize(QtCore.QSize(80, 0))
+                    input_obj.setValue(default_val)
+                elif type(default_val) is int:
+                    input_obj = ScienSpinBox(groupBox)
+                    input_obj.setMaximum(2**31 - 1)
+                    input_obj.setMinimum(-2**31 + 1)
+                    input_obj.setValue(default_val)
+                elif type(default_val) is str:
+                    input_obj = QtWidgets.QLineEdit(groupBox)
+                    input_obj.setMinimumSize(QtCore.QSize(80, 0))
+                    input_obj.setText(default_val)
+                else:
+                    self.log.error('The method "{0}" in the logic has an argument "{1}" with is not'
+                                   ' of the valid types str, float, int or bool!\nChoose one of '
+                                   'those default values! Creation of the viewbox aborted.'
+                                   ''.format('generate_' + method_name, param_name))
+                gridLayout.addWidget(param_label, 0, param_index, 1, 1)
+                gridLayout.addWidget(input_obj, 1, param_index, 1, 1)
+                setattr(self._pm, method_name + '_param_' + str(param_index) + '_Widget', input_obj)
+
+            gridLayout.addWidget(gen_button, 0, len(inspected.parameters), 1, 1)
+            gridLayout.addWidget(sauplo_button, 1, len(inspected.parameters), 1, 1)
+            # attach the GroupBox widget to the predefined methods widget.
+            setattr(self._pm, method_name + '_GroupBox', groupBox)
+            self._pm.verticalLayout.addWidget(groupBox)
+        return
+
+    def keep_former_predefined_methods_config(self):
+        for index, name in enumerate(self._predefined_methods_list):
+            groupbox = getattr(self._pm, name + '_GroupBox')
+            checkbox = getattr(self._pm_cfg, 'checkbox_' + str(index))
+            checkbox.setChecked(groupbox.isVisible())
+        return
+
+    def apply_predefined_methods_config(self):
+        self._predefined_methods_to_show = []
+        for index, name in enumerate(self._predefined_methods_list):
+            groupbox = getattr(self._pm, name + '_GroupBox')
+            checkbox = getattr(self._pm_cfg, 'checkbox_' + str(index))
+            is_checked = checkbox.isChecked()
+            groupbox.setVisible(is_checked)
+            if is_checked:
+                self._predefined_methods_to_show.append(name)
+        return
 
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
@@ -397,11 +561,6 @@ class PulsedMeasurementGui(GUIBase):
         self.block_organizer = BlockOrganizer(self._pg.block_organizer_TableWidget)
         self.block_editor = BlockEditor(self._pg.block_editor_TableWidget)
 
-        # connect the menu to the actions:
-        self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
-        self._mw.action_Predefined_Methods_Config.triggered.connect(self.show_predefined_methods_config)
-        self._mw.action_Show_Predefined_Methods.triggered.connect(self.show_predefined_methods)
-
         # Apply hardware constraints to input widgets
         self._gen_apply_hardware_constraints()
 
@@ -446,8 +605,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.disconnect()
         # self._pulsed_master_logic.sigSavedSequencesUpdated.disconnect()
         self._pulsed_master_logic.sigGeneratorSettingsUpdated.disconnect()
-        # self._pulsed_master_logic.sigCurrentPulseBlockUpdated.disconnect()
-        # self._pulsed_master_logic.sigCurrentBlockEnsembleUpdated.disconnect()
+        self._pulsed_master_logic.sigCurrentPulseBlockUpdated.disconnect()
+        self._pulsed_master_logic.sigCurrentBlockEnsembleUpdated.disconnect()
         # self._pulsed_master_logic.sigCurrentSequenceUpdated.disconnect()
         return
 
@@ -760,6 +919,61 @@ class PulsedMeasurementGui(GUIBase):
     #     # enable button
     #     self._pg.sample_sequence_PushButton.setEnabled(True)
     #     return
+
+    def generate_predefined_clicked(self, button_obj=None):
+        """
+
+        @param button_obj:
+        @return:
+        """
+        if type(button_obj) is bool:
+            button_obj = self.sender()
+        method_name = button_obj.objectName()
+        if method_name.startswith('gen_'):
+            method_name = method_name[4:]
+        elif method_name.startswith('sauplo_'):
+            method_name = method_name[7:]
+        else:
+            self.log.error('Strange naming of generate buttons in predefined methods occured.')
+            return
+
+        # get parameters from input widgets
+        param_index = 0
+        param_list = []
+        while True:
+            if not hasattr(self._pm, method_name + '_param_' + str(param_index) + '_Widget'):
+                break
+
+            input_obj = getattr(self._pm, method_name + '_param_' + str(param_index) + '_Widget')
+            if hasattr(input_obj, 'isChecked'):
+                param_list.append(input_obj.isChecked())
+            elif hasattr(input_obj, 'value'):
+                param_list.append(input_obj.value())
+            elif hasattr(input_obj, 'text'):
+                param_list.append(input_obj.text())
+            else:
+                self.log.error('Not possible to get the value from the widgets, since it does not '
+                               'have one of the possible access methods!')
+                return
+
+            param_index += 1
+
+        self._pulsed_master_logic.generate_predefined_sequence(method_name, param_list)
+        return
+
+    def generate_sauplo_predefined_clicked(self):
+        button_obj = self.sender()
+        method_name = button_obj.objectName()[7:]
+        self.generate_predefined_clicked(button_obj)
+        # get name of the generated ensemble
+        input_obj = getattr(self._pm, method_name + '_param_0_Widget')
+        if not hasattr(input_obj, 'text'):
+            self.log.error('Predefined sequence methods must have as first argument the name of '
+                           'the asset to be generated.')
+            return
+        name = input_obj.text()
+        self._pulsed_master_logic.sample_block_ensemble(name, True, False, True)
+        return
 
     ###########################################################################
     ###        Methods related to Settings for the 'Analysis' Tab:          ###
@@ -1282,7 +1496,6 @@ class PulsedMeasurementGui(GUIBase):
             self.measuring_error_image2.setData(x=x_data, y=y2_error_data)
         return
 
-    # FIXME: Implement that
     def save_clicked(self):
         """Saves the current data"""
         self._mw.action_save.setEnabled(False)
