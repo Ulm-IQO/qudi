@@ -682,7 +682,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
             # get raw data from fast counter
             self.raw_data = netobtain(self._fast_counter_device.get_data_trace())
-            print('sum of raw data: ', int(np.sum(self.raw_data)))
             # add old raw data from previous measurements if necessary
             if self.measurement_tag in self.saved_raw_data:
                 if self.saved_raw_data[self.measurement_tag].shape == self.raw_data.shape:
