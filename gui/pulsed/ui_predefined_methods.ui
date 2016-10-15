@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>predefined_methods_Dialog</class>
- <widget class="QDialog" name="predefined_methods_Dialog">
+ <class>predefFunctionsTab</class>
+ <widget class="QWidget" name="predefFunctionsTab">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>350</width>
-    <height>106</height>
+    <width>1177</width>
+    <height>638</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Predefined Methods</string>
+   <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_2">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
     <widget class="QScrollArea" name="scrollArea">
      <property name="widgetResizable">
       <bool>true</bool>
@@ -24,63 +24,31 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>330</width>
-        <height>57</height>
+        <width>1161</width>
+        <height>622</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout">
        <item row="0" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout"/>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QLabel" name="hintLabel">
+           <property name="text">
+            <string>Hint: add methods in Settings -&gt; Predefined Methods</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
     </widget>
    </item>
-   <item>
-    <widget class="QDialogButtonBox" name="ButtonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Close</set>
-     </property>
-    </widget>
-   </item>
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>ButtonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>predefined_methods_Dialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>ButtonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>predefined_methods_Dialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

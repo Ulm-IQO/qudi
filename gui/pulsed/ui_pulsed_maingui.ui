@@ -26,6 +26,9 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
+      <property name="styleSheet">
+       <string notr="true">QTabWidget::tab:disabled { width: 0; height: 0; margin: 0; padding: 0; border: none; }</string>
+      </property>
       <property name="currentIndex">
        <number>-1</number>
       </property>
@@ -39,7 +42,7 @@
      <x>0</x>
      <y>0</y>
      <width>931</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -62,7 +65,6 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="action_Show_Predefined_Methods"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
@@ -216,7 +218,7 @@
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>Predefined Methods Config</string>
+    <string>Predefined Methods</string>
    </property>
   </action>
  </widget>
