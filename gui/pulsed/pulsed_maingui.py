@@ -100,7 +100,7 @@ class AnalysisSettingDialog(QtWidgets.QDialog):
         ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_analysis.ui')
 
         # Load it
-        super(AnalysisSettingDialog, self).__init__()
+        super().__init__()
 
         uic.loadUi(ui_file, self)
 
@@ -112,19 +112,19 @@ class GeneratorSettingsDialog(QtWidgets.QDialog):
         ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_block_gen.ui')
 
         # Load it
-        super(GeneratorSettingsDialog, self).__init__()
+        super().__init__()
 
         uic.loadUi(ui_file, self)
 
 
-class PredefinedMethodsDialog(QtWidgets.QDialog):
+class PredefinedMethodsTab(QtWidgets.QWidget):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_predefined_methods.ui')
 
         # Load it
-        super(PredefinedMethodsDialog, self).__init__()
+        super().__init__()
 
         uic.loadUi(ui_file, self)
 
@@ -135,7 +135,7 @@ class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
         ui_file = os.path.join(this_dir, 'ui_predefined_methods_config.ui')
 
         # Load it
-        super(PredefinedMethodsConfigDialog, self).__init__()
+        super().__init__()
 
         uic.loadUi(ui_file, self)
 
@@ -183,10 +183,12 @@ class PulsedMeasurementGui(GUIBase):
         self._pa = PulseAnalysisTab()
         self._pg = PulseGeneratorTab()
         self._pe = PulseExtractionTab()
+        self._pm = PredefinedMethodsTab()
 
         self._mw.tabWidget.addTab(self._pa, 'Analysis')
         self._mw.tabWidget.addTab(self._pe, 'Pulse Extraction')
         self._mw.tabWidget.addTab(self._pg, 'Pulse Generator')
+        self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
         self.setup_toolbar()
         self._activate_analysis_settings_ui(e)
@@ -240,8 +242,6 @@ class PulsedMeasurementGui(GUIBase):
         # Here the names of all function to show are stored
         self._functions_to_show = []
 
-        # create the Predefined methods Dialog
-        self._pm = PredefinedMethodsDialog()
         # here are all the names of the predefined methods are saved.
         self._predefined_methods_list = []
         # here all names of the chosen predefined methods are saved
@@ -261,7 +261,6 @@ class PulsedMeasurementGui(GUIBase):
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
         self._mw.action_Predefined_Methods_Config.triggered.connect(self.show_predefined_methods_config)
-        self._mw.action_Show_Predefined_Methods.triggered.connect(self.show_predefined_methods)
 
         self._pulsed_master_logic.sigPredefinedSequencesUpdated.connect(self.predefined_methods_changed)
 
@@ -288,12 +287,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
         self._pm_cfg.close()
 
-        self._pm.close()
 
         self._pulsed_master_logic.sigPredefinedSequencesUpdated.disconnect()
         self._mw.action_Settings_Block_Generation.triggered.disconnect()
         self._mw.action_Predefined_Methods_Config.triggered.disconnect()
-        self._mw.action_Show_Predefined_Methods.triggered.disconnect()
         return
 
     def show_generator_settings(self):
@@ -370,11 +367,6 @@ class PulsedMeasurementGui(GUIBase):
                 checkbox.setChecked(False)
         return
 
-    def show_predefined_methods(self):
-        """ Opens the predefined methods Window."""
-        self._pm.show()
-        self._pm.raise_()
-
     def show_predefined_methods_config(self):
         """ Opens the Window for the config of predefined methods."""
         self._pm_cfg.show()
@@ -422,6 +414,7 @@ class PulsedMeasurementGui(GUIBase):
             # Create the widgets for the predefined methods dialogue
             # Create GroupBox for the method to reside in
             groupBox = QtWidgets.QGroupBox(self._pm)
+            groupBox.setAlignment(QtCore.Qt.AlignLeft)
             groupBox.setTitle(method_name)
             # Create layout within the GroupBox
             gridLayout = QtWidgets.QGridLayout(groupBox)
@@ -506,6 +499,8 @@ class PulsedMeasurementGui(GUIBase):
             groupbox.setVisible(is_checked)
             if is_checked:
                 self._predefined_methods_to_show.append(name)
+
+        self._pm.hintLabel.setVisible(len(self._predefined_methods_to_show) == 0)
         return
 
     ###########################################################################
