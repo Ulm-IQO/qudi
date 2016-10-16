@@ -20,15 +20,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
-
-class SlowCounterInterface:
+class SlowCounterInterface(metaclass=InterfaceMetaclass):
     """ Define the controls for a slow counter."""
 
     _modtype = 'SlowCounterInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -39,10 +40,9 @@ class SlowCounterInterface:
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('SlowCounterInterface>set_up_clock')
-        return -1
-
+    @abc.abstractmethod
     def set_up_counter(self,
                        counter_channel=None,
                        photon_source=None,
@@ -66,10 +66,9 @@ class SlowCounterInterface:
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('SlowCounterInterface>set_up_counter')
-        return -1
-
+    @abc.abstractmethod
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
 
@@ -77,24 +76,20 @@ class SlowCounterInterface:
 
         @return numpy.array(uint32): the photon counts per second
         """
+        pass
 
-        raise InterfaceImplementationError('SlowCounterInterface>get_counter')
-        return 0.0
-
+    @abc.abstractmethod
     def close_counter(self):
         """ Closes the counter and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('SlowCounterInterface>close_counter')
-        return -1
-
+    @abc.abstractmethod
     def close_clock(self):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-
-        raise InterfaceImplementationError('SlowCounterInterface>close_clock')
-        return -1
+        pass
