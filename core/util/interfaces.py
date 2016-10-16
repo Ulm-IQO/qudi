@@ -22,9 +22,11 @@ top-level directory of this distribution and at
 
 
 import abc
-from qtpy.QtCore import pyqtWrapperType
+from qtpy.QtCore import QObject
 
-class InterfaceMetaclass(pyqtWrapperType, abc.ABCMeta):
+QObjectMeta = type(QObject)
+
+class InterfaceMetaclass(QObjectMeta, abc.ABCMeta):
     """
     Metaclass for interfaces.
     """
