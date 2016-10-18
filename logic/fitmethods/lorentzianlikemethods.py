@@ -52,20 +52,46 @@ The lorentzian has the following general form:
                             pi  |_ (x_0 - x)^2 + sigma^2 _|
 
 which can be redefined with
-                 !      2
+                 !      A
     f(x=x_0) = I = -----------
                     pi * sigma
 
 
                                  _                            _
-                                |         (sigma/2)^2          |
+                                |         (sigma)^2          |
     L(x; I, x_0, sigma) =   I * |  --------------------------  |
-                                |_ (x_0 - x)^2 + (sigma/2)^2  _|
+                                |_ (x_0 - x)^2 + (sigma)^2  _|
 
 
 Note that the fitting algorithm is using the equation f(x; A, x_0, sigma) and
 not L(x; I, x_0, sigma), therefore all the parameters are defined according to
-f(x; A, x_0, sigma).
+f(x; A, x_0, sigma). The full width at half maximum is therefore 2*sigma.
+
+The indefinite Integral of the Lorentzian is 
+
+    int(f(x),x) = A/pi *Arctan( (x-x0)/sigma)
+
+Plugging in the limits [0 to inf] we get:
+
+    int(f(x), {x,0,inf}) = (A * sigma/pi) *(  pi/(2*sigma) + Arctan(x_0/sigma)/sigma) ) = F
+
+(You can confirm that with Mathematica.) For the assumption that 
+
+    x_0 >> sigma 
+
+we can take the limit of Arctan to which it converges: pi/2
+
+That simplifies the formula further to
+
+F = (A * sigma/pi) * (  pi/(2*sigma) + pi/(2*sigma) ) = A
+
+Using the formula for I (above) we can solve the equation for sigma:
+
+sigma = A / (pi* I) = F /(pi * I)
+
+The parameter I can be really easy determined, since it will be just the 
+maximal/minimal value of the Lorentzian. If the area F is calculated 
+numerically, then the parameter sigma can be estimated.
 
 """
 
@@ -115,14 +141,19 @@ def estimate_lorentz(self,x_axis=None,data=None):
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
-    data_level = data-offset
+    # data_level = data-offset
+    data_level = data - data_smooth.mean()
     data_min = data_level.min()
     data_max = data_level.max()
 
     # estimate sigma
-    numerical_integral = (np.sum(data_level) *
-                          (abs(x_axis[-1] - x_axis[0])) / len(x_axis))
+    # numerical_integral = (np.sum(data_level) *
+    #                       (abs(x_axis[-1] - x_axis[0])) / len(x_axis))
 
+
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    numerical_integral = function.integral(x_axis[0], x_axis[-1])
 
     if data_max > abs(data_min):
         logger.warning('The lorentzian estimator set the peak to the '
@@ -132,7 +163,12 @@ def estimate_lorentz(self,x_axis=None,data=None):
     amplitude_median = data_min
     x_zero = x_axis[np.argmin(data_smooth)]
 
-    sigma = numerical_integral / (np.pi * amplitude_median)
+    # For the fitting procedure it is much better to start with a larger sigma
+    # then with a smaller one. A small sigma is prone to larger instabilities
+    # in the fit.
+    oversize_sigma = 8
+
+    sigma = numerical_integral*oversize_sigma / (np.pi * amplitude_median)
     amplitude = amplitude_median * np.pi * sigma
 
     amplitude = -1 *abs(amplitude_median * np.pi * sigma)
@@ -659,7 +695,7 @@ def estimate_N15(self, x_axis=None, data=None):
 
     data_level = data_smooth_lorentz - data_smooth_lorentz.max()
     minimum_level = data_level.min()
-    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+    # integral of data:
     function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
     Integral = function.integral(x_axis[0], x_axis[-1])
 

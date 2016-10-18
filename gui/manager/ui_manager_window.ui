@@ -41,8 +41,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>300</width>
-             <height>288</height>
+             <width>967</width>
+             <height>306</height>
             </rect>
            </property>
           </widget>
@@ -65,8 +65,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>962</width>
-             <height>288</height>
+             <width>98</width>
+             <height>28</height>
             </rect>
            </property>
           </widget>
@@ -89,8 +89,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>962</width>
-             <height>288</height>
+             <width>967</width>
+             <height>306</height>
             </rect>
            </property>
           </widget>
@@ -108,7 +108,7 @@
      <x>0</x>
      <y>0</y>
      <width>1095</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -158,7 +158,7 @@
     <bool>true</bool>
    </property>
    <property name="windowTitle">
-    <string>&amp;Configuration</string>
+    <string>Configuration</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -185,7 +185,7 @@
   </widget>
   <widget class="QDockWidget" name="consoleDockWidget">
    <property name="windowTitle">
-    <string>Co&amp;nsole</string>
+    <string>Console</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -194,7 +194,7 @@
   </widget>
   <widget class="QDockWidget" name="logDockWidget">
    <property name="windowTitle">
-    <string>&amp;Log</string>
+    <string>Log</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -212,7 +212,7 @@
   </widget>
   <widget class="QDockWidget" name="threadDockWidget">
    <property name="windowTitle">
-    <string>&amp;Threads</string>
+    <string>Threads</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -266,7 +266,8 @@
   <action name="action_Load_all_modules">
    <property name="icon">
     <iconset theme="media-playback-start">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string> Load &amp;all modules</string>
@@ -275,7 +276,8 @@
   <action name="actionStart_all_modules">
    <property name="icon">
     <iconset theme="media-playback-start">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Start all modules</string>
@@ -305,7 +307,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Log</string>
@@ -362,7 +365,8 @@
   <action name="actionExport_log_as_HTML">
    <property name="icon">
     <iconset theme="document-save-as">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Export log as HTML</string>
