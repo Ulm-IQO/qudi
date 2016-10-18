@@ -250,6 +250,12 @@
      <height>150</height>
     </size>
    </property>
+   <property name="toolTip">
+    <string/>
+   </property>
+   <property name="windowTitle">
+    <string>ODMR Control Parameters</string>
+   </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
@@ -511,6 +517,9 @@
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>ODMR Fit</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
