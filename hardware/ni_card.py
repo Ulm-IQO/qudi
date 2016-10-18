@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Hardware module NICard class.
+This file contains the Qudi Hardware module NICard class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -178,6 +178,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                                 # mainly used for gated counter
 
         config = self.getConfiguration()
+        print(config)
         # handle all the parameters given by the config
         # FIXME: Suggestion: and  partially set the parameters to default values
         # if not given by the config
@@ -859,11 +860,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
         if match:
             device = match.group('device')
-            self.log.warning('NI Device "{}" will be reset.'.format(device))
+            self.log.warning('NI Device "{0}" will be reset.'.format(device))
             daq.DAQmxResetDevice(device)
             return 0
         else:
-            self.log.error('Did not find device name in {}.'.format(
+            self.log.error('Did not find device name in {0}.'.format(
                 self._clock_channel))
             return -1
 
@@ -1117,25 +1118,25 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
 
         if x is not None:
-            if x < self._position_range[0][0] or x > self._position_range[0][1]:
+            if not(self._position_range[0][0] <= x <= self._position_range[0][1]):
                 self.log.error('You want to set x out of range: {0:f}.'.format(x))
                 return -1
             self._current_position[0] = np.float(x)
 
         if y is not None:
-            if y < self._position_range[1][0] or y > self._position_range[1][1]:
+            if not(self._position_range[1][0] <= y <= self._position_range[1][1]):
                 self.log.error('You want to set y out of range: {0:f}.'.format(y))
                 return -1
             self._current_position[1] = np.float(y)
 
         if z is not None:
-            if z < self._position_range[2][0] or z > self._position_range[2][1]:
+            if not(self._position_range[2][0] <= z <= self._position_range[2][1]):
                 self.log.error('You want to set z out of range: {0:f}.'.format(z))
                 return -1
             self._current_position[2] = np.float(z)
 
         if a is not None:
-            if a < self._position_range[3][0] or a > self._position_range[3][1]:
+            if not(self._position_range[3][0] <= a <= self._position_range[3][1]):
                 self.log.error('You want to set a out of range: {0:f}.'.format(a))
                 return -1
             self._current_position[3] = np.float(a)

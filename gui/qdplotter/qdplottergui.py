@@ -3,18 +3,18 @@
 """
 This file contains a Qudi gui module for quick plotting.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -63,7 +63,7 @@ class QdplotterGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
 
     def on_activate(self, e=None):
@@ -78,7 +78,7 @@ class QdplotterGui(GUIBase):
                          had happened.
         """
 
-        self._qdplot_logic = self.connector['in']['qdplotlogic1']['object']
+        self._qdplot_logic = self.get_in_connector('qdplotlogic1')
 
         #####################
         # Configuring the dock widgets
@@ -165,7 +165,6 @@ class QdplotterGui(GUIBase):
         self._mw.range_min_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[0])
         self._mw.range_max_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[1])
 
-        print('v_label in logic when updatePLot',self._qdplot_logic.v_label)
 
         self._mw.horizontal_label_lineEdit.setText(self._qdplot_logic.h_label)
         self._mw.horizontal_units_lineEdit.setText(self._qdplot_logic.h_units)

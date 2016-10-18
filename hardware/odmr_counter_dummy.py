@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi Dummy file for ODMRCounter.
+This file contains the Qudi Dummy file for ODMRCounter.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -42,7 +42,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
@@ -65,7 +65,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._fit_logic = self.get_in_connector('fitlogic')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -84,7 +84,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if clock_frequency != None:
+        if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
         self.log.warning('ODMRCounterDummy>set_up_odmr_clock')
@@ -108,7 +108,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self.log.warning('ODMRCounterDummy>set_up_odmr')
 
-        if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
+        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
             self.log.error('Another odmr is already running, close this one '
                     'first.')
             return -1

@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi methods to create hardware compatible files out of sampled pulse
+This file contains the Qudi methods to create hardware compatible files out of sampled pulse
 sequences or pulse ensembles.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -304,7 +304,7 @@ class SamplesWriteMethods():
 
                 if is_last_chunk:
                     # the footer encodes the sample rate, which was used for that file:
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.sample_rate))
+                    footer = str.encode('CLOCK {0:16.10E}\r\n'.format(self.sample_rate))
                     wfm_file.write(footer)
         return created_files
 

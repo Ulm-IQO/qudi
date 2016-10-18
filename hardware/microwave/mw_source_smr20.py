@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Hardware module for Rohde and Schwary SMR20.
+This file contains the Qudi Hardware module for Rohde and Schwary SMR20.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -24,7 +24,7 @@ import visa
 import numpy as np
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveSMR20(Base, MicrowaveInterface):
@@ -89,12 +89,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._MAX_LIST_ENTRIES = 4000
         
         self._gpib_connection.write('*WAI')
-        self._FREQ_MAX = eval(self._gpib_connection.ask('FREQuency? MAX'))
-        self._FREQ_MIN = eval(self._gpib_connection.ask('FREQuency? MIN'))  
-        self._POWER_MAX = eval(self._gpib_connection.ask('POWER? MAX'))
-        self._POWER_MIN = eval(self._gpib_connection.ask('POWER? MIN'))
-
-        
+        self._FREQ_MAX = float(self._gpib_connection.ask('FREQuency? MAX'))
+        self._FREQ_MIN = float(self._gpib_connection.ask('FREQuency? MIN'))
+        self._POWER_MAX = float(self._gpib_connection.ask('POWER? MAX'))
+        self._POWER_MIN = float(self._gpib_connection.ask('POWER? MIN'))
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -149,7 +147,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         """
 
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':POW {:f};'.format(power))
+        self._gpib_connection.write(':POW {0:f};'.format(power))
         return 0
 
     def get_frequency(self):
@@ -170,7 +168,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         """
 
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':FREQ {:e}'.format(freq))
+        self._gpib_connection.write(':FREQ {0:e}'.format(freq))
         # {:e} meens a representation in float with exponential style
         return 0
 
@@ -188,10 +186,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         self._gpib_connection.write(':FREQ:MODE CW')
 
-        if freq != None:
+        if freq is not None:
             self.set_frequency(freq)
 
-        if power != None:
+        if power is not None:
             self.set_power(power)
 
         self.on()
@@ -245,10 +243,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         PowerString = ''
 
         for f in freq[:-1]:
-            FreqString += ' {:f}Hz,'.format(f)
-            PowerString +=' {:f}dBm,'.format(power)
-        FreqString += ' {:f}Hz'.format(freq[-1])
-        PowerString +=' {:f}dBm'.format(power)
+            FreqString += ' {0:f}Hz,'.format(f)
+            PowerString +=' {0:f}dBm,'.format(power)
+        FreqString += ' {0:f}Hz'.format(freq[-1])
+        PowerString +=' {0:f}dBm'.format(power)
 
         self._gpib_connection.write(':SOUR:LIST:FREQ' + FreqString)
         self._gpib_connection.write('*WAI')
@@ -317,7 +315,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write('AM:SOUR EXT')
         self._gpib_connection.write('AM:EXT:COUP DC')
-        self._gpib_connection.write('AM {:f}'.format(float(depth)))
+        self._gpib_connection.write('AM {0:f}'.format(float(depth)))
         self._gpib_connection.write('AM:STAT ON')
 
         return 0
@@ -356,52 +354,23 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
 
-          @return dict: limits dictionary
-
-            The following structure is absolutely necessary:
-            frequency:
-                min:
-                max:
-            power:
-                min:
-                max:
-            list:
-                minstep:
-                maxstep:
-                maxentries:
-            sweep:
-                minstep:
-                maxstep:
-                maxentries:
-
-           Frequency in Hz, power in dBm, minstep/maxstep in Hz.
+          @return MicrowaveLimits: limits object
         """
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST')
 
-        minliststep = 0.1
-        maxliststep = 6.4 * 10e9
+        limits.min_frequency = self._FREQ_MIN
+        limits.max_frequency = self._FREQ_MAX
 
-        minsweepstep = 0.1
-        maxsweepstep = 10e9
-        sweepentries = 10e6
+        limits.min_power = self._POWER_MIN
+        limits.max_power = self._POWER_MAX
 
-        limits = {
-            'frequency': {
-                'min': self._FREQ_MIN,
-                'max': self._FREQ_MAX
-                },
-            'power': {
-                'min': self._POWER_MIN,
-                'max': self._POWER_MAX
-                },
-            'list': {
-                'minstep': minliststep,
-                'maxstep': maxliststep,
-                'maxentries': self._MAX_LIST_ENTRIES
-                },
-            'sweep': {
-                'minstep': minsweepstep,
-                'maxstep': maxsweepstep,
-                'maxentries': sweepentries
-                }
-            }
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 6.4e9
+        limits.list_maxentries = self._MAX_LIST_ENTRIES
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 10e9
+        limits.sweep_maxentries = 10e6
+
         return limits

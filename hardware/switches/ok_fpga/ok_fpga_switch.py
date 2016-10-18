@@ -2,18 +2,18 @@
 """
 Control an output channel of the FPGA to use as a TTL switch.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -94,18 +94,18 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
 
           @return bool: True if on, False if off, None on error
         """
-        if channel > 7 or channel < 0:
+        if channel not in range(0, 8):
             raise KeyError('ERROR: FPGA switch only accepts channel numbers 0..7')
         return self.fp.GetWireInValue(int(channel) + 1)[1] == 1
 
     def switchOn(self, channel):
-        if channel > 7 or channel < 0:
+        if channel not in range(0, 8):
             raise KeyError('ERROR: FPGA switch only accepts channel numbers 0..7')
         self.fp.SetWireInValue(int(channel) + 1, 1)
         self.fp.UpdateWireIns()
 
     def switchOff(self, channel):
-        if channel > 7 or channel < 0:
+        if channel not in range(0, 8):
             raise KeyError('ERROR: FPGA switch only accepts channel numbers 0..7')
         self.fp.SetWireInValue(int(channel) + 1, 0)
         self.fp.UpdateWireIns()

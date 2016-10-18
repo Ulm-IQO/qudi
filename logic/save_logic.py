@@ -2,18 +2,18 @@
 """
 This module handles the saving of data.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -30,7 +30,7 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-
+from core.util import units
 
 class DailyLogHandler(logging.FileHandler):
     """
@@ -158,14 +158,14 @@ class SaveLogic(GenericLogic):
 
         # Some default variables concerning the operating system:
         self.os_system = None
-        self.default_unix_data_dir = '$HOME/Data'
+        self.default_unix_data_dir = 'Data'
         self.default_win_data_dir = 'C:/Data/'
 
         # Chech which operation system is used and include a case if the
         # directory was not found in the config:
-        if 'linux' in sys.platform or sys.platform == 'darwin':
+        if sys.platform in ('linux', 'darwin'):
             self.os_system = 'unix'
-            if 'unix_data_directory' in config.keys():
+            if 'unix_data_directory' in config:
                 self.data_dir = config['unix_data_directory']
             else:
                 self.data_dir = self.default_unix_data_dir
@@ -196,7 +196,7 @@ class SaveLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
@@ -560,17 +560,17 @@ class SaveLogic(GenericLogic):
         max_trace_length = max(np.shape(trace_data))
 
         for row in range(max_trace_length):
-            for column in range(len(trace_data)):
+            for column in trace_data:
                 try:
                     # TODO: Lachlan has inserted the if-else in here,
                     # but it should be properly integrated with the try
 
                     # If entry is a string, then print directly
-                    if isinstance(trace_data[column][row], str):
-                        opened_file.write(str('{0}' + delimiter).format(trace_data[column][row]))
+                    if isinstance(column[row], str):
+                        opened_file.write(str('{0}' + delimiter).format(column[row]))
                     # Otherwise, format number to requested precision
                     else:
-                        opened_file.write(str('{0' + precision + '}' + delimiter).format(trace_data[column][row]))
+                        opened_file.write(str('{0' + precision + '}' + delimiter).format(column[row]))
                 except:
                     opened_file.write(str('{0}' + delimiter).format('NaN'))
             opened_file.write('\n')
@@ -601,13 +601,16 @@ class SaveLogic(GenericLogic):
 
         for row in trace_data:
             for entry in row:
-                opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
+                if units.is_number(entry):
+                    opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
+                else:
+                    opened_file.write(str(entry).encode('utf-8'))
             opened_file.write('\n')
 
         if close_file_flag:
             opened_file.close()
 
-    def _save_1d_traces_as_xml():
+    def _save_1d_traces_as_xml(self):
         """ Save 1d data trace in xml conding. """
         pass
 #        if as_xml:
@@ -679,7 +682,7 @@ class SaveLogic(GenericLogic):
 #            tree = ET.ElementTree(root)
 #            tree.write('output.xml', pretty_print=True, xml_declaration=True)
 
-    def _save_2d_data_as_xml():
+    def _save_2d_data_as_xml(self):
         """ Save 2d data in xml conding."""
         pass
 
@@ -719,7 +722,7 @@ class SaveLogic(GenericLogic):
                     os.makedirs(self.data_dir)
                     self.log.warning('The specified Data Directory in the '
                             'config file does not exist. Using default for '
-                            '{0} system instead. The directory\n{1} was '
+                            '{0} system instead. The directory {1} was '
                             'created'.format(self.os_system, self.data_dir))
 
         # That is now the current directory:

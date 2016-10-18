@@ -2,18 +2,18 @@
 """
 This module acts like a laser.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -28,20 +28,19 @@ from interface.simple_laser_interface import ControlMode
 
 class SimpleLaserDummy(Base, SimpleLaserInterface):
     """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    Lazors
     """
     _modclass = 'laserdummy'
     _modtype = 'hardware'
 
     # connectors
-    _out = {'laser': 'Laser'}
+    _out = {'laser': 'SimpleLaser'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.state = LaserState['OFF']
-        self.shutter = ShutterState['CLOSED']
-        self.mode = ControlMode['POWER']
+        self.lstate = LaserState.OFF
+        self.shutter = ShutterState.CLOSED
+        self.mode = ControlMode.POWER
         self.current_setpoint = 0
         self.power_setpoint = 0
 
@@ -86,6 +85,9 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         self.current_setpoint = current
         return self.current_setpoint
 
+    def allowed_control_modes(self):
+        return [ControlMode.POWER, ControlMode.CURRENT]
+
     def get_control_mode(self):
         return self.mode
 
@@ -94,19 +96,19 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         return self.mode
 
     def on(self):
-        self.state = LaserState['ON']
-        return self.state
+        self.lstate = LaserState.ON
+        return self.lstate
 
     def off(self):
-        self.state = LaserState['OFF']
-        return self.state
+        self.lstate = LaserState.OFF
+        return self.lstate
 
     def get_laser_state(self):
-        return self.state
+        return self.lstate
 
     def set_laser_state(self, state):
-        self.state = state
-        return self.state
+        self.lstate = state
+        return self.lstate
 
     def get_shutter_state(self):
         return self.shutter
@@ -122,4 +124,4 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         return {}
 
     def get_extra_info(self):
-        return "Dummy laser v0.9.9"
+        return "Dummy laser v0.9.9\nnot used very much\nvery cheap price good quality"

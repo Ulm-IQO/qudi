@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi dummy module for the confocal scanner.
+This file contains the Qudi dummy module for the confocal scanner.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -44,7 +44,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
@@ -76,7 +76,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                          has happen.
         """
 
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._fit_logic = self.get_in_connector('fitlogic')
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
@@ -152,7 +152,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         return self._position_range
 
-    def set_position_range(self, myrange=[[0, 1], [0, 1], [0, 1], [0, 1]]):
+    def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
         @param float [4][2] myrange: array of 4 ranges with an array containing
@@ -160,6 +160,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [[0, 1], [0, 1], [0, 1], [0, 1]]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')
@@ -186,13 +188,15 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         return 0
 
-    def set_voltage_range(self, myrange=[-10.,10.]):
+    def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
         @param float [2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [-10.,10.]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')
@@ -229,7 +233,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if clock_frequency != None:
+        if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
         self.log.warning('ConfocalScannerDummy>set_up_scanner_clock')

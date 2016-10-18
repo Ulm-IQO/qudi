@@ -1,1042 +1,607 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Predefined Methods for sequence generator
+This file contains the Qudi Predefined Methods for sequence generator
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
 
-from logic.pulse_objects import Pulse_Block_Element
-from logic.pulse_objects import Pulse_Block
-from logic.pulse_objects import Pulse_Block_Ensemble
-from logic.pulse_objects import Pulse_Sequence
+from logic.pulse_objects import PulseBlockElement
+from logic.pulse_objects import PulseBlock
+from logic.pulse_objects import PulseBlockEnsemble
+from logic.pulse_objects import PulseSequence
 import numpy as np
 
 
 """
 General Pulse Creation Procedure:
 =================================
-- Create at first each Pulse_Block_Element object
-- add all Pulse_Block_Element object to a list and combine them to a
-  Pulse_Block object.
-- Create all needed Pulse_Block object with that idea, that means
-  Pulse_Block_Element objects which are grouped to Pulse_Block objects.
-- Create from the Pulse_Block objects a Pulse_Block_Ensemble object.
-- If needed and if possible, combine the created Pulse_Block_Ensemble objects
-  to the highest instance together in a Pulse_Sequence object.
+- Create at first each PulseBlockElement object
+- add all PulseBlockElement object to a list and combine them to a
+  PulseBlock object.
+- Create all needed PulseBlock object with that idea, that means
+  PulseBlockElement objects which are grouped to PulseBlock objects.
+- Create from the PulseBlock objects a PulseBlockEnsemble object.
+- If needed and if possible, combine the created PulseBlockEnsemble objects
+  to the highest instance together in a PulseSequence object.
 """
 
 
-def generate_laser_on(self, name='Laser_On', laser_time_bins=3000, laser_amp_V=1.0):
+def generate_laser_on(self, name='Laser_On', length=3.0e-6, amp=1.0):
     """ Generates Laser on.
 
-    @param str name: Name of the Pulse
-    @param int laser_time_bins: number of bins
-    @param float laser_amp_V: In case of analogue laser channel this value will be the laser on
-                                voltage.
+    @param str name: Name of the PulseBlockEnsemble
+    @param float length: laser duration in seconds
+    @param float amp: In case of analogue laser channel this value will be the laser on voltage.
 
-    @return object: the generated Pulse_Block_Ensemble object.
+    @return object: the generated PulseBlockEnsemble object.
     """
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-
-    analog_params = [{}]*self.analog_channels
-    digital_high = [False]*self.digital_channels
-    pulse_function = ['Idle']*self.analog_channels
-
-    # Determine analogue or digital laser channel and set parameters accordingly.
-    if 'd_ch' in self.laser_channel:
-        laser_index = digital_channels.index(self.laser_channel)
-        digital_high[laser_index] = True
-    elif 'a_ch' in self.laser_channel:
-        laser_index = analog_channels.index(self.laser_channel)
-        pulse_function[laser_index] = 'DC'
-        analog_params[laser_index] = {'amplitude1': laser_amp_V}
-
-    # generate Pulse_Block_Element:
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=pulse_function, digital_high=digital_high,
-                                        parameters=analog_params)
-
-    # Create the element list.
+    # create the laser element
+    laser_element, delay_element = self._get_laser_element(length, 0.0, False, amp_V=amp)
+    # Create the element list
     element_list = [laser_element]
-
-    # create the Pulse_Block object.
-    block = Pulse_Block(name, element_list)
+    # create the PulseBlock object.
+    block = PulseBlock(name, element_list)
     # put block in a list with repetitions
     block_list = [(block, 0)]
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=False)
-    # save block
-    self.save_block(name, block)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
-def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000, laser_amp_V=1.0,
-                         mw_channel='a_ch1', mw_freq_Hz=100e6, mw_amp_V=1.0):
+
+def generate_laser_mw_on(self, name='Laser_MW_On', length=3.0e-6, laser_amp=1.0, mw_channel='a_ch1',
+                         mw_freq=100.0e6, mw_amp=1.0):
     """ General generation method for laser on and microwave on generation.
 
-    @param name: Name of the Pulse_Block_Ensemble to be generated
-    @param time_bins: Length of the Pulse_Block_Ensemble in time bins
-    @param laser_amp_V: In case of analogue laser channel this value will be the laser on voltage.
-    @param mw_channel: The pulser channel controlling the MW. If set to 'd_chX' this will be
-                        interpreted as trigger for an external microwave source. If set to 'a_chX'
-                        the pulser (AWG) will act as microwave source.
-    @param mw_freq_MHz: MW frequency in case of analogue MW channel
-    @param mw_amp_V: MW amplitude in case of analogue MW channel
+    @param string name: Name of the PulseBlockEnsemble to be generated
+    @param float length: Length of the PulseBlockEnsemble in seconds
+    @param float laser_amp: In case of analog laser channel this value will be the laser on voltage.
+    @param string mw_channel: The pulser channel controlling the MW. If set to 'd_chX' this will be
+                              interpreted as trigger for an external microwave source. If set to
+                              'a_chX' the pulser (AWG) will act as microwave source.
+    @param float mw_freq: MW frequency in case of analogue MW channel in Hz
+    @param float mw_amp: MW amplitude in case of analogue MW channel
 
-    @return object: the generated Pulse_Block_Ensemble object.
+    @return object: the generated PulseBlockEnsemble object.
     """
     # sanity checks for input parameters
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel)
+    if err_code != 0:
         return
 
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-
-    analog_params = [{}]*self.analog_channels
-    digital_high = [False]*self.digital_channels
-    pulse_function = ['Idle']*self.analog_channels
-
-    # Determine analogue or digital laser channel and set parameters accordingly.
-    if 'd_ch' in self.laser_channel:
-        laser_index = digital_channels.index(self.laser_channel)
-        digital_high[laser_index] = True
-    elif 'a_ch' in self.laser_channel:
-        laser_index = analog_channels.index(self.laser_channel)
-        pulse_function[laser_index] = 'DC'
-        analog_params[laser_index] = {'amplitude1': laser_amp_V}
-
-    if 'd_ch' in mw_channel:
-        mw_index = digital_channels.index(mw_channel)
-        digital_high[mw_index] = True
-    elif 'a_ch' in mw_channel:
-        mw_index = analog_channels.index(mw_channel)
-        pulse_function[mw_index] = 'Sin'
-        analog_params[mw_index] = {'amplitude1':mw_amp_V, 'frequency1':mw_freq_Hz, 'phase1': 0.0}
-
-    # Create Pulse_Block_Element
-    laser_mw_element = Pulse_Block_Element(init_length_bins=time_bins, increment_bins=0,
-                                           pulse_function=pulse_function, digital_high=digital_high,
-                                           parameters=analog_params)
-
+    laser_mw_element, delay_element = self._get_mw_laser_element(length, 0.0, mw_channel, False,
+                                                                 laser_amp=laser_amp, mw_amp=mw_amp,
+                                                                 mw_freq=mw_freq)
     # Create the element list.
     element_list = [laser_mw_element]
-    # create the Pulse_Block object.
-    block = Pulse_Block(name, element_list)
+    # create the PulseBlock object.
+    block = PulseBlock(name, element_list)
     # put block in a list with repetitions
     block_list = [(block, 0)]
-    # save block
-    self.save_block(name, block)
-
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=False)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
 
-def generate_idle_ens(self, name='Idle', idle_time_ns=300.0):
-    """ Converter function to use ns input instead of bins.
-
-    @param str name: Name of the Pulse_Block_Ensemble to be generated
-    @param float idle_time_ns: Length of the Pulse_Block_Ensemble in nanoseconds
-    @return object: the generated Pulse_Block_Ensemble object.
-    """
-
-    idle_time_bins = int(np.rint(self.sample_rate * idle_time_ns/1e9))
-
-    return self.generate_idle_ens_bins(name=name, idle_time_bins=idle_time_bins)
-
-
-def generate_idle_ens_bins(self, name='Idle', idle_time_bins=3000):
+def generate_idle(self, name='Idle', length=3.0e-6):
     """ Generate just a simple idle ensemble.
 
-    @param str name: Name of the Pulse_Block_Ensemble to be generated
-    @param int idle_time_bins: Length of the Pulse_Block_Ensemble in time bins
+    @param str name: Name of the PulseBlockEnsemble to be generated
+    @param float length: Length of the PulseBlockEnsemble in seconds
 
-    @return object: the generated Pulse_Block_Ensemble object.
+    @return object: the generated PulseBlockEnsemble object.
     """
-    analog_params = [{}] * self.analog_channels
-    digital_high = [False] * self.digital_channels
-    pulse_function = ['Idle'] * self.analog_channels
-
-    # generate Pulse_Block_Element:
-    idle_element = Pulse_Block_Element(init_length_bins=idle_time_bins, increment_bins=0,
-                                       pulse_function=pulse_function, digital_high=digital_high,
-                                       parameters=analog_params)
-
+    # generate idle element
+    idle_element = self._get_idle_element(length, 0.0, False)
     # Create the element list.
     element_list = [idle_element]
-
-    # create the Pulse_Block object.
-    block = Pulse_Block(name, element_list)
+    # create the PulseBlock object.
+    block = PulseBlock(name, element_list)
     # put block in a list with repetitions
     block_list = [(block, 0)]
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=False)
-    # save block
-    self.save_block(name, block)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
-def generate_rabi(self, name='Rabi', tau_start_ns=5.0, tau_step_ns=10.0, number_of_taus=50,
-                  mw_freq_Hz=2870e6, mw_amp_V=1.0, mw_channel='a_ch1', laser_time_ns=3000.0,
-                  channel_amp_V=1.0, aom_delay_ns=500.0, gate_count_channel='',
-                  seq_trig_channel='', wait_time_ns=1500.0):
-    """ Converter function to use ns input instead of bins. """
 
-    tau_start_bins = int(np.rint(self.sample_rate * tau_start_ns/1e9))
-    tau_step_bins = int(np.rint(self.sample_rate * tau_step_ns/1e9))
-    laser_time_bins = int(np.rint(self.sample_rate * laser_time_ns/1e9))
-    aom_delay_bins = int(np.rint(self.sample_rate * aom_delay_ns/1e9))
-    wait_time_bins = int(np.rint(self.sample_rate * wait_time_ns/1e9))
+def generate_rabi(self, name='Rabi', tau_start=10.0e-9, tau_step=10.0e-9, number_of_taus=50,
+                  mw_freq=2870.0e6, mw_amp=1.0, mw_channel='a_ch1', laser_length=3.0e-6,
+                  channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6, gate_count_channel='',
+                  seq_trig_channel=''):
+    """
 
-    return self.generate_rabi_bins(name, tau_start_bins, tau_step_bins, number_of_taus, mw_freq_Hz,
-                                   mw_amp_V, mw_channel, laser_time_bins, channel_amp_V,
-                                   aom_delay_bins, gate_count_channel, seq_trig_channel,
-                                   wait_time_bins)
-
-def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bins=70, number_of_taus=50,
-                       mw_freq_Hz=2870e6, mw_amp_V=1.0, mw_channel='a_ch1', laser_time_bins=3000,
-                       channel_amp_V=1.0, aom_delay_bins=50, gate_count_channel='',
-                       seq_trig_channel='', wait_time_bins=500):
+    """
     # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
         return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
-        return
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
 
-    # --- mw element ----
-    mw_params = [{}]*self.analog_channels
-    mw_digital = [False]*self.digital_channels
-    mw_function = ['Idle']*self.analog_channels
-
-    # Determine analogue or digital microwave channel and set parameters accordingly.
-    if 'd_ch' in mw_channel:
-        mw_index = digital_channels.index(mw_channel)
-        mw_digital[mw_index] = True
-    elif 'a_ch' in mw_channel:
-        mw_index = analog_channels.index(mw_channel)
-        mw_function[mw_index] = 'Sin'
-        mw_params[mw_index] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq_Hz, 'phase1': 0.0}
-
-    # Create MW element
-    mw_element = Pulse_Block_Element(init_length_bins=tau_start_bins, increment_bins=tau_step_bins,
-                                     pulse_function=mw_function, digital_high=mw_digital,
-                                     parameters=mw_params, use_as_tick=True)
-    # -------------------
-
-    # -- laser element --
-    laser_params = [{}]*self.analog_channels
-    laser_digital = [False]*self.digital_channels
-    laser_function = ['Idle']*self.analog_channels
-
-    # Determine analogue or digital laser channel and set parameters accordingly.
-    if 'd_ch' in self.laser_channel:
-        laser_index = digital_channels.index(self.laser_channel)
-        laser_digital[laser_index] = True
-    elif 'a_ch' in self.laser_channel:
-        laser_index = analog_channels.index(self.laser_channel)
-        laser_function[laser_index] = 'DC'
-        laser_params[laser_index] = {'amplitude1': channel_amp_V}
-
-    if gate_count_channel != '':
-        # Determine analogue or digital gate trigger and set parameters accordingly.
-        if 'd_ch' in gate_count_channel:
-            gate_index = digital_channels.index(gate_count_channel)
-            laser_digital[gate_index] = True
-        elif 'a_ch' in gate_count_channel:
-            gate_index = analog_channels.index(gate_count_channel)
-            laser_function[gate_index] = 'DC'
-            laser_params[gate_index] = {'amplitude1': channel_amp_V}
-
-    # Create laser element
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    # -------------------
-
-    # -- aom delay element --
-    delay_params = [{}]*self.analog_channels
-    delay_function = ['Idle']*self.analog_channels
-    delay_digital = [False]*self.digital_channels
-
-    if gate_count_channel != '':
-        # Determine analogue or digital gate trigger and set parameters accordingly.
-        if 'd_ch' in gate_count_channel:
-            gate_index = digital_channels.index(gate_count_channel)
-            delay_digital[gate_index] = True
-        elif 'a_ch' in gate_count_channel:
-            gate_index = analog_channels.index(gate_count_channel)
-            delay_function[gate_index] = 'DC'
-            delay_params[gate_index] = {'amplitude1': channel_amp_V}
-
-    # Create AOM delay element
-    aomdelay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                           pulse_function=delay_function,
-                                           digital_high=delay_digital, parameters=delay_params,
-                                           use_as_tick=False)
-    # -------------------
-
-    # -- wait time element --
-    wait_params = [{}]*self.analog_channels
-    wait_function = ['Idle']*self.analog_channels
-    wait_digital = [False]*self.digital_channels
-
-    # Create waiting element
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    # -------------------
-
-    # -- seq trigger element --
-    if seq_trig_channel != '':
-        seq_params = [{}]*self.analog_channels
-        seq_function = ['Idle']*self.analog_channels
-        seq_digital = [False]*self.digital_channels
-
-        # Determine analogue or digital sequence trigger and set parameters accordingly.
-        if 'd_ch' in seq_trig_channel:
-            seq_index = digital_channels.index(seq_trig_channel)
-            seq_digital[seq_index] = True
-        elif 'a_ch' in seq_trig_channel:
-            seq_index = analog_channels.index(seq_trig_channel)
-            seq_function[seq_index] = 'DC'
-            seq_params[seq_index] = {'amplitude1': channel_amp_V}
-
-        # Create waiting element
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9*self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
+    # get MW element
+    mw_element = self._get_mw_element(tau_start, tau_step, mw_channel, True, mw_amp, mw_freq, 0.0)
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
         # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
         # save block
         self.save_block('seq_trigger', seq_block)
-    # -------------------
 
-    # Create element list for Pulse_Block
-    element_list = [mw_element, laser_element, aomdelay_element, waiting_element]
-    # Create Pulse_Block object
-    rabi_block = Pulse_Block(name, element_list)
+    # Create element list for Rabi PulseBlock
+    element_list = [mw_element, laser_element, delay_element, waiting_element]
+    # Create PulseBlock object
+    rabi_block = PulseBlock(name, element_list)
     # save block
     self.save_block(name, rabi_block)
 
-    # Create Block list with repetitions and sequence trigger if needed
-    # remember number_of_taus=0 also counts as first round
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
     block_list = [(rabi_block, number_of_taus-1)]
-    if seq_trig_channel != '':
+    if seq_trig_channel is not None:
         block_list.append((seq_block, 0))
 
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=False)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
-def generate_pulsedodmr(self, name='PulsedODMR', mw_time_ns=1000.0, mw_freq_start_Hz=2870e6,
-                        mw_freq_incr_Hz=0, mw_freq_steps = 0, mw_amp_V=1.0, mw_channel='a_ch1',
-                        laser_time_ns=3000.0, channel_amp_V=1.0, wait_time_ns=1500.0,
-                        aom_delay_ns=500.0, seq_trig_channel='', gate_count_channel=''):
-    """ Converter function to use ns input instead of bins. """
-    mw_time_bins = int(np.rint(self.sample_rate * mw_time_ns/1e9))
-    laser_time_bins = int(np.rint(self.sample_rate * laser_time_ns/1e9))
-    wait_time_bins = int(np.rint(self.sample_rate * wait_time_ns/1e9))
-    aom_delay_bins = int(np.rint(self.sample_rate * aom_delay_ns/1e9))
 
-    return self.generate_pulsedodmr_bins(name, mw_time_bins, mw_freq_start_Hz, mw_freq_incr_Hz,
-                                         mw_freq_steps, mw_amp_V, mw_channel, laser_time_bins,
-                                         channel_amp_V, wait_time_bins, aom_delay_bins,
-                                         seq_trig_channel, gate_count_channel)
+def generate_pulsedodmr(self, name='PulsedODMR', pi_length=1.0e-6, mw_freq_start=2870.0e6,
+                        mw_freq_incr=0.2e6, num_of_points=50, mw_amp=1.0, mw_channel='a_ch1',
+                        laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
+                        seq_trig_channel='', gate_count_channel=''):
+    """
 
-def generate_pulsedodmr_bins(self, name='PulsedODMR', mw_time_bins=1000, mw_freq_start_Hz=2870e6,
-                             mw_freq_incr_Hz=0, mw_freq_steps = 0, mw_amp_V=1.0,
-                             mw_channel='a_ch1', laser_time_bins=3000, channel_amp_V=1,
-                             wait_time_bins=1500, aom_delay_bins=500, seq_trig_channel='',
-                             gate_count_channel=''):
+    """
     # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
         return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
-        return
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
 
-    # -- laser element --
-    laser_params = [{}] * self.analog_channels
-    laser_digital = [False] * self.digital_channels
-    laser_function = ['Idle'] * self.analog_channels
-
-    # Determine analogue or digital laser channel and set parameters accordingly.
-    if 'd_ch' in self.laser_channel:
-        laser_index = digital_channels.index(self.laser_channel)
-        laser_digital[laser_index] = True
-    elif 'a_ch' in self.laser_channel:
-        laser_index = analog_channels.index(self.laser_channel)
-        laser_function[laser_index] = 'DC'
-        laser_params[laser_index] = {'amplitude1': channel_amp_V}
-
-    if gate_count_channel != '':
-        # Determine analogue or digital gate trigger and set parameters accordingly.
-        if 'd_ch' in gate_count_channel:
-            gate_index = digital_channels.index(gate_count_channel)
-            laser_digital[gate_index] = True
-        elif 'a_ch' in gate_count_channel:
-            gate_index = analog_channels.index(gate_count_channel)
-            laser_function[gate_index] = 'DC'
-            laser_params[gate_index] = {'amplitude1': channel_amp_V}
-
-    # Create laser element
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    # -------------------
-
-    # -- aom delay element --
-    delay_params = [{}] * self.analog_channels
-    delay_function = ['Idle'] * self.analog_channels
-    delay_digital = [False] * self.digital_channels
-
-    if gate_count_channel != '':
-        # Determine analogue or digital gate trigger and set parameters accordingly.
-        if 'd_ch' in gate_count_channel:
-            gate_index = digital_channels.index(gate_count_channel)
-            delay_digital[gate_index] = True
-        elif 'a_ch' in gate_count_channel:
-            gate_index = analog_channels.index(gate_count_channel)
-            delay_function[gate_index] = 'DC'
-            delay_params[gate_index] = {'amplitude1': channel_amp_V}
-
-    # Create AOM delay element
-    aomdelay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                           pulse_function=delay_function,
-                                           digital_high=delay_digital, parameters=delay_params,
-                                           use_as_tick=False)
-    # -------------------
-
-    # -- wait time element --
-    wait_params = [{}] * self.analog_channels
-    wait_function = ['Idle'] * self.analog_channels
-    wait_digital = [False] * self.digital_channels
-
-    # Create waiting element
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    # -------------------
-
-    # -- seq trigger element --
-    if seq_trig_channel != '':
-        seq_params = [{}] * self.analog_channels
-        seq_function = ['Idle'] * self.analog_channels
-        seq_digital = [False] * self.digital_channels
-
-        # Determine analogue or digital sequence trigger and set parameters accordingly.
-        if 'd_ch' in seq_trig_channel:
-            seq_index = digital_channels.index(seq_trig_channel)
-            seq_digital[seq_index] = True
-        elif 'a_ch' in seq_trig_channel:
-            seq_index = analog_channels.index(seq_trig_channel)
-            seq_function[seq_index] = 'DC'
-            seq_params[seq_index] = {'amplitude1': channel_amp_V}
-
-        # Create waiting element
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9 * self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
         # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
         # save block
         self.save_block('seq_trigger', seq_block)
-    # -------------------
 
-    # --- mw element ----
-    mw_params = [{}] * self.analog_channels
-    mw_digital = [False] * self.digital_channels
-    mw_function = ['Idle'] * self.analog_channels
+    # Create frequency list array
+    freq_array = mw_freq_start + np.arange(num_of_points) * mw_freq_incr
 
-    # Determine analogue or digital microwave channel and set parameters accordingly.
-    if 'd_ch' in mw_channel:
-        mw_index = digital_channels.index(mw_channel)
-        mw_digital[mw_index] = True
-    elif 'a_ch' in mw_channel:
-        mw_index = analog_channels.index(mw_channel)
-        if mw_freq_steps == 0 or mw_freq_incr_Hz == 0:
-            mw_function[mw_index] = 'DC'
-            mw_params[mw_index] = {'amplitude1': mw_amp_V}
-            # Create MW element
-            mw_element = Pulse_Block_Element(init_length_bins=mw_time_bins, increment_bins=0,
-                                             pulse_function=mw_function, digital_high=mw_digital,
-                                             parameters=mw_params, use_as_tick=False)
-            mw_element_list = [mw_element]
-        else:
-            mw_function[mw_index] = 'Sin'
-            mw_params[mw_index] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq_start_Hz, 'phase1': 0.0}
-            # determine frequencies for direct MW generation via pulser hardware (AWG)
-            mw_freq_array = mw_freq_start_Hz + np.array(range(mw_freq_steps)) * mw_freq_incr_Hz
-            mw_element_list = []
-            for freq in mw_freq_array:
-                tmp_param = [{}] * self.analog_channels
-                tmp_param[mw_index] = {'amplitude1': mw_amp_V, 'frequency1': freq, 'phase1': 0.0}
-                elem = mw_element = Pulse_Block_Element(init_length_bins=mw_time_bins,
-                                                        increment_bins=0,
-                                                        pulse_function=mw_function,
-                                                        digital_high=mw_digital,
-                                                        parameters=tmp_param, use_as_tick=False)
-                mw_element_list.append(elem)
-    # -------------------
-
-    # Create element list for Pulse_Block
+    # Create element list for PulsedODMR PulseBlock
     element_list = []
-    for mw_elem in mw_element_list:
-        element_list.append(mw_elem)
+    for mw_freq in freq_array:
+        mw_element = self._get_mw_element(pi_length, 0.0, mw_channel, False, mw_amp, mw_freq, 0.0)
+        element_list.append(mw_element)
         element_list.append(laser_element)
-        element_list.append(aomdelay_element)
+        element_list.append(delay_element)
         element_list.append(waiting_element)
-
-    # Create Pulse_Block object
-    pulsedodmr_block = Pulse_Block(name, element_list)
+    # Create PulseBlock object
+    pulsedodmr_block = PulseBlock(name, element_list)
     # save block
     self.save_block(name, pulsedodmr_block)
 
-    # Create Block list with repetitions and sequence trigger if needed
-    # remember number_of_taus=0 also counts as first round
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
     block_list = [(pulsedodmr_block, 0)]
-    if seq_trig_channel != '':
+    if seq_trig_channel is not None:
         block_list.append((seq_block, 0))
 
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=False)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = freq_array
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
 
-def generate_HHamp(self, name='HHamp', mw_freq_MHz=2870.0, pihalf_amp_mV=500.0, start_amp_mV=50.0,
-                   incr_amp_mV=10.0, num_amp_steps=25, laser_time_ns=3000.0, aom_delay_ns=700.0,
-                   wait_time_ns=1000.0, pihalf_ns=200.0, pi3half_ns=600.0, spinlock_ns=10000.0,
-                   mw_channel='a_ch1', seq_trig_channel='', gate_count_channel=''):
+def generate_ramsey(self, name='Ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
+                    tau_start=1.0e-6, tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1',
+                    laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
+                    seq_trig_channel='', gate_count_channel=''):
+    """
 
-    mw_freq_Hz = mw_freq_MHz*1e6
-    pihalf_amp_V = pihalf_amp_mV/1e3
-    start_amp_V = start_amp_mV/1e3
-    incr_amp_V = incr_amp_mV/1e3
-    laser_time_bins = laser_time_ns * self.sample_rate/1e9
-    aom_delay_bins = aom_delay_ns * self.sample_rate/1e9
-    wait_time_bins = wait_time_ns * self.sample_rate/1e9
-    pihalf_bins = pihalf_ns * self.sample_rate/1e9
-    pi3half_bins = pi3half_ns * self.sample_rate/1e9
-    spinlock_bins = spinlock_ns * self.sample_rate/1e9
-
-    return self.generate_HHamp_bins(name, mw_freq_Hz, pihalf_amp_V, start_amp_V, incr_amp_V,
-                                    num_amp_steps, laser_time_bins, aom_delay_bins, wait_time_bins,
-                                    pihalf_bins, pi3half_bins, spinlock_bins, mw_channel,
-                                    seq_trig_channel, gate_count_channel)
-
-
-def generate_HHamp_bins(self, name='HHamp', mw_freq_Hz=2870.0, pihalf_amp_V=0.5, start_amp_V=0.05,
-                        incr_amp_V=0.01, num_amp_steps=25, laser_time_bins=3000, aom_delay_bins=700,
-                        wait_time_bins=1000, pihalf_bins=200, pi3half_bins=600, spinlock_bins=10000,
-                        mw_channel='a_ch1', seq_trig_channel='', gate_count_channel=''):
+    """
     # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
         return
 
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+    # get tau array for measurement ticks
+    tau_array = tau_start + np.arange(num_of_points) * tau_incr
+    # calculate "true" tau start value due to finite length of pi/pihalf pulses
+    real_tau_start = tau_start - rabi_period / 4
 
-    # create parameters, markers and tau array
-    # digital markers
-    wait_digital = [False] * self.digital_channels
-    laser_digital = [False] * self.digital_channels
-    laser_digital[digital_channels.index(self.laser_channel)] = True
-    if gate_count_channel:
-        laser_digital[digital_channels.index(gate_count_channel)] = True
-    delay_digital = [False] * self.digital_channels
-    if gate_count_channel:
-        delay_digital[digital_channels.index(gate_count_channel)] = True
-    seq_digital = [False] * self.digital_channels
-    if seq_trig_channel:
-        seq_digital[digital_channels.index(seq_trig_channel)] = True
-    pihalf_digital = [False] * self.digital_channels
-    spinlock_digital = [False] * self.digital_channels
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          0.0)
+    # get 3pihalf element (same length as pihalf but with 270 deg phase)
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                           270.0)
+    # get tau element
+    tau_element = self._get_idle_element(real_tau_start, tau_incr, True)
 
-    # analogue parameters
-    wait_params = [{}] * self.analog_channels
-    laser_params = [{}] * self.analog_channels
-    delay_params = [{}] * self.analog_channels
-    seq_params = [{}] * self.analog_channels
-    pihalf_params = [{}] * self.analog_channels
-    pihalf_params[analog_channels.index(mw_channel)] = {'amplitude1': pihalf_amp_V,
-                                                        'frequency1': mw_freq_Hz, 'phase1': 0.0}
-    spinlock_params = [{}] * self.analog_channels
-    spinlock_params[analog_channels.index(mw_channel)] = {'frequency1': mw_freq_Hz, 'phase1': 90.0}
-
-    # analogue functions
-    wait_function = ['Idle'] * self.analog_channels
-    laser_function = ['Idle'] * self.analog_channels
-    delay_function = ['Idle'] * self.analog_channels
-    seq_function = ['Idle'] * self.analog_channels
-    pihalf_function = ['Idle'] * self.analog_channels
-    pihalf_function[analog_channels.index(mw_channel)] = 'Sin'
-    spinlock_function = ['Idle'] * self.analog_channels
-    spinlock_function[analog_channels.index(mw_channel)] = 'Sin'
-
-    # create spinlock amplitude array
-    sl_amp_array = start_amp_V + np.array(range(num_amp_steps)) * incr_amp_V
-
-    # create static elements
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    delay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                        pulse_function=delay_function, digital_high=delay_digital,
-                                        parameters=delay_params, use_as_tick=False)
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    pihalf_element = Pulse_Block_Element(init_length_bins=pihalf_bins, increment_bins=0,
-                                         pulse_function=pihalf_function,
-                                         digital_high=pihalf_digital, parameters=pihalf_params,
-                                         use_as_tick=False)
-    pi3half_element = Pulse_Block_Element(init_length_bins=pi3half_bins, increment_bins=0,
-                                          pulse_function=pihalf_function,
-                                          digital_high=pihalf_digital, parameters=pihalf_params,
-                                          use_as_tick=False)
-    if seq_trig_channel:
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9 * self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
         # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
         # save block
         self.save_block('seq_trigger', seq_block)
 
-    # create the pulse block element list and the dynamic spinlock element
+    # Create element list for alternating Ramsey PulseBlock
     element_list = []
-    channel_index = analog_channels.index(mw_channel)
-    for amp in sl_amp_array:
-        tmp_params = [{}] * self.analog_channels
-        tmp_params[channel_index] = spinlock_params[channel_index].copy()
-        tmp_params[channel_index]['amplitude1'] = amp
-        lock_element = Pulse_Block_Element(init_length_bins=spinlock_bins, increment_bins=0,
-                                           pulse_function=spinlock_function,
-                                           digital_high=spinlock_digital,
-                                           parameters=tmp_params, use_as_tick=False)
-        # actual HH-amp sequence
+    element_list.append(pihalf_element)
+    element_list.append(tau_element)
+    element_list.append(pihalf_element)
+    element_list.append(laser_element)
+    element_list.append(delay_element)
+    element_list.append(waiting_element)
+
+    element_list.append(pihalf_element)
+    element_list.append(tau_element)
+    element_list.append(pi3half_element)
+    element_list.append(laser_element)
+    element_list.append(delay_element)
+    element_list.append(waiting_element)
+
+    # Create PulseBlock object
+    ramsey_block = PulseBlock(name, element_list)
+    # save block
+    self.save_block(name, ramsey_block)
+
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
+    block_list = [(ramsey_block, num_of_points - 1)]
+    if seq_trig_channel is not None:
+        block_list.append((seq_block, 0))
+
+    # create ensemble out of the block(s)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = tau_array
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    return block_ensemble
+
+
+def generate_hahnecho(self, name='HahnEcho', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
+                      tau_start=1.0e-6, tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1',
+                      laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
+                      seq_trig_channel='', gate_count_channel=''):
+    """
+
+    """
+    # Sanity checks
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
+        return
+
+    # get tau array for measurement ticks
+    tau_array = tau_start + np.arange(num_of_points) * tau_incr
+    # calculate "true" tau start value due to finite length of pi/pihalf pulses
+    real_tau_start = tau_start - 3 * rabi_period / 8
+
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          0.0)
+    # get 3pihalf element (same length as pihalf but with 270 deg phase)
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                           270.0)
+    # get pi element
+    pi_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq, 0.0)
+    # get tau element
+    tau_element = self._get_idle_element(real_tau_start, tau_incr, False)
+
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
+        # Create its own block out of the element
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
+        # save block
+        self.save_block('seq_trigger', seq_block)
+
+    # Create element list for alternating Hahn Echo PulseBlock
+    element_list = []
+    element_list.append(pihalf_element)
+    element_list.append(tau_element)
+    element_list.append(pi_element)
+    element_list.append(tau_element)
+    element_list.append(pihalf_element)
+    element_list.append(laser_element)
+    element_list.append(delay_element)
+    element_list.append(waiting_element)
+
+    element_list.append(pihalf_element)
+    element_list.append(tau_element)
+    element_list.append(pi_element)
+    element_list.append(tau_element)
+    element_list.append(pi3half_element)
+    element_list.append(laser_element)
+    element_list.append(delay_element)
+    element_list.append(waiting_element)
+
+    # Create PulseBlock object
+    hahn_block = PulseBlock(name, element_list)
+    # save block
+    self.save_block(name, hahn_block)
+
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
+    block_list = [(hahn_block, num_of_points - 1)]
+    if seq_trig_channel is not None:
+        block_list.append((seq_block, 0))
+
+    # create ensemble out of the block(s)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = tau_array
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    return block_ensemble
+
+
+def generate_HHamp(self, name='HHamp', rabi_period=1.0e-6, spinlock_length=20e-6, mw_freq=2870.0e6,
+                   pulse_amp=0.5, start_amp=0.05, incr_amp=0.01, num_of_points=50,
+                   mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
+                   wait_time=1.0e-6, seq_trig_channel='', gate_count_channel=''):
+    """
+
+    """
+    # Sanity checks
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
+        return
+
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, pulse_amp,
+                                          mw_freq, 0.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, pulse_amp,
+                                           mw_freq, 0.0)
+
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
+        # Create its own block out of the element
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
+        # save block
+        self.save_block('seq_trigger', seq_block)
+
+    # Create amplitude list array
+    amp_array = start_amp + np.arange(num_of_points) * incr_amp
+
+    # Create element list for HHamp PulseBlock
+    element_list = []
+    for sl_amp in amp_array:
+        sl_element = self._get_mw_element(spinlock_length, 0.0, mw_channel, False, sl_amp, mw_freq,
+                                          0.0)
+        # actual alternating HH-amp sequence
         element_list.append(pihalf_element)
-        element_list.append(lock_element)
+        element_list.append(sl_element)
         element_list.append(pihalf_element)
         element_list.append(laser_element)
         element_list.append(delay_element)
         element_list.append(waiting_element)
 
         element_list.append(pi3half_element)
-        element_list.append(lock_element)
+        element_list.append(sl_element)
         element_list.append(pi3half_element)
         element_list.append(laser_element)
         element_list.append(delay_element)
         element_list.append(waiting_element)
 
-    # Create Pulse_Block object
-    HHamp_block = Pulse_Block(name, element_list)
+    # Create PulseBlock object
+    hhamp_block = PulseBlock(name, element_list)
     # save block
-    self.save_block(name, HHamp_block)
+    self.save_block(name, hhamp_block)
 
-    # Create Block list with repetitions and sequence trigger if needed
-    # remember number_of_taus=0 also counts as first round
-    block_list = [(HHamp_block, 0)]
-    if seq_trig_channel:
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
+    block_list = [(hhamp_block, 0)]
+    if seq_trig_channel is not None:
         block_list.append((seq_block, 0))
 
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=True)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = amp_array
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
-def generate_HHtau(self, name='HHtau', mw_freq_MHz=2870.0, pihalf_amp_mV=500.0,
-                   spinlock_amp_mV=50.0, pihalf_ns=200.0, pi3half_ns=600.0, start_tau_ns=5000.0,
-                   incr_tau_ns=1000.0, number_of_taus=50, laser_time_ns=3000.0, aom_delay_ns=700.0,
-                   wait_time_ns=1000.0, mw_channel='a_ch1', seq_trig_channel='',
-                   gate_count_channel=''):
+def generate_HHtau(self, name='HHtau', rabi_period=1.0e-6, spinlock_amp=0.1, mw_freq=2870.0e6,
+                   pulse_amp=0.5, start_tau=0.05, incr_tau=0.01, num_of_points=50,
+                   mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
+                   wait_time=1.0e-6, seq_trig_channel='', gate_count_channel=''):
+    """
 
-    mw_freq_Hz = mw_freq_MHz * 1e6
-    pihalf_amp_V = pihalf_amp_mV / 1e3
-    spinlock_amp_V = spinlock_amp_mV / 1e3
-    start_tau_bins = start_tau_ns * self.sample_rate / 1e9
-    incr_tau_bins = incr_tau_ns * self.sample_rate / 1e9
-    laser_time_bins = laser_time_ns * self.sample_rate / 1e9
-    aom_delay_bins = aom_delay_ns * self.sample_rate / 1e9
-    wait_time_bins = wait_time_ns * self.sample_rate / 1e9
-    pihalf_bins = pihalf_ns * self.sample_rate / 1e9
-    pi3half_bins = pi3half_ns * self.sample_rate / 1e9
-
-    return self.generate_HHtau_bins(name, mw_freq_Hz, pihalf_amp_V, spinlock_amp_V, pihalf_bins,
-                                    pi3half_bins, start_tau_bins, incr_tau_bins, number_of_taus,
-                                    laser_time_bins, aom_delay_bins, wait_time_bins, mw_channel,
-                                    seq_trig_channel, gate_count_channel)
-
-def generate_HHtau_bins(self, name='HHtau', mw_freq_Hz=2870.0, pihalf_amp_V=0.5, spinlock_amp_V=0.1,
-                        pihalf_bins=200, pi3half_bins=600, start_tau_bins=5000, incr_tau_bins=500,
-                        number_of_taus=50, laser_time_bins=3000, aom_delay_bins=700,
-                        wait_time_bins=1000, mw_channel='a_ch1', seq_trig_channel='',
-                        gate_count_channel=''):
+    """
     # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
         return
 
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, pulse_amp,
+                                          mw_freq, 0.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, pulse_amp,
+                                           mw_freq, 0.0)
+    # get spinlock element
+    sl_element = self._get_mw_element(start_tau, incr_tau, mw_channel, True, spinlock_amp, mw_freq,
+                                      0.0)
 
-    # create parameters, markers and function lists
-    # digital markers
-    wait_digital = [False] * self.digital_channels
-    laser_digital = [False] * self.digital_channels
-    laser_digital[digital_channels.index(self.laser_channel)] = True
-    if gate_count_channel:
-        laser_digital[digital_channels.index(gate_count_channel)] = True
-    delay_digital = [False] * self.digital_channels
-    if gate_count_channel:
-        delay_digital[digital_channels.index(gate_count_channel)] = True
-    seq_digital = [False] * self.digital_channels
-    if seq_trig_channel:
-        seq_digital[digital_channels.index(seq_trig_channel)] = True
-    pihalf_digital = [False] * self.digital_channels
-    spinlock_digital = [False] * self.digital_channels
-
-    # analogue parameters
-    wait_params = [{}] * self.analog_channels
-    laser_params = [{}] * self.analog_channels
-    delay_params = [{}] * self.analog_channels
-    seq_params = [{}] * self.analog_channels
-    pihalf_params = [{}] * self.analog_channels
-    pihalf_params[analog_channels.index(mw_channel)] = {'amplitude1': pihalf_amp_V,
-                                                        'frequency1': mw_freq_Hz, 'phase1': 0.0}
-    spinlock_params = [{}] * self.analog_channels
-    spinlock_params[analog_channels.index(mw_channel)] = {'amplitude1': spinlock_amp_V,
-                                                          'frequency1': mw_freq_Hz, 'phase1': 90.0}
-
-    # analogue functions
-    wait_function = ['Idle'] * self.analog_channels
-    laser_function = ['Idle'] * self.analog_channels
-    delay_function = ['Idle'] * self.analog_channels
-    seq_function = ['Idle'] * self.analog_channels
-    pihalf_function = ['Idle'] * self.analog_channels
-    pihalf_function[analog_channels.index(mw_channel)] = 'Sin'
-    spinlock_function = ['Idle'] * self.analog_channels
-    spinlock_function[analog_channels.index(mw_channel)] = 'Sin'
-
-    # create static elements
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    delay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                        pulse_function=delay_function, digital_high=delay_digital,
-                                        parameters=delay_params, use_as_tick=False)
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    pihalf_element = Pulse_Block_Element(init_length_bins=pihalf_bins, increment_bins=0,
-                                         pulse_function=pihalf_function,
-                                         digital_high=pihalf_digital, parameters=pihalf_params,
-                                         use_as_tick=False)
-    pi3half_element = Pulse_Block_Element(init_length_bins=pi3half_bins, increment_bins=0,
-                                          pulse_function=pihalf_function,
-                                          digital_high=pihalf_digital, parameters=pihalf_params,
-                                          use_as_tick=False)
-    lock_element = Pulse_Block_Element(init_length_bins=start_tau_bins,
-                                       increment_bins=incr_tau_bins,
-                                       pulse_function=spinlock_function,
-                                       digital_high=spinlock_digital, parameters=spinlock_params,
-                                       use_as_tick=True)
-    if seq_trig_channel:
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9 * self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
         # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
         # save block
         self.save_block('seq_trigger', seq_block)
 
-    # create the pulse block element list
+    # Create element list for HHamp PulseBlock
     element_list = []
-    # actual HH-tau sequence
+    # actual alternating HH-amp sequence
     element_list.append(pihalf_element)
-    element_list.append(lock_element)
+    element_list.append(sl_element)
     element_list.append(pihalf_element)
     element_list.append(laser_element)
     element_list.append(delay_element)
     element_list.append(waiting_element)
 
     element_list.append(pi3half_element)
-    element_list.append(lock_element)
+    element_list.append(sl_element)
     element_list.append(pi3half_element)
     element_list.append(laser_element)
     element_list.append(delay_element)
     element_list.append(waiting_element)
 
-    # Create Pulse_Block object
-    HHtau_block = Pulse_Block(name, element_list)
+    # Create PulseBlock object
+    hhtau_block = PulseBlock(name, element_list)
     # save block
-    self.save_block(name, HHtau_block)
+    self.save_block(name, hhtau_block)
 
-    # Create Block list with repetitions and sequence trigger if needed
-    # remember number_of_taus=0 also counts as first round
-    block_list = [(HHtau_block, number_of_taus-1)]
-    if seq_trig_channel:
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
+    block_list = [(hhtau_block, num_of_points-1)]
+    if seq_trig_channel is not None:
         block_list.append((seq_block, 0))
 
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=True)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
 
-def generate_HHpol(self, name='HHpol', mw_freq_MHz=2870.0, pihalf_amp_mV=500.0,
-                   spinlock_amp_mV=50.0, number_of_pols=100, pihalf_ns=200.0, pi3half_ns=600.0,
-                   spinlock_ns=10000.0, laser_time_ns=3000.0, aom_delay_ns=700.0,
-                   wait_time_ns=1000.0, mw_channel='a_ch1', seq_trig_channel='',
-                   gate_count_channel=''):
+def generate_HHpol(self, name='HHpol', rabi_period=1.0e-6, spinlock_length=20.0e-6,
+                   spinlock_amp=0.1, mw_freq=2870.0e6, pulse_amp=0.5, polarization_steps=50,
+                   mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
+                   wait_time=1.0e-6, seq_trig_channel='', gate_count_channel=''):
+    """
 
-    mw_freq_Hz = mw_freq_MHz * 1e6
-    pihalf_amp_V = pihalf_amp_mV / 1e3
-    spinlock_amp_V = spinlock_amp_mV / 1e3
-    spinlock_bins = spinlock_ns * self.sample_rate / 1e9
-    laser_time_bins = laser_time_ns * self.sample_rate / 1e9
-    aom_delay_bins = aom_delay_ns * self.sample_rate / 1e9
-    wait_time_bins = wait_time_ns * self.sample_rate / 1e9
-    pihalf_bins = pihalf_ns * self.sample_rate / 1e9
-    pi3half_bins = pi3half_ns * self.sample_rate / 1e9
-
-    return self.generate_HHpol_bins(name, mw_freq_Hz, pihalf_amp_V, spinlock_amp_V, number_of_pols,
-                                    spinlock_bins, laser_time_bins, aom_delay_bins, wait_time_bins,
-                                    pihalf_bins, pi3half_bins, mw_channel, seq_trig_channel,
-                                    gate_count_channel)
-
-
-def generate_HHpol_bins(self, name='HHpol', mw_freq_Hz=2870.0, pihalf_amp_V=0.5, spinlock_amp_V=0.1,
-                        number_of_pols=100, spinlock_bins=10000, laser_time_bins=3000,
-                        aom_delay_bins=700, wait_time_bins=1000, pihalf_bins=200, pi3half_bins=600,
-                        mw_channel='a_ch1', seq_trig_channel='', gate_count_channel=''):
+    """
     # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
         return
 
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, pulse_amp,
+                                          mw_freq, 0.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, pulse_amp,
+                                           mw_freq, 0.0)
+    # get spinlock element
+    sl_element = self._get_mw_element(spinlock_length, 0.0, mw_channel, False, spinlock_amp,
+                                      mw_freq, 0.0)
 
-    # create parameters, markers and function lists
-    # digital markers
-    wait_digital = [False] * self.digital_channels
-    laser_digital = [False] * self.digital_channels
-    laser_digital[digital_channels.index(self.laser_channel)] = True
-    if gate_count_channel:
-        laser_digital[digital_channels.index(gate_count_channel)] = True
-    delay_digital = [False] * self.digital_channels
-    if gate_count_channel:
-        delay_digital[digital_channels.index(gate_count_channel)] = True
-    seq_digital = [False] * self.digital_channels
-    if seq_trig_channel:
-        seq_digital[digital_channels.index(seq_trig_channel)] = True
-    pihalf_digital = [False] * self.digital_channels
-    spinlock_digital = [False] * self.digital_channels
-
-    # analogue parameters
-    wait_params = [{}] * self.analog_channels
-    laser_params = [{}] * self.analog_channels
-    delay_params = [{}] * self.analog_channels
-    seq_params = [{}] * self.analog_channels
-    pihalf_params = [{}] * self.analog_channels
-    pihalf_params[analog_channels.index(mw_channel)] = {'amplitude1': pihalf_amp_V,
-                                                        'frequency1': mw_freq_Hz, 'phase1': 0.0}
-    spinlock_params = [{}] * self.analog_channels
-    spinlock_params[analog_channels.index(mw_channel)] = {'amplitude1': spinlock_amp_V,
-                                                          'frequency1': mw_freq_Hz, 'phase1': 90.0}
-
-    # analogue functions
-    wait_function = ['Idle'] * self.analog_channels
-    laser_function = ['Idle'] * self.analog_channels
-    delay_function = ['Idle'] * self.analog_channels
-    seq_function = ['Idle'] * self.analog_channels
-    pihalf_function = ['Idle'] * self.analog_channels
-    pihalf_function[analog_channels.index(mw_channel)] = 'Sin'
-    spinlock_function = ['Idle'] * self.analog_channels
-    spinlock_function[analog_channels.index(mw_channel)] = 'Sin'
-
-    # create static elements
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    delay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                        pulse_function=delay_function, digital_high=delay_digital,
-                                        parameters=delay_params, use_as_tick=False)
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    pihalf_element = Pulse_Block_Element(init_length_bins=pihalf_bins, increment_bins=0,
-                                         pulse_function=pihalf_function,
-                                         digital_high=pihalf_digital, parameters=pihalf_params,
-                                         use_as_tick=False)
-    pi3half_element = Pulse_Block_Element(init_length_bins=pi3half_bins, increment_bins=0,
-                                          pulse_function=pihalf_function,
-                                          digital_high=pihalf_digital, parameters=pihalf_params,
-                                          use_as_tick=False)
-    lock_element = Pulse_Block_Element(init_length_bins=spinlock_bins, increment_bins=0,
-                                       pulse_function=spinlock_function,
-                                       digital_high=spinlock_digital, parameters=spinlock_params,
-                                       use_as_tick=True)
-    if seq_trig_channel:
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9 * self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
         # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
         # save block
         self.save_block('seq_trigger', seq_block)
 
@@ -1044,818 +609,107 @@ def generate_HHpol_bins(self, name='HHpol', mw_freq_Hz=2870.0, pihalf_amp_V=0.5,
     element_list = []
     # actual HH-pol sequence
     element_list.append(pihalf_element)
-    element_list.append(lock_element)
+    element_list.append(sl_element)
     element_list.append(pihalf_element)
     element_list.append(laser_element)
     element_list.append(delay_element)
     element_list.append(waiting_element)
 
-    HHpolup_block = Pulse_Block(name + '_up', element_list)
+    HHpolup_block = PulseBlock(name + '_up', element_list)
     self.save_block(name + '_up', HHpolup_block)
 
     # create the pulse block for "down"-polarization
     element_list = []
     # actual HH-pol sequence
     element_list.append(pi3half_element)
-    element_list.append(lock_element)
+    element_list.append(sl_element)
     element_list.append(pi3half_element)
     element_list.append(laser_element)
     element_list.append(delay_element)
     element_list.append(waiting_element)
 
-    HHpoldown_block = Pulse_Block(name + '_down', element_list)
+    HHpoldown_block = PulseBlock(name + '_down', element_list)
     self.save_block(name + '_down', HHpoldown_block)
 
     # Create Block list with repetitions and sequence trigger if needed
     # remember number_of_taus=0 also counts as first round
-    block_list = [(HHpolup_block, number_of_pols - 1), (HHpoldown_block, number_of_pols - 1)]
+    block_list = [(HHpolup_block, polarization_steps - 1),
+                  (HHpoldown_block, polarization_steps - 1)]
     if seq_trig_channel:
         block_list.append((seq_block, 0))
 
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=True)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = np.arange(1, 2 * polarization_steps + 1)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
 
-def generate_RFfreqsweep(self, name='RFfreqsweep', mw_freq_MHz=2870.0, pihalf_amp_mV=500.0,
-                         spinlock_amp_mV=50.0, number_of_pols=100, pihalf_ns=200.0,
-                         pi3half_ns=600.0, spinlock_ns=10000.0, start_freq_MHz=100.0,
-                         incr_freq_MHz=100.0, number_of_freq=25, rf_amp_mV=500.0, rf_length_ns=1000,
-                         laser_time_ns=3000.0, aom_delay_ns=700.0, wait_time_ns=1000.0,
-                         mw_channel='a_ch1', rf_channel='a_ch2', seq_trig_channel='',
-                         gate_count_channel=''):
+def generate_xy8_tau(self, name='XY8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
+                     start_tau=0.5e-6, incr_tau=0.01e-6, num_of_points=50, xy8_order=4,
+                     mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
+                     wait_time=1.0e-6, seq_trig_channel='', gate_count_channel=''):
+    """
 
-    mw_freq_Hz = mw_freq_MHz * 1e6
-    pihalf_amp_V = pihalf_amp_mV / 1e3
-    spinlock_amp_V = spinlock_amp_mV / 1e3
-    spinlock_bins = spinlock_ns * self.sample_rate / 1e9
-    laser_time_bins = laser_time_ns * self.sample_rate / 1e9
-    aom_delay_bins = aom_delay_ns * self.sample_rate / 1e9
-    wait_time_bins = wait_time_ns * self.sample_rate / 1e9
-    pihalf_bins = pihalf_ns * self.sample_rate / 1e9
-    pi3half_bins = pi3half_ns * self.sample_rate / 1e9
-    start_freq_Hz = start_freq_MHz * 1e6
-    incr_freq_Hz = incr_freq_MHz * 1e6
-    rf_length_bins = rf_length_ns * self.sample_rate / 1e9
-    rf_amp_V = rf_amp_mV / 1e3
-
-    return self.generate_RFfreqsweep_bins(name, mw_freq_Hz, pihalf_amp_V, spinlock_amp_V,
-                                          number_of_pols, spinlock_bins, start_freq_Hz,
-                                          incr_freq_Hz, number_of_freq, rf_amp_V, rf_length_bins,
-                                          laser_time_bins, aom_delay_bins, wait_time_bins,
-                                          pihalf_bins, pi3half_bins, mw_channel, rf_channel,
-                                          seq_trig_channel, gate_count_channel)
-
-
-def generate_RFfreqsweep_bins(self, name='RFfreqsweep', mw_freq_Hz=2870.0e6, pihalf_amp_V=0.5,
-                              spinlock_amp_V=0.1, number_of_pols=100, spinlock_bins=10000,
-                              start_freq_Hz=100.0e6, incr_freq_Hz=100.0e6, number_of_freq=25,
-                              rf_amp_V=0.5, rf_length_bins = 1000, laser_time_bins=3000,
-                              aom_delay_bins=700, wait_time_bins=1000, pihalf_bins=200,
-                              pi3half_bins=600, mw_channel='a_ch1', rf_channel='a_ch2',
-                              seq_trig_channel='', gate_count_channel=''):
+    """
     # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if mw_channel == rf_channel:
-        self.log.error('RF and microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
         return
 
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+    # get tau array for measurement ticks
+    tau_array = start_tau + np.arange(num_of_points) * incr_tau
+    # calculate "real" start length of the waiting times (tau and tauhalf)
+    real_start_tau = start_tau - rabi_period / 2
+    real_start_tauhalf = start_tau / 2 - 3 * rabi_period / 8
+    if real_start_tau < 0.0 or real_start_tauhalf < 0.0:
+        self.log.error('XY8 generation failed! Rabi period of {0:.3e} s is too long for start tau '
+                       'of {1:.3e} s.'.format(rabi_period, start_tau))
+        return
 
-    # create parameters, markers and function lists
-    # digital markers
-    wait_digital = [False] * self.digital_channels
-    laser_digital = [False] * self.digital_channels
-    laser_digital[digital_channels.index(self.laser_channel)] = True
-    if gate_count_channel:
-        laser_digital[digital_channels.index(gate_count_channel)] = True
-    delay_digital = [False] * self.digital_channels
-    if gate_count_channel:
-        delay_digital[digital_channels.index(gate_count_channel)] = True
-    seq_digital = [False] * self.digital_channels
-    if seq_trig_channel:
-        seq_digital[digital_channels.index(seq_trig_channel)] = True
-    pihalf_digital = [False] * self.digital_channels
-    spinlock_digital = [False] * self.digital_channels
-    rf_digital = [False] * self.digital_channels
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          0.0)
+    # get 3pihalf element (same length but 270 deg phase due to the correction of tau length)
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                           270.0)
+    # get pi elements
+    pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       0.0)
+    piy_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       90.0)
+    # get tauhalf element
+    tauhalf_element = self._get_idle_element(real_start_tauhalf, incr_tau / 2, False)
+    # get tau element
+    tau_element = self._get_idle_element(real_start_tau, incr_tau, False)
 
-    # analogue parameters
-    wait_params = [{}] * self.analog_channels
-    laser_params = [{}] * self.analog_channels
-    delay_params = [{}] * self.analog_channels
-    seq_params = [{}] * self.analog_channels
-    pihalf_params = [{}] * self.analog_channels
-    pihalf_params[analog_channels.index(mw_channel)] = {'amplitude1': pihalf_amp_V,
-                                                        'frequency1': mw_freq_Hz, 'phase1': 0.0}
-    spinlock_params = [{}] * self.analog_channels
-    spinlock_params[analog_channels.index(mw_channel)] = {'amplitude1': spinlock_amp_V,
-                                                          'frequency1': mw_freq_Hz, 'phase1': 90.0}
-    rf_params = [{}] * self.analog_channels
-    rf_params[analog_channels.index(rf_channel)] = {'amplitude1': rf_amp_V, 'phase1': 0.0}
-
-    # analogue functions
-    wait_function = ['Idle'] * self.analog_channels
-    laser_function = ['Idle'] * self.analog_channels
-    delay_function = ['Idle'] * self.analog_channels
-    seq_function = ['Idle'] * self.analog_channels
-    pihalf_function = ['Idle'] * self.analog_channels
-    pihalf_function[analog_channels.index(mw_channel)] = 'Sin'
-    spinlock_function = ['Idle'] * self.analog_channels
-    spinlock_function[analog_channels.index(mw_channel)] = 'Sin'
-    rf_function = ['Idle'] * self.analog_channels
-    rf_function[analog_channels.index(rf_channel)] = 'Sin'
-
-    # create array of RF frequencies to sweep
-    rf_freq_array = start_freq_Hz + np.array(range(number_of_freq)) * incr_freq_Hz
-
-    # create static elements
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    delay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                        pulse_function=delay_function, digital_high=delay_digital,
-                                        parameters=delay_params, use_as_tick=False)
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    pihalf_element = Pulse_Block_Element(init_length_bins=pihalf_bins, increment_bins=0,
-                                         pulse_function=pihalf_function,
-                                         digital_high=pihalf_digital, parameters=pihalf_params,
-                                         use_as_tick=False)
-    pi3half_element = Pulse_Block_Element(init_length_bins=pi3half_bins, increment_bins=0,
-                                          pulse_function=pihalf_function,
-                                          digital_high=pihalf_digital, parameters=pihalf_params,
-                                          use_as_tick=False)
-    lock_element = Pulse_Block_Element(init_length_bins=spinlock_bins, increment_bins=0,
-                                       pulse_function=spinlock_function,
-                                       digital_high=spinlock_digital, parameters=spinlock_params,
-                                       use_as_tick=True)
-    if seq_trig_channel:
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9 * self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
         # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
-        # save block
-        self.save_block('seq_trigger', seq_block)
-
-    # create the pulse block for "up"-polarization
-    element_list = []
-    # actual HH-pol sequence
-    element_list.append(pihalf_element)
-    element_list.append(lock_element)
-    element_list.append(pihalf_element)
-    element_list.append(laser_element)
-    element_list.append(delay_element)
-    element_list.append(waiting_element)
-
-    HHpolup_block = Pulse_Block(name + '_HHup', element_list)
-    self.save_block(name + '_HHup', HHpolup_block)
-
-    # create the pulse block for "down"-polarization
-    element_list = []
-    # actual HH-pol sequence
-    element_list.append(pi3half_element)
-    element_list.append(lock_element)
-    element_list.append(pi3half_element)
-    element_list.append(laser_element)
-    element_list.append(delay_element)
-    element_list.append(waiting_element)
-
-    HHpoldown_block = Pulse_Block(name + '_HHdown', element_list)
-    self.save_block(name + '_HHdown', HHpoldown_block)
-
-    # create the RF pulse block and the dynamic RF elements
-    element_list = []
-    rf_block_list = []
-    channel_index = analog_channels.index(rf_channel)
-    for freq in rf_freq_array:
-        tmp_params = [{}] * self.analog_channels
-        tmp_params[channel_index] = rf_params[channel_index].copy()
-        tmp_params[channel_index]['frequency1'] = freq
-        rf_element = Pulse_Block_Element(init_length_bins=rf_length_bins, increment_bins=0,
-                                         pulse_function=rf_function, digital_high=rf_digital,
-                                         parameters=tmp_params, use_as_tick=False)
-        rf_block = Pulse_Block(name + '_' + str(int(freq/1e6)) + 'MHz', [rf_element])
-        rf_block_list.append(rf_block)
-        self.save_block(name + '_' + str(int(freq / 1e6)) + 'MHz', rf_block)
-
-    # Create Block list with repetitions and sequence trigger if needed
-    # remember number_of_taus=0 also counts as first round
-    block_list = []
-    for rf_block in rf_block_list:
-        block_list.append((HHpolup_block, number_of_pols - 1))
-        block_list.append((rf_block, 0))
-        block_list.append((HHpoldown_block, number_of_pols - 1))
-    if seq_trig_channel:
-        block_list.append((seq_block, 0))
-
-    # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=True)
-    # save ensemble
-    self.save_ensemble(name, block_ensemble)
-    return block_ensemble
-
-###################################################################################################
-### FIXME: From here on the predefined methods need to be adjusted since they are no longer usable.
-###################################################################################################
-
-# def generate_ramsey(self, name='Ramsey', tau_start_ns=50, tau_step_ns=50,
-#                   number_of_taus=50, mw_freq_MHz=100.0, mw_rabi_period_ns=200,
-#                   mw_amp_V=1.0,
-#                   mw_channel=-1, laser_time_ns=3000, laser_channel=1,
-#                   channel_amp_V=1, aom_delay_ns=500, open_count_channel=2,
-#                   seq_channel=3, wait_time_ns=1500):
-#     """ Converter function to use ns input instead of bins. """
-#
-#     tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
-#     tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
-#     mw_rabi_period_bins = int(self.get_sample_rate()/1e9 * mw_rabi_period_ns)
-#     laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
-#     aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
-#     wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
-#
-#     self.generate_ramsey_bins(name, tau_start_bins, tau_step_bins,
-#                   number_of_taus, mw_freq_MHz, mw_rabi_period_bins, mw_amp_V,
-#                   mw_channel, laser_time_bins, laser_channel, channel_amp_V,
-#                   aom_delay_bins, open_count_channel, seq_channel,
-#                   wait_time_bins)
-#
-# def generate_ramsey_bins(self, name='Ramsey', tau_start_bins=50, tau_step_bins=50,
-#                   number_of_taus=50, mw_freq_MHz=100.0, mw_rabi_period_bins=200,
-#                   mw_amp_V=1.0, mw_channel=-1, laser_time_bins=3000,
-#                   laser_channel=1, channel_amp_V=1, aom_delay_bins=500,
-#                   open_count_channel=2, seq_channel=3, wait_time_bins=500):
-#
-#     if laser_channel == mw_channel:
-#         self.log.error('Laser and Microwave channel cannot be the same. Change '
-#                     'that!')
-#         return
-#
-#     # --- mw element ----
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     # Choose digital channel to be positive, analog channels negative
-#     # Zero is not defined.
-#     if mw_channel > 0 and mw_channel <= self.digital_channels:
-#         markers[mw_channel-1] = True
-#     elif mw_channel < 0 and mw_channel >= -self.analog_channels:
-#         pulse_function[abs(mw_channel)-1] = 'Sin'
-#         mw_freq = mw_freq_MHz*1e6
-#         analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq, 'phase1': 0.0}
-#     else:
-#         self.log.error('Value of {0} is not a proper mw_channel. Digital laser '
-#                     'channels are positive values 1=d_ch1, 2=d_ch2, '
-#                     '... and analog channel numbers are chosen by a negative '
-#                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!')
-#         return
-#
-#     pi_2_time_bins = int(mw_rabi_period_bins/4)
-#
-#     mw_element = Pulse_Block_Element(init_length_bins=pi_2_time_bins,
-#                                      analog_channels=self.analog_channels,
-#                                      digital_channels=self.digital_channels,
-#                                      increment_bins=0,
-#                                      pulse_function=pulse_function,
-#                                      marker_active=markers,
-#                                      parameters=analog_params,
-#                                      use_as_tick=False)
-#
-#     # -------------------
-#
-#     # -- Ramsey interaction time element ---
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     ramsey_int_time_element = Pulse_Block_Element(tau_start_bins,
-#                                                   self.analog_channels,
-#                                                   self.digital_channels,
-#                                                   tau_step_bins,
-#                                                   pulse_function, markers,
-#                                                   analog_params, True)
-#
-#     # -------------------
-#
-#     # -- laser element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     # Choose digital channel to be positive, analog channels negative
-#     # Zero is not defined.
-#     if laser_channel > 0 and laser_channel <= self.digital_channels:
-#         markers[laser_channel-1] = True
-#     elif laser_channel < 0 and laser_channel >= -self.analog_channels:
-#         pulse_function[abs(laser_channel)-1] = 'DC'
-#         analog_params[abs(laser_channel)-1] = {'amplitude1': channel_amp_V}
-#     else:
-#         self.log.error('Value of {0} is not a proper laser channel. Digital laser '
-#                     'channels are positive values 1=d_ch1, 2=d_ch2, '
-#                     '... and analog channel numbers are chosen by a negative '
-#                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!')
-#         return
-#
-#     if open_count_channel > 0 and open_count_channel <= self.digital_channels:
-#         markers[open_count_channel-1] = True
-#     elif open_count_channel < 0 and open_count_channel >= -self.analog_channels:
-#         pulse_function[abs(open_count_channel)-1] = 'DC'
-#         analog_params[abs(open_count_channel)-1] = {'amplitude1': channel_amp_V}
-#
-#     laser_element = Pulse_Block_Element(laser_time_bins, self.analog_channels,
-#                                         self.digital_channels, 0,
-#                                         pulse_function, markers,
-#                                         analog_params)
-#     # -------------------
-#
-#     # -- aom delay element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#     markers = [False]*self.digital_channels
-#
-#     if open_count_channel > 0 and open_count_channel <= self.digital_channels:
-#         markers[open_count_channel-1] = True
-#     elif open_count_channel < 0 and open_count_channel >= -self.analog_channels:
-#         pulse_function[abs(open_count_channel)-1] = 'DC'
-#         analog_params[abs(open_count_channel)-1] = {'amplitude1': channel_amp_V}
-#
-#     aomdelay_element = Pulse_Block_Element(aom_delay_bins, self.analog_channels,
-#                                            self.digital_channels, 0,
-#                                            pulse_function, markers,
-#                                            analog_params)
-#
-#     # -------------------
-#
-#     # -- wait time element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#     markers = [False]*self.digital_channels
-#
-#     waiting_element = Pulse_Block_Element(wait_time_bins, self.analog_channels,
-#                                           self.digital_channels, 0,
-#                                           pulse_function, markers,
-#                                           analog_params)
-#
-#     # -------------------
-#
-#     # -- seq trigger element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#     markers = [False]*self.digital_channels
-#
-#     if seq_channel > 0 and seq_channel <= self.digital_channels:
-#         markers[seq_channel-1] = True
-#     elif seq_channel < 0 and seq_channel >= -self.analog_channels:
-#         pulse_function[abs(seq_channel)-1] = 'DC'
-#         analog_params[abs(seq_channel)-1] = {'amplitude1': channel_amp_V}
-#
-#
-#     seqtrig_element = Pulse_Block_Element(100, self.analog_channels,
-#                                           self.digital_channels, 0,
-#                                           pulse_function,
-#                                           markers,
-#                                           analog_params)
-#
-#     # -------------------
-#
-#     element_list = [mw_element, ramsey_int_time_element, mw_element,
-#                     laser_element, aomdelay_element, waiting_element]
-#
-#     #FIXME: that has to be fixed in the generation
-#     laser_channel_index = abs(laser_channel)-1
-#
-#     ramsey_block = Pulse_Block(name, element_list, laser_channel_index)
-#     # save block
-#     self.save_block(name, ramsey_block)
-#     # set current block
-#     self.current_block = ramsey_block
-#
-#     # remember number_of_taus=0 also counts as first round
-#     block_list = [(ramsey_block, number_of_taus-1)]
-#     if seq_channel != 0:
-#         seq_block = Pulse_Block('seq_trigger', [seqtrig_element], laser_channel_index)
-#         block_list.append((seq_block, 0))
-#         # save block
-#         self.save_block('seq_trigger', seq_block)
-#
-#     # create ensemble out of the block(s)
-#     block_ensemble = Pulse_Block_Ensemble(name, block_list, laser_channel_index,
-#                                           rotating_frame=True)
-#     # save ensemble
-#     self.save_ensemble(name, block_ensemble)
-#     # set current block ensemble
-#     self.current_ensemble = block_ensemble
-#     # update ensemble list
-#     self.refresh_ensemble_list()
-#     return
-#
-# def generate_hahn(self, name='Hahn Echo', tau_start_ns=500,
-#                   tau_step_ns=500, number_of_taus=50, mw_freq_MHz=2700.0,
-#                   mw_rabi_period_ns=200, mw_amp_V=1.0, mw_channel=-1,
-#                   laser_time_ns=3000, laser_channel=1, channel_amp_V=1,
-#                   aom_delay_ns=500, open_count_channel=2, seq_channel=3,
-#                   wait_time_ns=500):
-#     """ Converter function to use ns input instead of bins. """
-#
-#     tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
-#     tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
-#     mw_rabi_period_bins = int(self.get_sample_rate()/1e9 * mw_rabi_period_ns)
-#     laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
-#     aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
-#     wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
-#
-#     self.generate_hahn_bins(name, tau_start_bins, tau_step_bins, number_of_taus,
-#                             mw_freq_MHz, mw_rabi_period_bins, mw_amp_V,
-#                             mw_channel, laser_time_bins, laser_channel,
-#                             channel_amp_V, aom_delay_bins, open_count_channel,
-#                             seq_channel, wait_time_bins)
-#
-# def generate_hahn_bins(self, name='Hahn Echo', tau_start_bins=500,
-#                        tau_step_bins=500, number_of_taus=50, mw_freq_MHz=2700.0,
-#                        mw_rabi_period_bins=200, mw_amp_V=1.0, mw_channel=-1,
-#                        laser_time_bins=3000, laser_channel=1, channel_amp_V=1,
-#                        aom_delay_bins=500, open_count_channel=2, seq_channel=3,
-#                        wait_time_bins=500):
-#
-#     if laser_channel == mw_channel:
-#         self.log.error('Laser and Microwave channel cannot be the same. Change '
-#                     'that!')
-#         return
-#
-#     # --- mw element pi/2 ----
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     # Choose digital channel to be positive, analog channels negative
-#     # Zero is not defined.
-#     if mw_channel > 0 and mw_channel <= self.digital_channels:
-#         markers[mw_channel-1] = True
-#     elif mw_channel < 0 and mw_channel >= -self.analog_channels:
-#         pulse_function[abs(mw_channel)-1] = 'Sin'
-#         mw_freq = mw_freq_MHz*1e6
-#         analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq, 'phase1': 0.0}
-#     else:
-#         self.log.error('Value of {0} is not a proper mw_channel. Digital laser '
-#                     'channels are positive values 1=d_ch1, 2=d_ch2, '
-#                     '... and analog channel numbers are chosen by a negative '
-#                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!')
-#         return
-#
-#     pi_2_time_bins = int(mw_rabi_period_bins/4)
-#
-#     mw_element_pi2 = Pulse_Block_Element(init_length_bins=pi_2_time_bins,
-#                                      analog_channels=self.analog_channels,
-#                                      digital_channels=self.digital_channels,
-#                                      increment_bins=0,
-#                                      pulse_function=pulse_function,
-#                                      marker_active=markers,
-#                                      parameters=analog_params,
-#                                      use_as_tick=False)
-#
-#     # -------------------
-#
-#     # --- mw element pi ----
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     # Choose digital channel to be positive, analog channels negative
-#     # Zero is not defined.
-#     if mw_channel > 0 and mw_channel <= self.digital_channels:
-#         markers[mw_channel-1] = True
-#     elif mw_channel < 0 and mw_channel >= -self.analog_channels:
-#         pulse_function[abs(mw_channel)-1] = 'Sin'
-#         mw_freq = mw_freq_MHz*1e6
-#         analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq, 'phase1': 0.0}
-#     else:
-#         self.log.error('Value of {0} is not a proper mw_channel. Digital laser '
-#                     'channels are positive values 1=d_ch1, 2=d_ch2, '
-#                     '... and analog channel numbers are chosen by a negative '
-#                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'nvalid input. Make your choice!')
-#         return
-#
-#     pi_time_bins = int(mw_rabi_period_bins/2)
-#
-#     mw_element_pi = Pulse_Block_Element(init_length_bins=pi_time_bins,
-#                                      analog_channels=self.analog_channels,
-#                                      digital_channels=self.digital_channels,
-#                                      increment_bins=0,
-#                                      pulse_function=pulse_function,
-#                                      marker_active=markers,
-#                                      parameters=analog_params,
-#                                      use_as_tick=False)
-#
-#     # -------------------
-#
-#     # -- hahn interaction time element ---
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     hahn_int_time_element = Pulse_Block_Element(tau_start_bins,
-#                                                 self.analog_channels,
-#                                                 self.digital_channels,
-#                                                 tau_step_bins,
-#                                                 pulse_function, markers,
-#                                                 analog_params, True)
-#     # -------------------
-#
-#     # -- laser element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     markers = [False]*self.digital_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#
-#     # Choose digital channel to be positive, analog channels negative
-#     # Zero is not defined.
-#     if laser_channel > 0 and laser_channel <= self.digital_channels:
-#         markers[laser_channel-1] = True
-#     elif laser_channel < 0 and laser_channel >= -self.analog_channels:
-#         pulse_function[abs(laser_channel)-1] = 'DC'
-#         analog_params[abs(laser_channel)-1] = {'amplitude1': channel_amp_V}
-#     else:
-#         self.log.error('Value of {0} is not a proper laser channel. Digital laser '
-#                     'channels are positive values 1=d_ch1, 2=d_ch2, '
-#                     '... and analog channel numbers are chosen by a negative '
-#                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-#                     'invalid input. Make your choice!')
-#         return
-#
-#     if open_count_channel > 0 and open_count_channel <= self.digital_channels:
-#         markers[open_count_channel-1] = True
-#     elif open_count_channel < 0 and open_count_channel >= -self.analog_channels:
-#         pulse_function[abs(open_count_channel)-1] = 'DC'
-#         analog_params[abs(open_count_channel)-1] = {'amplitude1': channel_amp_V}
-#
-#     laser_element = Pulse_Block_Element(laser_time_bins, self.analog_channels,
-#                                         self.digital_channels, 0,
-#                                         pulse_function, markers,
-#                                         analog_params)
-#     # -------------------
-#
-#     # -- aom delay element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#     markers = [False]*self.digital_channels
-#
-#     if open_count_channel > 0 and open_count_channel <= self.digital_channels:
-#         markers[open_count_channel-1] = True
-#     elif open_count_channel < 0 and open_count_channel >= -self.analog_channels:
-#         pulse_function[abs(open_count_channel)-1] = 'DC'
-#         analog_params[abs(open_count_channel)-1] = {'amplitude1': channel_amp_V}
-#
-#     aomdelay_element = Pulse_Block_Element(aom_delay_bins, self.analog_channels,
-#                                            self.digital_channels, 0,
-#                                            pulse_function, markers,
-#                                            analog_params)
-#
-#     # -------------------
-#
-#     # -- wait time element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#     markers = [False]*self.digital_channels
-#
-#     waiting_element = Pulse_Block_Element(wait_time_bins, self.analog_channels,
-#                                           self.digital_channels, 0,
-#                                           pulse_function, markers,
-#                                           analog_params)
-#
-#     # -------------------
-#
-#     # -- seq trigger element --
-#
-#     analog_params = [{}]*self.analog_channels
-#     pulse_function = ['Idle']*self.analog_channels
-#     markers = [False]*self.digital_channels
-#
-#     if seq_channel > 0 and seq_channel <= self.digital_channels:
-#         markers[seq_channel-1] = True
-#     elif seq_channel < 0 and seq_channel >= -self.analog_channels:
-#         pulse_function[abs(seq_channel)-1] = 'DC'
-#         analog_params[abs(seq_channel)-1] = {'amplitude1': channel_amp_V}
-#
-#
-#     seqtrig_element = Pulse_Block_Element(100, self.analog_channels,
-#                                           self.digital_channels, 0,
-#                                           pulse_function,
-#                                           markers,
-#                                           analog_params)
-#
-#     # -------------------
-#
-#     element_list = [mw_element_pi2, hahn_int_time_element, mw_element_pi,
-#                     hahn_int_time_element, mw_element_pi2, laser_element,
-#                     aomdelay_element, waiting_element]
-#
-#     #FIXME: that has to be fixed in the generation
-#     laser_channel_index = abs(laser_channel)-1
-#
-#     hahn_block = Pulse_Block(name, element_list, laser_channel_index)
-#     # save block
-#     self.save_block(name, hahn_block)
-#     # set current block
-#     self.current_block = hahn_block
-#
-#     # remember number_of_taus=0 also counts as first round
-#     block_list = [(hahn_block, number_of_taus-1)]
-#     if seq_channel != 0:
-#         seq_block = Pulse_Block('seq_trigger', [seqtrig_element], laser_channel_index)
-#         block_list.append((seq_block, 0))
-#         # save block
-#         self.save_block('seq_trigger', seq_block)
-#
-#     # create ensemble out of the block(s)
-#     block_ensemble = Pulse_Block_Ensemble(name, block_list, laser_channel_index,
-#                                           rotating_frame=True)
-#     # save ensemble
-#     self.save_ensemble(name, block_ensemble)
-#     # set current block ensemble
-#     self.current_ensemble = block_ensemble
-#     # update ensemble list
-#     self.refresh_ensemble_list()
-#
-#
-# def generate_xy8(self, name='xy8', tau_start_ns=2000, tau_step_ns=20,
-#                  number_of_taus=10, xy8_number=8, mw_freq_MHz=100.0,
-#                  mw_rabi_period_ns=100, mw_amp_V=1.0, mw_channel=-1,
-#                  laser_time_ns=3000, laser_channel=1, channel_amp_V=1,
-#                  aom_delay_ns=500, open_count_channel=2, seq_channel=3,
-#                  wait_time_ns=1500):
-#     """ Converter function to use ns input instead of bins. """
-#
-#     tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
-#     tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
-#     mw_rabi_period_bins = int(self.get_sample_rate()/1e9 * mw_rabi_period_ns)
-#     laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
-#     aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
-#     wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
-#
-#     self.generate_xy8_bins(name, tau_start_bins, tau_step_bins, number_of_taus,
-#                            xy8_number, mw_freq_MHz, mw_rabi_period_bins,
-#                            mw_amp_V, mw_channel, laser_time_bins,
-#                            laser_channel, channel_amp_V, aom_delay_bins,
-#                            open_count_channel, seq_channel, wait_time_bins)
-
-def generate_xy8_bins(self, name='XY8', mw_freq_Hz=2870.0e6, mw_amp_V=0.1, pi_bins=25000,
-                      pihalf_bins=12500, xy_number_N=8, start_tau_bins=2500, incr_tau_bins=250,
-                      number_of_taus=20, laser_time_bins=75000, aom_delay_bins=17500,
-                      wait_time_bins=25000, mw_channel='a_ch1', seq_trig_channel='',
-                      gate_count_channel=''):
-    # Sanity checks
-    if self.laser_channel == mw_channel:
-        self.log.error('Laser and Microwave channel cannot be the same. '
-                'Change that!')
-        return
-    if seq_trig_channel == gate_count_channel and seq_trig_channel != '':
-        self.log.error('Gate and sequence trigger channels for fast counter '
-                'cannot be the same. Change that!')
-        return
-    if mw_channel not in self.activation_config:
-        self.log.error('MW channel "{0}" is not part of current '
-                'activation_config!'.format(mw_channel))
-        return
-    if seq_trig_channel not in self.activation_config and seq_trig_channel != '':
-        self.log.error('Sequence trigger channel "{0}" is not part of '
-                'current activation_config!'.format(seq_trig_channel))
-        return
-    if gate_count_channel not in self.activation_config and gate_count_channel != '':
-        self.log.error('Gate trigger channel "{0}" is not part of current '
-                'activation_config!'.format(gate_count_channel))
-        return
-
-    # split digital and analogue channels
-    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-
-    # create parameters, markers and function lists
-    # digital markers
-    wait_digital = [False] * self.digital_channels
-    laser_digital = [False] * self.digital_channels
-    laser_digital[digital_channels.index(self.laser_channel)] = True
-    if gate_count_channel:
-        laser_digital[digital_channels.index(gate_count_channel)] = True
-    delay_digital = [False] * self.digital_channels
-    if gate_count_channel:
-        delay_digital[digital_channels.index(gate_count_channel)] = True
-    seq_digital = [False] * self.digital_channels
-    if seq_trig_channel:
-        seq_digital[digital_channels.index(seq_trig_channel)] = True
-    pi_digital = [False] * self.digital_channels
-    tau_digital = [False] * self.digital_channels
-
-    # analogue parameters
-    wait_params = [{}] * self.analog_channels
-    laser_params = [{}] * self.analog_channels
-    delay_params = [{}] * self.analog_channels
-    seq_params = [{}] * self.analog_channels
-    pix_params = [{}] * self.analog_channels
-    pix_params[analog_channels.index(mw_channel)] = {'amplitude1': mw_amp_V,
-                                                     'frequency1': mw_freq_Hz, 'phase1': 0.0}
-    piy_params = [{}] * self.analog_channels
-    piy_params[analog_channels.index(mw_channel)] = {'amplitude1': mw_amp_V,
-                                                     'frequency1': mw_freq_Hz, 'phase1': 90.0}
-    tau_params = [{}] * self.analog_channels
-
-    # analogue functions
-    wait_function = ['Idle'] * self.analog_channels
-    laser_function = ['Idle'] * self.analog_channels
-    delay_function = ['Idle'] * self.analog_channels
-    seq_function = ['Idle'] * self.analog_channels
-    pi_function = ['Idle'] * self.analog_channels
-    pi_function[analog_channels.index(mw_channel)] = 'Sin'
-    tau_function = ['Idle'] * self.analog_channels
-
-    # create static elements
-    laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins, increment_bins=0,
-                                        pulse_function=laser_function, digital_high=laser_digital,
-                                        parameters=laser_params, use_as_tick=False)
-    delay_element = Pulse_Block_Element(init_length_bins=aom_delay_bins, increment_bins=0,
-                                        pulse_function=delay_function, digital_high=delay_digital,
-                                        parameters=delay_params, use_as_tick=False)
-    waiting_element = Pulse_Block_Element(init_length_bins=wait_time_bins, increment_bins=0,
-                                          pulse_function=wait_function, digital_high=wait_digital,
-                                          parameters=wait_params, use_as_tick=False)
-    pihalf_element = Pulse_Block_Element(init_length_bins=pihalf_bins, increment_bins=0,
-                                         pulse_function=pi_function, digital_high=pi_digital,
-                                         parameters=pix_params, use_as_tick=False)
-    pix_element = Pulse_Block_Element(init_length_bins=pi_bins, increment_bins=0,
-                                      pulse_function=pi_function, digital_high=pi_digital,
-                                      parameters=pix_params, use_as_tick=False)
-    piy_element = Pulse_Block_Element(init_length_bins=pi_bins, increment_bins=0,
-                                      pulse_function=pi_function, digital_high=pi_digital,
-                                      parameters=piy_params, use_as_tick=False)
-    tauhalf_element = Pulse_Block_Element(init_length_bins=start_tau_bins//2, increment_bins=incr_tau_bins//2,
-                                          pulse_function=tau_function, digital_high=tau_digital,
-                                          parameters=tau_params, use_as_tick=False)
-    tau_element = Pulse_Block_Element(init_length_bins=start_tau_bins, increment_bins=incr_tau_bins,
-                                      pulse_function=tau_function, digital_high=tau_digital,
-                                      parameters=tau_params, use_as_tick=False)
-
-    if seq_trig_channel:
-        seqtrig_element = Pulse_Block_Element(init_length_bins=int(20e-9 * self.sample_rate),
-                                              increment_bins=0, pulse_function=seq_function,
-                                              digital_high=seq_digital, parameters=seq_params,
-                                              use_as_tick=False)
-        # Create its own block out of the element
-        seq_block = Pulse_Block('seq_trigger', [seqtrig_element])
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
         # save block
         self.save_block('seq_trigger', seq_block)
 
     # create XY8-N block element list
     xy8_elem_list = []
+    # actual XY8-N sequence
     xy8_elem_list.append(pihalf_element)
     xy8_elem_list.append(tauhalf_element)
-    for n in range(xy_number_N):
+    for n in range(xy8_order):
         xy8_elem_list.append(pix_element)
         xy8_elem_list.append(tau_element)
         xy8_elem_list.append(piy_element)
@@ -1871,27 +725,449 @@ def generate_xy8_bins(self, name='XY8', mw_freq_Hz=2870.0e6, mw_amp_V=0.1, pi_bi
         xy8_elem_list.append(piy_element)
         xy8_elem_list.append(tau_element)
         xy8_elem_list.append(pix_element)
-        if n != xy_number_N-1:
+        if n != xy8_order-1:
             xy8_elem_list.append(tau_element)
     xy8_elem_list.append(tauhalf_element)
     xy8_elem_list.append(pihalf_element)
     xy8_elem_list.append(laser_element)
     xy8_elem_list.append(delay_element)
     xy8_elem_list.append(waiting_element)
+
+    xy8_elem_list.append(pihalf_element)
+    xy8_elem_list.append(tauhalf_element)
+    for n in range(xy8_order):
+        xy8_elem_list.append(pix_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(piy_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(pix_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(piy_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(piy_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(pix_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(piy_element)
+        xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(pix_element)
+        if n != xy8_order - 1:
+            xy8_elem_list.append(tau_element)
+    xy8_elem_list.append(tauhalf_element)
+    xy8_elem_list.append(pi3half_element)
+    xy8_elem_list.append(laser_element)
+    xy8_elem_list.append(delay_element)
+    xy8_elem_list.append(waiting_element)
+
     # create XY8-N block object
-    xy8_block = Pulse_Block(name, xy8_elem_list)
+    xy8_block = PulseBlock(name, xy8_elem_list)
     self.save_block(name, xy8_block)
 
     # create block list and ensemble object
-    block_list = [(xy8_block, number_of_taus - 1)]
-    if seq_trig_channel != '':
+    block_list = [(xy8_block, num_of_points - 1)]
+    if seq_trig_channel is not None:
         block_list.append((seq_block, 0))
 
     # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name=name, block_list=block_list,
-                                          activation_config=self.activation_config,
-                                          sample_rate=self.sample_rate,
-                                          laser_channel=self.laser_channel, rotating_frame=True)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = tau_array
     # save ensemble
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
+
+
+def generate_xy8_freq(self, name='XY8_freq', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
+                      start_freq=0.1e6, incr_freq=0.01e6, num_of_points=50, xy8_order=4,
+                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
+                      wait_time=1.0e-6, seq_trig_channel='', gate_count_channel=''):
+    """
+
+    """
+    # Sanity checks
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
+        return
+
+    # get frequency array for measurement ticks
+    freq_array = start_freq + np.arange(num_of_points) * incr_freq
+    # get tau array from freq array
+    tau_array = 1 / (2 * freq_array)
+    # calculate "real" tau and tauhalf arrays
+    real_tau_array = tau_array - rabi_period / 2
+    real_tauhalf_array = tau_array / 2 - 3 * rabi_period / 8
+    if True in (real_tau_array < 0.0) or True in (real_tauhalf_array < 0.0):
+        self.log.error('XY8 generation failed! Rabi period of {0:.3e} s is too long for start tau '
+                       'of {1:.3e} s.'.format(rabi_period, real_tau_array[0]))
+        return
+
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          0.0)
+    # get 3pihalf element (same length but 270 deg phase due to the correction of tau length)
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                           270.0)
+    # get pi elements
+    pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       0.0)
+    piy_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       90.0)
+
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
+        # Create its own block out of the element
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
+        # save block
+        self.save_block('seq_trigger', seq_block)
+
+    # create XY8-N block element list
+    xy8_elem_list = []
+    # actual XY8-N sequence
+    for i in range(num_of_points):
+        # get tau element
+        tau_element = self._get_idle_element(real_tau_array[i], 0.0, False)
+        # get tauhalf element
+        tauhalf_element = self._get_idle_element(real_tauhalf_array[i], 0.0, False)
+
+        xy8_elem_list.append(pihalf_element)
+        xy8_elem_list.append(tauhalf_element)
+        for n in range(xy8_order):
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            if n != xy8_order-1:
+                xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(tauhalf_element)
+        xy8_elem_list.append(pihalf_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+
+        xy8_elem_list.append(pihalf_element)
+        xy8_elem_list.append(tauhalf_element)
+        for n in range(xy8_order):
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            if n != xy8_order - 1:
+                xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(tauhalf_element)
+        xy8_elem_list.append(pi3half_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+
+    # create XY8-N block object
+    xy8_block = PulseBlock(name, xy8_elem_list)
+    self.save_block(name, xy8_block)
+
+    # create block list and ensemble object
+    block_list = [(xy8_block, num_of_points - 1)]
+    if seq_trig_channel is not None:
+        block_list.append((seq_block, 0))
+
+    # create ensemble out of the block(s)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = freq_array
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    return block_ensemble
+
+
+####################################################################################################
+#                                   Helper methods                                              ####
+####################################################################################################
+def _get_channel_lists(self):
+    """
+    @return: two lists with the names of digital and analog channels
+    """
+    # split digital and analogue channels
+    digital_channels = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
+    analog_channels = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+    return digital_channels, analog_channels
+
+
+def _get_idle_element(self, length, increment, use_as_tick):
+    """
+    Creates an idle pulse PulseBlockElement
+
+    @param float length: idle duration in seconds
+    @param float increment: idle duration increment in seconds
+    @param bool use_as_tick: use as tick flag of the PulseBlockElement
+
+    @return: PulseBlockElement, the generated idle element
+    """
+    # input params for MW element generation
+    idle_params = [{}] * self.analog_channels
+    idle_digital = [False] * self.digital_channels
+    idle_function = ['Idle'] * self.analog_channels
+
+    # Create idle element
+    idle_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                     pulse_function=idle_function, digital_high=idle_digital,
+                                     parameters=idle_params, use_as_tick=use_as_tick)
+    return idle_element
+
+
+def _get_trigger_element(self, length, increment, channel, use_as_tick=False, amp=None):
+    """
+    Creates a trigger PulseBlockElement
+
+    @param float length: trigger duration in seconds
+    @param float increment: trigger duration increment in seconds
+    @param string channel: The pulser channel to be triggered.
+    @param bool use_as_tick: use as tick flag of the PulseBlockElement
+    @param float amp: analog amplitude in case of analog channel in V
+
+    @return: PulseBlockElement, the generated trigger element
+    """
+    # get channel lists
+    digital_channels, analog_channels = self._get_channel_lists()
+
+    # input params for trigger element generation
+    trig_params = [{}] * self.analog_channels
+    trig_digital = [False] * self.digital_channels
+    trig_function = ['Idle'] * self.analog_channels
+
+    # Determine analogue or digital trigger channel and set parameters accordingly.
+    if 'd_ch' in channel:
+        trig_index = digital_channels.index(channel)
+        trig_digital[trig_index] = True
+    elif 'a_ch' in channel:
+        trig_index = analog_channels.index(channel)
+        trig_function[trig_index] = 'DC'
+        trig_params[trig_index] = {'amplitude1': amp}
+
+    # Create trigger element
+    trig_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                     pulse_function=trig_function, digital_high=trig_digital,
+                                     parameters=trig_params, use_as_tick=use_as_tick)
+    return trig_element
+
+
+def _get_laser_element(self, length, increment, use_as_tick, delay_time=None, amp_V=None, gate_count_chnl=None):
+    """
+    Creates laser and gate trigger PulseBlockElements
+
+    @param float length: laser pulse duration in seconds
+    @param float increment: laser pulse duration increment in seconds
+    @param bool use_as_tick: use as tick flag of the PulseBlockElement
+    @param float delay_time: (aom-) delay after the laser trigger in seconds
+                             (only for gated fast counter)
+    @param float amp_V: Analog voltage for laser and gate trigger (if those channels are analog)
+    @param string gate_count_chnl: the channel descriptor string for the gate trigger
+
+    @return: PulseBlockElement, two elements for laser and gate trigger (delay element)
+    """
+    # get channel lists
+    digital_channels, analog_channels = self._get_channel_lists()
+
+    # input params for laser element generation
+    laser_params = [{}] * self.analog_channels
+    laser_digital = [False] * self.digital_channels
+    laser_function = ['Idle'] * self.analog_channels
+    # input params for delay element generation (for gated fast counter)
+    delay_params = [{}] * self.analog_channels
+    delay_digital = [False] * self.digital_channels
+    delay_function = ['Idle'] * self.analog_channels
+
+    # Determine analogue or digital laser channel and set parameters accordingly.
+    if 'd_ch' in self.laser_channel:
+        laser_index = digital_channels.index(self.laser_channel)
+        laser_digital[laser_index] = True
+    elif 'a_ch' in self.laser_channel:
+        laser_index = analog_channels.index(self.laser_channel)
+        laser_function[laser_index] = 'DC'
+        laser_params[laser_index] = {'amplitude1': amp_V}
+    # add gate trigger for gated fast counters
+    if gate_count_chnl is not None:
+        # Determine analogue or digital gate trigger and set parameters accordingly.
+        if 'd_ch' in gate_count_chnl:
+            gate_index = digital_channels.index(gate_count_chnl)
+            laser_digital[gate_index] = True
+            delay_digital[gate_index] = True
+        elif 'a_ch' in gate_count_chnl:
+            gate_index = analog_channels.index(gate_count_chnl)
+            laser_function[gate_index] = 'DC'
+            laser_params[gate_index] = {'amplitude1': amp_V}
+            delay_function[gate_index] = 'DC'
+            delay_params[gate_index] = {'amplitude1': amp_V}
+
+    # Create laser element
+    laser_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                      pulse_function=laser_function, digital_high=laser_digital,
+                                      parameters=laser_params, use_as_tick=use_as_tick)
+    # Create delay element
+    delay_element = PulseBlockElement(init_length_s=delay_time, increment_s=0.0,
+                                      pulse_function=delay_function, digital_high=delay_digital,
+                                      parameters=delay_params, use_as_tick=use_as_tick)
+    return laser_element, delay_element
+
+
+def _get_mw_element(self, length, increment, mw_channel, use_as_tick, amp=None, freq=None,
+                    phase=None):
+    """
+    Creates a MW pulse PulseBlockElement
+
+    @param float length: MW pulse duration in seconds
+    @param float increment: MW pulse duration increment in seconds
+    @param string mw_channel: The pulser channel controlling the MW. If set to 'd_chX' this will be
+                              interpreted as trigger for an external microwave source. If set to
+                              'a_chX' the pulser (AWG) will act as microwave source.
+    @param bool use_as_tick: use as tick flag of the PulseBlockElement
+    @param float freq: MW frequency in case of analogue MW channel in Hz
+    @param float amp: MW amplitude in case of analogue MW channel in V
+    @param float phase: MW phase in case of analogue MW channel in deg
+
+    @return: PulseBlockElement, the generated MW element
+    """
+    # get channel lists
+    digital_channels, analog_channels = self._get_channel_lists()
+
+    # input params for MW element generation
+    mw_params = [{}] * self.analog_channels
+    mw_digital = [False] * self.digital_channels
+    mw_function = ['Idle'] * self.analog_channels
+
+    # Determine analogue or digital MW channel and set parameters accordingly.
+    if 'd_ch' in mw_channel:
+        mw_index = digital_channels.index(mw_channel)
+        mw_digital[mw_index] = True
+    elif 'a_ch' in mw_channel:
+        mw_index = analog_channels.index(mw_channel)
+        mw_function[mw_index] = 'Sin'
+        mw_params[mw_index] = {'amplitude1': amp, 'frequency1': freq, 'phase1': phase}
+
+    # Create MW element
+    mw_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                   pulse_function=mw_function, digital_high=mw_digital,
+                                   parameters=mw_params, use_as_tick=use_as_tick)
+    return mw_element
+
+
+def _get_mw_laser_element(self, length, increment, mw_channel, use_as_tick, delay_time=None,
+                          laser_amp=None, mw_amp=None, mw_freq=None, mw_phase=None,
+                          gate_count_chnl=None):
+    """
+
+    @param length:
+    @param increment:
+    @param mw_channel:
+    @param use_as_tick:
+    @param delay_time:
+    @param laser_amp:
+    @param mw_amp:
+    @param mw_freq:
+    @param mw_phase:
+    @param gate_count_chnl:
+    @return:
+    """
+    # get channel lists
+    digital_channels, analog_channels = self._get_channel_lists()
+
+    # input params for laser/mw element generation
+    laser_mw_params = [{}] * self.analog_channels
+    laser_mw_digital = [False] * self.digital_channels
+    laser_mw_function = ['Idle'] * self.analog_channels
+    # input params for delay element generation (for gated fast counter)
+    delay_params = [{}] * self.analog_channels
+    delay_digital = [False] * self.digital_channels
+    delay_function = ['Idle'] * self.analog_channels
+
+    # Determine analogue or digital laser channel and set parameters accordingly.
+    if 'd_ch' in self.laser_channel:
+        laser_index = digital_channels.index(self.laser_channel)
+        laser_mw_digital[laser_index] = True
+    elif 'a_ch' in self.laser_channel:
+        laser_index = analog_channels.index(self.laser_channel)
+        laser_mw_function[laser_index] = 'DC'
+        laser_mw_params[laser_index] = {'amplitude1': laser_amp}
+    # add gate trigger for gated fast counters
+    if gate_count_chnl is not None:
+        # Determine analogue or digital gate trigger and set parameters accordingly.
+        if 'd_ch' in gate_count_chnl:
+            gate_index = digital_channels.index(gate_count_chnl)
+            laser_mw_digital[gate_index] = True
+            delay_digital[gate_index] = True
+        elif 'a_ch' in gate_count_chnl:
+            gate_index = analog_channels.index(gate_count_chnl)
+            laser_mw_function[gate_index] = 'DC'
+            laser_mw_params[gate_index] = {'amplitude1': laser_amp}
+            delay_function[gate_index] = 'DC'
+            delay_params[gate_index] = {'amplitude1': laser_amp}
+    # Determine analogue or digital MW channel and set parameters accordingly.
+    if 'd_ch' in mw_channel:
+        mw_index = digital_channels.index(mw_channel)
+        laser_mw_digital[mw_index] = True
+    elif 'a_ch' in mw_channel:
+        mw_index = analog_channels.index(mw_channel)
+        laser_mw_function[mw_index] = 'Sin'
+        laser_mw_params[mw_index] = {'amplitude1': mw_amp, 'frequency1': mw_freq,
+                                     'phase1': mw_phase}
+
+    # Create laser/mw element
+    laser_mw_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                         pulse_function=laser_mw_function,
+                                         digital_high=laser_mw_digital, parameters=laser_mw_params,
+                                         use_as_tick=use_as_tick)
+    # Create delay element
+    delay_element = PulseBlockElement(init_length_s=delay_time, increment_s=0.0,
+                                      pulse_function=delay_function, digital_high=delay_digital,
+                                      parameters=delay_params, use_as_tick=False)
+    return laser_mw_element, delay_element
+
+
+def _do_channel_sanity_checks(self, **kwargs):
+    """
+    Does sanity checks of specified channels
+
+    @param string kwargs: all channel descriptors to be checked (except laser channel)
+
+    @return: error code (0: specified channels OK, -1: specified channels not OK)
+    """
+    # sanity checks
+    error_code = 0
+    for channel in kwargs:
+        if kwargs[channel] is not None and kwargs[channel] != '':
+            if kwargs[channel] not in self.activation_config:
+                self.log.error('{0} "{1}" is not part of current activation_config!'
+                               ''.format(channel, kwargs[channel]))
+                error_code = -1
+    return error_code

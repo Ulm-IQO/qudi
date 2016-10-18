@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi thread manager class.
+This file contains the Qudi thread manager class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -35,6 +35,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
         self._threads = OrderedDict()
         self.lock = Mutex()
         self.headers = ['Name', 'Thread']
+        self.thread = QtCore.QThread.currentThread()
 
     def newThread(self, name):
         """ Create a new thread with a name, return its object
@@ -49,7 +50,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
             row = len(self._threads)
             self.beginInsertRows(QtCore.QModelIndex(), row, row)
             self._threads[name] = ThreadItem(name)
-            self._threads[name].sigThreadHasQuit.connect(self.cleanupThread)
+            self._threads[name].sigThreadHasQuit.connect(self.cleanupThread, QtCore.Qt.QueuedConnection)
             self.endInsertRows()
         return self._threads[name].thread
 
@@ -62,8 +63,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
             logger.debug('Quitting thread {0}.'.format(name))
             self._threads[name].thread.quit()
         else:
-            logger.debug('You tried quitting a nonexistent thread {0}.'
-                    ''.format(name))
+            logger.debug('You tried quitting a nonexistent thread {0}.'.format(name))
 
     def joinThread(self, name, time=None):
         """Stop event loop of QThread.
@@ -78,16 +78,15 @@ class ThreadManager(QtCore.QAbstractTableModel):
             else:
                 self._threads[name].thread.wait(time)
         else:
-            logger.debug('You tried waiting for a nonexistent thread {0}.'
-                    ''.format(name))
+            logger.debug('You tried waiting for a nonexistent thread {0}.'.format(name))
 
     def cleanupThread(self, name):
-        """Remove thread from thread list if it is not running anymore.
+        """Remove thread from thread list.
 
           @param str name: unique thread name
         """
-        logger.debug('Cleaning up thread {0}.'.format(name))
-        if 'name' in self._threads and not self._threads[name].thread.isRunning():
+        if name in self._threads and not self._threads[name].thread.isRunning():
+            logger.debug('Cleaning up thread {0}.'.format(name))
             with self.lock:
                 row = self.getItemNumberByKey(name)
                 self.beginRemoveRows(QtCore.QModelIndex(), row, row)
@@ -103,8 +102,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
     def getItemByNumber(self, n):
         i = 0
-        length = len(self._threads)
-        if n < 0 or n >= length:
+        if not(0 <= n < len(self._threads)):
             raise IndexError
         it = iter(self._threads)
         key = next(it)
@@ -175,7 +173,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @return QVariant: header data for given column and role
         """
-        if section < 0 and section > 1:
+        if not(0 <= section <= 1):
             return None
         elif role != QtCore.Qt.DisplayRole:
             return None
@@ -207,5 +205,6 @@ class ThreadItem(QtCore.QObject):
             Re-emits signal containing the unique thread name.
         """
         self.sigThreadHasQuit.emit(self.name)
+        logger.debug('Thread {0} has quit.'.format(self.name))
 
 

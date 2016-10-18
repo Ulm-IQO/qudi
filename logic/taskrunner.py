@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner module.
+This file contains the Qudi task runner module.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -129,7 +129,7 @@ class TaskRunner(GenericLogic):
             t['name'] = task
             # print('tsk:', task)
             if not 'module' in config['tasks'][task]:
-                self.log.error('No module given for task {}'.format(task))
+                self.log.error('No module given for task {0}'.format(task))
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
@@ -161,10 +161,10 @@ class TaskRunner(GenericLogic):
                     if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
                         success = self._manager.startModule('logic', mod)
                         if success < 0:
-                            raise Exception('Loading module {} failed.'.format(mod))
+                            raise Exception('Loading module {0} failed.'.format(mod))
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
                 # print('Attempting to import: logic.tasks.{}'.format(t['module']))
-                mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
+                mod = importlib.__import__('logic.tasks.{0}'.format(t['module']), fromlist=['*'])
                 # print('loaded:', mod)
                 # print('dir:', dir(mod))
                 t['object'] = mod.Task(name=t['name'], runner=self,
@@ -217,7 +217,7 @@ class TaskRunner(GenericLogic):
             ):
             self.model.append(t)
         else:
-            self.log.error('Not a subclass of allowd task classes {}'.format(
+            self.log.error('Not a subclass of allowd task classes {0}'.format(
                 task))
             return False
         return True
@@ -230,13 +230,14 @@ class TaskRunner(GenericLogic):
             pok = True
             modok = False
 
-            #check if all required pre/post action tasks tasks are present
+            # check if we require pre/post actions
             if len(task['preposttasks']) == 0:
                 ppok = True
-            for pptask in task['preposttasks']:
-                for t in self.model.storage:
-                    if t['name'] == pptask:
-                        ppok =True
+
+            # check if all required pre/post action tasks tasks are present
+            for t in self.model.storage:
+                if t['name'] in task['preposttasks']:
+                    ppok =True
 
             #check if all required pause tasks are present
             #if len(task['pausetasks']) == 0:
@@ -299,7 +300,7 @@ class TaskRunner(GenericLogic):
         elif task['object'].can('postrun'):
             task['object'].postrun()
         else:
-            self.log.error('Task cannot be run: {}'.format(task.name))
+            self.log.error('Task cannot be run: {0}'.format(task.name))
 
     def pauseTaskByIndex(self, index):
         """ Try pausing a task identified by its list index.
@@ -326,7 +327,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('pause'):
             task['object'].pause()
         else:
-            self.log.error('Task cannot be paused:  {}'.format(task['name']))
+            self.log.error('Task cannot be paused:  {0}'.format(task['name']))
 
     def stopTaskByIndex(self, index):
         """ Try stopping a task identified by its list index.
@@ -349,7 +350,7 @@ class TaskRunner(GenericLogic):
         if task['object'].can('finish'):
             task['object'].finish()
         else:
-            self.log.error('Task cannot be stopped: {}'.format(task['name']))
+            self.log.error('Task cannot be stopped: {0}'.format(task['name']))
 
     def getTaskByName(self, taskname):
         """ Get task dictionary for a given task name.

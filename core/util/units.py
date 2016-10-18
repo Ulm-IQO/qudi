@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains QuDi methods for handling real-world values with units.
+This file contains Qudi methods for handling real-world values with units.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -104,7 +104,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
                 elif np.isinf(np.float(str_val)):
                     value = np.inf
                 else:
-                    value = eval('{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1))
+                    value = float('{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1))
 
             else:
                 # the factor 10 moves the displayed digit by one to the right,
@@ -211,7 +211,7 @@ def round_value_to_error(value, error):
 
     first_err_digit = '{:e}'.format(error)[0]
 
-    if first_err_digit == '1' or first_err_digit == '2':
+    if first_err_digit in ('1', '2'):
         round_digit += 1
 
     # Use the python round function, since np.round uses the __repr__ conversion

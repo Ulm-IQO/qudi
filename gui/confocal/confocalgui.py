@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi GUI for general Confocal control.
+This file contains the Qudi GUI for general Confocal control.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -196,7 +196,7 @@ class ConfocalGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
         self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
@@ -230,10 +230,10 @@ class ConfocalGui(GUIBase):
         """
 
         # Getting an access to all connectors:
-        self._scanning_logic = self.connector['in']['confocallogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._optimizer_logic = self.connector['in']['optimizerlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        self._scanning_logic = self.get_in_connector('confocallogic1')
+        self._save_logic = self.get_in_connector('savelogic')
+        self._optimizer_logic = self.get_in_connector('optimizerlogic1')
+        self._save_logic = self.get_in_connector('savelogic')
 
         self._hardware_state = True
 
@@ -280,6 +280,20 @@ class ConfocalGui(GUIBase):
 
         # Hide Tiltcorrection window
         self._mw.tilt_correction_dockWidget.hide()
+
+        # Hide scan line display
+        self._mw.scanLineDockWidget.hide()
+
+        # set up scan line plot
+        sc = self._scanning_logic._scan_counter
+        sc = sc - 1 if sc >= 1 else sc
+        if self._scanning_logic._zscan:
+            data = self._scanning_logic.depth_image[sc, :, 0:4:3]
+        else:
+            data = self._scanning_logic.xy_image[sc, :, 0:4:3]
+
+        self.scan_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
+        self._mw.scanLineGraphicsView.addItem(self.scan_line_plot)
 
         ###################################################################
         #               Configuration of the optimizer tab                #
@@ -420,8 +434,8 @@ class ConfocalGui(GUIBase):
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming
         # from the Logic module must be in micrometer.
-        self.slider_res = 0.001  # 1 nanometer resolution per one change, units
-                                 # are micrometer
+        # 1 nanometer resolution per one change, units are micrometer
+        self.slider_res = 0.001
 
         # How many points are needed for that kind of resolution:
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0]) / self.slider_res
@@ -509,7 +523,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
 
         # Get initial tilt correction values
-        self._mw.action_Tiltcorrection.setChecked(self._scanning_logic.TiltCorrection)
+        self._mw.action_TiltCorrection.setChecked(self._scanning_logic._scanning_device.tiltcorrection)
 
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
@@ -524,7 +538,7 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
         # Connect tiltcorrection stuff
-        self._mw.action_Tiltcorrection.triggered.connect(self.use_tiltcorrection_clicked)
+        self._mw.action_TiltCorrection.triggered.connect(self.use_tiltcorrection_clicked)
         self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)
         self._mw.tilt_set_02_pushButton.clicked.connect(self.set_tiltpoint_02_clicked)
         self._mw.tilt_set_03_pushButton.clicked.connect(self.set_tiltpoint_03_clicked)
@@ -557,6 +571,8 @@ class ConfocalGui(GUIBase):
         # Connect the emitted signal of an image change from the logic with
         # a refresh of the GUI picture:
         self._scanning_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
+        self._scanning_logic.signal_xy_image_updated.connect(self.refresh_scan_line)
+        self._scanning_logic.signal_depth_image_updated.connect(self.refresh_scan_line)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_depth_image)
         self._optimizer_logic.signal_image_updated.connect(self.refresh_refocus_image)
         self._scanning_logic.sigImageXYInitialized.connect(self.adjust_xy_window)
@@ -1584,6 +1600,15 @@ class ConfocalGui(GUIBase):
             )
         )
 
+    def refresh_scan_line(self):
+        """ Get the previously scanned image line and display it in the scan line plot. """
+        sc = self._scanning_logic._scan_counter
+        sc = sc - 1 if sc >= 1 else sc
+        if self._scanning_logic._zscan:
+            self.scan_line_plot.setData(self._scanning_logic.depth_image[sc, :, 0:4:3])
+        else:
+            self.scan_line_plot.setData(self._scanning_logic.xy_image[sc, :, 0:4:3])
+
     def adjust_xy_window(self):
         """ Fit the visible window in the xy scan to full view.
 
@@ -1854,17 +1879,23 @@ class ConfocalGui(GUIBase):
         self._mw.scan_control_dockWidget.show()
         self._mw.depth_scan_dockWidget.show()
         self._mw.optimizer_dockWidget.show()
+        self._mw.tilt_correction_dockWidget.hide()
+        self._mw.scanLineDockWidget.hide()
 
         # re-dock any floating dock widgets
         self._mw.xy_scan_dockWidget.setFloating(False)
         self._mw.scan_control_dockWidget.setFloating(False)
         self._mw.depth_scan_dockWidget.setFloating(False)
         self._mw.optimizer_dockWidget.setFloating(False)
+        self._mw.tilt_correction_dockWidget.setFloating(False)
+        self._mw.scanLineDockWidget.setFloating(False)
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.xy_scan_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.depth_scan_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.optimizer_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.tilt_correction_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
 
         # Resize window to default size
         self._mw.resize(1255, 939)

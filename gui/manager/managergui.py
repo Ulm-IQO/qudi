@@ -2,18 +2,18 @@
 """ This module contains a GUI through which the Manager core class can be controlled.
 It can load and reload modules, show the configuration, and re-open closed windows.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -35,7 +35,6 @@ except:
     pass
 from collections import OrderedDict
 from .errordialog import ErrorDialog
-import threading
 import numpy as np
 import os
 
@@ -50,7 +49,7 @@ except:
 
 
 class ManagerGui(GUIBase):
-    """This class provides a GUI to the QuDi manager.
+    """This class provides a GUI to the Qudi manager.
 
       @signal sigStartAll: sent when all modules should be loaded
       @signal str str sigStartThis: load a specific module
@@ -125,18 +124,14 @@ class ManagerGui(GUIBase):
         self.versionLabel.setOpenExternalLinks(True)
         self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
-        self._mw.loadAllButton.clicked.connect(
-            self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
-        self._mw.actionReload_current_configuration.triggered.connect(
-            self.reloadConfig)
+        self._mw.actionReload_current_configuration.triggered.connect(self.reloadConfig)
         self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
-        self._mw.action_Load_all_modules.triggered.connect(
-            self._manager.startAllConfiguredModules)
-        self._mw.actionAbout_Qt.triggered.connect(
-            QtWidgets.QApplication.aboutQt)
-        self._mw.actionAbout_QuDi.triggered.connect(self.showAboutQuDi)
+        self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.actionAbout_Qt.triggered.connect(QtWidgets.QApplication.aboutQt)
+        self._mw.actionAbout_Qudi.triggered.connect(self.showAboutQudi)
+        self._mw.actionReset_to_default_layout.triggered.connect(self.resetToDefaultLayout)
 
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
@@ -173,10 +168,9 @@ class ManagerGui(GUIBase):
         self._mw.remoteWidget.sharedModuleListView.setModel(
             self._manager.rm.sharedModules)
 
-        self._mw.config_display_dockWidget.hide()
+        self._mw.configDisplayDockWidget.hide()
         self._mw.remoteDockWidget.hide()
         self._mw.threadDockWidget.hide()
-        #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
     def on_deactivate(self, e):
@@ -195,13 +189,12 @@ class ManagerGui(GUIBase):
         self.sigStopModule.disconnect()
         self.sigLoadConfig.disconnect()
         self.sigSaveConfig.disconnect()
-        self._mw.loadAllButton.clicked.disconnect()
         self._mw.actionQuit.triggered.disconnect()
         self._mw.actionLoad_configuration.triggered.disconnect()
         self._mw.actionSave_configuration.triggered.disconnect()
         self._mw.action_Load_all_modules.triggered.disconnect()
         self._mw.actionAbout_Qt.triggered.disconnect()
-        self._mw.actionAbout_QuDi.triggered.disconnect()
+        self._mw.actionAbout_Qudi.triggered.disconnect()
         self.saveWindowPos(self._mw)
         self._mw.close()
 
@@ -212,10 +205,36 @@ class ManagerGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def showAboutQuDi(self):
-        """Show a dialog with details about QuDi.
+    def showAboutQudi(self):
+        """Show a dialog with details about Qudi.
         """
         self._about.show()
+
+    def resetToDefaultLayout(self):
+        """ Return the dockwidget layout and visibility to its default state """
+        self._mw.configDisplayDockWidget.setVisible(False)
+        self._mw.consoleDockWidget.setVisible(True)
+        self._mw.remoteDockWidget.setVisible(False)
+        self._mw.threadDockWidget.setVisible(False)
+        self._mw.logDockWidget.setVisible(True)
+
+        self._mw.actionConfigurationView.setChecked(False)
+        self._mw.actionConsoleView.setChecked(True)
+        self._mw.actionRemoteView.setChecked(False)
+        self._mw.actionThreadsView.setChecked(False)
+        self._mw.actionLogView.setChecked(True)
+
+        self._mw.configDisplayDockWidget.setFloating(False)
+        self._mw.consoleDockWidget.setFloating(False)
+        self._mw.remoteDockWidget.setFloating(False)
+        self._mw.threadDockWidget.setFloating(False)
+        self._mw.logDockWidget.setFloating(False)
+
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.configDisplayDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.consoleDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.remoteDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.threadDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.logDockWidget)
 
     def handleLogEntry(self, entry):
         """ Forward log entry to log widget and show an error popup if it is
@@ -234,7 +253,7 @@ class ManagerGui(GUIBase):
         # make sure we only log errors and above from ipython
         logging.getLogger('ipykernel').setLevel(logging.WARNING)
         self.log.debug('IPy activation in thread {0}'.format(
-            threading.get_ident()))
+            QtCore.QThread.currentThreadId()))
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
         self.kernel = self.kernel_manager.kernel
@@ -294,7 +313,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        self.log.debug('IPy deactivation: {0}'.format(threading.get_ident()))
+        self.log.debug('IPy deactivation: {0}'.format(QtCore.QThread.currentThreadId()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):
@@ -503,11 +522,11 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
 
 
 class AboutDialog(QtWidgets.QDialog):
-    """ This class represents the QuDi About dialog.
+    """ This class represents the Qudi About dialog.
     """
 
     def __init__(self):
-        """ Create QuDi About Dialog.
+        """ Create Qudi About Dialog.
         """
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -534,7 +553,7 @@ class ConsoleSettingsDialog(QtWidgets.QDialog):
 
 
 class ModuleListItem(QtWidgets.QFrame):
-    """ This class represents a module widget in the QuDi module list.
+    """ This class represents a module widget in the Qudi module list.
 
       @signal str str sigLoadThis: gives signal with base and name of module
                                    to be loaded
@@ -603,10 +622,8 @@ class ModuleListItem(QtWidgets.QFrame):
         if self.statusLabel.text() != 'exception, cannot get state':
             try:
                 if (self.base in self.manager.tree['loaded']
-                        and self.name in self.manager.tree['loaded'][
-                            self.base]):
-                    state = self.manager.tree['loaded'][
-                        self.base][self.name].getState()
+                        and self.name in self.manager.tree['loaded'][self.base]):
+                    state = self.manager.tree['loaded'][self.base][self.name].getState()
                 else:
                     state = 'not loaded'
             except:

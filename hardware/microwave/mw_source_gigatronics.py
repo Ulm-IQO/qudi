@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file to control Gigatronics Device.
+This file contains the Qudi hardware file to control Gigatronics Device.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Parts of this file were developed from a PI3diamond module which is
 Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
@@ -25,9 +25,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import numpy as np
+import time
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
 
 
 class MicrowaveGigatronics(Base, MicrowaveInterface):
@@ -69,13 +70,22 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+            self._gpib_connection = self.rm.open_resource(
+                self._gpib_address,
+                read_termination='\r\n',
+                timeout=self._gpib_timeout*1000,  # config is seconds, pyvisa is millisecondss
+                )
         except:
             self.log.error('This is MWgigatronics: could not connect to the '
                     'GPIB address >>{}<<.'.format(self._gpib_address))
             raise
-
+        self._gpib_connection.write('*RST')
+        idnlist = []
+        while len(idnlist) < 3:
+            idnlist = self._gpib_connection.query('*IDN?').split(', ')
+            print(idnlist)
+            time.sleep(0.1)
+        self.model = idnlist[1]
         self.log.info('MWgigatronics initialised and connected to hardware.')
 
     def on_deactivate(self, e):
@@ -86,6 +96,41 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         """
         self._gpib_connection.close()
         self.rm.close()
+
+    def get_limits(self):
+        """Limits of Gigatronics 2400/2500 microwave source series.
+
+          return MicrowaveLimits: limits of the particular Gigatronics MW source model
+        """
+        limits = MicrowaveLimits()
+        limits.supported_modes = ('CW', 'LIST')
+
+        limits.min_frequency = 100e3
+        limits.max_frequency = 20e9
+
+        limits.min_power = -144
+        limits.max_power = 10
+
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 20e9
+        limits.list_maxentries = 4000
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 20e9
+        limits.sweep_maxentries = 10001
+
+        if self.model.startswith('2508'):
+            limits.max_frequency = 8e9
+        elif self.model.startswith('2520'):
+            limits.max_frequency = 20e9
+        elif self.model.startswith('2526'):
+            limits.max_frequency = 26.5e9
+        elif self.model.startswith('2540'):
+            limits.max_frequency = 40e9
+        else:
+            self.log.warn('Unknown Gigatronics moel, you are on your own!')
+
+        return limits
 
     def on(self):
         """ Switches on any preconfigured microwave output.
@@ -121,7 +166,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if power != None:
+        if power is not None:
             self._gpib_connection.write(':POW {:f} DBM'.format(power))
             return 0
         else:
@@ -144,8 +189,8 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if freq != None:
-            self._gpib_connection.write(':FREQ {:e}'.format(freq))
+        if freq is not None:
+            self._gpib_connection.write(':FREQ {0:e}'.format(freq))
             return 0
         else:
             return -1
@@ -165,11 +210,11 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         error = 0
         self._gpib_connection.write(':MODE CW')
 
-        if freq != None:
+        if freq is not None:
             error = self.set_frequency(freq)
         else:
             return -1
-        if power != None:
+        if power is not None:
             error = self.set_power(power)
         else:
             return -1
@@ -186,29 +231,33 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         """
         error = 0
 
-        if self.set_cw(freq[0],power) != 0:
+        if self.set_cw(freq[0], power) != 0:
+            return -1
+        try:
+            self._gpib_connection.write('*SRE 0')
+            self._gpib_connection.write(':LIST:SEQ:AUTO ON')
+            freqstring = '{0:.1f},'.format(freq[0]) + ','.join(('{0:.1f}'.format(f) for f in freq))
+            powstring = '{0:.3f},'.format(power) + ','.join(('{0:.3f}'.format(power) for f in freq))
+            self._gpib_connection.write('LIST:FREQ {0:s}'.format(freqstring))
+            self._gpib_connection.write('LIST:POW {0:s}'.format(powstring))
+            self._gpib_connection.write('LIST:DWEL 0.002000 S')
+            self._gpib_connection.write('LIST:RFOffTime 0.000000 MS')
+            self._gpib_connection.write('*OPC?')
+            self._gpib_connection.write('LIST:PREC 1')
+            # wait for '1' from OPC
+            self._gpib_connection.read()
+            self._gpib_connection.write(':LIST:REP STEP')
+            self._gpib_connection.write(':TRIG:SOUR EXT')
+            self._gpib_connection.write('*SRE 239')
+            self._gpib_connection.write('*SRE 167')
+
+            nrpoints = int(np.round(float(self._gpib_connection.query(':LIST:FREQ:POIN?'))))
+            if nrpoints != len(freq) + 1:
+                self.log.error('List upload failed: expected {0} points, got {1}.'.format(len(freq) + 1, nrpoints))
+                error = -1
+        except visa.VisaIOError:
+            self.log.error('List upload failed, I/O error.')
             error = -1
-
-        self._gpib_connection.write(':MODE LIST')
-        self._gpib_connection.write(':LIST:SEQ:AUTO ON')
-        self._gpib_connection.write(':LIST:DEL:LIST 1')
-        FreqString = ' '
-        for f in freq[:-1]:
-            FreqString += '{:f},'.format(f)
-        FreqString += '{:f}'.format(freq(-1))
-        self._gpib_connection.write(':LIST:FREQ' + FreqString)
-        self._gpib_connection.write(':LIST:POW' + (' {:f},'.format(power * len(freq[:-1]))))
-        self._gpib_connection.write(':LIST:DWEL' + (' {:f},'.format(0.3 * len(freq[:-1]))))
-        # ask crashes on Gigatronics, so we have to omit the sanity check
-        self._gpib_connection.write(':LIST:PREC 1')
-        self._gpib_connection.write(':LIST:REP STEP')
-        self._gpib_connection.write(':TRIG:SOUR EXT')
-        self._gpib_connection.write(':OUTP ON')
-
-        N = int(np.round(float(self._gpib_connection.ask(':LIST:FREQ:POIN?'))))
-        if N != len(freq):
-            error = -1
-
         return error
 
     def reset_listpos(self):#
@@ -216,21 +265,21 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._gpib_connection.write(':MODE CW')
         self._gpib_connection.write(':MODE LIST')
-        return 0
+        mode = self._gpib_connection.query(':MODE?')
+        return 0 if 'LIST' in mode else -1
 
     def list_on(self):
         """ Switches on the list mode.
 
         @return int: error code (0:OK, -1:error)
         """
-
-        self._gpib_connection.write(':LIST:PREC 1')
-        self._gpib_connection.write(':LIST:REP STEP')
-        self._gpib_connection.write(':TRIG:SOUR EXT')
-        self._gpib_connection.write(':MODE LIST')
+        #self._gpib_connection.write(':LIST:REP STEP')
+        #self._gpib_connection.write(':TRIG:SOUR EXT')
+        #self._gpib_connection.write(':LIST:SYNC 3')
+        #self._gpib_connection.write(':LIST:SYNC:DEL 50')
+        #self._gpib_connection.write(':MODE LIST')
         self._gpib_connection.write(':OUTP ON')
 
         return 0
