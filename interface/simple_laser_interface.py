@@ -67,7 +67,7 @@ class SimpleLaserInterface:
 
     def get_current(self):
         """ Return laser current
-        @return float: Actual laser current in amperes
+        @return float: actual laser current as ampere or percentage of maximum current
         """
         raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 

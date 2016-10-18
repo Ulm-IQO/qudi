@@ -22,6 +22,7 @@ from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 import pyqtgraph as pg
 import numpy as np
+import time
 
 from .qzmqkernel import QZMQKernel
 from core.util.network import netobtain
@@ -66,8 +67,10 @@ class QudiKernelLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        for kernel in self.kernellist:
-            self.stopKernel(kernel)
+        while len(self.kernellist) > 0:
+            self.stopKernel(tuple(self.kernellist.keys())[0])
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(0.05)
 
     def startKernel(self, config, external=None):
         """Start a qudi inprocess jupyter kernel.
