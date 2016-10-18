@@ -19,60 +19,78 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import function_signature
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
-class PIDControllerInterface:
+
+class PIDControllerInterface(metaclass=InterfaceMetaclass):
     _modtype = 'PIDControllerInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def get_kp(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_kp(self, kp):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_ki(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_ki(self, ki):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_kd(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_kd(self, kd):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_setpoint(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_setpoint(self, setpoint):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_manual_value(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_manual_value(self, manualvalue):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_enabled(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_enabled(self, enabled):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_control_limits(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_control_limits(self, limits):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_process_value(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_control_value(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_extra(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
