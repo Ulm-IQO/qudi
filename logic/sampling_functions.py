@@ -29,7 +29,6 @@ class SamplingFunctions():
         sequences.
     """
     def __init__(self):
-
         # If you want to define a new function, make a new method and add the
         # reference to this function to the _math_func dictionary:
         self._math_func = OrderedDict()
