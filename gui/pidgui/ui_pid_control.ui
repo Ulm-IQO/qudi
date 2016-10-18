@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>862</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -46,7 +46,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="pid_trace_DockWidget">
    <property name="windowTitle">
-    <string>PID disp&amp;lay</string>
+    <string>PID display</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
@@ -156,7 +156,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>&amp;PID parameters</string>
+    <string>PID parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
