@@ -49,7 +49,7 @@
      <x>0</x>
      <y>0</y>
      <width>888</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -90,7 +90,7 @@
   </widget>
   <widget class="QDockWidget" name="scanParametersDockWidget">
    <property name="windowTitle">
-    <string>Scan &amp;parameters</string>
+    <string>Scan parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -176,7 +176,7 @@ High bin number gives noisy but detailed data.</string>
   </widget>
   <widget class="QDockWidget" name="wavelengthDockWidget">
    <property name="windowTitle">
-    <string>Wavele&amp;ngth</string>
+    <string>Wavelength</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>

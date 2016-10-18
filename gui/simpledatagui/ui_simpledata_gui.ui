@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>791</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -37,7 +37,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="traceDockWidget">
    <property name="windowTitle">
-    <string>&amp;Display</string>
+    <string>Display</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
