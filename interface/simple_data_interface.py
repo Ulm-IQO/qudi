@@ -20,20 +20,21 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class SimpleDataInterface():
+class SimpleDataInterface(metaclass=InterfaceMetaclass):
 
     _modtype = 'SimpleDataInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def getData(self):
         """ Return a measured value """
-        raise InterfaceImplementationError('SimpleDatsInterface->getData')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def getChannels(self):
         """ Return number of channels for value """
-        raise InterfaceImplementationError('SimpleDatsInterface->getChannels')
-        return -1
+        pass
