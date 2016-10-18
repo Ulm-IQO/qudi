@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*
 """
-This file contains the QuDi logic class for optimizing scanner position.
+This file contains the Qudi logic class for optimizing scanner position.
 
-QuDi is free software: you can redistribute it and/or modify24,91
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -64,7 +64,7 @@ class OptimizerLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key, config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         # setting standard parameter for refocus
         self.refocus_XY_size = 0.6
@@ -96,8 +96,8 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._fit_logic = self.get_in_connector('fitlogic')
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
@@ -579,9 +579,9 @@ class OptimizerLogic(GenericLogic):
 
     def set_position(self, tag, x=None, y=None, z=None, a=None):
 
-        if x != None:
+        if x is not None:
             self._current_x = x
-        if y != None:
+        if y is not None:
             self._current_y = y
-        if z != None:
+        if z is not None:
             self._current_z = z

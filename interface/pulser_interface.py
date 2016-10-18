@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware interface for pulsing devices.
+This file contains the Qudi hardware interface for pulsing devices.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -152,7 +152,7 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>upload_asset')
         return -1
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
@@ -174,6 +174,8 @@ class PulserInterface():
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+        if load_dict is None:
+            load_dict = {}
         raise InterfaceImplementationError('PulserInterface>load_asset')
         return -1
 
@@ -240,7 +242,7 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>set_sampling_rate')
         return -1.
 
-    def get_analog_level(self, amplitude=[], offset=[]):
+    def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
         @param list amplitude: optional, if a specific amplitude value (in Volt
@@ -277,10 +279,14 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if amplitude is None:
+            amplitude = []
+        if offset is None:
+            offset = []
         raise InterfaceImplementationError('PulserInterface>get_a_ch_amplitude')
         return -1
 
-    def set_analog_level(self, amplitude={}, offset={}):
+    def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
         @param dict amplitude: dictionary, with key being the channel and items
@@ -309,11 +315,15 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if amplitude is None:
+            amplitude = {}
+        if offset is None:
+            offset = {}
 
         raise InterfaceImplementationError('PulserInterface>set_a_ch_amplitude')
         return -1
 
-    def get_digital_level(self, low=[], high=[]):
+    def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
         @param list low: optional, if a specific low value (in Volt) of a
@@ -348,11 +358,15 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = []
+        if high is None:
+            high = []
 
         raise InterfaceImplementationError('PulserInterface>get_a_ch_offset')
         return -1
 
-    def set_digital_level(self, low={}, high={}):
+    def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
         @param dict low: dictionary, with key being the channel and items being
@@ -379,11 +393,15 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
 
         raise InterfaceImplementationError('PulserInterface>set_a_ch_offset')
         return -1
 
-    def get_active_channels(self, ch=[]):
+    def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
         @param list ch: optional, if specific analog or digital channels are
@@ -400,10 +418,12 @@ class PulserInterface():
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
+        if ch is None:
+            ch = []
         raise InterfaceImplementationError('PulserInterface>get_active_channels')
         return [-1]
 
-    def set_active_channels(self, ch={}):
+    def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the analog or digital
@@ -427,6 +447,8 @@ class PulserInterface():
         The hardware itself has to handle, whether separate channel activation
         is possible.
         """
+        if ch is None:
+            ch = {}
         raise InterfaceImplementationError('PulserInterface>set_active_channels')
         return {}, {}
 

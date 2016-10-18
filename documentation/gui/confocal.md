@@ -80,7 +80,7 @@ If this box is checked only the pure image will be saved. If it is unchecked als
 
 ### Switch off hardware
 
-If one wants to change from the QuDi to the "old" pi3diamond software one should use this button to disconnect QuDi from the hardware.
+If one wants to change from the Qudi to the "old" pi3diamond software one should use this button to disconnect Qudi from the hardware.
 
 
 ## Optimiser - Settings

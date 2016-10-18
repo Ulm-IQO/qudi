@@ -21,7 +21,7 @@ from threading import Thread
 from IPython.utils.warn import warn
 
 
-class ParentPollerUnix(object):
+class ParentPollerUnix:
     """ A Unix-specific daemon thread that terminates the program immediately
     when the parent process no longer exists.
     """
@@ -44,7 +44,7 @@ class ParentPollerUnix(object):
                 raise
 
 
-class ParentPollerWindows(object):
+class ParentPollerWindows:
     """ A Windows-specific daemon thread that listens for a special event that
     signals an interrupt and, optionally, terminates the program immediately
     when the parent process no longer exists.

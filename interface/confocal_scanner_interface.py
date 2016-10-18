@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains the QuDi interface file for confocal scanner.
+This module contains the Qudi interface file for confocal scanner.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -51,7 +51,7 @@ class ConfocalScannerInterface:
         raise InterfaceImplementationError('ConfocalScannerInterface>get_position_range')
         return -1
 
-    def set_position_range(self, myrange=[[0, 1], [0, 1], [0, 1], [0, 1]]):
+    def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
         @param float [4][2] myrange: array of 4 ranges with an array containing
@@ -59,17 +59,21 @@ class ConfocalScannerInterface:
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [[0, 1], [0, 1], [0, 1], [0, 1]]
 
         raise InterfaceImplementationError('ConfocalScannerInterface>set_position_range')
         return -1
 
-    def set_voltage_range(self, myrange=[-10., 10.]):
+    def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
         @param float [2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        if myrange is None:
+            myrange = [-10., 10.]
 
         raise InterfaceImplementationError('ConfocalScannerInterface>set_voltage_range')
         return -1

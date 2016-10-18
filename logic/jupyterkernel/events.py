@@ -52,7 +52,7 @@ class EventManager():
           If ``event`` is not one of the known events.
         """
         if not callable(function):
-            raise TypeError('Need a callable, got %r' % function)
+            raise TypeError('Need a callable, got {0!r}'.format(function))
         self.callbacks[event].append(function)
     
     def unregister(self, event, function):
@@ -69,7 +69,7 @@ class EventManager():
             try:
                 func(*args, **kwargs)
             except Exception:
-                print("Error in callback {} (for {}):".format(func, event))
+                print("Error in callback {0} (for {1}):".format(func, event))
                 self.kernel.showtraceback()
 
 # event_name -> prototype mapping

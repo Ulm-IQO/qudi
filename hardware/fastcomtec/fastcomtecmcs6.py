@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file implementation for FastComtec p7887 .
+This file contains the Qudi hardware file implementation for FastComtec p7887 .
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -151,7 +151,7 @@ class FastComtec(Base, FastCounterInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.GATED = False
         self.MINIMAL_BINWIDTH = 0.1e-9    # in seconds per bin
@@ -434,7 +434,7 @@ class FastComtec(Base, FastCounterInterface):
         #~ setting.fstchan = t/6.4
         #~ self.dll.StoreSettingData(ctypes.byref(setting), 0)
         #~ self.dll.NewSetting(0)
-        self.dll.RunCmd(0, 'DELAY=%f' % t)
+        self.dll.RunCmd(0, 'DELAY={0:f}'.format(t))
         return self.GetDelay()
 
     def GetDelay(self):
@@ -471,7 +471,7 @@ class FastComtec(Base, FastCounterInterface):
         fil = open(filename + '.asc', 'w')
         for i in laser_index:
             for n in data[i:i+int(round(3000/(0.1*2**self.GetBitshift())))+int(round(1000/(0.1*2**self.GetBitshift())))]:
-                fil.write('%s\n'%n)
+                fil.write('{0!s}\n'.format(n))
         fil.close()
 
     def SaveData(self, filename):
@@ -479,7 +479,7 @@ class FastComtec(Base, FastCounterInterface):
         data = self.get_data()
         fil = open(filename + '.asc', 'w')
         for n in data:
-            fil.write('%s\n'%n)
+            fil.write('{0!s}\n'.format(n))
         fil.close()
 
     def GetState(self):

@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi remote object manager class.
+This file contains the Qudi remote object manager class.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -89,10 +89,10 @@ class RemoteObjectManager(QObject):
                     return self.modules.storage[name]
                 else:
                     for base in ['hardware', 'logic', 'gui']:
-                        logger.info('remotesearch: {}'.format(name))
+                        logger.info('remotesearch: {0}'.format(name))
                         if name in self._manager.tree['defined'][base] and 'remoteaccess' in self._manager.tree['defined'][base][name]:
                             self._manager.startModule(base, name)
-                            logger.info('remoteload: {}{}'.format(base, name))
+                            logger.info('remoteload: {0}{1}'.format(base, name))
                     if name in self.modules.storage:
                         return self.modules.storage[name]
                     else:

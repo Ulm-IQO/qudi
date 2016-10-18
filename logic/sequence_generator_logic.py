@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi sequence generator logic for general sequence structure.
+This file contains the Qudi sequence generator logic for general sequence structure.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
@@ -29,10 +29,10 @@ from collections import OrderedDict
 import inspect
 import importlib
 
-from logic.pulse_objects import Pulse_Block_Element
-from logic.pulse_objects import Pulse_Block
-from logic.pulse_objects import Pulse_Block_Ensemble
-from logic.pulse_objects import Pulse_Sequence
+from logic.pulse_objects import PulseBlockElement
+from logic.pulse_objects import PulseBlock
+from logic.pulse_objects import PulseBlockEnsemble
+from logic.pulse_objects import PulseSequence
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
 from logic.samples_write_methods import SamplesWriteMethods
@@ -48,7 +48,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
     How the logic will contruct its objects according to configuration dicts.
     The configuration dicts contain essentially, which parameters of either the
-    Pulse_Block_Element objects or the Pulse_Block objects can be changed and
+    PulseBlockElement objects or the PulseBlock objects can be changed and
     set via the GUI.
 
     In the end the information transfer happend through lists (read by the GUI)
@@ -64,11 +64,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
 
     # define signals
-    signal_block_list_updated = QtCore.Signal()
-    signal_ensemble_list_updated = QtCore.Signal()
-    signal_sequence_list_updated = QtCore.Signal()
-    sigLoadedAssetUpdated = QtCore.Signal()
-    sigSampleEnsembleComplete = QtCore.Signal()
+    sigBlockDictUpdated = QtCore.Signal(dict)
+    sigEnsembleDictUpdated = QtCore.Signal(dict)
+    sigSequenceDictUpdated = QtCore.Signal(dict)
+    sigSampleEnsembleComplete = QtCore.Signal(str)
+    sigSampleSequenceComplete = QtCore.Signal(str)
+    sigCurrentBlockUpdated = QtCore.Signal(object)
+    sigCurrentEnsembleUpdated = QtCore.Signal(object)
+    sigCurrentSequenceUpdated = QtCore.Signal(object)
+    sigSettingsUpdated = QtCore.Signal(list, str, float, dict)
+    sigPredefinedSequencesUpdated = QtCore.Signal(dict)
+    sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -77,7 +83,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key,config[key]))
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
@@ -89,12 +95,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.current_ensemble = None
         self.current_sequence = None
 
-        # The string names of the created Pulse_Block objects are saved here:
-        self.saved_pulse_blocks = []
-        # The string names of the created Pulse_Block_Ensemble objects are saved here:
-        self.saved_pulse_block_ensembles = []
-        # The string names of the created Sequence objects are saved here:
-        self.saved_pulse_sequences = []
+        # The created PulseBlock objects are saved in this dictionary. The keys are the names.
+        self.saved_pulse_blocks = OrderedDict()
+        # The created PulseBlockEnsemble objects are saved in this dictionary.
+        # The keys are the names.
+        self.saved_pulse_block_ensembles = OrderedDict()
+        # The created Sequence objects are saved in this dictionary. The keys are the names.
+        self.saved_pulse_sequences = OrderedDict()
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -128,15 +135,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.digital_channels = 4
         self.activation_config = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         self.laser_channel = 'd_ch1'
-        self.amplitude_list = OrderedDict()
-        self.amplitude_list['a_ch1'] = 0.5
-        self.amplitude_list['a_ch2'] = 0.5
-        self.amplitude_list['a_ch3'] = 0.5
-        self.amplitude_list['a_ch4'] = 0.5
+        self.amplitude_dict = OrderedDict({'a_ch1': 0.5, 'a_ch2': 0.5, 'a_ch3': 0.5, 'a_ch4': 0.5})
         self.sample_rate = 25e9
         # The file format for the sampled hardware-compatible waveforms and sequences
         self.waveform_format = 'wfmx' # can be 'wfmx', 'wfm' or 'fpga'
         self.sequence_format = 'seqx' # can be 'seqx' or 'seq'
+
+        # a dictionary with all predefined generator methods and measurement sequence names
+        self.generate_methods = None
+
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -149,24 +156,26 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                          of the state which should be reached after the event
                          had happened.
         """
-        self.refresh_block_list()
-        self.refresh_ensemble_list()
-        self.refresh_sequence_list()
+        self._get_blocks_from_file()
+        self._get_ensembles_from_file()
+        self._get_sequences_from_file()
 
         self._attach_predefined_methods()
 
         if 'activation_config' in self._statusVariables:
-            self.set_activation_config(self._statusVariables['activation_config'])
+            self.activation_config = self._statusVariables['activation_config']
         if 'laser_channel' in self._statusVariables:
-            self.set_laser_channel(self._statusVariables['laser_channel'])
-        if 'amplitude_list' in self._statusVariables:
-            self.set_amplitude_list(self._statusVariables['amplitude_list'])
+            self.laser_channel = self._statusVariables['laser_channel']
+        if 'amplitude_dict' in self._statusVariables:
+            self.amplitude_dict = self._statusVariables['amplitude_dict']
         if 'sample_rate' in self._statusVariables:
-            self.set_sample_rate(self._statusVariables['sample_rate'])
+            self.sample_rate = self._statusVariables['sample_rate']
         if 'waveform_format' in self._statusVariables:
             self.waveform_format = self._statusVariables['waveform_format']
         if 'sequence_format' in self._statusVariables:
             self.sequence_format = self._statusVariables['sequence_format']
+        self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
+                                     self.amplitude_dict)
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -176,18 +185,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """
         self._statusVariables['activation_config'] = self.activation_config
         self._statusVariables['laser_channel'] = self.laser_channel
-        self._statusVariables['amplitude_list'] = self.amplitude_list
+        self._statusVariables['amplitude_dict'] = self.amplitude_dict
         self._statusVariables['sample_rate'] = self.sample_rate
         self._statusVariables['waveform_format'] = self.waveform_format
         self._statusVariables['sequence_format'] = self.sequence_format
 
     def _attach_predefined_methods(self):
-        """ Retrieve in the folder all files for predefined methods and attach
-            their methods to the
+        """
+        Retrieve in the folder all files for predefined methods and attach their methods to the
 
         @return:
         """
-        self.predefined_method_list = []
+        self.generate_methods = OrderedDict()
         filename_list = []
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
@@ -197,8 +206,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 filename_list.append(entry[:-3])
 
         for filename in filename_list:
-            mod = importlib.import_module('logic.predefined_methods.{}'.format(filename))
-
+            mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
             for method in dir(mod):
                 try:
                     # Check for callable function or method:
@@ -206,13 +214,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
                         # Bind the method as an attribute to the Class
                         setattr(SequenceGeneratorLogic, method, getattr(mod, method))
-
-                        self.predefined_method_list.append(eval('self.'+method))
+                        # Add method to dictionary if it is a generator method
+                        if method.startswith('generate_'):
+                            self.generate_methods[method[9:]] = eval('self.'+method)
                 except:
-                    self.log.error('It was not possible to import element '
-                            '{0} from {1} into SequenceGenerationLogic.'
-                            ''.format(
-                                method,filename))
+                    self.log.error('It was not possible to import element {0} from {1} into '
+                                   'SequenceGenerationLogic.'.format(method, filename))
+        self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
+        return
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
@@ -220,73 +229,58 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param str name: name of the folder
         @return: str, absolute path to the directory with folder 'name'.
         """
-
         path = os.path.join(self.pulsed_file_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
-
         return os.path.abspath(path)
 
-    def set_activation_config(self, activation_config):
+    def request_init_values(self):
         """
-        Sets the currently active channel activation config in this logic module
-        and calculates related parameters (like number of d and a channels).
-        This method will NOT set the active channels in the hardware.
 
-        @param activation_config: The activation_config dict to be set
-        @return: int, error code (0:OK, -1:error)
+        @return:
         """
-        # check input for default action and errors
-        self.activation_config = activation_config
-        # calculate derived parameters
-        self.analog_channels = len([chnl for chnl in activation_config if 'a_ch' in chnl])
-        self.digital_channels = len([chnl for chnl in activation_config if 'd_ch' in chnl])
+        self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
+        self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
+        self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
+        self.sigSampleEnsembleComplete.emit('')
+        self.sigSampleSequenceComplete.emit('')
+        self.sigCurrentBlockUpdated.emit(self.current_block)
+        self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
+        self.sigCurrentSequenceUpdated.emit(self.current_sequence)
+        self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
+                                     self.amplitude_dict)
+        self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
+        return
+
+    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict):
+        """
+        Sets all settings for the generator logic.
+
+        @param activation_config:
+        @param laser_channel:
+        @param sample_rate:
+        @param amplitude_dict:
+        @return:
+        """
         # check if the currently chosen laser channel is part of the config and adjust if this
         # is not the case. Choose first digital channel in that case.
-        if self.laser_channel not in activation_config:
-            d_ch_present = False
+        if laser_channel not in activation_config:
+            laser_channel = None
             for channel in activation_config:
                 if 'd_ch' in channel:
-                    self.set_laser_channel(channel)
-                    d_ch_present = True
+                    laser_channel = channel
                     break
-            if not d_ch_present:
-                self.set_laser_channel(activation_config[0])
-                self.log.warning('No digital channel present in sequence '
-                        'generator activation config.')
-        return 0
-
-    def set_sample_rate(self, sample_rate):
-        """
-        Sets the sample rate for the sequence generation
-
-        @param sample_rate: float, the sampling frequency in Hz
-        @return: float, the actually set sampling frequency in Hz
-        """
-        self.sample_rate = sample_rate
-        return sample_rate
-
-    def set_amplitude_list(self, amplitude_list):
-        """
-        Sets the amplitude list for the analogue channels
-
-        @param amplitude_list:  dict, a dictionary containing the peak-to-peak
-                                amplitude for each analogue channel in V
-                                Example: {'a_ch1': 0.5, 'a_ch2': 0.25}
-        @return: dict, the actually set amplitude list
-        """
-        self.amplitude_list = amplitude_list
-        return amplitude_list
-
-    def set_laser_channel(self, laser_channel):
-        """
-        Sets the string descriptor for the laser channel
-
-        @param laser_channel: string, a string descriptor for the laser channel, i.e. 'd_ch1'
-        @return: string, the actually set laser channel
-        """
+            if laser_channel is None:
+                self.log.warning('No digital channel present in sequence generator activation '
+                                 'config.')
         self.laser_channel = laser_channel
-        return laser_channel
+        self.activation_config = activation_config
+        self.analog_channels = len([chnl for chnl in activation_config if 'a_ch' in chnl])
+        self.digital_channels = len([chnl for chnl in activation_config if 'd_ch' in chnl])
+        self.amplitude_dict = amplitude_dict
+        self.sample_rate = sample_rate
+        self.sigSettingsUpdated.emit(activation_config, laser_channel, sample_rate, amplitude_dict)
+        return self.activation_config, self.laser_channel, self.sample_rate, self.amplitude_dict
 
 # -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -297,227 +291,329 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         saved assets for a Sequence object first. If no Sequence by that name could be found search
         for Ensembles instead. If neither could be found return None.
         @param name: Name of the Sequence/Ensemble
-        @return: Pulse_Sequence | Pulse_Block_Ensemble | None
+        @return: PulseSequence | PulseBlockEnsemble | None
         """
-        if name in self.saved_pulse_sequences:
-            asset_obj = self.get_pulse_sequence(name)
-        elif name in self.saved_pulse_block_ensembles:
-            asset_obj = self.get_pulse_block_ensemble(name)
+        if name == '':
+            asset_obj = None
+        elif name in list(self.saved_pulse_sequences):
+            asset_obj = self.saved_pulse_sequences[name]
+        elif name in list(self.saved_pulse_block_ensembles):
+            asset_obj = self.saved_pulse_block_ensembles[name]
         else:
             asset_obj = None
-            self.log.warning('No Pulse_Sequence or Pulse_Block_Ensemble by '
-                    'the name "{0}" could be found in '
-                    'pulsed_files_directory. Returning None.'.format(name))
+            self.log.warning('No PulseSequence or PulseBlockEnsemble by the name "{0}" could be '
+                             'found in saved assets. Returning None.'.format(name))
         return asset_obj
 
 
     def save_block(self, name, block):
-        """ Serialize a Pulse_Block object to a *.blk file.
+        """ Serialize a PulseBlock object to a *.blk file.
 
         @param name: string, name of the block to save
-        @param block: Pulse_Block object which will be serialized
+        @param block: PulseBlock object which will be serialized
         """
-
         # TODO: Overwrite handling
         block.name = name
-        with open(os.path.join(self.block_dir, name + '.blk'), 'wb') as outfile:
-            pickle.dump(block, outfile)
-        self.refresh_block_list()
         self.current_block = block
-        self.log.debug('Pulse_Block object "{0}" serialized to harddisk in:\n'
-                    '{1}'.format(name, self.block_dir))
+        self.saved_pulse_blocks[name] = block
+        self._save_blocks_to_file()
+        self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
+        self.sigCurrentBlockUpdated.emit(self.current_block)
         return
 
-    def get_pulse_block(self, name, set_as_current_block=False):
-        """ Deserialize a *.blk file into a Pulse_Block object.
-
-        @param name: string, name of the *.blk file.
-        @param set_as_current_ensemble: bool, set the retained Pulse_Block
-               object as the current ensemble.
-
-        @return: Pulse_Block object which belongs to the given name.
+    def load_block(self, name):
         """
-        if name in self.saved_pulse_blocks:
-            with open(os.path.join(self.block_dir, name + '.blk'), 'rb') as infile:
-                block = pickle.load(infile)
-        else:
-            self.log.warning('The Pulse_Block object with name "{0}" could '
-                    'not be found and serialized in:\n'
-                    '{1}'.format(name, self.block_dir))
-            block = None
 
-        if set_as_current_block:
-            self.current_block = block
-        return block
+        @param name:
+        @return:
+        """
+        if name not in self.saved_pulse_blocks:
+            self.log.error('PulseBlock "{0}" could not be found in saved pulse blocks. Load failed.'
+                           ''.format(name))
+            return
+        block = self.saved_pulse_blocks[name]
+        self.current_block = block
+        self.sigCurrentBlockUpdated.emit(self.current_block)
+        return
 
     def delete_block(self, name):
         """ Remove the serialized object "name" from the block list and HDD.
 
-        @param name: string, name of the Pulse_Block object to be removed.
+        @param name: string, name of the PulseBlock object to be removed.
         """
-
-        if name in self.saved_pulse_blocks:
-            os.remove(os.path.join(self.block_dir, name + '.blk'))
-
-            # if a block is removed, then check whether the current_block is
-            # actually the removed block and if so set current_block to None
+        if name in list(self.saved_pulse_blocks):
+            del(self.saved_pulse_blocks[name])
             if hasattr(self.current_block, 'name'):
                 if self.current_block.name == name:
                     self.current_block = None
-            self.refresh_block_list()
+                    self.sigCurrentBlockUpdated.emit(self.current_block)
+            self._save_blocks_to_file()
+            self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
         else:
-            self.log.warning('Pulse_Block object with name "{0}" not found '
-                    'in\n{1}\nTherefore nothing is '
-                    'removed.'.format(name, self.block_dir))
+            self.log.warning('PulseBlock object with name "{0}" not found in saved '
+                             'blocks.\nTherefore nothing is removed.'.format(name))
+        return
 
-    def refresh_block_list(self):
-        """ Refresh the list of available (saved) blocks """
+    def _get_blocks_from_file(self):
+        """ Update the saved_pulse_block dict from file """
+        block_files = [f for f in os.listdir(self.block_dir) if 'block_dict.blk' in f]
+        if len(block_files) == 0:
+            self.log.warning('No serialized block dict was found in {0}.'.format(self.block_dir))
+            self.saved_pulse_blocks = OrderedDict()
+            self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
+            return
+        # raise error if more than one file is present
+        if len(block_files) > 1:
+            self.log.error('More than one serialized block dict was found in {0}.\n'
+                           'Using {1}.'.format(self.block_dir, block_files[-1]))
+        block_files = block_files[-1]
+        try:
+            with open(os.path.join(self.block_dir, block_files), 'rb') as infile:
+                self.saved_pulse_blocks = pickle.load(infile)
+        except:
+            self.saved_pulse_blocks = OrderedDict()
+            self.log.error('Failed to deserialize ensemble dict "{0}" from "{1}".'
+                           ''.format(block_files, self.block_dir))
+        self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
+        return
 
-        block_files = [f for f in os.listdir(self.block_dir) if '.blk' in f]
-        blocks = []
-        for filename in block_files:
-            blocks.append(filename[:-4])
-        blocks.sort()
-        self.saved_pulse_blocks = blocks
-        self.signal_block_list_updated.emit()
+    def _save_blocks_to_file(self):
+        """ Saves the saved_pulse_block dict to file """
+        try:
+            with open(os.path.join(self.block_dir, 'block_dict.blk.tmp'), 'wb') as outfile:
+                pickle.dump(self.saved_pulse_blocks, outfile)
+        except:
+            self.log.error('Failed to serialize ensemble dict in "{0}".'
+                           ''.format(os.path.join(self.block_dir, 'block_dict.blk.tmp')))
+            return
+        # remove old file and rename temp file
+        try:
+            os.rename(os.path.join(self.block_dir, 'block_dict.blk.tmp'),
+                      os.path.join(self.block_dir, 'block_dict.blk'))
+        except WindowsError:
+            os.remove(os.path.join(self.block_dir, 'block_dict.blk'))
+            os.rename(os.path.join(self.block_dir, 'block_dict.blk.tmp'),
+                      os.path.join(self.block_dir, 'block_dict.blk'))
+        return
 
     def save_ensemble(self, name, ensemble):
-        """ Saves a Pulse_Block_Ensemble with name name to file.
+        """ Saves a PulseBlockEnsemble with name name to file.
 
         @param str name: name of the ensemble, which will be serialized.
-        @param obj ensemble: a Pulse_Block_Ensemble object
+        @param obj ensemble: a PulseBlockEnsemble object
         """
-
         # TODO: Overwrite handling
         ensemble.name = name
-        with open(os.path.join(self.ensemble_dir, name + '.ens'), 'wb') as outfile:
-            pickle.dump(ensemble, outfile)
-        self.refresh_ensemble_list()
         self.current_ensemble = ensemble
+        self.saved_pulse_block_ensembles[name] = ensemble
+        self._save_ensembles_to_file()
+        self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
+        self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
+        return
 
-    def get_pulse_block_ensemble(self, name, set_as_current_ensemble=False):
-        """ Deserialize a *.ens file into a Pulse_Block_Ensemble object.
-
-        @param name: string, name of the *.ens file.
-        @param set_as_current_ensemble: bool, set the retained
-               Pulse_Block_Ensemble object as the current ensemble.
-
-        @return: Pulse_Block_Ensemble object which belongs to the given name.
+    def load_ensemble(self, name):
         """
 
-        if name in self.saved_pulse_block_ensembles:
-            with open( os.path.join(self.ensemble_dir, name + '.ens'), 'rb') as infile:
-                ensemble = pickle.load(infile)
-        else:
-            self.log.warning('The Pulse_Block_Ensemble object with name '
-                    '"{0}" could not be found and serialized in:\n'
-                    '{1}'.format(name, self.ensemble_dir))
-
-            ensemble = None
-
-        if set_as_current_ensemble:
-            self.current_ensemble = ensemble
-
-        return ensemble
+        @param name:
+        @return:
+        """
+        if name not in self.saved_pulse_block_ensembles:
+            self.log.error('PulseBlockEnsemble "{0}" could not be found in saved pulse block '
+                           'ensembles. Load failed.'.format(name))
+            return
+        ensemble = self.saved_pulse_block_ensembles[name]
+        # set generator settings if found in ensemble metadata
+        if ensemble.sample_rate is not None:
+            self.sample_rate = ensemble.sample_rate
+        if ensemble.amplitude_dict is not None:
+            self.amplitude_dict = ensemble.amplitude_dict
+        if ensemble.activation_config is not None:
+            self.activation_config = ensemble.activation_config
+        if ensemble.laser_channel is not None:
+            self.laser_channel = ensemble.laser_channel
+        self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
+                                     self.amplitude_dict)
+        self.current_ensemble = ensemble
+        self.sigCurrentEnsembleUpdated.emit(ensemble)
+        return
 
     def delete_ensemble(self, name):
         """ Remove the ensemble with 'name' from the ensemble list and HDD. """
-
-        if name in self.saved_pulse_block_ensembles:
-            os.remove( os.path.join(self.ensemble_dir, name + '.ens'))
-
-            # if a ensemble is removed, then check whether the current_ensemble
-            # is actually the removed ensemble and if so set current_ensemble to
-            # None.
+        if name in list(self.saved_pulse_block_ensembles):
+            del(self.saved_pulse_block_ensembles[name])
             if hasattr(self.current_ensemble, 'name'):
                 if self.current_ensemble.name == name:
                     self.current_ensemble = None
-
-            self.refresh_ensemble_list()
+                    self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
+            self._save_ensembles_to_file()
+            self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
         else:
-            self.log.warning('Pulse_Block_Ensemble object with name "{0}" '
-                    'not found in\n{1}\nTherefore nothing is removed.'.format(
-                        name, self.ensemble_dir))
+            self.log.warning('PulseBlockEnsemble object with name "{0}" not found in saved '
+                             'ensembles.\nTherefore nothing is removed.'.format(name))
         return
 
-    def refresh_ensemble_list(self):
-        """ Refresh the list of available (saved) ensembles. """
+    def _get_ensembles_from_file(self):
+        """ Update the saved_pulse_block_ensembles dict from file """
+        ensemble_files = [f for f in os.listdir(self.ensemble_dir) if 'ensemble_dict.ens' in f]
+        if len(ensemble_files) == 0:
+            self.log.warning('No serialized ensembles dict was found in {0}.'
+                             ''.format(self.ensemble_dir))
+            self.saved_pulse_block_ensembles = OrderedDict()
+            self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
+            return
+        # raise error if more than one file is present
+        if len(ensemble_files) > 1:
+            self.log.error('More than one serialized ensemble dict was found in {0}.\n'
+                           'Using {1}.'.format(self.ensemble_dir, ensemble_files[-1]))
+        ensemble_files = ensemble_files[-1]
+        try:
+            with open(os.path.join(self.ensemble_dir, ensemble_files), 'rb') as infile:
+                self.saved_pulse_block_ensembles = pickle.load(infile)
+        except:
+            self.saved_pulse_block_ensembles = OrderedDict()
+            self.log.error('Failed to deserialize ensemble dict "{0}" from "{1}".'
+                           ''.format(ensemble_files, self.ensemble_dir))
+        self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
+        return
 
-        ensemble_files = [f for f in os.listdir(self.ensemble_dir) if '.ens' in f]
-        ensembles = []
-        for filename in ensemble_files:
-            ensembles.append(filename.rsplit('.', 1)[0])
-        ensembles.sort()
-        self.saved_pulse_block_ensembles = ensembles
-
-        self.signal_ensemble_list_updated.emit()
+    def _save_ensembles_to_file(self):
+        """ Saves the saved_pulse_block_ensembles dict to file """
+        try:
+            with open(os.path.join(self.ensemble_dir, 'ensemble_dict.ens.tmp'), 'wb') as outfile:
+                pickle.dump(self.saved_pulse_block_ensembles, outfile)
+        except:
+            self.log.error('Failed to serialize ensemble dict in "{0}".'
+                           ''.format(os.path.join(self.ensemble_dir, 'ensemble_dict.ens.tmp')))
+            return
+        # remove old file and rename temp file
+        try:
+            os.rename(os.path.join(self.ensemble_dir, 'ensemble_dict.ens.tmp'),
+                      os.path.join(self.ensemble_dir, 'ensemble_dict.ens'))
+        except WindowsError:
+            os.remove(os.path.join(self.ensemble_dir, 'ensemble_dict.ens'))
+            os.rename(os.path.join(self.ensemble_dir, 'ensemble_dict.ens.tmp'),
+                      os.path.join(self.ensemble_dir, 'ensemble_dict.ens'))
+        return
 
     def save_sequence(self, name, sequence):
-        """ Serialize the Pulse_Sequence object with name 'name' to file.
+        """ Serialize the PulseSequence object with name 'name' to file.
 
         @param str name: name of the sequence object.
-        @param object sequence: a Pulse_Sequence object, which is going to be
+        @param object sequence: a PulseSequence object, which is going to be
                                 serialized to file.
 
         @return: str: name of the serialized object, if needed.
         """
-
         # TODO: Overwrite handling
         sequence.name = name
-        with open( os.path.join(self.sequence_dir, name + '.se'), 'wb') as outfile:
-            pickle.dump(sequence, outfile)
-        self.refresh_sequence_list()
         self.current_sequence = sequence
-        return sequence
+        self.saved_pulse_sequences[name] = sequence
+        self._save_sequences_to_file()
+        self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
+        self.sigCurrentSequenceUpdated.emit(self.current_sequence)
 
-    def get_pulse_sequence(self, name, set_as_current_sequence=False):
-        """ Deserialize a *.se file into a Sequence object.
-
-        @param name: string, name of the *.se file.
-        @param set_as_current_sequence: bool, set the retained
-               Sequence object as the current ensemble.
-
-        @return: Sequence object which belongs to the given name.
+    def load_sequence(self, name):
         """
 
-        if name in self.saved_pulse_sequences:
-            with open( os.path.join(self.sequence_dir, name + '.se'), 'rb') as infile:
-                sequence = pickle.load(infile)
-        else:
-            self.log.warning('The Sequence object with name "{0}" could not '
-                    'be found and serialized in:\n'
-                    '{1}'.format(name, self.sequence_dir))
-            sequence = None
-
-        if set_as_current_sequence:
-            self.current_sequence = sequence
-
-        return sequence
+        @param name:
+        @return:
+        """
+        if name not in self.saved_pulse_sequences:
+            self.log.error('PulseSequence "{0}" could not be found in saved pulse sequences. '
+                           'Load failed.'.format(name))
+            return
+        sequence = self.saved_pulse_sequences[name]
+        # set generator settings if found in seqeunce metadata
+        if sequence.sample_rate is not None:
+            self.sample_rate = sequence.sample_rate
+        if sequence.amplitude_dict is not None:
+            self.amplitude_dict = sequence.amplitude_dict
+        if sequence.activation_config is not None:
+            self.activation_config = sequence.activation_config
+        if sequence.laser_channel is not None:
+            self.laser_channel = sequence.laser_channel
+        self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
+                                     self.amplitude_dict)
+        self.current_sequence = sequence
+        self.sigCurrentSequenceUpdated.emit(sequence)
+        return
 
     def delete_sequence(self, name):
         """ Remove the sequence "name" from the sequence list and HDD.
 
         @param str name: name of the sequence object, which should be deleted.
         """
-
-        if name in self.saved_pulse_sequences:
-            os.remove( os.path.join(self.sequence_dir, name + '.se'))
-            self.refresh_sequence_list()
+        if name in list(self.saved_pulse_sequences):
+            del(self.saved_pulse_sequences[name])
+            if hasattr(self.current_sequence, 'name'):
+                if self.current_sequence.name == name:
+                    self.current_sequence = None
+                    self.sigCurrentSequenceUpdated.emit(self.current_sequence)
+            self._save_sequences_to_file()
+            self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
         else:
-            self.log.warning('Sequence object with name "{0}" not found '
-                    'in\n{1}\nTherefore nothing is '
-                    'removed.'.format(name, self.sequence_dir))
+            self.log.warning('PulseBlockEnsemble object with name "{0}" not found in saved '
+                             'ensembles.\nTherefore nothing is removed.'.format(name))
+        return
 
-    def refresh_sequence_list(self):
-        """ Refresh the list of available (saved) sequences. """
+    def generate_predefined_sequence(self, predefined_sequence_name, args):
+        """
 
-        sequence_files = [f for f in os.listdir(self.sequence_dir) if '.se' in f]
-        sequences = []
-        for filename in sequence_files:
-            sequences.append(filename[:-3])
-        sequences.sort()
-        self.saved_pulse_sequences = sequences
-        self.signal_sequence_list_updated.emit()
+        @param predefined_sequence_name:
+        @param args:
+        @return:
+        """
+        gen_method = self.generate_methods[predefined_sequence_name]
+        try:
+            gen_method(*args)
+        except:
+            self.log.error('Generation of predefined sequence "{0}" failed.'
+                           ''.format(predefined_sequence_name))
+            return
+        self.sigPredefinedSequenceGenerated.emit(predefined_sequence_name)
+        return
+
+    def _get_sequences_from_file(self):
+        """ Update the saved_pulse_sequences dict from file """
+        sequence_files = [f for f in os.listdir(self.sequence_dir) if 'sequence_dict.sequ' in f]
+        if len(sequence_files) == 0:
+            self.log.warning('No serialized sequence dict was found in {0}.'
+                             ''.format(self.sequence_dir))
+            self.saved_pulse_sequences = OrderedDict()
+            self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
+            return
+        # raise error if more than one file is present
+        if len(sequence_files) > 1:
+            self.log.error('More than one serialized sequence dict was found in {0}.\n'
+                           'Using {1}.'.format(self.sequence_dir, sequence_files[-1]))
+            sequence_files = sequence_files[-1]
+        try:
+            with open(os.path.join(self.sequence_dir, sequence_files), 'rb') as infile:
+                self.saved_pulse_sequences = pickle.load(infile)
+        except:
+            self.saved_pulse_sequences = OrderedDict()
+            self.log.error('Failed to deserialize sequence dict "{0}" from "{1}".'
+                           ''.format(sequence_files, self.sequence_dir))
+        self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
+        return
+
+    def _save_sequences_to_file(self):
+        """ Saves the saved_pulse_sequences dict to file """
+        try:
+            with open(os.path.join(self.sequence_dir, 'sequence_dict.sequ.tmp'), 'wb') as outfile:
+                pickle.dump(self.saved_pulse_sequences, outfile)
+        except:
+            self.log.error('Failed to serialize ensemble dict in "{0}".'
+                           ''.format(os.path.join(self.sequence_dir, 'sequence_dict.sequ.tmp')))
+            return
+        # remove old file and rename temp file
+        try:
+            os.rename(os.path.join(self.sequence_dir, 'sequence_dict.sequ.tmp'),
+                      os.path.join(self.sequence_dir, 'sequence_dict.sequ'))
+        except WindowsError:
+            os.remove(os.path.join(self.sequence_dir, 'sequence_dict.sequ'))
+            os.rename(os.path.join(self.sequence_dir, 'sequence_dict.sequ.tmp'),
+                      os.path.join(self.sequence_dir, 'sequence_dict.sequ'))
         return
 
     #---------------------------------------------------------------------------
@@ -528,9 +624,36 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     #---------------------------------------------------------------------------
     #                    BEGIN sequence/block sampling
     #---------------------------------------------------------------------------
+    def _analyze_block_ensemble(self, ensemble):
+        """
+
+        @param ensemble:
+        @return:
+        """
+        state_length_bins_arr = np.array([], dtype=int)
+        number_of_elements = 0
+        for block, reps in ensemble.block_list:
+            number_of_elements += (reps+1)*len(block.element_list)
+            num_state_changes = (reps+1) * len(block.element_list)
+            tmp_length_bins = np.zeros(num_state_changes, dtype=int)
+            # Iterate over all repertitions of the current block
+            state_index = 0
+            for rep_no in range(reps+1):
+                # Iterate over the Block_Elements inside the current block
+                for elem_index, block_element in enumerate(block.element_list):
+                    init_length_s = block_element.init_length_s
+                    increment_s = block_element.increment_s
+                    element_length_s = init_length_s + (rep_no * increment_s)
+                    tmp_length_bins[state_index] = int(np.rint(element_length_s * self.sample_rate))
+                    state_index += 1
+            state_length_bins_arr = np.append(state_length_bins_arr, tmp_length_bins)
+        number_of_samples = np.sum(state_length_bins_arr)
+        number_of_states = len(state_length_bins_arr)
+        return number_of_samples, number_of_elements, number_of_states, state_length_bins_arr
+
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True,
                                     offset_bin=0, name_tag=''):
-        """ General sampling of a Pulse_Block_Ensemble object, which serves as the construction plan.
+        """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
                                   ensembles.
@@ -543,7 +666,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                offset_bin of the previous sampling can be passed to maintain
                                rotating frame across pulse_block_ensembles
         @param str name_tag: a name tag, which is used to keep the sampled files together, which
-                             where sampled from the same Pulse_Block_Ensemble object but where
+                             where sampled from the same PulseBlockEnsemble object but where
                              different offset_bins were used.
 
         @return tuple: of length 4 with
@@ -559,7 +682,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                             integer, which is used for maintaining the rotation frame.
 
         This method is creating the actual samples (voltages and logic states) for each time step
-        of the analog and digital channels specified in the Pulse_Block_Ensemble.
+        of the analog and digital channels specified in the PulseBlockEnsemble.
         Therefore it iterates through all blocks, repetitions and elements of the ensemble and
         calculates the exact voltages (float64) according to the specified math_function. The
         samples are later on stored inside a float32 array.
@@ -568,18 +691,22 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         To preserve the rotating frame, an offset counter is used to indicate the absolute time
         within the ensemble. All calculations are done with time bins (dtype=int) to avoid rounding
-        errors. Only in the last step when a single Pulse_Block_Element object is sampled  these
+        errors. Only in the last step when a single PulseBlockElement object is sampled  these
         integer bin values are translated into a floating point time.
 
         The chunkwise write mode is used to save memory usage at the expense of time. Here for each
-        Pulse_Block_Element the write_to_file method in the HW module is called to avoid large
+        PulseBlockElement the write_to_file method in the HW module is called to avoid large
         arrays inside the memory. In other words: The whole sample arrays are never created at any
         time. This results in more function calls and general overhead causing the much longer time
         to complete.
         """
-
+        # lock module if it's not already locked (sequence sampling in progress)
+        if self.getState() == 'idle':
+            self.lock()
+            sequence_sampling_in_progress = False
+        else:
+            sequence_sampling_in_progress = True
         # check for old files associated with the new ensemble and delete them from host PC
-        # if write_to_file = True
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
             filename_list = [f for f in os.listdir(self.waveform_dir) if
@@ -589,29 +716,30 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 os.remove(os.path.join(self.waveform_dir, file))
 
             if len(filename_list) != 0:
-                self.log.warning('Found old sampled ensembles for name '
-                        '"{0}". Files deleted before sampling: '
-                        '{1}'.format(ensemble_name, filename_list))
+                self.log.info('Found old sampled ensembles for name "{0}". Files deleted before '
+                              'sampling: {1}'.format(ensemble_name, filename_list))
 
         start_time = time.time()
         # get ensemble
-        ensemble = self.get_pulse_block_ensemble(ensemble_name)
+        ensemble = self.saved_pulse_block_ensembles[ensemble_name]
         # Ensemble parameters to determine the shape of sample arrays
-        number_of_samples = ensemble.length_bins
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
-        ana_chnl_names = [chnl for chnl in ensemble.activation_config if 'a_ch' in chnl]
+        ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+        if self.digital_channels != dig_channels or self.analog_channels != ana_channels:
+            self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in number of '
+                           'analog and digital channels between logic ({1}, {2}) and '
+                           'PulseBlockEnsemble ({3}, {4}).'
+                           ''.format(ensemble_name, self.analog_channels, self.digital_channels,
+                                     ana_channels, dig_channels))
+            return [], [], [''], 0
 
+        number_of_samples, number_of_elements, number_of_states, state_length_bins_arr = self._analyze_block_ensemble(ensemble)
         # The time bin offset for each element to be sampled to preserve rotating frame.
-        # offset_bin = 0
-
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing
             is_first_chunk = True
             is_last_chunk = False
-            number_of_elements = 0
-            for block, reps in ensemble.block_list:
-                number_of_elements += (reps+1)*len(block.element_list)
             element_count = 0
         else:
             # Allocate huge sample arrays if chunkwise writing is disabled.
@@ -620,18 +748,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # Starting index for the sample array entrys
             entry_ind = 0
 
-        # Iterate over all blocks within the Pulse_Block_Ensemble object
+        # Iterate over all blocks within the PulseBlockEnsemble object
         for block, reps in ensemble.block_list:
             # Iterate over all repertitions of the current block
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
-                for block_element in block.element_list:
+                for elem_ind, block_element in enumerate(block.element_list):
                     parameters = block_element.parameters
-                    init_length_bins = block_element.init_length_bins
-                    increment_bins = block_element.increment_bins
+                    init_length_s = block_element.init_length_s
+                    increment_s = block_element.increment_s
                     digital_high = block_element.digital_high
                     pulse_function = block_element.pulse_function
-                    element_length_bins = init_length_bins + (rep_no*increment_bins)
+                    element_length_s = init_length_s + (rep_no*increment_s)
+                    element_length_bins = int(np.rint(element_length_s * self.sample_rate))
 
                     # create floating point time array for the current element inside rotating frame
                     time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
@@ -651,7 +780,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         for i, state in enumerate(digital_high):
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[ana_chnl_names[i]])
+                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
 
                         # write temporary sample array to file
                         created_files = self._write_to_file[self.waveform_format](
@@ -665,7 +794,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         for i, state in enumerate(digital_high):
                             digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[ana_chnl_names[i]])
+                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
 
                         # increment the index offset of the overall sample array for the next
                         # element
@@ -679,19 +808,21 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if not write_to_file:
             # return a status message with the time needed for sampling the entire ensemble as a
             # whole without writing to file.
-            self.log.info('Time needed for sampling and writing '
-                    'Pulse_Block_Ensemble to file as a whole: "{0}" sec'
-                    ''.format(str(int(np.rint(time.time() - start_time)))))
-            self.sigSampleEnsembleComplete.emit()
+            self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
+                          'whole: {0} sec.'.format(int(np.rint(time.time() - start_time))))
             # return the sample arrays for write_to_file was set to FALSE
+            if not sequence_sampling_in_progress:
+                self.unlock()
+                self.sigSampleEnsembleComplete.emit(ensemble_name)
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
             # chunkwise.
-            self.log.info('Time needed for sampling and writing to file '
-                    'chunkwise: "{0}" sec'.format(
-                        str(int(np.rint(time.time()-start_time)))))
-            self.sigSampleEnsembleComplete.emit()
+            self.log.info('Time needed for sampling and writing to file chunkwise: {0} sec'
+                          ''.format(int(np.rint(time.time()-start_time))))
+            if not sequence_sampling_in_progress:
+                self.unlock()
+                self.sigSampleEnsembleComplete.emit(ensemble_name)
             return [], [], created_files, offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
@@ -705,14 +836,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                                                       is_first_chunk, is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
-            self.log.info('Time needed for sampling and writing '
-                    'Pulse_Block_Ensemble to file as a whole: "{0}" sec'
-                    ''.format(str(int(np.rint(time.time()-start_time)))))
-            self.sigSampleEnsembleComplete.emit()
+            self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
+                          'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
+            if not sequence_sampling_in_progress:
+                self.unlock()
+                self.sigSampleEnsembleComplete.emit(ensemble_name)
             return [], [], created_files, offset_bin
 
     def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):
-        """ Samples the Pulse_Sequence object, which serves as the construction plan.
+        """ Samples the PulseSequence object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
                                   ensembles.
@@ -723,19 +855,25 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                memory usage but will increase vastly the amount of time needed.
 
         The sequence object is sampled by call subsequently the sampling routine for the
-        Pulse_Block_Ensemble objects and passing if needed the rotating frame option.
+        PulseBlockEnsemble objects and passing if needed the rotating frame option.
 
-        Only those Pulse_Block_Ensemble object where sampled that are different! These can be
-        directly obtained from the internal attribute different_ensembles_dict of a Pulse_Sequence.
+        Only those PulseBlockEnsemble object where sampled that are different! These can be
+        directly obtained from the internal attribute different_ensembles_dict of a PulseSequence.
 
         Right now two 'simple' methods of sampling where implemented, which reuse the sample
         function for the Pulse_Block_Ensembles. One, which samples by preserving the phase (i.e.
         staying in the rotating frame) and the other which samples without keep a phase
-        relationship between the different entries of the Pulse_Sequence object.
+        relationship between the different entries of the PulseSequence object.
 
         More sophisticated sequence sampling method can be implemented here.
         """
-
+        # lock module
+        if self.getState() == 'idle':
+            self.lock()
+        else:
+            self.log.error('Cannot sample sequence "{0}" because the sequence generator logic is '
+                           'still busy (locked).\nFunction call ignored.'.format(sequence_name))
+            return
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
             filename_list = [f for f in os.listdir(self.sequence_dir) if
@@ -745,13 +883,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 os.remove(os.path.join(self.sequence_dir, file))
 
             if len(filename_list) != 0:
-                self.log.warning('Found old sequence for name "{0}". '
-                        'Files deleted before sampling: '
-                        '{1}'.format(sequence_name, filename_list))
+                self.log.warning('Found old sequence for name "{0}". Files deleted before '
+                                 'sampling: {1}'.format(sequence_name, filename_list))
 
         start_time = time.time()
         # get ensemble
-        sequence_obj = self.get_pulse_sequence(sequence_name, set_as_current_sequence=True)
+        sequence_obj = self.saved_pulse_sequences[sequence_name]
         sequence_param_dict_list = []
 
         # Here all the sampled ensembles with their result file name will be locally stored:
@@ -762,15 +899,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # of the sampled Pulse_Block_Ensembles one has to introduce a running number as an
         # additional name tag, so keep the sampled files separate.
         if sequence_obj.rotating_frame:
-
             ensemble_index = 0  # that will indicate the ensemble index
             offset_bin = 0      # that will be used for phase preserving
             for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
+                # to make something like 001
+                name_tag = '_' + str(ensemble_index).zfill(3)
 
-                name_tag = '_' + str(ensemble_index).zfill(3)  # to make something like 001
-
-                a_samples, \
-                d_samples, \
+                dummy1, \
+                dummy2, \
                 created_files, \
                 offset_bin_return = self.sample_pulse_block_ensemble(ensemble_obj.name,
                                                                      write_to_file,
@@ -795,16 +931,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 # phase preserving.
                 offset_bin = offset_bin_return
                 ensemble_index += 1
-
         else:
-
             # if phase prevervation between the sequence entries is not needed, then only the
             # different ensembles will be sampled, since the offset_bin does not matter for them:
             for ensemble_name in sequence_obj.different_ensembles_dict:
-                ensemble_obj = self.get_pulse_block_ensemble(ensemble_name)
+                ensemble_obj = self.saved_pulse_block_ensembles[ensemble_name]
 
-                a_samples, \
-                d_samples, \
+                dummy1, \
+                dummy2, \
                 created_files, \
                 offset_bin = self.sample_pulse_block_ensemble(ensemble_name, write_to_file,
                                                               chunkwise, offset_bin=0, name_tag='')
@@ -827,47 +961,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # FIXME: That is most propably not a good idea!!! But let's see whether that will work out
         #        and whether it will be necessary (for the upload method it is!)
 
-        sequence_obj.set_sampled_ensembles(sampled_ensembles)
+        sequence_obj.sampled_ensembles = sampled_ensembles
         # save the current object, since it has now a different attribute:
         self.save_sequence(sequence_name, sequence_obj)
 
-        # pass the whole information to the sequence creation method in the hardware:
+        # pass the whole information to the sequence creation method:
         self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
 
-        self.log.info('Time needed for sampling and writing Pulse Sequence '
-                'to file as a whole: "{0}" sec'.format(
-                    str(int(np.rint(time.time() - start_time)))))
+        self.log.info('Time needed for sampling and writing Pulse Sequence to file as a whole: '
+                      '{0} sec.'.format(int(np.rint(time.time() - start_time))))
+        self.sigSampleSequenceComplete.emit(sequence_name)
+        # unlock module
+        self.unlock()
         return
-
-    def write_seq_to_file(self, a, b):
-        pass
 
     #---------------------------------------------------------------------------
     #                    END sequence/block sampling
     #---------------------------------------------------------------------------
-
-    # ========================================================================
-
-    # def get_func_config(self):
-    #     """ Retrieve func_config dict of the logic, including hardware constraints.
-    #
-    #     @return dict: with all the defined functions and their corresponding
-    #                   parameters and constraints.
-    #
-    #     The contraints from the hardware are now also included in the dict. How
-    #     the returned dict is looking like is defined in the inherited class
-    #     SamplingFunctions.
-    #     """
-    #     func_config = self.func_config
-    #
-    #     # set the max amplitude from the hardware:
-    #     # ampl_max = const['amplitude_analog'][1]
-    #     # FIXME: You see it... below should be the actual amplitude constraint instead of 0.5
-    #     ampl_max = 0.5/2.0
-    #     if ampl_max is not None:
-    #         for func in func_config:
-    #             for param in func_config[func]:
-    #                 if 'amplitude' in param:
-    #                     func_config[func][param]['max'] = ampl_max
-    #
-    #     return func_config
