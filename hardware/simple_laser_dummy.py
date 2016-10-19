@@ -28,20 +28,19 @@ from interface.simple_laser_interface import ControlMode
 
 class SimpleLaserDummy(Base, SimpleLaserInterface):
     """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    Lazors
     """
     _modclass = 'laserdummy'
     _modtype = 'hardware'
 
     # connectors
-    _out = {'laser': 'Laser'}
+    _out = {'laser': 'SimpleLaser'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.state = LaserState['OFF']
-        self.shutter = ShutterState['CLOSED']
-        self.mode = ControlMode['POWER']
+        self.lstate = LaserState.OFF
+        self.shutter = ShutterState.CLOSED
+        self.mode = ControlMode.POWER
         self.current_setpoint = 0
         self.power_setpoint = 0
 
@@ -86,6 +85,9 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         self.current_setpoint = current
         return self.current_setpoint
 
+    def allowed_control_modes(self):
+        return [ControlMode.POWER, ControlMode.CURRENT]
+
     def get_control_mode(self):
         return self.mode
 
@@ -94,19 +96,19 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         return self.mode
 
     def on(self):
-        self.state = LaserState['ON']
-        return self.state
+        self.lstate = LaserState.ON
+        return self.lstate
 
     def off(self):
-        self.state = LaserState['OFF']
-        return self.state
+        self.lstate = LaserState.OFF
+        return self.lstate
 
     def get_laser_state(self):
-        return self.state
+        return self.lstate
 
     def set_laser_state(self, state):
-        self.state = state
-        return self.state
+        self.lstate = state
+        return self.lstate
 
     def get_shutter_state(self):
         return self.shutter
@@ -122,4 +124,4 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         return {}
 
     def get_extra_info(self):
-        return "Dummy laser v0.9.9"
+        return "Dummy laser v0.9.9\nnot used very much\nvery cheap price good quality"

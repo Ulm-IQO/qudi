@@ -27,6 +27,7 @@ import os
 from interface.fast_counter_interface import FastCounterInterface
 from core.base import Base
 import thirdparty.opal_kelly.ok64 as ok
+from core.util.mutex import Mutex
 
 
 class FastCounterFPGAQO(Base, FastCounterInterface):
@@ -112,6 +113,10 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self.count_data = None
 
         self._internal_clock_hz = 950e6 # that is a fixed number, 950MHz
+
+        # threading
+        self.threadlock = Mutex()
+
         # connect to the FPGA module
         self._connect()
         # configure DAC for threshold voltages
@@ -255,42 +260,41 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                     gate_length_s: the actual set gate length in seconds
                     number_of_gates: the number of gated, which are accepted
         """
+        with self.threadlock:
+            # set class variables
+            self._binwidth = int(np.rint(bin_width_s * self._internal_clock_hz))
 
-        # set class variables
-        self._binwidth = int(np.rint(bin_width_s * self._internal_clock_hz))
+            # calculate the actual binwidth depending on the internal clock:
+            binwidth_s = self._binwidth / self._internal_clock_hz
 
-        # calculate the actual binwidth depending on the internal clock:
-        binwidth_s = self._binwidth / self._internal_clock_hz
+            self._gate_length_bins = int(np.rint(record_length_s / bin_width_s))
+            gate_length_s = self._gate_length_bins * binwidth_s
 
-        self._gate_length_bins = int(np.rint(record_length_s / bin_width_s))
-        gate_length_s = self._gate_length_bins * binwidth_s
+            self._number_of_gates = number_of_gates
+            self._histogram_size = number_of_gates * 8192
 
-        self._number_of_gates = number_of_gates
-        self._histogram_size = number_of_gates * 8192
+            # reset overflow indicator
+            self._overflown = False
 
-        # reset overflow indicator
-        self._overflown = False
-
-        # release the fast counter clock but leave the logic in reset mode
-        # set histogram size in the hardware
-        self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 1
+            # release the fast counter clock but leave the logic in reset mode
+            # set histogram size in the hardware
+            self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
+            self._fpga.UpdateWireIns()
+            self.statusvar = 1
         return binwidth_s, gate_length_s, number_of_gates
 
     def start_measure(self):
         """ Start the fast counter. """
-
-        # initialize the data array
-        self.count_data = np.zeros([self._number_of_gates,
-                                    self._gate_length_bins])
-        # reset overflow indicator
-        self._overflown = False
-        # Release all reset states and start the counter.
-        # Keep the histogram size.
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 2
+        with self.threadlock:
+            # initialize the data array
+            self.count_data = np.zeros([self._number_of_gates, self._gate_length_bins])
+            # reset overflow indicator
+            self._overflown = False
+            # Release all reset states and start the counter.
+            # Keep the histogram size.
+            self._fpga.SetWireInValue(0x00, self._histogram_size)
+            self._fpga.UpdateWireIns()
+            self.statusvar = 2
         return 0
 
     def get_data_trace(self):
@@ -305,69 +309,70 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
-        # initialize the read buffer for the USB transfer.
-        # one timebin of the data to read is 32 bit wide and the data is
-        # transferred in bytes.
-        if self.statusvar != 2:
-            self.log.error('The FPGA is currently not running! The current '
-                    'status is: "{0}". The running status would be 2. Start '
-                    'the FPGA to get the data_trace of the device. An emtpy '
-                    'numpy array[{1},{2}] filled with zeros will be '
-                    'returned.'.format(self.statusvar,
-                        self._number_of_gates,
-                        self._gate_length_bins))
+        with self.threadlock:
+            # initialize the read buffer for the USB transfer.
+            # one timebin of the data to read is 32 bit wide and the data is
+            # transferred in bytes.
+            if self.statusvar != 2:
+                self.log.error('The FPGA is currently not running! The current '
+                        'status is: "{0}". The running status would be 2. Start '
+                        'the FPGA to get the data_trace of the device. An emtpy '
+                        'numpy array[{1},{2}] filled with zeros will be '
+                        'returned.'.format(self.statusvar,
+                            self._number_of_gates,
+                            self._gate_length_bins))
 
-            return self.count_data
+                return self.count_data
 
-        data_buffer = bytearray(self._histogram_size*4)
-        # check if the timetagger had an overflow.
-        self._fpga.UpdateWireOuts()
-        flags = self._fpga.GetWireOutValue(0x20)
-        if flags != 0:
-            # send acknowledge signal to FPGA
-            self._fpga.SetWireInValue(0x00, 0x08000000 + self._histogram_size)
+            data_buffer = bytearray(self._histogram_size*4)
+            # check if the timetagger had an overflow.
+            self._fpga.UpdateWireOuts()
+            flags = self._fpga.GetWireOutValue(0x20)
+            if flags != 0:
+                # send acknowledge signal to FPGA
+                self._fpga.SetWireInValue(0x00, 0x08000000 + self._histogram_size)
+                self._fpga.UpdateWireIns()
+                self._fpga.SetWireInValue(0x00, self._histogram_size)
+                self._fpga.UpdateWireIns()
+
+                # save latest count data into a new class variable to preserve it
+                self._old_data = self.count_data.copy()
+                self._overflown = True
+
+            # trigger the data read in the FPGA
+            self._fpga.SetWireInValue(0x00, 0x20000000 + self._histogram_size)
             self._fpga.UpdateWireIns()
             self._fpga.SetWireInValue(0x00, self._histogram_size)
             self._fpga.UpdateWireIns()
 
-            # save latest count data into a new class variable to preserve it
-            self._old_data = self.count_data.copy()
-            self._overflown = True
+            # read data from the FPGA
+            self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
 
-        # trigger the data read in the FPGA
-        self._fpga.SetWireInValue(0x00, 0x20000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
+            # encode the bytearray data into 32-bit integers
+            buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size,
+                                     data_buffer))
 
-        # read data from the FPGA
-        self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
+            # bin the data according to the specified bin width
+            if self._binwidth != 1:
+                buffer_encode = buffer_encode[:(buffer_encode.size //
+                                self._binwidth) * self._binwidth].reshape(-1,
+                                    self._binwidth).sum(axis=1)
 
-        # encode the bytearray data into 32-bit integers
-        buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size,
-                                 data_buffer))
-
-        # bin the data according to the specified bin width
-        if self._binwidth != 1:
-            buffer_encode = buffer_encode[:(buffer_encode.size //
-                            self._binwidth) * self._binwidth].reshape(-1,
-                                self._binwidth).sum(axis=1)
-
-        # reshape the data array into the 2D output array
-        self.count_data = buffer_encode.reshape(self._number_of_gates, -1)[:, 0:self._gate_length_bins]
-        if self._overflown:
-            self.count_data = np.add(self.count_data, self._old_data)
+            # reshape the data array into the 2D output array
+            self.count_data = buffer_encode.reshape(self._number_of_gates, -1)[:, 0:self._gate_length_bins]
+            if self._overflown:
+                self.count_data = np.add(self.count_data, self._old_data)
         return self.count_data
 
     def stop_measure(self):
         """ Stop the fast counter. """
-
-        # put the fast counter logic into reset state
-        self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        # reset overflow indicator
-        self._overflown = False
-        self.statusvar = 1
+        with self.threadlock:
+            # put the fast counter logic into reset state
+            self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
+            self._fpga.UpdateWireIns()
+            # reset overflow indicator
+            self._overflown = False
+            self.statusvar = 1
         return 0
 
     def pause_measure(self):
@@ -375,10 +380,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
         Fast counter must be initially in the run state to make it pause.
         """
-        # set the pause state in the FPGA
-        self._fpga.SetWireInValue(0x00, 0x10000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 3
+        with self.threadlock:
+            # set the pause state in the FPGA
+            self._fpga.SetWireInValue(0x00, 0x10000000 + self._histogram_size)
+            self._fpga.UpdateWireIns()
+            self.statusvar = 3
         return 0
 
     def continue_measure(self):
@@ -386,10 +392,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
         If fast counter is in pause state, then fast counter will be continued.
         """
-        # exit the pause state in the FPGA
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 2
+        with self.threadlock:
+            # exit the pause state in the FPGA
+            self._fpga.SetWireInValue(0x00, self._histogram_size)
+            self._fpga.UpdateWireIns()
+            self.statusvar = 2
         return 0
 
     def is_gated(self):
