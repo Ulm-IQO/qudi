@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from scipy import ndimage
-
-from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 
 
@@ -33,24 +31,15 @@ class PulseExtractionLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'fastcounter': 'FastCounterInterface'}
     _out = {'pulseextractionlogic': 'PulseExtractionLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self.log.info('The following configuration was found.')
-
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
-        self.is_counter_gated = False
-        self.conv_std_dev = 200     # standard deviation of the gaussian filter
-                                    # in bins
-        self.old_raw_data = None    # This is used to pause and continue a measurement.
-                                    # Is added to the new data.
-
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -63,9 +52,8 @@ class PulseExtractionLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._fast_counter_device = self.get_in_connector('fastcounter')
-        self._check_if_counter_gated()
-        self._iter = 0
+        self.extraction_method = None   # will later on be used to switch between different methods
+        return
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -75,7 +63,7 @@ class PulseExtractionLogic(GenericLogic):
         """
         pass
 
-    def _gated_extraction(self, count_data, conv_std_dev):
+    def gated_extraction(self, count_data, conv_std_dev):
         """ Detects the rising flank in the gated timetrace data and extracts
             just the laser pulses.
 
@@ -108,11 +96,9 @@ class PulseExtractionLogic(GenericLogic):
         falling_ind = conv_deriv.argmin()
         # slice the data array to cut off anything but laser pulses
         laser_arr = count_data[:, rising_ind:falling_ind]
-        return laser_arr
+        return laser_arr.astype(int)
 
-
-
-    def _ungated_extraction(self, count_data, num_of_lasers, conv_std_dev):
+    def ungated_extraction(self, count_data, conv_std_dev, num_of_lasers):
         """ Detects the laser pulses in the ungated timetrace data and extracts
             them.
 
@@ -261,13 +247,12 @@ class PulseExtractionLogic(GenericLogic):
                 laser_arr[i, 0:lenarr] = count_data[rising_ind[i]:]
             else:
                 laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
-        return laser_arr
-
+        return laser_arr.astype(int)
 
     def _convolve_derive(self, data, std_dev):
         """ Smooth the input data by applying a gaussian filter.
 
-        @param numpy.ndarray timetrace: 1D array, the raw data to be smoothed
+        @param numpy.ndarray data: 1D array, the raw data to be smoothed
                                         and derived
         @param float std_dev: standard deviation of the gaussian filter to be
                               applied for smoothing
@@ -280,57 +265,6 @@ class PulseExtractionLogic(GenericLogic):
         frequency noise, the output data will show sharp peaks corresponding to
         the rising and falling flanks of the input signal.
         """
-
         conv = ndimage.filters.gaussian_filter1d(data, std_dev)
         conv_deriv = np.gradient(conv)
         return conv_deriv
-
-
-
-    def get_data_laserpulses(self, num_of_lasers, conv_std_dev):
-        """ Capture the fast counter data and extracts the laser pulses.
-
-        @param int num_of_lasers: The total number of laser pulses inside the
-                                  pulse sequence
-        @param int conv_std_dev: Standard deviation of gaussian convolution
-
-
-        @return tuple (numpy.ndarray, numpy.ndarray):
-                    Explanation of the return value:
-
-                    numpy.ndarray: 2D array, the extracted laser pulses of the
-                                   timetrace, with the dimensions:
-                                        0: laser number
-                                        1: time bin
-                    numpy.ndarray: 1D or 2D, the raw timetrace from the fast
-                                   counter
-        """
-        # poll data from the fast counting device, netobtain is needed for
-        # getting numpy array over network
-        raw_data = netobtain(self._fast_counter_device.get_data_trace())
-        if self.old_raw_data is not None:
-            #if raw_data.shape == self.old_raw_data.shape:
-            raw_data = np.add(raw_data, self.old_raw_data)
-
-        # Saving data for testing
-
-        # name = str(self._iter) + '.dat'
-        # self._iter = self._iter + 1
-        # np.savetxt(name, raw_data.transpose())
-
-        # call appropriate laser extraction method depending on if the fast
-        # counter is gated or not.
-        if self.is_counter_gated:
-
-            laser_data = self._gated_extraction(raw_data, conv_std_dev)
-        else:
-
-            laser_data = self._ungated_extraction(raw_data, num_of_lasers, conv_std_dev)
-        return laser_data.astype(dtype=int), raw_data.astype(dtype=int)
-
-
-    def _check_if_counter_gated(self):
-        '''Check the fast counter if it is gated or not
-        '''
-        self.is_counter_gated = self._fast_counter_device.is_gated()
-        return

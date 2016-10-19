@@ -67,7 +67,7 @@ class SimpleLaserInterface:
 
     def get_current(self):
         """ Return laser current
-        @return float: Actual laser current in amperes
+        @return float: actual laser current as ampere or percentage of maximum current
         """
         raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 
@@ -81,6 +81,12 @@ class SimpleLaserInterface:
         """ Set laser current
         @param float current: Laser current setpoint in amperes
         @return float: Laser current setpoint in amperes
+        """
+        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+
+    def allowed_control_modes(self):
+        """ Get available control mode of laser
+          @return list: list with enum control modes
         """
         raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
 

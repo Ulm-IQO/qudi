@@ -26,6 +26,9 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget_2">
+   <property name="windowTitle">
+    <string>Nuclear Operations Parameter</string>
+   </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
@@ -659,6 +662,9 @@ readout</string>
    </widget>
   </widget>
   <widget class="QDockWidget" name="dockWidget_3">
+   <property name="windowTitle">
+    <string>Nuclear Operation result</string>
+   </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
