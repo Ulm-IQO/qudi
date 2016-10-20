@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file to control Anritsu 70GHz Device.
+This file contains the Qudi hardware file to control Anritsu 70GHz Device.
 
-QuDi is free software: you can redistribute it and/or modify
+Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-QuDi is distributed in the hope that it will be useful,
+Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Parts of this file were developed from a PI3diamond module which is
 Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
@@ -51,7 +51,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
-            self._gpib_timeout = 100000
+            self._gpib_timeout = 10
             self.log.warning('This is MWanritsu70GHz: did not find '
                     '>>gpib_timeout<< in configration. I will set it to '
                     '10 seconds.')
@@ -78,24 +78,22 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
     def get_limits(self):
         """ Right now, this is for Anritsu MG3696B only."""
-
         limits = MicrowaveLimits()
         limits.supported_modes = ('CW', 'LIST')
 
-        limits.min_frequency = 10*10e6
-        limits.max_frequency = 70*10e9
+        limits.min_frequency = 10e6
+        limits.max_frequency = 70e9
 
         limits.min_power = -20
         limits.max_power = 10
 
         limits.list_minstep = 0.001
-        limits.list_maxstep = 70*10e9
+        limits.list_maxstep = 70e9
         limits.list_maxentries = 2000
 
         limits.sweep_minstep = 0.001
-        limits.sweep_maxstep = 70*10e9
-        limits.sweep_maxentries = 10000
-
+        limits.sweep_maxstep = 70e9
+        limits.sweep_maxentries = 10001
         return limits
 
     def on(self):
@@ -192,7 +190,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         error = 0
-        self.log.debug("freq list: {0}".format(freq))
+
         if self.set_cw(freq[0], power) != 0:
             error = -1
 
@@ -241,9 +239,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         """
         print("trigger")
         self._gpib_connection.write('MNT')
-        # self._gpib_connection.write(':TRIG:SOUR ' + source)
-        # self._gpib_connection.write(':TRIG:SLOP ' + pol)
-        # self._gpib_connection.write('*WAI')
         return 0
 
     def set_sweep(self, start, stop, step, power):
