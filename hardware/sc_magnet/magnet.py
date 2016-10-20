@@ -284,35 +284,48 @@ class Magnet(Base, MagnetInterface):
         if param_dict.get('x') is not None:
             if not param_dict['x'].endswith('\n'):
                 param_dict['x'] += '\n'
-# repeat this block to get out crappy messages.
-            # self.soc_x.send(self.utf8_to_byte(param_dict['x']))
-            # answer_dict['x'] = self.byte_to_utf8(self.soc_x.recv(1024))  # receive an answer
+                # repeat this block to get out crappy messages.
             self.soc_x.send(self.utf8_to_byte(param_dict['x']))
+            # time.sleep(self.waitingtime)                   # you need to wait until magnet generating
+            # an answer.
             answer_dict['x'] = self.byte_to_utf8(self.soc_x.recv(1024))  # receive an answer
+            self.soc_x.send(self.utf8_to_byte(param_dict['x']))
+            # time.sleep(self.waitingtime)                   # you need to wait until magnet generating
+            # an answer.
+            answer_dict['x'] = self.byte_to_utf8(self.soc_x.recv(1024))  # receive an answer
+
             answer_dict['x'] = answer_dict['x'].replace('\r', '')
             answer_dict['x'] = answer_dict['x'].replace('\n', '')
         if param_dict.get('y') is not None:
             if not param_dict['y'].endswith('\n'):
                 param_dict['y'] += '\n'
-            # self.soc_y.send(self.utf8_to_byte(param_dict['y']))
-            # answer_dict['y'] = self.byte_to_utf8(self.soc_y.recv(1024))   # receive an answer
             self.soc_y.send(self.utf8_to_byte(param_dict['y']))
-            answer_dict['y'] = self.byte_to_utf8(self.soc_y.recv(1024))   # receive an answer
+            # time.sleep(self.waitingtime)                   # you need to wait until magnet generating
+            # an answer.
+            answer_dict['y'] = self.byte_to_utf8(self.soc_y.recv(1024))  # receive an answer
+            self.soc_y.send(self.utf8_to_byte(param_dict['y']))
+            # time.sleep(self.waitingtime)                   # you need to wait until magnet generating
+            # an answer.
+            answer_dict['y'] = self.byte_to_utf8(self.soc_y.recv(1024))  # receive an answer
             answer_dict['y'] = answer_dict['y'].replace('\r', '')
             answer_dict['y'] = answer_dict['y'].replace('\n', '')
         if param_dict.get('z') is not None:
             if not param_dict['z'].endswith('\n'):
                 param_dict['z'] += '\n'
-            # self.soc_z.send(self.utf8_to_byte(param_dict['z']))
-            # answer_dict['z'] = self.byte_to_utf8(self.soc_z.recv(1024))   # receive an answer
             self.soc_z.send(self.utf8_to_byte(param_dict['z']))
-            answer_dict['z'] = self.byte_to_utf8(self.soc_z.recv(1024))   # receive an answer
+            # time.sleep(self.waitingtime)                   # you need to wait until magnet generating
+            # an answer.
+            answer_dict['z'] = self.byte_to_utf8(self.soc_z.recv(1024))  # receive an answer
+            self.soc_z.send(self.utf8_to_byte(param_dict['z']))
+            # time.sleep(self.waitingtime)                   # you need to wait until magnet generating
+            # an answer.
+            answer_dict['z'] = self.byte_to_utf8(self.soc_z.recv(1024))  # receive an answer
             answer_dict['z'] = answer_dict['z'].replace('\r', '')
             answer_dict['z'] = answer_dict['z'].replace('\n', '')
 
         if len(answer_dict) == 0:
             self.log.warning('no parameter_dict was given therefore the '
-                    'function call ask() was useless')
+                             'function call ask() was useless')
 
         return answer_dict
 
@@ -984,8 +997,6 @@ class Magnet(Base, MagnetInterface):
             """
         ask_dict = {}
 
-# lets do this twice, because the magnet gives me for the first request often
-# quiet the non sense.
         for i_dea in range(2):
             if not param_list:
                 ask_dict['x'] = "STATE?\n"
