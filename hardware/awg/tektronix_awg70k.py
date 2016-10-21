@@ -331,6 +331,7 @@ class AWG70K(Base, PulserInterface):
         self.delete_asset(asset_name)
 
         filelist = self._get_filenames_on_host()
+        print(filelist)
         upload_names = []
         for filename in filelist:
             is_wfmx = filename.endswith('.wfmx')
@@ -383,8 +384,10 @@ class AWG70K(Base, PulserInterface):
                 filename.append(file)
                 break
             else:
+                pattern = re.compile('[0-9]+')
                 for chnl in active_analog:
-                    if file == asset_name + chnl + '.wfmx':
+                    ch_num = int(re.search(pattern, chnl).group(0))
+                    if file == asset_name + '_ch' + str(ch_num) + '.wfmx':
                         filename.append(file)
 
         # Check if something could be found
@@ -612,9 +615,11 @@ class AWG70K(Base, PulserInterface):
         num_of_channels = self._get_max_a_channel_number()
 
         # amplitude sanity check
+        pattern = re.compile('[0-9]+')
         if amplitude is not None:
             for chnl in amplitude:
-                if chnl > num_of_channels or chnl < 1:
+                ch_num = int(re.search(pattern, chnl).group(0))
+                if ch_num > num_of_channels or ch_num < 1:
                     self.log.warning('Channel to set (a_ch{0}) not available in AWG.\nSetting '
                                      'analogue voltage for this channel ignored.'.format(chnl))
                     del amplitude[chnl]
@@ -633,7 +638,8 @@ class AWG70K(Base, PulserInterface):
         # offset sanity check
         if offset is not None:
             for chnl in offset:
-                if chnl > num_of_channels or chnl < 1:
+                ch_num = int(re.search(pattern, chnl).group(0))
+                if ch_num > num_of_channels or ch_num < 1:
                     self.log.warning('Channel to set (a_ch{0}) not available in AWG.\nSetting '
                                      'offset voltage for this channel ignored.'.format(chnl))
                     del offset[chnl]
@@ -851,8 +857,6 @@ class AWG70K(Base, PulserInterface):
         for chnl in ch:
             if chnl in self.active_channel:
                 new_channels_state[chnl] = ch[chnl]
-                if self.active_channel[chnl] == ch[chnl]:
-                    del ch[chnl]
             else:
                 self.log.error('Trying to (de)activate channel "{0}". This channel is not present '
                                'in AWG. Setting channels aborted.'.format(chnl))
@@ -881,8 +885,8 @@ class AWG70K(Base, PulserInterface):
         for a_ch in a_chan:
             ach_num = int(re.search(num_pattern, a_ch).group(0))
             # determine number of markers for current a_ch
-            if new_channels_state['d_ch' + str(ach_num - 1)]:
-                if new_channels_state['d_ch' + str(ach_num)]:
+            if new_channels_state['d_ch' + str(2 * ach_num - 1)]:
+                if new_channels_state['d_ch' + str(2 * ach_num)]:
                     marker_num = 2
                 else:
                     marker_num = 1
