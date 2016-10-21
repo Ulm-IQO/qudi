@@ -174,6 +174,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.waveform_format = self._statusVariables['waveform_format']
         if 'sequence_format' in self._statusVariables:
             self.sequence_format = self._statusVariables['sequence_format']
+        self.analog_channels = len([chnl for chnl in self.activation_config if 'a_ch' in chnl])
+        self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
                                      self.amplitude_dict)
 
