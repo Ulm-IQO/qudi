@@ -250,6 +250,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
   </action>
   <action name="counting_controls_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>&amp;Counting controls</string>
    </property>
