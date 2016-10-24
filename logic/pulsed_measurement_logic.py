@@ -30,8 +30,9 @@ from core.util.mutex import Mutex
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 
+
 class PulsedMeasurementLogic(GenericLogic):
-    """unstable: Nikolas Tomek
+    """
     This is the Logic class for the control of pulsed measurements.
     """
     _modclass = 'PulsedMeasurementLogic'
@@ -723,8 +724,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time = time.time() - self.start_time
             self.elapsed_time_str = ''
             self.elapsed_time_str += str(int(self.elapsed_time)//86400).zfill(2) + ':' # days
-            self.elapsed_time_str += str(int(self.elapsed_time)//3600).zfill(2) + ':' # hours
-            self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
+            self.elapsed_time_str += str((int(self.elapsed_time)//3600) % 24).zfill(2) + ':' # hours
+            self.elapsed_time_str += str((int(self.elapsed_time)//60) % 60).zfill(2) + ':' # minutes
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
 
             # emit signals
