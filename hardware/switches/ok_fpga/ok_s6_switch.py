@@ -61,9 +61,9 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         config = self.getConfiguration()
 
         if 'fpga_serial' in config.keys():
-            self._serial = config['fpgacounter_serial']
+            self._serial = config['fpga_serial']
         else:
-            self.log.error('No parameter "fpgacounter_serial" specified in the config! Set the '
+            self.log.error('No parameter "fpga_serial" specified in the config! Set the '
                            'serial number for the currently used fpga counter!\nOpen the Opal '
                            'Kelly Frontpanel to obtain the serial number of the connected FPGA.\n'
                            'Do not forget to close the Frontpanel before starting the Qudi program.'
@@ -228,8 +228,23 @@ class HardwareSwitchFpga(Base, SwitchInterface):
                                    4: False, 5: False, 6: False, 7: False}
         return
 
+    def getCalibration(self, switchNumber, state):
+        return -1
+
+    def setCalibration(self, switchNumber, state, value):
+        return True
+
+    def getSwitchTime(self, switchNumber):
+        """ Give switching time for switch.
+
+          @param int switchNumber: number of switch
+
+          @return float: time needed for switch state change
+        """
+        return 100.0e-3
+
     def _get_all_states(self):
-        self._fpga.UpdateWireOuts(0x20)
+        self._fpga.UpdateWireOuts()
         new_state = int(self._fpga.GetWireOutValue(0x20))
         for chnl in list(self._switch_status):
             if new_state & (2 ** chnl) != 0:
