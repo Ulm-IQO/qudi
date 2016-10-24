@@ -271,9 +271,9 @@ def generate_ramsey(self, name='Ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, m
     # get pihalf element
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
-    # get 3pihalf element (same length as pihalf but with 270 deg phase)
-    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
-                                           270.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 0.0)
     # get tau element
     tau_element = self._get_idle_element(real_tau_start, tau_incr, True)
 
@@ -352,9 +352,9 @@ def generate_hahnecho(self, name='HahnEcho', rabi_period=1.0e-6, mw_freq=2870.0e
     # get pihalf element
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
-    # get 3pihalf element (same length as pihalf but with 270 deg phase)
-    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
-                                           270.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 0.0)
     # get pi element
     pi_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq, 0.0)
     # get tau element
@@ -453,7 +453,7 @@ def generate_HHamp(self, name='HHamp', rabi_period=1.0e-6, spinlock_length=20e-6
     element_list = []
     for sl_amp in amp_array:
         sl_element = self._get_mw_element(spinlock_length, 0.0, mw_channel, False, sl_amp, mw_freq,
-                                          0.0)
+                                          90.0)
         # actual alternating HH-amp sequence
         element_list.append(pihalf_element)
         element_list.append(sl_element)
@@ -519,7 +519,7 @@ def generate_HHtau(self, name='HHtau', rabi_period=1.0e-6, spinlock_amp=0.1, mw_
                                            mw_freq, 0.0)
     # get spinlock element
     sl_element = self._get_mw_element(start_tau, incr_tau, mw_channel, True, spinlock_amp, mw_freq,
-                                      0.0)
+                                      90.0)
 
     if seq_trig_channel is not None:
         # get sequence trigger element
@@ -595,7 +595,7 @@ def generate_HHpol(self, name='HHpol', rabi_period=1.0e-6, spinlock_length=20.0e
                                            mw_freq, 0.0)
     # get spinlock element
     sl_element = self._get_mw_element(spinlock_length, 0.0, mw_channel, False, spinlock_amp,
-                                      mw_freq, 0.0)
+                                      mw_freq, 90.0)
 
     if seq_trig_channel is not None:
         # get sequence trigger element
@@ -683,9 +683,9 @@ def generate_xy8_tau(self, name='XY8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
     # get pihalf element
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
-    # get 3pihalf element (same length but 270 deg phase due to the correction of tau length)
-    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
-                                           270.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 0.0)
     # get pi elements
     pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
                                        0.0)
@@ -815,9 +815,9 @@ def generate_xy8_freq(self, name='XY8_freq', rabi_period=1.0e-6, mw_freq=2870.0e
     # get pihalf element
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
-    # get 3pihalf element (same length but 270 deg phase due to the correction of tau length)
-    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
-                                           270.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 0.0)
     # get pi elements
     pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
                                        0.0)
