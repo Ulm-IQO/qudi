@@ -64,7 +64,7 @@ def make_constant_model(self, prefix=None):
         @return: constant function: in order to use it as a model
         """
 
-        return offset + 0.0 * x
+        return offset
 
     if prefix is None:
         model = Model(constant_function)
@@ -73,7 +73,7 @@ def make_constant_model(self, prefix=None):
             logger.error('Given prefix in constant model is no string. '
                     'Deleting prefix.')
         try:
-            model = Model(constant_function, prefix=prefix)
+            model = Model(constant_function, independent_vars='x', prefix=prefix)
         except:
             logger.error('Creating the constant model failed. '
                     'The prefix might not be a valid string. '
@@ -84,7 +84,7 @@ def make_constant_model(self, prefix=None):
 
     return model, params
 
-def make_amplitude_model(self):
+def make_amplitude_model(self, prefix=None):
     """ This method creates a model of a constant model.
 
     @return tuple: (object model, object params)
@@ -112,9 +112,9 @@ def make_amplitude_model(self):
         @return: constant function: in order to use it as a model
         """
 
-        return amplitude + 0.0 * x
+        return amplitude
 
-    model = Model(amplitude_function)
+    model = Model(amplitude_function, independent_vars='x', prefix=prefix)
     params = model.make_params()
 
     return model, params
