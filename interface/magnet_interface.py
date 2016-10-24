@@ -20,10 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class MagnetInterface():
+class MagnetInterface(metaclass=InterfaceMetaclass):
     """ This is the Interface class to define the controls for the devices
         controlling the magnetic field.
     """
@@ -31,6 +32,7 @@ class MagnetInterface():
     _modtype = 'MagnetInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def get_constraints(self):
         """ Retrieve the hardware constrains from the magnet driving device.
 
@@ -96,11 +98,10 @@ class MagnetInterface():
         constraints[axis1['label']] = axis1
         constraints[axis2['label']] = axis2
         """
-
-        raise InterfaceImplementationError('magnet_interface>get_constraints')
-        return constraints
+        pass
 
 
+    @abc.abstractmethod
     def move_rel(self,  param_dict):
         """ Moves stage in given direction (relative movement)
 
@@ -114,9 +115,9 @@ class MagnetInterface():
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('magnet_interface>move_rel')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def move_abs(self, param_dict):
         """ Moves stage to absolute position (absolute movement)
 
@@ -128,17 +129,17 @@ class MagnetInterface():
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('magnet_interface>move_abs')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def abort(self):
         """ Stops movement of the stage
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('magnet_interface>abort')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_pos(self, param_list=None):
         """ Gets current position of the stage
 
@@ -151,9 +152,9 @@ class MagnetInterface():
         @return dict: with keys being the axis labels and item the current
                       position.
         """
-        raise InterfaceImplementationError('magnet_interface>get_pos')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_status(self, param_list=None):
         """ Get the status of the position
 
@@ -165,9 +166,9 @@ class MagnetInterface():
 
         @return dict: with the axis label as key and the status number as item.
         """
-        raise InterfaceImplementationError('magnet_interface>get_status')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def calibrate(self, param_list=None):
         """ Calibrates the stage.
 
@@ -183,9 +184,9 @@ class MagnetInterface():
         zero point for the passed axis. The calibration procedure will be
         different for each stage.
         """
-        raise InterfaceImplementationError('magnet_interface>calibrate')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes.
 
@@ -197,9 +198,9 @@ class MagnetInterface():
 
         @return dict: with the axis label as key and the velocity as item.
         """
-        raise InterfaceImplementationError('magnet_interface>get_velocity')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def set_velocity(self, param_dict=None):
         """ Write new value for velocity.
 
@@ -211,9 +212,9 @@ class MagnetInterface():
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('magnet_interface>set_velocity')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def tell(self, param_dict=None):
         """ Send a command to the magnet.
 
@@ -225,9 +226,9 @@ class MagnetInterface():
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('magnet_interface>tell')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def ask(self, param_dict=None):
         """ Ask the magnet a question.
 
@@ -241,9 +242,9 @@ class MagnetInterface():
                       magnet. Keywords are the axis names, item names are the
                       string answers of the axis.
         """
-        raise InterfaceImplementationError('magnet_interface>ask')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def set_magnet_idle_state(self, magnet_idle=True):
         """ Set the magnet to couple/decouple to/from the control.
 
@@ -256,9 +257,9 @@ class MagnetInterface():
                         True = idle, decoupled from control
                         False = Not Idle, coupled to control
         """
-        raise InterfaceImplementationError('magnet_interface>set_magnet_idle')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_magnet_idle_state(self):
         """ Retrieve the current state of the magnet, whether it is idle or not.
 
@@ -266,18 +267,14 @@ class MagnetInterface():
                         True = idle, decoupled from control
                         False = Not Idle, coupled to control
         """
+        pass
 
-
-        raise InterfaceImplementationError('magnet_interface>is_magnet_idle')
-        return -1
-
+    @abc.abstractmethod
     def initialize(self):
         """
         Acts as a switch. When all coils of the superconducting magnet are
         heated it cools them, else the coils get heated.
         @return int: (0: Ok, -1:error)
         """
-        raise InterfaceImplementationError('magnet_interface>initialize')
-        return -1
-
+        pass
 

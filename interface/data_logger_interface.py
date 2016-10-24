@@ -19,22 +19,25 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from core.util.customexceptions import InterfaceImplementationError, function_signature
 from enum import Enum
 
-class DataLoggerInterface:
+import abc
+from core.util.interfaces import InterfaceMetaclass
+
+
+class DataLoggerInterface(metaclass=InterfaceMetaclass):
     _modtype = 'DataLoggerInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def get_log_channels(self):
-        raise InterfaceImplementationError('{0}->{1}'
-            ''.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_log_channels(self, channelspec):
-        raise InterfaceImplementationError('{0}->{1}'
-            ''.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def log_to_channel(self, channel, value):
-        raise InterfaceImplementationError('{0}->{1}'
-            ''.format(type(self).__name__, function_signature()))
+        pass
 
