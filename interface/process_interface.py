@@ -20,10 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class ProcessInterface():
+class ProcessInterface(metaclass=InterfaceMetaclass):
     """ A very simple interface to measure a single value.
         Used for PID controll.
     """
@@ -31,12 +32,12 @@ class ProcessInterface():
     _modtype = 'ProcessInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def getProcessValue(self):
         """ Return a measured value """
-        raise InterfaceImplementationError('ProcessInterface->getProcessValue')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def getProcessUnit(self):
         """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
-        raise InterfaceImplementationError('ProcessInterface->getProcessUnit')
-        return -1
+        pass
