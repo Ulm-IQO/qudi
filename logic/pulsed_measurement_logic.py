@@ -731,7 +731,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
-                                          self.measuring_error_plot_y2)
+                                           self.measuring_error_plot_y2)
             return
 
     def set_laser_to_show(self, laser_index, show_raw_data):
