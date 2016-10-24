@@ -145,6 +145,9 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         """ """
         return {}
 
+    def get_temperature_setpoints(self):
+        return {'psu': 32.2, 'head': 42.0}
+
     def get_extra_info(self):
         """ """
         return "Dummy laser v0.9.9\nnot used very much\nvery cheap price very good quality"
