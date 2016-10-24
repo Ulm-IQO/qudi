@@ -331,7 +331,6 @@ class AWG70K(Base, PulserInterface):
         self.delete_asset(asset_name)
 
         filelist = self._get_filenames_on_host()
-        print(filelist)
         upload_names = []
         for filename in filelist:
             is_wfmx = filename.endswith('.wfmx')
