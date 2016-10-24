@@ -124,7 +124,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         if self.psu == PSUTypes.FPU:
             return ControlMode.MIXED
         elif self.psu == PSUTypes.SMD6000:
-            return ControlMode.POWER.
+            return ControlMode.POWER
         else:
             if mode == ControlMode.POWER:
                 self.inst.query('PFB=OFF')
@@ -255,6 +255,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             }
 
     def set_temperatures(self, temps):
+        return {}
+
+    def get_temperature_setpoints(self):
         return {}
 
     def get_lcd(self):
