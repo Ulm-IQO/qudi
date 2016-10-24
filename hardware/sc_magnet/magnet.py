@@ -341,32 +341,40 @@ class Magnet(Base, MagnetInterface):
         @return dict: with the axis label as key and the status number as item.
                       Possible states are { -1 : Error, 1: SCM doing something, 0: SCM doing nothing }
         """
-# what kind of status messages should I provide think I have to see in Alex files.
-# I have no clue how to make this right. Alex assumes of course that we only have one set
-# of axes, but this doesn't really hold. I have the axes 'x', 'y' and 'z' for the
-# hardware stuff and constraints statuses and so on and all the spherical things are
-# for the user. How do I handle this ? I think the status isn't all that important in our case
-# so I just will give the user labels with the numbers of the hardware labels.
-# Alex told me that I basically need to return 3 status messages. -1 for error
-# 1 for moving and 0 for idle. Now I need to think which status I categorize as what.
-
-
-        return_dict = {}
-        if param_list is None:
-            answ_dict = self.ask_status()
-            return_dict['rho'] = [self.translator_for_get_status(answ_dict['x'])]
-            return_dict['theta'] = [self.translator_for_get_status(answ_dict['y'])]
-            return_dict['phi'] = [self.translator_for_get_status(answ_dict['z'])]
+        # I have chosen the numbers rather lightly and
+        # an improvement is probably easily achieved.
+        if param_list is not None:
+            status_plural = self.ask_status(param_list)
         else:
-            if 'rho' in param_list:
-                answ_dict = self.ask_status(["x"])
-                return_dict['rho'] = [self.translator_for_get_status(answ_dict['x'])]
-            if 'theta' in param_list:
-                answ_dict = self.ask_status(["y"])
-                return_dict['theta'] = [self.translator_for_get_status(answ_dict['y'])]
-            if 'phi' in param_list:
-                answ_dict = self.ask_status(["z"])
-                return_dict['phi'] = [self.translator_for_get_status(answ_dict['z'])]
+            status_plural = self.ask_status()
+        status_dict = {}
+        for axes in status_plural:
+            status = status_plural[axes]
+            translated_status = -1
+            if status == '1':
+                translated_status = 1
+            elif status == '2':
+                translated_status = 0
+            elif status == '3':
+                translated_status = 0
+            elif status == '4':
+                translated_status = 1
+            elif status == '5':
+                translated_status = 0
+            elif status == '6':
+                translated_status = 1
+            elif status == '7':
+                translated_status = -1
+            elif status == '8':
+                translated_status = 0
+            elif status == '9':
+                translated_status = 1
+            elif status == '10':
+                translated_status = 1
+            status_dict[axes] = translated_status
+        # adjusting to the axis problem
+        axes = ['rho', 'theta', 'phi']
+        return_dict = {axes[i] : status_dict[old_key] for i, old_key in enumerate(status_dict)}
 
         return return_dict
 
@@ -497,7 +505,6 @@ class Magnet(Base, MagnetInterface):
             return -1
 
         new_coord = [field_dict['x'], field_dict['y'], field_dict['z']]
-        self.log.warning(self.log.warning("New coord "+ str(new_coord)))
         check_var = self.check_constraints({mode: {'cart': new_coord}})
         if check_var:
             if param_dict.get('x') is not None:
@@ -606,14 +613,12 @@ class Magnet(Base, MagnetInterface):
         answ_dict = {}
         coord_list = []
         transform_dict = {'cart': {'rad': coord_list}}
-        self.log.warning("transfomrm_dict1 " + str(transform_dict))
         answ_dict = self.get_current_field()
         coord_list.append(answ_dict['x'])
         coord_list.append(answ_dict['y'])
         coord_list.append(answ_dict['z'])
 
         coord_list = self.transform_coordinates(transform_dict)
-        self.log.warning("coord_dict1 " + str(coord_list))
         label_list = ['rho', 'theta', 'phi']
 
         if param_dict.get('rho') is not None:
@@ -622,16 +627,13 @@ class Magnet(Base, MagnetInterface):
             coord_list[1] = param_dict['theta']
         if param_dict.get('phi') is not None:
             coord_list[2] = param_dict['phi']
-        self.log.warning("coord_dict2 " + str(coord_list))
         for key in param_dict.keys():
                 if key not in label_list:
                     self.log.warning("The key "+key+" provided is no valid key in set_coordinates.")
                     return -1
 
         transform_dict = {'rad': {'cart': coord_list}}
-        self.log.warning("transfomrm_dict2 " + str(transform_dict))
         coord_list = self.transform_coordinates(transform_dict)
-        self.log.warning("coord_dict3 " + str(coord_list))
         set_point_dict = {'x': coord_list[0], 'y': coord_list[1],
                           'z': coord_list[2]}
 
@@ -677,7 +679,7 @@ class Magnet(Base, MagnetInterface):
             self.log.warning("move_abs hasn't done anything, see check_constraints message why")
             return -1
 
-        self.log.warning(self.log.warning("move abs to " + str(param_dict)))
+
         #check_1 = self.set_coordinates(param_dict)
         #check_2 = self.ramp()
         if check_1 == check_2:
@@ -1014,37 +1016,6 @@ class Magnet(Base, MagnetInterface):
 
         return answer_dict
 
-    def translator_for_get_status(self, status):
-        """
-
-        @param status: The status coming from ask_status
-        @return: -1, 0, 1. Depending on the translation
-        """
-        # I have chosen the numbers rather lightly and
-        # an improvement is probably easily achieved.
-        translated_status = -1
-        if status == '1':
-            translated_status = 1
-        elif status == '2':
-            translated_status = 0
-        elif status == '3':
-            translated_status = 0
-        elif status == '4':
-            translated_status = 1
-        elif status == '5':
-            translated_status = 0
-        elif status == '6':
-            translated_status = 1
-        elif status == '7':
-            translated_status = -1
-        elif status == '8':
-            translated_status = 0
-        elif status == '9':
-            translated_status = 1
-        elif status == '10':
-            translated_status = 1
-
-        return translated_status
 
     def translated_get_status(self, param_list = None):
         """ Just a translation of the numbers according to the
@@ -1233,36 +1204,31 @@ class Magnet(Base, MagnetInterface):
             if mode == "normal_mode":
                 if np.abs(x_val) > self.x_constr:
                     my_boolean = False
-#                    self.log.error("In check_constraints the field constraint in x-direction would be violated"
-#                                " with your settings.")
+
                 if np.abs(y_val) > self.y_constr:
                     my_boolean = False
-#                    self.log.error("In check_constraints the field constraint in y-direction would be violated"
-#                                " with your settings.")
-                #the x here is intentional, as the normal_mode constraints are cubic.
+
                 if np.abs(z_val) > self.x_constr:
-#                    print("abs of z_val", np.abs(z_val))
-#                    print("x_constr:", self.x_constr)
+
                     my_boolean = False
-#                    self.log.error("In check_constraints the field constraint in z-direction would be violated"
-#                                " with your settings.")
+
                 field_magnitude = np.sqrt(x_val**2 + y_val**2 + z_val**2)
                 if field_magnitude > self.rho_constr:
                     my_boolean = False
-#                    self.log.error("In check_constraints your settings would surpass the allowed length"
-#                                " of the magnetic field vector.")
+
             elif mode == "z_mode":
                 # Either in sphere on top of the cone
                 # or in cone itself.
                 my_boolean = False
                 # angle 5° cone
-                hight_cone = 28.744967610261352
+                # 3T * cos(5°)
+                height_cone = 2.9886
 
-                if (np.abs(z_val) <= hight_cone) and ((x_val**2 + y_val**2) <= z_val**2):
+                if (np.abs(z_val) <= height_cone) and ((x_val**2 + y_val**2) <= z_val**2):
                     my_boolean = True
-                elif x_val**2 + y_val**2 + (z_val-hight_cone)**2 <= self.rho_constr:
+                elif x_val**2 + y_val**2 + (z_val - height_cone)**2 <= self.rho_constr:
                     my_boolean = True
-                elif x_val**2 + y_val**2 + (z_val+hight_cone)**2 <= self.rho_constr:
+                elif x_val**2 + y_val**2 + (z_val + height_cone)**2 <= self.rho_constr:
                     my_boolean = True
 
                 if not my_boolean:
@@ -1272,10 +1238,6 @@ class Magnet(Base, MagnetInterface):
 
         return_val = False
 
-        # when I call this function in get_constraints I get unwanted recursiveness
-        # The times I need these constraints is, when I ask for something, which is
-        # actually the concern of the gui. So I will remove these things
-        # constr = self.get_constraints()
 
         if param_dict.get('normal_mode') is not None:
             if param_dict['normal_mode'].get("cart") is not None:
