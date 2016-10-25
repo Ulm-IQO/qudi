@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-
 """
-Interface file for simple data acquisition.
+Metaclass for interfaces.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,24 +16,19 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
-top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+top-level directory of this distribution and at
+<https://github.com/Ulm-IQO/qudi/>
 """
 
+
 import abc
-from core.util.interfaces import InterfaceMetaclass
+from qtpy.QtCore import QObject
 
+QObjectMeta = type(QObject)
 
-class SimpleDataInterface(metaclass=InterfaceMetaclass):
+class InterfaceMetaclass(QObjectMeta, abc.ABCMeta):
+    """
+    Metaclass for interfaces.
+    """
+    pass
 
-    _modtype = 'SimpleDataInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
-    def getData(self):
-        """ Return a measured value """
-        pass
-
-    @abc.abstractmethod
-    def getChannels(self):
-        """ Return number of channels for value """
-        pass

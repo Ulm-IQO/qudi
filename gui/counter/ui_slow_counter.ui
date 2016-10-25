@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -45,6 +45,12 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="counter_trace_DockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>1</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="windowTitle">
     <string>Slow Counter</string>
    </property>
@@ -80,7 +86,7 @@
    <property name="maximumSize">
     <size>
      <width>524287</width>
-     <height>58</height>
+     <height>100</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -244,6 +250,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
   </action>
   <action name="counting_controls_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>&amp;Counting controls</string>
    </property>

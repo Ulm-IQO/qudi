@@ -20,23 +20,25 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class SwitchInterface():
+class SwitchInterface(metaclass=InterfaceMetaclass):
     """ Methods to control slow (mechaincal) laser switching devices. """
 
     _modtype = 'SwitchInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
 
           @return int: number of swiches on this hardware
         """
-        raise InterfaceImplementationError('SwitchInterface: getNumberOfSwitches')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def getSwitchState(self, switchNumber):
         """ Gives state of switch.
 
@@ -44,9 +46,9 @@ class SwitchInterface():
 
           @return bool: True if on, False if off, None on error
         """
-        raise InterfaceImplementationError('SwitchInterface: getSwitchStates')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
 
@@ -57,9 +59,9 @@ class SwitchInterface():
 
           @return str: calibration parameter fir switch and state.
         """
-        raise InterfaceImplementationError('SwitchInterface: getCalibration')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def setCalibration(self, switchNumber, state, value):
         """ Set calibration parameter for switch.
 
@@ -71,9 +73,9 @@ class SwitchInterface():
 
           @return bool: True if suceeds, False otherwise
         """
-        raise InterfaceImplementationError('SwitchInterface: setCalibration')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def switchOn(self, switchNumber):
         """ Switch on.
 
@@ -81,9 +83,9 @@ class SwitchInterface():
 
           @return bool: True if suceeds, False otherwise
         """
-        raise InterfaceImplementationError('SwitchInterface: switchOn')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def switchOff(self, switchNumber):
         """ Switch off.
 
@@ -91,9 +93,9 @@ class SwitchInterface():
 
           @return bool: True if suceeds, False otherwise
         """
-        raise InterfaceImplementationError('SwitchInterface: switchOff')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def getSwitchTime(self, switchNumber):
         """ Give switching time for switch.
 
@@ -101,6 +103,4 @@ class SwitchInterface():
 
           @return float: time needed for switch state change
         """
-        raise InterfaceImplementationError('SwitchInterface: getSwitchTime')
-        return -1
-
+        pass
