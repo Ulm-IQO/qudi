@@ -46,6 +46,13 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
     _modclass = 'interface'
 
     @abc.abstractmethod
+    def get_power_range(self):
+        """ Return laser power
+        @return tuple(p1, p2): Laser power range in watts
+        """
+        pass
+
+    @abc.abstractmethod
     def get_power(self):
         """ Return laser power
         @return float: Actual laser power in watts
