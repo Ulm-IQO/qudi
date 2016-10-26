@@ -565,7 +565,7 @@ class AWG70K(Base, PulserInterface):
         amp = {}
         off = {}
 
-        chnl_list = ['a_ch' + ch_num for chn_num in range(1, self._get_max_a_channel_number() + 1)]
+        chnl_list = ['a_ch' + str(ch_num) for ch_num in range(1, self._get_max_a_channel_number() + 1)]
 
         pattern = re.compile('[0-9]+')
         # get pp amplitudes
