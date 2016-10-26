@@ -346,7 +346,10 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             self._fpga.UpdateWireIns()
 
             # read data from the FPGA
-            self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
+            read_err_code = self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
+            if read_err_code < 0:
+                self.log.warning('Opal Kelly FrontPanel method ReadFromBlockPipeOut failed with '
+                                 'error code {0}.'.format(read_err_code))
 
             # encode the bytearray data into 32-bit integers
             buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size,
@@ -354,9 +357,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
             # bin the data according to the specified bin width
             if self._binwidth != 1:
-                buffer_encode = buffer_encode[:(buffer_encode.size //
-                                self._binwidth) * self._binwidth].reshape(-1,
-                                    self._binwidth).sum(axis=1)
+                buffer_encode = buffer_encode[:(buffer_encode.size // self._binwidth) * self._binwidth].reshape(-1, self._binwidth).sum(axis=1)
 
             # reshape the data array into the 2D output array
             self.count_data = buffer_encode.reshape(self._number_of_gates, -1)[:, 0:self._gate_length_bins]

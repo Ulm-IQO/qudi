@@ -26,6 +26,7 @@ from interface.simple_laser_interface import ShutterState
 from interface.simple_laser_interface import ControlMode
 import math
 import random
+import time
 
 class SimpleLaserDummy(Base, SimpleLaserInterface):
     """
@@ -61,6 +62,9 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         """
         pass
 
+    def get_power_range(self):
+        return (0, 0.250)
+
     def get_power(self):
         """ Return laser power
         @return float: Laser power in watts
@@ -74,7 +78,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     def set_power(self, power):
         """ """
         self.power_setpoint = power
-        self.current_setpoint = math.sqrt(self.power_setpoint)
+        self.current_setpoint = math.sqrt(4*self.power_setpoint)*100
         return self.power_setpoint
 
     def get_current(self):
@@ -90,7 +94,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     def set_current(self, current):
         """ """
         self.current_setpoint = current
-        self.power_setpoint = math.pow(self.current_setpoint, 2)
+        self.power_setpoint = math.pow(self.current_setpoint/100, 2) / 4
         return self.current_setpoint
 
     def allowed_control_modes(self):
@@ -108,11 +112,13 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def on(self):
         """ """
+        time.sleep(1)
         self.lstate = LaserState.ON
         return self.lstate
 
     def off(self):
         """ """
+        time.sleep(1)
         self.lstate = LaserState.OFF
         return self.lstate
 
@@ -122,6 +128,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def set_laser_state(self, state):
         """ """
+        time.sleep(1)
         self.lstate = state
         return self.lstate
 
@@ -131,6 +138,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def set_shutter_state(self, state):
         """ """
+        time.sleep(1)
         self.shutter = state
         return self.shutter
 
@@ -151,3 +159,4 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     def get_extra_info(self):
         """ """
         return "Dummy laser v0.9.9\nnot used very much\nvery cheap price very good quality"
+
