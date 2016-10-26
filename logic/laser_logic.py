@@ -55,6 +55,7 @@ class LaserLogic(GenericLogic):
         self.queryTimer.timeout.connect(self.check_laser_loop, QtCore.Qt.QueuedConnection)
 
         # get laser capabilities
+        self.laser_power_range = self._laser.get_power_range()
         self.laser_extra = self._laser.get_extra_info()
         self.laser_state = self._laser.get_laser_state()
         self.laser_can_turn_on = self.laser_state.value <= LaserState.ON.value
@@ -139,3 +140,14 @@ class LaserLogic(GenericLogic):
                 self._laser.set_current(self.laser_current)
                 self._laser.set_control_mode(mode)
 
+    def set_laser_state(self, state):
+        if state and self.laser_state == LaserState.OFF:
+            self._laser.on()
+        if not state and self.laser_state == LaserState.ON:
+            self._laser.off()
+
+    def set_shutter_state(self, state):
+        if state and self.laser_shutter == ShutterState.CLOSED:
+            self._laser.set_shutter_state(ShutterState.OPEN)
+        if not state and self.laser_shutter == ShutterState.OPEN:
+            self._laser.set_shutter_state(ShutterState.CLOSED)
