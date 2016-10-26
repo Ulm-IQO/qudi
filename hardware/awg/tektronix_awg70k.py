@@ -331,7 +331,6 @@ class AWG70K(Base, PulserInterface):
         self.delete_asset(asset_name)
 
         filelist = self._get_filenames_on_host()
-        print(filelist)
         upload_names = []
         for filename in filelist:
             is_wfmx = filename.endswith('.wfmx')
@@ -566,22 +565,25 @@ class AWG70K(Base, PulserInterface):
         amp = {}
         off = {}
 
-        chnl_numbers = list(range(1, self._get_max_a_channel_number() + 1))
+        chnl_list = ['a_ch' + str(ch_num) for ch_num in range(1, self._get_max_a_channel_number() + 1)]
 
+        pattern = re.compile('[0-9]+')
         # get pp amplitudes
         if amplitude is None:
-            for chnl in chnl_numbers:
-                amp[chnl] = float(self.ask('SOURCE' + str(chnl) + ':VOLTAGE:AMPLITUDE?'))
+            for ch_num, chnl in enumerate(chnl_list):
+                amp[chnl] = float(self.ask('SOURCE' + str(ch_num + 1) + ':VOLTAGE:AMPLITUDE?'))
         else:
             for chnl in amplitude:
-                amp[chnl] = float(self.ask('SOURCE' + str(chnl) + ':VOLTAGE:AMPLITUDE?'))
+                ch_num = int(re.search(pattern, chnl).group(0))
+                amp[chnl] = float(self.ask('SOURCE' + str(ch_num) + ':VOLTAGE:AMPLITUDE?'))
 
         # get voltage offsets
         if offset is None:
-            for chnl in chnl_numbers:
+            for ch_num, chnl in enumerate(chnl_list):
                 off[chnl] = 0.0
         else:
             for chnl in offset:
+                ch_num = int(re.search(pattern, chnl).group(0))
                 off[chnl] = 0.0
 
         self.amplitude_list = amp
