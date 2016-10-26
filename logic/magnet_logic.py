@@ -245,10 +245,10 @@ class MagnetLogic(GenericLogic):
         self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
 
         # Fluorescence alignment settings:
-        if '_optimize_pos' in self._statusVariables:
-            self._optimize_pos = self._statusVariables['_optimize_pos']
+        if '_optimize_pos_freq' in self._statusVariables:
+            self._optimize_pos_freq = self._statusVariables['_optimize_pos_freq']
         else:
-            self._optimize_pos = False
+            self._optimize_pos_freq = 1
 
         if 'fluorescence_integration_time' in self._statusVariables:
             self.fluorescence_integration_time = self._statusVariables['fluorescence_integration_time']
@@ -404,7 +404,7 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        self._statusVariables['optimize_pos'] =  self._optimize_pos
+        self._statusVariables['optimize_pos_freq'] =  self._optimize_pos_freq
         self._statusVariables['fluorescence_integration_time'] =  self.fluorescence_integration_time
 
         self._statusVariables['odmr_2d_low_center_freq'] =  self.odmr_2d_low_center_freq
@@ -1211,9 +1211,25 @@ class MagnetLogic(GenericLogic):
 
 
         # first attempt of an optimizer usage:
-        if self._optimize_pos:
-            self._do_optimize_pos()
+        # Trying to implement that a user can adjust the frequency
+        # at which he wants to refocus.
+        freq = self._optimize_pos_freq
+        ii = self._pathway_index
 
+        if freq >= 1:
+            freq = int(np.round(freq))
+            for ii in range(freq):
+                self._do_optimize_pos()
+
+        elif 0 < freq < 1:
+            freq = int(np.round(1/freq))
+            if not ii%freq:
+                self._do_optimize_pos()
+
+        elif freq < 0:
+            self.log.error('No refocus happend, because negative frequency was given')
+
+        # If frequency is 0, then no refocus will happen at all, which is intended.
         return
 
     def _do_optimize_pos(self):
@@ -2079,9 +2095,9 @@ class MagnetLogic(GenericLogic):
     def get_2d_axis_arrays(self):
         return self._2D_axis0_data, self._2D_axis1_data
 
-    def set_optimize_pos(self, state=True):
-        """ Activate the optimize position option. """
-        self._optimize_pos = state
+    def set_optimize_pos_freq(self, freq):
+        """ Set the optimization frequency """
+        self._optimize_pos_freq = freq
 
     def get_optimize_pos(self):
         """ Retrieve whether the optimize position is set.
