@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>984</width>
-    <height>575</height>
+    <height>722</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -108,7 +108,7 @@
              <enum>QTabWidget::Rounded</enum>
             </property>
             <property name="currentIndex">
-             <number>2</number>
+             <number>1</number>
             </property>
             <property name="documentMode">
              <bool>false</bool>
@@ -314,14 +314,14 @@
               <string>Fluorescence</string>
              </attribute>
              <layout class="QGridLayout" name="gridLayout_13">
-              <item row="2" column="0">
+              <item row="2" column="3">
                <widget class="QLabel" name="label_7">
                 <property name="text">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Integration&lt;br/&gt;Time:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="3" column="3">
                <widget class="QCheckBox" name="align_2d_fluorescence_continous_CheckBox">
                 <property name="enabled">
                  <bool>false</bool>
@@ -331,16 +331,11 @@
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
-               <widget class="QCheckBox" name="align_2d_fluorescence_optimize_CheckBox">
-                <property name="text">
-                 <string>Optimize Pos 
-at each point?</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
+              <item row="2" column="4">
                <widget class="ScienDSpinBox" name="align_2d_fluorescence_integrationtime_DSpinBox">
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
                 <property name="suffix">
                  <string>s</string>
                 </property>
@@ -352,6 +347,33 @@ at each point?</string>
                 </property>
                 <property name="value">
                  <double>5.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="4">
+               <widget class="QDoubleSpinBox" name="align_2d_fluorescence_optimize_freq_SpinBox">
+                <property name="toolTip">
+                 <string>Set the frequency of the optimization routine</string>
+                </property>
+                <property name="singleStep">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>1.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="3">
+               <widget class="QLabel" name="label_4">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Refocus&lt;br/&gt;freq.:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                </widget>
               </item>

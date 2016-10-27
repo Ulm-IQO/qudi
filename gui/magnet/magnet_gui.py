@@ -32,7 +32,6 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from core.util.units import get_unit_prefix_dict
-from qtwidgets.scientific_spinbox import ScienSpinBox
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 import pyqtgraph.exporters
 
@@ -256,7 +255,7 @@ class MagnetGui(GUIBase):
         # --------------------
 
         # for fluorescence alignment:
-        self._mw.align_2d_fluorescence_optimize_CheckBox.stateChanged.connect(self.optimize_pos_changed)
+        self._mw.align_2d_fluorescence_optimize_freq_SpinBox.valueChanged.connect(self.optimize_pos_freq_changed)
 
 
         # for odmr alignment:
@@ -405,6 +404,12 @@ class MagnetGui(GUIBase):
             self._interactive_mode = True
         else:
             self._interactive_mode = False
+        if self._ms.z_mode_checkBox.isChecked() and not self._ms.normal_mode_checkBox.isChecked():
+            self.log.warning("dum dum")
+
+        if self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
+            self.log.warning("dam dam")
+
 
         if self._ms.interactive_mode_CheckBox.isChecked():
             self._interactive_mode = True
@@ -892,11 +897,10 @@ class MagnetGui(GUIBase):
         slider_ref = getattr(self._mw, slider_name)
         return slider_ref
 
-    def optimize_pos_changed(self):
+    def optimize_pos_freq_changed(self):
         """ Set whether postition should be optimized at each point. """
-
-        state = self._mw.align_2d_fluorescence_optimize_CheckBox.isChecked()
-        self._magnet_logic.set_optimize_pos(state)
+        freq = self._mw.align_2d_fluorescence_optimize_freq_SpinBox.value()
+        self._magnet_logic.set_optimize_pos_freq(freq)
 
     def stop_movement(self):
         """ Invokes an immediate stop of the hardware.
@@ -973,7 +977,6 @@ class MagnetGui(GUIBase):
             self._magnet_logic.curr_alignment_method = self.measurement_type
 
             self._magnet_logic.fluorescence_integration_time = self._mw.align_2d_fluorescence_integrationtime_DSpinBox.value()
-
             self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Fluorescence', units='c/s')
 
         elif self.measurement_type == '2d_odmr':
