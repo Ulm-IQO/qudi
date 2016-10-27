@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 from scipy.signal import gaussian
 from scipy.ndimage import filters
+from lmfit import Parameters
 
 ############################################################################
 #                                                                          #
@@ -463,4 +464,28 @@ def gaussian_smoothing(self, data=None, filter_len=None, filter_sigma=None):
     return filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
 
 
+
+def _check_1D_input(self, x_axis, data, params):
+    """ Helper function to check the input of the fit for general consistency.
+
+    @param np.array x_axis: 1D array of x values
+    @param np.array data: 1D array of y values
+    @param params:
+    @return:
+    """
+
+    error = 0
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is no array.')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            logger.error('Given parameter is no one dimensional array.')
+            error = -1
+    if not isinstance(params, Parameters):
+        logger.error('Parameters object is not valid in estimate_gaussian.')
+        error = -1
+
+    return error
 
