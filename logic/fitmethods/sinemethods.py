@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
+from core.util.units import compute_dft
 
 
 ############################################################################
@@ -214,15 +215,23 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
     # estimate amplitude
     ampl_val = max(np.abs(data.min()), np.abs(data.max()))
 
+
+    dft_x, dft_y = compute_dft(x_axis, data, zeropad_num=1)
+
     # it is assumed that no offset is used
     # perform fourier transform with zeropadding to get higher resolution
-    data_level_zeropaded = np.zeros(int(len(data)*2))
-    data_level_zeropaded[:len(data)] = data
+    # data_level_zeropaded = np.zeros(int(len(data)*2))
+    # data_level_zeropaded[:len(data)] = data
 
-    fourier = np.fft.fft(data_level_zeropaded)
+    # fourier = np.fft.fft(data_level_zeropaded)
     stepsize = x_axis[1]-x_axis[0]  # for frequency axis
-    freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    frequency_max = np.abs(freq[np.log(fourier).argmax()])
+
+
+    # freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+
+
+    # frequency_max = freq[np.abs(dft_y).argmax()]
+    frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
 
 
     # find minimal distance to the next meas point in the corresponding time value>
@@ -242,12 +251,12 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
 
     for iter_s in range(iter_steps):
         func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
-        sum_res[iter_s] = (data + func_val).sum()
+        sum_res[iter_s] = np.abs(data - func_val).sum()
 
     # The minimum indicates where the sine function was fittng the worst,
     # therefore subtract pi. This will also ensure that the estimated phase will
     # be in the interval [-pi,pi].
-    phase = sum_res.argmin()/iter_steps *2*np.pi - np.pi
+    phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
 
     # values and bounds of initial parameters
     params['amplitude'].set(value=ampl_val)
@@ -294,7 +303,7 @@ def estimate_sineoffset(self, x_axis=None, data=None, params=None):
     # level data
     data_level = data-offset
 
-    error, params = self.estimate_sine(x_axis=None, data=data_level, params=params)
+    error, params = self.estimate_sine(x_axis=x_axis, data=data_level, params=params)
 
     params['offset'].set(value=offset)
 
@@ -389,7 +398,7 @@ def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     fourier_power = abs(fourier)
-    frequency_max = np.abs(freq[fourier_power.argmax()])
+    frequency_max = np.abs(freq[np.log(fourier).argmax()])
 
     # remove noise
     a = np.std(fourier_power[:int(len(freq)/2)])
