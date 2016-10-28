@@ -55,6 +55,7 @@ class LaserLogic(GenericLogic):
         self.queryTimer.timeout.connect(self.check_laser_loop, QtCore.Qt.QueuedConnection)
 
         # get laser capabilities
+        self.laser_shutter = self._laser.get_shutter_state()
         self.laser_power_range = self._laser.get_power_range()
         self.laser_extra = self._laser.get_extra_info()
         self.laser_state = self._laser.get_laser_state()
@@ -81,7 +82,7 @@ class LaserLogic(GenericLogic):
     def check_laser_loop(self):
         """ """
         if self.stopRequest:
-            self.unlock()
+            self.stop()
             self.stopRequest = False
             return
 
@@ -107,9 +108,10 @@ class LaserLogic(GenericLogic):
     @QtCore.Slot()
     def start_query_loop(self):
         """ start the loop """
-        self.lock()
+        self.run()
         self.queryTimer.start(self.queryInterval)
 
+    @QtCore.Slot()
     def stop_query_loop(self):
         """ stop loop """
         self.stopRequest = True
@@ -128,6 +130,7 @@ class LaserLogic(GenericLogic):
         for name in temps:
             self.data[name] = np.zeros(self.bufferLength)
 
+    @QtCore.Slot(ControlMode)
     def set_control_mode(self, mode):
         """ """
         if mode in self._laser.allowed_control_modes():
@@ -140,14 +143,24 @@ class LaserLogic(GenericLogic):
                 self._laser.set_current(self.laser_current)
                 self._laser.set_control_mode(mode)
 
+    @QtCore.Slot(float)
     def set_laser_state(self, state):
         if state and self.laser_state == LaserState.OFF:
             self._laser.on()
         if not state and self.laser_state == LaserState.ON:
             self._laser.off()
 
+    @QtCore.Slot(bool)
     def set_shutter_state(self, state):
         if state and self.laser_shutter == ShutterState.CLOSED:
             self._laser.set_shutter_state(ShutterState.OPEN)
         if not state and self.laser_shutter == ShutterState.OPEN:
             self._laser.set_shutter_state(ShutterState.CLOSED)
+
+    @QtCore.Slot(float)
+    def set_power(self, power):
+        self._laser.set_power(power)
+
+    @QtCore.Slot(float)
+    def set_current(self, current):
+        self._laser.set_current(current)
