@@ -56,6 +56,9 @@ class LaserGUI(GUIBase):
 
     sigLaser = QtCore.Signal(bool)
     sigShutter = QtCore.Signal(bool)
+    sigPower = QtCore.Signal(float)
+    sigCurrent = QtCore.Signal(float)
+    sigCtrlMode = QtCore.Signal(ControlMode)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -101,6 +104,8 @@ class LaserGUI(GUIBase):
         self._mw.shutterButton.clicked.connect(self.changeShutterState)
         self.sigLaser.connect(self._laser_logic.set_laser_state)
         self.sigShutter.connect(self._laser_logic.set_shutter_state)
+        self.sigCurrent.connect(self._laser_logic.set_current)
+        self.sigPower.connect(self._laser_logic.set_power)
         self._mw.controlModeButtonGroup.buttonClicked.connect(self.changeControlMode)
         self.sliderProxy = pg.SignalProxy(self._mw.setValueVerticalSlider.valueChanged, 0.1, 5, self.updateFromSlider)
         self._mw.setValueDoubleSpinBox.editingFinished.connect(self.updateFromSpinBox)
@@ -135,19 +140,19 @@ class LaserGUI(GUIBase):
     def changeControlMode(self, buttonId):
         """ """
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()
-        pwr = self._mw.powerRadioButton.isChecked() and  self._mw.powerRadioButton.isEnabled()
+        pwr = self._mw.powerRadioButton.isChecked() and self._mw.powerRadioButton.isEnabled()
         if pwr and not cur:
             lpr = self._laser_logic.laser_power_range
             self._mw.setValueDoubleSpinBox.setRange(lpr[0], lpr[1])
             self._mw.setValueDoubleSpinBox.setValue(self._laser_logic._laser.get_power_setpoint())
             self._mw.setValueVerticalSlider.setValue(
-                self._laser_logic._laser.get_power_setpoint() / (lpr[1] - lpr[0])  * 100 - lpr[0])
-            self._laser_logic.set_control_mode(ControlMode.POWER)
+                self._laser_logic._laser.get_power_setpoint() / (lpr[1] - lpr[0]) * 100 - lpr[0])
+            self.sigCtrlMode.emit(ControlMode.POWER)
         elif cur and not pwr:
             self._mw.setValueDoubleSpinBox.setRange(0, 100)
             self._mw.setValueDoubleSpinBox.setValue(self._laser_logic._laser.get_current_setpoint())
             self._mw.setValueVerticalSlider.setValue(self._laser_logic._laser.get_current_setpoint())
-            self._laser_logic.set_control_mode(ControlMode.CURRENT)
+            self.sigCtrlMode.emit(ControlMode.CURRENT)
         else:
             self.log.error('Nope.')
         
@@ -193,9 +198,9 @@ class LaserGUI(GUIBase):
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()
         pwr = self._mw.powerRadioButton.isChecked() and  self._mw.powerRadioButton.isEnabled()
         if pwr and not cur:
-            self._laser_logic._laser.set_power(self._mw.setValueDoubleSpinBox.value())
+            self.sigPower.emit(self._mw.setValueDoubleSpinBox.value())
         elif cur and not pwr:
-            self._laser_logic._laser.set_current(self._mw.setValueDoubleSpinBox.value())
+            self.sigCurrent.emit(self._mw.setValueDoubleSpinBox.value())
 
     @QtCore.Slot()
     def updateFromSlider(self):
@@ -206,9 +211,9 @@ class LaserGUI(GUIBase):
             lpr = self._laser_logic.laser_power_range
             self._mw.setValueDoubleSpinBox.setValue(
                 lpr[0] + self._mw.setValueVerticalSlider.value() / 100 * (lpr[1] - lpr[0]))
-            self._laser_logic._laser.set_power(
+            self.sigPower.emit(
                 lpr[0] + self._mw.setValueVerticalSlider.value() / 100 * (lpr[1] - lpr[0]))
         elif cur and not pwr:
             self._mw.setValueDoubleSpinBox.setValue(self._mw.setValueVerticalSlider.value())
-            self._laser_logic._laser.set_current(self._mw.setValueDoubleSpinBox.value())
+            self.sigCurrent.emit(self._mw.setValueDoubleSpinBox.value())
 
