@@ -38,7 +38,7 @@ class ShutterState(Enum):
 class LaserState(Enum):
     OFF = 0
     ON = 1
-    BLOCKED = 2
+    LOCKED = 2
     UNKNOWN = 3
 
 class SimpleLaserInterface(metaclass=InterfaceMetaclass):
