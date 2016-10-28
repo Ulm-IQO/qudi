@@ -83,6 +83,7 @@ class LaserGUI(GUIBase):
 
         # Setup dock widgets
         self._mw.setDockNestingEnabled(True)
+        self._mw.actionReset_View.triggered.connect(self.restoreDefaultView)
 
         # set up plot
         pw = self._mw.graphicsView
@@ -126,6 +127,22 @@ class LaserGUI(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+    def restoreDefaultView(self):
+        """ Restore the arrangement of DockWidgets to the default
+        """
+        # Show any hidden dock widgets
+        self._mw.adjustDockWidget.show()
+        self._mw.plotDockWidget.show()
+
+        # re-dock any floating dock widgets
+        self._mw.adjustDockWidget.setFloating(False)
+        self._mw.plotDockWidget.setFloating(False)
+
+        # Arrange docks widgets
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.adjustDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.plotDockWidget)
+
+
     def changeLaserState(self, on):
         """ """
         self._mw.laserButton.setEnabled(False)
@@ -165,6 +182,8 @@ class LaserGUI(GUIBase):
             self._mw.laserButton.setStyleSheet('')
         elif self._laser_logic.laser_state == LaserState.OFF:
             self._mw.laserButton.setText('Laser: OFF')
+        elif self._laser_logic.laser_state == LaserState.LOCKED:
+            self._mw.laserButton.setText('INTERLOCK')
         else:
             self._mw.laserButton.setText('Laser: ?')
 
