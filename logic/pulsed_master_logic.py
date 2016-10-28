@@ -35,8 +35,8 @@ class PulsedMasterLogic(GenericLogic):
     # pulsed_measurement_logic signals
     sigLaserToShowChanged = QtCore.Signal(int, bool)
     sigDoFit = QtCore.Signal(str)
-    sigStartMeasurement = QtCore.Signal()
-    sigStopMeasurement = QtCore.Signal()
+    sigStartMeasurement = QtCore.Signal(str)
+    sigStopMeasurement = QtCore.Signal(str)
     sigPauseMeasurement = QtCore.Signal()
     sigContinueMeasurement = QtCore.Signal()
     sigStartPulser = QtCore.Signal()
@@ -574,7 +574,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigManuallyPullData.emit()
         return
 
-    def start_measurement(self):
+    def start_measurement(self, stashed_raw_data_tag=''):
         """
 
         @return:
@@ -583,15 +583,15 @@ class PulsedMasterLogic(GenericLogic):
 
         #if self.manual_laser_def:
 
-        self.sigStartMeasurement.emit()
+        self.sigStartMeasurement.emit(stashed_raw_data_tag)
         return
 
-    def stop_measurement(self):
+    def stop_measurement(self, stash_raw_data_tag=''):
         """
 
         @return:
         """
-        self.sigStopMeasurement.emit()
+        self.sigStopMeasurement.emit(stash_raw_data_tag)
         return
 
     def pause_measurement(self):
