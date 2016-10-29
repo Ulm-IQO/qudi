@@ -50,6 +50,10 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
         """
         config = self.getConfiguration()
         self.connect_laser(config['interface'])
+        if 'maxpower' in config:
+            self.maxpower = config['maxpower']
+        else:
+            self.maxpower = 25.0
 
     def on_deactivate(self, e):
         """
@@ -74,8 +78,9 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
                 write_termination='\n',
                 read_termination='\n',
                 send_end=True)
-            self.inst.timeout = 500
-            (self.mfg, self.model, self.serial) = self.inst.query('*IDN?').split(',')
+            self.inst.timeout = 1000
+            idn = self.inst.query('*IDN?')
+            (self.mfg, self.model, self.serial, self.version) = idn.split(',')
         except visa.VisaIOError as e:
             self.log.exception('Communication Failure:')
             return False
@@ -91,7 +96,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
     def allowed_control_modes(self):
         """ Control modes for this laser"""
-        return [ControlMode.POWER]
+        return [ControlMode.MIXED]
 
     def get_control_mode(self):
         """
@@ -129,8 +134,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        maxpow = float(self.inst.query('?'))
-        return tuple([0, maxpow])
+        return 0, self.maxpower
 
     def set_power(self, power):
         """
@@ -145,7 +149,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
         return 'A'
 
     def get_current_range(self):
-        maxcurrent = float(self.inst.query('?'))
+        maxcurrent = float(self.inst.query('?DCL'))
         return (0, maxcurrent)
 
     def get_current(self):
@@ -153,14 +157,14 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        return float(self.inst.query('?C'))
+        return float(self.inst.query('?C1'))
 
     def get_current_setpoint(self):
         """
 
         @return:
         """
-        return float(self.inst.query('?CS'))
+        return float(self.inst.query('?CS1'))
 
     def set_current(self, current_percent):
         """
@@ -198,17 +202,11 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
                 self.inst.query('SHT:0')
         return self.get_shutter_state()
 
-    def get_baseplate_temperature(self):
-        return float(self.inst.query('?HS'))
-
     def get_crystal_temperature(self):
         return float(self.inst.query('?SHG'))
 
     def get_diode_temperature(self):
         return float(self.inst.query('?T'))
-
-    def get_chassis_temperature(self):
-        return float(self.inst.query('?TC'))
 
     def get_tower_temperature(self):
         return float(self.inst.query('?TT'))
@@ -218,10 +216,8 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
     def get_temperatures(self):
         return {
-            'base': self.get_base_temperature(),
             'crystal': self.get_crystal_temperature(),
             'diode': self.get_diode_temperature(),
-            'chassis': self.get_chassis_temperature(),
             'tower': self.get_tower_temperature(),
             'cab': self.get_cab_temperature(),
             }
@@ -230,7 +226,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
         return {}
 
     def get_temperature_setpoints(self):
-        shgset int(self.inst.query('?SHGS'))
+        shgset = int(self.inst.query('?SHGS'))
         return {'shg': shgset}
 
     def get_laser_state(self):
@@ -295,9 +291,9 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
     def get_extra_info(self):
         extra = ''
-        extra += '\n'.join((self.mfg, self.model, self.serial))
+        extra += '{0}\n{1}\n{2}\n{3}\n'.format(self.mfg, self.model, self.serial, self.version)
         extra += '\n'
-        extra += '\n'.join(self.timers())
+        extra += '\n {0}'.format(self.timers())
         extra += '\n'
         return extra
 
