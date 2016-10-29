@@ -70,13 +70,15 @@ def make_gaussian_model(self):
 
     return model, params
 
-def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
+def make_gaussian_fit(self, axis=None, data=None, add_parameters=None, estimator="confocalpeak"):
     """ This method performes a 1D gaussian fit on the provided data.
 
     @param array[] axis: axis values
     @param array[]  x_data: data
     @param dict add_parameters: Additional parameters which will substitute the
                                 estimated parameters/bounds
+    @param string estimator: the string should contain the name of the function you want to use to estimate
+                             the parameters. The default estimator is confocalpeak.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -86,21 +88,12 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
 
     mod_final, params = self.make_gaussian_model()
 
-    error, params = self.estimate_gaussian(axis, data, params)
+    if estimator == "confocalpeak":
+        error, params = self.estimate_gaussian_confocalpeak(axis, data, params)
+    elif estimator == "dip":
+        error, params = self.estimate_gaussian_dip(axis, data, params)
 
-    # auxiliary variables
-    stepsize = abs(axis[1] - axis[0])
-    n_steps = len(axis)
 
-    # Define constraints
-    params['center'].min = (axis[0]) - n_steps * stepsize
-    params['center'].max = (axis[-1]) + n_steps * stepsize
-    params['amplitude'].min = 100  # that is already noise from APD
-    params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
-    params['sigma'].min = stepsize
-    params['sigma'].max = 3 * (axis[-1] - axis[0])
-    params['c'].min = 100  # that is already noise from APD
-    params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
 
     # overwrite values of additional parameters
     if add_parameters is not None:
@@ -115,7 +108,61 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
 
     return result
 
-def estimate_gaussian(self, x_axis=None, data=None, params=None):
+def estimate_gaussian_confocalpeak(self, x_axis=None, data=None, params=None):
+    """ This method provides a one dimensional gaussian estimator designed for 
+    a confocal image of a single color center in diamond.
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary which can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = 0
+    # check if parameters make sense
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is no array.')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            logger.error('Given parameter is no one dimensional array.')
+            error = -1
+    if not isinstance(params, Parameters):
+        logger.error('Parameters object is not valid in estimate_gaussian.')
+        error = -1
+
+    # If the estimator is not good enough one can start improvement with
+    # a convolution
+
+    # auxiliary variables
+    stepsize = abs(axis[1] - axis[0])
+    n_steps = len(axis)
+
+    # Define constraints
+    params['center'].min = (x_axis[0]) - n_steps * stepsize
+    params['center'].max = (x_axis[-1]) + n_steps * stepsize
+    params['amplitude'].min = 100  # that is already noise from APD
+    params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+    params['sigma'].min = stepsize
+    params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
+    params['c'].min = 100  # that is already noise from APD
+    params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+
+    # set parameters
+    params['center'].value = x_axis[np.argmax(data)]
+    params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
+    params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
+    params['c'].value = data.min()
+
+    return error, params
+
+def estimate_gaussian_dip(self, x_axis=None, data=None, params=None):
     """ This method provides a one dimensional gaussian function.
 
     @param array x_axis: x values
@@ -146,20 +193,35 @@ def estimate_gaussian(self, x_axis=None, data=None, params=None):
     # If the estimator is not good enough one can start improvement with
     # a convolution
 
+    # auxiliary variables
+    stepsize = abs(x_axis[1] - x_axis[0])
+    n_steps = len(x_axis)
+
+    #Todo: The estimation needs to be improved. At least sigma is a very bad estimate.
+    # Define constraints
+    params['center'].min = (x_axis[0]) - n_steps * stepsize
+    params['center'].max = (x_axis[-1]) + n_steps * stepsize
+    params['amplitude'].min = -np.inf 
+    params['amplitude'].max = 10**-20
+    params['sigma'].min = 10**-20
+    params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
+    params['c'].min = data.min() 
+    params['c'].max = data.max() 
+
     # set parameters
-    params['center'].value = x_axis[np.argmax(data)]
+    params['center'].value = x_axis[np.argmin(data)]
     params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
-    params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
-    params['c'].value = data.min()
+    params['amplitude'].value = (data.min() - data.max()) * (params['sigma'].value * np.sqrt(2 * np.pi))
+    params['c'].value = data.max()
 
     return error, params
+
 
 ############################################################################
 #                                                                          #
 #                            2D gaussian model                             #
 #                                                                          #
 ############################################################################
-1
 
 def make_twoDgaussian_fit(self, axis=None, data=None,
                            add_parameters=None, estimator="estimate_twoDgaussian_MLE"):
