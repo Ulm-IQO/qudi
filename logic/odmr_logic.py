@@ -814,7 +814,7 @@ class ODMRLogic(GenericLogic):
 
         elif self.fit_function == 'Double Gaussian':
 
-            result = self._fit_logic.make_doublegaussian_fit(**kwargs)
+            result = self._fit_logic.make_doublegaussian_fit(estimator="odmr_dip", **kwargs)
 
             param_dict['Freq. 0'] = {'value': result.params['gaussian0_center'].value,
                                      'error': result.params['gaussian0_center'].stderr,
