@@ -166,9 +166,11 @@ class LaserGUI(GUIBase):
                 self._laser_logic._laser.get_power_setpoint() / (lpr[1] - lpr[0]) * 100 - lpr[0])
             self.sigCtrlMode.emit(ControlMode.POWER)
         elif cur and not pwr:
-            self._mw.setValueDoubleSpinBox.setRange(0, 100)
+            lcr = self._laser_logic.laser_current_range
+            self._mw.setValueDoubleSpinBox.setRange(lcr[0], lcr[1])
             self._mw.setValueDoubleSpinBox.setValue(self._laser_logic._laser.get_current_setpoint())
-            self._mw.setValueVerticalSlider.setValue(self._laser_logic._laser.get_current_setpoint())
+            self._mw.setValueVerticalSlider.setValue(
+                self._laser_logic._laser.get_current_setpoint() / (lcr[1] - lcr[0]) * 100 - lcr[0])
             self.sigCtrlMode.emit(ControlMode.CURRENT)
         else:
             self.log.error('Nope.')
@@ -203,8 +205,11 @@ class LaserGUI(GUIBase):
     @QtCore.Slot()
     def updateGui(self):
         """ """
-        self._mw.currentLabel.setText('{0:6.2f} %'.format(self._laser_logic.laser_current))
-        self._mw.powerLabel.setText('{0:6.2f} W'.format(self._laser_logic.laser_power))
+        self._mw.currentLabel.setText(
+            '{0:6.3f} {1}'.format(
+                self._laser_logic.laser_current,
+                self._laser_logic.laser_current_unit))
+        self._mw.powerLabel.setText('{0:6.3f} W'.format(self._laser_logic.laser_power))
         self._mw.extraLabel.setText(self._laser_logic.laser_extra)
         self.updateButtonsEnabled()
         for k in self.plots:

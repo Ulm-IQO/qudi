@@ -181,6 +181,12 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         else:
             self.inst.query('POWER={0:f}'.format(power*1000))
 
+    def get_current_unit(self):
+        return '%'
+
+    def get_current_range(self):
+        return (0, 100)
+
     def get_current(self):
         """
 
