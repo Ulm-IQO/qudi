@@ -34,8 +34,7 @@ class Models(Enum):
 
 class MillenniaeVLaser(Base, SimpleLaserInterface):
     """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    Spectra Physics Millennia eV diode pumped solid state laser
     """
     _modclass = 'millenniaevlaser'
     _modtype = 'hardware'
@@ -130,7 +129,8 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        return tuple([0, 25])
+        maxpow = float(self.inst.query('?'))
+        return tuple([0, maxpow])
 
     def set_power(self, power):
         """
@@ -140,6 +140,13 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
         """
         self.inst.query('P:{0:f}'.format(power))
         return self.get_power_setpoint()
+
+    def get_current_unit(self):
+        return 'A'
+
+    def get_current_range(self):
+        maxcurrent = float(self.inst.query('?'))
+        return (0, maxcurrent)
 
     def get_current(self):
         """
