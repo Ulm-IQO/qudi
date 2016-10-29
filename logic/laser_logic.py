@@ -57,13 +57,13 @@ class LaserLogic(GenericLogic):
         # get laser capabilities
         self.laser_state = self._laser.get_laser_state()
         self.laser_shutter = self._laser.get_shutter_state()
+        self.laser_can_turn_on = self.laser_state.value <= LaserState.ON.value
         self.laser_current_unit = self._laser.get_current_unit()
         self.laser_power_range = self._laser.get_power_range()
         self.laser_current_range = self._laser.get_current_range()
         self.laser_power_setpoint = self._laser.get_power_setpoint()
         self.laser_current_setpoint = self._laser.get_current_setpoint()
         self.laser_extra = self._laser.get_extra_info()
-        self.laser_can_turn_on = self.laser_state.value <= LaserState.ON.value
         self.laser_can_power = ControlMode.POWER in self._laser.allowed_control_modes()
         self.laser_can_current = ControlMode.CURRENT in self._laser.allowed_control_modes()
         if ControlMode.MIXED in self._laser.allowed_control_modes():
