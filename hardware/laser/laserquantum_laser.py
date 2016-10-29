@@ -56,6 +56,10 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         config = self.getConfiguration()
         self.psu = PSUTypes[config['psu']]
         self.connect_laser(config['interface'])
+        if 'maxpower' in config:
+            self.maxpower = config['maxpower']
+        else:
+            self.maxpower = 0.250
 
     def on_deactivate(self, e):
         """
@@ -168,7 +172,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        return tuple([0, 1])
+        return 0, self.maxpower
 
     def set_power(self, power):
         """
@@ -185,7 +189,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return '%'
 
     def get_current_range(self):
-        return (0, 100)
+        return 0, 100
 
     def get_current(self):
         """
