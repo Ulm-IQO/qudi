@@ -141,8 +141,8 @@ def estimate_gaussian_confocalpeak(self, x_axis=None, data=None, params=None):
     # a convolution
 
     # auxiliary variables
-    stepsize = abs(axis[1] - axis[0])
-    n_steps = len(axis)
+    stepsize = abs(x_axis[1] - x_axis[0])
+    n_steps = len(x_axis)
 
     # Define constraints
     params['center'].min = (x_axis[0]) - n_steps * stepsize
