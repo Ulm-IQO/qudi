@@ -31,10 +31,106 @@ import datetime
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
+from gui.colordefs import QudiPalettePale as palette
 from core.util.units import get_unit_prefix_dict
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 import pyqtgraph.exporters
 
+class CrossROI(pg.ROI):
+
+    """ Create a Region of interest, which is a zoomable rectangular.
+
+    @param float pos: optional parameter to set the position
+    @param float size: optional parameter to set the size of the roi
+
+    Have a look at:
+    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
+    """
+    sigUserRegionUpdate = QtCore.Signal(object)
+    sigMachineRegionUpdate = QtCore.Signal(object)
+
+    def __init__(self, pos, size, **args):
+        """Create a ROI with a central handle."""
+        self.userDrag = False
+        pg.ROI.__init__(self, pos, size, **args)
+        # That is a relative position of the small box inside the region of
+        # interest, where 0 is the lowest value and 1 is the higherst:
+        center = [0.5, 0.5]
+        # Translate the center to the intersection point of the crosshair.
+        self.addTranslateHandle(center)
+
+        self.sigRegionChangeStarted.connect(self.startUserDrag)
+        self.sigRegionChangeFinished.connect(self.stopUserDrag)
+        self.sigRegionChanged.connect(self.regionUpdateInfo)
+
+    def setPos(self, pos, update=True, finish=False):
+        """Sets the position of the ROI.
+
+        @param bool update: whether to update the display for this call of setPos
+        @param bool finish: whether to emit sigRegionChangeFinished
+
+        Changed finish from parent class implementation to not disrupt user dragging detection.
+        """
+        super().setPos(pos, update=update, finish=finish)
+
+
+    def setSize(self, size, update=True, finish=True):
+        """
+        Sets the size of the ROI
+        @param bool update: whether to update the display for this call of setPos
+        @param bool finish: whether to emit sigRegionChangeFinished
+        """
+        super().setSize(size, update=update, finish=finish)
+
+
+    def handleMoveStarted(self):
+        """ Handles should always be moved by user."""
+        super().handleMoveStarted()
+        self.userDrag = True
+
+
+    def startUserDrag(self, roi):
+        """ROI has started being dragged by user."""
+        self.userDrag = True
+
+
+    def stopUserDrag(self, roi):
+        """ROI has stopped being dragged by user"""
+        self.userDrag = False
+
+
+    def regionUpdateInfo(self, roi):
+        """When the region is being dragged by the user, emit the corresponding signal."""
+        if self.userDrag:
+            self.sigUserRegionUpdate.emit(roi)
+        else:
+            self.sigMachineRegionUpdate.emit(roi)
+
+class CrossLine(pg.InfiniteLine):
+
+    """ Construct one line for the Crosshair in the plot.
+
+    @param float pos: optional parameter to set the position
+    @param float angle: optional parameter to set the angle of the line
+    @param dict pen: Configure the pen.
+
+    For additional options consider the documentation of pyqtgraph.InfiniteLine
+    """
+
+    def __init__(self, **args):
+        pg.InfiniteLine.__init__(self, **args)
+#        self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 255),0.5))
+
+    def adjust(self, extroi):
+        """
+        Run this function to adjust the position of the Crosshair-Line
+
+        @param object extroi: external roi object from pyqtgraph
+        """
+        if self.angle == 0:
+            self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5)
+        if self.angle == 90:
+            self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5)
 
 class MagnetMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -130,6 +226,12 @@ class MagnetGui(GUIBase):
        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.move_rel_DockWidget)
        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(3), self._mw.move_abs_DockWidget)
         self.set_default_view_main_window()
+        arr01 = self._magnet_logic.get_2d_data_matrix()[:, :].transpose()
+
+        # Set initial position for the crosshair, default is the middle of the
+        # screen:
+        ini_pos_x_crosshair = len(arr01) / 2
+        ini_pos_y_crosshair = len(arr01) / 2
 
         # After a movement command, the device should not block the program, at
         # least on the hardware level. That meant that the dll (or whatever
@@ -194,6 +296,39 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_cb_GraphicsView.hideAxis('left')
 
         self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
+        self.roi_magnet = CrossROI(
+            # [
+            #     ini_pos_x_crosshair - len(arr01) / 40,
+            #     ini_pos_y_crosshair - len(arr01) / 40
+            # ],
+            [
+                ini_pos_x_crosshair - axis0[0],
+                ini_pos_y_crosshair - axis1[1]
+            ],
+            # [len(arr01) / 20, len(arr01) / 20],
+            [0.01, 0.01],
+            pen={'color': "F0F", 'width': 1},
+            removable=True
+        )
+
+        self._mw.alignment_2d_GraphicsView.addItem(self.roi_magnet)
+
+        # create horizontal and vertical line as a crosshair in xy image:
+        self.hline_magnet = CrossLine(pos=self.roi_magnet.pos() + self.roi_magnet.size() * 0.5,
+                                  angle=0, pen={'color': palette.green, 'width': 1})
+        self.vline_magnet = CrossLine(pos=self.roi_magnet.pos() + self.roi_magnet.size() * 0.5,
+                                  angle=90, pen={'color': palette.green, 'width': 1})
+
+        # connect the change of a region with the adjustment of the crosshair:
+        self.roi_magnet.sigRegionChanged.connect(self.hline_magnet.adjust)
+        self.roi_magnet.sigRegionChanged.connect(self.vline_magnet.adjust)
+        self.roi_magnet.sigUserRegionUpdate.connect(self.update_from_roi_magnet)
+
+
+
+        # add the configured crosshair to the magnet Widget
+        self._mw.alignment_2d_GraphicsView.addItem(self.hline_magnet)
+        self._mw.alignment_2d_GraphicsView.addItem(self.vline_magnet)
 
         if 'alignment_2d_cb_GraphicsView_text' in self._statusVariables:
             textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_text']
@@ -706,7 +841,7 @@ class MagnetGui(GUIBase):
         self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
 
     def _function_builder_move_rel(self, func_name, axis_label, direction):
-        """ Create a function/method, which gots executed for pressing move_rel.
+        """ Create a function/method, which gets executed for pressing move_rel.
 
         @param str func_name: name how the function should be called.
         @param str axis_label: label of the axis you want to create a control
@@ -731,7 +866,7 @@ class MagnetGui(GUIBase):
 
     def _function_builder_update_viewbox(self, func_name, axis_label,
                                          ref_dspinbox):
-        """ Create a function/method, which gots executed for pressing move_rel.
+        """ Create a function/method, which gets executed for pressing move_rel.
 
         @param str func_name: name how the function should be called.
         @param str axis_label: label of the axis you want to create a control
@@ -774,9 +909,9 @@ class MagnetGui(GUIBase):
         return func_dummy_name
 
     def _function_builder_update_slider(self, func_name, axis_label, ref_slider):
-        """ Create a function/method, which gots executed for pressing move_rel.
+        """ Create a function/method, which gets executed for pressing move_rel.
 
-        Create a function/method, which gots executed for pressing move_rel.
+        Create a function/method, which gets executed for pressing move_rel.
 
         @param str func_name: name how the function should be called.
         @param str axis_label: label of the axis you want to create a control
@@ -1299,3 +1434,23 @@ class MagnetGui(GUIBase):
             self._mw.odmr_2d_high_trans_GroupBox.setVisible(False)
         else:
             self._mw.odmr_2d_high_trans_GroupBox.setVisible(True)
+
+    def update_from_roi_magnet(self, roi):
+        """The user manually moved the XY ROI, adjust all other GUI elements accordingly
+
+        @params object roi: PyQtGraph ROI object
+        """
+        x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
+        y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+
+        if hasattr(self._magnet_logic, '_axis0_name') and hasattr(self._magnet_logic, '_axis1_name'):
+            axis0_name = self._magnet_logic._axis0_name
+            axis1_name = self._magnet_logic._axis1_name
+        else:
+            axis0_name = 'axis0'
+            axis1_name = 'axis1'
+
+        self._mw.pos_label.setText('({0}, {1})'.format(axis0_name, axis1_name))
+        self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(x_pos, y_pos))
+        # I only need to update my label here.
+        # which I would like to create in the QtDesigner
