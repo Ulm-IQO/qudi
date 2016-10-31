@@ -151,8 +151,8 @@ def estimate_gaussian_confocalpeak(self, x_axis=None, data=None, params=None):
     params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
     params['sigma'].min = stepsize
     params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
-    params['c'].min = 100  # that is already noise from APD
-    params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+    params['c'].min = 0.  # that is already noise from APD
+    params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)*2.
 
     # set parameters
     params['center'].value = x_axis[np.argmax(data)]
@@ -205,8 +205,8 @@ def estimate_gaussian_dip(self, x_axis=None, data=None, params=None):
     params['amplitude'].max = 10**-20
     params['sigma'].min = 10**-20
     params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
-    params['c'].min = data.min() 
-    params['c'].max = data.max() 
+    params['c'].min = np.min(data)-2*abs(np.min(data))
+    params['c'].max = np.max(data)+2*abs(np.max(data))
 
     # set parameters
     params['center'].value = x_axis[np.argmin(data)]
