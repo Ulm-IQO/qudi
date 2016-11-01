@@ -1753,11 +1753,25 @@ class FitLogic():
 
             plt.show()
 
-
+        def fit_data(self):
+            data=np.loadtxt('E:\\Polarization_Experiments\\Aligned\\2016\\08\\14\\AWG_pulsed\\160814_22h15m_DQT_Rabi_calibration_before_1.6_ana2_time.asc')
+            print(data)
+            params = dict()
+            params["phase"] = {"value" : 0.}
+            result = self.make_sine_fit(axis=data[:,0], data=data[:,1], add_parameters=params)
+            print(result.fit_report())
+            plt.plot(data[:,0],data[:,1],label="data")
+            plt.plot(data[:,0],result.best_fit,label="fit")
+            plt.plot(data[:,0],result.init_fit,label="init")
+            plt.legend()
+            plt.show()
+            print(result.params)
+            
 plt.rcParams['figure.figsize'] = (10,5)
 
 test=FitLogic()
-test.N14_testing()
+test.fit_data()
+#test.N14_testing()
 #test.N15_testing()
 #test.oneD_testing()
 #test.gaussian_testing()

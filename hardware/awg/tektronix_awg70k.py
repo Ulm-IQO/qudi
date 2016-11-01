@@ -574,8 +574,12 @@ class AWG70K(Base, PulserInterface):
                 amp[chnl] = float(self.ask('SOURCE' + str(ch_num + 1) + ':VOLTAGE:AMPLITUDE?'))
         else:
             for chnl in amplitude:
-                ch_num = int(re.search(pattern, chnl).group(0))
-                amp[chnl] = float(self.ask('SOURCE' + str(ch_num) + ':VOLTAGE:AMPLITUDE?'))
+                if chnl in chnl_list:
+                    ch_num = int(re.search(pattern, chnl).group(0))
+                    amp[chnl] = float(self.ask('SOURCE' + str(ch_num) + ':VOLTAGE:AMPLITUDE?'))
+                else:
+                    self.log.warning('Get analog amplitude from AWG70k channel "{0}" failed. '
+                                     'Channel non-existent.'.format(str(chnl)))
 
         # get voltage offsets
         if offset is None:
@@ -583,8 +587,12 @@ class AWG70K(Base, PulserInterface):
                 off[chnl] = 0.0
         else:
             for chnl in offset:
-                ch_num = int(re.search(pattern, chnl).group(0))
-                off[chnl] = 0.0
+                if chnl in chnl_list:
+                    ch_num = int(re.search(pattern, chnl).group(0))
+                    off[chnl] = 0.0
+                else:
+                    self.log.warning('Get analog offset from AWG70k channel "{0}" failed. '
+                                     'Channel non-existent.'.format(str(chnl)))
 
         self.amplitude_list = amp
         self.offset_list = off
@@ -1101,7 +1109,7 @@ class AWG70K(Base, PulserInterface):
         a_ch_asset = [self.ask('SOUR' + str(count) + ":CASS?\n").replace('"', '')
                       for count in range(1, self._get_max_a_channel_number() + 1)]
         tmp_list = [a_ch.split('_ch') for a_ch in a_ch_asset]
-        a_ch_asset = [ele[0] for ele in filter(lambda x: len(x) != 2, tmp_list)]
+        a_ch_asset = [ele[0] for ele in filter(lambda x: len(x) == 2, tmp_list)]
 
         # the case
         if len(a_ch_asset) != 0:
