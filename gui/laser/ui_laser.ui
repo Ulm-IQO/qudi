@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>899</width>
-    <height>595</height>
+    <width>900</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -39,10 +39,13 @@
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Expanding</enum>
+         </property>
          <property name="sizeHint" stdset="0">
           <size>
            <width>20</width>
-           <height>147</height>
+           <height>30</height>
           </size>
          </property>
         </spacer>
@@ -51,6 +54,12 @@
         <widget class="QPushButton" name="laserButton">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
          <property name="text">
           <string>Laser</string>
@@ -80,6 +89,12 @@
         <widget class="QPushButton" name="shutterButton">
          <property name="enabled">
           <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
          <property name="text">
           <string>Shutter</string>
@@ -116,6 +131,12 @@
          <property name="text">
           <string>Laser extra info</string>
          </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+         </property>
         </widget>
        </item>
       </layout>
@@ -128,14 +149,17 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>899</width>
+     <width>900</width>
      <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
     <property name="title">
-     <string>Menu</string>
+     <string>View</string>
     </property>
+    <addaction name="actionShow_Graph"/>
+    <addaction name="actionShow_Controls"/>
+    <addaction name="actionReset_View"/>
     <addaction name="actionClose"/>
    </widget>
    <addaction name="menuMenu"/>
@@ -249,6 +273,36 @@
     <string>Close</string>
    </property>
   </action>
+  <action name="actionShow_Graph">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Graph</string>
+   </property>
+   <property name="softKeyRole">
+    <enum>QAction::SelectSoftKey</enum>
+   </property>
+  </action>
+  <action name="actionShow_Controls">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Controls</string>
+   </property>
+  </action>
+  <action name="actionReset_View">
+   <property name="text">
+    <string>Reset View</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -272,6 +326,38 @@
     <hint type="destinationlabel">
      <x>263</x>
      <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionShow_Graph</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>plotDockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>578</x>
+     <y>300</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionShow_Controls</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>adjustDockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>51</x>
+     <y>300</y>
     </hint>
    </hints>
   </connection>

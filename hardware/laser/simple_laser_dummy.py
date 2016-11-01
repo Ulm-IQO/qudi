@@ -81,6 +81,12 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         self.current_setpoint = math.sqrt(4*self.power_setpoint)*100
         return self.power_setpoint
 
+    def get_current_unit(self):
+        return '%'
+
+    def get_current_range(self):
+        return (0, 100)
+
     def get_current(self):
         """ Return laser current
         @return float: laser current in amperes
