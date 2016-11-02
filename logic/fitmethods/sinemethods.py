@@ -317,8 +317,7 @@ def estimate_sineoffset(self, x_axis=None, data=None, params=None):
 ############################################################################
 
 def make_sineexponentialdecay_model(self, prefix=None):
-    """
-    This method creates a model of sine with exponential decay.
+    """ Create a model of sine with exponential decay.
 
     @return tuple: (object model, object params)
 
@@ -348,9 +347,7 @@ def make_sineexponentialdecay_model(self, prefix=None):
     return model, params
 
 def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
-    """
-    This method provides a estimation of a initial values
-     for a sine exponential decay function.
+    """ Provide a estimation of a initial values for a sine exponential decay function.
 
     @param array x_axis: x values
     @param array data: value of each data point corresponding to x values
@@ -453,8 +450,7 @@ def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
     return error, params
 
 def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
-    """
-    This method performes a sine exponential decay fit on the provided data.
+    """ Perform a sine exponential decay fit on the provided data.
 
     @param array[] axis: axis values
     @param array[] data: data
@@ -480,3 +476,77 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
         result = sineexponentialdecay.fit(data, x=axis, params=params)
 
     return result
+
+
+############################################################################
+#                                                                          #
+#             Sinus with double exponential decay fitting                  #
+#                                                                          #
+############################################################################
+
+def make_sinedoubleexponentialdecay_model(self, prefix=None):
+    """ Create a model of sine with double exponential decay.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+
+    sine_model, params = self.make_sine_model(prefix=prefix)
+    baredoubleexponentialdecay_model, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    model = sine_model * baredoubleexponentialdecay_model + constant_model
+    params = model.make_params()
+
+    return model, params
+
+
+def make_sinedoubleexponentialdecay_fit(self, axis, data, add_parameters=None):
+    """ Perform a sine double exponential decay fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[] data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    sine_double_exp_decay, params = self.make_sinedoubleexponentialdecay_model()
+
+    error, params = self.estimate_sineexponentialdecay(axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = sine_double_exp_decay.fit(data, x=axis, params=params)
+    except:
+        logger.warning('The sineexponentialdecay fit did not work. '
+                'Error message: {}'.format(str(result.message)))
+        result = sine_double_exp_decay.fit(data, x=axis, params=params)
+
+    return result
+
+
+
+############################################################################
+#                                                                          #
+#          Sinus with arbitrary exponential decay fitting                  #
+#                                                                          #
+############################################################################
