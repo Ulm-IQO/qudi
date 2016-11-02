@@ -11,6 +11,7 @@
 * [How to use the logger](@ref logger_usage)
 * [Graphical User Interface Design Concept](@ref uiguidelines)
 * [Step-by-step guide for pulsed measurements](@ref pulsedmeasurement-explanation)
+* [Build the documentation](@ref build-docs)
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)
     * [Manager GUI](@ref managergui)
