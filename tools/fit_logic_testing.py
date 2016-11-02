@@ -81,14 +81,13 @@ class FitLogic():
                 sys.path.append(fitmodules_path)
 
             for f in listdir(fitmodules_path):
-                if isfile(join(fitmodules_path, f)):
+                if isfile(join(fitmodules_path, f)) and f.endswith(".py"):
                     filenames.append(f[:-3])
 
             oneD_fit_methods = dict()
             twoD_fit_methods = dict()
-
+            
             for files in filenames:
-
                 mod = importlib.import_module('{0}'.format(files))
                 for method in dir(mod):
                     try:
@@ -1770,8 +1769,8 @@ class FitLogic():
 plt.rcParams['figure.figsize'] = (10,5)
 
 test=FitLogic()
-test.fit_data()
-#test.N14_testing()
+#test.fit_data()
+test.N14_testing()
 #test.N15_testing()
 #test.oneD_testing()
 #test.gaussian_testing()
