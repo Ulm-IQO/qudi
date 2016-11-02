@@ -2,11 +2,14 @@
 
 ![Structural overview of pulsed measurement modules](pulsed_structure.png "Pulsed structure")
 
-To understand the logic modules (mainly sequence_generator_logic and pulsed_measurement_logic) this documentation will provide a step-by-step manual for scripting a pulsed measurement.
+To understand the logic modules (mainly sequence_generator_logic and pulsed_measurement_logic),
+this documentation will provide a step-by-step manual for scripting a pulsed measurement.
 This can also be used to properly implement a GUI which sets all variables and calls the right methods in the logic.
 
-In general the two logic modules for measurement and sequence generation are independent from each other. Currently the sequence_generation_logic is interfacing to the pulser hardware to check for parameters and upload waveforms.
-In the future this needs to be fixed so that the sequence generation runs independent of the hardware (for example you can simply set a sample rate which the waveform should be created for independent of the actual sample rate on hardware).
+In general, the two logic modules for measurement and sequence generation are independent from each other.
+Currently, the sequence_generation_logic is interfacing to the pulser hardware to check for parameters and upload waveforms.
+In the future, this needs to be fixed so that the sequence generation runs independent of the hardware
+(for example you can simply set a sample rate which the waveform should be created for independent of the actual sample rate on hardware).
 Also the upload and load to channels need to be implemented in the pulsed_measurement_logic rather than the sequence_generation_logic.
 
 But let's see the steps towards a pulsed measurement:
@@ -141,4 +144,4 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 	
 ## Example IPython notebook for pulsed ODMR and Rabi measurements (not perfect, just a working thing...)
 
-![](generate_pulsedodmr.ipynb "IPython notebook example")
+![IPython notebook example](../notebooks/generate_pulsedodmr.ipynb)
