@@ -439,6 +439,11 @@ def make_exponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
 def make_baredoubleexponentialdecay_model(self, prefix=None):
     """ Create a bare double exponential decay model.
 
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
     @return tuple: (object model, object params)
 
     Explanation of the objects:
@@ -489,7 +494,7 @@ def estimate_baredoubleexponentialdecay(self, x_axis, data, params):
     log_data = np.log(data)
 
     # At least 80% must be negative to be counted as an -(x/T)^2 decay.
-    # Otherwise it must be a (x/T)^2 decay.
+    # Otherwise a (x/T)^2 decay is assumed.
 
     average_bool_val = (log_data < 0.0).mean()
 
@@ -549,8 +554,61 @@ def make_baredoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None)
 #                                                                          #
 ############################################################################
 
+def make_doubleexponentialdecay_model(self, prefix=None):
+    """ Create a double exponential decay model.
 
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+    """
+
+    bare_double_exp_decay, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
+    ampitude_model, params = self.make_amplitude_model()
+
+    double_exp_decay = ampitude_model*bare_double_exp_decay
+    params = double_exp_decay.make_params()
+
+    return double_exp_decay, params
+
+# TODO: write a double exponentialdecay estimator
+# def estimate_doubleexponentialdecay(self, x_axis, data, params):
+#     """ Estimation of the initial values for an double exponential decay function.
+#
+#     @param numpy.array x_axis: 1D axis values
+#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+#     @param lmfit.Parameters params: object includes parameter dictionary which
+#                                     can be set
+#
+#     @return tuple (error, params):
+#
+#     Explanation of the return parameter:
+#         int error: error code (0:OK, -1:error)
+#         Parameters object params: set parameters of initial values
+#     """
+#     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+#
+#
+#
+#     error, params =  self.estimate_baredoubleexponentialdecay(x_axis, data, params)
+#
+#     return error, params
+
+# TODO: write a double exponentialdecay fit
 
 
 ############################################################################
