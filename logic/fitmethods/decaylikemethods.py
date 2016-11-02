@@ -346,14 +346,20 @@ def estimate_exponentialdecayoffset(self, x_axis, data, params):
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    # calculation of offset
+    # calculation of offset, take the last 10% from the end of the data
+    # and perform the mean from those.
     offset = data[-max(1, int(len(x_axis)/10)):].mean()
 
-    # substraction of offset
+    # substraction of offset, check whether
     if data[0] < data[-1]:
         data_level = offset - data
     else:
         data_level = data - offset
+
+    # check if the data level contain still negative values and correct
+    # the data level therefore. Otherwise problems in the logarithm appear.
+    if data_level.min() <= 0:
+        data_level = data_level + data_level.min()
 
     # remove all the data that can be smaller than or equals to std.
     # when the data is smaller than std, it is beyond resolution
@@ -409,9 +415,9 @@ def make_exponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    exponentialdecay, params = self.make_exponentialdecay_model()
+    exponentialdecay, params = self.make_exponentialdecayoffset_model()
 
-    error, params = self.estimate_exponentialdecay(x_axis, data, params)
+    error, params = self.estimate_exponentialdecayoffset(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
@@ -420,6 +426,135 @@ def make_exponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
         result = exponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = exponentialdecay.fit(data, x=x_axis, params=params)
-        logger.warning('The exponentialdecay fit did not work. '
+        logger.warning('The exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
+
+############################################################################
+#                                                                          #
+#                  bare double exponential decay                           #
+#                                                                          #
+############################################################################
+
+def make_baredoubleexponentialdecay_model(self, prefix=None):
+    """ Create a bare double exponential decay model.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+    """
+
+    bare_double_exp_decay, params = self.make_barestretchedexponentialdecay_model(prefix=prefix)
+
+    bare_double_exp_decay.set_param_hint(name='beta', value=2, vary=False)
+    params = bare_double_exp_decay.make_params()
+
+    return bare_double_exp_decay, params
+
+
+def estimate_baredoubleexponentialdecay(self, x_axis, data, params):
+    """ Estimation of the initial values for an double exponential decay function.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    if data.min() < 0.0:
+        error = -1
+        logger.error('Data contains values which are below 0. \n'
+                     'Estimate_baredoubleexponentialdecay failed. Try to use '
+                     'estimate_doubleexponentialdecayoffset.')
+        return error, params
+
+
+    log_data = np.log(data)
+
+    # At least 80% must be negative to be counted as an -(x/T)^2 decay.
+    # Otherwise it must be a (x/T)^2 decay.
+
+    average_bool_val = (log_data < 0.0).mean()
+
+    if average_bool_val > 0.8:
+
+        if log_data.max() < 0.0:
+            abs_log_data = abs(log_data)
+        else:
+            abs_log_data = abs(log_data - log_data.max())
+    else:
+        if log_data.min() > 0.0:
+            abs_log_data = log_data
+        else:
+            abs_log_data = abs(log_data - log_data.min())
+
+    log_abs_log_data = np.log(abs_log_data)
+
+    result = self.make_linear_fit(axis=x_axis, data=log_abs_log_data)
+
+    lifetime = np.exp(result.params['offset'].value)
+
+    params['lifetime'].set(value=lifetime)
+
+    return error, params
+
+def make_baredoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+    """
+    This method performes a bare double exponential decay fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    baredoubleexponentialdecay, params = self.make_baredoubleexponentialdecay_model()
+
+    error, params = self.estimate_baredoubleexponentialdecay(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = baredoubleexponentialdecay.fit(data, x=x_axis, params=params)
+    except:
+        result = baredoubleexponentialdecay.fit(data, x=x_axis, params=params)
+        logger.warning('The exponentialdecay with offset fit did not work. '
+                       'Message: {}'.format(str(result.message)))
+    return result
+
+############################################################################
+#                                                                          #
+#                       double exponential decay                           #
+#                                                                          #
+############################################################################
+
+
+
+
+
+############################################################################
+#                                                                          #
+#                 double exponential decay with offset                     #
+#                                                                          #
+############################################################################
