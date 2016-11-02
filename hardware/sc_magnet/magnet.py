@@ -712,8 +712,12 @@ class Magnet(Base, MagnetInterface):
                                  "than one between two consecutive movements. This is not supported yet.")
 
             self._inter = inter1
-
+        self.debug('show old dictionary: {0}'.format(param_dict))
+        # set the corrected values
+        param_dict['theta'] = theta
+        param_dict['phi'] = phi
         constr_dict = {mode: {'rad': coord_list}}
+        self.debug('show new dictionary: {1}'.format(param_dict))
         check_bool = self.check_constraints(constr_dict)
         if check_bool:
             check_1 = self.set_coordinates(param_dict)
