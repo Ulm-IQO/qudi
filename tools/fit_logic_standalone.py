@@ -3,6 +3,16 @@
 This file contains the QuDi FitLogic class, which provides all
 fitting methods imported from the files in logic/fitmethods.
 
+The fit_logic methods can be imported in any python code by using
+the folling lines:
+
+import sys
+path_of_qudi = "<custom path>/qudi/"
+sys.path.append(path_of_qudi)
+from tools.fit_logic_standalone import FitLogic
+fitting = FitLogic(path_of_qudi)
+        
+
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
