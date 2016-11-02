@@ -698,10 +698,6 @@ class Magnet(Base, MagnetInterface):
 
                 phi = param_dict['phi']
                 inter2 = np.ceil(np.abs(phi) / (2 * np.pi))
-                if phi < 0:
-                    phi += 2 * np.pi * inter2
-                if phi >= 2 * np.pi:
-                    phi -= 2 * np.pi * inter2
 
             # theta wasn't in a correct interval before and is still in the same interval ( in this case do nothing )
             elif np.abs(self._inter - inter1) is 0:
@@ -710,8 +706,14 @@ class Magnet(Base, MagnetInterface):
             else:
                 self.log.warning("There was a difference in intervals larger "
                                  "than one between two consecutive movements. This is not supported yet.")
-
             self._inter = inter1
+
+        # adjust the phi values so they are in the right interval. They might be in the wrong interval
+        # due to user input or theta values
+        if phi < 0:
+            phi += 2 * np.pi * inter2
+        if phi >= 2 * np.pi:
+            phi -= 2 * np.pi * inter2
         self.debug('show old dictionary: {0}'.format(param_dict))
         # set the corrected values
         param_dict['theta'] = theta
