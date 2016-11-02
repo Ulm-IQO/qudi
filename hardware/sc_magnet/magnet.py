@@ -676,7 +676,7 @@ class Magnet(Base, MagnetInterface):
         # movement in one of these regions or not. If not just move, if there was shift to the interval [0, np.pi] and
         # move there.
         switch = np.ceil(np.abs(theta) / np.pi) % 2
-        inter1 = np.ceil(theta/np.pi)
+        inter1 = np.ceil(np.abs(theta)/np.pi)
 
         # move the theta values in the right range
         # for the constraints
@@ -714,12 +714,12 @@ class Magnet(Base, MagnetInterface):
             phi += 2 * np.pi * inter2
         if phi >= 2 * np.pi:
             phi -= 2 * np.pi * inter2
-        self.debug('show old dictionary: {0}'.format(param_dict))
+        self.log.debug('show old dictionary: {0}'.format(param_dict))
         # set the corrected values
         param_dict['theta'] = theta
         param_dict['phi'] = phi
         constr_dict = {mode: {'rad': coord_list}}
-        self.debug('show new dictionary: {1}'.format(param_dict))
+        self.log.debug('show new dictionary: {0}'.format(param_dict))
         check_bool = self.check_constraints(constr_dict)
         if check_bool:
             check_1 = self.set_coordinates(param_dict)
