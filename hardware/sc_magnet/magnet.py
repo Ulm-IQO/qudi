@@ -218,8 +218,8 @@ class Magnet(Base, MagnetInterface):
         axis1 = {}
         axis1['label'] = 'theta'       # name is just as a sanity included
         axis1['unit'] = 'rad'        # the SI units
-        axis1['pos_min'] = 0
-        axis1['pos_max'] = pos_max_dict['theta']  # that is basically the traveling range
+        axis1['pos_min'] = -1000  # arbitrary values for now ( there isn't any restriction on them )
+        axis1['pos_max'] = 1000  # that is basically the traveling range
         axis1['pos_step'] = 36000
         axis1['vel_min'] = 0
         axis1['vel_max'] = 0.0404*0.01799  #unit is T/s
@@ -229,8 +229,8 @@ class Magnet(Base, MagnetInterface):
         axis2 = {}
         axis2['label'] = 'phi'       # name is just as a sanity included
         axis2['unit'] = 'rad'        # the SI units
-        axis2['pos_min'] = 0
-        axis2['pos_max'] = pos_max_dict['phi']  # that is basically the traveling range
+        axis2['pos_min'] = -1000 # arbitrary values for now ( there isn't any restriction on them )
+        axis2['pos_max'] = 1000  # that is basically the traveling range
         axis2['pos_step'] = 92000
         axis2['vel_min'] = 0
         axis2['vel_max'] = 0.0380*0.07028 #unit is T/s
