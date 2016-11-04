@@ -178,7 +178,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                                 # mainly used for gated counter
 
         config = self.getConfiguration()
-        print(config)
+
         # handle all the parameters given by the config
         # FIXME: Suggestion: and  partially set the parameters to default values
         # if not given by the config
@@ -869,7 +869,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             )
         devicelist = []
         for ch in chanlist:
-            re.match('^(?P<dev>[0-9A-Za-z\- ]+[0-9A-Za-z\-_ ]*)/(?P<chan>[0-9A-Za-z]+)', ch)
+            if ch is None:
+                continue
+            match = re.match('^/(?P<dev>[0-9A-Za-z\- ]+[0-9A-Za-z\-_ ]*)/(?P<chan>[0-9A-Za-z]+)', ch)
             if match:
                 devicelist.append(match.group('dev'))
             else:
