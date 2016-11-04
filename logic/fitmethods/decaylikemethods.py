@@ -616,3 +616,34 @@ def make_doubleexponentialdecay_model(self, prefix=None):
 #                 double exponential decay with offset                     #
 #                                                                          #
 ############################################################################
+
+def make_doubleexponentialdecay_model(self, prefix=None):
+    """ Create a double exponential decay model.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+    """
+
+    bare_double_exp_decay, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
+    ampitude_model, params = self.make_amplitude_model()
+
+    double_exp_decay = ampitude_model*bare_double_exp_decay
+    params = double_exp_decay.make_params()
+
+    return double_exp_decay, params
