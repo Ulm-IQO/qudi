@@ -166,7 +166,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         # some default values for the hardware:
         self._voltage_range = [-10., 10.]
-        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
+        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         self._current_position = [0., 0., 0., 0.]
 
         self._max_counts = 3e7  # used as a default for expected maximum counts
@@ -178,12 +178,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                                 # mainly used for gated counter
 
         config = self.getConfiguration()
-        print(config)
+
         # handle all the parameters given by the config
         # FIXME: Suggestion: and  partially set the parameters to default values
         # if not given by the config
         if 'scanner_ao_channels' in config.keys():
-            self._scanner_ao_channels=config['scanner_ao_channels']
+            self._scanner_ao_channels = config['scanner_ao_channels']
         else:
             self.log.error(
                 'No "scanner_ao_channels" found in the configuration!\n'
@@ -191,26 +191,25 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 ' otherwise you cannot control the analog channels!')
 
         if 'odmr_trigger_channel' in config.keys():
-            self._odmr_trigger_channel=config['odmr_trigger_channel']
+            self._odmr_trigger_channel = config['odmr_trigger_channel']
         else:
             self.log.error(
-                'No parameter "odmr_trigger_channel" found in configuration!'
-                '\nAssign to that parameter an appropriated channel from your NI Card!')
+                'No parameter "odmr_trigger_channel" found in configuration!\n'
+                'Assign to that parameter an appropriated channel from your NI Card!')
 
         if 'clock_channel' in config.keys():
-            self._clock_channel=config['clock_channel']
+            self._clock_channel = config['clock_channel']
         else:
             self.log.error(
                 'No parameter "clock_channel" configured.'
                 'Assign to that parameter an appropriated channel from your NI Card!')
 
         if 'counter_channel' in config.keys():
-            self._counter_channel=config['counter_channel']
+            self._counter_channel = config['counter_channel']
         else:
             self.log.error(
                 'No parameter "counter_channel" configured.\n'
-                'Assign to that parameter an appropriated channel '
-                'from your NI Card!')
+                'Assign to that parameter an appropriated channel from your NI Card!')
 
         if 'counter_channel2' in config.keys():
             self._counter_channel2 = config['counter_channel2']
@@ -222,21 +221,21 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'have to specify that channel on your NI Card!')
 
         if 'scanner_clock_channel' in config.keys():
-            self._scanner_clock_channel=config['scanner_clock_channel']
+            self._scanner_clock_channel = config['scanner_clock_channel']
         else:
             self.log.error(
                 'No parameter "scanner_clock_channel" configured.\n'
                 'Assign to that parameter an appropriated channel from your NI Card!')
 
         if 'scanner_counter_channel' in config.keys():
-            self._scanner_counter_channel=config['scanner_counter_channel']
+            self._scanner_counter_channel = config['scanner_counter_channel']
         else:
             self.log.error(
                 'No parameter "scanner_counter_channel" configured.\n'
                 'Assign to that parameter an appropriated channel from your NI Card!')
 
         if 'photon_source' in config.keys():
-            self._photon_source=config['photon_source']
+            self._photon_source = config['photon_source']
         else:
             self.log.error(
                 'No parameter "photon_source" configured.\n'
@@ -252,11 +251,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'have to specify that channel on your NI Card!')
 
         if 'clock_frequency' in config.keys():
-            self._clock_frequency=config['clock_frequency']
+            self._clock_frequency = config['clock_frequency']
         else:
             self._clock_frequency = self._clock_frequency_default
             self.log.warning(
-                'No clock_frequency configured taking 100 Hz instead.')
+                'No clock_frequency configured, taking 100 Hz instead.')
 
         if 'gate_in_channel' in config.keys():
             self._gate_in_channel = config['gate_in_channel']
@@ -273,13 +272,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         else:
             self.log.warning(
                 'No parameter "counting_edge_rising" configured.\n'
-                'Set this parameter either to True (rising edge) or to '
-                'False (falling edge).\nTaking the default value '
-                '{0}'.format(self._counting_edge_default))
+                'Set this parameter either to True (rising edge) or to False (falling edge).\n'
+                'Taking the default value {0}'.format(self._counting_edge_default))
             self._counting_edge = self._counting_edge_default
 
         if 'scanner_clock_frequency' in config.keys():
-            self._scanner_clock_frequency=config['scanner_clock_frequency']
+            self._scanner_clock_frequency = config['scanner_clock_frequency']
         else:
             self._scanner_clock_frequency = self._scanner_clock_frequency_default
             self.log.warning(
@@ -857,16 +855,31 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         @return int: error code (0:OK, -1:error)
         """
-        match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
-        if match:
-            device = match.group('device')
-            self.log.warning('NI Device "{0}" will be reset.'.format(device))
+        chanlist = (
+            self._scanner_ao_channels,
+            self._odmr_trigger_channel,
+            self._clock_channel,
+            self._counter_channel,
+            self._counter_channel2,
+            self._scanner_clock_channel,
+            self._scanner_counter_channel,
+            self._photon_source,
+            self._photon_source2,
+            self._gate_in_channel
+            )
+        devicelist = []
+        for ch in chanlist:
+            if ch is None:
+                continue
+            match = re.match('^/(?P<dev>[0-9A-Za-z\- ]+[0-9A-Za-z\-_ ]*)/(?P<chan>[0-9A-Za-z]+)', ch)
+            if match:
+                devicelist.append(match.group('dev'))
+            else:
+                self.log.error('Did not find device name in {0}.'.format(ch))
+        for device in set(devicelist):
+            self.log.info('Reset device {0}.'.format(device))
             daq.DAQmxResetDevice(device)
-            return 0
-        else:
-            self.log.error('Did not find device name in {0}.'.format(
-                self._clock_channel))
-            return -1
+        return 0
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
