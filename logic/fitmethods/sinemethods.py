@@ -449,7 +449,7 @@ def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
 
     return error, params
 
-def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
+def make_sineexponentialdecay_fit(self, x_axis=None, data=None, add_parameters=None):
     """ Perform a sine exponential decay fit on the provided data.
 
     @param array[] axis: axis values
@@ -463,17 +463,17 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
     """
     sineexponentialdecay, params = self.make_sineexponentialdecay_model()
 
-    error, params = self.estimate_sineexponentialdecay(axis, data, params)
+    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
                                             update_dict=add_parameters)
     try:
-        result = sineexponentialdecay.fit(data, x=axis, params=params)
+        result = sineexponentialdecay.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The sineexponentialdecay fit did not work. '
                 'Error message: {}'.format(str(result.message)))
-        result = sineexponentialdecay.fit(data, x=axis, params=params)
+        result = sineexponentialdecay.fit(data, x=x_axis, params=params)
 
     return result
 
@@ -486,6 +486,11 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
 
 def make_sinedoubleexponentialdecay_model(self, prefix=None):
     """ Create a model of sine with double exponential decay.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
     @return tuple: (object model, object params)
 
@@ -515,11 +520,11 @@ def make_sinedoubleexponentialdecay_model(self, prefix=None):
     return model, params
 
 
-def make_sinedoubleexponentialdecay_fit(self, axis, data, add_parameters=None):
+def make_sinedoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
     """ Perform a sine double exponential decay fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[] data: data
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -529,17 +534,17 @@ def make_sinedoubleexponentialdecay_fit(self, axis, data, add_parameters=None):
     """
     sine_double_exp_decay, params = self.make_sinedoubleexponentialdecay_model()
 
-    error, params = self.estimate_sineexponentialdecay(axis, data, params)
+    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
                                             update_dict=add_parameters)
     try:
-        result = sine_double_exp_decay.fit(data, x=axis, params=params)
+        result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The sineexponentialdecay fit did not work. '
                 'Error message: {}'.format(str(result.message)))
-        result = sine_double_exp_decay.fit(data, x=axis, params=params)
+        result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
 
     return result
 
@@ -550,3 +555,88 @@ def make_sinedoubleexponentialdecay_fit(self, axis, data, add_parameters=None):
 #          Sinus with arbitrary exponential decay fitting                  #
 #                                                                          #
 ############################################################################
+
+def make_sinestretchedexponentialdecay_model(self, prefix=None):
+    """ Create a model of a sine with stretched exponential decay.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+
+    sine_model, params = self.make_sine_model(prefix=prefix)
+    bare_stretched_exp_decay_model, params = self.make_barestretchedexponentialdecay_model(prefix=prefix)
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    model = sine_model * bare_stretched_exp_decay_model + constant_model
+    params = model.make_params()
+
+    return model, params
+
+
+def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
+    """ Provide a estimation of a initial values for a sine stretched exponential decay function.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters object params: object includes parameter dictionary which can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
+    #TODO: estimate the exponent cleaverly! For now, set the value to 2 since
+    #      the usual values for our cases are between 1 and 3.
+    params['beta'].set(value=2, min=0.0, max=10)
+
+    return error, params
+
+def make_sinestretchedexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+    """ Perform a sine stretched exponential decay fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    sine_stretched_exp_decay, params = self.make_sinestretchedexponentialdecay_model()
+
+    error, params = self.estimate_sinestretchedexponentialdecay(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The sineexponentialdecay fit did not work. '
+                'Error message: {}'.format(str(result.message)))
+        result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
+
+    return result
