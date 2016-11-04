@@ -6,18 +6,18 @@ functions and estimators. Here one can also do stability checks
  taken into account. This is completely standalone and does not interact with
  qudi. It only will import the fitting methods from qudi.
 
-Qudi is free software: you can redistribute it and/or modify
+QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Qudi is distributed in the hope that it will be useful,
+QuDi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Qudi. If not, see <http://www.gnu.org/licenses/>.
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) 2015-2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
@@ -43,7 +43,17 @@ import os
 from scipy import special
 from scipy.special import gammaln as gamln
 import statsmodels.api as sm
-#import peakutils
+
+import peakutils
+#import peakdetect
+from scipy import fft, ifft
+from scipy import ndimage
+
+import time
+from core.util.units import compute_dft
+
+
+
 #from peakutils.plot import plot as pplot
 
 #matplotlib.rcParams.update({'font.size': 12})
@@ -737,38 +747,41 @@ class FitLogic():
                 plt.show()
 
         def lorentzian_testing(self):
-            x = np.linspace(800, 1000, 301)
+            x = np.linspace(2700, 3000, 301)
 
             mod,params = self.make_lorentzian_model()
             print('Parameters of the model',mod.param_names)
-            p=Parameters()
+            p = Parameters()
 
-            params.add('amplitude',value=-30.)
-            params.add('center',value=920.)
-            params.add('sigma',value=10)
-            params.add('c',value=10.)
+            params.add('amplitude', value=-30.)
+            params.add('center', value=2870.)
+            params.add('sigma', value=20)
+            params.add('c', value=10.)
 
-            data_noisy=(mod.eval(x=x,params=params)
+            data_noisy = (mod.eval(x=x, params=params)
                                     + 0.2*np.random.normal(size=x.shape))
 
-            para=Parameters()
+            para = Parameters()
 #            para.add('sigma',value=p['sigma'].value)
 #            para.add('amplitude',value=p['amplitude'].value)
 
 #            result=mod.fit(data_noisy,x=x,params=p)
-            result=self.make_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+            result = self.make_lorentzian_fit(axis=x, data=data_noisy, add_parameters=para)
 #            result=mod.fit(axis=x,data=data_noisy,add_parameters=p)
 
 #            print(result.fit_report())
 #           gaussian filter
-            gaus=gaussian(10,10)
+            gaus = gaussian(10, 10)
             data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
 
             print(result.init_values['c'])
-            plt.plot(x,data_noisy)
-            plt.plot(x,result.init_fit,'-g')
-            plt.plot(x,result.best_fit,'-r')
-            plt.plot(x,data_smooth,'-y')
+            plt.figure()
+            plt.plot(x, data_noisy, label='data')
+            plt.plot(x, result.init_fit, '-g', label='initial fit')
+            plt.plot(x, result.best_fit, '-r', label='actual fit')
+            plt.plot(x, data_smooth, '-y', label='smoothed data')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
 
 #            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')
             plt.show()
@@ -1034,11 +1047,556 @@ class FitLogic():
 #                print('Peakutils',x[indices])
 #                pplot(x,data,indices)
 
+        def double_sine_testing(self):
+
+            path = os.path.abspath(r'C:\Users\astark\Desktop\sinesinefit')
+#            filename = '20160906-23h05m13s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_sensingsingledrive_meas_state_1_0.txt'
+#            filename = '20160906-23h05m13s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_sensingsingledrive_meas_state_3_0.txt'
+#            filename = '20160907-13h08m38s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p015_meas_state_0_0.txt'
+#            filename = '20160907-14h19m27s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p02_meas_state_0_0.txt'
+#            filename = '20160907-15h27m56s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p025_meas_state_0_0.txt'
+#            filename = '20160907-16h40m25s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p03_meas_state_0_0.txt'
+#            filename = '20160909-12h26m06s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega2cos_D1_0p4_D2_0p1_g_0p02_meas_state_0_0.txt'
+#            filename = '20160909-13h11m48s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega2cos_D1_0p4_D2_0p1_g_0p01_meas_state_0_0.txt'
+#            filename = '20160909-13h37m32s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega2cos_D1_0p4_D2_0p1_g_0p005_meas_state_0_0.txt'
+#            filename = '20160912-10h21m53s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega1cos_D1_0p4_D2_0p1_g_0p035_meas_state_0_0.txt'
+#            filename = '20160929-17h24m54s_NV01_ddrive_1VD1_0p115VD2_0p01-0p03Vg_smiq_2MHz_sample_meas_0.txt'
+            filename = '20160927-16h15m09s_NV01_ddrive_1VD1_0p115VD2_0p01Vg_smiq_4MHz_sample_meas.dat'
+
+            meas_data = np.loadtxt(os.path.join(path,filename))
+
+            x_axis = meas_data[0]/65000 # in microseconds
+            data = meas_data[1]
+
+            mod, params = self.make_doublesine_model()
+#            mod, params = self.make_doublesineexponentialdecay_model()
+
+            offset = np.average(data)
+            data_level = data - offset
+
+
+
+            times = 2
+            data_level_zeropaded=np.zeros(int(len(data_level)*times))
+            data_level_zeropaded[:len(data_level)]=data_level
+
+            fft_x, fft_y = self.comp_fft(x_axis, data_level_zeropaded)
+
+            pot = 1
+            thres = np.mean(fft_y**pot) / np.max(fft_y**pot)
+            if thres < 0.1:
+                thres = 0.1
+            indexes = peakutils.indexes((fft_y**pot),  thres=thres, min_dist=2)
+            print('thres:', thres)
+
+            max_arg1 = (fft_y[indexes]).argmax()
+            index_max1 = indexes[max_arg1]
+            indexes = np.delete(indexes, max_arg1)
+
+            max_arg2 = (fft_y[indexes]).argmax()
+            index_max2 = indexes[max_arg2]
+
+            plt.plot(fft_x, (fft_y)**pot,'-b', label='fft data')
+            plt.plot(fft_x[indexes], fft_y[indexes]**pot,'rx' ,label='found_peaks')
+            plt.plot(fft_x[[index_max1, index_max2]], fft_y[[index_max1,index_max2]]**pot,'go' ,label='selected_peaks')
+            plt.xlabel('Frequency (MHz)')
+            plt.ylabel('rel. amplitude')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            params['frequency'].min = 0
+            params['frequency2'].min = 0
+            max_amplitude =  max(data_level.max(), np.abs(data_level.min()))
+
+            if index_max1 < index_max2:
+                first_index = index_max1
+                second_index = index_max2
+            else:
+                first_index = index_max2
+                second_index = index_max1
+
+
+            params['frequency'].value = fft_x[first_index]
+            params['frequency2'].value = fft_x[second_index]
+
+            if fft_y[first_index] > fft_y[second_index]:
+                ratio = fft_y[second_index]/fft_y[first_index]
+                params['amplitude'].value = max_amplitude
+                params['amplitude2'].value = max_amplitude*ratio
+            else:
+                ratio = fft_y[first_index]/fft_y[second_index]
+                params['amplitude'].value = max_amplitude*ratio
+                params['amplitude2'].value = max_amplitude
+
+            phase_tmp = (data_level[0])/max_amplitude
+            phase = abs(np.arcsin(phase_tmp))
+
+#            params['phase2'].value = phase
+#            params['phase2'].value = phase
+#            params['phase2'].value = 0
+
+            params['offset'].value = offset
+#            params['phase'].min  = -np.pi
+#            params['phase'].max =  np.pi
+#            params['phase2'].min  = -np.pi
+#            params['phase2'].max =  np.pi
+
+            params['phase'].min  = 0
+            params['phase'].max =  2*np.pi
+            params['phase'].value = 1.178
+            params['phase2'].min  = 0
+            params['phase2'].max =  2*np.pi
+            params['phase2'].value = 6.14
+
+
+#            std_dev = 1
+#            conv = filters.gaussian_filter1d(fft_y, std_dev)
+#
+#            smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+#            function = InterpolatedUnivariateSpline(fft_x, conv, k=smoothing_spline)
+#            numerical_integral = function.integral(fft_x[0], fft_x[-1])
+#
+#            params['lifetime'].value = 0.5/numerical_integral
+
+
+            result = mod.fit(data, x=x_axis, params=params)
+            print(result.fit_report())
+
+            plot_ind = len(x_axis)
+
+            plt.plot(x_axis[:plot_ind], data[:plot_ind],'-b', label='data')
+#            plt.plot(x_axis[:plot_ind], result.init_fit[:plot_ind],'-y', label='initial fit')
+            plt.plot(x_axis[:plot_ind], result.best_fit[:plot_ind],'-r', label='best fit result')
+            plt.xlabel('Time (micro-s)')
+            plt.ylabel('norm. signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+        def sine_sine_testing(self):
+
+            path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-09\2016-09-29_06_vary_signal_with_omega2_2MHz_sample_conc')
+#            filename = '20160906-23h05m13s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_sensingsingledrive_meas_state_1_0.txt'
+#            filename = '20160906-23h05m13s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_sensingsingledrive_meas_state_3_0.txt'
+#            filename = '20160907-13h08m38s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p015_meas_state_0_0.txt'
+#            filename = '20160907-14h19m27s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p02_meas_state_0_0.txt'
+#            filename = '20160907-15h27m56s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p025_meas_state_0_0.txt'
+#            filename = '20160907-16h40m25s_map02NV01_ddrive_0p4VD1_0p01VD2_addall_D1_0p4_D2_0p1_sensingdoubledrive_g_0p03_meas_state_0_0.txt'
+#            filename = '20160909-12h26m06s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega2cos_D1_0p4_D2_0p1_g_0p02_meas_state_0_0.txt'
+#            filename = '20160909-13h11m48s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega2cos_D1_0p4_D2_0p1_g_0p01_meas_state_0_0.txt'
+#            filename = '20160909-13h37m32s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega2cos_D1_0p4_D2_0p1_g_0p005_meas_state_0_0.txt'
+#            filename = '20160912-10h21m53s_map02NV01_doubledrive_pi2phasesignal_pi2phaseomega1cos_D1_0p4_D2_0p1_g_0p035_meas_state_0_0.txt'
+            filename = '20160929-17h24m54s_NV01_ddrive_1VD1_0p115VD2_0p01-0p03Vg_smiq_2MHz_sample_meas_0.txt'
+
+            data = np.loadtxt(os.path.join(path,filename))
+
+            x_axis = data[0]/65000 # in microseconds
+
+            mod, params = self.make_sinesine_model()
+
+#            print(params)
+
+            # set the offset as the average of the data
+            offset = np.average(data[1])
+
+            # level data
+            data_level = data[1] - offset
+
+            # estimate amplitude
+            params['amplitude'].min = 0
+            params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+#            params['amplitude'].vary = False
+#            params['amplitude'].value = 0.13
+
+#            params['amplitude'].min = params['amplitude'].value/2
+#            params['amplitude'].max = params['amplitude'].value*2
+
+            # In general, zero padding does not increase the spectral
+            # resolution in the DFT but acts like an interpolation technique,
+            # so that the number of points between the actual peaks are
+            # increased. The same points you would get by doing a very high
+            # quality plot interpolation (Sinc interpolation) without any
+            # zero-padding. That means zero-padding really adds no information
+            # that could not be calculated otherwise without the zero-padding.
+
+            # If noise in present in the signal (which is still less then the
+            # signal) you will find that the zero-padded peak can be just as
+            # inaccurate as the non-zero padded peak! So, in the more general
+            # case, you may not have found the "right" frequency with any more
+            # accuracy than before. Zero-padding only interpolates the
+            # inaccurate result due to noise, which is again a reason why
+            # zero padding does not increase resolution!
+
+            # perform fourier transform
+#            data_level_zeropaded=np.zeros(int(len(data_level)*2))
+#            data_level_zeropaded[:len(data_level)]=data_level
+
+            times = 3
+
+            data_level_zeropaded=np.zeros(int(len(data_level)*times))
+
+            data_level_zeropaded[:len(data_level)]=data_level
+
+#            for i in range(times):
+#                data_level_zeropaded[i*len(data_level):(i+1)*len(data_level)]=data_level
+#            for i in range(times, times*2):
+#                data_level_zeropaded[i*len(data_level):(i+1)*len(data_level)]=data_level
+#            data_level_zeropaded[len(data_level):] = data_level
+
+            fft_x, fft_y = self.comp_fft(x_axis, data_level_zeropaded)
+
+            std_dev = 1
+            conv = ndimage.filters.gaussian_filter1d(fft_y, std_dev)
+
+            pot = 1
+            thres=fft_y.mean()
+            thres = np.mean(fft_y**pot) / np.max(fft_y**pot)
+            indexes = peakutils.indexes((fft_y**pot), thres=thres, min_dist=2)
+#            indexes = peakutils.indexes((fft_y**pot), thres=(thres=fft_y**pot).mean()/(thres=fft_y**pot).max(), min_dist=2)
+#            indexes = peakutils.indexes((conv**pot), thres=conv.mean()/conv.max(), min_dist=2)
+
+            print('fft_y.mean()/fft_y.max():',fft_y.mean()/fft_y.max(), fft_y.mean(), fft_y.max())
+            print('fft_x[-1]:',fft_x[-1])
+
+            print('indexes',indexes, fft_x[indexes], fft_y[indexes])
+
+            max_arg1 = (fft_y[indexes]).argmax()
+            index_max1 = indexes[max_arg1]
+            indexes = np.delete(indexes, max_arg1)
+            print('indexes', indexes)
+
+            max_arg2 = (fft_y[indexes]).argmax()
+            index_max2 = indexes[max_arg2]
+#            indexes = np.delete(indexes,max_arg2)
+
+
+
+            plt.plot(fft_x, (fft_y)**pot,'-b', label='fft data')
+#            plt.plot(fft_x, (conv)**pot, '-m', label='smooth fft data')
+            plt.plot(fft_x[indexes], fft_y[indexes]**pot,'rx' ,label='found_peaks')
+            plt.plot(fft_x[[index_max1, index_max2]], fft_y[[index_max1,index_max2]]**pot,'go' ,label='selected_peaks')
+            plt.axhline(y=fft_y.mean(), xmin=fft_x[0], xmax=fft_x[-1], linewidth=1, color = 'k')
+            plt.xlabel('Frequency (MHz)')
+            plt.ylabel('rel. amplitude')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            params['frequency'].value = (fft_x[index_max1] + fft_x[index_max2])/2
+            print('params["frequency"].value', params['frequency'].value)
+            params['frequency'].min = 0
+            params['frequency2'].value = abs(fft_x[index_max1] - fft_x[index_max2])/2
+            print('params["frequency2"].value', params['frequency2'].value)
+            params['frequency2'].min = 0
+
+#            params['frequency'].value = fft_y[index_max1]
+#            params['frequency'].min = 0
+#            params['frequency2'].value = fft_y[index_max2]
+#            params['frequency2'].min = 0
+
+            phase_tmp = (data_level[0])/params['amplitude'].value
+            phase = abs(np.arcsin(phase_tmp))
+
+#            params['phase'].value = phase
+            params['phase'].min  = -np.pi
+            params['phase'].max =  np.pi
+            params['phase2'].min  = -np.pi
+            params['phase2'].max =  np.pi
+            #params['phase2'].value = phase + np.pi
+            params['offset'].value = offset
+
+#            plt.plot(x_axis, data_smooth_lorentz, label='smoothed data')
+##            plt.plot(x_axis, data_noisy)
+##            plt.plot(x_axis, offset_array)
+#            plt.plot(x_axis, data_convolved, label='Result after convolution with pattern')
+#            plt.xlabel('Frequency (Hz)')
+#            plt.ylabel('Counts (#)')
+#            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+#                   ncol=2, mode="expand", borderaxespad=0.)
+#            plt.show()
+
+#            result = self.make_twoDgaussian_fit(axis=axes,data=data,add_parameters=para)
+            result = mod.fit(data[1], x=x_axis, params=params)
+            print(result.fit_report())
+
+            plot_ind = 200#len(x_axis)
+
+            plt.plot(x_axis[0:plot_ind], data[1][0:plot_ind],'-b', label='data')
+#            plt.plot(x_axis, data_smooth_lorentz,'-g',linewidth=2.0, label='smoothed data')
+#            plt.plot(x_axis, data_convolved,'-y',linewidth=2.0, label='convolved data')
+#            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
+#            plt.plot(x, result2.best_fit,'-r', label='fit')
+            plt.plot(x_axis[0:plot_ind], result.best_fit[0:plot_ind],'-r', label='best fit result')
+#            plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
+#            plt.plot(x_axis, data_test,'-k', label='test data')
+#            plt.plot(x_axis , mod.eval(x=x_axis, params=params),'-g')
+            plt.xlabel('Time (micro-s)')
+            plt.ylabel('norm. signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+
+
+            plt.show()
+
+            fft_x, ffty = self.comp_fft(x_axis, result.init_fit)
+            plt.plot(fft_x,ffty,'o')
+            plt.plot(fft_x,ffty,'--')
+            plt.xlabel('Frequency (MHz)')
+            plt.ylabel('rel. amplitude')
+            plt.show()
+
+
+        def sine_sine_testing2(self):
+
+            x_axis = np.linspace(0, 50, 151)
+
+            mod, params = self.make_sinesine_model()
+
+            params['amplitude'].value=0.2  #+ np.random.normal(0,0.4)
+            params['frequency'].value=0.15 #+np.random.normal(0,0.5)
+            params['frequency2'].value=0.18 #+np.random.normal(0,0.5)
+
+            params['phase'].value=np.pi*1.0
+            params['phase2'].value=np.pi*0.74
+            params['offset'].value=0.94 #np.random.normal(0,0.4)
+
+            data_noisy=mod.eval(x=x_axis, params=params)#+ 0.5*np.random.normal(size=x_axis.shape)
+
+            plt.plot(x_axis, data_noisy,'-b', label='data')
+            plt.xlabel('Time (micro-s)')
+            plt.ylabel('norm. signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+            # set the offset as the average of the data
+            offset = np.average(data_noisy)
+            # level data
+            data_level = data_noisy - offset
+            # estimate amplitude
+            params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+
+            # perform fourier transform
+            data_level_zeropaded=np.zeros(int(len(data_level)*2))
+            data_level_zeropaded[:len(data_level)]=data_level
+
+            fft_x, fft_y = self.comp_fft(x_axis, data_level_zeropaded)
+
+            indexes = peakutils.indexes((fft_y), min_dist=1)
+
+
+
+            print('indexes',indexes, fft_x[indexes], fft_y[indexes])
+
+            max_arg1 = (fft_y[indexes]).argmax()
+            index_max1 = indexes[max_arg1]
+            indexes = np.delete(indexes, max_arg1)
+            print('indexes', indexes)
+
+            max_arg2 = (fft_y[indexes]).argmax()
+            index_max2 = indexes[max_arg2]
+#            indexes = np.delete(indexes,max_arg2)
+
+            plt.plot(fft_x, (fft_y),'-b', label='fft data')
+            plt.plot(fft_x[indexes], fft_y[indexes],'rx' ,label='found_peaks')
+            plt.plot(fft_x[[index_max1,index_max2]], fft_y[[index_max1,index_max2]],'go' ,label='selected_peaks')
+            plt.xlabel('Frequency (MHz)')
+            plt.ylabel('rel. amplitude')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+
+            params['frequency'].value = (fft_x[index_max1] + fft_x[index_max2])/2
+            print('params["frequency"].value', params['frequency'].value)
+            params['frequency'].min = 0
+            params['frequency2'].value = abs(fft_x[index_max1] - fft_x[index_max2])/2
+            print('params["frequency2"].value', params['frequency2'].value)
+            params['frequency2'].min = 0
+
+            phase_tmp = (data_level[0])/params['amplitude'].value
+            phase = abs(np.arcsin(phase_tmp))
+#            phase =np.pi*1.0
+#            phase2 = np.pi*0.74
+#
+#            params['phase'].value = phase
+            params['phase'].min  = 0.0
+            params['phase'].max = 2 * np.pi
+            params['phase2'].min  = 0.0
+            params['phase2'].max = 2 * np.pi
+#            params['phase2'].value = phase2
+            params['offset'].value = offset
+
+            result = mod.fit(data_noisy, x=x_axis, params=params)
+            print(result.fit_report())
+
+            plt.plot(x_axis, data_noisy,'-b', label='data')
+#            plt.plot(x_axis, data_smooth_lorentz,'-g',linewidth=2.0, label='smoothed data')
+#            plt.plot(x_axis, data_convolved,'-y',linewidth=2.0, label='convolved data')
+#            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
+#            plt.plot(x, result2.best_fit,'-r', label='fit')
+            plt.plot(x_axis, result.best_fit,'-r', label='best fit result')
+#            plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
+#            plt.plot(x_axis, data_test,'-k', label='test data')
+#            plt.plot(x_axis , mod.eval(x=x_axis, params=params),'-g')
+            plt.xlabel('Time (micro-s)')
+            plt.ylabel('norm. signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+
+
+            plt.show()
+
+        def comp_fft(self, x_val, y_val):
+
+            x_val = np.array(x_val)
+            y_val = np.array(y_val)
+
+            corrected_y = y_val - y_val.mean()
+            # The absolute values contain the fourier transformed y values
+            fft_y = np.abs(np.fft.fft(corrected_y))
+
+            # Due to the sampling theorem you can only identify frequencies at half
+            # of the sample rate, therefore the FT contains an almost symmetric
+            # spectrum (the asymmetry results from aliasing effects). Therefore take
+            # the half of the values for the display.
+            middle = int((len(corrected_y)+1)//2)
+
+            # sample spacing of x_axis, if x is a time axis than it corresponds to a
+            # timestep:
+            x_spacing = np.round(x_val[-1] - x_val[-2], 12)
+
+            # use the helper function of numpy to calculate the x_values for the
+            # fourier space. That function will handle an occuring devision by 0:
+            fft_x = np.fft.fftfreq(len(corrected_y), d=x_spacing)
+
+            return abs(fft_x[:middle]), fft_y[:middle]
+
+        def sine_sine_decay_testing(self):
+
+            path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-09\2016-09-29_06_vary_signal_with_omega2_2MHz_sample_conc')
+            filename = '20160929-17h24m54s_NV01_ddrive_1VD1_0p115VD2_0p01-0p03Vg_smiq_2MHz_sample_meas_0.txt'
+            meas = np.loadtxt(os.path.join(path,filename))
+
+
+            x_axis = meas[0]/65000 # in microseconds
+            data = meas[1]
+            mod, params = self.make_sinesineexponentialdecay_model()
+
+            # set the offset as the average of the data
+            offset = np.mean(data)
+
+            # level data
+            data_level = data - offset
+
+            # estimate amplitude
+            params['amplitude'].value = max(np.abs(data_level.min()), np.abs(data_level.max()))
+
+            # perform fourier transform with zeropadding to get higher resolution
+            data_level_zeropaded = np.zeros(int(len(data_level)*2))
+            data_level_zeropaded[:len(data_level)] = data_level
+
+            fft_x, fft_y = self.comp_fft(x_axis, data_level_zeropaded)
+
+            # increase the level of the peaks by exponentiate the fft_y with higher
+            # powers:
+            pot = 1
+            thres=fft_y.mean()
+            thres = np.mean(fft_y**pot) / np.max(fft_y**pot)
+            indexes = peakutils.indexes((fft_y**pot), thres=thres, min_dist=2)
+
+            # find first maximal peak:
+            max_arg1 = (fft_y[indexes]).argmax()
+            index_max1 = indexes[max_arg1]
+            indexes = np.delete(indexes, max_arg1)
+
+            # and the second large peak:
+            max_arg2 = (fft_y[indexes]).argmax()
+            index_max2 = indexes[max_arg2]
+
+            plt.plot(fft_x, (fft_y)**pot,'-b', label='fft data')
+#            plt.plot(fft_x, (conv)**pot, '-m', label='smooth fft data')
+            plt.plot(fft_x[indexes], fft_y[indexes]**pot,'rx' ,label='found_peaks')
+            plt.plot(fft_x[[index_max1,index_max2]], fft_y[[index_max1,index_max2]]**pot,'go' ,label='selected_peaks')
+            plt.axhline(y=fft_y.mean(), xmin=fft_x[0], xmax=fft_x[-1], linewidth=1, color = 'k')
+            plt.xlabel('Frequency (MHz)')
+            plt.ylabel('rel. amplitude')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+
+            params['frequency'].value = (fft_x[index_max1] + fft_x[index_max2])/2
+            params['frequency'].min = 0
+            params['frequency'].max = fft_x[-1]
+            params['frequency2'].value = abs(fft_x[index_max1] - fft_x[index_max2])/2
+            params['frequency2'].min = 0
+            params['frequency2'].max = fft_x[-1]
+
+            # remove noise
+            # slightly smooth the fft_y so that some noise peaks become less prominant
+            # in the the peak search algorithm.
+            std_dev = 1
+            conv = filters.gaussian_filter1d(fft_y, std_dev)
+
+            smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+            function = InterpolatedUnivariateSpline(fft_x, conv, k=smoothing_spline)
+            numerical_integral = function.integral(fft_x[0], fft_x[-1])
+
+            print('numerical_integral:',numerical_integral)
+
+            params['lifetime'].value = 200/numerical_integral
+
+            # estimating the phase from the first point
+            # TODO: This only works when data starts at 0
+            phase_tmp = (data_level[0])/params['amplitude'].value
+            phase = abs(np.arcsin(phase_tmp))
+
+
+            if np.gradient(data)[0] < 0 and data_level[0] > 0:
+                phase = np.pi - phase
+            elif np.gradient(data)[0] < 0 and data_level[0] < 0:
+                phase += np.pi
+            elif np.gradient(data)[0] > 0 and data_level[0] < 0:
+                phase = 2.*np.pi - phase
+
+            params['phase'].value = phase
+            params['phase'].min  = 0.0
+            params['phase'].max = 2 * np.pi
+            params['phase2'].min  = 0.0
+            params['phase2'].max = 2 * np.pi
+            params['offset'].value = offset
+
+            result = mod.fit(data[1], x=x_axis, params=params)
+            print(result.fit_report())
+
+            plot_ind = len(x_axis)
+
+            plt.plot(x_axis[0:plot_ind], data[0:plot_ind],'-b', label='data')
+#            plt.plot(x_axis, data_smooth_lorentz,'-g',linewidth=2.0, label='smoothed data')
+#            plt.plot(x_axis, data_convolved,'-y',linewidth=2.0, label='convolved data')
+#            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
+#            plt.plot(x, result2.best_fit,'-r', label='fit')
+            plt.plot(x_axis[0:plot_ind], result.best_fit[0:plot_ind],'-r', label='best fit result')
+#            plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
+#            plt.plot(x_axis, data_test,'-k', label='test data')
+#            plt.plot(x_axis , mod.eval(x=x_axis, params=params),'-g')
+            plt.xlabel('Time (micro-s)')
+            plt.ylabel('norm. signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+
+            plt.show()
+
         def sine_testing(self):
 
             x_axis = np.linspace(0, 50, 151)
             x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
-            mod,params = self.make_sine_model()
+            mod, params = self.make_sine_model()
             print('Parameters of the model',mod.param_names,' with the independet variable',mod.independent_vars)
 
             print(1/(x_axis[1]-x_axis[0]))
@@ -1130,6 +1688,105 @@ class FitLogic():
 
     #        print(result.best_values['phase']/np.pi*180)
 
+        def sine_testing2(self):
+            """ Testing with read in data. """
+
+
+            path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-10\2016-10-24_06_sensi_error_scaling_30min')
+            filename = '20161024-18h52m42s_NV04_ddrive_0p65VD1_0p0975VD2_-43p15dBm_g_pi2_sensi_noise_rabiref_refD1_state_4.txt'
+
+            meas_data = np.loadtxt(os.path.join(path, filename))
+            x_axis = meas_data[0]
+            data = meas_data[1]
+            mod, params = self.make_sineoffset_model()
+
+
+            # estimate amplitude
+
+
+            offset = np.average(data)
+
+            # level data
+            data_level = data - offset
+
+            ampl_val = max(np.abs(data_level.min()), np.abs(data_level.max()))
+
+            # estimate amplitude
+ #           params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+
+#            # perform fourier transform
+#            data_level_zeropaded=np.zeros(int(len(data_level)*2))
+#            data_level_zeropaded[:len(data_level)]=data_level
+#            fourier = np.fft.fft(data_level_zeropaded)
+
+            dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
+
+            stepsize = x_axis[1]-x_axis[0]  # for frequency axis
+#            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+#            frequency_max = dft_x[np.abs(fourier).argmax()]
+            frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
+
+            print("params['frequency'].value:", params['frequency'].value)
+            print('np.round(frequency_max,3):', frequency_max)
+
+            plt.figure()
+#            plt.xlim(0,dft_x.max())
+            plt.plot(dft_x[:int(len(dft_x)/2)],abs(dft_y)[:int(len(dft_x)/2)]**2)
+#            plt.plot(dft_x,np.log(abs(dft_y)),'-r')
+            plt.show()
+
+             # find minimal distance to the next meas point in the corresponding time value>
+            min_x_diff = np.ediff1d(x_axis).min()
+
+            # How many points are used to sample the estimated frequency with min_x_diff:
+            iter_steps = int(1/(frequency_max*min_x_diff))
+            if iter_steps < 1:
+                iter_steps = 1
+
+            sum_res = np.zeros(iter_steps)
+
+            # Procedure: Create sin waves with different phases and perform a summation.
+            #            The sum shows how well the sine was fitting to the actual data.
+            #            The best fitting sine should be a maximum of the summed
+            #            convoluted time trace.
+
+            for iter_s in range(iter_steps):
+                func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + (iter_s)/iter_steps *2*np.pi)
+                sum_res[iter_s] = np.abs(data_level - func_val).sum()
+#                sum_res[iter_s] = np.convolve(data_level, func_val, 'same').sum()
+
+            plt.figure()
+            plt.plot(sum_res)
+            plt.show()
+
+            # The minimum indicates where the sine function was fittng the worst,
+            # therefore subtract pi. This will also ensure that the estimated phase will
+            # be in the interval [-pi,pi].
+            phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
+#            phase = sum_res.argmin()/iter_steps *2*np.pi
+
+
+            params['offset'].set(value=offset)
+            params['amplitude'].set(value=ampl_val)
+            params['frequency'].set(value=frequency_max, min=0.0, max=1/(stepsize)*3)
+            params['phase'].set(value=phase, min=-np.pi, max=np.pi)
+
+            result =mod.fit(data, x=x_axis, params=params)
+
+#            result=self.make_sineoffset_fit(axis=x_axis, data=data, add_parameters=None)
+
+            plt.figure()
+            #plt.plot(x_nice,mod.eval(x=x_nice,params=params),'-g', label='nice data')
+            plt.plot(x_axis,data,'ob', label='noisy data')
+            plt.plot(x_axis,result.init_fit,'-y', label='initial fit')
+            plt.plot(x_axis,result.best_fit,'-r',linewidth=2.0, label='best fit')
+            #plt.plot(x_axis,np.gradient(data_noisy)+offset,'-g',linewidth=2.0,)
+            plt.xlabel('time')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+
+            plt.show()
 
 
         def twoD_gaussian_magnet(self):
@@ -1519,21 +2176,29 @@ class FitLogic():
 
 ################################################################################################################################
         def exponentialdecay_testing(self):
-            #generation of data for testing
+            """ Generation of data for testing. """
+
             x_axis = np.linspace(1, 51, 20)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
-            mod, params = self.make_exponentialdecay_model()
-            print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
+
+            mod, params = self.make_exponentialdecayoffset_model()
+
+            print('Parameters of the model', mod.param_names,
+                  ' with the independet variable', mod.independent_vars)
 
             params['amplitude'].value = -100 + abs(np.random.normal(0,200))
             params['lifetime'].value = 1 + abs(np.random.normal(0,20))
             params['offset'].value = 1 + abs(np.random.normal(0, 200))
-            print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
-                      params['lifetime'].value,'\n', 'offset', params['offset'].value)
+            print('\n', 'amplitude', params['amplitude'].value, '\n',
+                  'lifetime', params['lifetime'].value,'\n', 'offset',
+                  params['offset'].value)
 
             data_noisy = (mod.eval(x=x_axis, params=params)
                               + 10* np.random.normal(size=x_axis.shape))
-            result = self.make_exponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+
+            result = self.make_exponentialdecay_fit(x_axis=x_axis,
+                                                    data=data_noisy,
+                                                    add_parameters=None)
             data = data_noisy
             offset = data[-max(1,int(len(x_axis)/10)):].mean()
 
@@ -1568,7 +2233,7 @@ class FitLogic():
 ###########################################################################################
         def bareexponentialdecay_testing(self):
             #generation of data for testing
-            x_axis = np.linspace(1, 51, 20)
+            x_axis = np.linspace(1, 51, 40)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_bareexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
@@ -1576,34 +2241,74 @@ class FitLogic():
             print('\n''lifetime',
                       params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                              + 0.25 * np.random.normal(size=x_axis.shape))
+                              + 0.125 * np.random.normal(size=x_axis.shape))
             data = abs(data_noisy)
+
+            nice_data = mod.eval(x=x_nice, params=params)
+
             for i in range(0, len(x_axis)):
                 if data[i] <= data.std():
                     break
-            print(i)
-            data_log = np.log(data[0:i])
 
-            plt.plot(x_axis[0:i], data_log, 'ob')
-            linear_result = self.make_linear_fit(axis=x_axis[0:i],data= data_log,add_parameters=None)
+            offset = data_noisy.min()
 
-            plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
-            plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
+            leveled_data = data_noisy - offset
+
+            plt.figure()
+            plt.plot(x_nice, nice_data, label='ref exp. decay data no offest')
+            plt.plot(x_nice, nice_data+1, label='ref exp. decay data +1 offset')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.,
+                       prop={'size':12}, title='ref nice data')
+            plt.show()
+
+            plt.figure()
+            plt.plot(x_nice, np.log(nice_data), label='ref exp. decay data no offest, log')
+            plt.plot(x_nice, np.log(nice_data+1), label='ref exp. decay data +1 offset, log')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.,
+                       prop={'size':12}, title='ref nice data, log')
             plt.show()
 
 
-            result = self.make_bareexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
-            plt.plot(x_axis, data_noisy, 'ob')
-            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
-            print(result.fit_report())
-            plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
-            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+            data_log = np.log(leveled_data)
 
-                # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
+            plt.figure()
+            plt.plot(x_axis, data_log, 'ob', label='logarithmic data')
+            linear_result = self.make_linear_fit(axis=x_axis,
+                                                 data=data_log,
+                                                 add_parameters=None)
+
+            plt.plot(x_axis, linear_result.best_fit,'-r', label='best fit')
+            plt.plot(x_axis, linear_result.init_fit,'-y', label='initial fit')
+            plt.xlabel('Time x')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+            result = self.make_bareexponentialdecay_fit(x_axis=x_axis,
+                                                        data=data_noisy,
+                                                        add_parameters=None)
+            print(result.fit_report())
+
+            plt.figure()
+            plt.plot(x_axis, data_noisy, 'ob',label='noisy data')
+            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g', label='simulated data')
+            plt.plot(x_axis, result.init_fit, '-y', linewidth=1.0, label='initial values')
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=1.0, label='best fit')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.xlabel('Time x')
+            plt.ylabel('signal')
+#            plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 #############################################################################################
         def sineexponentialdecay_testing(self):
+            """ with generated data. """
             # generation of data for testing
+
             x_axis = np.linspace(0, 100, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
@@ -1657,6 +2362,265 @@ class FitLogic():
             #nits['offset'] = 'arb. u.'
             units['amplitude']='arb. u.'
             print(self.create_fit_string(result, mod, units))
+
+        def sineexponentialdecay_testing2(self):
+            """ With read in data and seld.  """
+            path = os.path.abspath(r'C:\Users\astark\Desktop\decaysine')
+
+            filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+            meas_data = np.loadtxt(os.path.join(path, filename))
+            x_axis = meas_data[0]
+            data = meas_data[1]
+
+            mod, params = self.make_sineexponentialdecay_model()
+
+            offset = np.mean(data)
+
+            # level data
+            data_level = data - offset
+
+            # estimate amplitude
+            params['amplitude'].set(value=max(np.abs(data_level.min()), np.abs(data_level.max())),
+                                    min=0)
+
+            data_level_zeropaded = np.zeros(int(len(data_level) * 2))
+
+            data_level_zeropaded[:len(data_level)] = data_level
+            fourier = np.fft.fft(data_level_zeropaded)
+            stepsize = x_axis[1] - x_axis[0]  # for frequency axis
+            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+            fourier_power = (fourier * fourier.conj()).real
+            frequency_max = np.abs(freq[fourier_power.argmax()])
+
+            params['frequency'].set(value=frequency_max,
+                                    min=min(0.1 / (x_axis[-1]-x_axis[0]),freq[3]),
+                                    max=min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0])))
+
+
+            #remove noise
+            a = np.std(fourier_power[:int(len(freq)/2)])
+            for i in range(0,int(len(fourier)/2)):
+                if fourier_power[i]<=a:
+                    fourier_power[i] = 0
+
+            #calculating the width of the FT peak for the estimation of lifetime
+            s = 0
+            for i in range(0,int(len(freq) / 2)):
+                s+= fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
+            params['lifetime'].set(value=0.5/s)
+
+
+            # find minimal distance to the next meas point.
+            min_diff = np.ediff1d(x_axis).min()
+
+            iter_steps = int(1/(frequency_max*min_diff))
+#            print('min_diff:',min_diff, 'frequency_max:',frequency_max)
+#
+#            print('iter_steps:',iter_steps)
+
+            conv_res = np.zeros(iter_steps)
+
+            for iter_s in range(iter_steps):
+                func_val = params['amplitude'].value * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
+                conv_res[iter_s] = (data_level + func_val).sum()
+
+
+
+            # that will ensure that the estimated phase will be in the interval
+            # [-pi,pi]
+            phase = conv_res.argmin()/iter_steps *2*np.pi #-np.pi
+            print('phase:', phase)
+
+            plt.figure()
+            plt.plot(conv_res)
+#            plt.plot(data_level)
+#            plt.plot(func_val)
+            plt.show()
+
+
+#            # estimating the phase from the first point
+#            # TODO: This only works when data starts at 0
+#            phase_tmp = (data_level[0]) / params['amplitude'].value
+#            phase = abs(np.arcsin(phase_tmp))
+#
+#
+#
+#            if np.gradient(data)[0] < 0 and data_level[0] > 0:
+#                phase = np.pi - phase
+#            elif np.gradient(data)[0] < 0 and data_level[0] < 0:
+#                phase += np.pi
+#            elif np.gradient(data)[0] > 0 and data_level[0] < 0:
+#                phase = 2. * np.pi - phase
+#
+#            print('phase: ', phase/np.pi)
+#            phase = 0
+
+            # values and bounds of initial parameters
+            params['phase'].set(value=phase)
+            params['offset'].set(value=offset)
+            params['lifetime'].set(min=3 *(x_axis[1]-x_axis[0]), max = 1/(abs(freq[1]-freq[0])*1.5) )
+
+
+            result = mod.fit(data, x=x_axis, params=params)
+
+
+            plt.figure()
+            plt.plot(x_axis/65000, data, label='measured data')
+            plt.plot(x_axis/65000, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            print(result.fit_report())
+
+            print(params.pretty_print)
+
+
+        def sineexponentialdecay_testing3(self):
+            """ With read in data.  """
+            path = os.path.abspath(r'C:\Users\astark\Desktop\decaysine')
+
+            filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+            meas_data = np.loadtxt(os.path.join(path, filename))
+            x_axis = meas_data[0]
+            data = meas_data[1]
+
+            mod, params = self.make_sineexponentialdecay_model()
+
+            result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data)
+
+            plt.figure()
+            plt.plot(x_axis/65000, data, label='measured data')
+            plt.plot(x_axis/65000, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            print(result.fit_report())
+
+###############################################################################
+
+        def sine_double_exponential_decay_testing(self):
+            """ With read in data and customized estimator.  """
+
+            path = os.path.abspath(r'C:\Users\astark\Desktop\decaysine')
+
+            filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+            meas_data = np.loadtxt(os.path.join(path, filename))
+            x_axis = meas_data[0]/65000
+            data = meas_data[1]
+
+            mod, params = self.make_sinedoubleexponentialdecay_model()
+
+
+            # set the offset as the median of the data
+            offset = np.mean(data)
+
+            # level data
+            data_level = data - offset
+
+            # estimate amplitude
+            ampl_val = max(np.abs(data_level.min()), np.abs(data_level.max()))
+
+            x_dft, y_dft = compute_dft(x_val=x_axis, y_val=data_level, zeropad_num=1)
+
+            stepsize_x  = x_dft[1]-x_dft[0]
+            freq_max = x_dft[y_dft.argmax()]
+
+            # remove noise which is below standard deviation:
+            y_dft_stderr = np.std(y_dft)
+            for index in range(len(y_dft)):
+                if y_dft[index] <= y_dft_stderr:
+                    y_dft[index] = 0
+
+            # calculating the width of the FT peak for the estimation of lifetime
+            peak_width = 0
+            y_dft_max = y_dft.max()
+            for i in range(len(y_dft)):
+                peak_width += y_dft[i]*stepsize_x/y_dft_max
+
+            lifetime = 0.5 / peak_width
+
+
+
+            # find minimal distance to the next meas point in the corresponding time value>
+            min_x_diff = np.ediff1d(x_axis).min()
+
+            # How many points are used to sample the estimated frequency with min_x_diff:
+            iter_steps = int(1/(freq_max*min_x_diff))
+            if iter_steps < 1:
+                iter_steps = 1
+
+            sum_res = np.zeros(iter_steps)
+
+            # Procedure: Create sin waves with different phases and perform a summation.
+            #            The sum shows how well the sine was fitting to the actual data.
+            #            The best fitting sine should be a maximum of the summed
+            #            convoluted time trace.
+
+            for iter_s in range(iter_steps):
+                func_val = ampl_val * np.sin(2*np.pi*freq_max*x_axis + iter_s/iter_steps *2*np.pi)
+                sum_res[iter_s] = (data_level + func_val).sum()
+
+            # The minimum indicates where the sine function was fittng the worst,
+            # therefore subtract pi. This will also ensure that the estimated phase will
+            # be in the interval [-pi,pi].
+            phase = sum_res.argmin()/iter_steps *2*np.pi - np.pi
+
+            # values and bounds of initial parameters
+            params['phase'].set(value=phase, min=-np.pi, max=np.pi)
+            params['amplitude'].set(value=ampl_val)
+            params['offset'].set(value=offset)
+
+            params['lifetime'].set(value=lifetime,
+                                   min=3*(x_axis[1]-x_axis[0]),
+                                   max=1/(stepsize_x*1.5))
+
+            params['frequency'].set(value=freq_max,
+                                    min=min(0.1 / (x_axis[-1]-x_axis[0]), x_dft[3]),
+                                    max=min(0.5 / stepsize_x, x_dft.max()-abs(x_dft[2]-x_dft[0])))
+
+
+            result = mod.fit(data, x=x_axis, params=params)
+
+            plt.figure()
+            plt.plot(x_axis, data, label='measured data')
+            plt.plot(x_axis, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+        def sine_double_exponential_decay_testing2(self):
+            """ With read in data.  """
+
+            path = os.path.abspath(r'C:\Users\astark\Desktop\gausssinedecay')
+
+            filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+            filename = '20161027-18h15m52s_NV04_ddrive_0p65VD1_0p0975VD2_-43p15dBm_g_pi2_decay_rabiref_refD2_state.txt'
+
+            meas_data = np.loadtxt(os.path.join(path, filename))
+            x_axis = meas_data[0]/65000
+            data = meas_data[1]
+
+            result = self.make_sinedoubleexponentialdecay_fit(x_axis, data)
+
+            plt.figure()
+            plt.plot(x_axis, data, label='measured data')
+            plt.plot(x_axis, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            print(result.fit_report())
 
 ##################################################################################################################
         def stretchedexponentialdecay_testing(self):
@@ -1730,6 +2694,35 @@ class FitLogic():
             #plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 
+        def stretched_sine_exponential_decay_testing2(self):
+            """ With read in data.  """
+
+            path = os.path.abspath(r'C:\Users\astark\Desktop\decaysine')
+
+            filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+            filename = '20161021-00h00m31s_NV04_ddrive_0p65VD1_0p0975VD2_-39_-25dBm_g_pi2_sensi_meas_state_1.txt'
+
+            path = os.path.abspath(r'C:\Users\astark\Desktop\gausssinedecay')
+            filename = '20161027-18h15m52s_NV04_ddrive_0p65VD1_0p0975VD2_-43p15dBm_g_pi2_decay_rabiref_refD2_state.txt'
+
+            meas_data = np.loadtxt(os.path.join(path, filename))
+            x_axis = meas_data[0]/65000
+            data = meas_data[1]
+
+            result = self.make_sinestretchedexponentialdecay_fit(x_axis, data)
+
+            plt.figure()
+            plt.plot(x_axis, data, label='measured data')
+            plt.plot(x_axis, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            print(result.fit_report())
+
+
 ##################################################################################################################
         def linear_testing(self):
             x_axis = np.linspace(1, 51, 100)
@@ -1757,7 +2750,7 @@ class FitLogic():
 plt.rcParams['figure.figsize'] = (10,5)
 
 test=FitLogic()
-test.N14_testing()
+#test.N14_testing()
 #test.N15_testing()
 #test.oneD_testing()
 #test.gaussian_testing()
@@ -1769,12 +2762,21 @@ test.N14_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
 #test.sine_testing()
+#test.sine_testing2()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-# test.bareexponentialdecay_testing()
+#test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
+#test.sineexponentialdecay_testing2()
+#test.sineexponentialdecay_testing3()
 #test.stretchedexponentialdecay_testing()
+#test.double_exponential_decay_testing()
+#test.sine_double_exponential_decay_testing2()
+test.stretched_sine_exponential_decay_testing2()
 #test.linear_testing()
-
+#test.sine_sine_testing()
+#test.double_sine_testing()
+#test.sine_sine_testing2()
+#test.sine_sine_decay_testing()
