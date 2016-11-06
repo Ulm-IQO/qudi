@@ -2722,6 +2722,75 @@ class FitLogic():
 
             print(result.fit_report())
 
+        def polynomial_testing(self):
+
+            x_axis = np.linspace(0.005,150,200)
+            lifetime = 50
+            ampl = 5
+            data = ampl * np.exp(-(x_axis/lifetime)**2)
+
+            noisy_data = data + data* np.random.normal(size=x_axis.shape)*0.5
+
+
+            plt.figure()
+            plt.plot(x_axis, data, label='measured data')
+            plt.plot(x_axis, noisy_data, label='noisy_data')
+#            plt.plot(x_axis, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+
+            plt.figure()
+            plt.plot(x_axis, np.log(data), label='measured data')
+            plt.plot(x_axis, np.log(noisy_data), label='noisy_data')
+#            plt.plot(x_axis, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            data = noisy_data
+
+            indices_nan = np.argwhere(np.isnan(np.log(data)))
+            data = np.delete(data, indices_nan)
+            x_axis = np.delete(x_axis, indices_nan)
+
+            indices_inf = np.argwhere(np.isinf(np.log(data)))
+            data = np.delete(data, indices_inf)
+            x_axis = np.delete(x_axis, indices_inf)
+
+
+
+            self.data = np.log(data)
+            min_val =np.log(data).min()
+            print("min_val", min_val)
+
+            log_data_norm = np.log(data) - min_val
+
+            result = self.make_linear_fit(axis=x_axis, data=np.sqrt(log_data_norm))
+
+            plt.figure()
+            plt.plot(x_axis, np.sqrt(log_data_norm), label='measured data')
+            plt.plot(x_axis, result.best_fit,'-g', label='fit')
+            plt.xlabel('Time micro-s')
+            plt.ylabel('signal')
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                       ncol=2, mode="expand", borderaxespad=0.)
+            plt.show()
+
+            calc_lifetime = 1/np.sqrt((np.exp((result.params['slope'].value)**2)-1 )*2)
+
+            print( calc_lifetime, lifetime )
+
+            A_arr = np.log(data) + (x_axis/calc_lifetime)**2
+
+#            print('A_arr', A_arr)
+
+            print(np.exp(A_arr).mean())
 
 ##################################################################################################################
         def linear_testing(self):
@@ -2745,6 +2814,8 @@ class FitLogic():
             plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
 
             plt.show()
+
+
 
 
 plt.rcParams['figure.figsize'] = (10,5)
@@ -2774,9 +2845,10 @@ test=FitLogic()
 #test.stretchedexponentialdecay_testing()
 #test.double_exponential_decay_testing()
 #test.sine_double_exponential_decay_testing2()
-test.stretched_sine_exponential_decay_testing2()
+#test.stretched_sine_exponential_decay_testing2()
 #test.linear_testing()
 #test.sine_sine_testing()
 #test.double_sine_testing()
 #test.sine_sine_testing2()
 #test.sine_sine_decay_testing()
+test.polynomial_testing()
