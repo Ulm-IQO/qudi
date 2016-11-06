@@ -256,7 +256,7 @@ class FastComtec(Base, FastCounterInterface):
 
         no_of_bins = record_length_s / binwidth_s
         self.set_length(no_of_bins)
-        return (self.get_binwidth(), None, None)
+        return (self.get_binwidth(), record_length_s, number_of_gates)
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
