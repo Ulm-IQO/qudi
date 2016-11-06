@@ -585,30 +585,77 @@ def make_doubleexponentialdecay_model(self, prefix=None):
 
     return double_exp_decay, params
 
-# TODO: write a double exponentialdecay estimator
-# def estimate_doubleexponentialdecay(self, x_axis, data, params):
-#     """ Estimation of the initial values for an double exponential decay function.
-#
-#     @param numpy.array x_axis: 1D axis values
-#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-#     @param lmfit.Parameters params: object includes parameter dictionary which
-#                                     can be set
-#
-#     @return tuple (error, params):
-#
-#     Explanation of the return parameter:
-#         int error: error code (0:OK, -1:error)
-#         Parameters object params: set parameters of initial values
-#     """
-#     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
-#
-#
-#
-#     error, params =  self.estimate_baredoubleexponentialdecay(x_axis, data, params)
-#
-#     return error, params
+def estimate_doubleexponentialdecay(self, x_axis, data, params):
+    """ Provide an estimation for initial values for a double exponential decay.
 
-# TODO: write a double exponentialdecay fit
+    @param numpy.array x_axis: x values
+    @param numpy.array data: value of each data point corresponding to x values
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # remove all the data that can be smaller than or equals to data.std()
+    # when the data is smaller than std of the data, it is beyond the resolution
+    # which is not helpful to our fitting.
+    for i in range(0, len(x_axis)):
+        if data[i] <= data.std():
+            break
+
+    # take the logarithm of data, calculate the life time with linear fit.
+    data_log = np.log(data[i])
+
+    minimum = 2 * (x_axis[1]-x_axis[0])
+
+    try:
+        linear_result = self.make_linear_fit(axis=x_axis[0:i],
+                                             data=data_log[0:i],
+                                             add_parameters=None)
+
+        params['lifetime'].set(value=-1/linear_result.params['slope'].value,
+                               min=minimum)
+        params['amplitude'].set(value=linear_result.params['offset'].value)
+
+    except:
+        params['lifetime'].set(value=x_axis[i]-x_axis[0], min=minimum)
+        logger.error('Linear fit did not work in estimate_exponentialdecay.')
+
+    return error, params
+
+def make_doubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+    """
+    This method performes a bare double exponential decay fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    doubleexponentialdecay, params = self.make_doubleexponentialdecay_model()
+
+    error, params = self.estimate_baredoubleexponentialdecay(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = doubleexponentialdecay.fit(data, x=x_axis, params=params)
+    except:
+        result = doubleexponentialdecay.fit(data, x=x_axis, params=params)
+        logger.warning('The exponentialdecay with offset fit did not work. '
+                       'Message: {}'.format(str(result.message)))
+    return result
 
 
 ############################################################################
