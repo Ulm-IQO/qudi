@@ -321,9 +321,19 @@ def compute_dft(x_val, y_val, zeropad_num=0):
     @param numpy.array x_val: 1D array
     @param numpy.array y_val: 1D array of same size as x_val
     @param int zeropad_num: zeropadding (adding zeros to the end of the array).
+                            zeropad_num >= 0, the size of the array, which is
+                            add to the end of the y_val before performing the
+                            dft. The resulting array will have the length
+                                (len(y_val)/2)*(zeropad_num+1)
+                            Note that zeropadding will not change or add more
+                            information to the dft, it will solely interpolate
+                            between the dft_y values.
 
+    @return: tuple(dft_x, dft_y):
+                be aware that the return arrays' length depend on the zeropad
+                number like
+                    len(dft_x) = len(dft_y) = (len(y_val)/2)*(zeropad_num+1)
 
-    @return: tuple(dft_x, dft_y)
 
     """
 
