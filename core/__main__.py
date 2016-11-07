@@ -80,7 +80,7 @@ def qt_message_handler(msgType, msg):
     A message handler handling Qt messages.
     """
     logger = logging.getLogger('Qt')
-    if qtpy.PYQT4 or qtpy.PYSIDE:
+    if qtpy.PYQT4:
         msg = msg.decode('utf-8')
     if msgType == QtCore.QtDebugMsg:
         logger.debug(msg)

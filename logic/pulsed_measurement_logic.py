@@ -30,8 +30,9 @@ from core.util.mutex import Mutex
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 
+
 class PulsedMeasurementLogic(GenericLogic):
-    """unstable: Nikolas Tomek
+    """
     This is the Logic class for the control of pulsed measurements.
     """
     _modclass = 'PulsedMeasurementLogic'
@@ -141,7 +142,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.show_raw_data = False
         self.show_laser_index = 0
         self.saved_raw_data = OrderedDict()  # temporary saved raw data
-        self.measurement_tag = None  # save tag for temporary saved raw data
+        self.recalled_raw_data = None # the currently recalled raw data to add
 
         # for fit:
         self._fit_param = {}
@@ -247,8 +248,8 @@ class PulsedMeasurementLogic(GenericLogic):
         # initialize arrays for the plot data
         self._initialize_plots()
 
-        # save tag for temporary saved raw data
-        self.measurement_tag = None
+        # recalled saved raw data
+        self.recalled_raw_data = None
 
 
     def on_deactivate(self, e):
@@ -635,12 +636,14 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
 
 
-    def start_pulsed_measurement(self):
+    def start_pulsed_measurement(self, stashed_raw_data_tag=None):
         """Start the analysis thread. """
         #FIXME: Describe the idea of how the measurement is intended to be run
         #       and how the used thread principle was used in this method (or
         #       will be use in another method).
         self.sigMeasurementRunningUpdated.emit(True, False)
+        if stashed_raw_data_tag == '':
+            stashed_raw_data_tag = None
         with self.threadlock:
             if self.getState() == 'idle':
                 self.lock()
@@ -649,6 +652,16 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
                 # initialize plots
                 self._initialize_plots()
+
+                # recall stashed raw data
+                if stashed_raw_data_tag is None:
+                    self.recalled_raw_data = None
+                elif stashed_raw_data_tag in self.saved_raw_data:
+                    self.recalled_raw_data = self.saved_raw_data[stashed_raw_data_tag]
+                    self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
+                                  ''.format(stashed_raw_data_tag))
+                else:
+                    self.recalled_raw_data = None
 
                 # start microwave generator
                 if self.use_ext_microwave:
@@ -674,64 +687,73 @@ class PulsedMeasurementLogic(GenericLogic):
             calculates fluorescence signal and creates plots.
         """
         with self.threadlock:
-            # calculate analysis windows
-            sig_start = self.signal_start_bin
-            sig_end = self.signal_start_bin + self.signal_width_bin
-            norm_start = self.norm_start_bin
-            norm_end = self.norm_start_bin + self.norm_width_bin
+            if self.getState() == 'locked':
+                # calculate analysis windows
+                sig_start = self.signal_start_bin
+                sig_end = self.signal_start_bin + self.signal_width_bin
+                norm_start = self.norm_start_bin
+                norm_end = self.norm_start_bin + self.norm_width_bin
 
-            # get raw data from fast counter
-            self.raw_data = netobtain(self._fast_counter_device.get_data_trace())
-            # add old raw data from previous measurements if necessary
-            if self.measurement_tag in self.saved_raw_data:
-                if self.saved_raw_data[self.measurement_tag].shape == self.raw_data.shape:
-                    self.raw_data = self.raw_data + self.saved_raw_data[self.measurement_tag]
+                # get raw data from fast counter
+                fc_data = netobtain(self._fast_counter_device.get_data_trace())
+                if np.sum(fc_data) < 1.0:
+                    self.log.warning('Only zeros received from fast counter!')
 
-            # extract laser pulses from raw data
-            if self.fast_counter_gated:
-                self.laser_data = self._pulse_extraction_logic.gated_extraction(self.raw_data,
-                                                                                self.conv_std_dev)
-            else:
-                self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
-                                                                                  self.conv_std_dev,
-                                                                                  self.number_of_lasers)
-            # analyze pulses and get data points for signal plot
-            tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
-                                                                            norm_start, norm_end,
-                                                                            sig_start, sig_end)
-            # exclude laser pulses to ignore
-            if len(self.laser_ignore_list) > 0:
-                ignore_indices = self.laser_ignore_list
-                if -1 in ignore_indices:
-                    ignore_indices[ignore_indices.index(-1)] = len(ignore_indices) - 1
-                tmp_signal = np.delete(tmp_signal, ignore_indices)
-                tmp_error = np.delete(tmp_error, ignore_indices)
-            # order data according to alternating flag
-            if self.alternating:
-                self.signal_plot_y = tmp_signal[::2]
-                self.signal_plot_y2 = tmp_signal[1::2]
-                self.measuring_error_plot_y = tmp_error[::2]
-                self.measuring_error_plot_y2 = tmp_error[1::2]
-            else:
-                self.signal_plot_y = tmp_signal
-                self.measuring_error_plot_y = tmp_error
+                # add old raw data from previous measurements if necessary
+                if self.recalled_raw_data is not None:
+                    self.log.info('Found old saved raw data. Sum of timebins: {0}'
+                                  ''.format(np.sum(self.recalled_raw_data)))
+                    if self.recalled_raw_data.shape == fc_data.shape:
+                        self.log.info('Raw data has same shape as current data.')
+                        self.raw_data = self.recalled_raw_data + fc_data
+                else:
+                    self.raw_data = fc_data
 
-            # set laser to show
-            self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
+                # extract laser pulses from raw data
+                if self.fast_counter_gated:
+                    self.laser_data = self._pulse_extraction_logic.gated_extraction(self.raw_data,
+                                                                                    self.conv_std_dev)
+                else:
+                    self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
+                                                                                      self.conv_std_dev,
+                                                                                      self.number_of_lasers)
+                # analyze pulses and get data points for signal plot
+                tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
+                                                                                norm_start, norm_end,
+                                                                                sig_start, sig_end)
+                # exclude laser pulses to ignore
+                if len(self.laser_ignore_list) > 0:
+                    ignore_indices = self.laser_ignore_list
+                    if -1 in ignore_indices:
+                        ignore_indices[ignore_indices.index(-1)] = len(ignore_indices) - 1
+                    tmp_signal = np.delete(tmp_signal, ignore_indices)
+                    tmp_error = np.delete(tmp_error, ignore_indices)
+                # order data according to alternating flag
+                if self.alternating:
+                    self.signal_plot_y = tmp_signal[::2]
+                    self.signal_plot_y2 = tmp_signal[1::2]
+                    self.measuring_error_plot_y = tmp_error[::2]
+                    self.measuring_error_plot_y2 = tmp_error[1::2]
+                else:
+                    self.signal_plot_y = tmp_signal
+                    self.measuring_error_plot_y = tmp_error
+
+                # set laser to show
+                self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
 
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
             self.elapsed_time_str = ''
             self.elapsed_time_str += str(int(self.elapsed_time)//86400).zfill(2) + ':' # days
-            self.elapsed_time_str += str(int(self.elapsed_time)//3600).zfill(2) + ':' # hours
-            self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
+            self.elapsed_time_str += str((int(self.elapsed_time)//3600) % 24).zfill(2) + ':' # hours
+            self.elapsed_time_str += str((int(self.elapsed_time)//60) % 60).zfill(2) + ':' # minutes
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
 
             # emit signals
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
-                                          self.measuring_error_plot_y2)
+                                           self.measuring_error_plot_y2)
             return
 
     def set_laser_to_show(self, laser_index, show_raw_data):
@@ -763,10 +785,12 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return self.laser_plot_x, self.laser_plot_y
 
-    def stop_pulsed_measurement(self):
+    def stop_pulsed_measurement(self, stash_raw_data_tag=None):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
+        if stash_raw_data_tag == '':
+            stash_raw_data_tag = None
         with self.threadlock:
             if self.getState() == 'locked':
                 #stopping and disconnecting the timer
@@ -780,8 +804,11 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.microwave_on_off(False)
 
                 # save raw data if requested
-                if self.measurement_tag is not None:
-                    self.saved_raw_data[self.measurement_tag] = self.raw_data.copy()
+                if stash_raw_data_tag is not None:
+                    self.log.info('sum of raw data with tag "{0}" to be saved for next measurement:'
+                                  ' {1}'.format(stash_raw_data_tag, np.sum(self.raw_data.copy())))
+                    self.saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
+                self.recalled_raw_data = None
 
                 self.unlock()
                 self.sigMeasurementRunningUpdated.emit(False, False)

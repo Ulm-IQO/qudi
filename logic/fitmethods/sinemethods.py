@@ -246,8 +246,8 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
 
     # Procedure: Create sin waves with different phases and perform a summation.
     #            The sum shows how well the sine was fitting to the actual data.
-    #            The best fitting sine should be a maximum of the summed
-    #            convoluted time trace.
+    #            The best fitting sine should be a maximum of the summed time 
+    #            trace.
 
     for iter_s in range(iter_steps):
         func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
