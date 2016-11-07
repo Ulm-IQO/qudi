@@ -691,13 +691,9 @@ class Magnet(Base, MagnetInterface):
         # interval that needs rotation around z-axis in case it wasn't outside that interval before
         else:
             # theta was in a correct interval before but isn't now ( change of interval )
+            self.log.debug('need rotation around phi to adjust for negative theta value')
             if np.abs(self._inter - inter1) is 1:
-                phi += phi + np.pi
-                # lets adjust phi
-                # because it got changed as theta wasn't in the specified range
-
-                phi = param_dict['phi']
-                inter2 = np.ceil(np.abs(phi) / (2 * np.pi))
+                phi += np.pi
 
             # theta wasn't in a correct interval before and is still in the same interval ( in this case do nothing )
             elif np.abs(self._inter - inter1) is 0:
@@ -710,6 +706,7 @@ class Magnet(Base, MagnetInterface):
 
         # adjust the phi values so they are in the right interval. They might be in the wrong interval
         # due to user input or theta values
+        inter2 = np.ceil(np.abs(phi) / (2 * np.pi))
         if phi < 0:
             phi += 2 * np.pi * inter2
         if phi >= 2 * np.pi:
