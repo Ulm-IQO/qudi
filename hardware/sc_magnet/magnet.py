@@ -675,15 +675,14 @@ class Magnet(Base, MagnetInterface):
         # be ok ( no rotation in phi ). In the other intervals one has to see if there was a movement before this
         # movement in one of these regions or not. If not just move, if there was shift to the interval [0, np.pi] and
         # move there.
-        switch = np.ceil(np.abs(theta) / np.pi) % 2
-        inter1 = np.ceil(np.abs(theta)/np.pi)
-
+        switch = np.ceil(theta / np.pi) % 2
+        inter1 = np.ceil(theta / np.pi)
+        inter1 = int(inter1)
+        # if inter1 > 0:
+        #     inter1 -= 1
         # move the theta values in the right range
         # for the constraints
-        if theta < 0:
-            theta += inter1 * np.pi
-        if theta > np.pi:
-            theta -= inter1 * np.pi
+        theta -= np.pi * (inter1 - 1)
 
         # interval was correct
         if switch:
@@ -692,25 +691,29 @@ class Magnet(Base, MagnetInterface):
         else:
             # theta was in a correct interval before but isn't now ( change of interval )
             self.log.debug('need rotation around phi to adjust for negative theta value')
-            if np.abs(self._inter - inter1) is 1:
+            self.log.debug('old int: {0}, new int: {1}'.format(self._inter, inter1))
+            if int(np.abs(self._inter - inter1)) is 1:
                 phi += np.pi
 
             # theta wasn't in a correct interval before and is still in the same interval ( in this case do nothing )
-            elif np.abs(self._inter - inter1) is 0:
+            elif int(np.abs(self._inter - inter1)) is 0:
                 pass
 
             else:
                 self.log.warning("There was a difference in intervals larger "
-                                 "than one between two consecutive movements. This is not supported yet.")
+                                 "than one between two consecutive movements. This is not supported "
+                                 "yet.{0}".format(self._inter - inter1))
             self._inter = inter1
 
         # adjust the phi values so they are in the right interval. They might be in the wrong interval
         # due to user input or theta values
-        inter2 = np.ceil(np.abs(phi) / (2 * np.pi))
-        if phi < 0:
-            phi += 2 * np.pi * inter2
-        if phi >= 2 * np.pi:
-            phi -= 2 * np.pi * inter2
+        inter2 = np.ceil(phi / (2 * np.pi))
+        inter2 = int(inter2)
+        # if inter2 > 0:
+        #     inter2 -= 1
+
+        phi -= 2 * np.pi * (inter2 - 1)
+
         self.log.debug('show old dictionary: {0}'.format(param_dict))
         # set the corrected values
         param_dict['theta'] = theta
