@@ -1457,31 +1457,20 @@ class PulsedMeasurementGui(GUIBase):
         @param y2_error_data:
         @return:
         """
-        show_error_bars = self._pa.ana_param_errorbars_CheckBox.isChecked()
         is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
-        if show_error_bars:
-            beamwidth = np.inf
-            for i in range(len(x_data) - 1):
-                width = x_data[i + 1] - x_data[i]
-                width = width / 3
-                if width <= beamwidth:
-                    beamwidth = width
-            # create ErrorBarItems
-            self.signal_image_error_bars.setData(x=x_data, y=y_signal_data, top=y_error_data,
-                                                 bottom=y_error_data, beam=beamwidth)
-            if is_alternating:
-                self.signal_image_error_bars2.setData(x=x_data, y=y2_signal_data, top=y2_error_data,
-                                                      bottom=y2_error_data, beam=beamwidth)
-            if not self.signal_image_error_bars in self._pa.pulse_analysis_PlotWidget.items():
-                self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
-                if is_alternating:
-                    self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
-        else:
-            if self.signal_image_error_bars in self._pa.pulse_analysis_PlotWidget.items():
-                self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars)
-                if is_alternating:
-                    self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
 
+        # create ErrorBarItems
+        beamwidth = np.inf
+        for i in range(len(x_data) - 1):
+            width = x_data[i + 1] - x_data[i]
+            width = width / 3
+            if width <= beamwidth:
+                beamwidth = width
+        self.signal_image_error_bars.setData(x=x_data, y=y_signal_data, top=y_error_data,
+                                             bottom=y_error_data, beam=beamwidth)
+        if is_alternating:
+            self.signal_image_error_bars2.setData(x=x_data, y=y2_signal_data, top=y2_error_data,
+                                                  bottom=y2_error_data, beam=beamwidth)
         # dealing with the actual signal
         self.signal_image.setData(x=x_data, y=y_signal_data)
         if is_alternating:
