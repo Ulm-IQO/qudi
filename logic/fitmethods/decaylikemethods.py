@@ -588,8 +588,8 @@ def make_doubleexponentialdecay_model(self, prefix=None):
 def estimate_doubleexponentialdecay(self, x_axis, data, params):
     """ Provide an estimation for initial values for a double exponential decay.
 
-    @param numpy.array x_axis: x values
-    @param numpy.array data: value of each data point corresponding to x values
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
     @param lmfit.Parameters params: object includes parameter dictionary which
                                     can be set
 
