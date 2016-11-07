@@ -246,7 +246,7 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
 
     # Procedure: Create sin waves with different phases and perform a summation.
     #            The sum shows how well the sine was fitting to the actual data.
-    #            The best fitting sine should be a maximum of the summed time 
+    #            The best fitting sine should be a maximum of the summed time
     #            trace.
 
     for iter_s in range(iter_steps):
@@ -346,12 +346,13 @@ def make_sineexponentialdecay_model(self, prefix=None):
 
     return model, params
 
-def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
+def estimate_sineexponentialdecay(self, x_axis, data, params=None):
     """ Provide a estimation of a initial values for a sine exponential decay function.
 
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to x values
-    @param Parameters object params: object includes parameter dictionary which can be set
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
 
     @return tuple (error, params):
 
@@ -364,20 +365,7 @@ def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
     x_axis = np.array(x_axis)
     data = np.array(data)
 
-    error = 0
-    parameters = [x_axis, data]
-
-    #varification of data
-    for var in parameters:
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is no array.')
-            error = -1
-        elif len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
-            error = -1
-    if not isinstance(params, Parameters):
-        logger.error('Parameters object is not valid in estimate_gaussian.')
-        error = -1
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     # set the offset as the median of the data
     offset = np.mean(data)
@@ -388,27 +376,49 @@ def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
     # estimate amplitude
     ampl_val = max(np.abs(data_level.min()), np.abs(data_level.max()))
 
-    # perform fourier transform with zeropadding to get higher resolution
-    data_level_zeropaded = np.zeros(int(len(data_level) * 2))
-    data_level_zeropaded[:len(data_level)] = data_level
-    fourier = np.fft.fft(data_level_zeropaded)
+    dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
+
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
-    freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    fourier_power = abs(fourier)
-    frequency_max = np.abs(freq[np.log(fourier).argmax()])
+
+    frequency_max = np.abs(dft_x[dft_y.argmax()])
+
+    params['frequency'].set(value=frequency_max,
+                            min=min(0.1 / (x_axis[-1]-x_axis[0]),dft_x[3]),
+                            max=min(0.5 / stepsize, dft_x.max()-abs(dft_x[2]-dft_x[0])))
+
+    # # perform fourier transform with zeropadding to get higher resolution
+    # data_level_zeropaded = np.zeros(int(len(data_level) * 2))
+    # data_level_zeropaded[:len(data_level)] = data_level
+    # fourier = np.fft.fft(data_level_zeropaded)
+    # stepsize = x_axis[1] - x_axis[0]  # for frequency axis
+    # freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+    # fourier_power = abs(fourier)
+    # frequency_max = np.abs(freq[np.log(fourier).argmax()])
 
     # remove noise
-    a = np.std(fourier_power[:int(len(freq)/2)])
-    for i in range(0,int(len(fourier)/2)):
-        if fourier_power[i] <= a:
-            fourier_power[i] = 0
-
+    # a = np.std(fourier_power[:int(len(freq)/2)])
+    # for i in range(0,int(len(fourier)/2)):
+    #     if fourier_power[i] <= a:
+    #         fourier_power[i] = 0
+    #
     # calculating the width of the FT peak for the estimation of lifetime
-    peak_width = 0
-    for i in range(0, int(len(freq) / 2)):
-        peak_width += fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
+    # peak_width = 0
+    # for i in range(0, int(len(freq) / 2)):
+    #     peak_width += fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
+    #
+    # lifetime = 0.5 / peak_width
 
-    lifetime = 0.5 / peak_width
+    #remove noise
+    a = np.std(dft_y)
+    for i in range(0, len(dft_x)):
+        if dft_y[i]<=a:
+            dft_y[i] = 0
+
+    #calculating the width of the FT peak for the estimation of lifetime
+    s = 0
+    for i in range(0, len(dft_x)):
+        s+= dft_y[i]*abs(dft_x[1]-dft_x[0])/max(dft_y)
+    lifetime_val = 0.5/s
 
     # find minimal distance to the next meas point in the corresponding time value>
     min_x_diff = np.ediff1d(x_axis).min()
@@ -422,38 +432,38 @@ def estimate_sineexponentialdecay(self, x_axis=None, data=None, params=None):
 
     # Procedure: Create sin waves with different phases and perform a summation.
     #            The sum shows how well the sine was fitting to the actual data.
-    #            The best fitting sine should be a maximum of the summed
-    #            convoluted time trace.
+    #            The best fitting sine should be a maximum of the summed time
+    #            trace.
 
     for iter_s in range(iter_steps):
         func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
-        sum_res[iter_s] = (data_level + func_val).sum()
+        sum_res[iter_s] = np.abs(data - func_val).sum()
 
     # The minimum indicates where the sine function was fittng the worst,
     # therefore subtract pi. This will also ensure that the estimated phase will
     # be in the interval [-pi,pi].
-    phase = sum_res.argmin()/iter_steps *2*np.pi - np.pi
+    phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
 
     # values and bounds of initial parameters
-    params['phase'].set(value=phase, min=-np.pi, max=np.pi)
-    params['amplitude'].set(value=ampl_val)
+    params['phase'].set(value=phase, min=-2*np.pi, max=2*np.pi)
+    params['amplitude'].set(value=ampl_val, min=0)
     params['offset'].set(value=offset)
 
-    params['lifetime'].set(value=lifetime,
-                           min=3*(x_axis[1]-x_axis[0]),
-                           max=1/(abs(freq[1]-freq[0])*1.5))
+    params['lifetime'].set(value=lifetime_val,
+                           min=2*(x_axis[1]-x_axis[0]),
+                           max=1/(abs(dft_x[1]-dft_x[0])*0.5))
 
-    params['frequency'].set(value=frequency_max,
-                            min=min(0.1 / (x_axis[-1]-x_axis[0]),freq[3]),
-                            max=min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0])))
+    # params['frequency'].set(value=frequency_max,
+    #                         min=min(0.1 / (x_axis[-1]-x_axis[0]),freq[3]),
+    #                         max=min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0])))
 
     return error, params
 
 def make_sineexponentialdecay_fit(self, x_axis=None, data=None, add_parameters=None):
     """ Perform a sine exponential decay fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[] data: data
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
