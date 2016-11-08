@@ -116,17 +116,18 @@ def make_amplitude_model(self,prefix=None):
         return amplitude
 
     if prefix is None:
-        model = Model(amplitude_function, independent_vars='x', prefix=prefix)    else:
-        if not isinstance(prefix,str):
+        model = Model(amplitude_function, independent_vars='x', prefix=prefix)
+    else:
+        if not isinstance(prefix, str):
             logger.error('Given prefix in constant model is no string. '
-                    'Deleting prefix.')
+                         'Deleting prefix.')
         try:
-            model = Model(amplitude_function, prefix=prefix)
+            model = Model(amplitude_function, independent_vars='x', prefix=prefix)
         except:
             logger.error('Creating the constant model failed. '
-                    'The prefix might not be a valid string. '
-                    'The prefix was deleted.')
-            model = Model(amplitude_function)
+                         'The prefix might not be a valid string. '
+                         'The prefix was deleted.')
+            model = Model(amplitude_function, independent_vars='x',)
 
     params = model.make_params()
 

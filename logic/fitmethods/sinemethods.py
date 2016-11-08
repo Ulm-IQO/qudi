@@ -78,8 +78,8 @@ def make_baresine_model(self, prefix=None):
 
     return model, params
 
-def make_sine_model(self):
-    """ This method creates a model of sine.
+# def make_sine_model(self):
+#     """ This method creates a model of sine.
 
 
 def make_baresine_model(self, prefix=None):
@@ -482,12 +482,12 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 
     for iter_s in range(iter_steps):
         func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
-        sum_res[iter_s] = np.abs(data - func_val).sum()
+        sum_res[iter_s] = np.abs(data_level - func_val).sum()
 
     # The minimum indicates where the sine function was fittng the worst,
     # therefore subtract pi. This will also ensure that the estimated phase will
     # be in the interval [-pi,pi].
-    phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
+    phase = (sum_res.argmax()/iter_steps *2*np.pi - np.pi)%(2*np.pi)
 
     # values and bounds of initial parameters
     params['phase'].set(value=phase, min=-2*np.pi, max=2*np.pi)
