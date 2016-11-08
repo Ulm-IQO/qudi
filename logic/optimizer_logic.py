@@ -432,7 +432,7 @@ class OptimizerLogic(GenericLogic):
                     axis=self._zimage_Z_values,
                     data=self.z_refocus_line,
                     # Todo: It is required that the changed parameters are given as a dictionary
-                    add_parameters={})
+                    add_parameters=self.z_params)
             else:
                 result = self._fit_logic.make_gaussian_fit(
                     axis=self._zimage_Z_values,
