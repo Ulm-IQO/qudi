@@ -1831,6 +1831,10 @@ def sineexponentialdecay_testing_data():
     path = os.path.abspath(r'C:\Users\astark\Desktop\decaysine')
 
     filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+
+    path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-11\2016-11-04_02_sdrive_signal_-49p15_-61p15dBm_ana')
+    filename = '20161104-18h03m52s_NV04_sdrive_0p65VD1_-49p15_-61p15dBm_g_0p5ms_meas_state_0.txt'
+
     meas_data = np.loadtxt(os.path.join(path, filename))
     x_axis = meas_data[0]
     data = meas_data[1]
@@ -1892,21 +1896,20 @@ def sineexponentialdecay_testing_data():
     # The minimum indicates where the sine function was fittng the worst,
     # therefore subtract pi. This will also ensure that the estimated phase will
     # be in the interval [-pi,pi].
-    phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
+    phase = (sum_res.argmax()/iter_steps *2*np.pi - np.pi )%(2*np.pi)
 
     print('phase:', phase)
 
-#    plt.figure()
-#    plt.plot(conv_res)
-##            plt.plot(data_level)
-##            plt.plot(func_val)
-#    plt.show()
+    plt.figure()
+    plt.plot(sum_res)
+    plt.show()
 
     # values and bounds of initial parameters
     params['amplitude'].set(value=ampl_val, min=0)
-    params['phase'].set(value=phase)
+    params['phase'].set(value=phase, min=-2*np.pi, max=2*np.pi)
     params['offset'].set(value=offset)
-    params['lifetime'].set(min=3 *(x_axis[1]-x_axis[0]), max = 1/(abs(dft_x[1]-dft_x[0])*1.5) )
+    params['lifetime'].set(min=2 *(x_axis[1]-x_axis[0]),
+                           max = 1/(abs(dft_x[1]-dft_x[0])*0.5) )
 
 
     result = mod.fit(data, x=x_axis, params=params)
@@ -1930,6 +1933,11 @@ def sineexponentialdecay_testing_data2():
     path = os.path.abspath(r'C:\Users\astark\Desktop\decaysine')
 
     filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
+
+    path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-11\2016-11-04_02_sdrive_signal_-49p15_-61p15dBm_ana')
+    filename = '20161104-18h03m52s_NV04_sdrive_0p65VD1_-49p15_-61p15dBm_g_0p5ms_meas_state_0.txt'
+
+
     meas_data = np.loadtxt(os.path.join(path, filename))
     x_axis = meas_data[0]
     data = meas_data[1]
@@ -2092,10 +2100,10 @@ def double_exponential_testing():
 
     x_axis = np.linspace(0.005,150,200)
     lifetime = 50
-    ampl = 5
+    ampl = 30
     data = ampl * np.exp(-(x_axis/lifetime)**2)
 
-    noisy_data = data + data* np.random.normal(size=x_axis.shape)*0.5
+    noisy_data = data + data* np.random.normal(size=x_axis.shape)*0.9
 
 
     plt.figure()
@@ -2153,35 +2161,35 @@ def double_exponential_testing():
 
 #            print('A_arr', A_arr)
 
-    print(np.exp(A_arr).mean())
+    print(np.exp(A_arr.mean()))
 
 
 
 plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
-    N15_testing()
-    N14_testing()
-    oneD_testing()
-    gaussian_testing()
-    twoD_testing()
-    lorentzian_testing()
-    double_gaussian_testing()
-    double_gaussian_odmr_testing()
-    double_lorentzian_testing()
-    double_lorentzian_fixedsplitting_testing()
-    powerfluorescence_testing()
-    sine_testing()
-#    sine_testing_data() # needs a selected file for data input
-    twoD_gaussian_magnet()
-    poissonian_testing()
-    double_poissonian_testing()
-    double_poissonian_testing2()
-    bareexponentialdecay_testing()
-    exponentialdecay_testing()
+#    N15_testing()
+#    N14_testing()
+#    oneD_testing()
+#    gaussian_testing()
+#    twoD_testing()
+#    lorentzian_testing()
+#    double_gaussian_testing()
+#    double_gaussian_odmr_testing()
+#    double_lorentzian_testing()
+#    double_lorentzian_fixedsplitting_testing()
+#    powerfluorescence_testing()
+#    sine_testing()
+##    sine_testing_data() # needs a selected file for data input
+#    twoD_gaussian_magnet()
+#    poissonian_testing()
+#    double_poissonian_testing()
+#    double_poissonian_testing2()
+#    bareexponentialdecay_testing()
+#    exponentialdecay_testing()
 #
-    sineexponentialdecay_testing()
-#    sineexponentialdecay_testing_data() # needs a selected file for data input
+#    sineexponentialdecay_testing()
+    sineexponentialdecay_testing_data() # needs a selected file for data input
 #    sineexponentialdecay_testing_data2() # use the estimator from the fitlogic,
                                           # needs a selected file for data input
 
@@ -2189,5 +2197,5 @@ if __name__ == "__main__":
 #    stretchedexponentialdecay_testing() # Right now not implemented! Is in progress..
 #    stretched_sine_exponential_decay_testing_data() # needs a selected file for data input
 #    linear_testing()
-    double_exponential_testing()
+#    double_exponential_testing()
 
