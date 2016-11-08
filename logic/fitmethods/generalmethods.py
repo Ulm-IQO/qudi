@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 logger = logging.getLogger(__name__)
 import numpy as np
+import lmfit
 from scipy.signal import gaussian
 from scipy.ndimage import filters
 
@@ -33,52 +34,6 @@ from scipy.ndimage import filters
 #                                                                          #
 ############################################################################
 
-
-# def _substitute_parameter(self, parameters=None, update_dict=None):
-#     """ This method substitutes all parameters handed in the
-#     update_parameters object in an initial set of parameters.
-#
-#     @param object parameters: lmfit.parameter.Parameters object, initial
-#                               parameters
-#     @param dict(dict) update_dict: dictionary with parameters to update  e.g.
-#                                    update_dict=dict()
-#                                    update_dict['c']={'min':0,
-#                                                      'max':120,
-#                                                      'vary':True,
-#                                                      'value':0.1
-#                                                      'expr':None}
-#
-#     @return object parameters: lmfit.parameter.Parameters object, new object
-#                                with substituted parameters
-#     """
-#     if update_dict is None:
-#         return parameters
-#     else:
-#         for para in update_dict:
-#             if para not in parameters:
-#                 parameters.add(para)
-#             if 'min' in update_dict[para]:
-#                 parameters[para].min = update_dict[para]['min']
-#
-#             if 'max' in update_dict[para]:
-#                 parameters[para].max = update_dict[para]['max']
-#
-#             if 'vary' in update_dict[para]:
-#                 parameters[para].vary = update_dict[para]['vary']
-#
-#             if 'expr' in update_dict[para]:
-#                 parameters[para].expr = update_dict[para]['expr']
-#
-#             if 'value' in update_dict[para]:
-#                 if parameters[para].min is not None:
-#                     if (parameters[para].min > update_dict[para]['value']):
-#                         parameters[para].min = update_dict[para]['value']
-#                 if parameters[para].max is not None:
-#                     if (parameters[para].max < update_dict[para]['value']):
-#                         parameters[para].max = update_dict[para]['value']
-#                 parameters[para].value = update_dict[para]['value']
-#         return parameters
-
 def _substitute_parameter(self, parameters=None, update_dict=None):
     """ This method substitutes all parameters handed in the
     update_parameters object in an initial set of parameters.
@@ -86,13 +41,20 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
     @param object parameters: lmfit.parameter.Parameters object, initial
                               parameters
     @param parameter object update_dict: lmfit.parameter.Parameters object
+                                    or      dictionary with parameters to update  e.g.
+                                            update_dict=dict()
+                                            update_dict['c']={'min':0,
+                                                     'max':120,
+                                                     'vary':True,
+                                                     'value':0.1
+                                                     'expr':None}
 
     @return object parameters: lmfit.parameter.Parameters object, new object
                                with substituted parameters
     """
     if update_dict is None:
         return parameters
-    else:
+    elif type(update_dict) == lmfit.parameter.Parameters:
         for para in update_dict:
             if para not in parameters:
                 parameters.add(para)
@@ -116,6 +78,30 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
                     if (parameters[para].max < update_dict[para].value):
                         parameters[para].max = update_dict[para].value
                 parameters[para].value = update_dict[para].value
+    else:
+        for para in update_dict:
+            if para not in parameters:
+                parameters.add(para)
+            if 'min' in update_dict[para]:
+                parameters[para].min = update_dict[para]['min']
+
+            if 'max' in update_dict[para]:
+                parameters[para].max = update_dict[para]['max']
+
+            if 'vary' in update_dict[para]:
+                parameters[para].vary = update_dict[para]['vary']
+
+            if 'expr' in update_dict[para]:
+                parameters[para].expr = update_dict[para]['expr']
+
+            if 'value' in update_dict[para]:
+                if parameters[para].min is not None:
+                    if (parameters[para].min > update_dict[para]['value']):
+                        parameters[para].min = update_dict[para]['value']
+                if parameters[para].max is not None:
+                    if (parameters[para].max < update_dict[para]['value']):
+                        parameters[para].max = update_dict[para]['value']
+                parameters[para].value = update_dict[para]['value']
         return parameters
 
 def create_fit_string(self, result, model, units=None, decimal_digits_value_given=None,
