@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 logger = logging.getLogger(__name__)
 import numpy as np
+import lmfit
 from scipy.signal import gaussian
 from scipy.ndimage import filters
 from lmfit import Parameters
@@ -34,16 +35,16 @@ from lmfit import Parameters
 #                                                                          #
 ############################################################################
 
-
 def _substitute_parameter(self, parameters=None, update_dict=None):
     """ This method substitutes all parameters handed in the
     update_parameters object in an initial set of parameters.
 
     @param object parameters: lmfit.parameter.Parameters object, initial
                               parameters
-    @param dict(dict) update_dict: dictionary with parameters to update  e.g.
-                                   update_dict=dict()
-                                   update_dict['c']={'min':0,
+    @param parameter object update_dict: lmfit.parameter.Parameters object
+                                    or      dictionary with parameters to update  e.g.
+                                            update_dict=dict()
+                                            update_dict['c']={'min':0,
                                                      'max':120,
                                                      'vary':True,
                                                      'value':0.1
@@ -54,6 +55,30 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
     """
     if update_dict is None:
         return parameters
+    elif type(update_dict) == lmfit.parameter.Parameters:
+        for para in update_dict:
+            if para not in parameters:
+                parameters.add(para)
+            if update_dict[para].min != None:
+                parameters[para].min = update_dict[para].min
+
+            if update_dict[para].max != None:
+                parameters[para].max = update_dict[para].max
+
+            if update_dict[para].vary != None:
+                parameters[para].vary = update_dict[para].vary
+
+            if update_dict[para].expr != None:
+                parameters[para].expr = update_dict[para].expr
+
+            if update_dict[para].value != None:
+                if parameters[para].min is not None:
+                    if (parameters[para].min > update_dict[para].value):
+                        parameters[para].min = update_dict[para].value
+                if parameters[para].max is not None:
+                    if (parameters[para].max < update_dict[para].value):
+                        parameters[para].max = update_dict[para].value
+                parameters[para].value = update_dict[para].value
     else:
         for para in update_dict:
             if para not in parameters:
