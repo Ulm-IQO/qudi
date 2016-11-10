@@ -370,12 +370,12 @@ class PulsedMasterLogic(GenericLogic):
         """
         return self._measurement_logic.get_fit_functions()
 
-    def measurement_sequence_settings_changed(self, measurement_ticks, number_of_lasers,
+    def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
         """
 
-        @param measurement_ticks:
+        @param controlled_vals:
         @param number_of_lasers:
         @param sequence_length_s:
         @param laser_ignore_list:
@@ -383,17 +383,17 @@ class PulsedMasterLogic(GenericLogic):
         @param laser_trigger_delay:
         @return:
         """
-        self.sigMeasurementSequenceSettingsChanged.emit(measurement_ticks, number_of_lasers,
+        self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
                                                         alternating, laser_trigger_delay)
         return
 
-    def measurement_sequence_settings_updated(self, measurement_ticks, number_of_lasers,
+    def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
         """
 
-        @param measurement_ticks:
+        @param controlled_vals:
         @param number_of_lasers:
         @param sequence_length_s:
         @param laser_ignore_list:
@@ -401,7 +401,7 @@ class PulsedMasterLogic(GenericLogic):
         @param laser_trigger_delay:
         @return:
         """
-        self.sigMeasurementSequenceSettingsUpdated.emit(measurement_ticks, number_of_lasers,
+        self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
                                                         alternating, laser_trigger_delay)
         return
@@ -1233,7 +1233,7 @@ class PulsedMasterLogic(GenericLogic):
         else:
             return_params['is_alternating'] = ensemble_obj.alternating
 
-        # Get measurement ticks
+        # Get controlled variable values
         if len(ensemble_obj.measurement_ticks_list) < 1:
             ana_lasers = num_of_lasers - len(return_params['laser_ignore_list'])
             measurement_ticks = np.arange(1, ana_lasers + 1)
