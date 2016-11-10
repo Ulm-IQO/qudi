@@ -135,7 +135,7 @@ class ACQDATA(ctypes.Structure):
 
 class FastComtec(Base, FastCounterInterface):
     """
-    unstable: Jochen Scheuer
+    unstable: Jochen Scheuer, Simon Schmitt
 
     Hardware Class for the FastComtec Card.
     """
@@ -154,7 +154,7 @@ class FastComtec(Base, FastCounterInterface):
             self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.GATED = False
-        self.MINIMAL_BINWIDTH = 0.1e-9    # in seconds per bin
+        self.MINIMAL_BINWIDTH = 0.2e-9    # in seconds per bin
 
 
     def on_activate(self, e):
@@ -168,8 +168,8 @@ class FastComtec(Base, FastCounterInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-    #    self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
-        self.dll = ctypes.windll.LoadLibrary('lmcs6.dll')
+
+        self.dll = ctypes.windll.LoadLibrary('C:\Windows\System32\DMCS6.dll')
 
         return
 
@@ -235,17 +235,19 @@ class FastComtec(Base, FastCounterInterface):
         @param int number_of_gates: optional, number of gates in the pulse
                                     sequence. Ignore for not gated counter.
 
-        @return tuple(binwidth_s, gate_length_s, number_of_gates):
+        @return tuple(binwidth_s, record_length_s, number_of_gates):
                     binwidth_s: float the actual set binwidth in seconds
-                    gate_length_s: the actual set gate length in seconds
-                    number_of_gates: the number of gated, which are accepted
+                    gate_length_s: the actual record length in seconds
+                    number_of_gates: the number of gated, which are accepted,
+                    None if not-gated
         """
 
-        binwidth_s = self.set_binwidth(bin_width_s)
+        # to make sure no sequence trigger is missed
+        record_length_FastComTech_s = record_length_s - 20e-9
 
-        no_of_bins = record_length_s / binwidth_s
+        no_of_bins = record_length_FastComTech_s / self.set_binwidth(bin_width_s)
         self.set_length(no_of_bins)
-        return (self.get_binwidth(), None, None)
+        return (self.get_binwidth(), record_length_FastComTech_s, None)
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
