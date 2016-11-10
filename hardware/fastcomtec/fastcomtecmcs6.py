@@ -21,11 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 #TODO: start stop works but pause does not work, i guess gui/logic problem
-#TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-#Not written modules:
-#TODO: get_status
+
 
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
@@ -221,7 +219,7 @@ class FastComtec(Base, FastCounterInterface):
         # current binwidth in seonds use the get_binwidth method.
         constraints['hardware_binwidth_list'] = list(self.MINIMAL_BINWIDTH * (2 ** np.array(
                                                      np.linspace(0,24,25))))
-
+        constraints['max_sweep_len'] = 6.8
         return constraints
 
 
@@ -245,45 +243,33 @@ class FastComtec(Base, FastCounterInterface):
         # to make sure no sequence trigger is missed
         record_length_FastComTech_s = record_length_s - 20e-9
 
-        no_of_bins = record_length_FastComTech_s / self.set_binwidth(bin_width_s)
+        no_of_bins = int(record_length_FastComTech_s / self.set_binwidth(bin_width_s))
         self.set_length(no_of_bins)
         return (self.get_binwidth(), record_length_FastComTech_s, None)
 
-    def get_binwidth(self):
-        """ Returns the width of a single timebin in the timetrace in seconds.
-
-        @return float: current length of a single bin in seconds (seconds/bin)
-
-        The red out bitshift will be converted to binwidth. The binwidth is
-        defined as 2**bitshift*minimal_binwidth.
-        """
-        return self.MINIMAL_BINWIDTH*(2**int(self.get_bitshift()))
-
     def get_status(self):
-        """ Receives the current status of the Fast Counter and outputs it as return value."""
-        return 2
+        """ Receives the current status of the Fast Counter and outputs it as
+                   return value.
 
-#    TODO: What should the status be it asks for something with binwidth but in the interface there is only the status of
-    #card if running or halt or stopped ...
-    # def get_status(self):
-    #     #TODO: Find out if it is possible to get the status for other modes
-    #     """
-    #     Receives the current status of the Fast Counter and outputs it as return value.
-    #     0 = unconfigured
-    #     1 = idle
-    #     2 = running
-    #     3 = paused
-    #     -1 = error state
-    #     """
-    #     status = AcqStatus()
-    #     self.dll.GetStatusData(ctypes.byref(status), 0)
-    #     if status.started == 0:
-    #         return 0
-    #     if status.started == 1:
-    #         return 2
-    #     else:
-    #         self.log.error('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)))
-    #         return -1
+               0 = unconfigured // here not possible
+               1 = idle
+               2 = running
+               3 = paused
+               -1 = error state
+               """
+        status = AcqStatus()
+        self.log.info(str(self.dll.GetStatusData(ctypes.byref(status), 0)))
+        if status.started==1:
+            return 2
+        elif status.started==0:
+            if status.runtime==0.0:
+                return 1
+            else:
+                return 3
+        else:
+            self.log.error(
+                'There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+            return -1
 
     def start_measure(self):
         """Start the measurement. """
@@ -305,6 +291,24 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.Continue(0)
         return 0
 
+    def get_binwidth(self):
+        """ Returns the width of a single timebin in the timetrace in seconds.
+
+        @return float: current length of a single bin in seconds (seconds/bin)
+
+        The red out bitshift will be converted to binwidth. The binwidth is
+        defined as 2**bitshift*minimal_binwidth.
+        """
+        return self.MINIMAL_BINWIDTH*(2**int(self.get_bitshift()))
+
+    def is_gated(self):
+        """ Check the gated counting possibility.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
+        return self.GATED
+
     def get_data_trace(self):
         """
         Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
@@ -318,12 +322,17 @@ class FastComtec(Base, FastCounterInterface):
 
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
-        N = setting.range
-        data = np.empty((N,), dtype=np.uint32)
+        NN = setting.range
+        data = np.empty((NN,), dtype=np.uint32)
         self.dll.LVGetDat(data.ctypes.data, 0)
 
         return np.int64(data)
 
+
+
+    # =========================================================================
+    #                           Non Interface methods
+    # =========================================================================
 
     def get_data_testfile(self):
         ''' Load data test file '''
@@ -331,24 +340,11 @@ class FastComtec(Base, FastCounterInterface):
         time.sleep(0.5)
         return data
 
-    def is_gated(self):
-        """ Check the gated counting possibility.
-
-        @return bool: Boolean value indicates if the fast counter is a gated
-                      counter (TRUE) or not (FALSE).
-        """
-        return self.GATED
-
-    # =========================================================================
-    #                           Non Interface methods
-    # =========================================================================
-
     def get_bitshift(self):
         """Get bitshift from Fastcomtec.
 
         @return int settings.bitshift: the red out bitshift
         """
-
         settings = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(settings), 0)
         return int(settings.bitshift)
@@ -360,7 +356,6 @@ class FastComtec(Base, FastCounterInterface):
 
         @return int: asks the actual bitshift and returns the red out value
         """
-
         cmd = 'BITSHIFT={0}'.format(bitshift)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return self.get_bitshift()
@@ -381,23 +376,29 @@ class FastComtec(Base, FastCounterInterface):
         return self.MINIMAL_BINWIDTH*(2**new_bitshift)
 
     #TODO: Check such that only possible lengths are set.
-    def set_length(self, N):
+    def set_length(self, length_bins):
         """ Sets the length of the length of the actual measurement.
 
-        @param int N: Length of the measurement
+        @param int length_bins: Length of the measurement in bins
 
         @return float: Red out length of measurement
         """
-        cmd = 'RANGE={0}'.format(int(N))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd = 'roimax={0}'.format(int(N))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        return self.get_length()
+        constraints = self.get_constraints()
+        if length_bins * self.get_binwidth() < constraints['max_sweep_len']:
+            cmd = 'RANGE={0}'.format(int(length_bins))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            cmd = 'roimax={0}'.format(int(length_bins))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            return self.get_length()
+        else:
+            self.log.error(
+                'Length of sequence is too high: %s' % (str(length_bins * self.get_binwidth())))
+            return -1
 
     def get_length(self):
         """ Get the length of the current measurement.
 
-          @return int: length of the current measurement
+          @return int: length of the current measurement in bins
         """
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
