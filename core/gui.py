@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import platform
 from qtpy.QtCore import QObject
 from qtpy.QtWidgets import QApplication
 from qtpy.QtGui import QIcon
@@ -54,7 +55,21 @@ class Gui(QObject):
         QIcon.setThemeSearchPaths(themepaths)
         QIcon.setThemeName('qudiTheme')
 
-    def setStyleSheet(self, stylesheet):
+    def setStyleSheet(self, stylesheetpath):
+        with open(stylesheetpath, 'r') as stylesheetfile:
+            stylesheet = stylesheetfile.read()
+
+        # see issue #12 on qdarkstyle github
+        if platform.system().lower() == 'darwin' and stylesheetpath.endswith('qdark.qss'):
+            mac_fix = '''
+            QDockWidget::title
+            {
+                background-color: #31363b;
+                text-align: center;
+                height: 12px;
+            }
+            '''
+            stylesheet += mac_fix
         QApplication.instance().setStyleSheet(stylesheet)
 
     def closeWindows(self):
