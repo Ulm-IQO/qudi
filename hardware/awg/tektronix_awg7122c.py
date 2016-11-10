@@ -886,17 +886,12 @@ class AWG7122C(Base, PulserInterface):
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
-        if ch is None:
-            ch = []
-
         active_ch = {}
 
-        if ch == []:
-            #FIXME: check the output of the interleave
-            active_ch['a_ch1'] = True
+        if ch is None:
             # because 0 = False and 1 = True
-            active_ch['a_ch2'] = bool(int(self.ask('OUTPUT1:STATE?')))
-            active_ch['a_ch3'] = bool(int(self.ask('OUTPUT2:STATE?')))
+            active_ch['a_ch1'] = bool(int(self.ask('OUTPUT1:STATE?')))
+            active_ch['a_ch2'] = bool(int(self.ask('OUTPUT2:STATE?')))
 
             # For the AWG5000 series, the resolution of the DAC for the analog
             # channel is fixed to 14bit. Therefore the digital channels are
@@ -905,21 +900,17 @@ class AWG7122C(Base, PulserInterface):
             #   self.ask('SOURCE1:DAC:RESOLUTION?'))
             # might be useful from which the active digital channels can be
             # obtained.
-            active_ch['d_ch1'] = False
-            active_ch['d_ch2'] = False
-            active_ch['d_ch3'] = False
-            active_ch['d_ch4'] = False
+            active_ch['d_ch1'] = active_ch['a_ch1']
+            active_ch['d_ch2'] = active_ch['a_ch1']
+            active_ch['d_ch3'] = active_ch['a_ch2']
+            active_ch['d_ch4'] = active_ch['a_ch2']
         else:
             for channel in ch:
                 if 'a_ch' in channel:
                     ana_chan = int(channel[4:])
-                    if 0 <= ana_chan <= self._get_num_a_ch():
+                    if 0 < ana_chan <= self._get_num_a_ch():
                         # because 0 = False and 1 = True
-                        if ana_chan == 1:
-                            #FIXME: check for interleave output turned on
-                            active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
-                        else:
-                            active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan-1))))
+                        active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
                     else:
                         self.log.warning('The device does not support that '
                             'many analog channels! A channel number '
@@ -929,8 +920,11 @@ class AWG7122C(Base, PulserInterface):
 
                 elif 'd_ch' in channel:
                     digi_chan = int(channel[4:])
-                    if 0 <= digi_chan <= self._get_num_d_ch():
-                        active_ch[channel] = False
+                    if 0 < digi_chan <= self._get_num_d_ch():
+                        if digi_chan == 1 or digi_chan == 2:
+                            active_ch[channel] = bool(int(self.ask('OUTPUT1:STATE?')))
+                        elif digi_chan == 3 or digi_chan == 4:
+                            active_ch[channel] = bool(int(self.ask('OUTPUT2:STATE?')))
                     else:
                         self.log.warning('The device does not support that '
                                 'many digital channels! A channel number '
@@ -970,51 +964,19 @@ class AWG7122C(Base, PulserInterface):
         resolution of the analog channels.
         """
         if ch is None:
-            ch = {}
+            return self.get_active_channels()
 
         for channel in ch:
             chan = int(channel[4:])
             if 'a_ch' in channel:
-                if 0 <= chan <= self._get_num_a_ch():
+                if 0 < chan <= self._get_num_a_ch():
                     if ch[channel]:
                         state = 'ON'
                     else:
                         state = 'OFF'
-
-                    #FIXME: make a proper check for interleave channel
-                    if chan == 1:
-                        self.tell('OUTPUT{0}:STATE {1}'.format(chan, state))
-                    else:
-                        self.tell('OUTPUT{0}:STATE {1}'.format(chan-1, state))
-            else:
-
-                # self.log.warning('The device does not support that much analog '
-                #             'channels! A channel number "{0}" was passed, but '
-                #             'only "{1}" channels are available!\nCommand will '
-                #             'be ignored.'.format(chan,
-                #                                  self._get_num_a_ch())
-                #             )
-
-                # adjust the DAC resolution accordingly
-                # if ch[channel]:
-                #     self.tell('SOURCE1:DAC:RESOLUTION ' + str(10 - chan) + '\n')
-                #     self.tell('SOURCE2:DAC:RESOLUTION ' + str(10 - chan) + '\n')
-                if ch[channel]:
-                    state = 'ON'
-                else:
-                    state = 'OFF'
-
-                if chan == 1:
                     self.tell('OUTPUT{0}:STATE {1}'.format(chan, state))
-                else:
-                    self.tell('OUTPUT{0}:STATE {1}'.format(chan - 1, state))
 
-        # if d_ch != {}:
-        #     self.log.info('Digital Channel of the AWG5000 series will always be '
-        #                 'active. This configuration cannot be changed.'
-        #                 )
-
-        return self.get_active_channels(ch=list(ch))
+        return self.get_active_channels()
 
 
     def get_uploaded_asset_names(self):
@@ -1147,14 +1109,17 @@ class AWG7122C(Base, PulserInterface):
         @return bool state: State of interleave by using get_interleave()
 
         """
+        # if the interleave state should not be changed from the current state, do nothing.
+        self.interleave = self.get_interleave()
+        if self.interleave == state:
+            return self.interleave
 
         if state == False:
             self.tell('AWGControl:INTerleave:STAT 0\n')
         elif state == True:
             self.tell('AWGControl:INTerleave:STAT 1\n')
         else:
-            self.log.warning('Interleave mode cannot be set to desired '
-                    'state!')
+            self.log.warning('Interleave mode cannot be set to desired state!')
 
         return self.get_interleave()
 
@@ -1176,8 +1141,7 @@ class AWG7122C(Base, PulserInterface):
             self.interleave=False
             return False
         else:
-            self.log.warning('State of interleave mode neither 1 nor 0. '
-                    'Returning false.')
+            self.log.warning('State of interleave mode neither 1 nor 0. Returning false.')
             return None
 
     # works
