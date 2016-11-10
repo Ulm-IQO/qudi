@@ -24,6 +24,7 @@ import time
 from ftplib import FTP
 from socket import socket, AF_INET, SOCK_STREAM
 import os
+import re
 from collections import OrderedDict
 from fnmatch import fnmatch
 
@@ -719,57 +720,68 @@ class AWG7122C(Base, PulserInterface):
         In general there is not a bijective correspondence between
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
-        if amplitude is None:
-            amplitude = {}
-        if offset is None:
-            offset = {}
-
+        # Check the inputs by using the constraints...
         constraints = self.get_constraints()
+        # ...and the channel numbers
+        num_of_channels = self._get_num_a_ch()
 
-        #FIXME: include the check for interleave channel and obtain also for
-        #       that channel the proper amplitude and offset
-        #       Remember channelnumbers were defined like
-        #           Interleave = 1
-        #           ACH1       = 2
-        #           ACH2       = 3
-        #       for analog channels.
+        # amplitude sanity check
+        pattern = re.compile('[0-9]+')
+        if amplitude is not None:
+            for chnl in amplitude:
+                ch_num = int(re.search(pattern, chnl).group(0))
+                if ch_num > num_of_channels or ch_num < 1:
+                    self.log.warning('Channel to set (a_ch{0}) not available in AWG.\nSetting '
+                                     'analogue voltage for this channel ignored.'.format(chnl))
+                    del amplitude[chnl]
+                if amplitude[chnl] < constraints['a_ch_amplitude']['min']:
+                    self.log.warning('Minimum Vpp for channel "{0}" is {1}. Requested Vpp of {2}V '
+                                     'was ignored and instead set to min value.'
+                                     ''.format(chnl, constraints['a_ch_amplitude']['min'],
+                                               amplitude[chnl]))
+                    amplitude[chnl] = constraints['a_ch_amplitude']['min']
+                elif amplitude[chnl] > constraints['a_ch_amplitude']['max']:
+                    self.log.warning('Maximum Vpp for channel "{0}" is {1}. Requested Vpp of {2}V '
+                                     'was ignored and instead set to max value.'
+                                     ''.format(chnl, constraints['a_ch_amplitude']['max'],
+                                               amplitude[chnl]))
+                    amplitude[chnl] = constraints['a_ch_amplitude']['max']
+        # offset sanity check
+        if offset is not None:
+            for chnl in offset:
+                ch_num = int(re.search(pattern, chnl).group(0))
+                if ch_num > num_of_channels or ch_num < 1:
+                    self.log.warning('Channel to set (a_ch{0}) not available in AWG.\nSetting '
+                                     'offset voltage for this channel ignored.'.format(chnl))
+                    del offset[chnl]
+                if offset[chnl] < constraints['a_ch_offset']['min']:
+                    self.log.warning('Minimum offset for channel "{0}" is {1}. Requested offset of '
+                                     '{2}V was ignored and instead set to min value.'
+                                     ''.format(chnl, constraints['a_ch_offset']['min'],
+                                               offset[chnl]))
+                    offset[chnl] = constraints['a_ch_offset']['min']
+                elif offset[chnl] > constraints['a_ch_offset']['max']:
+                    self.log.warning('Maximum offset for channel "{0}" is {1}. Requested offset of '
+                                     '{2}V was ignored and instead set to max value.'
+                                     ''.format(chnl, constraints['a_ch_offset']['max'],
+                                               offset[chnl]))
+                    offset[chnl] = constraints['a_ch_offset']['max']
 
-        for a_ch in amplitude:
-            if 0 <= a_ch <= self._get_num_a_ch():
-                constr =  constraints['a_ch_amplitude']
-                if not(constr['min'] <= amplitude[a_ch] <= constr['max']):
-                    self.log.warning('Not possible to set for analog channel '
-                        '{0} the amplitude value {1}Vpp, since it is not '
-                        'within the interval [{2},{3}]!\n'
-                        'Command will be ignored.'
-                        ''.format(a_ch, amplitude[a_ch], constr['min'], constr['max']))
-                else:
-                    self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
-            else:
-                self.log.warning('The device does not support that much '
-                    'analog channels! A channel number "{0}" was passed, '
-                    'but only "{1}" channels are available!\n'
-                    'Command will be ignored.'
-                    ''.format(a_ch, self._get_num_a_ch()))
+        if amplitude is not None:
+            for a_ch in amplitude:
+                ch_num = int(re.search(pattern, a_ch).group(0))
+                self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(ch_num, amplitude[a_ch]))
+            while int(self.ask('*OPC?\n')) != 1:
+                time.sleep(1)
 
-        for a_ch in offset:
-            if 0 <= a_ch <= self._get_num_a_ch():
-                constr = constraints['a_ch_offset']
-                if not(constr['min'] <= offset[a_ch] <= constr['max']):
-                    self.log.warning('Not possible to set for analog channel '
-                        '{0} the offset value {1}V, since it is not '
-                        'within the interval [{2},{3}]!\n Command will be ignored.'
-                        ''.format(a_ch, offset[a_ch], constr['min'], constr['max']))
-                else:
-                    self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
-            else:
-                self.log.warning('The device does not support that much '
-                    'analog channels! A channel number "{0}" was passed, '
-                    'but only "{1}" channels are available!\n'
-                    'Command will be ignored.'
-                    ''.format(a_ch, self._get_num_a_ch()))
+        if offset is not None:
+            for a_ch in offset:
+                ch_num = int(re.search(pattern, a_ch).group(0))
+                self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(ch_num, offset[a_ch]))
+            while int(self.ask('*OPC?\n')) != 1:
+                time.sleep(1)
 
-        return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
+        return self.get_analog_level()
 
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
