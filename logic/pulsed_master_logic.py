@@ -370,12 +370,12 @@ class PulsedMasterLogic(GenericLogic):
         """
         return self._measurement_logic.get_fit_functions()
 
-    def measurement_sequence_settings_changed(self, measurement_ticks, number_of_lasers,
+    def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
         """
 
-        @param measurement_ticks:
+        @param controlled_vals:
         @param number_of_lasers:
         @param sequence_length_s:
         @param laser_ignore_list:
@@ -383,17 +383,17 @@ class PulsedMasterLogic(GenericLogic):
         @param laser_trigger_delay:
         @return:
         """
-        self.sigMeasurementSequenceSettingsChanged.emit(measurement_ticks, number_of_lasers,
+        self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
                                                         alternating, laser_trigger_delay)
         return
 
-    def measurement_sequence_settings_updated(self, measurement_ticks, number_of_lasers,
+    def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
         """
 
-        @param measurement_ticks:
+        @param controlled_vals:
         @param number_of_lasers:
         @param sequence_length_s:
         @param laser_ignore_list:
@@ -401,7 +401,7 @@ class PulsedMasterLogic(GenericLogic):
         @param laser_trigger_delay:
         @return:
         """
-        self.sigMeasurementSequenceSettingsUpdated.emit(measurement_ticks, number_of_lasers,
+        self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
                                                         alternating, laser_trigger_delay)
         return
@@ -1130,3 +1130,121 @@ class PulsedMasterLogic(GenericLogic):
         """
         self.sigPredefinedSequencesUpdated.emit(generator_methods_dict)
         return
+
+    #######################################################################
+    ###             Helper  methods                                     ###
+    #######################################################################
+    def _get_ensemble_parameters(self, ensemble_obj):
+        """
+
+        :param ensemble_obj:
+        :return:
+        """
+        # Create return dictionary
+        return_params = {'err_code': 0}
+
+        # Get activation config and name
+        if ensemble_obj.activation_config is None:
+            return_params['activation_config'] = self._generator_logic.activation_config
+            self.log.warning('No activation config specified in asset "{0}" metadata. Choosing '
+                             'currently set activation config "{1}" from sequence_generator_logic.'
+                             ''.format(ensemble_obj.name, return_params['activation_config']))
+        else:
+            return_params['activation_config'] = ensemble_obj.activation_config
+        config_name = None
+        avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
+        for config in avail_configs:
+            if return_params['activation_config'] == avail_configs[config]:
+                config_name = config
+                break
+        if config_name is None:
+            self.log.error('Activation config {0} is not part of the allowed activation '
+                           'configs in the pulse generator hardware.'
+                           ''.format(return_params['activation_config']))
+            return_params['err_code'] = -1
+            return return_params
+        else:
+            return_params['config_name'] = config_name
+
+        # Get analogue voltages
+        if ensemble_obj.amplitude_dict is None:
+            return_params['amplitude_dict'] = self._generator_logic.amplitude_dict
+            self.log.warning('No amplitude dictionary specified in asset "{0}" metadata. Choosing '
+                             'currently set amplitude dict "{1}" from sequence_generator_logic.'
+                             ''.format(ensemble_obj.name, return_params['amplitude_dict']))
+        else:
+            return_params['amplitude_dict'] = ensemble_obj.amplitude_dict
+
+        # Get sample rate
+        if ensemble_obj.sample_rate is None:
+            return_params['sample_rate'] = self._generator_logic.sample_rate
+            self.log.warning('No sample rate specified in asset "{0}" metadata. Choosing '
+                             'currently set sample rate "{1:.2e}" from sequence_generator_logic.'
+                             ''.format(ensemble_obj.name, return_params['sample_rate']))
+        else:
+            return_params['sample_rate'] = ensemble_obj.sample_rate
+
+        # Get sequence length
+        return_params['sequence_length'] = ensemble_obj.length_s
+
+        # Get number of laser pulses
+        if ensemble_obj.laser_channel is None:
+            laser_chnl = self._generator_logic.laser_channel
+            self.log.warning('No laser channel specified in asset "{0}" metadata. Choosing '
+                             'currently set laser channel "{1}" from sequence_generator_logic.'
+                             ''.format(ensemble_obj.name, laser_chnl))
+        else:
+            laser_chnl = ensemble_obj.laser_channel
+        num_of_lasers = 0
+        tmp_laser_on = False
+        for block, reps in ensemble_obj.block_list:
+            tmp_lasers_num = 0
+            for element in block.element_list:
+                if 'd_ch' in laser_chnl:
+                    d_channels = [ch for ch in return_params['activation_config'] if 'd_ch' in ch]
+                    chnl_index = d_channels.index(laser_chnl)
+                    if not tmp_laser_on and element.digital_high[chnl_index]:
+                        tmp_laser_on = True
+                        tmp_lasers_num += 1
+                    elif not element.digital_high[chnl_index]:
+                        tmp_laser_on = False
+                else:
+                    self.log.error('Invoke measurement settings from a PulseBlockEnsemble with '
+                                   'analogue laser channel is not implemented yet.')
+                    return_params['err_code'] = -1
+                    return
+            num_of_lasers += (tmp_lasers_num * (reps + 1))
+        return_params['num_of_lasers'] = num_of_lasers
+
+        # Get laser ignore list
+        if ensemble_obj.laser_ignore_list is None:
+            return_params['laser_ignore_list'] = []
+            self.log.warning('No laser ignore list specified in asset "{0}" metadata. '
+                             'Assuming that no lasers should be ignored.'.format(ensemble_obj.name))
+        else:
+            return_params['laser_ignore_list'] = ensemble_obj.laser_ignore_list
+
+        # Get alternating
+        if ensemble_obj.alternating is None:
+            return_params['is_alternating'] = self._measurement_logic.alternating
+            self.log.warning('No alternating specified in asset "{0}" metadata. Choosing '
+                             'currently set state "{1}" from pulsed_measurement_logic.'
+                             ''.format(ensemble_obj.name, return_params['is_alternating']))
+        else:
+            return_params['is_alternating'] = ensemble_obj.alternating
+
+        # Get controlled variable values
+        if len(ensemble_obj.measurement_ticks_list) < 1:
+            ana_lasers = num_of_lasers - len(return_params['laser_ignore_list'])
+            measurement_ticks = np.arange(1, ana_lasers + 1)
+            self.log.warning('No measurement ticks specified in asset "{0}" metadata. Choosing '
+                             'laser indices instead.'.format(ensemble_obj.name))
+            if return_params['is_alternating']:
+                measurement_ticks = measurement_ticks[0:ana_lasers//2]
+        else:
+            measurement_ticks = ensemble_obj.measurement_ticks_list
+        return_params['measurement_ticks'] = measurement_ticks
+
+
+        # return all parameters
+        return return_params
