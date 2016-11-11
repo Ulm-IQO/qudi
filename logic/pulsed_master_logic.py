@@ -739,6 +739,12 @@ class PulsedMasterLogic(GenericLogic):
                 if asset_params['err_code'] >= 0:
                     interleave = self._measurement_logic.interleave_on
                     laser_trigger_delay = self._measurement_logic.laser_trigger_delay_s
+                    fc_binwidth_s = self._measurement_logic.fast_counter_binwidth
+                    if self._measurement_logic.fast_counter_gated:
+                        fc_record_length_s = asset_params['max_laser_length'] + laser_trigger_delay
+                    else:
+                        fc_record_length_s = asset_params['sequence_length'] + laser_trigger_delay
+                    self.fast_counter_settings_changed(fc_binwidth_s, fc_record_length_s)
                     self.pulse_generator_settings_changed(asset_params['sample_rate'],
                                                           asset_params['config_name'],
                                                           asset_params['amplitude_dict'],
@@ -1204,7 +1210,7 @@ class PulsedMasterLogic(GenericLogic):
         # Get sequence length
         return_params['sequence_length'] = asset_obj.length_s
 
-        # Get number of laser pulses
+        # Get number of laser pulses and max laser length
         if asset_obj.laser_channel is None:
             laser_chnl = self._generator_logic.laser_channel
             self.log.warning('No laser channel specified in asset "{0}" metadata. Choosing '
@@ -1213,7 +1219,9 @@ class PulsedMasterLogic(GenericLogic):
         else:
             laser_chnl = asset_obj.laser_channel
         num_of_lasers = 0
+        max_laser_length = 0.0
         tmp_laser_on = False
+        tmp_laser_length = 0.0
         for block, reps in asset_obj.block_list:
             tmp_lasers_num = 0
             for element in block.element_list:
@@ -1225,6 +1233,15 @@ class PulsedMasterLogic(GenericLogic):
                         tmp_lasers_num += 1
                     elif not element.digital_high[chnl_index]:
                         tmp_laser_on = False
+                    if tmp_laser_on:
+                        if element.increment_s > 1.0e-15:
+                            tmp_laser_length += (element.init_length_s + reps * element.increment_s)
+                        else:
+                            tmp_laser_length += element.init_length_s
+                        if tmp_laser_length > max_laser_length:
+                            max_laser_length = tmp_laser_length
+                    else:
+                        tmp_laser_length = 0.0
                 else:
                     self.log.error('Invoke measurement settings from a PulseBlockEnsemble with '
                                    'analogue laser channel is not implemented yet.')
@@ -1232,6 +1249,7 @@ class PulsedMasterLogic(GenericLogic):
                     return
             num_of_lasers += (tmp_lasers_num * (reps + 1))
         return_params['num_of_lasers'] = num_of_lasers
+        return_params['max_laser_length'] = max_laser_length
 
         # Get laser ignore list
         if asset_obj.laser_ignore_list is None:
@@ -1251,16 +1269,16 @@ class PulsedMasterLogic(GenericLogic):
             return_params['is_alternating'] = asset_obj.alternating
 
         # Get controlled variable values
-        if len(asset_obj.controlled_vals_arr) < 1:
+        if len(asset_obj.controlled_vals_array) < 1:
             ana_lasers = num_of_lasers - len(return_params['laser_ignore_list'])
-            controlled_vals_arr = np.arange(1, ana_lasers + 1)
+            controlled_vals_array = np.arange(1, ana_lasers + 1)
             self.log.warning('No measurement ticks specified in asset "{0}" metadata. Choosing '
                              'laser indices instead.'.format(asset_obj.name))
             if return_params['is_alternating']:
-                controlled_vals_arr = controlled_vals_arr[0:ana_lasers//2]
+                controlled_vals_array = controlled_vals_array[0:ana_lasers//2]
         else:
-            controlled_vals_arr = asset_obj.controlled_vals_arr
-        return_params['controlled_vals_arr'] = controlled_vals_arr
+            controlled_vals_array = asset_obj.controlled_vals_array
+        return_params['controlled_vals_arr'] = controlled_vals_array
 
         # return all parameters
         return return_params
