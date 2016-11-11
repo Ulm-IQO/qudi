@@ -76,7 +76,7 @@ class PulsedMasterLogic(GenericLogic):
     sigSavedBlockEnsemblesUpdated = QtCore.Signal(dict)
     sigSavedSequencesUpdated = QtCore.Signal(dict)
     sigCurrentPulseBlockUpdated = QtCore.Signal(object)
-    sigCurrentBlockEnsembleUpdated = QtCore.Signal(object)
+    sigCurrentBlockEnsembleUpdated = QtCore.Signal(object, dict)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
     sigBlockEnsembleSampled = QtCore.Signal(str)
     sigSequenceSampled = QtCore.Signal(str)
@@ -931,7 +931,11 @@ class PulsedMasterLogic(GenericLogic):
         @param ensemble_object:
         @return:
         """
-        self.sigCurrentBlockEnsembleUpdated.emit(ensemble_object)
+        if ensemble_object is not None:
+            ensemble_params = self._get_asset_parameters(ensemble_object)
+        else:
+            ensemble_params = {}
+        self.sigCurrentBlockEnsembleUpdated.emit(ensemble_object, ensemble_params)
         return
 
     def current_sequence_updated(self, sequence_object):
@@ -1209,6 +1213,7 @@ class PulsedMasterLogic(GenericLogic):
 
         # Get sequence length
         return_params['sequence_length'] = asset_obj.length_s
+        return_params['sequence_length_bins'] = asset_obj.length_s*self._generator_logic.sample_rate
 
         # Get number of laser pulses and max laser length
         if asset_obj.laser_channel is None:
