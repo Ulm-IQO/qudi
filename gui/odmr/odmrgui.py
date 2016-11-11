@@ -108,6 +108,11 @@ class ODMRGui(GUIBase):
         self._mw = ODMRMainWindow()
         self._sd = ODMRSettingDialog()
 
+        # Create a QSettings object for the mainwindow and store the actual GUI layout
+        self.mwsettings = QtCore.QSettings("QUDI","ODMR")
+        self.mwsettings.setValue("geometry",self._mw.saveGeometry())
+        self.mwsettings.setValue("windowState",self._mw.saveState())
+
         # Adjust range of scientific spinboxes above what is possible in Qt Designer
         self._mw.frequency_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_frequency)
         self._mw.frequency_DoubleSpinBox.setMinimum(self._odmr_logic.limits.min_frequency)
@@ -271,6 +276,7 @@ class ODMRGui(GUIBase):
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_resume_odmr.toggled.connect(self.resume_odmr)
         self._mw.action_Save.triggered.connect(self.save_data)
+        self._mw.action_RestoreDefault.triggered.connect(self.restore_defaultview)
         self.sigStartODMRScan.connect(self._odmr_logic.start_odmr_scan)
         self.sigStopODMRScan.connect(self._odmr_logic.stop_odmr_scan)
         self.sigContinueODMRScan.connect(self._odmr_logic.continue_odmr_scan)
@@ -605,3 +611,7 @@ class ODMRGui(GUIBase):
             pcile_range = [low_centile, high_centile]
 
         self._odmr_logic.save_ODMR_Data(filetag, colorscale_range=cb_range, percentile_range=pcile_range)
+
+    def restore_defaultview(self):
+        self._mw.restoreGeometry(self.mwsettings.value("geometry",""))
+        self._mw.restoreState(self.mwsettings.value("windowState",""))
