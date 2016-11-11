@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1098</width>
+    <width>1250</width>
     <height>703</height>
    </rect>
   </property>
@@ -163,7 +163,7 @@
         <item row="0" column="2">
          <widget class="QLabel" name="label_29">
           <property name="text">
-           <string>Define own x axis ?</string>
+           <string>Define own controlled variable ?</string>
           </property>
          </widget>
         </item>
@@ -292,7 +292,7 @@
         <item row="1" column="2">
          <widget class="QLabel" name="ana_param_x_axis_start_Label">
           <property name="text">
-           <string>x axis start:</string>
+           <string>controlled variable start:</string>
           </property>
          </widget>
         </item>
@@ -312,7 +312,7 @@
         <item row="2" column="2">
          <widget class="QLabel" name="ana_param_x_axis_inc_Label">
           <property name="text">
-           <string>x axis inc:</string>
+           <string>controlled variable incr:</string>
           </property>
          </widget>
         </item>

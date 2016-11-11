@@ -1711,19 +1711,19 @@ class PulsedMeasurementGui(GUIBase):
             laser_ignore_list.append(-1)
         alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
         num_of_lasers = self._pa.ana_param_num_laser_pulse_SpinBox.value()
-        xaxis_start = self._pa.ana_param_x_axis_start_ScienDSpinBox.value()
-        xaxis_incr = self._pa.ana_param_x_axis_inc_ScienDSpinBox.value()
+        controlled_vals_start = self._pa.ana_param_x_axis_start_ScienDSpinBox.value()
+        controlled_vals_incr = self._pa.ana_param_x_axis_inc_ScienDSpinBox.value()
         laser_trigger_delay = self._as.ana_param_lasertrigger_delay_ScienDSpinBox.value()
         # FIXME: properly implement sequence_length_s
         sequence_length_s = self._pulsed_master_logic._measurement_logic.sequence_length_s
         num_of_ticks = num_of_lasers - len(laser_ignore_list)
         if alternating:
             num_of_ticks //= 2
-        measurement_ticks = np.arange(xaxis_start,
-                                      xaxis_start + (xaxis_incr * num_of_ticks) - (xaxis_incr / 2),
-                                      xaxis_incr)
+        controlled_vals = np.arange(controlled_vals_start,
+                                    controlled_vals_start + (controlled_vals_incr * num_of_ticks) - (controlled_vals_incr / 2),
+                                    controlled_vals_incr)
 
-        self._pulsed_master_logic.measurement_sequence_settings_changed(measurement_ticks,
+        self._pulsed_master_logic.measurement_sequence_settings_changed(controlled_vals,
                                                                         num_of_lasers,
                                                                         sequence_length_s,
                                                                         laser_ignore_list,
@@ -1731,12 +1731,12 @@ class PulsedMeasurementGui(GUIBase):
                                                                         laser_trigger_delay)
         return
 
-    def measurement_sequence_settings_updated(self, measurement_ticks, number_of_lasers,
+    def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
         """
 
-        @param measurement_ticks:
+        @param controlled_vals:
         @param number_of_lasers:
         @param sequence_length_s:
         @param laser_ignore_list:
@@ -1759,9 +1759,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_alternating_CheckBox.setChecked(alternating)
         self._pa.ana_param_num_laser_pulse_SpinBox.setValue(number_of_lasers)
         self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(laser_trigger_delay)
-        self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(measurement_ticks[0])
+        self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(controlled_vals[0])
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
-            (measurement_ticks[-1] - measurement_ticks[0]) / (len(measurement_ticks)-1))
+            (controlled_vals[-1] - controlled_vals[0]) / (len(controlled_vals)-1))
         self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(number_of_lasers+1)])
         # change plots accordingly
         if alternating:
