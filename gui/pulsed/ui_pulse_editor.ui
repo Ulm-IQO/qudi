@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>911</width>
+    <width>1061</width>
     <height>908</height>
    </rect>
   </property>
@@ -462,7 +462,7 @@ last</string>
        </widget>
       </item>
       <item row="1" column="1" colspan="2">
-       <widget class="QSpinBox" name="curr_ensemble_bins_SpinBox">
+       <widget class="ScienSpinBox" name="curr_ensemble_bins_SpinBox">
         <property name="maximumSize">
          <size>
           <width>80</width>
@@ -863,6 +863,11 @@ Load</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>

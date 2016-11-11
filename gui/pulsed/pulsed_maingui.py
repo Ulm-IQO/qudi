@@ -809,8 +809,20 @@ class PulsedMeasurementGui(GUIBase):
         self.block_editor.load_pulse_block(block_obj)
         return
 
-    def load_ensemble_in_editor(self, ensemble_obj):
+    def load_ensemble_in_editor(self, ensemble_obj, ensemble_params):
         self.block_organizer.load_pulse_block_ensemble(ensemble_obj)
+        if ensemble_params != {}:
+            self._pg.curr_ensemble_length_DSpinBox.setValue(ensemble_params['sequence_length'])
+            self._pg.curr_ensemble_bins_SpinBox.setValue(ensemble_params['sequence_length_bins'])
+            # FIXME: This is just a rough estimation of the waveform size in MB (only valid for AWG)
+            size_mb = (ensemble_params['sequence_length_bins'] * 5) / 1024**2
+            self._pg.curr_ensemble_size_DSpinBox.setValue(size_mb)
+            self._pg.curr_ensemble_laserpulses_SpinBox.setValue(ensemble_params['num_of_lasers'])
+        else:
+            self._pg.curr_ensemble_length_DSpinBox.setValue(0.0)
+            self._pg.curr_ensemble_bins_SpinBox.setValue(0)
+            self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
+            self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
         return
 
     def update_block_dict(self, block_dict):
