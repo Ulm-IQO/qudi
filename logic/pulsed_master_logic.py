@@ -492,6 +492,11 @@ class PulsedMasterLogic(GenericLogic):
         @param interleave_on:
         @return:
         """
+        # FIXME: This is just a temporary fix to avoid mismatch of pp-amplitude in measurement
+        # and generator logic. Later on the pp-amplitude is a field in the GUI just like activation
+        # config and sample rate
+        self._generator_logic.amplitude_dict = analogue_amplitude
+
         activation_config = self._measurement_logic.get_pulser_constraints()['activation_config'][
             activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
