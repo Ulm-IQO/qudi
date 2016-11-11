@@ -664,8 +664,8 @@ def make_doubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
 #                                                                          #
 ############################################################################
 
-def make_doubleexponentialdecay_model(self, prefix=None):
-    """ Create a double exponential decay model.
+def make_doubleexponentialdecayoffset_model(self, prefix=None):
+    """ Create a double exponential decay model with offset.
 
     @param str prefix: optional string, which serves as a prefix for all
                        parameters used in this model. That will prevent
@@ -689,8 +689,136 @@ def make_doubleexponentialdecay_model(self, prefix=None):
 
     bare_double_exp_decay, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
     ampitude_model, params = self.make_amplitude_model()
+    constant_model, params = self.make_constant_model(prefix=prefix)
 
-    double_exp_decay = ampitude_model*bare_double_exp_decay
-    params = double_exp_decay.make_params()
+    double_exp_decay_offset = ampitude_model*bare_double_exp_decay + constant_model
+    params = double_exp_decay_offset.make_params()
 
-    return double_exp_decay, params
+    return double_exp_decay_offset, params
+
+
+############################################################################
+#                                                                          #
+#                  stretched exponential decay                             #
+#                                                                          #
+############################################################################
+
+def make_stretchedexponentialdecay_model(self, prefix=None):
+    """ Create a stretched exponential decay model.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    """
+
+    bare_stre_exp_decay, params = self.make_barestretchedexponentialdecay_model(prefix=prefix)
+    ampitude_model, params = self.make_amplitude_model()
+
+    double_exp_decay_offset = ampitude_model*bare_stre_exp_decay
+    params = double_exp_decay_offset.make_params()
+
+    return double_exp_decay_offset, params
+
+
+
+def estimate_stretchedexponentialdecay(self, x_axis, data, params):
+    """ Provide an estimation for initial values for a stretched exponential decay.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # remove all the data that can be smaller than or equals to data.std()
+    # when the data is smaller than std of the data, it is beyond the resolution
+    # which is not helpful to our fitting.
+    for i in range(0, len(x_axis)):
+        if data[i] <= data.std():
+            break
+
+    # take the logarithm of data, calculate the life time with linear fit.
+    data_log = np.log(data[i])
+
+    minimum = 2 * (x_axis[1]-x_axis[0])
+
+    try:
+        linear_result = self.make_linear_fit(axis=x_axis[0:i],
+                                             data=data_log[0:i],
+                                             add_parameters=None)
+
+        params['lifetime'].set(value=-1/linear_result.params['slope'].value,
+                               min=minimum)
+        params['amplitude'].set(value=linear_result.params['offset'].value)
+
+    except:
+        params['lifetime'].set(value=x_axis[i]-x_axis[0], min=minimum)
+        logger.error('Linear fit did not work in estimate_exponentialdecay.')
+
+    return error, params
+
+
+
+
+
+############################################################################
+#                                                                          #
+#             stretched exponential decay with offset                      #
+#                                                                          #
+############################################################################
+
+def make_stretchedexponentialdecayoffset_model(self, prefix=None):
+    """ Create a stretched exponential decay model with offset.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    """
+
+    stre_exp_decay, params = self.make_stretchedexponentialdecay_model(prefix=prefix)
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    stre_exp_decay_offset = stre_exp_decay + constant_model
+    params = stre_exp_decay_offset.make_params()
+
+    return stre_exp_decay_offset, params
