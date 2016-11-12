@@ -266,6 +266,8 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['pulser_running'] = False
         self.status_dict['measurement_running'] = False
 
+        self.invoke_settings = False
+
     def on_deactivate(self, e):
         """
 
@@ -707,7 +709,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(asset_names_list)
         return
 
-    def load_asset_into_channels(self, asset_name, load_dict={}, invoke_settings=False):
+    def load_asset_into_channels(self, asset_name, load_dict={}, invoke_settings=None):
         """
 
         @param asset_name:
@@ -716,8 +718,10 @@ class PulsedMasterLogic(GenericLogic):
                                      according to the loaded assets metadata.
         @return:
         """
+        if invoke_settings is not None:
+            self.invoke_settings = invoke_settings
         # invoke measurement parameters from asset object
-        if invoke_settings:
+        if self.invoke_settings:
             # get asset object
             if asset_name in self._generator_logic.saved_pulse_sequences:
                 self.log.debug('Invoking measurement settings from PulseSequence object.')
@@ -1001,7 +1005,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigSavedSequencesUpdated.emit(sequence_dict)
         return
 
-    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise, sample_upload_load = False):
+    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
         """
 
         @param ensemble_name:
@@ -1009,11 +1013,13 @@ class PulsedMasterLogic(GenericLogic):
         """
         if sample_upload_load:
             self.status_dict['sauplo_busy'] = True
+            if invoke_settings is not None:
+                self.invoke_settings = invoke_settings
         self.status_dict['sampling_busy'] = True
         self.sigSampleBlockEnsemble.emit(ensemble_name, write_to_file, write_chunkwise)
         return
 
-    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False):
+    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
         """
 
         @param sequence_name:
@@ -1021,6 +1027,8 @@ class PulsedMasterLogic(GenericLogic):
         """
         if sample_upload_load:
             self.status_dict['sauplo_busy'] = True
+            if invoke_settings is not None:
+                self.invoke_settings = invoke_settings
         self.status_dict['sampling_busy'] = True
         self.sigSampleSequence.emit(sequence_name, write_to_file, write_chunkwise)
         return
