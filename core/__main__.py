@@ -170,9 +170,13 @@ class AppWatchdog(QtCore.QObject):
         if sys.platform == 'win32':
             if self.interrupt or self.parent_handle:
                 self.poller = ParentPollerWindows(lambda: self.quitProxy(manager), self.interrupt, self.parent_handle)
+                self.poller.start()
         elif self.parent_handle:
             self.poller = ParentPollerUnix(lambda: self.quitProxy(manager))
-        self.poller.start()
+            self.poller.start()
+        else:
+            logger.warning('Qudi running unsupervised, restart wiill not work.')
+            
 
     def quitProxy(self, obj):
         print('Parent process is daed, committing sudoku...')
