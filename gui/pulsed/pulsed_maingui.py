@@ -237,6 +237,8 @@ class PulsedMeasurementGui(GUIBase):
         self._gs = GeneratorSettingsDialog()
         self._gs.accepted.connect(self.apply_generator_settings)
         self._gs.rejected.connect(self.keep_former_generator_settings)
+        self._gs.sampled_file_format_comboBox.currentIndexChanged.connect(
+            self.generator_settings_changed, QtCore.Qt.QueuedConnection)
         self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_generator_settings)
         # Here the names of all function to show are stored
@@ -279,6 +281,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._gs.accepted.disconnect()
         self._gs.rejected.disconnect()
+        self._gs.sampled_file_format_comboBox.currentIndexChanged.disconnect()
         self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
         self._gs.close()
 
@@ -630,13 +633,15 @@ class PulsedMeasurementGui(GUIBase):
         laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
         activation_config_name = self._pg.gen_activation_config_ComboBox.currentText()
         amplitude_dict = self._pulsed_master_logic._generator_logic.amplitude_dict
+        sampling_format = self._gs.sampled_file_format_comboBox.currentText()
 
         self._pulsed_master_logic.generator_settings_changed(activation_config_name, laser_channel,
-                                                             sample_rate, amplitude_dict)
+                                                             sample_rate, amplitude_dict,
+                                                             sampling_format)
         return
 
     def update_generator_settings(self, activation_config_name, activation_config, sample_rate,
-                                   amplitude_dict, laser_channel):
+                                   amplitude_dict, laser_channel, sampling_format):
         """
 
         @param activation_config_name:
@@ -644,12 +649,17 @@ class PulsedMeasurementGui(GUIBase):
         @param sample_rate:
         @param amplitude_dict:
         @param laser_channel:
+        @param sampling_format:
         @return:
         """
         # block signals
         self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
         self._pg.gen_activation_config_ComboBox.blockSignals(True)
+        self._gs.sampled_file_format_comboBox.blockSignals(True)
+        # sampling format
+        index = self._gs.sampled_file_format_comboBox.findText(sampling_format)
+        self._gs.sampled_file_format_comboBox.setCurrentIndex(index)
         # activation config
         index = self._pg.gen_activation_config_ComboBox.findText(activation_config_name)
         self._pg.gen_activation_config_ComboBox.setCurrentIndex(index)
@@ -677,6 +687,7 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 self.block_editor.set_activation_config(activation_config)
         # unblock signals
+        self._gs.sampled_file_format_comboBox.blockSignals(False)
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
