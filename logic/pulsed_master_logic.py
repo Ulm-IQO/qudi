@@ -67,7 +67,7 @@ class PulsedMasterLogic(GenericLogic):
     sigLoadSequence = QtCore.Signal(str)
     sigSampleBlockEnsemble = QtCore.Signal(str, bool, bool)
     sigSampleSequence = QtCore.Signal(str, bool, bool)
-    sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict)
+    sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
     sigRequestGeneratorInitValues = QtCore.Signal()
     sigGeneratePredefinedSequence = QtCore.Signal(str, list)
 
@@ -80,7 +80,7 @@ class PulsedMasterLogic(GenericLogic):
     sigCurrentSequenceUpdated = QtCore.Signal(object)
     sigBlockEnsembleSampled = QtCore.Signal(str)
     sigSequenceSampled = QtCore.Signal(str)
-    sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str)
+    sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str, str)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
@@ -1058,13 +1058,14 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     def generator_settings_changed(self, activation_config_name, laser_channel, sample_rate,
-                                   amplitude_dict):
+                                   amplitude_dict, sampling_format):
         """
 
         @param activation_config_name:
         @param laser_channel:
         @param sample_rate:
         @param amplitude_dict:
+        @param sampling_format:
         @return:
         """
         # get pulser constraints
@@ -1104,17 +1105,18 @@ class PulsedMasterLogic(GenericLogic):
         # amplitude dictionary
         # FIXME: check with pulser constraints
         self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
-                                              amplitude_dict)
+                                              amplitude_dict, sampling_format)
         return
 
     def generator_settings_updated(self, activation_config, laser_channel, sample_rate,
-                                   amplitude_dict):
+                                   amplitude_dict, sampling_format):
         """
 
         @param activation_config:
         @param sample_rate:
         @param amplitude_dict:
         @param laser_channel:
+        @param sampling_format:
         @return:
         """
         # retrieve hardware constraints
@@ -1132,10 +1134,11 @@ class PulsedMasterLogic(GenericLogic):
                              'Taking first valid config "{1}" '
                              'instead.'.format(activation_config, activation_config_name))
             self.generator_settings_changed(activation_config_name, laser_channel, sample_rate,
-                                            amplitude_dict)
+                                            amplitude_dict, sampling_format)
         else:
             self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
-                                                  sample_rate, amplitude_dict, laser_channel)
+                                                  sample_rate, amplitude_dict, laser_channel,
+                                                  sampling_format)
         return
 
     def generate_predefined_sequence(self, generator_method_name, arg_list):
