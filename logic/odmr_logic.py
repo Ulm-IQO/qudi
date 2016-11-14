@@ -26,6 +26,7 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
+import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
