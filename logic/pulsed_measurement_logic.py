@@ -952,11 +952,11 @@ class PulsedMeasurementLogic(GenericLogic):
         data['Signal (counts)'] = self.laser_data.transpose()
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
-        parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
+        parameters['Bin size (s)'] = self.fast_counter_binwidth
+        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':')
+                                   timestamp=timestamp, as_text=True, precision=':.6e')
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -982,7 +982,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
+        parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['Signal start (bin)'] = self.signal_start_bin
         parameters['Signal width (bins)'] = self.signal_width_bin
@@ -1003,7 +1003,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
                                    timestamp=timestamp, as_text=True, plotfig=fig,
-                                   precision=':3.6e')
+                                   precision=':.6e')
         plt.close(fig)
 
         #####################################################################
@@ -1021,16 +1021,16 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Is counter gated?'] = self.fast_counter_gated
         parameters['Is alternating?'] = self.alternating
-        parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
+        parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
-        parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
+        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
         parameters['Controlled variable start'] = self.controlled_vals[0]
         parameters['Controlled variable increment'] = (self.controlled_vals[-1] -
                                                      self.controlled_vals[0]) / (
                                                     len(self.controlled_vals) - 1)
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':')
+                                   timestamp=timestamp, as_text=True, precision=':.6e')
         return
 
     def compute_fft(self):
