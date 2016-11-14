@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1250</width>
+    <width>1341</width>
     <height>703</height>
    </rect>
   </property>
@@ -160,14 +160,45 @@
      <layout class="QGridLayout" name="gridLayout_28">
       <item row="0" column="0">
        <layout class="QGridLayout" name="gridLayout_25">
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_29">
+        <item row="5" column="0">
+         <widget class="QLabel" name="show_errorbars_Label">
           <property name="text">
-           <string>Define own controlled variable ?</string>
+           <string>Error bars ?</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
+        <item row="5" column="1">
+         <widget class="QCheckBox" name="ana_param_errorbars_CheckBox">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="second_plot_Label">
+          <property name="text">
+           <string>Show second plot?</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="2">
+         <widget class="QLabel" name="ana_param_record_length_Label">
+          <property name="text">
+           <string>Counter record length:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QComboBox" name="second_plot_ComboBox"/>
+        </item>
+        <item row="5" column="2">
+         <widget class="QLabel" name="ana_param_num_laserpulses_Label">
+          <property name="text">
+           <string>Num Laserpulses:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="3">
          <widget class="QSpinBox" name="ana_param_num_laser_pulse_SpinBox">
           <property name="minimum">
            <number>0</number>
@@ -180,167 +211,14 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="ana_param_num_laserpulses_Label">
-          <property name="text">
-           <string>Num Laserpulses:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_22">
-          <property name="text">
-           <string>Fastcounter Binwidth (s):</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QCheckBox" name="ana_param_ignore_first_CheckBox">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1">
-         <widget class="QCheckBox" name="ana_param_alternating_CheckBox">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QCheckBox" name="ana_param_ignore_last_CheckBox">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="ana_param_fc_bins_ComboBox"/>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_24">
-          <property name="text">
-           <string>Ignore last ?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="0">
-         <widget class="QLabel" name="label_25">
-          <property name="text">
-           <string>Alternating ?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QCheckBox" name="ana_param_x_axis_defined_CheckBox">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="3">
-         <widget class="ScienDSpinBox" name="ana_param_x_axis_inc_ScienDSpinBox">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="maximum">
-           <double>999999999.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
         <item row="4" column="2">
-         <widget class="QLabel" name="second_plot_Label">
-          <property name="text">
-           <string>Show second plot?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QCheckBox" name="ana_param_laserpulse_defined_CheckBox">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_23">
-          <property name="text">
-           <string>Ignore first ?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_27">
-          <property name="text">
-           <string>Define Num Laserpulses?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="ana_param_x_axis_start_Label">
-          <property name="text">
-           <string>controlled variable start:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="3">
-         <widget class="ScienDSpinBox" name="ana_param_x_axis_start_ScienDSpinBox">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="maximum">
-           <double>999999999.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
          <widget class="QLabel" name="ana_param_x_axis_inc_Label">
           <property name="text">
            <string>controlled variable incr:</string>
           </property>
          </widget>
         </item>
-        <item row="5" column="2">
-         <widget class="QLabel" name="show_errorbars_Label">
-          <property name="text">
-           <string>Error bars?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="3">
-         <widget class="QComboBox" name="second_plot_ComboBox"/>
-        </item>
-        <item row="5" column="3">
-         <widget class="QCheckBox" name="ana_param_errorbars_CheckBox">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="ana_param_record_length_Label">
-          <property name="text">
-           <string>Counter record length:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
+        <item row="6" column="3">
          <widget class="ScienDSpinBox" name="ana_param_record_length_SpinBox">
           <property name="suffix">
            <string>s</string>
@@ -353,6 +231,111 @@
           </property>
           <property name="value">
            <double>3000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="3">
+         <widget class="ScienDSpinBox" name="ana_param_x_axis_inc_ScienDSpinBox">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="maximum">
+           <double>999999999.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="3">
+         <widget class="ScienDSpinBox" name="ana_param_x_axis_start_ScienDSpinBox">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="maximum">
+           <double>999999999.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QLabel" name="ana_param_x_axis_start_Label">
+          <property name="text">
+           <string>controlled variable start:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QLabel" name="label_29">
+          <property name="text">
+           <string>Invoke settings ?</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QCheckBox" name="ana_param_invoke_settings_CheckBox">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QComboBox" name="ana_param_fc_bins_ComboBox"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="ana_param_ignore_first_CheckBox">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="label_22">
+          <property name="text">
+           <string>Fastcounter Binwidth (s):</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="ana_param_ignore_last_CheckBox">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="ana_param_alternating_CheckBox">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_23">
+          <property name="text">
+           <string>Ignore first ?</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_24">
+          <property name="text">
+           <string>Ignore last ?</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_25">
+          <property name="text">
+           <string>Alternating ?</string>
           </property>
          </widget>
         </item>
