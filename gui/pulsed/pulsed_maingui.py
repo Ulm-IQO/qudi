@@ -900,12 +900,15 @@ class PulsedMeasurementGui(GUIBase):
         """
         # Get the ensemble name from the ComboBox
         ensemble_name = self._pg.gen_ensemble_ComboBox.currentText()
+        # Get invoke settings CheckBox status
+        invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
         # disable button
         self._pg.sample_ensemble_PushButton.setEnabled(False)
         self._pg.upload_ensemble_PushButton.setEnabled(False)
         self._pg.load_ensemble_PushButton.setEnabled(False)
         # Sample the ensemble via logic module
-        self._pulsed_master_logic.sample_block_ensemble(ensemble_name, True, self._write_chunkwise, True)
+        self._pulsed_master_logic.sample_block_ensemble(ensemble_name, True, self._write_chunkwise,
+                                                        True, invoke_settings)
         return
 
     # def sample_sequence_clicked(self):
@@ -1115,6 +1118,13 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        if 'ana_param_invoke_settings_CheckBox' in self._statusVariables:
+            self._pa.ana_param_invoke_settings_CheckBox.setChecked(self._statusVariables['ana_param_invoke_settings_CheckBox'])
+        if 'ana_param_errorbars_CheckBox' in self._statusVariables:
+            self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
+        # if 'second_plot_ComboBox_text' in self._statusVariables:
+        #     self._pa.second_plot_ComboBox.setText(self._statusVariables['second_plot_ComboBox_text'])
+
         # FIXME: Implement second plot
         self._pa.second_plot_GroupBox.setVisible(False)
         # Configure the main pulse analysis display:
@@ -1217,8 +1227,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect checkbox click signals
         self._pa.ext_control_use_mw_CheckBox.stateChanged.connect(self.ext_mw_params_changed)
-        self._pa.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
-        self._pa.ana_param_laserpulse_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
+        self._pa.ana_param_invoke_settings_CheckBox.stateChanged.connect(self.toggle_settings_editor)
         self._pa.ana_param_alternating_CheckBox.stateChanged.connect(self.measurement_sequence_settings_changed)
         self._pa.ana_param_ignore_first_CheckBox.stateChanged.connect(self.measurement_sequence_settings_changed)
         self._pa.ana_param_ignore_last_CheckBox.stateChanged.connect(self.measurement_sequence_settings_changed)
@@ -1257,6 +1266,11 @@ class PulsedMeasurementGui(GUIBase):
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
 
+        self._pulsed_master_logic.invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
+        self.toggle_settings_editor()
+        self.toggle_error_bars()
+        #self.change_second_plot()
+
         # initialize values
         self._pulsed_master_logic.request_measurement_init_values()
         return
@@ -1269,10 +1283,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         self.measurement_run_stop_clicked(False)
 
-        self._statusVariables['ana_param_x_axis_defined_CheckBox'] = self._pa.ana_param_x_axis_defined_CheckBox.isChecked()
-        self._statusVariables['ana_param_laserpulse_defined_CheckBox'] = self._pa.ana_param_laserpulse_defined_CheckBox.isChecked()
-        self._statusVariables['ana_param_ignore_first_CheckBox'] = self._pa.ana_param_ignore_first_CheckBox.isChecked()
-        self._statusVariables['ana_param_ignore_last_CheckBox'] = self._pa.ana_param_ignore_last_CheckBox.isChecked()
+        self._statusVariables['ana_param_invoke_settings_CheckBox'] = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
         self._statusVariables['ana_param_errorbars_CheckBox'] = self._pa.ana_param_errorbars_CheckBox.isChecked()
         self._statusVariables['second_plot_ComboBox_text'] = self._pa.second_plot_ComboBox.currentText()
 
@@ -1307,8 +1318,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_save.triggered.disconnect()
         self._mw.action_Settings_Analysis.triggered.disconnect()
         self._pa.ext_control_use_mw_CheckBox.stateChanged.disconnect()
-        self._pa.ana_param_x_axis_defined_CheckBox.stateChanged.disconnect()
-        self._pa.ana_param_laserpulse_defined_CheckBox.stateChanged.disconnect()
+        self._pa.ana_param_invoke_settings_CheckBox.stateChanged.disconnect()
         self._pa.ana_param_alternating_CheckBox.stateChanged.disconnect()
         self._pa.ana_param_ignore_first_CheckBox.stateChanged.disconnect()
         self._pa.ana_param_ignore_last_CheckBox.stateChanged.disconnect()
@@ -1398,21 +1408,23 @@ class PulsedMeasurementGui(GUIBase):
 
         # Enable/Disable widgets
         if is_running:
+            if self._pa.ext_control_use_mw_CheckBox.isChecked():
+                self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
+                self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
+            if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(False)
+                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
+                self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(False)
+                self._pa.ana_param_record_length_SpinBox.setEnabled(False)
             self._pa.ext_control_use_mw_CheckBox.setEnabled(False)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
             self._pa.pulser_sample_freq_DSpinBox.setEnabled(False)
             self._pa.pulser_activation_config_ComboBox.setEnabled(False)
             self._pa.ana_param_fc_bins_ComboBox.setEnabled(False)
-            self._pa.ana_param_laserpulse_defined_CheckBox.setEnabled(False)
-            self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(False)
-            self._pa.ana_param_record_length_SpinBox.setEnabled(False)
             self._pa.ana_param_ignore_first_CheckBox.setEnabled(False)
             self._pa.ana_param_ignore_last_CheckBox.setEnabled(False)
             self._pa.ana_param_alternating_CheckBox.setEnabled(False)
-            self._pa.ana_param_x_axis_defined_CheckBox.setEnabled(False)
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(False)
-            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
+            self._pa.ana_param_invoke_settings_CheckBox.setEnabled(False)
+            self._pa.pulser_use_interleave_CheckBox.setEnabled(False)
             self._pg.load_ensemble_PushButton.setEnabled(False)
             # self._pg.load_sequence_PushButton.setEnabled(False)
             self._mw.pulser_on_off_PushButton.setEnabled(False)
@@ -1422,20 +1434,22 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.action_run_stop.toggle()
         else:
             self._pa.ext_control_use_mw_CheckBox.setEnabled(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
+            if self._pa.ext_control_use_mw_CheckBox.isChecked():
+                self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
+                self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._pa.pulser_sample_freq_DSpinBox.setEnabled(True)
             self._pa.pulser_activation_config_ComboBox.setEnabled(True)
             self._pa.ana_param_fc_bins_ComboBox.setEnabled(True)
-            self._pa.ana_param_laserpulse_defined_CheckBox.setEnabled(True)
-            self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
-            self._pa.ana_param_record_length_SpinBox.setEnabled(True)
             self._pa.ana_param_ignore_first_CheckBox.setEnabled(True)
             self._pa.ana_param_ignore_last_CheckBox.setEnabled(True)
             self._pa.ana_param_alternating_CheckBox.setEnabled(True)
-            self._pa.ana_param_x_axis_defined_CheckBox.setEnabled(True)
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
-            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
+            self._pa.ana_param_invoke_settings_CheckBox.setEnabled(True)
+            self._pa.pulser_use_interleave_CheckBox.setEnabled(True)
+            if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
+                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
+                self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
+                self._pa.ana_param_record_length_SpinBox.setEnabled(True)
             self._pg.load_ensemble_PushButton.setEnabled(True)
             # self._pg.load_sequence_PushButton.setEnabled(True)
             self._mw.pulser_on_off_PushButton.setEnabled(True)
@@ -1558,22 +1572,16 @@ class PulsedMeasurementGui(GUIBase):
         use_ext_microwave = self._pa.ext_control_use_mw_CheckBox.isChecked()
         microwave_freq = self._pa.ext_control_mw_freq_DoubleSpinBox.value()
         microwave_power = self._pa.ext_control_mw_power_DoubleSpinBox.value()
-        if use_ext_microwave:
-            self._pa.ext_control_mw_freq_Label.setEnabled(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
-            self._pa.ext_control_mw_power_Label.setEnabled(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
-
+        if use_ext_microwave and not self._pa.ext_control_mw_freq_DoubleSpinBox.isVisible():
             self._pa.ext_control_mw_freq_Label.setVisible(True)
             self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
             self._pa.ext_control_mw_power_Label.setVisible(True)
             self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(True)
-        else:
-            self._pa.ext_control_mw_freq_Label.setEnabled(False)
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
+        elif not use_ext_microwave and self._pa.ext_control_mw_freq_DoubleSpinBox.isVisible():
             self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_power_Label.setEnabled(False)
             self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
-
             self._pa.ext_control_mw_freq_Label.setVisible(False)
             self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
             self._pa.ext_control_mw_power_Label.setVisible(False)
@@ -1591,6 +1599,21 @@ class PulsedMeasurementGui(GUIBase):
         @param use_ext_microwave:
         @return:
         """
+        # set visibility
+        if use_ext_microwave and not self._pa.ext_control_use_mw_CheckBox.isChecked():
+            self._pa.ext_control_mw_freq_Label.setVisible(True)
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
+            self._pa.ext_control_mw_power_Label.setVisible(True)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(True)
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
+        elif not use_ext_microwave and self._pa.ext_control_use_mw_CheckBox.isChecked():
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
+            self._pa.ext_control_mw_freq_Label.setVisible(False)
+            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
+            self._pa.ext_control_mw_power_Label.setVisible(False)
+            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(False)
         # block signals
         self._pa.ext_control_mw_freq_DoubleSpinBox.blockSignals(True)
         self._pa.ext_control_mw_power_DoubleSpinBox.blockSignals(True)
@@ -1599,27 +1622,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ext_control_mw_freq_DoubleSpinBox.setValue(frequency)
         self._pa.ext_control_mw_power_DoubleSpinBox.setValue(power)
         self._pa.ext_control_use_mw_CheckBox.setChecked(use_ext_microwave)
-        # set visibility
-        if use_ext_microwave:
-            self._pa.ext_control_mw_freq_Label.setEnabled(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
-            self._pa.ext_control_mw_power_Label.setEnabled(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
-
-            self._pa.ext_control_mw_freq_Label.setVisible(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
-            self._pa.ext_control_mw_power_Label.setVisible(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(True)
-        else:
-            self._pa.ext_control_mw_freq_Label.setEnabled(False)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_power_Label.setEnabled(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
-
-            self._pa.ext_control_mw_freq_Label.setVisible(False)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
-            self._pa.ext_control_mw_power_Label.setVisible(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(False)
         # unblock signals
         self._pa.ext_control_mw_freq_DoubleSpinBox.blockSignals(False)
         self._pa.ext_control_mw_power_DoubleSpinBox.blockSignals(False)
@@ -1801,35 +1803,16 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_ComboBox.blockSignals(False)
         return
 
-    def toggle_laser_xaxis_editor(self):
+    def toggle_settings_editor(self):
         """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
-        if self._pa.ana_param_x_axis_defined_CheckBox.isChecked():
-            self._pa.ana_param_x_axis_start_Label.setVisible(True)
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setVisible(True)
-            self._pa.ana_param_x_axis_inc_Label.setVisible(True)
-            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setVisible(True)
+        if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
-        else:
-            self._pa.ana_param_x_axis_start_Label.setVisible(False)
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setVisible(False)
-            self._pa.ana_param_x_axis_inc_Label.setVisible(False)
-            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setVisible(False)
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(False)
-            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
-
-        if self._pa.ana_param_laserpulse_defined_CheckBox.isChecked():
-            self._pa.ana_param_num_laserpulses_Label.setVisible(True)
-            self._pa.ana_param_num_laser_pulse_SpinBox.setVisible(True)
-            self._pa.ana_param_record_length_Label.setVisible(True)
-            self._pa.ana_param_record_length_SpinBox.setVisible(True)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
             self._pa.ana_param_record_length_SpinBox.setEnabled(True)
         else:
-            self._pa.ana_param_num_laserpulses_Label.setVisible(False)
-            self._pa.ana_param_num_laser_pulse_SpinBox.setVisible(False)
-            self._pa.ana_param_record_length_Label.setVisible(False)
-            self._pa.ana_param_record_length_SpinBox.setVisible(False)
+            self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(False)
+            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(False)
             self._pa.ana_param_record_length_SpinBox.setEnabled(False)
         return
@@ -2193,12 +2176,14 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        # Get the asset name to be uploaded from the ComboBox
-        asset_name = self._pg.gen_ensemble_ComboBox.currentText()
-        # Load asset into channles via logic module
-        self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, False)
         # disable button
         self._pg.load_ensemble_PushButton.setEnabled(False)
+        # Get the asset name to be uploaded from the ComboBox
+        asset_name = self._pg.gen_ensemble_ComboBox.currentText()
+        # Get invoke settings CheckBox status
+        invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
+        # Load asset into channles via logic module
+        self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, False, invoke_settings)
         return
 
     # def load_sequence_clicked(self):
@@ -2206,12 +2191,12 @@ class PulsedMeasurementGui(GUIBase):
     #
     #     @return:
     #     """
+    #     # disable button
+    #     self._pg.load_sequence_PushButton.setEnabled(False)
     #     # Get the asset name to be uploaded from the ComboBox
     #     asset_name = self._pg.gen_sequence_ComboBox.currentText()
     #     # Load asset into channles via logic module
     #     self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, False)
-    #     # disable button
-    #     self._pg.load_sequence_PushButton.setEnabled(False)
     #     return
 
     def update_loaded_asset(self, asset_name, asset_type):
