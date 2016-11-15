@@ -624,12 +624,12 @@ class SequenceEditor:
         self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': 0,
                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                               'unit_prefix': '', 'type': int}
-        self.parameter_dict['trigger_wait'] = {'unit': '#', 'init_val': 0, 'min': 0,
-                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                               'unit_prefix': '', 'type': int}
-        self.parameter_dict['go_to'] = {'unit': '#', 'init_val': 0, 'min': 0,
-                                        'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                        'unit_prefix': '', 'type': int}
+        self.parameter_dict['trigger_wait'] = {'unit': '', 'init_val': False, 'min': 0,
+                                               'max': 1, 'view_stepsize': 1, 'dec': 0,
+                                               'unit_prefix': '', 'type': bool}
+        self.parameter_dict['go_to'] = {'unit': '', 'init_val': False, 'min': 0,
+                                        'max': 1, 'view_stepsize': 1, 'dec': 0,
+                                        'unit_prefix': '', 'type': bool}
         self.parameter_dict['event_jump_to'] = {'unit': '#', 'init_val': 0, 'min': 0,
                                                 'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                                 'unit_prefix': '', 'type': int}
@@ -790,10 +790,8 @@ class SequenceEditor:
         data = self.se_widget.model().index(row, column).data(access)
         if type(data) == type(value):
             model.setData(model.index(row, column), value, access)
-            print('data: ', data, '; value: ', value)
             return value
         else:
-            print('data: ', data)
             return data
 
     def get_element(self, row, column):
@@ -835,9 +833,9 @@ class SequenceEditor:
             column = self._cfg_param_ps['repetitions']
             self.set_element(row_index, column, int(seq_param['repetitions']))
             column = self._cfg_param_ps['trigger_wait']
-            self.set_element(row_index, column, int(seq_param['trigger_wait']))
+            self.set_element(row_index, column, bool(seq_param['trigger_wait']))
             column = self._cfg_param_ps['go_to']
-            self.set_element(row_index, column, int(seq_param['go_to']))
+            self.set_element(row_index, column, bool(seq_param['go_to']))
             column = self._cfg_param_ps['event_jump_to']
             self.set_element(row_index, column, int(seq_param['event_jump_to']))
         return
@@ -859,9 +857,9 @@ class SequenceEditor:
             block_ensemble_name = self.get_element(row_index, self._cfg_param_ps['block_ensemble'])
             seq_param['repetitions'] = self.get_element(row_index,
                                                         self._cfg_param_ps['repetitions'])
-            seq_param['trigger_wait'] = self.get_element(row_index,
-                                                         self._cfg_param_ps['trigger_wait'])
-            seq_param['go_to'] = self.get_element(row_index, self._cfg_param_ps['go_to'])
+            seq_param['trigger_wait'] = int(self.get_element(row_index,
+                                                         self._cfg_param_ps['trigger_wait']))
+            seq_param['go_to'] = int(self.get_element(row_index, self._cfg_param_ps['go_to']))
             seq_param['event_jump_to'] = self.get_element(row_index,
                                                           self._cfg_param_ps['event_jump_to'])
             # Fetch previously saved ensemble object
