@@ -77,7 +77,7 @@ class PulsedMasterLogic(GenericLogic):
     sigSavedSequencesUpdated = QtCore.Signal(dict)
     sigCurrentPulseBlockUpdated = QtCore.Signal(object)
     sigCurrentBlockEnsembleUpdated = QtCore.Signal(object, dict)
-    sigCurrentSequenceUpdated = QtCore.Signal(object)
+    sigCurrentSequenceUpdated = QtCore.Signal(object, dict)
     sigBlockEnsembleSampled = QtCore.Signal(str)
     sigSequenceSampled = QtCore.Signal(str)
     sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str, str)
@@ -948,7 +948,11 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_object:
         @return:
         """
-        self.sigCurrentSequenceUpdated.emit(sequence_object)
+        if sequence_object is not None:
+            sequence_params = self._get_asset_parameters(sequence_object)
+        else:
+            sequence_params = {}
+        self.sigCurrentSequenceUpdated.emit(sequence_object, sequence_params)
         return
 
     def delete_pulse_block(self, block_name):

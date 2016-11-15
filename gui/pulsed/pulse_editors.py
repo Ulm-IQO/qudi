@@ -615,3 +615,232 @@ class BlockOrganizer:
         pulse_block_ensemble = PulseBlockEnsemble(name=ensemble_name, block_list=pb_obj_list,
                                                     rotating_frame=rotating_frame)
         return pulse_block_ensemble
+
+
+class SequenceEditor:
+    def __init__(self, sequence_editor_widget):
+        self.se_widget = sequence_editor_widget
+        self.parameter_dict = OrderedDict()
+        self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': 0,
+                                              'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
+                                              'unit_prefix': '', 'type': int}
+        self._cfg_param_ps = None
+        self.ensemble_dict = None
+        return
+
+    def set_ensemble_dict(self, ensemble_dict):
+        if self.ensemble_dict is None:
+            self.ensemble_dict = ensemble_dict
+            self._set_columns()
+        else:
+            self.ensemble_dict = ensemble_dict
+
+        for row in range(self.se_widget.rowCount()):
+            data = self.get_element(row, 0)
+            if data not in list(self.ensemble_dict):
+                self.initialize_cells(start_row=row, stop_row=row+1, start_col=0, stop_col=1)
+        return
+
+    def _get_list(self):
+        return list(self.ensemble_dict)
+
+    def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
+        """ Initialize the desired cells in the sequence editor table.
+
+        @param start_row: int, index of the row, where the initialization
+                          should start
+        @param stop_row: int, optional, index of the row, where the
+                         initalization should end.
+        @param start_col: int, optional, index of the column where the
+                          initialization should start
+        @param stop_col: int, optional, index of the column, where the
+                         initalization should end.
+
+        With this function it is possible to reinitialize specific elements or
+        part of a row or even the whole row. If start_row is set to 0 the whole
+        row is going to be initialzed to the default value.
+        """
+        if stop_row is None:
+            stop_row = start_row +1
+        if start_col is None:
+            start_col = 0
+        if stop_col is None:
+            stop_col = self.se_widget.columnCount()
+        for col_num in range(start_col, stop_col):
+            for row_num in range(start_row,stop_row):
+                # get the model, here are the data stored:
+                model = self.se_widget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, col_num)
+                # get the initial values of the delegate class which was uses for this column:
+                ini_values = self.se_widget.itemDelegateForColumn(col_num).get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+        return
+
+    def _set_columns(self):
+        # Erase the delegate from the column, i.e. pass a None reference:
+        for column in range(self.se_widget.columnCount()):
+            self.se_widget.setItemDelegateForColumn(column, None)
+        # clear the number of columns and set them to 1:
+        self.se_widget.setColumnCount(1)
+        self.se_widget.setHorizontalHeaderItem(0, QtWidgets.QTableWidgetItem())
+        self.se_widget.horizontalHeaderItem(0).setText('Block Ensemble')
+        self.se_widget.setColumnWidth(0, 100)
+
+        item_dict = {}
+        item_dict['get_list_method'] = self._get_list
+        comboDelegate = ComboBoxDelegate(self.se_widget, item_dict)
+        self.se_widget.setItemDelegateForColumn(0, comboDelegate)
+
+        for column, parameter in enumerate(self.parameter_dict):
+            # add the new properties to the whole column through delegate:
+            item_dict = self.parameter_dict[parameter]
+            unit_text = item_dict['unit_prefix'] + item_dict['unit']
+            self.se_widget.insertColumn(1+column)
+            self.se_widget.setHorizontalHeaderItem(1+column, QtWidgets.QTableWidgetItem())
+            self.se_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,
+                                                                                     unit_text))
+            self.se_widget.setColumnWidth(1+column, 80)
+            # Use only DoubleSpinBox as delegate:
+            if item_dict['unit'] == 'bool':
+                delegate = CheckBoxDelegate(self.se_widget, item_dict)
+            elif parameter == 'repetitions':
+                delegate = SpinBoxDelegate(self.se_widget, item_dict)
+            else:
+                delegate = DoubleSpinBoxDelegate(self.se_widget, item_dict)
+            self.se_widget.setItemDelegateForColumn(1+column, delegate)
+
+        self.initialize_cells(start_row=0, stop_row=self.se_widget.rowCount())
+        self._set_cfg_param()
+        # FIXME: Implement a proper way to update the current block ensemble parameters
+        return
+
+    def _set_cfg_param(self):
+        """ Set the parameter configuration of the Pulse_Block according to the
+        current table configuration and updates the dict.
+        """
+        cfg_param_ps = OrderedDict()
+        for column in range(self.se_widget.columnCount()):
+            text = self.se_widget.horizontalHeaderItem(column).text()
+            if 'Block Ensemble' in text:
+                cfg_param_ps['block_ensemble'] = column
+            elif 'repetitions' in text:
+                cfg_param_ps['repetitions'] = column
+            else:
+                print('text:', text)
+                raise NotImplementedError
+        self._cfg_param_ps = cfg_param_ps
+        return
+
+    def clear_table(self):
+        """ Delete all rows in the sequence editor table. """
+        self.se_widget.blockSignals(True)
+        self.se_widget.setRowCount(1)
+        self.se_widget.clearContents()
+        self.initialize_cells(start_row=0)
+        self.se_widget.blockSignals(False)
+        # FIXME: Implement a proper way to update the current block ensemble parameters
+        return
+
+    def delete_row(self, index):
+        """ Delete row number 'index' """
+        self.se_widget.removeRow(index)
+        # FIXME: Implement a proper way to update the current block ensemble parameters
+        return
+
+    def insert_rows(self, index, number_to_add=1):
+        """ Add 'number_to_add' rows after row number 'index' """
+        self.se_widget.blockSignals(True)
+        for i in range(number_to_add):
+            self.se_widget.insertRow(index)
+        self.initialize_cells(start_row=index, stop_row=index + number_to_add)
+        self.se_widget.blockSignals(False)
+        # FIXME: Implement a proper way to update the current block ensemble parameters
+        return
+
+    def set_element(self, row, column, value):
+        """ Simplified wrapper function to set the data to a specific cell in the table.
+
+        @param int row: row index
+        @param int column: column index
+
+        Note that the order of the arguments in this function (first row index and then column
+        index) was taken from the Qt convention. A type check will be performed for the passed
+        value argument. If the type does not correspond to the delegate, then the value will not be
+        changed. You have to ensure that.
+        """
+        model = self.se_widget.model()
+        access = self.se_widget.itemDelegateForColumn(column).model_data_access
+        data = self.se_widget.model().index(row, column).data(access)
+        if type(data) == type(value):
+            model.setData(model.index(row, column), value, access)
+            return value
+        else:
+            return data
+
+    def get_element(self, row, column):
+        """ Simplified wrapper function to get the data from a specific cell in the table.
+
+        @param int row: row index
+        @param int column: column index
+        @return: the value of the corresponding cell, which can be a string, a float or an integer.
+                 Remember that the checkbox state unchecked corresponds to 0 and check to 2.
+                 That is Qt convention.
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        """
+        # Get from the corresponding delegate the data access model
+        access = self.se_widget.itemDelegateForColumn(column).model_data_access
+        data = self.se_widget.model().index(row, column).data(access)
+        return data
+
+    def load_pulse_sequence(self, sequence):
+        """
+
+        @param sequence:
+        """
+        # Sanity checks:
+        if sequence is None:
+            return
+        # clear the block organizer table
+        self.clear_table()
+        # get amout of rows needed for display
+        rows = len(sequence.ensemble_param_list)
+        # add as many rows as there are block ensembles in the sequence minus 1 because a single
+        # row is already present after clear
+        self.insert_rows(1, rows - 1)
+        # run through all ensembles in the pulse_sequence to fill in the row informations
+        for row_index, (block_ensemble, seq_param) in enumerate(sequence.ensemble_param_list):
+            column = self._cfg_param_ps['block_ensemble']
+            self.set_element(row_index, column, block_ensemble.name)
+            column = self._cfg_param_ps['repetitions']
+            self.set_element(row_index, column, int(seq_param['repetitions']))
+        return
+
+    def generate_sequence_object(self, sequence_name, rotating_frame=True):
+        """
+        Generates from an given sequence editor table a PulseSequence object.
+
+        @param str sequence_name: Name of the created PulseSequence object
+        @param bool rotating_frame: optional, whether the phase preservation is maintained
+                                    throughout the sequence.
+        """
+        # list of all the pulse block ensemble objects
+        pbe_obj_list = [None] * self.se_widget.rowCount()
+        # parameter dictionary for pulse sequences
+        seq_param = dict()
+
+        for row_index in range(self.se_widget.rowCount()):
+            block_ensemble_name = self.get_element(row_index, self._cfg_param_ps['block_ensemble'])
+            seq_param['repetitions'] = self.get_element(row_index, self._cfg_param_ps['repetitions'])
+            # Fetch previously saved ensemble object
+            ensemble = self.ensemble_dict[block_ensemble_name]
+            # Append ensemble object along with repetitions to the ensemble list
+            pbe_obj_list[row_index] = (ensemble, seq_param)
+
+        # Create the PulseSequence object
+        pulse_sequence = PulseSequence(name=sequence_name, ensemble_param_list=pbe_obj_list,
+                                       rotating_frame=rotating_frame)
+        return pulse_sequence
