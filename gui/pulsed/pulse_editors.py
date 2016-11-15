@@ -630,7 +630,7 @@ class SequenceEditor:
         self.parameter_dict['go_to'] = {'unit': '', 'init_val': False, 'min': 0,
                                         'max': 1, 'view_stepsize': 1, 'dec': 0,
                                         'unit_prefix': '', 'type': bool}
-        self.parameter_dict['event_jump_to'] = {'unit': '#', 'init_val': 0, 'min': 0,
+        self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': 0,
                                                 'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                                 'unit_prefix': '', 'type': int}
         self._cfg_param_ps = None
@@ -708,9 +708,12 @@ class SequenceEditor:
             unit_text = item_dict['unit_prefix'] + item_dict['unit']
             self.se_widget.insertColumn(1+column)
             self.se_widget.setHorizontalHeaderItem(1+column, QtWidgets.QTableWidgetItem())
-            self.se_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,
-                                                                                     unit_text))
-            self.se_widget.setColumnWidth(1+column, 80)
+            if item_dict['unit'] == '':
+                self.se_widget.horizontalHeaderItem(1 + column).setText('{0}'.format(parameter))
+            else:
+                self.se_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,
+                                                                                         unit_text))
+            self.se_widget.setColumnWidth(1+column, 100)
             # Use only DoubleSpinBox as delegate:
             if item_dict['type'] is bool:
                 delegate = CheckBoxDelegate(self.se_widget, item_dict)
