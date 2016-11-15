@@ -597,7 +597,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if len(sequence_files) > 1:
             self.log.error('More than one serialized sequence dict was found in {0}.\n'
                            'Using {1}.'.format(self.sequence_dir, sequence_files[-1]))
-            sequence_files = sequence_files[-1]
+        sequence_files = sequence_files[-1]
         try:
             with open(os.path.join(self.sequence_dir, sequence_files), 'rb') as infile:
                 self.saved_pulse_sequences = pickle.load(infile)
