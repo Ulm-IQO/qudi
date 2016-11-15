@@ -40,7 +40,7 @@ from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 #from gui.pulsed.pulse_editor import PulseEditor
 from core.util.mutex import Mutex
 from core.util import units
-from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer
+from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
 from logic.sampling_functions import SamplingFunctions
 
 
@@ -78,6 +78,16 @@ class PulseGeneratorTab(QtWidgets.QWidget):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_pulse_editor.ui')
+        # Load it
+        super().__init__()
+        uic.loadUi(ui_file, self)
+
+
+class SequenceGeneratorTab(QtWidgets.QWidget):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_sequence_editor.ui')
         # Load it
         super().__init__()
         uic.loadUi(ui_file, self)
@@ -184,10 +194,12 @@ class PulsedMeasurementGui(GUIBase):
         self._pg = PulseGeneratorTab()
         self._pe = PulseExtractionTab()
         self._pm = PredefinedMethodsTab()
+        self._sg = SequenceGeneratorTab()
 
         self._mw.tabWidget.addTab(self._pa, 'Analysis')
         self._mw.tabWidget.addTab(self._pe, 'Pulse Extraction')
         self._mw.tabWidget.addTab(self._pg, 'Pulse Generator')
+        self._mw.tabWidget.addTab(self._sg, 'Sequence Generator')
         self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
         self.setup_toolbar()
@@ -521,8 +533,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_activation_config_ComboBox.currentIndexChanged.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
         # connect signals of buttons
         self._pg.sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
-        # self._pg.sample_sequence_PushButton.clicked.connect(self.sample_sequence_clicked)
+        self._sg.sample_sequence_PushButton.clicked.connect(self.sample_sequence_clicked)
         self._pg.sauplo_ensemble_PushButton.clicked.connect(self.sauplo_ensemble_clicked)
+        self._sg.sauplo_sequence_PushButton.clicked.connect(self.sauplo_sequence_clicked)
 
         self._pg.block_add_last_PushButton.clicked.connect(self.block_add_last_clicked)
         self._pg.block_del_last_PushButton.clicked.connect(self.block_del_last_clicked)
@@ -534,6 +547,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.organizer_add_sel_PushButton.clicked.connect(self.organizer_add_sel_clicked)
         self._pg.organizer_del_sel_PushButton.clicked.connect(self.organizer_del_sel_clicked)
         self._pg.organizer_clear_PushButton.clicked.connect(self.organizer_clear_clicked)
+        self._sg.sequence_add_last_PushButton.clicked.connect(self.sequence_add_last_clicked)
+        self._sg.sequence_del_last_PushButton.clicked.connect(self.sequence_del_last_clicked)
+        self._sg.sequence_add_sel_PushButton.clicked.connect(self.sequence_add_sel_clicked)
+        self._sg.sequence_del_sel_PushButton.clicked.connect(self.sequence_del_sel_clicked)
+        self._sg.sequence_clear_PushButton.clicked.connect(self.sequence_clear_clicked)
 
         self._pg.curr_block_generate_PushButton.clicked.connect(self.editor_generate_block_clicked)
         self._pg.curr_block_del_PushButton.clicked.connect(self.editor_delete_block_clicked)
@@ -541,21 +559,25 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.curr_ensemble_generate_PushButton.clicked.connect(self.editor_generate_ensemble_clicked)
         self._pg.curr_ensemble_del_PushButton.clicked.connect(self.editor_delete_ensemble_clicked)
         self._pg.curr_ensemble_load_PushButton.clicked.connect(self.editor_load_ensemble_clicked)
+        self._sg.curr_sequence_generate_PushButton.clicked.connect(self.editor_generate_sequence_clicked)
+        self._sg.curr_sequence_del_PushButton.clicked.connect(self.editor_delete_sequence_clicked)
+        self._sg.curr_sequence_load_PushButton.clicked.connect(self.editor_load_sequence_clicked)
 
         # connect update signals from pulsed_master_logic
         self._pulsed_master_logic.sigBlockEnsembleSampled.connect(self.sample_ensemble_finished)
-        # self._pulsed_master_logic.sigSequenceSampled.connect(self.sample_sequence_finished)
+        self._pulsed_master_logic.sigSequenceSampled.connect(self.sample_sequence_finished)
         self._pulsed_master_logic.sigSavedPulseBlocksUpdated.connect(self.update_block_dict)
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.connect(self.update_ensemble_dict)
-        # self._pulsed_master_logic.sigSavedSequencesUpdated.connect(self.update_sequence_list)
+        self._pulsed_master_logic.sigSavedSequencesUpdated.connect(self.update_sequence_dict)
         self._pulsed_master_logic.sigGeneratorSettingsUpdated.connect(self.update_generator_settings)
 
         self._pulsed_master_logic.sigCurrentPulseBlockUpdated.connect(self.load_block_in_editor)
         self._pulsed_master_logic.sigCurrentBlockEnsembleUpdated.connect(self.load_ensemble_in_editor)
-        # self._pulsed_master_logic.sigCurrentSequenceUpdated.connect(self.)
+        self._pulsed_master_logic.sigCurrentSequenceUpdated.connect(self.load_sequence_in_editor)
 
         self.block_organizer = BlockOrganizer(self._pg.block_organizer_TableWidget)
         self.block_editor = BlockEditor(self._pg.block_editor_TableWidget)
+        self.sequence_editor = SequenceEditor(self._sg.sequence_editor_TableWidget)
 
         # Apply hardware constraints to input widgets
         self._gen_apply_hardware_constraints()
@@ -576,8 +598,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_activation_config_ComboBox.currentIndexChanged.disconnect()
         # disconnect signals of buttons
         self._pg.sample_ensemble_PushButton.clicked.disconnect()
-        # self._pg.sample_sequence_PushButton.clicked.disconnect()
+        self._sg.sample_sequence_PushButton.clicked.disconnect()
         self._pg.sauplo_ensemble_PushButton.clicked.disconnect()
+        self._sg.sauplo_sequence_PushButton.clicked.disconnect()
         self._pg.block_add_last_PushButton.clicked.disconnect()
         self._pg.block_del_last_PushButton.clicked.disconnect()
         self._pg.block_add_sel_PushButton.clicked.disconnect()
@@ -588,22 +611,30 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.organizer_add_sel_PushButton.clicked.disconnect()
         self._pg.organizer_del_sel_PushButton.clicked.disconnect()
         self._pg.organizer_clear_PushButton.clicked.disconnect()
+        self._sg.sequence_add_last_PushButton.clicked.disconnect()
+        self._sg.sequence_del_last_PushButton.clicked.disconnect()
+        self._sg.sequence_add_sel_PushButton.clicked.disconnect()
+        self._sg.sequence_del_sel_PushButton.clicked.disconnect()
+        self._sg.sequence_clear_PushButton.clicked.disconnect()
         self._pg.curr_block_generate_PushButton.clicked.disconnect()
         self._pg.curr_block_del_PushButton.clicked.disconnect()
         self._pg.curr_block_load_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_generate_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_del_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_load_PushButton.clicked.disconnect()
+        self._sg.curr_sequence_generate_PushButton.clicked.disconnect()
+        self._sg.curr_sequence_del_PushButton.clicked.disconnect()
+        self._sg.curr_sequence_load_PushButton.clicked.disconnect()
         # disconnect update signals from pulsed_master_logic
         self._pulsed_master_logic.sigBlockEnsembleSampled.disconnect()
-        # self._pulsed_master_logic.sigSequenceSampled.disconnect()
+        self._pulsed_master_logic.sigSequenceSampled.disconnect()
         self._pulsed_master_logic.sigSavedPulseBlocksUpdated.disconnect()
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.disconnect()
-        # self._pulsed_master_logic.sigSavedSequencesUpdated.disconnect()
+        self._pulsed_master_logic.sigSavedSequencesUpdated.disconnect()
         self._pulsed_master_logic.sigGeneratorSettingsUpdated.disconnect()
         self._pulsed_master_logic.sigCurrentPulseBlockUpdated.disconnect()
         self._pulsed_master_logic.sigCurrentBlockEnsembleUpdated.disconnect()
-        # self._pulsed_master_logic.sigCurrentSequenceUpdated.disconnect()
+        self._pulsed_master_logic.sigCurrentSequenceUpdated.disconnect()
         return
 
     def _gen_apply_hardware_constraints(self):
@@ -777,6 +808,48 @@ class PulsedMeasurementGui(GUIBase):
         self.block_organizer.clear_table()
         return
 
+    def sequence_add_last_clicked(self):
+        """
+
+        @return:
+        """
+        self.sequence_editor.insert_rows(self._sg.sequence_editor_TableWidget.rowCount(), 1)
+        return
+
+    def sequence_del_last_clicked(self):
+        """
+
+        @return:
+        """
+        self.sequence_editor.delete_row(self._pg.sequence_editor_TableWidget.rowCount() - 1)
+        return
+
+    def sequence_add_sel_clicked(self):
+        """
+
+        @return:
+        """
+        index = self._pg.sequence_editor_TableWidget.currentRow()
+        self.sequence_editor.insert_rows(index + 1, 1)
+        return
+
+    def sequence_del_sel_clicked(self):
+        """
+
+        @return:
+        """
+        index = self._pg.sequence_editor_TableWidget.currentRow()
+        self.sequence_editor.delete_row(index)
+        return
+
+    def sequence_clear_clicked(self):
+        """
+
+        @return:
+        """
+        self.sequence_editor.clear_table()
+        return
+
     def editor_generate_block_clicked(self):
         name = self._pg.curr_block_name_LineEdit.text()
         if name == '':
@@ -816,6 +889,26 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.load_block_ensemble(name)
         return
 
+    def editor_generate_sequence_clicked(self):
+        name = self._sg.curr_sequence_name_LineEdit.text()
+        if name == '':
+            self.log.error('No name has been entered for the PulseSequence to be generated.')
+            return
+        rotating_frame = self._sg.curr_sequence_rot_frame_CheckBox.isChecked()
+        sequence_object = self.sequence_editor.generate_sequence_object(name, rotating_frame)
+        self._pulsed_master_logic.save_sequence(name, sequence_object)
+        return
+
+    def editor_delete_sequence_clicked(self):
+        name = self._sg.saved_sequences_ComboBox.currentText()
+        self._pulsed_master_logic.delete_sequence(name)
+        return
+
+    def editor_load_sequence_clicked(self):
+        name = self._sg.saved_sequences_ComboBox.currentText()
+        self._pulsed_master_logic.load_sequence(name)
+        return
+
     def load_block_in_editor(self, block_obj):
         self.block_editor.load_pulse_block(block_obj)
         return
@@ -834,6 +927,20 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.curr_ensemble_bins_SpinBox.setValue(0)
             self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
+        return
+
+    def load_sequence_in_editor(self, sequence_obj, sequence_params):
+        self.sequence_editor.load_pulse_sequence(sequence_obj)
+        if sequence_params != {}:
+            self._sg.curr_sequence_length_DSpinBox.setValue(sequence_params['sequence_length'])
+            self._sg.curr_sequence_bins_SpinBox.setValue(sequence_params['sequence_length_bins'])
+            # FIXME: This is just a rough estimation of the sequence size in MB
+            size_mb = (sequence_params['sequence_length_bins'] * 5) / 1024**2
+            self._sg.curr_sequence_size_DSpinBox.setValue(size_mb)
+        else:
+            self._sg.curr_sequence_length_DSpinBox.setValue(0.0)
+            self._sg.curr_sequence_bins_SpinBox.setValue(0)
+            self._sg.curr_sequence_size_DSpinBox.setValue(0.0)
         return
 
     def update_block_dict(self, block_dict):
@@ -855,6 +962,7 @@ class PulsedMeasurementGui(GUIBase):
         @param ensemble_dict:
         @return:
         """
+        self.sequence_editor.set_ensemble_dict(ensemble_dict)
         # block signals
         self._pg.gen_ensemble_ComboBox.blockSignals(True)
         self._pg.saved_ensembles_ComboBox.blockSignals(True)
@@ -868,20 +976,24 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.saved_ensembles_ComboBox.blockSignals(False)
         return
 
-    # def update_sequence_list(self, sequence_list):
-    #     """
-    #
-    #     @param sequence_list:
-    #     @return:
-    #     """
-    #     # block signals
-    #     self._pg.gen_sequence_ComboBox.blockSignals(True)
-    #     # update gen_sequence_ComboBox items
-    #     self._pg.gen_sequence_ComboBox.clear()
-    #     self._pg.gen_sequence_ComboBox.addItems(sequence_list)
-    #     # unblock signals
-    #     self._pg.gen_sequence_ComboBox.blockSignals(False)
-    #     return
+    def update_sequence_dict(self, sequence_dict):
+        """
+
+        @param sequence_dict:
+        @return:
+        """
+        # block signals
+        self._sg.gen_sequence_ComboBox.blockSignals(True)
+        self._sg.saved_sequences_ComboBox.blockSignals(True)
+        # update gen_sequence_ComboBox items
+        self._sg.gen_sequence_ComboBox.clear()
+        self._sg.gen_sequence_ComboBox.addItems(list(sequence_dict))
+        self._sg.saved_sequences_ComboBox.clear()
+        self._sg.saved_sequences_ComboBox.addItems(list(sequence_dict))
+        # unblock signals
+        self._sg.gen_sequence_ComboBox.blockSignals(False)
+        self._sg.saved_sequences_ComboBox.blockSignals(False)
+        return
 
     def sample_ensemble_clicked(self):
         """
@@ -922,26 +1034,44 @@ class PulsedMeasurementGui(GUIBase):
                                                         True, invoke_settings)
         return
 
-    # def sample_sequence_clicked(self):
-    #     """
-    #     This method is called when the user clicks on "sample"
-    #     """
-    #     # Get the sequence name from the ComboBox
-    #     sequence_name = self._pg.gen_sequence_ComboBox.currentText()
-    #     # Sample the sequence via logic module
-    #     self._pulsed_master_logic.sample_sequence(sequence_name, True, self._write_chunkwise)
-    #     # disable button
-    #     self._pg.sample_sequence_PushButton.setEnabled(False)
-    #     return
+    def sample_sequence_clicked(self):
+        """
+        This method is called when the user clicks on "sample"
+        """
+        # Get the sequence name from the ComboBox
+        sequence_name = self._sg.gen_sequence_ComboBox.currentText()
+        # disable button
+        self._sg.sample_sequence_PushButton.setEnabled(False)
+        # Sample the sequence via logic module
+        self._pulsed_master_logic.sample_sequence(sequence_name, True, self._write_chunkwise)
+        return
 
-    # def sample_sequence_finished(self, sequence_name):
-    #     """
-    #
-    #     @return:
-    #     """
-    #     # enable button
-    #     self._pg.sample_sequence_PushButton.setEnabled(True)
-    #     return
+    def sample_sequence_finished(self, sequence_name):
+        """
+
+        @return:
+        """
+        # enable button
+        self._sg.sample_sequence_PushButton.setEnabled(True)
+        return
+
+    def sauplo_sequence_clicked(self):
+        """
+
+        @return:
+        """
+        # Get the sequence name from the ComboBox
+        sequence_name = self._sg.gen_sequence_ComboBox.currentText()
+        # Get invoke settings CheckBox status
+        invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
+        # disable button
+        self._sg.sample_sequence_PushButton.setEnabled(False)
+        self._sg.upload_sequence_PushButton.setEnabled(False)
+        self._sg.load_sequence_PushButton.setEnabled(False)
+        # Sample the sequence via logic module
+        self._pulsed_master_logic.sample_sequence(sequence_name, True, self._write_chunkwise, True,
+                                                  invoke_settings)
+        return
 
     def generate_predefined_clicked(self, button_obj=None):
         """
@@ -1032,7 +1162,6 @@ class PulsedMeasurementGui(GUIBase):
         self.update_analysis_settings()
         return
 
-
     def _deactivate_analysis_settings_ui(self, e):
         """ Disconnects the configuration of the Settings for 'Analysis' Tab.
 
@@ -1048,7 +1177,6 @@ class PulsedMeasurementGui(GUIBase):
         self._statusVariables['ana_param_second_plot_y_axis_name_LineEdit'] = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
         self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'] = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
         return
-
 
     def update_analysis_settings(self):
         """ Apply the new settings """

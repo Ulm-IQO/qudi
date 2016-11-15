@@ -960,7 +960,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
             # go now through the sequence list and replace all the entries with the output of the
             # sampled ensemble file:
-            for ensemble_obj, seq_param  in sequence_obj.ensemble_param_list:
+            for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
 
                 temp_dict = dict()
                 temp_dict['name'] = sampled_ensembles[ensemble_obj.name]

@@ -417,22 +417,15 @@ class SamplesWriteMethods():
 
                 # for one channel:
                 if len(seq_param_dict['name']) == 1:
-                    seq_file.write(
-                        '"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'.format(seq_param_dict['name'][0],
-                                                                       repeat,
-                                                                       trigger_wait,
-                                                                       go_to,
-                                                                       event_jump_to).encode(
-                            'UTF-8'))
+                    seq_file.write('"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'
+                                   ''.format(seq_param_dict['name'][0], repeat, trigger_wait, go_to,
+                                             event_jump_to).encode('UTF-8'))
                 # for two channel:
                 else:
-                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'.format(
-                        seq_param_dict['name'][0],
-                        seq_param_dict['name'][1],
-                        repeat,
-                        trigger_wait,
-                        go_to,
-                        event_jump_to).encode('UTF-8'))
+                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'
+                                   ''.format(seq_param_dict['name'][0], seq_param_dict['name'][1],
+                                             repeat, trigger_wait, go_to,
+                                             event_jump_to).encode('UTF-8'))
 
             # write the footer:
             table_jump = 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'

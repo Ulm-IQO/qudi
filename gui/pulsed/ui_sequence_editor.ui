@@ -14,14 +14,14 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="2">
+   <item row="0" column="1" colspan="3">
     <widget class="QGroupBox" name="groupBox_5">
      <property name="title">
       <string>Pulse Sequence Editor</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_17">
       <item row="4" column="1">
-       <widget class="QPushButton" name="seq_del_sel_PushButton_2">
+       <widget class="QPushButton" name="sequence_del_sel_PushButton">
         <property name="maximumSize">
          <size>
           <width>35</width>
@@ -51,7 +51,7 @@ sel.</string>
        </spacer>
       </item>
       <item row="1" column="1">
-       <widget class="QPushButton" name="seq_del_last_PushButton_2">
+       <widget class="QPushButton" name="sequence_del_last_PushButton">
         <property name="maximumSize">
          <size>
           <width>35</width>
@@ -68,7 +68,7 @@ last</string>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QPushButton" name="seq_add_last_PushButton_2">
+       <widget class="QPushButton" name="sequence_add_last_PushButton">
         <property name="maximumSize">
          <size>
           <width>35</width>
@@ -85,7 +85,7 @@ last</string>
        </widget>
       </item>
       <item row="6" column="1">
-       <widget class="QPushButton" name="seq_clear_PushButton_2">
+       <widget class="QPushButton" name="sequence_clear_PushButton">
         <property name="maximumSize">
          <size>
           <width>35</width>
@@ -114,7 +114,7 @@ last</string>
        </spacer>
       </item>
       <item row="3" column="1">
-       <widget class="QPushButton" name="seq_add_sel_PushButton_2">
+       <widget class="QPushButton" name="sequence_add_sel_PushButton">
         <property name="maximumSize">
          <size>
           <width>35</width>
@@ -144,7 +144,7 @@ sel.</string>
        </spacer>
       </item>
       <item row="0" column="0" rowspan="8">
-       <widget class="QTableWidget" name="seq_editor_TableWidget_2">
+       <widget class="QTableWidget" name="sequence_editor_TableWidget">
         <property name="rowCount">
          <number>1</number>
         </property>
@@ -154,14 +154,14 @@ sel.</string>
      </layout>
     </widget>
    </item>
-   <item row="0" column="2">
+   <item row="0" column="4">
     <widget class="QGroupBox" name="groupBox_7">
      <property name="title">
       <string>Current Pulse Sequence Info</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_41">
       <item row="6" column="1">
-       <widget class="QComboBox" name="saved_seq_ComboBox_2">
+       <widget class="QComboBox" name="saved_sequences_ComboBox">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -173,12 +173,12 @@ sel.</string>
       <item row="6" column="0">
        <widget class="QLabel" name="label_20">
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saved&lt;br/&gt;Ensembles:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saved&lt;br/&gt;Sequences:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
       <item row="7" column="1">
-       <widget class="QPushButton" name="curr_seq_load_PushButton_2">
+       <widget class="QPushButton" name="curr_sequence_load_PushButton">
         <property name="enabled">
          <bool>true</bool>
         </property>
@@ -188,7 +188,7 @@ sel.</string>
        </widget>
       </item>
       <item row="7" column="0">
-       <widget class="QPushButton" name="curr_seq_del_PushButton_2">
+       <widget class="QPushButton" name="curr_sequence_del_PushButton">
         <property name="text">
          <string>Delete</string>
         </property>
@@ -197,19 +197,19 @@ sel.</string>
       <item row="0" column="0">
        <widget class="QLabel" name="label_15">
         <property name="text">
-         <string>Length (ms):</string>
+         <string>Length (s):</string>
         </property>
        </widget>
       </item>
       <item row="4" column="0" colspan="2">
-       <widget class="QPushButton" name="curr_seq_generate_PushButton_2">
+       <widget class="QPushButton" name="curr_sequence_generate_PushButton">
         <property name="text">
          <string>Generate Sequence</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QDoubleSpinBox" name="curr_seq_length_DSpinBox_2">
+       <widget class="ScienDSpinBox" name="curr_sequence_length_DSpinBox">
         <property name="maximumSize">
          <size>
           <width>100</width>
@@ -244,7 +244,7 @@ sel.</string>
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QSpinBox" name="curr_seq_bins_SpinBox_2">
+       <widget class="ScienSpinBox" name="curr_sequence_bins_SpinBox">
         <property name="maximumSize">
          <size>
           <width>100</width>
@@ -273,7 +273,7 @@ sel.</string>
        </widget>
       </item>
       <item row="5" column="1">
-       <widget class="QLineEdit" name="curr_seq_name_LineEdit_2">
+       <widget class="QLineEdit" name="curr_sequence_name_LineEdit">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -299,7 +299,7 @@ sel.</string>
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QDoubleSpinBox" name="curr_seq_size_DSpinBox_2">
+       <widget class="QDoubleSpinBox" name="curr_sequence_size_DSpinBox">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -353,7 +353,7 @@ sel.</string>
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QCheckBox" name="curr_seq_rot_frame_CheckBox_2">
+       <widget class="QCheckBox" name="curr_sequence_rot_frame_CheckBox">
         <property name="text">
          <string/>
         </property>
@@ -362,21 +362,21 @@ sel.</string>
      </layout>
     </widget>
    </item>
-   <item row="1" column="0">
+   <item row="1" column="1">
     <widget class="QGroupBox" name="groupBox_12">
      <property name="title">
       <string>Sample Upload and load on the Device</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_44">
-      <item row="1" column="0">
-       <widget class="QPushButton" name="upload_sample_seq_PushButton_2">
+      <item row="1" column="1">
+       <widget class="QPushButton" name="sample_sequence_PushButton">
         <property name="text">
          <string>Sample Sequence</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="upload_seq_to_device_PushButton_2">
+      <item row="1" column="2">
+       <widget class="QPushButton" name="upload_sequence_PushButton">
         <property name="enabled">
          <bool>true</bool>
         </property>
@@ -385,8 +385,8 @@ sel.</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
-       <widget class="QPushButton" name="upload_load_seq_to_channel_PushButton_2">
+      <item row="1" column="3">
+       <widget class="QPushButton" name="load_sequence_PushButton">
         <property name="enabled">
          <bool>true</bool>
         </property>
@@ -395,8 +395,8 @@ sel.</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0" colspan="3">
-       <widget class="QComboBox" name="upload_seq_ComboBox_2">
+      <item row="0" column="1" colspan="3">
+       <widget class="QComboBox" name="gen_sequence_ComboBox">
         <property name="toolTip">
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Sequence for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
@@ -405,7 +405,7 @@ sel.</string>
      </layout>
     </widget>
    </item>
-   <item row="1" column="1">
+   <item row="1" column="3">
     <spacer name="horizontalSpacer">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -418,8 +418,29 @@ sel.</string>
      </property>
     </spacer>
    </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="sauplo_sequence_PushButton">
+     <property name="text">
+      <string>Sample
+Upload
+Load</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
