@@ -475,9 +475,9 @@ class BlockOrganizer:
             self.bo_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,unit_text))
             self.bo_widget.setColumnWidth(1+column, 80)
             # Use only DoubleSpinBox as delegate:
-            if item_dict['unit'] == 'bool':
+            if item_dict['type'] is bool:
                 delegate = CheckBoxDelegate(self.bo_widget, item_dict)
-            elif parameter == 'repetitions':
+            elif item_dict['type'] is int:
                 delegate = SpinBoxDelegate(self.bo_widget, item_dict)
             else:
                 delegate = DoubleSpinBoxDelegate(self.bo_widget, item_dict)
@@ -624,6 +624,15 @@ class SequenceEditor:
         self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': 0,
                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                               'unit_prefix': '', 'type': int}
+        self.parameter_dict['trigger_wait'] = {'unit': '#', 'init_val': 0, 'min': 0,
+                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
+                                               'unit_prefix': '', 'type': int}
+        self.parameter_dict['go_to'] = {'unit': '#', 'init_val': 0, 'min': 0,
+                                        'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
+                                        'unit_prefix': '', 'type': int}
+        self.parameter_dict['event_jump_to'] = {'unit': '#', 'init_val': 0, 'min': 0,
+                                                'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
+                                                'unit_prefix': '', 'type': int}
         self._cfg_param_ps = None
         self.ensemble_dict = None
         return
@@ -703,9 +712,9 @@ class SequenceEditor:
                                                                                      unit_text))
             self.se_widget.setColumnWidth(1+column, 80)
             # Use only DoubleSpinBox as delegate:
-            if item_dict['unit'] == 'bool':
+            if item_dict['type'] is bool:
                 delegate = CheckBoxDelegate(self.se_widget, item_dict)
-            elif parameter == 'repetitions':
+            elif item_dict['type'] is int:
                 delegate = SpinBoxDelegate(self.se_widget, item_dict)
             else:
                 delegate = DoubleSpinBoxDelegate(self.se_widget, item_dict)
@@ -727,6 +736,12 @@ class SequenceEditor:
                 cfg_param_ps['block_ensemble'] = column
             elif 'repetitions' in text:
                 cfg_param_ps['repetitions'] = column
+            elif 'trigger_wait' in text:
+                cfg_param_ps['trigger_wait'] = column
+            elif 'go_to' in text:
+                cfg_param_ps['go_to'] = column
+            elif 'event_jump_to' in text:
+                cfg_param_ps['event_jump_to'] = column
             else:
                 print('text:', text)
                 raise NotImplementedError
@@ -775,8 +790,10 @@ class SequenceEditor:
         data = self.se_widget.model().index(row, column).data(access)
         if type(data) == type(value):
             model.setData(model.index(row, column), value, access)
+            print('data: ', data, '; value: ', value)
             return value
         else:
+            print('data: ', data)
             return data
 
     def get_element(self, row, column):
@@ -817,6 +834,12 @@ class SequenceEditor:
             self.set_element(row_index, column, block_ensemble.name)
             column = self._cfg_param_ps['repetitions']
             self.set_element(row_index, column, int(seq_param['repetitions']))
+            column = self._cfg_param_ps['trigger_wait']
+            self.set_element(row_index, column, int(seq_param['trigger_wait']))
+            column = self._cfg_param_ps['go_to']
+            self.set_element(row_index, column, int(seq_param['go_to']))
+            column = self._cfg_param_ps['event_jump_to']
+            self.set_element(row_index, column, int(seq_param['event_jump_to']))
         return
 
     def generate_sequence_object(self, sequence_name, rotating_frame=True):
@@ -834,7 +857,13 @@ class SequenceEditor:
 
         for row_index in range(self.se_widget.rowCount()):
             block_ensemble_name = self.get_element(row_index, self._cfg_param_ps['block_ensemble'])
-            seq_param['repetitions'] = self.get_element(row_index, self._cfg_param_ps['repetitions'])
+            seq_param['repetitions'] = self.get_element(row_index,
+                                                        self._cfg_param_ps['repetitions'])
+            seq_param['trigger_wait'] = self.get_element(row_index,
+                                                         self._cfg_param_ps['trigger_wait'])
+            seq_param['go_to'] = self.get_element(row_index, self._cfg_param_ps['go_to'])
+            seq_param['event_jump_to'] = self.get_element(row_index,
+                                                          self._cfg_param_ps['event_jump_to'])
             # Fetch previously saved ensemble object
             ensemble = self.ensemble_dict[block_ensemble_name]
             # Append ensemble object along with repetitions to the ensemble list

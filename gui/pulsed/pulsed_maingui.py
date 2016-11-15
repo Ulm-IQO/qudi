@@ -821,7 +821,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self.sequence_editor.delete_row(self._pg.sequence_editor_TableWidget.rowCount() - 1)
+        self.sequence_editor.delete_row(self._sg.sequence_editor_TableWidget.rowCount() - 1)
         return
 
     def sequence_add_sel_clicked(self):
@@ -829,7 +829,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        index = self._pg.sequence_editor_TableWidget.currentRow()
+        index = self._sg.sequence_editor_TableWidget.currentRow()
         self.sequence_editor.insert_rows(index + 1, 1)
         return
 
@@ -838,7 +838,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        index = self._pg.sequence_editor_TableWidget.currentRow()
+        index = self._sg.sequence_editor_TableWidget.currentRow()
         self.sequence_editor.delete_row(index)
         return
 
