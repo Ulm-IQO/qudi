@@ -138,7 +138,7 @@ class ODMRLogic(GenericLogic):
         self.elapsed_time = 0       # in s
         self.current_fit_function = 'No Fit'
 
-        self.safeRawData = False  # flag for saving raw data
+        self.saveRawData = False  # flag for saving raw data
 
         # load parameters stored in app state store
         if 'clock_frequency' in self._statusVariables:
@@ -156,8 +156,8 @@ class ODMRLogic(GenericLogic):
             self.mw_step = self.limits.list_step_in_range(self._statusVariables['mw_step'])
         if 'run_time' in self._statusVariables:
             self.run_time = self._statusVariables['run_time']
-        if 'safeRawData' in self._statusVariables:
-            self.safeRawData = self._statusVariables['safeRawData']
+        if 'saveRawData' in self._statusVariables:
+            self.saveRawData = self._statusVariables['saveRawData']
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -187,7 +187,7 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['mw_stop'] = self.mw_stop
         self._statusVariables['mw_step'] = self.mw_step
         self._statusVariables['run_time'] = self.run_time
-        self._statusVariables['safeRawData'] = self.safeRawData
+        self._statusVariables['saveRawData'] = self.saveRawData
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -206,11 +206,20 @@ class ODMRLogic(GenericLogic):
     def start_odmr(self):
         """ Starting the ODMR counter. """
         self.lock()
-        self._odmr_counter.set_up_odmr_clock(clock_frequency=self._clock_frequency)
-        self._odmr_counter.set_up_odmr()
+        clock_status = self._odmr_counter.set_up_odmr_clock(clock_frequency=self._clock_frequency)
+        if clock_status < 0:
+            self.unlock()
+            return -1
+
+        counter_status = self._odmr_counter.set_up_odmr()
+        if counter_status < 0:
+            self._odmr_couner.close_odmr_clock()
+            self.unlock()
+            return -1
 
         self.sigMicrowaveCWModeChanged.emit(False)
         self.sigMicrowaveListModeChanged.emit(True)
+        return 0
 
     def kill_odmr(self):
         """ Stopping the ODMR counter. """
@@ -241,7 +250,7 @@ class ODMRLogic(GenericLogic):
         self._fit_param = dict()
         self._fit_result = None
 
-        if self.safeRawData:
+        if self.saveRawData:
             # All that is necesarry fo saving of raw data:
             # length of req list
             self._mw_frequency_list_length = int(self._mw_frequency_list.shape[0])
@@ -255,14 +264,17 @@ class ODMRLogic(GenericLogic):
         else:
             self.log.info('Raw data NOT saved.')
 
-        self.start_odmr()
-
+        odmr_status = self.start_odmr()
+        if odmr_status < 0:
+            self.stopRequested = True
+            self.sigNextLine.emit()
+            return -1
+            
         if self.scanmode == 'SWEEP':
             if len(self._mw_frequency_list) >= self.limits.sweep_maxentries:
                 self.stopRequested = True
                 self.sigNextLine.emit()
-                return
-
+                return -1
             n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
             return_val = n - len(self._mw_frequency_list)
 
@@ -270,8 +282,7 @@ class ODMRLogic(GenericLogic):
             if len(self._mw_frequency_list) >= self.limits.list_maxentries:
                 self.stopRequested = True
                 self.sigNextLine.emit()
-                return
-
+                return -1
             return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
 
         if return_val != 0:
@@ -286,11 +297,18 @@ class ODMRLogic(GenericLogic):
         self._initialize_ODMR_matrix()
         self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
+        return return_val
 
     def continue_odmr_scan(self):
         """ """
         self._StartTime = time.time() - self.elapsed_time
-        self.start_odmr()
+
+        odmr_status = self.start_odmr()
+        if odmr_status < 0:
+            self.stopRequested = True
+            self.sigNextLine.emit()
+            return -1
+
         if self.scanmode == 'SWEEP':
             n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
             return_val = n - len(self._mw_frequency_list)
@@ -306,6 +324,7 @@ class ODMRLogic(GenericLogic):
                 self._mw_device.list_on()
         self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
+        return return_val
 
     def stop_odmr_scan(self):
         """ Stop the ODMR scan.
@@ -360,6 +379,10 @@ class ODMRLogic(GenericLogic):
         else:
             self._mw_device.reset_listpos()
         new_counts = self._odmr_counter.count_odmr(length=len(self._mw_frequency_list))
+        if new_counts[0] == -1:
+            self.stopRequested = True
+            self.sigNextLine.emit()
+            return
 
         # if during the scan a clearing of the ODMR plots is needed:
         if self._clear_odmr_plots:
@@ -382,6 +405,7 @@ class ODMRLogic(GenericLogic):
             # the data!
             self.sigOdmrMatrixUpdated.emit()
             self.sigODMRMatrixAxesChanged.emit()
+
         elif np.shape(self.ODMR_plot_xy)[0] < self.number_of_lines:
             new_matrix = np.zeros((self.number_of_lines, len(self._mw_frequency_list)))
             new_matrix[1:curr_num_lines + 1, :] = self.ODMR_plot_xy
@@ -393,11 +417,12 @@ class ODMRLogic(GenericLogic):
             # the data!
             self.sigOdmrMatrixUpdated.emit()
             self.sigODMRMatrixAxesChanged.emit()
+
         else:
             self.ODMR_plot_xy = np.vstack((new_counts, self.ODMR_plot_xy[:-1, :]))
             self.sigOdmrMatrixUpdated.emit()
 
-        if self.safeRawData:
+        if self.saveRawData:
             self.ODMR_raw_data[:, self._odmrscan_counter] = new_counts  # adds the ne odmr line to the overall np.array
 
         self._odmrscan_counter += 1
@@ -953,7 +978,7 @@ class ODMRLogic(GenericLogic):
 
         self.log.info('ODMR data saved to:\n{0}'.format(filepath))
 
-        if self.safeRawData:
+        if self.saveRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
             data3['count data'] = raw_data  # saves the raw data, ALL of it so keep an eye on performance
             self._save_logic.save_data(
