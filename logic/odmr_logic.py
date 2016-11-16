@@ -231,7 +231,7 @@ class ODMRLogic(GenericLogic):
         """ Starting an ODMR scan. """
         self._clear_odmr_plots = False
         self._odmrscan_counter = 0
-        self._StartTime = time.time()
+        self._startTime = time.time()
         self.elapsed_time = 0
         self.sigOdmrElapsedTimeChanged.emit()
         self.mw_start = self.limits.frequency_in_range(self.mw_start)
@@ -266,8 +266,9 @@ class ODMRLogic(GenericLogic):
 
         odmr_status = self.start_odmr()
         if odmr_status < 0:
-            self.stopRequested = True
-            self.sigNextLine.emit()
+            self.sigMicrowaveCWModeChanged.emit(False)
+            self.sigMicrowaveListModeChanged.emit(False)
+            self.sigOdmrStopped.emit()
             return -1
             
         if self.scanmode == 'SWEEP':
@@ -301,12 +302,13 @@ class ODMRLogic(GenericLogic):
 
     def continue_odmr_scan(self):
         """ """
-        self._StartTime = time.time() - self.elapsed_time
+        self._startTime = time.time() - self.elapsed_time
 
         odmr_status = self.start_odmr()
         if odmr_status < 0:
-            self.stopRequested = True
-            self.sigNextLine.emit()
+            self.sigMicrowaveCWModeChanged.emit(False)
+            self.sigMicrowaveListModeChanged.emit(False)
+            self.sigOdmrStopped.emit()
             return -1
 
         if self.scanmode == 'SWEEP':
@@ -426,7 +428,7 @@ class ODMRLogic(GenericLogic):
             self.ODMR_raw_data[:, self._odmrscan_counter] = new_counts  # adds the ne odmr line to the overall np.array
 
         self._odmrscan_counter += 1
-        self.elapsed_time = time.time() - self._StartTime
+        self.elapsed_time = time.time() - self._startTime
         self.sigOdmrElapsedTimeChanged.emit()
         if self.elapsed_time >= self.run_time:
             self.stopRequested = True
