@@ -26,7 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 logger = logging.getLogger(__name__)
 import numpy as np
-from lmfit.models import ConstantModel, LorentzianModel
+from lmfit.models import ConstantModel, LorentzianModel, VoigtModel, PseudoVoigtModel
 from lmfit import Parameters
 
 from scipy.ndimage import filters
@@ -67,7 +67,7 @@ Note that the fitting algorithm is using the equation f(x; A, x_0, sigma) and
 not L(x; I, x_0, sigma), therefore all the parameters are defined according to
 f(x; A, x_0, sigma). The full width at half maximum is therefore 2*sigma.
 
-The indefinite Integral of the Lorentzian is 
+The indefinite Integral of the Lorentzian is
 
     int(f(x),x) = A/pi *Arctan( (x-x0)/sigma)
 
@@ -75,9 +75,9 @@ Plugging in the limits [0 to inf] we get:
 
     int(f(x), {x,0,inf}) = (A * sigma/pi) *(  pi/(2*sigma) + Arctan(x_0/sigma)/sigma) ) = F
 
-(You can confirm that with Mathematica.) For the assumption that 
+(You can confirm that with Mathematica.) For the assumption that
 
-    x_0 >> sigma 
+    x_0 >> sigma
 
 we can take the limit of Arctan to which it converges: pi/2
 
@@ -89,8 +89,8 @@ Using the formula for I (above) we can solve the equation for sigma:
 
 sigma = A / (pi* I) = F /(pi * I)
 
-The parameter I can be really easy determined, since it will be just the 
-maximal/minimal value of the Lorentzian. If the area F is calculated 
+The parameter I can be really easy determined, since it will be just the
+maximal/minimal value of the Lorentzian. If the area F is calculated
 numerically, then the parameter sigma can be estimated.
 
 """
@@ -114,11 +114,11 @@ def make_lorentzian_model(self):
 
     return model, params
 
-def estimate_lorentz(self,x_axis=None,data=None):
+def estimate_lorentz(self, x_axis=None,data=None):
     """ This method provides a lorentzian function.
 
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to
+    @param numpy.array x_axis: x values
+    @param numpy.array data: value of each data point corresponding to
                         x values
 
     @return int error: error code (0:OK, -1:error)
@@ -179,9 +179,9 @@ def make_lorentzian_fit(self, axis=None, data=None,
                         add_parameters=None):
     """ This method performes a 1D lorentzian fit on the provided data.
 
-    @param array [] axis: axis values
-    @param array[]  x_data: data
-    @param dictionary add_parameters: Additional parameters
+    @param numpy.array [] axis: axis values
+    @param numpy.array[]  x_data: data
+    @param dict add_parameters: Additional parameters
 
     @return object model: lmfit.model.ModelFit object, all parameters
                           provided about the fitting, like: success,
