@@ -1658,55 +1658,64 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         # check if length setup is correct, if not, adjust.
         self.set_odmr_length(length)
+        try:
+            # start the scanner counting task that acquires counts synchroneously
+            daq.DAQmxStartTask(self._scanner_counter_daq_task)
+        except:
+            self.log.exception(
+                'Cannot start ODMR counter.')
+            return np.array([-1.])
+        try:
+            daq.DAQmxStartTask(self._scanner_clock_daq_task)
 
-        # start the scanner counting task that acquires counts synchroneously
-        daq.DAQmxStartTask(self._scanner_counter_daq_task)
-        daq.DAQmxStartTask(self._scanner_clock_daq_task)
+            # wait for the scanner clock to finish
+            daq.DAQmxWaitUntilTaskDone(
+                # define task
+                self._scanner_clock_daq_task,
+                # maximal timeout for the counter times the positions
+                self._RWTimeout * 2 * self._odmr_length)
 
-        # wait for the scanner clock to finish
-        daq.DAQmxWaitUntilTaskDone(
-            # define task
-            self._scanner_clock_daq_task,
-            # maximal timeout for the counter times the positions
-            self._RWTimeout * 2 * self._odmr_length)
+            # count data will be written here
+            self._odmr_data = np.full((2*self._odmr_length+1,), 222, dtype=np.uint32)
 
-        # count data will be written here
-        self._odmr_data = np.full((2*self._odmr_length+1,), 222, dtype=np.uint32)
+            #number of samples which were read will be stored here
+            n_read_samples = daq.int32()
 
-        #number of samples which were read will be stored here
-        n_read_samples = daq.int32()
+            # actually read the counted photons
+            daq.DAQmxReadCounterU32(
+                # read from this task
+                self._scanner_counter_daq_task,
+                # Read number of double the# number of samples
+                2 * self._odmr_length+1,
+                # Maximal timeout for the read # process
+                self._RWTimeout,
+                # write into this array
+                self._odmr_data,
+                # length of array to write into
+                2 * self._odmr_length + 1,
+                # number of samples which were actually read
+                daq.byref(n_read_samples),
+                # Reserved for future use. Pass NULL (here None) to this parameter.
+                None)
 
-        # actually read the counted photons
-        daq.DAQmxReadCounterU32(
-            # read from this task
-            self._scanner_counter_daq_task,
-            # Read number of double the# number of samples
-            2 * self._odmr_length+1,
-            # Maximal timeout for the read # process
-            self._RWTimeout,
-            # write into this array
-            self._odmr_data,
-            # length of array to write into
-            2 * self._odmr_length + 1,
-            # number of samples which were actually read
-            daq.byref(n_read_samples),
-            # Reserved for future use. Pass NULL (here None) to this parameter.
-            None)
+            # stop the counter task
+            daq.DAQmxStopTask(self._scanner_counter_daq_task)
+            daq.DAQmxStopTask(self._scanner_clock_daq_task)
 
-        # stop the counter task
-        daq.DAQmxStopTask(self._scanner_counter_daq_task)
-        daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            # create a new array for the final data (this time of the length
+            # number of samples)
+            self._real_data = np.zeros((self._odmr_length,), dtype=np.uint32)
 
-        # create a new array for the final data (this time of the length
-        # number of samples)
-        self._real_data = np.zeros((self._odmr_length,), dtype=np.uint32)
+            # add upp adjoint pixels to also get the counts from the low time of
+            # the clock:
+            self._real_data = self._odmr_data[:-1:2]
+            self._real_data += self._odmr_data[1:-1:2]
 
-        # add upp adjoint pixels to also get the counts from the low time of
-        # the clock:
-        self._real_data = self._odmr_data[:-1:2]
-        self._real_data += self._odmr_data[1:-1:2]
-
-        return self._real_data * self._scanner_clock_frequency
+            return self._real_data * self._scanner_clock_frequency
+        except:
+            self.log.exception(
+                'Error while counting for ODMR.')
+            return np.array([-1.])
 
     def close_odmr(self):
         """ Closes the odmr and cleans up afterwards.
