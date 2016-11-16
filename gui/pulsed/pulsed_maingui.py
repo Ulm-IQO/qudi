@@ -2322,7 +2322,7 @@ class PulsedMeasurementGui(GUIBase):
         # Get invoke settings CheckBox status
         invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
         # Load asset into channles via logic module
-        self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, False, invoke_settings)
+        self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, invoke_settings)
         return
 
     # def load_sequence_clicked(self):
