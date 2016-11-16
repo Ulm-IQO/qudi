@@ -67,7 +67,7 @@ class PulsedMasterLogic(GenericLogic):
     sigLoadSequence = QtCore.Signal(str)
     sigSampleBlockEnsemble = QtCore.Signal(str, bool, bool)
     sigSampleSequence = QtCore.Signal(str, bool, bool)
-    sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict)
+    sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
     sigRequestGeneratorInitValues = QtCore.Signal()
     sigGeneratePredefinedSequence = QtCore.Signal(str, list)
 
@@ -76,11 +76,11 @@ class PulsedMasterLogic(GenericLogic):
     sigSavedBlockEnsemblesUpdated = QtCore.Signal(dict)
     sigSavedSequencesUpdated = QtCore.Signal(dict)
     sigCurrentPulseBlockUpdated = QtCore.Signal(object)
-    sigCurrentBlockEnsembleUpdated = QtCore.Signal(object)
+    sigCurrentBlockEnsembleUpdated = QtCore.Signal(object, dict)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
     sigBlockEnsembleSampled = QtCore.Signal(str)
     sigSequenceSampled = QtCore.Signal(str)
-    sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str)
+    sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str, str)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
@@ -265,6 +265,8 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['sampling_busy'] = False
         self.status_dict['pulser_running'] = False
         self.status_dict['measurement_running'] = False
+
+        self.invoke_settings = False
 
     def on_deactivate(self, e):
         """
@@ -492,6 +494,11 @@ class PulsedMasterLogic(GenericLogic):
         @param interleave_on:
         @return:
         """
+        # FIXME: This is just a temporary fix to avoid mismatch of pp-amplitude in measurement
+        # and generator logic. Later on the pp-amplitude is a field in the GUI just like activation
+        # config and sample rate
+        self._generator_logic.amplitude_dict = analogue_amplitude
+
         activation_config = self._measurement_logic.get_pulser_constraints()['activation_config'][
             activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
@@ -702,7 +709,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(asset_names_list)
         return
 
-    def load_asset_into_channels(self, asset_name, load_dict={}, invoke_settings=False):
+    def load_asset_into_channels(self, asset_name, load_dict={}, invoke_settings=None):
         """
 
         @param asset_name:
@@ -711,28 +718,48 @@ class PulsedMasterLogic(GenericLogic):
                                      according to the loaded assets metadata.
         @return:
         """
-        # FIXME: implement that! Changes in Pulse objects and measurement logic parameters needed
+        if invoke_settings is not None:
+            self.invoke_settings = invoke_settings
         # invoke measurement parameters from asset object
-        # if invoke_settings:
-            # # get asset object
-            # asset_obj = self._generator_logic.get_saved_asset(asset_name)
-            # # Set proper activation config
-            # activation_config = asset_obj.activation_config
-            # config_name = None
-            # avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
-            # for config in avail_configs:
-            #     if activation_config == avail_configs[config]:
-            #         config_name = config
-            #         break
-            #
-            #
-            # # set proper number of laser pulses
-            # if self._measurement_logic.number_of_lasers != asset_obj.number_of_lasers:
-            #     self.num_laserpulses_changed(asset_obj.number_of_lasers)
-            # # set proper sequence length
-            # self._measurement_logic.sequence_length_s = asset_obj.length_bins / asset_obj.sample_rate
-            # self.pulse_generator_settings_changed(asset_obj.sample_rate, config_name, amplitude_dict, None)
-            # self.measurement_sequence_settings_changed(asset_obj.measurement_ticks_list, sequence_length, laser_ignore_list, alternating, laser_trigger_delay)
+        if self.invoke_settings:
+            # get asset object
+            if asset_name in self._generator_logic.saved_pulse_sequences:
+                self.log.debug('Invoking measurement settings from PulseSequence object.')
+                asset_obj = self._generator_logic.saved_pulse_sequences[asset_name]
+            elif asset_name in self._generator_logic.saved_pulse_block_ensembles:
+                self.log.debug('Invoking measurement settings from PulseBlockEnsemble object.')
+                asset_obj = self._generator_logic.saved_pulse_block_ensembles[asset_name]
+            else:
+                asset_obj = None
+                self.log.error('No PulseBlockEnsemble or PulseSequence object by name "{0}" found '
+                               'in saved assets. Will not invoke measurement settings.'
+                               ''.format(asset_name))
+
+            # Only invoke settings if an asset object has been found in the sequence_generator_logic
+            if asset_obj is not None:
+                # Get parameters from asset object
+                asset_params = self._get_asset_parameters(asset_obj)
+                # Only invoke settings if asset_params are valid
+                if asset_params['err_code'] >= 0:
+                    interleave = self._measurement_logic.interleave_on
+                    laser_trigger_delay = self._measurement_logic.laser_trigger_delay_s
+                    fc_binwidth_s = self._measurement_logic.fast_counter_binwidth
+                    if self._measurement_logic.fast_counter_gated:
+                        fc_record_length_s = asset_params['max_laser_length'] + laser_trigger_delay
+                    else:
+                        fc_record_length_s = asset_params['sequence_length'] + laser_trigger_delay
+                    self.fast_counter_settings_changed(fc_binwidth_s, fc_record_length_s)
+                    self.pulse_generator_settings_changed(asset_params['sample_rate'],
+                                                          asset_params['config_name'],
+                                                          asset_params['amplitude_dict'],
+                                                          interleave)
+                    self.measurement_sequence_settings_changed(asset_params['controlled_vals_arr'],
+                                                               asset_params['num_of_lasers'],
+                                                               asset_params['sequence_length'],
+                                                               asset_params['laser_ignore_list'],
+                                                               asset_params['is_alternating'],
+                                                               laser_trigger_delay)
+        # Load asset into channel
         self.status_dict['loading_busy'] = True
         self.sigLoadAsset.emit(asset_name, load_dict)
         return
@@ -908,7 +935,11 @@ class PulsedMasterLogic(GenericLogic):
         @param ensemble_object:
         @return:
         """
-        self.sigCurrentBlockEnsembleUpdated.emit(ensemble_object)
+        if ensemble_object is not None:
+            ensemble_params = self._get_asset_parameters(ensemble_object)
+        else:
+            ensemble_params = {}
+        self.sigCurrentBlockEnsembleUpdated.emit(ensemble_object, ensemble_params)
         return
 
     def current_sequence_updated(self, sequence_object):
@@ -974,7 +1005,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigSavedSequencesUpdated.emit(sequence_dict)
         return
 
-    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise, sample_upload_load = False):
+    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
         """
 
         @param ensemble_name:
@@ -982,11 +1013,13 @@ class PulsedMasterLogic(GenericLogic):
         """
         if sample_upload_load:
             self.status_dict['sauplo_busy'] = True
+            if invoke_settings is not None:
+                self.invoke_settings = invoke_settings
         self.status_dict['sampling_busy'] = True
         self.sigSampleBlockEnsemble.emit(ensemble_name, write_to_file, write_chunkwise)
         return
 
-    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False):
+    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
         """
 
         @param sequence_name:
@@ -994,6 +1027,8 @@ class PulsedMasterLogic(GenericLogic):
         """
         if sample_upload_load:
             self.status_dict['sauplo_busy'] = True
+            if invoke_settings is not None:
+                self.invoke_settings = invoke_settings
         self.status_dict['sampling_busy'] = True
         self.sigSampleSequence.emit(sequence_name, write_to_file, write_chunkwise)
         return
@@ -1023,13 +1058,14 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     def generator_settings_changed(self, activation_config_name, laser_channel, sample_rate,
-                                   amplitude_dict):
+                                   amplitude_dict, sampling_format):
         """
 
         @param activation_config_name:
         @param laser_channel:
         @param sample_rate:
         @param amplitude_dict:
+        @param sampling_format:
         @return:
         """
         # get pulser constraints
@@ -1069,17 +1105,18 @@ class PulsedMasterLogic(GenericLogic):
         # amplitude dictionary
         # FIXME: check with pulser constraints
         self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
-                                              amplitude_dict)
+                                              amplitude_dict, sampling_format)
         return
 
     def generator_settings_updated(self, activation_config, laser_channel, sample_rate,
-                                   amplitude_dict):
+                                   amplitude_dict, sampling_format):
         """
 
         @param activation_config:
         @param sample_rate:
         @param amplitude_dict:
         @param laser_channel:
+        @param sampling_format:
         @return:
         """
         # retrieve hardware constraints
@@ -1097,10 +1134,11 @@ class PulsedMasterLogic(GenericLogic):
                              'Taking first valid config "{1}" '
                              'instead.'.format(activation_config, activation_config_name))
             self.generator_settings_changed(activation_config_name, laser_channel, sample_rate,
-                                            amplitude_dict)
+                                            amplitude_dict, sampling_format)
         else:
             self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
-                                                  sample_rate, amplitude_dict, laser_channel)
+                                                  sample_rate, amplitude_dict, laser_channel,
+                                                  sampling_format)
         return
 
     def generate_predefined_sequence(self, generator_method_name, arg_list):
@@ -1134,23 +1172,23 @@ class PulsedMasterLogic(GenericLogic):
     #######################################################################
     ###             Helper  methods                                     ###
     #######################################################################
-    def _get_ensemble_parameters(self, ensemble_obj):
+    def _get_asset_parameters(self, asset_obj):
         """
 
-        :param ensemble_obj:
-        :return:
+        @param asset_obj:
+        @return:
         """
         # Create return dictionary
         return_params = {'err_code': 0}
 
         # Get activation config and name
-        if ensemble_obj.activation_config is None:
+        if asset_obj.activation_config is None:
             return_params['activation_config'] = self._generator_logic.activation_config
             self.log.warning('No activation config specified in asset "{0}" metadata. Choosing '
                              'currently set activation config "{1}" from sequence_generator_logic.'
-                             ''.format(ensemble_obj.name, return_params['activation_config']))
+                             ''.format(asset_obj.name, return_params['activation_config']))
         else:
-            return_params['activation_config'] = ensemble_obj.activation_config
+            return_params['activation_config'] = asset_obj.activation_config
         config_name = None
         avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
         for config in avail_configs:
@@ -1167,37 +1205,40 @@ class PulsedMasterLogic(GenericLogic):
             return_params['config_name'] = config_name
 
         # Get analogue voltages
-        if ensemble_obj.amplitude_dict is None:
+        if asset_obj.amplitude_dict is None:
             return_params['amplitude_dict'] = self._generator_logic.amplitude_dict
             self.log.warning('No amplitude dictionary specified in asset "{0}" metadata. Choosing '
                              'currently set amplitude dict "{1}" from sequence_generator_logic.'
-                             ''.format(ensemble_obj.name, return_params['amplitude_dict']))
+                             ''.format(asset_obj.name, return_params['amplitude_dict']))
         else:
-            return_params['amplitude_dict'] = ensemble_obj.amplitude_dict
+            return_params['amplitude_dict'] = asset_obj.amplitude_dict
 
         # Get sample rate
-        if ensemble_obj.sample_rate is None:
+        if asset_obj.sample_rate is None:
             return_params['sample_rate'] = self._generator_logic.sample_rate
             self.log.warning('No sample rate specified in asset "{0}" metadata. Choosing '
                              'currently set sample rate "{1:.2e}" from sequence_generator_logic.'
-                             ''.format(ensemble_obj.name, return_params['sample_rate']))
+                             ''.format(asset_obj.name, return_params['sample_rate']))
         else:
-            return_params['sample_rate'] = ensemble_obj.sample_rate
+            return_params['sample_rate'] = asset_obj.sample_rate
 
         # Get sequence length
-        return_params['sequence_length'] = ensemble_obj.length_s
+        return_params['sequence_length'] = asset_obj.length_s
+        return_params['sequence_length_bins'] = asset_obj.length_s*self._generator_logic.sample_rate
 
-        # Get number of laser pulses
-        if ensemble_obj.laser_channel is None:
+        # Get number of laser pulses and max laser length
+        if asset_obj.laser_channel is None:
             laser_chnl = self._generator_logic.laser_channel
             self.log.warning('No laser channel specified in asset "{0}" metadata. Choosing '
                              'currently set laser channel "{1}" from sequence_generator_logic.'
-                             ''.format(ensemble_obj.name, laser_chnl))
+                             ''.format(asset_obj.name, laser_chnl))
         else:
-            laser_chnl = ensemble_obj.laser_channel
+            laser_chnl = asset_obj.laser_channel
         num_of_lasers = 0
+        max_laser_length = 0.0
         tmp_laser_on = False
-        for block, reps in ensemble_obj.block_list:
+        tmp_laser_length = 0.0
+        for block, reps in asset_obj.block_list:
             tmp_lasers_num = 0
             for element in block.element_list:
                 if 'd_ch' in laser_chnl:
@@ -1208,6 +1249,15 @@ class PulsedMasterLogic(GenericLogic):
                         tmp_lasers_num += 1
                     elif not element.digital_high[chnl_index]:
                         tmp_laser_on = False
+                    if tmp_laser_on:
+                        if element.increment_s > 1.0e-15:
+                            tmp_laser_length += (element.init_length_s + reps * element.increment_s)
+                        else:
+                            tmp_laser_length += element.init_length_s
+                        if tmp_laser_length > max_laser_length:
+                            max_laser_length = tmp_laser_length
+                    else:
+                        tmp_laser_length = 0.0
                 else:
                     self.log.error('Invoke measurement settings from a PulseBlockEnsemble with '
                                    'analogue laser channel is not implemented yet.')
@@ -1215,36 +1265,36 @@ class PulsedMasterLogic(GenericLogic):
                     return
             num_of_lasers += (tmp_lasers_num * (reps + 1))
         return_params['num_of_lasers'] = num_of_lasers
+        return_params['max_laser_length'] = max_laser_length
 
         # Get laser ignore list
-        if ensemble_obj.laser_ignore_list is None:
+        if asset_obj.laser_ignore_list is None:
             return_params['laser_ignore_list'] = []
             self.log.warning('No laser ignore list specified in asset "{0}" metadata. '
-                             'Assuming that no lasers should be ignored.'.format(ensemble_obj.name))
+                             'Assuming that no lasers should be ignored.'.format(asset_obj.name))
         else:
-            return_params['laser_ignore_list'] = ensemble_obj.laser_ignore_list
+            return_params['laser_ignore_list'] = asset_obj.laser_ignore_list
 
         # Get alternating
-        if ensemble_obj.alternating is None:
+        if asset_obj.alternating is None:
             return_params['is_alternating'] = self._measurement_logic.alternating
             self.log.warning('No alternating specified in asset "{0}" metadata. Choosing '
                              'currently set state "{1}" from pulsed_measurement_logic.'
-                             ''.format(ensemble_obj.name, return_params['is_alternating']))
+                             ''.format(asset_obj.name, return_params['is_alternating']))
         else:
-            return_params['is_alternating'] = ensemble_obj.alternating
+            return_params['is_alternating'] = asset_obj.alternating
 
         # Get controlled variable values
-        if len(ensemble_obj.measurement_ticks_list) < 1:
+        if len(asset_obj.controlled_vals_array) < 1:
             ana_lasers = num_of_lasers - len(return_params['laser_ignore_list'])
-            measurement_ticks = np.arange(1, ana_lasers + 1)
+            controlled_vals_array = np.arange(1, ana_lasers + 1)
             self.log.warning('No measurement ticks specified in asset "{0}" metadata. Choosing '
-                             'laser indices instead.'.format(ensemble_obj.name))
+                             'laser indices instead.'.format(asset_obj.name))
             if return_params['is_alternating']:
-                measurement_ticks = measurement_ticks[0:ana_lasers//2]
+                controlled_vals_array = controlled_vals_array[0:ana_lasers//2]
         else:
-            measurement_ticks = ensemble_obj.measurement_ticks_list
-        return_params['measurement_ticks'] = measurement_ticks
-
+            controlled_vals_array = asset_obj.controlled_vals_array
+        return_params['controlled_vals_arr'] = controlled_vals_array
 
         # return all parameters
         return return_params
