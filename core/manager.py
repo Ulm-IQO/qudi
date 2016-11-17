@@ -340,9 +340,7 @@ class Manager(QtCore.QObject):
                                 logger.warning(
                                     'Stylesheet not found at {0}'.format(stylesheetpath))
                                 continue
-                            with open(stylesheetpath, 'r') as stylesheetfile:
-                                stylesheet = stylesheetfile.read()
-                                self.gui.setStyleSheet(stylesheet)
+                            self.gui.setStyleSheet(stylesheetpath)
                         else:
                             self.tree['global'][m] = cfg['global'][m]
 
@@ -519,7 +517,7 @@ class Manager(QtCore.QObject):
             configuration = {}
 
         # get class from module by name
-        print(moduleObject, className)
+        #print(moduleObject, className)
         modclass = getattr(moduleObject, className)
 
         # FIXME: Check if the class we just obtained has the right inheritance
