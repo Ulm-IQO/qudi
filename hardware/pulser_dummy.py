@@ -293,9 +293,8 @@ class PulserDummy(Base, PulserInterface):
         If nothing is passed, method will be skipped.
         """
         if asset_name is None:
-            self.log.warning('No asset name provided for upload!\n'
-                    'Correct that!\n'
-                    'Command will be ignored.')
+            self.log.warning('No asset name provided for upload!\nCorrect that!\nCommand will be '
+                             'ignored.')
             return -1
 
         saved_files = self._get_filenames_on_host()
@@ -306,7 +305,7 @@ class PulserDummy(Base, PulserInterface):
                     self.uploaded_files_list.append(filename)
                 elif fnmatch(filename, asset_name+'_ch?.wfm'):
                     self.uploaded_files_list.append(filename)
-                elif fnmatch(filename, asset_name+'_ch?.WFMX'):
+                elif fnmatch(filename, asset_name+'_ch?.wfmx'):
                     self.uploaded_files_list.append(filename)
                 elif fnmatch(filename, asset_name+'.mat'):
                     self.uploaded_files_list.append(filename)
@@ -841,7 +840,7 @@ class PulserDummy(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat') or f.endswith('.wfm') or f.endswith('.seq') or f.endswith('.seqx'))]
         return filename_list
 
     def _get_num_a_ch(self):

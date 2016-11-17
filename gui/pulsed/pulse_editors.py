@@ -861,7 +861,7 @@ class SequenceEditor:
             seq_param['repetitions'] = self.get_element(row_index,
                                                         self._cfg_param_ps['repetitions'])
             seq_param['trigger_wait'] = int(self.get_element(row_index,
-                                                         self._cfg_param_ps['trigger_wait']))
+                                                             self._cfg_param_ps['trigger_wait']))
             seq_param['go_to'] = int(self.get_element(row_index, self._cfg_param_ps['go_to']))
             seq_param['event_jump_to'] = self.get_element(row_index,
                                                           self._cfg_param_ps['event_jump_to'])
