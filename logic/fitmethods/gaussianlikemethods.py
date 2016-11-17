@@ -216,6 +216,127 @@ def estimate_gaussian_dip(self, x_axis=None, data=None, params=None):
 
     return error, params
 
+def make_gaussianwithslope_model(self):
+    """ This method creates a model of a gaussian with an offset and a slope.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+            The used model has the Parameter with the meaning:
+                'amplitude' : amplitude
+                'center'    : center
+                'sigm'      : sigma
+                'fwhm'      : full width half maximum
+                'c'         : offset
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+    linear_model, params = self.make_linear_model()
+    model = GaussianModel() + linear_model
+    params = model.make_params()
+
+    return model, params
+
+def make_gaussianwithslope_fit(self, axis=None, data=None, add_parameters=None, estimator="estimate_gaussianwithslope_confocalpeak"):
+    """ This method performes a 1D gaussian fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[]  x_data: data
+    @param dict add_parameters: Additional parameters which will substitute the
+                                estimated parameters/bounds
+    @param string estimator: the string should contain the name of the function you want to use to estimate
+                             the parameters. The default estimator is confocalpeak.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    mod_final, params = self.make_gaussianwithslope_model()
+
+    if estimator == "estimate_gaussianwithslope_confocalpeak":
+        error, params = self.estimate_gaussianwithslope_confocalpeak(axis, data, params)
+
+    params["slope"].value = 0.
+
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = mod_final.fit(data, x=axis, params=params)
+    except:
+        logger.warning('The 1D gaussian fit did not work.')
+        result = mod_final.fit(data, x=axis, params=params)
+        print(result.message)
+
+    return result
+
+def estimate_gaussianwithslope_confocalpeak(self, x_axis=None, data=None, params=None):
+    """ This method provides a one dimensional gaussian estimator designed for
+    a confocal image of a single color center in diamond.
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary which can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = 0
+    # check if parameters make sense
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is no array.')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            logger.error('Given parameter is no one dimensional array.')
+            error = -1
+    if not isinstance(params, Parameters):
+        logger.error('Parameters object is not valid in estimate_gaussian.')
+        error = -1
+
+    # If the estimator is not good enough one can start improvement with
+    # a convolution
+
+    # auxiliary variables
+    stepsize = abs(x_axis[1] - x_axis[0])
+    n_steps = len(x_axis)
+
+    # Define constraints
+    params['center'].min = (x_axis[0]) - n_steps * stepsize
+    params['center'].max = (x_axis[-1]) + n_steps * stepsize
+    params['amplitude'].min = 0.1  # that is already noise from APD
+    params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+    params['sigma'].min = stepsize
+    params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
+    params['offset'].min = 0.  # that is already noise from APD
+    params['offset'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)*2.
+
+    # set parameters
+    params['center'].value = x_axis[np.argmax(data)]
+    params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
+    params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
+    params['offset'].value = data.min()
+
+    return error, params
 
 ############################################################################
 #                                                                          #
