@@ -213,7 +213,7 @@ class ODMRLogic(GenericLogic):
 
         counter_status = self._odmr_counter.set_up_odmr()
         if counter_status < 0:
-            self._odmr_couner.close_odmr_clock()
+            self._odmr_counter.close_odmr_clock()
             self.unlock()
             return -1
 
