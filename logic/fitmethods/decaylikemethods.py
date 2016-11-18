@@ -59,7 +59,7 @@ def make_barestretchedexponentialdecay_model(self, prefix=None):
     def barestretchedexponentialdecay_function(x, beta, lifetime):
         """ Function of a bare exponential decay.
 
-        @param array x: variable variable - e.g. time
+        @param numpy.array x: variable variable - e.g. time
         @param float lifetime: lifetime
 
         @return: bare exponential decay function: in order to use it as a model
@@ -114,8 +114,8 @@ def make_bareexponentialdecay_model(self, prefix=None):
 def estimate_bareexponentialdecay(self, x_axis, data, params):
     """ Provide an estimation for initial values for a bare exponential decay.
 
-    @param numpy.array x_axis: x values
-    @param numpy.array data: value of each data point corresponding to x values
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
     @param lmfit.Parameters params: object includes parameter dictionary which
                                     can be set
 
@@ -158,7 +158,9 @@ def make_bareexponentialdecay_fit(self, x_axis, data, add_parameters=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters for the fit
+    @param dict add_parameters: optional, additional parameters for the fit,
+                                which will be used instead of the values from
+                                the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,

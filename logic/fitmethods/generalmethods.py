@@ -493,10 +493,12 @@ def gaussian_smoothing(self, data=None, filter_len=None, filter_sigma=None):
 def _check_1D_input(self, x_axis, data, params):
     """ Helper function to check the input of the fit for general consistency.
 
-    @param np.array x_axis: 1D array of x values
-    @param np.array data: 1D array of y values
-    @param params:
-    @return:
+    @param numpy.array x_axis: x values
+    @param numpy.array data: value of each data point corresponding to x values
+    @param lmfit.Parameters params: a parameter object which will be filled with
+                                    initial values for the fit
+
+    @return int: error code (0:OK, -1:error)
     """
 
     error = 0
