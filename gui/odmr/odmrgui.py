@@ -34,6 +34,7 @@ from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
 from core.util import units
 
+
 class ODMRMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
@@ -45,6 +46,7 @@ class ODMRMainWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
+
 class ODMRSettingDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
@@ -54,6 +56,7 @@ class ODMRSettingDialog(QtWidgets.QDialog):
         # Load it
         super(ODMRSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
+
 
 class ODMRGui(GUIBase):
     """
@@ -107,6 +110,11 @@ class ODMRGui(GUIBase):
         # GUI element:
         self._mw = ODMRMainWindow()
         self._sd = ODMRSettingDialog()
+
+        # Create a QSettings object for the mainwindow and store the actual GUI layout
+        self.mwsettings = QtCore.QSettings("QUDI", "ODMR")
+        self.mwsettings.setValue("geometry", self._mw.saveGeometry())
+        self.mwsettings.setValue("windowState", self._mw.saveState())
 
         # Adjust range of scientific spinboxes above what is possible in Qt Designer
         self._mw.frequency_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_frequency)
@@ -169,7 +177,6 @@ class ODMRGui(GUIBase):
         self._mw.odmr_PlotWidget.setLabel(axis='bottom', text='Frequency',
                                           units='Hz')
 
-        #self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
         self._mw.odmr_matrix_PlotWidget.addItem(self.odmr_matrix_image)
         self._mw.odmr_matrix_PlotWidget.setLabel(axis='left',
                                                  text='Matrix Lines',
@@ -183,9 +190,6 @@ class ODMRGui(GUIBase):
         my_colors = ColorScaleInferno()
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
-        # Set the state button as ready button as default setting.
-        # self._mw.idle_StateWidget.click()
-
         # Configuration of the comboWidget
         self._mw.mode_ComboBox.addItem('Off')
         self._mw.mode_ComboBox.addItem('CW')
@@ -195,12 +199,12 @@ class ODMRGui(GUIBase):
         self._mw.fit_methods_ComboBox.addItems(fit_functions)
 
         ########################################################################
-        ##                 Configuration of the Colorbar                      ##
+        #                  Configuration of the Colorbar                       #
         ########################################################################
 
         self.odmr_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
 
-        #adding colorbar to ViewWidget
+        # adding colorbar to ViewWidget
         self._mw.odmr_cb_PlotWidget.addItem(self.odmr_cb)
         self._mw.odmr_cb_PlotWidget.hideAxis('bottom')
         self._mw.odmr_cb_PlotWidget.hideAxis('left')
@@ -210,9 +214,8 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
         self._mw.odmr_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
 
-
         ########################################################################
-        ##          Configuration of the various display Widgets              ##
+        #          Configuration of the various display Widgets                #
         ########################################################################
 
         # Take the default values from logic:
@@ -220,7 +223,7 @@ class ODMRGui(GUIBase):
         self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start)
 
         self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step)
-        self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0) # set the minimal step to 1Hz.
+        self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0)  # set the minimal step to 1Hz.
 
         self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop)
 
@@ -264,13 +267,14 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_matrix)
 
         ########################################################################
-        ##                       Connect signals                              ##
+        #                       Connect signals                                #
         ########################################################################
 
         # Connect the RadioButtons and connect to the events if they are clicked:
-        self._mw.action_run_stop.toggled.connect(self.run_stop)
-        self._mw.action_resume_odmr.toggled.connect(self.resume_odmr)
+        self._mw.action_run_stop.triggered.connect(self.run_stop)
+        self._mw.action_resume_odmr.triggered.connect(self.resume_odmr)
         self._mw.action_Save.triggered.connect(self.save_data)
+        self._mw.action_RestoreDefault.triggered.connect(self.restore_defaultview)
         self.sigStartODMRScan.connect(self._odmr_logic.start_odmr_scan)
         self.sigStopODMRScan.connect(self._odmr_logic.stop_odmr_scan)
         self.sigContinueODMRScan.connect(self._odmr_logic.continue_odmr_scan)
@@ -375,7 +379,6 @@ class ODMRGui(GUIBase):
         @param bool run_odmr: True indicates that the measurement is running and
                               False that it is stopped.
         """
-
         if run_odmr:
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.clear_odmr_PushButton.setEnabled(True)
@@ -387,15 +390,18 @@ class ODMRGui(GUIBase):
         if is_checked:
             self.sigStopODMRScan.emit()
             self.sigContinueODMRScan.emit()
+            self._mw.action_run_stop.setChecked(True)
             self._mw.action_run_stop.setEnabled(False)
+            self._mw.action_resume_odmr.setEnabled(False)
 
             # during scan, enable the clear plot possibility.
             self._mw.clear_odmr_PushButton.setEnabled(True)
         else:
             self.sigStopODMRScan.emit()
+            self._mw.action_run_stop.setChecked(False)
             self._mw.action_run_stop.setEnabled(True)
-            # Disable the clear functionality since that is not needed if no
-            # scan is running:
+            self._mw.action_resume_odmr.setEnabled(True)
+            # Disable the clear functionality since that is not needed if no scan is running:
             self._mw.clear_odmr_PushButton.setEnabled(False)
 
     def odmr_started(self):
@@ -501,7 +507,7 @@ class ODMRGui(GUIBase):
         """ Write the new settings from the gui to the file. """
         self._odmr_logic.number_of_lines = self._sd.matrix_lines_SpinBox.value()
         self._odmr_logic.set_clock_frequency(self._sd.clock_frequency_DoubleSpinBox.value())
-        self._odmr_logic.safeRawData = self._sd.save_raw_data_CheckBox.isChecked()
+        self._odmr_logic.saveRawData = self._sd.save_raw_data_CheckBox.isChecked()
         for name, tab in self._sd.fit_tabs.items():
             self._odmr_logic.use_custom_params[name] = tab.updateFitSettings(
                 self._odmr_logic.fit_models[name][1])
@@ -510,7 +516,7 @@ class ODMRGui(GUIBase):
         """ Keep the old settings and restores the old settings in the gui. """
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
-        self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
+        self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.saveRawData)
         for name, tab in self._sd.fit_tabs.items():
             tab.keepFitSettings(
                 self._odmr_logic.fit_models[name][1],
@@ -561,9 +567,8 @@ class ODMRGui(GUIBase):
             self.change_power()
             self.sigMWOn.emit()
 
-
     ############################################################################
-    ##                          Change Methods                                ##
+    #                           Change Methods                                 #
     ############################################################################
 
     def change_frequency(self):
@@ -605,3 +610,7 @@ class ODMRGui(GUIBase):
             pcile_range = [low_centile, high_centile]
 
         self._odmr_logic.save_ODMR_Data(filetag, colorscale_range=cb_range, percentile_range=pcile_range)
+
+    def restore_defaultview(self):
+        self._mw.restoreGeometry(self.mwsettings.value("geometry", ""))
+        self._mw.restoreState(self.mwsettings.value("windowState", ""))

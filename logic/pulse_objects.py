@@ -119,18 +119,18 @@ class PulseBlock:
 
         # calculate the tick value for the whole block. Basically sum all the
         # init_length_bins which have the use_as_tick attribute set to True.
-        self.measurement_tick_start = 0.0
+        self.controlled_vals_start = 0.0
         # make the same thing for the increment, to obtain the total increment
         # number for the block. This facilitates in calculating the measurement tick list.
-        self.measurement_tick_increment = 0.0
+        self.controlled_vals_increment = 0.0
 
         for elem in self.element_list:
             self.init_length_s += elem.init_length_s
             self.increment_s += elem.increment_s
             if elem.use_as_tick:
                 self.use_as_tick = True
-                self.measurement_tick_start += elem.init_length_s
-                self.measurement_tick_increment += elem.increment_s
+                self.controlled_vals_start += elem.init_length_s
+                self.controlled_vals_increment += elem.increment_s
 
             if elem.analog_channels > self.analog_channels:
                 self.analog_channels = elem.analog_channels
@@ -179,7 +179,7 @@ class PulseBlockEnsemble:
         self.length_s = 0
         self.analog_channels = 0
         self.digital_channels = 0
-        self.measurement_ticks_list = np.array([])
+        self.controlled_vals_array = np.array([])
         self._refresh_parameters()
         # these parameters can be set manually by the logic to recall the pulser settings upon
         # loading into channels. They are not crucial for waveform generation.
@@ -187,6 +187,8 @@ class PulseBlockEnsemble:
         self.activation_config = None
         self.amplitude_dict = None
         self.laser_channel = None
+        self.alternating = None
+        self.laser_ignore_list = None
         return
 
     def _refresh_parameters(self):
@@ -194,7 +196,7 @@ class PulseBlockEnsemble:
         self.analog_channels = 0
         self.digital_channels = 0
         # calculate the tick values for the whole block_ensemble.
-        self.measurement_ticks_list = np.array([])
+        self.controlled_vals_array = np.array([])
         for block, reps in self.block_list:
             # Get number of channels from the block information
             if block.analog_channels > self.analog_channels:
@@ -207,13 +209,13 @@ class PulseBlockEnsemble:
 
             # Calculate the measurement ticks list for this ensemble
             if block.use_as_tick:
-                start = block.measurement_tick_start
-                incr = block.measurement_tick_increment
+                start = block.controlled_vals_start
+                incr = block.controlled_vals_increment
                 if incr == 0.0:
                     arr = np.array([])
                 else:
                     arr = np.arange(start, start+(reps+1)*incr, incr)
-                self.measurement_ticks_list = np.append(self.measurement_ticks_list, arr)
+                self.controlled_vals_array = np.append(self.controlled_vals_array, arr)
         return
 
     def replace_block(self, position, block):
@@ -269,6 +271,7 @@ class PulseSequence:
         self.length_s = 0.0
         self.analog_channels = 0
         self.digital_channels = 0
+        self.controlled_vals_array = np.array([])
         self._refresh_parameters()
         self.sampled_ensembles = OrderedDict()
         # these parameters can be set manually by the logic to recall the pulser settings upon
@@ -277,6 +280,8 @@ class PulseSequence:
         self.activation_config = None
         self.amplitude_dict = None
         self.laser_channel = None
+        self.alternating = None
+        self.laser_ignore_list = None
         return
 
     def _refresh_parameters(self):
@@ -291,7 +296,7 @@ class PulseSequence:
         # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
         self.different_ensembles_dict = dict()
         # here the measurement ticks will be saved:
-        self.measurement_ticks_list = np.array([])
+        self.controlled_vals_array = np.array([])
 
         # to make a resonable measurement tick list, the last biggest tick value after all
         # the repetitions of a block is used as the offset_time for the next block.
@@ -313,14 +318,14 @@ class PulseSequence:
             if self.different_ensembles_dict.get(ensemble.name) is None:
                 self.different_ensembles_dict[ensemble.name] = ensemble
 
-            self.measurement_ticks_list = np.append(self.measurement_ticks_list,
-                                                    offset_tick_bin + ensemble.measurement_ticks_list)
+            self.controlled_vals_array = np.append(self.controlled_vals_array,
+                                                    offset_tick_bin + ensemble.controlled_vals_array)
 
             # for the next repetition or pulse_block_ensemble, add last number from the
-            # measurement_ticks_list as offset_tick_bin. Otherwise the measurement_ticks_list will
+            # controlled_vals_array as offset_tick_bin. Otherwise the controlled_vals_array will
             # be a mess:
-            if len(self.measurement_ticks_list) > 0:
-                offset_tick_bin = self.measurement_ticks_list[-1]
+            if len(self.controlled_vals_array) > 0:
+                offset_tick_bin = self.controlled_vals_array[-1]
         return
 
     def replace_ensemble(self, position, ensemble_param):
