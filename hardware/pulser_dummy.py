@@ -229,6 +229,7 @@ class PulserDummy(Base, PulserInterface):
         # for the different configurations can be customary chosen.
 
         activation_config = OrderedDict()
+        activation_config['config0'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         activation_config['config1'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
         # Usage of channel 1 only:
         activation_config['config2'] = ['a_ch2', 'd_ch1', 'd_ch2']

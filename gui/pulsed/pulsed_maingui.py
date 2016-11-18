@@ -1913,8 +1913,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_num_laser_pulse_SpinBox.setValue(number_of_lasers)
         self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(laser_trigger_delay)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(controlled_vals[0])
-        self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
-            (controlled_vals[-1] - controlled_vals[0]) / (len(controlled_vals)-1))
+        if len(controlled_vals) > 1:
+            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
+                (controlled_vals[-1] - controlled_vals[0]) / (len(controlled_vals)-1))
+        else:
+            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(controlled_vals[0])
         self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(number_of_lasers+1)])
         # change plots accordingly
         if alternating:
