@@ -2201,8 +2201,8 @@ def double_exponential_testing2():
 
     x_axis = np.linspace(5, 350,200)
     lifetime = 100
-    ampl = 5
-    offset = 5
+    ampl = 0.2
+    offset = 0
     data = ampl * np.exp(-(x_axis/lifetime)**2) +offset
 
 
@@ -2222,6 +2222,38 @@ def double_exponential_testing2():
     plt.show()
     print(res.fit_report())
     return
+
+
+def stretched_exponential_decay_testing():
+    """ Testing for simuated data for a streched exponential decay. """
+
+
+    x_axis = np.linspace(5, 350,200)
+    lifetime = 150
+    ampl = 0.2
+    offset = 1
+    beta = 4
+    data = ampl * np.exp(-(x_axis/lifetime)**beta) +offset
+
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.05
+
+    res = qudi_fitting.make_stretchedexponentialdecayoffset_fit(x_axis=x_axis,
+                                                             data=noisy_data)
+
+    plt.figure()
+    plt.plot(x_axis, res.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(res.fit_report())
+    return
+
+
 
 def voigt_testing():
 
@@ -2329,10 +2361,11 @@ if __name__ == "__main__":
                                           # needs a selected file for data input
 
 
-#    stretchedexponentialdecay_testing() # Right now not implemented! Is in progress..
+
 #    stretched_sine_exponential_decay_testing_data() # needs a selected file for data input
 #    linear_testing()
 #    double_exponential_testing()
-    double_exponential_testing2()
+#    double_exponential_testing2()
+    stretched_exponential_decay_testing()
 #    voigt_testing()
 
