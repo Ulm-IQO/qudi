@@ -197,7 +197,7 @@ sel.</string>
       <item row="0" column="0">
        <widget class="QLabel" name="label_15">
         <property name="text">
-         <string>Length (s):</string>
+         <string>Length:</string>
         </property>
        </widget>
       </item>
@@ -228,6 +228,9 @@ sel.</string>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
+        <property name="suffix">
+         <string>s</string>
+        </property>
         <property name="decimals">
          <number>6</number>
         </property>
@@ -239,7 +242,7 @@ sel.</string>
       <item row="1" column="0">
        <widget class="QLabel" name="label_18">
         <property name="text">
-         <string>Length (bins):</string>
+         <string>Length:</string>
         </property>
        </widget>
       </item>
@@ -260,6 +263,9 @@ sel.</string>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
+        <property name="suffix">
+         <string>bins</string>
+        </property>
         <property name="maximum">
          <number>1000</number>
         </property>
@@ -268,7 +274,7 @@ sel.</string>
       <item row="2" column="0">
        <widget class="QLabel" name="label_22">
         <property name="text">
-         <string>Size (MB):</string>
+         <string>File size:</string>
         </property>
        </widget>
       </item>
@@ -329,6 +335,9 @@ sel.</string>
         </property>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
+        </property>
+        <property name="suffix">
+         <string>MB</string>
         </property>
        </widget>
       </item>
