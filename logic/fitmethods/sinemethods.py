@@ -375,31 +375,21 @@ def make_sineoffset_fit(self, x_axis, data, add_parameters=None):
 
     return result
 
-############################################################################
-#                                                                          #
-#                Sinus with exponential decay fitting                      #
-#                                                                          #
-############################################################################
+################################################################################
+#                                                                              #
+#             Sinus with exponential decay and offset fitting                  #
+#                                                                              #
+################################################################################
 
-def make_sineexponentialdecay_model(self, prefix=None):
-    """ Create a model of sine with exponential decay.
+def make_sineexponentialdecayoffset_model(self, prefix=None):
+    """ Create a model of a sine with exponential decay and offset.
 
-    @return tuple: (object model, object params)
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
 
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
     """
 
     sine_model, params = self.make_sine_model(prefix=prefix)
@@ -411,8 +401,9 @@ def make_sineexponentialdecay_model(self, prefix=None):
 
     return model, params
 
-def estimate_sineexponentialdecay(self, x_axis, data, params=None):
-    """ Provide a estimation of a initial values for a sine exponential decay function.
+def estimate_sineexponentialdecayoffset(self, x_axis, data, params=None):
+    """ Provide an estimator to obtain initial values for a sine exponential
+        decay with offset function.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -432,7 +423,7 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    # set the offset as the median of the data
+    # set the offset as the mean of the data
     offset = np.mean(data)
 
     # level data
@@ -447,45 +438,19 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 
     frequency_max = np.abs(dft_x[dft_y.argmax()])
 
-    params['frequency'].set(value=frequency_max,
-                            min=min(0.1 / (x_axis[-1]-x_axis[0]),dft_x[3]),
-                            max=min(0.5 / stepsize, dft_x.max()-abs(dft_x[2]-dft_x[0])))
-
-    # # perform fourier transform with zeropadding to get higher resolution
-    # data_level_zeropaded = np.zeros(int(len(data_level) * 2))
-    # data_level_zeropaded[:len(data_level)] = data_level
-    # fourier = np.fft.fft(data_level_zeropaded)
-    # stepsize = x_axis[1] - x_axis[0]  # for frequency axis
-    # freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    # fourier_power = abs(fourier)
-    # frequency_max = np.abs(freq[np.log(fourier).argmax()])
-
     # remove noise
-    # a = np.std(fourier_power[:int(len(freq)/2)])
-    # for i in range(0,int(len(fourier)/2)):
-    #     if fourier_power[i] <= a:
-    #         fourier_power[i] = 0
-    #
-    # calculating the width of the FT peak for the estimation of lifetime
-    # peak_width = 0
-    # for i in range(0, int(len(freq) / 2)):
-    #     peak_width += fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
-    #
-    # lifetime = 0.5 / peak_width
-
-    #remove noise
     a = np.std(dft_y)
     for i in range(0, len(dft_x)):
-        if dft_y[i]<=a:
+        if dft_y[i] <= a:
             dft_y[i] = 0
 
-    #calculating the width of the FT peak for the estimation of lifetime
+    # calculating the width of the FT peak for the estimation of lifetime
     s = 0
     for i in range(0, len(dft_x)):
-        s+= dft_y[i]*abs(dft_x[1]-dft_x[0])/max(dft_y)
+        s += dft_y[i]*abs(dft_x[1]-dft_x[0])/max(dft_y)
     lifetime_val = 0.5/s
 
-    # find minimal distance to the next meas point in the corresponding time value>
+    # find minimal distance to the next meas point in the corresponding x value
     min_x_diff = np.ediff1d(x_axis).min()
 
     # How many points are used to sample the estimated frequency with min_x_diff:
@@ -510,6 +475,9 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
     phase = (sum_res.argmax()/iter_steps *2*np.pi - np.pi)%(2*np.pi)
 
     # values and bounds of initial parameters
+    params['frequency'].set(value=frequency_max,
+                            min=min(0.1 / (x_axis[-1]-x_axis[0]), dft_x[3]),
+                            max=min(0.5 / stepsize, dft_x.max()-abs(dft_x[2]-dft_x[0])))
     params['phase'].set(value=phase, min=-2*np.pi, max=2*np.pi)
     params['amplitude'].set(value=ampl_val, min=0)
     params['offset'].set(value=offset)
@@ -518,13 +486,9 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
                            min=2*(x_axis[1]-x_axis[0]),
                            max=1/(abs(dft_x[1]-dft_x[0])*0.5))
 
-    # params['frequency'].set(value=frequency_max,
-    #                         min=min(0.1 / (x_axis[-1]-x_axis[0]),freq[3]),
-    #                         max=min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0])))
-
     return error, params
 
-def make_sineexponentialdecay_fit(self, x_axis=None, data=None, add_parameters=None):
+def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
     """ Perform a sine exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -536,66 +500,50 @@ def make_sineexponentialdecay_fit(self, x_axis=None, data=None, add_parameters=N
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    sineexponentialdecay, params = self.make_sineexponentialdecay_model()
+    sine_exp_decay_offset, params = self.make_sineexponentialdecayoffset_model()
 
-    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
+    error, params = self.estimate_sineexponentialdecayoffset(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
                                             update_dict=add_parameters)
     try:
-        result = sineexponentialdecay.fit(data, x=x_axis, params=params)
+        result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sineexponentialdecay fit did not work. '
+        logger.warning('The sineexponentialdecayoffset fit did not work. '
                 'Error message: {}'.format(str(result.message)))
-        result = sineexponentialdecay.fit(data, x=x_axis, params=params)
+        result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
 
     return result
 
 
-############################################################################
-#                                                                          #
-#             Sinus with double exponential decay fitting                  #
-#                                                                          #
-############################################################################
+################################################################################
+#                                                                              #
+#         Sinus with double exponential decay and offset fitting               #
+#                                                                              #
+################################################################################
 
-def make_sinedoubleexponentialdecay_model(self, prefix=None):
+def make_sinedoubleexponentialdecayoffset_model(self, prefix=None):
     """ Create a model of sine with double exponential decay.
 
-    @param str prefix: optional string, which serves as a prefix for all
-                       parameters used in this model. That will prevent
-                       name collisions if this model is used in a composite
-                       way.
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
     """
 
     sine_model, params = self.make_sine_model(prefix=prefix)
-    baredoubleexponentialdecay_model, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
+    bare_double_exp_decay_model, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
     constant_model, params = self.make_constant_model(prefix=prefix)
 
-    model = sine_model * baredoubleexponentialdecay_model + constant_model
+    model = sine_model * bare_double_exp_decay_model + constant_model
     params = model.make_params()
 
     return model, params
 
-
-def make_sinedoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
     """ Perform a sine double exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -609,7 +557,7 @@ def make_sinedoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None)
     """
     sine_double_exp_decay, params = self.make_sinedoubleexponentialdecay_model()
 
-    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
+    error, params = self.estimate_sineexponentialdecayoffset(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
@@ -623,38 +571,21 @@ def make_sinedoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None)
 
     return result
 
-
-
-############################################################################
-#                                                                          #
-#          Sinus with arbitrary exponential decay fitting                  #
-#                                                                          #
-############################################################################
+################################################################################
+#                                                                              #
+#              Sinus with arbitrary exponential decay fitting                  #
+#                                                                              #
+################################################################################
 
 def make_sinestretchedexponentialdecay_model(self, prefix=None):
     """ Create a model of a sine with stretched exponential decay.
 
-    @param str prefix: optional string, which serves as a prefix for all
-                       parameters used in this model. That will prevent
-                       name collisions if this model is used in a composite
-                       way.
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
     """
 
     sine_model, params = self.make_sine_model(prefix=prefix)
@@ -667,7 +598,7 @@ def make_sinestretchedexponentialdecay_model(self, prefix=None):
     return model, params
 
 
-def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
+def estimate_sinestretchedexponentialdecayoffset(self, x_axis, data, params):
     """ Provide a estimation of a initial values for a sine stretched exponential decay function.
 
     @param numpy.array x_axis: 1D axis values
@@ -681,14 +612,14 @@ def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
         Parameters object params: set parameters of initial values
     """
 
-    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
-    #TODO: estimate the exponent cleaverly! For now, set the value to 2 since
-    #      the usual values for our cases are between 1 and 3.
+    error, params = self.estimate_sineexponentialdecayoffset(x_axis, data, params)
+    #TODO: estimate the exponent cleaverly! For now, set the initial value to 2
+    #      since the usual values for our cases are between 1 and 3.
     params['beta'].set(value=2, min=0.0, max=10)
 
     return error, params
 
-def make_sinestretchedexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -700,9 +631,9 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, add_parameters=No
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    sine_stretched_exp_decay, params = self.make_sinestretchedexponentialdecay_model()
+    sine_stretched_exp_decay, params = self.make_sinestretchedexponentialdecayoffset_model()
 
-    error, params = self.estimate_sinestretchedexponentialdecay(x_axis, data, params)
+    error, params = self.estimate_sinestretchedexponentialdecayoffset(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
