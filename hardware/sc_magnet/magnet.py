@@ -682,13 +682,24 @@ class Magnet(Base, MagnetInterface):
         #     inter1 -= 1
         # move the theta values in the right range
         # for the constraints
-        theta -= np.pi * (inter1 - 1)
 
+        # if in an even interval
+        if switch:
+            theta -= np.pi * (inter1 - 1)
+        else:
+            # get into the correct interval
+            theta -= np.pi * (inter1 - 1)
+            # now mirror at the center of the interval
+            theta = np.pi/2 - (theta - np.pi/2)
         # interval was correct
         if switch:
             self._inter = inter1
         # interval that needs rotation around z-axis in case it wasn't outside that interval before
         else:
+            # actually it isn't necessary to distinguish here. I initially thought it is necessary and it would
+            # be if one would move the magnet based on the magnet field of previous values.
+            # I will leave the code here for now, when somebody in the future wants to extend this function
+            # to allow both behaviors he can use the existing code.
             # theta was in a correct interval before but isn't now ( change of interval )
             self.log.debug('need rotation around phi to adjust for negative theta value')
             self.log.debug('old int: {0}, new int: {1}'.format(self._inter, inter1))
@@ -697,7 +708,7 @@ class Magnet(Base, MagnetInterface):
 
             # theta wasn't in a correct interval before and is still in the same interval ( in this case do nothing )
             elif int(np.abs(self._inter - inter1)) is 0:
-                pass
+                phi += np.pi
 
             else:
                 self.log.warning("There was a difference in intervals larger "
