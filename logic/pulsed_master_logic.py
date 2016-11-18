@@ -77,7 +77,7 @@ class PulsedMasterLogic(GenericLogic):
     sigSavedSequencesUpdated = QtCore.Signal(dict)
     sigCurrentPulseBlockUpdated = QtCore.Signal(object)
     sigCurrentBlockEnsembleUpdated = QtCore.Signal(object, dict)
-    sigCurrentSequenceUpdated = QtCore.Signal(object)
+    sigCurrentSequenceUpdated = QtCore.Signal(object, dict)
     sigBlockEnsembleSampled = QtCore.Signal(str)
     sigSequenceSampled = QtCore.Signal(str)
     sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str, str)
@@ -937,6 +937,8 @@ class PulsedMasterLogic(GenericLogic):
         """
         if ensemble_object is not None:
             ensemble_params = self._get_asset_parameters(ensemble_object)
+            if ensemble_params['err_code'] < 0:
+                ensemble_params = {}
         else:
             ensemble_params = {}
         self.sigCurrentBlockEnsembleUpdated.emit(ensemble_object, ensemble_params)
@@ -948,7 +950,13 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_object:
         @return:
         """
-        self.sigCurrentSequenceUpdated.emit(sequence_object)
+        if sequence_object is not None:
+            sequence_params = self._get_asset_parameters(sequence_object)
+            if sequence_params['err_code'] < 0:
+                sequence_params = {}
+        else:
+            sequence_params = {}
+        self.sigCurrentSequenceUpdated.emit(sequence_object, sequence_params)
         return
 
     def delete_pulse_block(self, block_name):
@@ -1178,6 +1186,10 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_obj:
         @return:
         """
+        if type(asset_obj).__name__ == 'PulseSequence':
+            self.log.warning('Calculation of measurement sequence parameters not implemented yet '
+                             'for PulseSequence objects.')
+            return {'err_code': -1}
         # Create return dictionary
         return_params = {'err_code': 0}
 
@@ -1298,3 +1310,51 @@ class PulsedMasterLogic(GenericLogic):
 
         # return all parameters
         return return_params
+
+    def _get_ensemble_laser_properties(self, ensemble_obj):
+        """
+
+        @param ensemble_obj:
+        @return:
+        """
+
+        return num_of_lasers, max_laser_length
+
+    def _get_block_laser_properties(self, block, reps, laser_index, laser_was_on):
+        """
+
+        @param block:
+        @param reps:
+        @param laser_index:
+        @param laser_was_on:
+        @param length_offset:
+        @return:
+        """
+        tmp_laser_on = laser_was_on
+        tmp_laser_length = 0.0
+        err_code = 0
+        num_of_lasers = 0
+        max_laser_length = 0.0
+        for element in block.element_list:
+            if laser_index < len(element.digital_high) and laser_index >= 0:
+                if not tmp_laser_on and element.digital_high[laser_index]:
+                    tmp_laser_on = True
+                    num_of_lasers += 1
+                elif not element.digital_high[laser_index]:
+                    tmp_laser_on = False
+                if tmp_laser_on:
+                    if element.increment_s > 1.0e-15:
+                        tmp_laser_length += (element.init_length_s + reps * element.increment_s)
+                    else:
+                        tmp_laser_length += element.init_length_s
+                    if tmp_laser_length > max_laser_length:
+                        max_laser_length = tmp_laser_length
+                else:
+                    tmp_laser_length = 0.0
+            else:
+                self.log.error('Laser index "{0}" out of range for number of digital channels '
+                               '({1}) in block "{2}".'
+                               ''.format(laser_index, len(element.digital_high), block_obj.name))
+                err_code = -1
+                break
+        return num_of_lasers, max_laser_length, err_code
