@@ -621,7 +621,7 @@ class SequenceEditor:
     def __init__(self, sequence_editor_widget):
         self.se_widget = sequence_editor_widget
         self.parameter_dict = OrderedDict()
-        self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': 0,
+        self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': -1,
                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                               'unit_prefix': '', 'type': int}
         self.parameter_dict['trigger_wait'] = {'unit': '', 'init_val': False, 'min': 0,
@@ -630,7 +630,7 @@ class SequenceEditor:
         self.parameter_dict['go_to'] = {'unit': '', 'init_val': False, 'min': 0,
                                         'max': 1, 'view_stepsize': 1, 'dec': 0,
                                         'unit_prefix': '', 'type': bool}
-        self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': 0,
+        self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': -1,
                                                 'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                                 'unit_prefix': '', 'type': int}
         self._cfg_param_ps = None
