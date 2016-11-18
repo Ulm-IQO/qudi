@@ -598,32 +598,15 @@ def estimate_doubleexponentialdecay(self, x_axis, data, params):
         Parameters object params: set parameters of initial values
     """
 
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+    # reuse the more general double exponential decay with offset estimator:
+    mod, params_offset = self.make_doubleexponentialdecayoffset_model()
+    error, params_offset = self.estimate_doubleexponentialdecayoffset(x_axis=x_axis,
+                                                                      data=data,
+                                                                      params=params_offset)
 
-    # remove all the data that can be smaller than or equals to data.std()
-    # when the data is smaller than std of the data, it is beyond the resolution
-    # which is not helpful to our fitting.
-    for i in range(0, len(x_axis)):
-        if data[i] <= data.std():
-            break
-
-    # take the logarithm of data, calculate the life time with linear fit.
-    data_log = np.log(data[i])
-
-    minimum = 2 * (x_axis[1]-x_axis[0])
-
-    try:
-        linear_result = self.make_linear_fit(axis=x_axis[0:i],
-                                             data=data_log[0:i],
-                                             add_parameters=None)
-
-        params['lifetime'].set(value=-1/linear_result.params['slope'].value,
-                               min=minimum)
-        params['amplitude'].set(value=linear_result.params['offset'].value)
-
-    except:
-        params['lifetime'].set(value=x_axis[i]-x_axis[0], min=minimum)
-        logger.error('Linear fit did not work in estimate_exponentialdecay.')
+    # Extract the relavent parameters:
+    params['lifetime'] = params_offset['lifetime']
+    params['amplitude'] = params_offset['amplitude']
 
     return error, params
 
@@ -641,7 +624,7 @@ def make_doubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
     """
     doubleexponentialdecay, params = self.make_doubleexponentialdecay_model()
 
-    error, params = self.estimate_baredoubleexponentialdecay(x_axis, data, params)
+    error, params = self.estimate_doubleexponentialdecay(x_axis, data, params)
 
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
@@ -685,9 +668,9 @@ def make_doubleexponentialdecayoffset_model(self, prefix=None):
     """
 
     double_exp_decay, params = self.make_doubleexponentialdecay_model(prefix=prefix)
-    offset_model, params = self.make_offset_model()
+    constant_model, params = self.make_constant_model()
 
-    double_exp_decay_offset = double_exp_decay + offset_model
+    double_exp_decay_offset = double_exp_decay + constant_model
     params = double_exp_decay_offset.make_params()
 
     return double_exp_decay_offset, params
@@ -786,43 +769,7 @@ def make_doubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters=Non
     return result
 
 
-############################################################################
-#                                                                          #
-#                 double exponential decay with offset                     #
-#                                                                          #
-############################################################################
 
-def make_doubleexponentialdecayoffset_model(self, prefix=None):
-    """ Create a double exponential decay model with offset.
-
-    @param str prefix: optional string, which serves as a prefix for all
-                       parameters used in this model. That will prevent
-                       name collisions if this model is used in a composite
-                       way.
-
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-    """
-
-    bare_double_exp_decay, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
-    ampitude_model, params = self.make_amplitude_model()
-    constant_model, params = self.make_constant_model(prefix=prefix)
-
-    double_exp_decay_offset = ampitude_model*bare_double_exp_decay + constant_model
-    params = double_exp_decay_offset.make_params()
-
-    return double_exp_decay_offset, params
 
 
 ############################################################################
