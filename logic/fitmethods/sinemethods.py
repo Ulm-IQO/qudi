@@ -78,6 +78,96 @@ def make_baresine_model(self, prefix=None):
 
     return model, params
 
+def estimate_baresine(self, x_axis, data, params):
+    """ Bare sine estimator with a frequency and phase.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        lmfit.Parameters params: derived OrderedDict object contains the initial
+                                 values for the fit.
+    """
+
+    # Convert for safety:
+    x_axis = np.array(x_axis)
+    data = np.array(data)
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # calculate dft with zeropadding to obtain nicer interpolation between the
+    # appearing peaks.
+    dft_x, dft_y = compute_dft(x_axis, data, zeropad_num=1)
+
+    stepsize = x_axis[1]-x_axis[0]  # for frequency axis
+    frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
+
+    # find minimal distance to the next meas point in the corresponding time value>
+    min_x_diff = np.ediff1d(x_axis).min()
+
+    # How many points are used to sample the estimated frequency with min_x_diff:
+    iter_steps = int(1/(frequency_max*min_x_diff))
+    if iter_steps < 1:
+        iter_steps = 1
+
+    sum_res = np.zeros(iter_steps)
+
+    # Procedure: Create sin waves with different phases and perform a summation.
+    #            The sum shows how well the sine was fitting to the actual data.
+    #            The best fitting sine should be a maximum of the summed time
+    #            trace.
+
+    for iter_s in range(iter_steps):
+        func_val = np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
+        sum_res[iter_s] = np.abs(data - func_val).sum()
+
+    # The minimum indicates where the sine function was fittng the worst,
+    # therefore subtract pi. This will also ensure that the estimated phase will
+    # be in the interval [-pi,pi].
+    phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
+
+    params['frequency'].set(value=frequency_max, min=0.0, max=1/(stepsize)*3)
+    params['phase'].set(value=phase, min=-np.pi, max=np.pi)
+
+    return error, params
+
+
+def make_baresine_fit(self, x_axis, data, add_parameters=None):
+    """ Perform a bare sine fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: optional, additional parameters for the fit,
+                                which will be used instead of the values from
+                                the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    baresine, params = self.make_sine_model()
+    error, params = self.estimate_baresine(x_axis, data, params)
+
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = baresine.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The sine fit did not work.')
+        result = baresine.fit(data, x=x_axis, params=params)
+        print(result.message)
+
+    return result
+
 
 ################################################################################
 #                                                                              #
@@ -129,24 +219,12 @@ def estimate_sine(self, x_axis, data, params):
     # estimate amplitude
     ampl_val = max(np.abs(data.min()), np.abs(data.max()))
 
-
+    # calculate dft with zeropadding to obtain nicer interpolation between the
+    # appearing peaks.
     dft_x, dft_y = compute_dft(x_axis, data, zeropad_num=1)
 
-    # it is assumed that no offset is used
-    # perform fourier transform with zeropadding to get higher resolution
-    # data_level_zeropaded = np.zeros(int(len(data)*2))
-    # data_level_zeropaded[:len(data)] = data
-
-    # fourier = np.fft.fft(data_level_zeropaded)
     stepsize = x_axis[1]-x_axis[0]  # for frequency axis
-
-
-    # freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-
-
-    # frequency_max = freq[np.abs(dft_y).argmax()]
     frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
-
 
     # find minimal distance to the next meas point in the corresponding time value>
     min_x_diff = np.ediff1d(x_axis).min()
