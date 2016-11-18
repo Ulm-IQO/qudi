@@ -175,8 +175,7 @@ def estimate_lorentz(self, x_axis=None,data=None):
 
     return error, amplitude, x_zero, sigma, offset
 
-def make_lorentzian_fit(self, axis=None, data=None,
-                        add_parameters=None):
+def make_lorentzian_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a 1D lorentzian fit on the provided data.
 
     @param numpy.array [] axis: axis values
