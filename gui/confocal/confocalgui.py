@@ -189,6 +189,8 @@ class ConfocalGui(GUIBase):
            'optimizerlogic1': 'OptimizerLogic'
            }
 
+    sigStartOptimizer = QtCore.Signal(list, str)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -582,8 +584,8 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position_from_logic)
 
         # Connect the tracker
+        self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
-        self._optimizer_logic.signal_refocus_started.connect(self.disable_scan_actions)
         self._optimizer_logic.signal_refocus_XY_size_changed.connect(self.update_roi_xy_size)
         self._optimizer_logic.signal_refocus_Z_size_changed.connect(self.update_roi_depth_size)
 
@@ -920,9 +922,6 @@ class ConfocalGui(GUIBase):
         Also, if the refocus was initiated here in confocalgui then we need to handle the
         "returned" optimal position.
         """
-
-        self.enable_scan_actions()
-
         if caller_tag == 'confocalgui':
             self._scanning_logic.set_position(
                 'optimizer',
@@ -931,6 +930,7 @@ class ConfocalGui(GUIBase):
                 z=optimal_pos[2],
                 a=0.0
             )
+        self.enable_scan_actions()
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
@@ -1030,35 +1030,30 @@ class ConfocalGui(GUIBase):
 
     def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started. """
-        self._scanning_logic.start_scanning()
         self.disable_scan_actions()
+        self._scanning_logic.start_scanning()
 
     def continue_xy_scan_clicked(self):
         """ Continue xy scan. """
-        self._scanning_logic.continue_scanning(zscan=False)
         self.disable_scan_actions()
+        self._scanning_logic.continue_scanning(zscan=False)
 
     def continue_depth_scan_clicked(self):
         """ Continue depth scan. """
-        self._scanning_logic.continue_scanning(zscan=True)
         self.disable_scan_actions()
+        self._scanning_logic.continue_scanning(zscan=True)
 
     def depth_scan_clicked(self):
         """ Start depth scan. """
-        self._scanning_logic.start_scanning(zscan=True)
         self.disable_scan_actions()
+        self._scanning_logic.start_scanning(zscan=True)
 
     def refocus_clicked(self):
         """ Start optimize position. """
-        self._scanning_logic.stop_scanning()  # CHECK: is this necessary?
-
+        self.disable_scan_actions()
         # Get the current crosshair position to send to optimizer
         crosshair_pos = self._scanning_logic.get_position()
-
-        self._optimizer_logic.start_refocus(initial_pos=crosshair_pos,
-                                            caller_tag='confocalgui')
-
-        self.disable_scan_actions()
+        self.sigStartOptimizer.emit(crosshair_pos, 'confocalgui')
 
     def update_crosshair_position_from_logic(self, tag):
         """ Update the GUI position of the crosshair from the logic.

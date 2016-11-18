@@ -66,23 +66,19 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         if 'fpgacounter_serial' in config.keys():
             self._serial = config['fpgacounter_serial']
         else:
-            self.log.error('No parameter "fpgacounter_serial" specified in '
-                    'the config! Set the serial number for the currently '
-                    'used fpga counter!\n'
-                    'Open the Opal Kelly Frontpanel to obtain the serial '
-                    'number of the connected FPGA.\n'
-                    'Do not forget to close the Frontpanel before starting '
-                    'the Qudi program.')
+            self.log.error('No parameter "fpgacounter_serial" specified in the config! Set the '
+                           'serial number for the currently used fpga counter!\n'
+                           'Open the Opal Kelly Frontpanel to obtain the serial number of the '
+                           'connected FPGA.\nDo not forget to close the Frontpanel before starting '
+                           'the Qudi program.')
 
         if 'fpga_type' in config.keys():
             self._fpga_type = config['fpga_type']
         else:
             self._fpga_type = 'XEM6310_LX150'
-            self.log.warning('No parameter "fpga_type" specified in the '
-                    'config!\n'
-                    'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
-                    'Taking the type "{0}" as default.'.format(
-                        self._fpga_type))
+            self.log.warning('No parameter "fpga_type" specified in the config!\n'
+                             'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
+                             'Taking the type "{0}" as default.'.format(self._fpga_type))
 
         self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5}
         for key in config.keys():
@@ -148,10 +144,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         bitfile_name = 'fastcounter_' + self._fpga_type + '.bit'
 
         # Load on the FPGA a configuration file (bit file).
-        self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(),
-                                                'thirdparty',
-                                                'qo_fpga',
-                                                bitfile_name))
+        self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga',
+                                              bitfile_name))
 
         # Check if the upload was successful and the Opal Kelly FrontPanel is
         # enabled on the FPGA
@@ -308,14 +302,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # one timebin of the data to read is 32 bit wide and the data is
         # transferred in bytes.
         if self.statusvar != 2:
-            self.log.error('The FPGA is currently not running! The current '
-                    'status is: "{0}". The running status would be 2. Start '
-                    'the FPGA to get the data_trace of the device. An emtpy '
-                    'numpy array[{1},{2}] filled with zeros will be '
-                    'returned.'.format(self.statusvar,
-                        self._number_of_gates,
-                        self._gate_length_bins))
-
+            self.log.error('The FPGA is currently not running! The current status is: "{0}". The '
+                           'running status would be 2. Start the FPGA to get the data_trace of the '
+                           'device. An emtpy numpy array[{1},{2}] filled with zeros will be '
+                           'returned.'.format(self.statusvar, self._number_of_gates,
+                                              self._gate_length_bins))
             return self.count_data
 
         data_buffer = bytearray(self._histogram_size*4)
@@ -342,12 +333,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # read data from the FPGA
         read_err_code = self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
         if read_err_code < 0:
-            self.log.warning('Opal Kelly FrontPanel method ReadFromBlockPipeOut failed with '
-                             'error code {0}.'.format(read_err_code))
+            self.log.warning('Opal Kelly FrontPanel method ReadFromBlockPipeOut failed with error '
+                             'code {0}.'.format(read_err_code))
 
         # encode the bytearray data into 32-bit integers
-        buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size,
-                                 data_buffer))
+        buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size, data_buffer))
 
         # bin the data according to the specified bin width
         if self._binwidth != 1:

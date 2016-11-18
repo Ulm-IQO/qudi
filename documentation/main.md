@@ -2,6 +2,7 @@
 
 
 * [License](@ref license)
+* [Changelog](@ref changelog)
 * Setup
     * [Installation](@ref installation)
     * [Required packages](@ref required-python-packages)
