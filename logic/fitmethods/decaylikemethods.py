@@ -359,7 +359,7 @@ def estimate_exponentialdecayoffset(self, x_axis, data, params):
     # check if the data level contain still negative values and correct
     # the data level therefore. Otherwise problems in the logarithm appear.
     if data_level.min() <= 0:
-        data_level = data_level + data_level.min()
+        data_level = data_level - data_level.min()
 
     # remove all the data that can be smaller than or equals to std.
     # when the data is smaller than std, it is beyond resolution
@@ -656,6 +656,44 @@ def make_doubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
         logger.warning('The exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
+
+
+############################################################################
+#                                                                          #
+#                 double exponential decay with offset                     #
+#                                                                          #
+############################################################################
+
+def make_doubleexponentialdecayoffset_model(self, prefix=None):
+    """ Create a double exponential decay model with offset.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+    """
+
+    double_exp_decay, params = self.make_doubleexponentialdecay_model(prefix=prefix)
+    offset_model, params = self.make_offset_model()
+
+    double_exp_decay_offset = double_exp_decay + offset_model
+    params = double_exp_decay_offset.make_params()
+
+    return double_exp_decay_offset, params
 
 
 ############################################################################
