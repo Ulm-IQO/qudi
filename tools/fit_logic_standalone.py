@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline
-from lmfit import Parameters
+from lmfit import Parameters, models
 import matplotlib.pylab as plt
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
@@ -1832,8 +1832,8 @@ def sineexponentialdecay_testing_data():
 
     filename = '2016-10-19_FID_3MHz_Rabi_5micro-spulsed.txt'
 
-    path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-11\2016-11-04_02_sdrive_signal_-49p15_-61p15dBm_ana')
-    filename = '20161104-18h03m52s_NV04_sdrive_0p65VD1_-49p15_-61p15dBm_g_0p5ms_meas_state_0.txt'
+    path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\2016\2016-11\2016-11-06_04_ddrive_signal_-35p19_-61p15dBm_ana')
+    filename = '20161106-21h31m38s_NV04_ddrive_0p65VD1_0p0975VD2_-35p19_-61p15dBm_g_1ms_meas_7.txt'
 
     meas_data = np.loadtxt(os.path.join(path, filename))
     x_axis = meas_data[0]
@@ -1891,7 +1891,7 @@ def sineexponentialdecay_testing_data():
 
     for iter_s in range(iter_steps):
         func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
-        sum_res[iter_s] = np.abs(data - func_val).sum()
+        sum_res[iter_s] = np.abs(data_level - func_val).sum()
 
     # The minimum indicates where the sine function was fittng the worst,
     # therefore subtract pi. This will also ensure that the estimated phase will
@@ -2096,19 +2096,20 @@ def fit_data():
 
 
 def double_exponential_testing():
-    "Testing for simulated data for a double exponential decay."
+    """Testing for simulated data for a double exponential decay with offset."""
 
-    x_axis = np.linspace(0.005,150,200)
-    lifetime = 50
-    ampl = 30
-    data = ampl * np.exp(-(x_axis/lifetime)**2)
+    x_axis = np.linspace(5, 350,200)
+    lifetime = 100
+    ampl = -6
+    offset = -4
+    data = ampl * np.exp(-(x_axis/lifetime)**2) +offset
 
-    noisy_data = data + data* np.random.normal(size=x_axis.shape)*0.9
 
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.3
 
     plt.figure()
-    plt.plot(x_axis, data, label='measured data')
-    plt.plot(x_axis, noisy_data, label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
     plt.xlabel('Time micro-s')
     plt.ylabel('signal')
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
@@ -2116,52 +2117,186 @@ def double_exponential_testing():
     plt.show()
 
 
+    std_dev =10
+    data_smoothed = filters.gaussian_filter1d(noisy_data, std_dev)
+
+
+    # calculation of offset, take the last 10% from the end of the data
+    # and perform the mean from those.
+    offset = data_smoothed[-max(1, int(len(x_axis)/10)):].mean()
+
+    # substraction of offset, check whether
+    if data_smoothed[0] < data_smoothed[-1]:
+        data_smoothed = offset - data_smoothed
+        inv=-1
+    else:
+        data_smoothed = data_smoothed - offset
+        inv=1
+
+    if data_smoothed.min() <= 0:
+        data_smoothed = data_smoothed - data_smoothed.min()
+
+
     plt.figure()
-    plt.plot(x_axis, np.log(data), label='measured data')
-    plt.plot(x_axis, np.log(noisy_data), label='noisy_data')
+    plt.plot(x_axis, data_smoothed, label='data smoothed')
+#    plt.plot(x_axis, noisy_data, label='noisy_data')
     plt.xlabel('Time micro-s')
     plt.ylabel('signal')
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    data = noisy_data
 
-    indices_nan = np.argwhere(np.isnan(np.log(data)))
-    data = np.delete(data, indices_nan)
-    x_axis = np.delete(x_axis, indices_nan)
+    for i in range(0, len(x_axis)):
+        if data_smoothed[i] <= data_smoothed.std():
+            break
 
-    indices_inf = np.argwhere(np.isinf(np.log(data)))
-    data = np.delete(data, indices_inf)
-    x_axis = np.delete(x_axis, indices_inf)
+    print('data_smoothed.std():',data_smoothed.std())
 
+    data_level_log = np.log(data_smoothed[0:i])
 
-    min_val =np.log(data).min()
-    print("min_val", min_val)
+    p= np.polyfit(x_axis[0:i], data_level_log, deg=2)
+    lifetime = 1/np.sqrt(abs(p[0]))
+    print('lifetime:', lifetime )
 
-    log_data_norm = np.log(data) - min_val
+    amplitude = np.exp(p[2])
 
-    result = qudi_fitting.make_linear_fit(axis=x_axis,
-                                          data=np.sqrt(log_data_norm))
+    print('amplitude_poly:', amplitude )
+
+    poly = np.poly1d(p)
 
     plt.figure()
-    plt.plot(x_axis, np.sqrt(log_data_norm), label='measured data')
-    plt.plot(x_axis, result.best_fit,'-g', label='fit')
+    plt.plot(x_axis[0:i], data_level_log, label='data smoothed filtered')
+    plt.plot(x_axis[0:i], poly(x_axis[0:i]), label='2.nd degree polynomial fit')
     plt.xlabel('Time micro-s')
     plt.ylabel('signal')
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    calc_lifetime = 1/np.sqrt((np.exp((result.params['slope'].value)**2)-1 )*2)
+    mod, params = qudi_fitting.make_doubleexponentialdecayoffset_model()
 
-    print( calc_lifetime, lifetime )
+    params['amplitude'].set(value=amplitude*inv)
+    params['offset'].set(value=offset)
 
-    A_arr = np.log(data) + (x_axis/calc_lifetime)**2
+    min_lifetime = 2 * (x_axis[1]-x_axis[0])
+    params['lifetime'].set(value=lifetime, min=min_lifetime)
 
-#            print('A_arr', A_arr)
+    result = mod.fit(noisy_data, x=x_axis, params=params)
 
-    print(np.exp(A_arr.mean()))
+    plt.figure()
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(result.fit_report())
+
+
+def double_exponential_testing2():
+    """Testing for simulated data for a double exponential decay with offset."""
+
+    x_axis = np.linspace(5, 350,200)
+    lifetime = 100
+    ampl = 5
+    offset = 5
+    data = ampl * np.exp(-(x_axis/lifetime)**2) +offset
+
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.3
+
+    res = qudi_fitting.make_doubleexponentialdecayoffset_fit(x_axis=x_axis,
+                                                             data=noisy_data)
+
+    plt.figure()
+    plt.plot(x_axis, res.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(res.fit_report())
+    return
+
+def voigt_testing():
+
+    x_axis = np.linspace(800, 1000, 301)
+
+    mod, params = qudi_fitting.make_lorentzian_model()
+    p=Parameters()
+
+    params.add('amplitude',value=30.)
+    params.add('center',value=920.)
+    params.add('sigma',value=10)
+    params.add('c',value=10.)
+
+    data_noisy = (mod.eval(x=x_axis, params=params)
+                            + 0.2*np.random.normal(size=x_axis.shape))
+
+    para=Parameters()
+#            para.add('sigma',value=p['sigma'].value)
+#            para.add('amplitude',value=p['amplitude'].value)
+
+    voigt_mod = models.VoigtModel()
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label='measured data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+    error, amplitude, x_zero, sigma, offset = qudi_fitting.estimate_lorentzpeak(x_axis, data_noisy)
+
+#    data_noisy = data_noisy - data_noisy.min()
+
+#    params = voigt_mod.make_params()
+    params = mod.make_params()
+
+    # auxiliary variables
+    stepsize = x_axis[1]-x_axis[0]
+    n_steps = len(x_axis)
+
+    if x_axis[1]-x_axis[0] > 0:
+
+        params['amplitude'].set(value=amplitude, vary=True, min=2e-12,
+                                max=np.inf)
+        params['sigma'].set(value=sigma, vary=True, min=(x_axis[1]-x_axis[0])/2,
+                            max=(x_axis[-1]-x_axis[0])*10)
+        params['center'].set(value=amplitude, vary=True,
+                             min=(x_axis[0])-n_steps*stepsize,
+                             max=(x_axis[-1])+n_steps*stepsize)
+
+    if x_axis[0]-x_axis[1] > 0:
+
+        params['amplitude'].set(value=amplitude, vary=True, min=2e-12,
+                                max=np.inf)
+        params['sigma'].set(value=sigma, vary=True, min=(x_axis[0]-x_axis[1])/2,
+                            max=(x_axis[0]-x_axis[1])*10)
+        params['center'].set(value=amplitude, vary=True,
+                             min=x_axis[-1],
+                             max=x_axis[0])
+
+
+    result = mod.fit(data_noisy, x=x_axis, params=params)
+#    result = voigt_mod.fit(data_noisy, x=x_axis, params=params)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label='measured data')
+    plt.plot(x_axis, result.best_fit, label='fit')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
 
 
 
@@ -2189,7 +2324,7 @@ if __name__ == "__main__":
 #    exponentialdecay_testing()
 #
 #    sineexponentialdecay_testing()
-    sineexponentialdecay_testing_data() # needs a selected file for data input
+#    sineexponentialdecay_testing_data() # needs a selected file for data input
 #    sineexponentialdecay_testing_data2() # use the estimator from the fitlogic,
                                           # needs a selected file for data input
 
@@ -2198,4 +2333,6 @@ if __name__ == "__main__":
 #    stretched_sine_exponential_decay_testing_data() # needs a selected file for data input
 #    linear_testing()
 #    double_exponential_testing()
+    double_exponential_testing2()
+#    voigt_testing()
 
