@@ -89,7 +89,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_record_length = 3.e-6     # in seconds
 
         # parameters of the currently running sequence
-        self.measurement_ticks_list = np.array(range(50), dtype=float)
+        self.controlled_vals = np.array(range(50), dtype=float)
         self.laser_ignore_list = []
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
@@ -188,8 +188,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.fast_counter_record_length = self._statusVariables['fast_counter_record_length']
         if 'sequence_length_s' in self._statusVariables:
             self.sequence_length_s = self._statusVariables['sequence_length_s']
-        if 'measurement_ticks_list' in self._statusVariables:
-            self.measurement_ticks_list = np.array(self._statusVariables['measurement_ticks_list'])
+        if 'controlled_vals' in self._statusVariables:
+            self.controlled_vals = np.array(self._statusVariables['controlled_vals'])
         if 'fast_counter_binwidth' in self._statusVariables:
             self.fast_counter_binwidth = self._statusVariables['fast_counter_binwidth']
         if 'microwave_power' in self._statusVariables:
@@ -271,7 +271,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['laser_trigger_delay_s'] = self.laser_trigger_delay_s
         self._statusVariables['fast_counter_record_length'] = self.fast_counter_record_length
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
-        self._statusVariables['measurement_ticks_list'] = list(self.measurement_ticks_list)
+        self._statusVariables['controlled_vals'] = list(self.controlled_vals)
         self._statusVariables['fast_counter_binwidth'] = self.fast_counter_binwidth
         self._statusVariables['microwave_power'] = self.microwave_power
         self._statusVariables['microwave_freq'] = self.microwave_freq
@@ -295,7 +295,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigExtMicrowaveRunningUpdated.emit(False)
         self.sigFastCounterSettingsUpdated.emit(self.fast_counter_binwidth,
                                                 self.fast_counter_record_length)
-        self.sigPulseSequenceSettingsUpdated.emit(self.measurement_ticks_list,
+        self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
                                                   self.laser_ignore_list, self.alternating,
                                                   self.laser_trigger_delay_s)
@@ -358,23 +358,23 @@ class PulsedMeasurementLogic(GenericLogic):
                                                 self.fast_counter_record_length)
         return self.fast_counter_binwidth, self.fast_counter_record_length
 
-    def set_pulse_sequence_properties(self, measurement_ticks_list, number_of_lasers,
+    def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
                                       sequence_length_s, laser_ignore_list, is_alternating,
                                       laser_trigger_delay_s):
 
-        if is_alternating and len(measurement_ticks_list) != (
+        if is_alternating and len(controlled_vals) != (
             number_of_lasers - len(laser_ignore_list)) / 2:
-            self.log.warning('Number of measurement ticks ({0}) does not match the number of laser '
-                             'pulses to analyze ({1}).'
-                             ''.format(len(measurement_ticks_list),
+            self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
+                             'of laser pulses to analyze ({1}).'
+                             ''.format(len(controlled_vals),
                                        (number_of_lasers - len(laser_ignore_list))/2))
-        elif not is_alternating and len(measurement_ticks_list) != (
+        elif not is_alternating and len(controlled_vals) != (
         number_of_lasers - len(laser_ignore_list)):
-            self.log.warning('Number of measurement ticks ({0}) does not match the number of laser '
-                             'pulses to analyze ({1}).'
-                             ''.format(len(measurement_ticks_list),
+            self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
+                             'of laser pulses to analyze ({1}).'
+                             ''.format(len(controlled_vals),
                                        number_of_lasers - len(laser_ignore_list)))
-        self.measurement_ticks_list = measurement_ticks_list
+        self.controlled_vals = controlled_vals
         self.number_of_lasers = number_of_lasers
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
@@ -384,11 +384,11 @@ class PulsedMeasurementLogic(GenericLogic):
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
-        self.sigPulseSequenceSettingsUpdated.emit(self.measurement_ticks_list,
+        self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
                                                   self.laser_ignore_list, self.alternating,
                                                   self.laser_trigger_delay_s)
-        return self.measurement_ticks_list, self.number_of_lasers, self.sequence_length_s, \
+        return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
                self.laser_ignore_list, self.alternating, self.laser_trigger_delay_s
 
     def get_fastcounter_constraints(self):
@@ -470,6 +470,12 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         # get hardware constraints
         pulser_constraints = self.get_pulser_constraints()
+
+        # check and set interleave
+        if use_interleave is not None:
+            if self._pulse_generator_device.get_interleave() != use_interleave:
+                self.interleave_on = self._pulse_generator_device.set_interleave(use_interleave)
+
         # check and set sample rate
         samplerate_constr = pulser_constraints['sample_rate']
         if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
@@ -478,6 +484,7 @@ class PulsedMeasurementLogic(GenericLogic):
                            ''.format(sample_rate_Hz, samplerate_constr['max']))
             sample_rate_Hz = samplerate_constr['max']
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
+
         # check and set activation_config
         config_constr = pulser_constraints['activation_config']
         if activation_config_name not in config_constr:
@@ -487,14 +494,30 @@ class PulsedMeasurementLogic(GenericLogic):
                            ''.format(activation_config_name, new_config_name))
             activation_config_name = new_config_name
         activation_config = config_constr[activation_config_name]
+        if self.interleave_on:
+            analog_channels_to_activate = [chnl for chnl in activation_config if 'a_ch' in chnl]
+            if len(analog_channels_to_activate) != 1:
+                self.log.warning('When interleave mode is used only one analog channel can be '
+                                 'active in pulse generator. Falling back to an allowed activation '
+                                 'config.')
         channel_activation = self.get_active_channels()
         for chnl in channel_activation:
             if chnl in activation_config:
                 channel_activation[chnl] = True
             else:
                 channel_activation[chnl] = False
-        self._pulse_generator_device.set_active_channels(channel_activation)
-        self.current_channel_config_name = activation_config_name
+        new_activation_dict = self._pulse_generator_device.set_active_channels(channel_activation)
+        new_activation = [chnl for chnl in new_activation_dict if new_activation_dict[chnl]]
+        tmp_config_name = None
+        if new_activation.sort() != activation_config.sort():
+            for config_name in config_constr:
+                if config_constr[config_name].sort() == new_activation:
+                    tmp_config_name = config_name
+                    break
+        else:
+            tmp_config_name = activation_config_name
+        self.current_channel_config_name = tmp_config_name
+
         # check and set analogue amplitude dict
         amplitude_constr = pulser_constraints['a_ch_amplitude']
         for chnl in amplitude_dict:
@@ -504,15 +527,12 @@ class PulsedMeasurementLogic(GenericLogic):
                                'avoid damage.'
                                ''.format(amplitude_dict[chnl], chnl, amplitude_constr['min']))
                 amplitude_dict[chnl] = amplitude_constr['min']
-        self._pulse_generator_device.set_analog_level(amplitude=amplitude_dict)
-        self.analogue_amplitude = amplitude_dict
-        # check and set interleave
-        if use_interleave is not None:
-            self.interleave_on = self._pulse_generator_device.set_interleave(use_interleave)
+        self.analogue_amplitude, dummy = self._pulse_generator_device.set_analog_level(amplitude=amplitude_dict)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
                                                    self.current_channel_config_name,
                                                    self.analogue_amplitude, self.interleave_on)
+
         return self.sample_rate, self.current_channel_config_name, self.analogue_amplitude, self.interleave_on
 
     def get_active_channels(self):
@@ -902,11 +922,11 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Initializing the signal, error and laser plot data.
         """
-        self.signal_plot_x = self.measurement_ticks_list
-        self.signal_plot_y = np.zeros(len(self.measurement_ticks_list))
-        self.signal_plot_y2 = np.zeros(len(self.measurement_ticks_list))
-        self.measuring_error_plot_y = np.zeros(len(self.measurement_ticks_list), dtype=float)
-        self.measuring_error_plot_y2 = np.zeros(len(self.measurement_ticks_list), dtype=float)
+        self.signal_plot_x = self.controlled_vals
+        self.signal_plot_y = np.zeros(len(self.controlled_vals))
+        self.signal_plot_y2 = np.zeros(len(self.controlled_vals))
+        self.measuring_error_plot_y = np.zeros(len(self.controlled_vals), dtype=float)
+        self.measuring_error_plot_y2 = np.zeros(len(self.controlled_vals), dtype=float)
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
         self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int)
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
@@ -932,11 +952,11 @@ class PulsedMeasurementLogic(GenericLogic):
         data['Signal (counts)'] = self.laser_data.transpose()
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
-        parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
+        parameters['Bin size (s)'] = self.fast_counter_binwidth
+        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':')
+                                   timestamp=timestamp, as_text=True, precision=':.6e')
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -962,7 +982,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
+        parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['Signal start (bin)'] = self.signal_start_bin
         parameters['Signal width (bins)'] = self.signal_width_bin
@@ -983,7 +1003,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
                                    timestamp=timestamp, as_text=True, plotfig=fig,
-                                   precision=':3.6e')
+                                   precision=':.6e')
         plt.close(fig)
 
         #####################################################################
@@ -1001,16 +1021,16 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Is counter gated?'] = self.fast_counter_gated
         parameters['Is alternating?'] = self.alternating
-        parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
+        parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
-        parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
-        parameters['Measurement Ticks start'] = self.measurement_ticks_list[0]
-        parameters['Measurement Ticks increment'] = (self.measurement_ticks_list[-1] -
-                                                     self.measurement_ticks_list[0]) / (
-                                                    len(self.measurement_ticks_list) - 1)
+        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
+        parameters['Controlled variable start'] = self.controlled_vals[0]
+        parameters['Controlled variable increment'] = (self.controlled_vals[-1] -
+                                                     self.controlled_vals[0]) / (
+                                                    len(self.controlled_vals) - 1)
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':')
+                                   timestamp=timestamp, as_text=True, precision=':.6e')
         return
 
     def compute_fft(self):

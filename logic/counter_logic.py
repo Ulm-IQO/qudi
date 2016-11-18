@@ -375,17 +375,18 @@ class CounterLogic(GenericLogic):
         # set a lock, to signify the measurment is running
         self.lock()
 
-        returnvalue = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
-        if returnvalue < 0:
+        clock_status = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
+        if clock_status < 0:
             self.unlock()
             self.sigCounterUpdated.emit()
-            return
+            return -1
 
-        returnvalue = self._counting_device.set_up_counter()
-        if returnvalue < 0:
+        counter_status = self._counting_device.set_up_counter()
+        if counter_status < 0:
+            self._counting_device.close_clock()
             self.unlock()
             self.sigCounterUpdated.emit()
-            return
+            return -1
 
         # initialising the data arrays
         self.rawdata = np.zeros([2, self._counting_samples])
