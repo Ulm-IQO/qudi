@@ -741,8 +741,7 @@ def estimate_doubleexponentialdecayoffset(self, x_axis, data, params):
 
 
 def make_doubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
-    """
-    This method performes a bare double exponential decay fit on the provided data.
+    """ Performe a double exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -897,3 +896,57 @@ def make_stretchedexponentialdecayoffset_model(self, prefix=None):
     params = stre_exp_decay_offset.make_params()
 
     return stre_exp_decay_offset, params
+
+
+def estimate_stretchedexponentialdecayoffset(self, x_axis, data, params):
+    """ Provide an estimation for initial values for a stretched exponential
+        decay with offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    # reuse the more general double exponential decay with offset estimator:
+    error, params_offset = self.estimate_doubleexponentialdecayoffset(x_axis=x_axis,
+                                                                      data=data,
+                                                                      params=params)
+    # as an arbitrary starting point:
+    params['beta'].set(value=2, min=0)
+
+    return error, params
+
+
+def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+    """ Performes a stretched exponential decay with offset fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    stret_exp_decay_offset, params = self.make_stretchedexponentialdecayoffset_model()
+
+    error, params = self.estimate_stretchedexponentialdecayoffset(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
+    except:
+        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
+        logger.warning('The double exponentialdecay with offset fit did not work. '
+                       'Message: {}'.format(str(result.message)))
+    return result
