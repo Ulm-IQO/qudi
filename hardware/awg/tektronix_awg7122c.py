@@ -34,7 +34,7 @@ from interface.pulser_interface import PulserInterface
 
 # todo: add in squencing a method which changes from dynamic to jump in order to get triggers for odmr
 class AWG7122C(Base, PulserInterface):
-    """ Unstable and in construction, Jochen Scheuer    """
+    """ Unstable and under construction, Jochen Scheuer    """
 
     _modclass = 'awg7122c'
     _modtype = 'hardware'
@@ -292,11 +292,15 @@ class AWG7122C(Base, PulserInterface):
         activation_config['A1_M1_M2'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of channel 2 only:
         activation_config['A2_M3_M4'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        # FIXME: This is a wrong usage of the channel activation. Using interleave is somehow
+        # independent of the active channels. Once interleave is enabled one has to check whether
+        # the currently set activation config is valid ('a_ch2' off) or not and adjust accordingly.
         # Usage of Interleave configuration with digital channels:
-        activation_config['Interleave_M1_M2'] = ['a_ch1', 'd_ch1', 'd_ch2']
+        # activation_config['Interleave_M1_M2'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of Interleave configuration only:
-        activation_config['Interleave_only'] = ['a_ch1']
+        # activation_config['Interleave_only'] = ['a_ch1']
         # usage of two analog channels only:
+        # FIXME: This is not properly implemented yet. Markers are currently always on.
         activation_config['Two_Analog'] = ['a_ch1', 'a_ch2']
         # Usage of one analog channel without digital channel
         activation_config['Analog1'] = ['a_ch1']
@@ -323,7 +327,6 @@ class AWG7122C(Base, PulserInterface):
             return {'min': 10.0e6, 'max': 12.0e9,
                     'step': 4, 'unit': 'Samples/s'}
 
-    # works!
     def pulser_on(self):
         """ Switches the pulsing device on.
 
@@ -331,12 +334,9 @@ class AWG7122C(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
-
         self.tell('AWGC:RUN\n')
-
         return self.get_status()[0]
 
-    # works!
     def pulser_off(self):
         """ Switches the pulsing device off.
 
@@ -345,7 +345,6 @@ class AWG7122C(Base, PulserInterface):
                                  class variable status_dic.)
         """
         self.tell('AWGC:STOP\n')
-
         return self.get_status()[0]
 
     # TODO: works, but is this hardcoded ch2 really a good idea?
@@ -362,8 +361,8 @@ class AWG7122C(Base, PulserInterface):
         """
 
         if asset_name is None:
-            self.log.warning('No asset name provided for upload!\nCorrect '
-                    'that!\nCommand will be ignored.')
+            self.log.warning('No asset name provided for upload!\nCorrect that!\n'
+                             'Command will be ignored.')
             return -1
 
         # at first delete all the name, which might lead to confusions in the
@@ -405,9 +404,8 @@ class AWG7122C(Base, PulserInterface):
             ftp.cwd(self.asset_directory)
             with open(filepath, 'rb') as uploaded_file:
                 ftp.storbinary('STOR '+filename, uploaded_file)
-        pass
+        return
 
-    #TODO: That should actually 'just' load the channels into the AWG and not upload to the device.
     def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
@@ -438,6 +436,9 @@ class AWG7122C(Base, PulserInterface):
         file_list = self._get_filenames_on_device()
         filename = []
 
+        # Get current channel activation state to be restored after loading the asset
+        chnl_activation = self.get_active_channels()
+
         if (asset_name + '.seq') in file_list:
             file_name = asset_name + '.seq'
 
@@ -457,20 +458,19 @@ class AWG7122C(Base, PulserInterface):
                     self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name +'_ch1', asset_name + '_ch1.wfm'))
                     #load into channel
                     self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch1'))
-                    print("Ch1 loaded",asset_name)
+                    self.log.debug('Ch1 loaded: "{0}"'.format(asset_name))
                     filename.append(file)
                 elif file == asset_name + '_ch2.wfm':
                     self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch2', asset_name + '_ch2.wfm'))
                     self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset_name + '_ch2'))
-                    print("Ch2 loaded",asset_name)
+                    self.log.debug('Ch2 loaded: "{0}"'.format(asset_name))
                     filename.append(file)
 
             if load_dict == {} and filename == []:
-                self.log.warning('No file and channel provided for load!\n'
-                        'Correct that!\nCommand will be ignored.')
+                self.log.warning('No file and channel provided for load!\nCorrect that!\n'
+                                 'Command will be ignored.')
 
-        for channel_num in list(load_dict):
-            print("in load dict")
+        # for channel_num in list(load_dict):
             #asset_name = str(load_dict[channel_num])
             #self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch{0}'.format(int(channel_num)), asset_name + '_ch{0}.wfm'.format(int(channel_num))))
             #self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch{0}'.format(int(channel_num))))
@@ -478,6 +478,8 @@ class AWG7122C(Base, PulserInterface):
         #if len(list(load_dict)) > 0:
         self.current_loaded_asset = asset_name
 
+        # Restore channel activation state
+        self.set_active_channels(chnl_activation)
         return 0
 
 
