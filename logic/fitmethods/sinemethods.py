@@ -646,3 +646,70 @@ def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_paramet
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
 
     return result
+
+
+################################################################################
+#                                                                              #
+#                  Sum of two individual Sinus with offset                     #
+#                                                                              #
+################################################################################
+
+def make_doublesineoffset_model(self, prefix=None):
+    """ Create a model of two summed sine with an offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
+    """
+
+    if prefix is None:
+        add_text = ''
+    else:
+        add_text = prefix
+
+    sine_model1, params = self.make_sine_model(prefix='s1'+add_text)
+    sine_model2, params = self.make_sine_model(prefix='s2'+add_text)
+
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    double_sine_offset = sine_model1 + sine_model2 + constant_model
+    params = double_sine_offset.make_params()
+
+    return double_sine_offset, params
+
+
+################################################################################
+#                                                                              #
+#    Sum of two individual Sinus with offset and single exponential decay      #
+#                                                                              #
+################################################################################
+
+
+################################################################################
+#                                                                              #
+#    Sum of two individual Sinus with offset and double exponential decay      #
+#                                                                              #
+################################################################################
+
+
+################################################################################
+#                                                                              #
+#   Sum of two individual Sinus with offset and stretched exponential decay    #
+#                                                                              #
+################################################################################
+
+
+
+
+
+
+
+
+################################################################################
+#                                                                              #
+#      Sine multiplication: Sum of two Sinus with same amplitude offset        #
+#                                                                              #
+################################################################################
