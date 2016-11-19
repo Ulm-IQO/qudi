@@ -780,6 +780,47 @@ def make_doublesineexpdecayoffset_model(self, prefix=None):
 
     return double_sine_exp_decay_offset, params
 
+def estimate_doublesineexpdecayoffset(self, x_axis, data, params):
+    """ Provides an estimator for initial values of double sine with offset and
+        exponential decay fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make two consecutive
+    # sine offset fits where for the second the first fit is subtracted to
+    # delete the first sine in the data.
+
+    result1 = self.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data)
+    data_sub = data - result1.best_fit
+
+    result2 = self.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub)
+
+    # Fill the parameter dict:
+    params['s1amplitude'].set(value=result1.params['amplitude'].value)
+    params['s1frequency'].set(value=result1.params['frequency'].value)
+    params['s1phase'].set(value=result1.params['phase'].value)
+
+    params['s2amplitude'].set(value=result2.params['amplitude'].value)
+    params['s2frequency'].set(value=result2.params['frequency'].value)
+    params['s2phase'].set(value=result2.params['phase'].value)
+
+    lifetime = (result1.params['lifetime'].value + result2.params['lifetime'].value)/2
+    params['lifetime'].set(value=lifetime)
+    params['offset'].set(value=data.mean())
+
+    return error, params
 
 def make_doublesineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
     """ Perform a double sine offset fit on the provided data.
@@ -803,7 +844,7 @@ def make_doublesineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
     try:
         result = double_sine_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sineexponentialdecay fit did not work. '
+        logger.warning('The doublesineexpdecayoffset fit did not work. '
                 'Error message: {}'.format(str(result.message)))
         result = double_sine_offset.fit(data, x=x_axis, params=params)
 
