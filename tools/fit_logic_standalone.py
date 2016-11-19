@@ -2358,7 +2358,8 @@ def double_sine_offset_testing():
 
 
 def double_sine_offset_testing2():
-    """ Testing procedure the implemented double sine with offset fit. """
+    """ Testing procedure for the implemented double sine with exponential
+        decay and offset fit. """
 
     x_axis = np.linspace(5, 300 ,200)
     phase1 = np.random.uniform()*2*np.pi
@@ -2373,7 +2374,7 @@ def double_sine_offset_testing2():
 
     data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) + offset
 
-    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.5
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.0
 
     result = qudi_fitting.make_doublesineoffset_fit(x_axis=x_axis, data=noisy_data)
 
@@ -2388,6 +2389,41 @@ def double_sine_offset_testing2():
     plt.show()
 
     print(result.fit_report())
+
+
+def double_sine_exp_decay_offset_testing2():
+    """ Testing procedure for the implemented double sine with offset fit. """
+
+    x_axis = np.linspace(5, 600 ,200)
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 1
+    freq1 = 0.02
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 1
+    freq2 = 0.01
+
+    offset = 1
+    lifetime = 100
+
+    data = (ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2))*np.exp(-(x_axis/lifetime)) + offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.3
+
+    result = qudi_fitting.make_doublesineexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+
+    plt.figure()
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+#    print(result.fit_report())
+
 
 def voigt_testing():
 
@@ -2502,8 +2538,9 @@ if __name__ == "__main__":
 #    double_exponential_testing()
 #    double_exponential_testing2()
 #    stretched_exponential_decay_testing()
-    double_sine_offset_testing()
-    double_sine_offset_testing2()
+#    double_sine_offset_testing()
+#    double_sine_offset_testing2()
+    double_sine_exp_decay_offset_testing2()
 
 #    voigt_testing()
 
