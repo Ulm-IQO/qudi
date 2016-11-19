@@ -680,6 +680,72 @@ def make_doublesineoffset_model(self, prefix=None):
 
     return double_sine_offset, params
 
+def estimate_doublesineoffset(self, x_axis, data, params):
+    """ Provides an estimator for initial values of double sine with offset fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make two consecutive
+    # sine offset fits where for the second the first fit is subtracted to
+    # delete the first sine in the data.
+
+    result1 = self.make_sineoffset_fit(x_axis=x_axis, data=data)
+    data_sub = data - result1.best_fit
+
+    result2 = self.make_sineoffset_fit(x_axis=x_axis, data=data_sub)
+
+    # Fill the parameter dict:
+    params['s1amplitude'].set(value=result1.params['amplitude'].value)
+    params['s1frequency'].set(value=result1.params['frequency'].value)
+    params['s1phase'].set(value=result1.params['phase'].value)
+
+    params['s2amplitude'].set(value=result2.params['amplitude'].value)
+    params['s2frequency'].set(value=result2.params['frequency'].value)
+    params['s2phase'].set(value=result2.params['phase'].value)
+
+    params['offset'].set(value=data.mean())
+
+    return error, params
+
+def make_doublesineoffset_fit(self, x_axis, data, add_parameters=None):
+    """ Perform a double sine with offset fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    double_sine_offset, params = self.make_doublesineoffset_model()
+
+    error, params = self.estimate_doublesineoffset(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = double_sine_offset.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The doublesineexpdecayoffset fit did not work. '
+                       'Error message: {}'.format(str(result.message)))
+        result = double_sine_offset.fit(data, x=x_axis, params=params)
+
+    return result
 
 ################################################################################
 #                                                                              #
