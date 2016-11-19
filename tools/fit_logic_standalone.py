@@ -2291,7 +2291,103 @@ def stretched_exponential_decay_testing():
     print(res.fit_report())
     return
 
+def double_sine_offset_testing():
+    """ Testing procedure for the estimator for a double sine with offset fit. """
 
+    x_axis = np.linspace(5, 300 ,200)
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 1
+    freq1 = 0.02
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 1
+    freq2 = 0.01
+
+    offset = 1
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) + offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*2
+
+
+    res = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=noisy_data)
+
+
+    data_sub = noisy_data - res.best_fit
+
+    res2 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_sub)
+
+    plt.figure()
+#    plt.plot(x_axis, data_sub,'-', label='sub')
+    plt.plot(x_axis, res.best_fit+res2.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    mod, params = qudi_fitting.make_doublesineoffset_model()
+
+    params['s1amplitude'].set(value=res.params['amplitude'].value)
+    params['s1frequency'].set(value=res.params['frequency'].value)
+    params['s1phase'].set(value=res.params['phase'].value)
+
+    params['s2amplitude'].set(value=res2.params['amplitude'].value)
+    params['s2frequency'].set(value=res2.params['frequency'].value)
+    params['s2phase'].set(value=res2.params['phase'].value)
+
+    params['offset'].set(value=data.mean())
+
+    result = mod.fit(data, x=x_axis, params=params)
+
+    plt.figure()
+#    plt.plot(x_axis, data_sub,'-', label='sub')
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print("freq1:", result.params['s1frequency'].value)
+    print("freq2:", result.params['s2frequency'].value)
+
+
+def double_sine_offset_testing2():
+    """ Testing procedure the implemented double sine with offset fit. """
+
+    x_axis = np.linspace(5, 300 ,200)
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 1
+    freq1 = 0.02
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 1
+    freq2 = 0.01
+
+    offset = 1
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) + offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.5
+
+    result = qudi_fitting.make_doublesineoffset_fit(x_axis=x_axis, data=noisy_data)
+
+    plt.figure()
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
 
 def voigt_testing():
 
@@ -2373,7 +2469,7 @@ def voigt_testing():
 plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
-    gaussianwithslope_testing()
+#    gaussianwithslope_testing()
 #    N15_testing()
 #    N14_testing()
 #    oneD_testing()
@@ -2405,6 +2501,9 @@ if __name__ == "__main__":
 #    linear_testing()
 #    double_exponential_testing()
 #    double_exponential_testing2()
-    stretched_exponential_decay_testing()
+#    stretched_exponential_decay_testing()
+    double_sine_offset_testing()
+    double_sine_offset_testing2()
+
 #    voigt_testing()
 
