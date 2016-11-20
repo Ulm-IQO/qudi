@@ -19,7 +19,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 
@@ -28,7 +27,6 @@ logger = logging.getLogger(__name__)
 from lmfit.models import Model
 import numpy as np
 from lmfit import Parameters
-import math
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -36,8 +34,12 @@ import math
 ############################################################################
 
 def make_constant_model(self, prefix=None):
-    """ This method creates a model of a constant model.
-    @param string prefix: variable prefix
+    """ Create constant model.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
     @return tuple: (object model, object params)
 
@@ -56,61 +58,53 @@ def make_constant_model(self, prefix=None):
     http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
     """
     def constant_function(x, offset):
-        """
-        Function of a constant value.
-        @param x: variable variable
-        @param offset: independent variable - e.g. offset
+        """ Function of a constant value.
 
-        @return: constant function: in order to use it as a model
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float offset: constant offset
+
+        @return: constant function, in order to use it as a model
         """
 
         return offset
 
     if prefix is None:
-        model = Model(constant_function)
+        model = Model(constant_function, independent_vars='x')
     else:
-        if not isinstance(prefix,str):
+        if not isinstance(prefix, str):
             logger.error('Given prefix in constant model is no string. '
-                    'Deleting prefix.')
+                         'Deleting prefix.')
         try:
             model = Model(constant_function, independent_vars='x', prefix=prefix)
         except:
             logger.error('Creating the constant model failed. '
-                    'The prefix might not be a valid string. '
-                    'The prefix was deleted.')
-            model = Model(constant_function)
+                         'The prefix might not be a valid string. '
+                         'The prefix was deleted.')
+            model = Model(constant_function, independent_vars='x')
 
     params = model.make_params()
 
     return model, params
 
-def make_amplitude_model(self,prefix=None):
+def make_amplitude_model(self, prefix=None):
     """ This method creates a model of a constant model.
-    @param string prefix: variable prefix
 
-    @return tuple: (object model, object params)
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_constant_model.
     """
-    def amplitude_function(x, amplitude):
-        """
-        Function of a constant value.
-        @param x: variable variable
-        @param amplitude: independent variable - e.g. amplitude
 
-        @return: constant function: in order to use it as a model
+    def amplitude_function(x, amplitude):
+        """ Function of a constant value.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float amplitude: constant offset
+
+        @return: constant function, in order to use it as a model
         """
 
         return amplitude
@@ -133,40 +127,47 @@ def make_amplitude_model(self,prefix=None):
 
     return model, params
 
-def make_slope_model(self):
+def make_slope_model(self, prefix=None):
     """ This method creates a model of a slope model.
 
-    @return tuple: (object model, object params)
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_constant_model.
     """
     def slope_function(x, slope):
+        """ Function of a constant value.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float slope: constant slope
+
+        @return: slope function, in order to use it as a model
         """
-        Function of a constant value.
-        @param x: variable variable
-        @param slope: independent variable - slope
 
-        @return: slope function: in order to use it as a model
-        """
+        return slope
 
-        return slope + 0.0 * x
+    if prefix is None:
+        model = Model(slope_function, independent_vars='x', prefix=prefix)
+    else:
+        if not isinstance(prefix, str):
+            logger.error('Given prefix in slope model is no string. '
+                         'Deleting prefix.')
+        try:
+            model = Model(slope_function, independent_vars='x', prefix=prefix)
+        except:
+            logger.error('Creating the slope model failed. '
+                         'The prefix might not be a valid string. '
+                         'The prefix was deleted.')
+            model = Model(slope_function, independent_vars='x',)
 
-    model = Model(slope_function)
     params = model.make_params()
 
     return model, params
+
+
 
 def make_linear_model(self):
     """ This method creates a model of a constant model.
