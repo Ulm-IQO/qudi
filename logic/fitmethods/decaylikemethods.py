@@ -59,8 +59,8 @@ def make_barestretchedexponentialdecay_model(self, prefix=None):
     def barestretchedexponentialdecay_function(x, beta, lifetime):
         """ Function of a bare exponential decay.
 
-        @param numpy.array x: variable variable - e.g. time
-        @param float lifetime: lifetime
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float lifetime: constant lifetime
 
         @return: bare exponential decay function: in order to use it as a model
         """
@@ -87,20 +87,8 @@ def make_bareexponentialdecay_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     bare_exp_decay, params = self.make_barestretchedexponentialdecay_model(prefix=prefix)
@@ -197,19 +185,8 @@ def make_exponentialdecay_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
+    @@return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
@@ -308,19 +285,8 @@ def make_exponentialdecayoffset_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     exp_decay_model, params = self.make_exponentialdecay_model(prefix=prefix)
@@ -445,19 +411,8 @@ def make_baredoubleexponentialdecay_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     bare_double_exp_decay, params = self.make_barestretchedexponentialdecay_model(prefix=prefix)
@@ -562,19 +517,8 @@ def make_doubleexponentialdecay_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     bare_double_exp_decay, params = self.make_baredoubleexponentialdecay_model(prefix=prefix)
@@ -654,19 +598,8 @@ def make_doubleexponentialdecayoffset_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     double_exp_decay, params = self.make_doubleexponentialdecay_model(prefix=prefix)
@@ -783,20 +716,8 @@ def make_stretchedexponentialdecay_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     bare_stre_exp_decay, params = self.make_barestretchedexponentialdecay_model(prefix=prefix)
@@ -880,20 +801,8 @@ def make_stretchedexponentialdecayoffset_model(self, prefix=None):
                        name collisions if this model is used in a composite
                        way.
 
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Here a
-            gaussian model. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
+    @return tuple: (object model, object params), for more description see in
+                   the method make_barestretchedexponentialdecay_model.
     """
 
     stre_exp_decay, params = self.make_stretchedexponentialdecay_model(prefix=prefix)
