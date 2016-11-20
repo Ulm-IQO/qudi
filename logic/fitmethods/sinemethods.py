@@ -881,12 +881,12 @@ def make_twosineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
 
 ################################################################################
 #                                                                              #
-#    Sum of two individual Sinus with offset and double exponential decay      #
+#    Sum of two individual Sinus with offset and three exponential decay       #
 #                                                                              #
 ################################################################################
 
 def make_twosinetwoexpdecayoffset_model(self, prefix=None):
-    """ Create a model of two summed sine with an exponential decay and offset.
+    """ Create a model of two summed sine with three exponential decays and offset.
 
     @param str prefix: optional, if multiple models should be used in a
                        composite way and the parameters of each model should be
@@ -1206,3 +1206,37 @@ def make_threesineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
 
     return result
+
+
+################################################################################
+#                                                                              #
+#    Sum of three individual Sinus with offset and three exponential decay      #
+#                                                                              #
+################################################################################
+
+def make_threesinethreeexpdecayoffset_model(self, prefix=None):
+    """ Create a model of three summed sine with three exponential decays and offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
+    """
+
+    if prefix is None:
+        add_text = ''
+    else:
+        add_text = prefix
+
+    sine_exp_decay_model1, params = self.make_sineexponentialdecay_model(prefix='e1_'+add_text)
+    sine_exp_decay_model2, params = self.make_sineexponentialdecay_model(prefix='e2_'+add_text)
+    sine_exp_decay_model3, params = self.make_sineexponentialdecay_model(prefix='e3_'+add_text)
+
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    three_sine_exp_decay_offset = sine_exp_decay_model1 + sine_exp_decay_model2 + sine_exp_decay_model3  + constant_model
+    params = three_sine_exp_decay_offset.make_params()
+
+    return three_sine_exp_decay_offset, params
