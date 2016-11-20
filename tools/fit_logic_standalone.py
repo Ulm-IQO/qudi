@@ -2330,17 +2330,17 @@ def two_sine_offset_testing():
 
     mod, params = qudi_fitting.make_twosineoffset_model()
 
-    params['s1amplitude'].set(value=res.params['amplitude'].value)
-    params['s1frequency'].set(value=res.params['frequency'].value)
-    params['s1phase'].set(value=res.params['phase'].value)
+    params['s1_amplitude'].set(value=res.params['amplitude'].value)
+    params['s1_frequency'].set(value=res.params['frequency'].value)
+    params['s1_phase'].set(value=res.params['phase'].value)
 
-    params['s2amplitude'].set(value=res2.params['amplitude'].value)
-    params['s2frequency'].set(value=res2.params['frequency'].value)
-    params['s2phase'].set(value=res2.params['phase'].value)
+    params['s2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['s2_frequency'].set(value=res2.params['frequency'].value)
+    params['s2_phase'].set(value=res2.params['phase'].value)
 
     params['offset'].set(value=data.mean())
 
-    result = mod.fit(data, x=x_axis, params=params)
+    result = mod.fit(noisy_data, x=x_axis, params=params)
 
     plt.figure()
 #    plt.plot(x_axis, data_sub,'-', label='sub')
@@ -2590,6 +2590,95 @@ def two_sine_two_exp_decay_offset_testing2():
 
     print(result.fit_report())
 
+def three_sine_offset_testing():
+    """ Testing procedure for the estimator for a three sine with offset fit. """
+
+    x_axis = np.linspace(5, 300 ,200)
+
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 3
+    freq1 = 0.03
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 2
+    freq2 = 0.01
+
+    phase3 = np.random.uniform()*2*np.pi
+    ampl3 = 1
+    freq3 = 0.05
+
+    offset = 1.1
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) + ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) + ampl3 * np.sin(2*np.pi*freq3*x_axis +phase3) + offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*3
+
+    x_dft1, y_dft1 = compute_dft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
+
+    plt.figure()
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time (micro-s)')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    res = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=noisy_data)
+    data_sub1 = noisy_data - res.best_fit
+
+    x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
+
+    res2 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_sub1)
+    data_sub2 = data_sub1 - res2.best_fit
+
+    res3 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_sub2)
+
+    x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
+
+    plt.figure()
+    plt.plot(x_dft1, y_dft1, '-', label='noisy_data (3 peaks)')
+    plt.plot(x_dft2, y_dft2, '-', label='noisy_data (2 peaks)')
+    plt.plot(x_dft3, y_dft3, '-', label='noisy_data (1 peak)')
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+    mod, params = qudi_fitting.make_threesineoffset_model()
+
+    params['s1_amplitude'].set(value=res.params['amplitude'].value)
+    params['s1_frequency'].set(value=res.params['frequency'].value)
+    params['s1_phase'].set(value=res.params['phase'].value)
+
+    params['s2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['s2_frequency'].set(value=res2.params['frequency'].value)
+    params['s2_phase'].set(value=res2.params['phase'].value)
+
+    params['s3_amplitude'].set(value=res3.params['amplitude'].value)
+    params['s3_frequency'].set(value=res3.params['frequency'].value)
+    params['s3_phase'].set(value=res3.params['phase'].value)
+
+    params['offset'].set(value=data.mean())
+
+    result = mod.fit(noisy_data, x=x_axis, params=params)
+
+    plt.figure()
+#    plt.plot(x_axis, data_sub,'-', label='sub')
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
+
+
 
 def voigt_testing():
 
@@ -2709,7 +2798,8 @@ if __name__ == "__main__":
 #    two_sine_exp_decay_offset_testing()
 #    two_sine_exp_decay_offset_testing2()
 #    two_sine_two_exp_decay_offset_testing()
-    two_sine_two_exp_decay_offset_testing2()
+#    two_sine_two_exp_decay_offset_testing2()
+    three_sine_offset_testing()
 
 
 #    voigt_testing()
