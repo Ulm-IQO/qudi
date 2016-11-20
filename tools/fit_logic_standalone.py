@@ -2095,7 +2095,7 @@ def stretched_sine_exponential_decay_testing_data():
 
 
 
-##################################################################################################################
+###############################################################################
 def linear_testing():
     x_axis = np.linspace(1, 51, 100)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
@@ -2109,7 +2109,7 @@ def linear_testing():
     data_noisy = (mod.eval(x=x_axis, params=params)
                   + 10 * np.random.normal(size=x_axis.shape))
 
-    result = qudi_fitting.make_linear_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+    result = qudi_fitting.make_linear_fit(x_axis=x_axis, data=data_noisy, add_parameters=None)
     plt.plot(x_axis, data_noisy, 'ob')
     plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
     print(result.fit_report())
