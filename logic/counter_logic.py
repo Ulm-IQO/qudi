@@ -123,6 +123,11 @@ class CounterLogic(GenericLogic):
                          explanation can be found in method activation.
         """
         self.stopCount()
+        for i in range(20):
+            if self.getState() == 'idle':
+                break
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(0.1)
         return
 
     def set_counting_samples(self, samples = 1):
