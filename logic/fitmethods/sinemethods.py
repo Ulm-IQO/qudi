@@ -1100,7 +1100,7 @@ def make_threesineoffset_fit(self, x_axis, data, add_parameters=None):
 #                                                                              #
 ################################################################################
 
-def make_twosineexpdecayoffset_model(self, prefix=None):
+def make_threesineexpdecayoffset_model(self, prefix=None):
     """ Create a model of three summed sine with an exponential decay and offset.
 
     @param str prefix: optional, if multiple models should be used in a
