@@ -25,7 +25,6 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
-from lmfit import Parameters
 from core.util.units import compute_dft
 
 
@@ -698,8 +697,8 @@ def make_twosineoffset_model(self, prefix=None):
     else:
         add_text = prefix
 
-    sine_model1, params = self.make_sine_model(prefix='s1'+add_text)
-    sine_model2, params = self.make_sine_model(prefix='s2'+add_text)
+    sine_model1, params = self.make_sine_model(prefix='s1_'+add_text)
+    sine_model2, params = self.make_sine_model(prefix='s2_'+add_text)
 
     constant_model, params = self.make_constant_model(prefix=prefix)
 
@@ -989,19 +988,33 @@ def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
 
 ################################################################################
 #                                                                              #
-#   Sum of two individual Sinus with offset and stretched exponential decay    #
+#                Sum of three individual Sinus with offset                     #
 #                                                                              #
 ################################################################################
 
+def make_threesineoffset_model(self, prefix=None):
+    """ Create a model of three summed sine with an offset.
 
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
 
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
+    """
 
+    if prefix is None:
+        add_text = ''
+    else:
+        add_text = prefix
 
+    sine_model1, params = self.make_sine_model(prefix='s1_'+add_text)
+    sine_model2, params = self.make_sine_model(prefix='s2_'+add_text)
+    sine_model3, params = self.make_sine_model(prefix='s3_'+add_text)
 
+    constant_model, params = self.make_constant_model(prefix=prefix)
 
+    three_sine_offset = sine_model1 + sine_model2 + sine_model3 + constant_model
+    params = three_sine_offset.make_params()
 
-################################################################################
-#                                                                              #
-#      Sine multiplication: Sum of two Sinus with same amplitude offset        #
-#                                                                              #
-################################################################################
+    return three_sine_offset, params
