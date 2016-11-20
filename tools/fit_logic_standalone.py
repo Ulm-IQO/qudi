@@ -2391,7 +2391,8 @@ def two_sine_offset_testing2():
     print(result.fit_report())
 
 def two_sine_exp_decay_offset_testing():
-    """ Testing procedure for the implemented two sine with offset fit. """
+    """ Testing procedure for the implemented two sine with exponential decay
+        and offset fit. """
 
     x_axis = np.linspace(5, 600 ,200)
     phase1 = np.random.uniform()*2*np.pi
@@ -2426,10 +2427,10 @@ def two_sine_exp_decay_offset_testing():
     params['s2_phase'].set(value=result2.params['phase'].value)
 
     lifetime = (result1.params['lifetime'].value + result2.params['lifetime'].value)/2
-    params['lifetime'].set(value=lifetime)
+    params['lifetime'].set(value=lifetime, min=2*(x_axis[1]-x_axis[0]))
     params['offset'].set(value=data.mean())
 
-    result = mod.fit(data, x=x_axis, params=params)
+    result = mod.fit(noisy_data, x=x_axis, params=params)
 
     plt.figure()
 #    plt.plot(x_axis, data_sub,'-', label='sub')
@@ -2481,6 +2482,80 @@ def two_sine_exp_decay_offset_testing2():
 
     print(result.fit_report())
 
+
+def two_sine_two_exp_decay_offset_testing():
+    """ Testing procedure for the implemented two sine two exponential decay
+        with offset fit. """
+
+    x_axis = np.linspace(5, 600 ,200)
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 1
+    freq1 = 0.02
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 3
+    freq2 = 0.01
+
+    offset = 1
+    lifetime1 = 100
+    lifetime2 = 100
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1)*np.exp(-(x_axis/lifetime1))  +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2)*np.exp(-(x_axis/lifetime2)) + offset
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.5
+
+
+    result1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    data_sub = noisy_data - result1.best_fit
+
+    result2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub)
+
+    plt.figure()
+    plt.plot(x_axis, data_sub,'-', label='sub')
+#    plt.plot(x_axis, result1.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, '-', label='noisy_data')
+#    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+    mod, params = qudi_fitting.make_twosinetwoexpdecayoffset_model()
+
+    # Fill the parameter dict:
+    params['e1_amplitude'].set(value=result1.params['amplitude'].value)
+    params['e1_frequency'].set(value=result1.params['frequency'].value)
+    params['e1_phase'].set(value=result1.params['phase'].value)
+    params['e1_lifetime'].set(value=result1.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+
+    params['e2_amplitude'].set(value=result2.params['amplitude'].value)
+    params['e2_frequency'].set(value=result2.params['frequency'].value)
+    params['e2_phase'].set(value=result2.params['phase'].value)
+    params['e2_lifetime'].set(value=result2.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['offset'].set(value=data.mean())
+
+    result = mod.fit(noisy_data, x=x_axis, params=params)
+
+    plt.figure()
+#    plt.plot(x_axis, data_sub,'-', label='sub')
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print("freq1:", result.params['e1_frequency'].value)
+    print("freq2:", result.params['e2_frequency'].value)
+
+    print(result.fit_report())
 
 def voigt_testing():
 
@@ -2598,7 +2673,9 @@ if __name__ == "__main__":
 #    two_sine_offset_testing()
 #    two_sine_offset_testing2()
 #    two_sine_exp_decay_offset_testing()
-    two_sine_exp_decay_offset_testing2()
+#    two_sine_exp_decay_offset_testing2()
+    two_sine_two_exp_decay_offset_testing()
+
 
 #    voigt_testing()
 
