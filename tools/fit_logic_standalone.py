@@ -2951,6 +2951,50 @@ def three_sine_three_exp_decay_offset_testing():
 
     print(result.fit_report())
 
+def three_sine_three_exp_decay_offset_testing2():
+    """ Testing procedure for the implemented three sine with three
+        exponential decay and offset fit. """
+
+    x_axis = np.linspace(5, 300 ,200)
+
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 3
+    freq1 = 0.03
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 2
+    freq2 = 0.01
+
+    phase3 = np.random.uniform()*2*np.pi
+    ampl3 = 1
+    freq3 = 0.05
+
+    lifetime1 = 170
+    lifetime2 = 250
+    lifetime3 = 200
+    offset = 1.1
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) * np.exp(-(x_axis/lifetime1)) + \
+           ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) * np.exp(-(x_axis/lifetime2)) + \
+           ampl3 * np.sin(2*np.pi*freq3*x_axis +phase3) * np.exp(-(x_axis/lifetime3)) + \
+           offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.8
+
+    result = qudi_fitting.make_threesinethreeexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+
+    plt.figure()
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
+
 
 def voigt_testing():
 
@@ -3075,7 +3119,8 @@ if __name__ == "__main__":
 #    three_sine_offset_testing2()
 #    three_sine_exp_decay_offset_testing()
 #    three_sine_exp_decay_offset_testing2()
-    three_sine_three_exp_decay_offset_testing()
+#    three_sine_three_exp_decay_offset_testing()
+    three_sine_three_exp_decay_offset_testing2()
 
 
 #    voigt_testing()
