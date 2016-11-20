@@ -2849,6 +2849,109 @@ def three_sine_exp_decay_offset_testing2():
 
     print(result.fit_report())
 
+
+def three_sine_three_exp_decay_offset_testing():
+    """ Testing procedure for the estimator for a three sine with three
+        exponential decays and with offset fit. """
+
+    x_axis = np.linspace(5, 300 ,200)
+
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 3
+    freq1 = 0.03
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 2
+    freq2 = 0.01
+
+    phase3 = np.random.uniform()*2*np.pi
+    ampl3 = 1
+    freq3 = 0.05
+
+    lifetime1 = 100
+    lifetime2 = 150
+    lifetime3 = 200
+    offset = 1.1
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) * np.exp(-(x_axis/lifetime1)) + \
+           ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) * np.exp(-(x_axis/lifetime2)) + \
+           ampl3 * np.sin(2*np.pi*freq3*x_axis +phase3) * np.exp(-(x_axis/lifetime3)) + \
+           offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1
+
+    x_dft1, y_dft1 = compute_dft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
+
+    plt.figure()
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time (micro-s)')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    res1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    data_sub1 = noisy_data - res1.best_fit
+
+    x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
+
+    res2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub1)
+    data_sub2 = data_sub1 - res2.best_fit
+
+    res3 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub2)
+
+    x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
+
+    plt.figure()
+    plt.plot(x_dft1, y_dft1, '-', label='noisy_data (3 peaks)')
+    plt.plot(x_dft2, y_dft2, '-', label='noisy_data (2 peaks)')
+    plt.plot(x_dft3, y_dft3, '-', label='noisy_data (1 peak)')
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+    mod, params = qudi_fitting.make_threesinethreeexpdecayoffset_model()
+
+    params['e1_amplitude'].set(value=res1.params['amplitude'].value)
+    params['e1_frequency'].set(value=res1.params['frequency'].value)
+    params['e1_phase'].set(value=res1.params['phase'].value)
+    params['e1_lifetime'].set(value=res1.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['e2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['e2_frequency'].set(value=res2.params['frequency'].value)
+    params['e2_phase'].set(value=res2.params['phase'].value)
+    params['e2_lifetime'].set(value=res2.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['e3_amplitude'].set(value=res3.params['amplitude'].value)
+    params['e3_frequency'].set(value=res3.params['frequency'].value)
+    params['e3_phase'].set(value=res3.params['phase'].value)
+    params['e3_lifetime'].set(value=res3.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['offset'].set(value=data.mean())
+
+    result = mod.fit(noisy_data, x=x_axis, params=params)
+
+    plt.figure()
+#    plt.plot(x_axis, data_sub,'-', label='sub')
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
+
+
 def voigt_testing():
 
     x_axis = np.linspace(800, 1000, 301)
@@ -2971,7 +3074,8 @@ if __name__ == "__main__":
 #    three_sine_offset_testing()
 #    three_sine_offset_testing2()
 #    three_sine_exp_decay_offset_testing()
-    three_sine_exp_decay_offset_testing2()
+#    three_sine_exp_decay_offset_testing2()
+    three_sine_three_exp_decay_offset_testing()
 
 
 #    voigt_testing()
