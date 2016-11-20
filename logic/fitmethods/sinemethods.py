@@ -734,13 +734,13 @@ def estimate_twosineoffset(self, x_axis, data, params):
     result2 = self.make_sineoffset_fit(x_axis=x_axis, data=data_sub)
 
     # Fill the parameter dict:
-    params['s1amplitude'].set(value=result1.params['amplitude'].value)
-    params['s1frequency'].set(value=result1.params['frequency'].value)
-    params['s1phase'].set(value=result1.params['phase'].value)
+    params['s1_amplitude'].set(value=result1.params['amplitude'].value)
+    params['s1_frequency'].set(value=result1.params['frequency'].value)
+    params['s1_phase'].set(value=result1.params['phase'].value)
 
-    params['s2amplitude'].set(value=result2.params['amplitude'].value)
-    params['s2frequency'].set(value=result2.params['frequency'].value)
-    params['s2phase'].set(value=result2.params['phase'].value)
+    params['s2_amplitude'].set(value=result2.params['amplitude'].value)
+    params['s2_frequency'].set(value=result2.params['frequency'].value)
+    params['s2_phase'].set(value=result2.params['phase'].value)
 
     params['offset'].set(value=data.mean())
 
@@ -1018,3 +1018,77 @@ def make_threesineoffset_model(self, prefix=None):
     params = three_sine_offset.make_params()
 
     return three_sine_offset, params
+
+def estimate_threesineoffset(self, x_axis, data, params):
+    """ Provides an estimator for initial values of three sines with offset fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make three consecutive
+    # sine offset fits where for the next fit the previous is subtracted to
+    # delete its contribution in the data.
+
+    res1 = self.make_sineoffset_fit(x_axis=x_axis, data=data)
+    data_sub1 = data - res1.best_fit
+
+    res2 = self.make_sineoffset_fit(x_axis=x_axis, data=data_sub1)
+    data_sub2 = data_sub1 - res2.best_fit
+
+    res3 = self.make_sineoffset_fit(x_axis=x_axis, data=data_sub2)
+
+    # Fill the parameter dict:
+    params['s1_amplitude'].set(value=res1.params['amplitude'].value)
+    params['s1_frequency'].set(value=res1.params['frequency'].value)
+    params['s1_phase'].set(value=res1.params['phase'].value)
+
+    params['s2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['s2_frequency'].set(value=res2.params['frequency'].value)
+    params['s2_phase'].set(value=res2.params['phase'].value)
+
+    params['s3_amplitude'].set(value=res3.params['amplitude'].value)
+    params['s3_frequency'].set(value=res3.params['frequency'].value)
+    params['s3_phase'].set(value=res3.params['phase'].value)
+
+    params['offset'].set(value=data.mean())
+
+    return error, params
+
+def make_threesineoffset_fit(self, x_axis, data, add_parameters=None):
+    """ Perform a three sine with offset fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    two_sine_offset, params = self.make_threesineoffset_model()
+
+    error, params = self.estimate_threesineoffset(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = two_sine_offset.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The threesineexpdecayoffset fit did not work. '
+                       'Error message: {}'.format(str(result.message)))
+        result = two_sine_offset.fit(data, x=x_axis, params=params)
+
+    return result
