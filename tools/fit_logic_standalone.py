@@ -2624,8 +2624,8 @@ def three_sine_offset_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    res = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=noisy_data)
-    data_sub1 = noisy_data - res.best_fit
+    res1 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=noisy_data)
+    data_sub1 = noisy_data - res1.best_fit
 
     x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
@@ -2678,6 +2678,43 @@ def three_sine_offset_testing():
 
     print(result.fit_report())
 
+
+def three_sine_offset_testing2():
+    """ Testing procedure for the implemented three sine with offset fit. """
+
+    x_axis = np.linspace(5, 300 ,200)
+
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 3
+    freq1 = 0.03
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 2
+    freq2 = 0.01
+
+    phase3 = np.random.uniform()*2*np.pi
+    ampl3 = 1
+    freq3 = 0.05
+
+    offset = 1.1
+
+    data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) + ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2) + ampl3 * np.sin(2*np.pi*freq3*x_axis +phase3) + offset
+
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*3
+
+    result = qudi_fitting.make_threesineoffset_fit(x_axis=x_axis, data=noisy_data)
+
+    plt.figure()
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
 
 
 def voigt_testing():
@@ -2799,7 +2836,8 @@ if __name__ == "__main__":
 #    two_sine_exp_decay_offset_testing2()
 #    two_sine_two_exp_decay_offset_testing()
 #    two_sine_two_exp_decay_offset_testing2()
-    three_sine_offset_testing()
+#    three_sine_offset_testing()
+    three_sine_offset_testing2()
 
 
 #    voigt_testing()
