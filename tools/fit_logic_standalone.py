@@ -2291,7 +2291,7 @@ def stretched_exponential_decay_testing():
     print(res.fit_report())
     return
 
-def double_sine_offset_testing():
+def two_sine_offset_testing():
     """ Testing procedure for the estimator for a double sine with offset fit. """
 
     x_axis = np.linspace(5, 300 ,200)
@@ -2328,7 +2328,7 @@ def double_sine_offset_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    mod, params = qudi_fitting.make_doublesineoffset_model()
+    mod, params = qudi_fitting.make_twosineoffset_model()
 
     params['s1amplitude'].set(value=res.params['amplitude'].value)
     params['s1frequency'].set(value=res.params['frequency'].value)
@@ -2357,8 +2357,8 @@ def double_sine_offset_testing():
     print("freq2:", result.params['s2frequency'].value)
 
 
-def double_sine_offset_testing2():
-    """ Testing procedure for the implemented double sine with exponential
+def two_sine_offset_testing2():
+    """ Testing procedure for the implemented two sine with exponential
         decay and offset fit. """
 
     x_axis = np.linspace(5, 300 ,200)
@@ -2376,7 +2376,7 @@ def double_sine_offset_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.0
 
-    result = qudi_fitting.make_doublesineoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_twosineoffset_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -2390,13 +2390,70 @@ def double_sine_offset_testing2():
 
     print(result.fit_report())
 
-
-def double_sine_exp_decay_offset_testing2():
-    """ Testing procedure for the implemented double sine with offset fit. """
+def two_sine_exp_decay_offset_testing():
+    """ Testing procedure for the implemented two sine with offset fit. """
 
     x_axis = np.linspace(5, 600 ,200)
     phase1 = np.random.uniform()*2*np.pi
     ampl1 = 1
+    freq1 = 0.011
+
+    phase2 = np.random.uniform()*2*np.pi
+    ampl2 = 2
+    freq2 = 0.01
+
+    offset = 1
+    lifetime = 100
+
+    data = (ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2))*np.exp(-(x_axis/lifetime)) + offset
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.6
+
+
+    result1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    data_sub = noisy_data - result1.best_fit
+
+    result2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub)
+
+    mod, params = qudi_fitting.make_twosineexpdecayoffset_model()
+
+    # Fill the parameter dict:
+    params['s1_amplitude'].set(value=result1.params['amplitude'].value)
+    params['s1_frequency'].set(value=result1.params['frequency'].value)
+    params['s1_phase'].set(value=result1.params['phase'].value)
+
+    params['s2_amplitude'].set(value=result2.params['amplitude'].value)
+    params['s2_frequency'].set(value=result2.params['frequency'].value)
+    params['s2_phase'].set(value=result2.params['phase'].value)
+
+    lifetime = (result1.params['lifetime'].value + result2.params['lifetime'].value)/2
+    params['lifetime'].set(value=lifetime)
+    params['offset'].set(value=data.mean())
+
+    result = mod.fit(data, x=x_axis, params=params)
+
+    plt.figure()
+#    plt.plot(x_axis, data_sub,'-', label='sub')
+    plt.plot(x_axis, result.best_fit,'-', label='fit')
+    plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
+#    plt.plot(x_axis, data,'-', label='ideal data')
+    plt.xlabel('Time micro-s')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print("freq1:", result.params['s1_frequency'].value)
+    print("freq2:", result.params['s2_frequency'].value)
+
+    print(result.fit_report())
+
+
+def two_sine_exp_decay_offset_testing2():
+    """ Testing procedure for the implemented two sine with offset fit. """
+
+    x_axis = np.linspace(5, 600 ,200)
+    phase1 = np.random.uniform()*2*np.pi
+    ampl1 = 0.11
     freq1 = 0.02
 
     phase2 = np.random.uniform()*2*np.pi
@@ -2408,9 +2465,9 @@ def double_sine_exp_decay_offset_testing2():
 
     data = (ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2))*np.exp(-(x_axis/lifetime)) + offset
 
-    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.3
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.2
 
-    result = qudi_fitting.make_doublesineexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_twosineexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -2422,7 +2479,7 @@ def double_sine_exp_decay_offset_testing2():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-#    print(result.fit_report())
+    print(result.fit_report())
 
 
 def voigt_testing():
@@ -2538,9 +2595,10 @@ if __name__ == "__main__":
 #    double_exponential_testing()
 #    double_exponential_testing2()
 #    stretched_exponential_decay_testing()
-#    double_sine_offset_testing()
-#    double_sine_offset_testing2()
-    double_sine_exp_decay_offset_testing2()
+#    two_sine_offset_testing()
+#    two_sine_offset_testing2()
+#    two_sine_exp_decay_offset_testing()
+    two_sine_exp_decay_offset_testing2()
 
 #    voigt_testing()
 

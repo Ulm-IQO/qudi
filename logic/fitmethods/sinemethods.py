@@ -793,8 +793,8 @@ def make_twosineexpdecayoffset_model(self, prefix=None):
     else:
         add_text = prefix
 
-    sine_model1, params = self.make_sine_model(prefix='s1'+add_text)
-    sine_model2, params = self.make_sine_model(prefix='s2'+add_text)
+    sine_model1, params = self.make_sine_model(prefix='s1_'+add_text)
+    sine_model2, params = self.make_sine_model(prefix='s2_'+add_text)
     bare_exp_decay_model, params = self.make_bareexponentialdecay_model(prefix=prefix)
 
     constant_model, params = self.make_constant_model(prefix=prefix)
@@ -832,13 +832,13 @@ def estimate_twosineexpdecayoffset(self, x_axis, data, params):
     result2 = self.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub)
 
     # Fill the parameter dict:
-    params['s1amplitude'].set(value=result1.params['amplitude'].value)
-    params['s1frequency'].set(value=result1.params['frequency'].value)
-    params['s1phase'].set(value=result1.params['phase'].value)
+    params['s1_amplitude'].set(value=result1.params['amplitude'].value)
+    params['s1_frequency'].set(value=result1.params['frequency'].value)
+    params['s1_phase'].set(value=result1.params['phase'].value)
 
-    params['s2amplitude'].set(value=result2.params['amplitude'].value)
-    params['s2frequency'].set(value=result2.params['frequency'].value)
-    params['s2phase'].set(value=result2.params['phase'].value)
+    params['s2_amplitude'].set(value=result2.params['amplitude'].value)
+    params['s2_frequency'].set(value=result2.params['frequency'].value)
+    params['s2_phase'].set(value=result2.params['phase'].value)
 
     lifetime = (result1.params['lifetime'].value + result2.params['lifetime'].value)/2
     params['lifetime'].set(value=lifetime)
