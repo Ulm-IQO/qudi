@@ -911,7 +911,6 @@ def make_twosinetwoexpdecayoffset_model(self, prefix=None):
 
     return two_sine_exp_decay_offset, params
 
-
 def estimate_twosinetwoexpdecayoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of two sine with offset and
         two exponential decay fitting.
@@ -984,7 +983,6 @@ def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
 
     return result
-
 
 ################################################################################
 #                                                                              #
@@ -1092,7 +1090,6 @@ def make_threesineoffset_fit(self, x_axis, data, add_parameters=None):
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
     return result
-
 
 ################################################################################
 #                                                                              #
@@ -1240,3 +1237,85 @@ def make_threesinethreeexpdecayoffset_model(self, prefix=None):
     params = three_sine_exp_decay_offset.make_params()
 
     return three_sine_exp_decay_offset, params
+
+def estimate_threesinethreeexpdecayoffset(self, x_axis, data, params):
+    """ Provides an estimator for initial values of three sine with offset and
+        three exponential decay fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make two consecutive
+    # sine offset fits where for the second the first fit is subtracted to
+    # delete the first sine in the data.
+
+    res1 = self.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data)
+    data_sub1 = data - res1.best_fit
+
+    res2 = self.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub1)
+    data_sub2 = data_sub1 - res2.best_fit
+
+    res3 = self.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub2)
+
+    # Fill the parameter dict:
+    params['e1_amplitude'].set(value=res1.params['amplitude'].value)
+    params['e1_frequency'].set(value=res1.params['frequency'].value)
+    params['e1_phase'].set(value=res1.params['phase'].value)
+    params['e1_lifetime'].set(value=res1.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['e2_amplitude'].set(value=res2.params['amplitude'].value)
+    params['e2_frequency'].set(value=res2.params['frequency'].value)
+    params['e2_phase'].set(value=res2.params['phase'].value)
+    params['e2_lifetime'].set(value=res2.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['e3_amplitude'].set(value=res3.params['amplitude'].value)
+    params['e3_frequency'].set(value=res3.params['frequency'].value)
+    params['e3_phase'].set(value=res3.params['phase'].value)
+    params['e3_lifetime'].set(value=res3.params['lifetime'].value,
+                              min=2*(x_axis[1]-x_axis[0]))
+
+    params['offset'].set(value=data.mean())
+
+    return error, params
+
+def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
+    """ Perform a three sine with three exponential decay and offset fit on the
+        provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    three_sine_three_exp_decay_offset, params = self.make_threesinethreeexpdecayoffset_model()
+
+    error, params = self.estimate_threesinethreeexpdecayoffset(x_axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The twosinetwoexpdecayoffset fit did not work. '
+                'Error message: {}'.format(str(result.message)))
+        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+
+    return result
