@@ -1092,3 +1092,39 @@ def make_threesineoffset_fit(self, x_axis, data, add_parameters=None):
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
     return result
+
+
+################################################################################
+#                                                                              #
+#   Sum of three individual Sinus with offset and single exponential decay     #
+#                                                                              #
+################################################################################
+
+def make_twosineexpdecayoffset_model(self, prefix=None):
+    """ Create a model of three summed sine with an exponential decay and offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
+    """
+
+    if prefix is None:
+        add_text = ''
+    else:
+        add_text = prefix
+
+    sine_model1, params = self.make_sine_model(prefix='s1_'+add_text)
+    sine_model2, params = self.make_sine_model(prefix='s2_'+add_text)
+    sine_model3, params = self.make_sine_model(prefix='s3_'+add_text)
+    bare_exp_decay_model, params = self.make_bareexponentialdecay_model(prefix=prefix)
+
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    three_sine_exp_decay_offset = (sine_model1 + sine_model2 + sine_model3)*bare_exp_decay_model + constant_model
+    params = three_sine_exp_decay_offset.make_params()
+
+    return three_sine_exp_decay_offset, params
+
