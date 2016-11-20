@@ -841,7 +841,7 @@ def estimate_twosineexpdecayoffset(self, x_axis, data, params):
     params['s2_phase'].set(value=result2.params['phase'].value)
 
     lifetime = (result1.params['lifetime'].value + result2.params['lifetime'].value)/2
-    params['lifetime'].set(value=lifetime)
+    params['lifetime'].set(value=lifetime, min=2*(x_axis[1]-x_axis[0]))
     params['offset'].set(value=data.mean())
 
     return error, params
@@ -897,15 +897,15 @@ def make_twosinetwoexpdecayoffset_model(self, prefix=None):
     else:
         add_text = prefix
 
-    sine_exp_decay_model1 = self.make_sineexponentialdecay_model(prefix='e1_'+add_text)
-    sine_exp_decay_model2 = self.make_sineexponentialdecay_model(prefix='e2_'+add_text)
+    sine_exp_decay_model1, params = self.make_sineexponentialdecay_model(prefix='e1_'+add_text)
+    sine_exp_decay_model2, params = self.make_sineexponentialdecay_model(prefix='e2_'+add_text)
 
     constant_model, params = self.make_constant_model(prefix=prefix)
 
-    double_sine_exp_decay_offset = sine_exp_decay_model1 + sine_exp_decay_model2 + constant_model
-    params = double_sine_exp_decay_offset.make_params()
+    two_sine_exp_decay_offset = sine_exp_decay_model1 + sine_exp_decay_model2 + constant_model
+    params = two_sine_exp_decay_offset.make_params()
 
-    return double_sine_exp_decay_offset, params
+    return two_sine_exp_decay_offset, params
 
 ################################################################################
 #                                                                              #
