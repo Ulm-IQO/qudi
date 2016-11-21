@@ -20,7 +20,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-import pyqtgraph.functions as fn
+try:
+    import pyqtgraph.functions as fn
+except:
+    fn = None
+import math
 
 
 def get_unit_prefix_dict():
@@ -47,8 +51,78 @@ def get_unit_prefix_dict():
         'E': 1e18,
         'Z': 1e21,
         'Y': 1e24
-        }
+    }
     return unit_prefix_dict
+
+
+class ScaledFloat(float):
+    """
+    Format code 'r' for scaled output.
+
+    Examples
+    --------
+    >>> '{:.0r}A'.format(ScaledFloat(50))
+    50 A
+    >>> '{:.1r}A'.format(ScaledFloat(1.5e3))
+    1.5 kA
+    >>> '{:.1r}A'.format(ScaledFloat(2e-3))
+    2.0 mA
+    >>> '{:rg}A'.format(ScaledFloat(2e-3))
+    2 mA
+    >>> '{:rf}A'.format(ScaledFloat(2e-3))
+    2.000000 mA
+    """
+
+    @property
+    def scale(self):
+        """
+        Returns the scale.
+
+        Examples
+        --------
+        1e-3: m
+        1e6: M
+        """
+        exponent = math.floor(math.log10(abs(self)) / 3)
+        if exponent < -8:
+            exponent = -8
+        if exponent > 8:
+            exponent = 8
+        prefix = 'yzafpnum kMGTPEZY'
+        return prefix[8 + exponent].strip()
+
+    def __format__(self, fmt):
+        """
+        Fromats the string using format fmt.
+
+        r for scaled output.
+
+        Parameters
+        ----------
+        fmt : str format string
+        """
+        autoscale = False
+        if (len(fmt) >= 2):
+            if fmt[-2] == 'r':
+                autoscale = True
+                fmt = fmt[:-2] + fmt[-1]
+            elif fmt[-1] == 'r':
+                autoscale = True
+                fmt = fmt[:-1] + 'f'
+        elif fmt[-1] == 'r':
+            autoscale = True
+            fmt = fmt[:-1] + 'f'
+        if (autoscale):
+            scale = self.scale
+            if (scale == 'u'):
+                index = 'micro'
+            else:
+                index = scale
+            value = self / get_unit_prefix_dict()[index]
+            return '{:s} {:s}'.format(value.__format__(fmt), scale)
+        else:
+            return super().__format__(fmt)
+
 
 def create_formatted_output(param_dict, num_sig_digits=5):
     """ Display a parameter set nicely in SI units.
@@ -86,6 +160,8 @@ def create_formatted_output(param_dict, num_sig_digits=5):
 
 
     """
+    if (fn is None):
+        raise Exception('This function requires pyqtgraph.')
 
     output_str = ''
     atol = 1e-18    # absolute tolerance for the detection of zero.
@@ -93,38 +169,45 @@ def create_formatted_output(param_dict, num_sig_digits=5):
     for entry in param_dict:
         if param_dict[entry].get('error') is not None:
 
-            value, error, digit = round_value_to_error(param_dict[entry]['value'], param_dict[entry]['error'])
+            value, error, digit = round_value_to_error(
+                param_dict[entry]['value'], param_dict[entry]['error'])
 
-            if np.isclose(value, 0.0, atol=atol) or np.isnan(error) or np.isclose(error, 0.0, atol=atol) or np.isinf(error):
-
+            if (np.isclose(value, 0.0, atol=atol)
+                    or np.isnan(error)
+                    or np.isclose(error, 0.0, atol=atol)
+                    or np.isinf(error)):
                 sc_fact, unit_prefix = fn.siScale(param_dict[entry]['value'])
-                str_val = '{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1)
+                str_val = '{0:.{1}e}'.format(
+                    param_dict[entry]['value'], num_sig_digits - 1)
                 if np.isnan(np.float(str_val)):
                     value = np.NAN
                 elif np.isinf(np.float(str_val)):
                     value = np.inf
                 else:
-                    value = float('{0:.{1}e}'.format(param_dict[entry]['value'], num_sig_digits-1))
+                    value = float('{0:.{1}e}'.format(
+                        param_dict[entry]['value'], num_sig_digits - 1))
 
             else:
                 # the factor 10 moves the displayed digit by one to the right,
                 # so that the values from 100 to 0.1 are displayed within one
-                # range, rather then from the value 1000 to 1, which is default.
-                sc_fact, unit_prefix = fn.siScale(error*10)
-
+                # range, rather then from the value 1000 to 1, which is
+                # default.
+                sc_fact, unit_prefix = fn.siScale(error * 10)
 
             output_str += '{0}: {1} \u00B1 {2} {3}{4} \n'.format(entry,
-                                                                 round(value*sc_fact, num_sig_digits-1),
-                                                                 round(error*sc_fact, num_sig_digits-1),
+                                                                 round(
+                                                                     value * sc_fact, num_sig_digits - 1),
+                                                                 round(
+                                                                     error * sc_fact, num_sig_digits - 1),
                                                                  unit_prefix,
-                                                                 param_dict[entry]['unit'],
+                                                                 param_dict[entry][
+                                                                     'unit'],
                                                                  )
 
         else:
             output_str += '{0}: '.format(entry) + fn.siFormat(param_dict[entry]['value'],
-                                      precision=num_sig_digits,
-                                      suffix=param_dict[entry]['unit']) + '\n'
-
+                                                              precision=num_sig_digits,
+                                                              suffix=param_dict[entry]['unit']) + '\n'
 
     return output_str
 
@@ -192,7 +275,7 @@ def round_value_to_error(value, error):
     # check if error is zero, since that is an invalid input!
     if np.isclose(error, 0.0, atol=atol) or np.isnan(error) or np.isinf(error):
         #self.log.error('Cannot round to the error, since either a zero error ')
-        #logger.warning('Cannot round to the error, since either a zero error '
+        # logger.warning('Cannot round to the error, since either a zero error '
         #            'value was passed for the number {0}, or the error is '
         #            'NaN: Error value: {1}. '.format(value, error))
 
@@ -205,7 +288,7 @@ def round_value_to_error(value, error):
     log_val = np.log10(abs(error))
 
     if log_val < 0:
-        round_digit = -(int(log_val)-1)
+        round_digit = -(int(log_val) - 1)
     else:
         round_digit = -(int(log_val))
 
@@ -239,7 +322,7 @@ def get_relevant_digit(entry):
         return int(np.log10(entry))
     else:
         # catch the asymmetric behaviour of the log and int operation.
-        return int(int(np.abs(np.log10(entry)))+1 + np.log10(entry)) - (int(np.abs(np.log10(entry))) +1)
+        return int(int(np.abs(np.log10(entry))) + 1 + np.log10(entry)) - (int(np.abs(np.log10(entry))) + 1)
 
 
 def get_si_norm(entry):
@@ -253,11 +336,12 @@ def get_si_norm(entry):
             float normalization: the factor with which to divide the number.
     """
     val = get_relevant_digit(entry)
-    fact = int(val/3)
-    power = int(3*fact)
+    fact = int(val / 3)
+    power = int(3 * fact)
     norm = 10**(power)
 
-    return entry/norm, norm
+    return entry / norm, norm
+
 
 def is_number(test_value):
     """ Check whether passed value is a number
@@ -265,6 +349,7 @@ def is_number(test_value):
     @return: bool, True if the passed value is a number, otherwise false.
     """
     return is_integer(test_value) or is_float(test_value) or is_complex(test_value)
+
 
 def is_integer(test_value):
     """ Check all available integer representations.
@@ -276,12 +361,14 @@ def is_integer(test_value):
                                 np.uint, np.uint8, np.uint16, np.uint32,
                                 np.uint64]
 
+
 def is_float(test_value):
     """ Check all available float representations.
 
     @return: bool, True if the passed value is a float, otherwise false.
     """
     return type(test_value) in [np.float, np.float16, np.float32, np.float64]
+
 
 def is_complex(test_value):
     """ Check all available complex representations.
