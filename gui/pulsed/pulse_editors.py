@@ -28,6 +28,8 @@ class BlockEditor:
         self.activation_config = None
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
+
+        self.be_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
         return
 
     def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
