@@ -1117,9 +1117,9 @@ class PulsedMeasurementLogic(GenericLogic):
         result = None
 
         # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'axis': x_data,
+        kwargs = {'x_axis': x_data,
                   'data': y_data,
-                  'add_parameters': None}
+                  'add_params': None}
 
         param_dict = OrderedDict()
 

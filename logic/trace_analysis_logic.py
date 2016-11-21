@@ -359,9 +359,9 @@ class TraceAnalysisLogic(GenericLogic):
             update_dict['sigma']     = {'min': -np.inf,    'max': np.inf,     'value': sigma}
             update_dict['amplitude'] = {'min': 0,          'max': np.inf,     'value': amplitude}
 
-            result = self._fit_logic.make_gaussian_fit(axis=axis,
+            result = self._fit_logic.make_gaussian_fit(x_axis=axis,
                                                        data=data,
-                                                       add_parameters=update_dict)
+                                                       add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
@@ -455,9 +455,9 @@ class TraceAnalysisLogic(GenericLogic):
             return self.do_no_fit()
 
         else:
-            result = self._fit_logic.make_doublepoissonian_fit(axis=axis,
+            result = self._fit_logic.make_doublepoissonian_fit(x_axis=axis,
                                                                data=data,
-                                                               add_parameters=None)
+                                                               add_params=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -491,9 +491,9 @@ class TraceAnalysisLogic(GenericLogic):
                     'parameters is smaller than data points')
             return self.do_no_fit()
         else:
-            result = self._fit_logic.make_poissonian_fit(axis=axis,
+            result = self._fit_logic.make_poissonian_fit(x_axis=axis,
                                                          data=data,
-                                                         add_parameters=None)
+                                                         add_params=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)

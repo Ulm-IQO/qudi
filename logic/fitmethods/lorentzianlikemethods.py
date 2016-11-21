@@ -175,12 +175,14 @@ def estimate_lorentz(self, x_axis=None,data=None):
 
     return error, amplitude, x_zero, sigma, offset
 
-def make_lorentzian_fit(self, axis=None, data=None, add_parameters=None):
+def make_lorentzian_fit(self, x_axis, data, add_params=None):
     """ This method performes a 1D lorentzian fit on the provided data.
 
-    @param numpy.array [] axis: axis values
-    @param numpy.array[]  x_data: data
-    @param dict add_parameters: Additional parameters
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object model: lmfit.model.ModelFit object, all parameters
                           provided about the fitting, like: success,
@@ -188,41 +190,40 @@ def make_lorentzian_fit(self, axis=None, data=None, add_parameters=None):
                           with best fit with given axis,...
     """
 
-    error, amplitude, x_zero, sigma, offset = self.estimate_lorentz(axis, data)
+    error, amplitude, x_zero, sigma, offset = self.estimate_lorentz(x_axis, data)
 
     model, params = self.make_lorentzian_model()
 
     # auxiliary variables
-    stepsize = axis[1]-axis[0]
-    n_steps = len(axis)
+    stepsize = x_axis[1]-x_axis[0]
+    n_steps = len(x_axis)
 
     # TODO: Make sigma amplitude and x_zero better
     # Defining standard parameters
 
-    if axis[1]-axis[0]>0:
+    if x_axis[1]-x_axis[0]>0:
         #                (Name,       Value,    Vary,  Min,                        Max,                         Expr)
         params.add_many(('amplitude', amplitude, True, None,                       -1e-12,                      None),
-                        ('sigma',     sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*10,       None),
-                        ('center',    x_zero,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None),
+                        ('sigma',     sigma,     True, (x_axis[1]-x_axis[0])/2 ,       (x_axis[-1]-x_axis[0])*10,       None),
+                        ('center',    x_zero,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None),
                         ('c',         offset,    True, None,                       None,                        None))
 
 
-    if axis[0]-axis[1]>0:
+    if x_axis[0]-x_axis[1]>0:
 
     #                   (Name,        Value,  Vary,    Min,                 Max,                  Expr)
         params.add_many(('amplitude', amplitude, True, None,                -1e-12,               None),
-                        ('sigma',     sigma,     True, (axis[0]-axis[1])/2, (axis[0]-axis[1])*10, None),
-                        ('center',    x_zero,    True, (axis[-1]),          (axis[0]),            None),
+                        ('sigma',     sigma,     True, (x_axis[0]-x_axis[1])/2, (x_axis[0]-x_axis[1])*10, None),
+                        ('center',    x_zero,    True, (x_axis[-1]),          (x_axis[0]),            None),
                         ('c',         offset,    True, None,                None,                 None))
 
-    #redefine values of additional parameters
-    if add_parameters is not None :
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result = model.fit(data, x=axis,params=params)
+        result = model.fit(data, x=x_axis, params=params)
     except:
-        result = model.fit(data, x=axis,params=params)
+        result = model.fit(data, x=x_axis, params=params)
         logger.warning('The 1D lorentzian fit did not work. Error '
                 'message: {0}\n'.format(result.message))
     return result
@@ -285,8 +286,7 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
 
     return error, amplitude, x_zero, sigma, offset
 
-def make_lorentzianpeak_fit(self, axis=None, data=None,
-                             add_parameters=None):
+def make_lorentzianpeak_fit(self, x_axis, data, add_params=None):
     """ Perform a 1D Lorentzian peak fit on the provided data.
 
     @param array [] axis: axis values
@@ -304,43 +304,42 @@ def make_lorentzianpeak_fit(self, axis=None, data=None,
     amplitude,  \
     x_zero,     \
     sigma,      \
-    offset      = self.estimate_lorentzpeak(axis, data)
+    offset      = self.estimate_lorentzpeak(x_axis, data)
 
 
     model, params = self.make_lorentzian_model()
 
     # auxiliary variables:
-    stepsize=np.abs(axis[1]-axis[0])
-    n_steps=len(axis)
+    stepsize=np.abs(x_axis[1]-x_axis[0])
+    n_steps=len(x_axis)
 
 #            TODO: Make sigma amplitude and x_zero better
 
     #Defining standard parameters
 
-    if axis[1]-axis[0]>0:
+    if x_axis[1]-x_axis[0]>0:
 
     #                   (Name,        Value,     Vary, Min,                        Max,                         Expr)
         params.add_many(('amplitude', amplitude, True, 2e-12,                      None,                        None),
-                        ('sigma',     sigma,     True, (axis[1]-axis[0])/2,        (axis[-1]-axis[0])*10,       None),
-                        ('center',    x_zero,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None),
+                        ('sigma',     sigma,     True, (x_axis[1]-x_axis[0])/2,        (x_axis[-1]-x_axis[0])*10,       None),
+                        ('center',    x_zero,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None),
                         ('c',         offset,    True, None,                       None,                        None))
-    if axis[0]-axis[1]>0:
+    if x_axis[0]-x_axis[1]>0:
 
     #                   (Name,        Value,     Vary, Min,                  Max,                  Expr)
         params.add_many(('amplitude', amplitude, True, 2e-12,                None,                 None),
-                        ('sigma',     sigma,     True, (axis[0]-axis[1])/2 , (axis[0]-axis[1])*10, None),
-                        ('center',    x_zero,    True, (axis[-1]),           (axis[0]),            None),
+                        ('sigma',     sigma,     True, (x_axis[0]-x_axis[1])/2 , (x_axis[0]-x_axis[1])*10, None),
+                        ('center',    x_zero,    True, (x_axis[-1]),           (x_axis[0]),            None),
                         ('c',         offset,    True, None,                 None,                 None))
 
     #redefine values of additional parameters
 
-    if add_parameters is not None :
-        params=self._substitute_parameter(parameters=params,
-                                          update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result=model.fit(data, x=axis,params=params)
+        result=model.fit(data, x=x_axis, params=params)
     except:
-        result=model.fit(data, x=axis,params=params)
+        result=model.fit(data, x=x_axis, params=params)
         logger.warning('The 1D gaussian fit did not work. Error '
                 'message:' + result.message)
 
@@ -467,8 +466,7 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
            lorentz0_center,lorentz1_center, lorentz0_sigma, \
            lorentz1_sigma, offset
 
-def make_doublelorentzian_fit(self, axis=None, data=None,
-                               add_parameters=None):
+def make_doublelorentzian_fit(self, x_axis, data, add_params=None):
     """ This method performes a 1D lorentzian fit on the provided data.
 
     @param array [] axis: axis values
@@ -490,32 +488,31 @@ def make_doublelorentzian_fit(self, axis=None, data=None,
     lorentz1_center,    \
     lorentz0_sigma,     \
     lorentz1_sigma,     \
-    offset              = self.estimate_doublelorentz(axis, data)
+    offset              = self.estimate_doublelorentz(x_axis, data)
 
     model, params = self.make_multiplelorentzian_model(no_of_lor=2)
 
     # Auxiliary variables:
-    stepsize=axis[1]-axis[0]
-    n_steps=len(axis)
+    stepsize=x_axis[1]-x_axis[0]
+    n_steps=len(x_axis)
 
     #Defining standard parameters
     #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
     params.add('lorentz0_amplitude', lorentz0_amplitude, True, None,                       -0.01,                       None)
-    params.add('lorentz0_sigma',     lorentz0_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
-    params.add('lorentz0_center',    lorentz0_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
+    params.add('lorentz0_sigma',     lorentz0_sigma,     True, (x_axis[1]-x_axis[0])/2 ,       (x_axis[-1]-x_axis[0])*4,        None)
+    params.add('lorentz0_center',    lorentz0_center,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None)
     params.add('lorentz1_amplitude', lorentz1_amplitude, True, None,                       -0.01,                       None)
-    params.add('lorentz1_sigma',     lorentz1_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
-    params.add('lorentz1_center',    lorentz1_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
+    params.add('lorentz1_sigma',     lorentz1_sigma,     True, (x_axis[1]-x_axis[0])/2 ,       (x_axis[-1]-x_axis[0])*4,        None)
+    params.add('lorentz1_center',    lorentz1_center,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None)
     params.add('c',                  offset,             True, None,                       None,                        None)
 
     #redefine values of additional parameters
-    if add_parameters is not None:
-        params=self._substitute_parameter(parameters=params,
-                                         update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result=model.fit(data, x=axis,params=params)
+        result=model.fit(data, x=x_axis, params=params)
     except:
-        result=model.fit(data, x=axis,params=params)
+        result=model.fit(data, x=x_axis, params=params)
         logger.warning('The double lorentzian fit did not '
                 'work: {0}'.format(result.message))
 
@@ -621,7 +618,7 @@ def estimate_N14(self, x_axis=None, data=None):
     return parameters
 
 
-def make_N14_fit(self, axis=None, data=None, add_parameters=None):
+def make_N14_fit(self, x_axis, data, add_params=None):
     """ This method performs a fit on the provided data where a N14
     hyperfine interaction of 2.15 MHz is taken into account.
 
@@ -637,16 +634,14 @@ def make_N14_fit(self, axis=None, data=None, add_parameters=None):
 
     """
 
-    parameters = self.estimate_N14(axis, data)
+    parameters = self.estimate_N14(x_axis, data)
 
-    # redefine values of additional parameters
-    if add_parameters is not None:
-        parameters = self._substitute_parameter(parameters=parameters,
-                                                update_dict=add_parameters)
+    parameters = self._substitute_params(initial_params=parameters,
+                                        update_params=add_params)
 
     mod, params = self.make_multiplelorentzian_model(no_of_lor=3)
 
-    result = mod.fit(data=data, x=axis, params=parameters)
+    result = mod.fit(data=data, x=x_axis, params=parameters)
 
     return result
 
@@ -719,7 +714,7 @@ def estimate_N15(self, x_axis=None, data=None):
     return parameters
 
 
-def make_N15_fit(self, axis=None, data=None, add_parameters=None):
+def make_N15_fit(self, x_axis, data, add_params=None):
     """ This method performes a fit on the provided data where a N14
     hyperfine interaction of 3.03 MHz is taken into accound.
 
@@ -735,15 +730,14 @@ def make_N15_fit(self, axis=None, data=None, add_parameters=None):
 
     """
 
-    parameters = self.estimate_N15(axis, data)
+    parameters = self.estimate_N15(x_axis, data)
 
     # redefine values of additional parameters
-    if add_parameters is not None:
-        parameters = self._substitute_parameter(parameters=parameters,
-                                                update_dict=add_parameters)
+    parameters = self._substitute_params(initial_params=parameters,
+                                         update_params=add_params)
 
     mod, params = self.make_multiplelorentzian_model(no_of_lor=2)
 
-    result = mod.fit(data=data, x=axis, params=parameters)
+    result = mod.fit(data=data, x=x_axis, params=parameters)
 
     return result

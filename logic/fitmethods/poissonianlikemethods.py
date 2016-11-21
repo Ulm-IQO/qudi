@@ -108,7 +108,7 @@ def make_poissonian_model(self, no_of_functions=None):
     return model, params
 
 
-def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
+def make_poissonian_fit(self, x_axis, data, add_params=None):
     """ This method performes a poissonian fit on the provided data.
 
     @param array[] axis: axis values
@@ -121,28 +121,27 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
                            with best fit with given axis,...
     """
 
-    parameters = [axis, data]
+    parameters = [x_axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
                 logger.error('Given parameter is no one dimensional array.')
 
     mod_final, params = self.make_poissonian_model()
 
-    error, params = self.estimate_poissonian(axis, data, params)
+    error, params = self.estimate_poissonian(x_axis, data, params)
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
 
     try:
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The poissonian fit did not work. Check if a poisson '
                 'distribution is needed or a normal approximation can be'
                 'used. For values above 10 a normal/ gaussian distribution'
                 ' is a good approximation.')
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
         print(result.message)
 
     return result
@@ -186,7 +185,7 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     return error, params
 
 
-def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
+def make_doublepoissonian_fit(self, x_axis, data, add_params=None):
     """ This method performes a double poissonian fit on the provided data.
 
     @param array[] axis: axis values
@@ -199,28 +198,28 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
                            with best fit with given axis,...
     """
 
-    parameters = [axis, data]
+    parameters = [x_axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
                 logger.error('Given parameter is no one dimensional array.')
 
     mod_final, params = self.make_poissonian_model(no_of_functions=2)
 
-    error, params = self.estimate_doublepoissonian(axis, data, params)
+    error, params = self.estimate_doublepoissonian(x_axis, data, params)
 
     # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
 
     try:
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The double poissonian fit did not work. Check if a '
                 'poisson distribution is needed or a normal approximation '
                 'can be used. For values above 10 a normal/ gaussian '
                 'distribution is a good approximation.')
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
         print(result.message)
 
     return result
