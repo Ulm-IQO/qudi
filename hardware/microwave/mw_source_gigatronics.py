@@ -295,6 +295,22 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         """
         return 0
 
+    def sweep_on(self):
+        """ Switches on the sweep mode.
 
+        @return int: error code (0:OK, -1:error)
+        """
+        return -1
 
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
+        """
+        return -1
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return -1
 
