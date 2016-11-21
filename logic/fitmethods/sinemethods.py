@@ -141,9 +141,9 @@ def make_baresine_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: optional, additional parameters for the fit,
-                                which will be used instead of the values from
-                                the estimator.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -260,9 +260,9 @@ def make_sine_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: optional, additional parameters for the fit,
-                                which will be used instead of the values from
-                                the estimator.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -343,9 +343,9 @@ def make_sineoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: optional, additional parameters for the fit,
-                                which will be used instead of the values from
-                                the estimator.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -510,7 +510,9 @@ def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -564,7 +566,9 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=Non
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -643,7 +647,9 @@ def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -742,7 +748,9 @@ def make_twosineoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -845,7 +853,9 @@ def make_twosineexpdecayoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -950,7 +960,9 @@ def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -1056,7 +1068,9 @@ def make_threesineoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -1168,7 +1182,9 @@ def make_threesineexpdecayoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -1283,7 +1299,9 @@ def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_params=None):
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
