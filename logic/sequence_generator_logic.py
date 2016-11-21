@@ -72,7 +72,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigCurrentBlockUpdated = QtCore.Signal(object)
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
-    sigSettingsUpdated = QtCore.Signal(list, str, float, dict)
+    sigSettingsUpdated = QtCore.Signal(list, str, float, dict, str)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
@@ -174,8 +174,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.waveform_format = self._statusVariables['waveform_format']
         if 'sequence_format' in self._statusVariables:
             self.sequence_format = self._statusVariables['sequence_format']
+        self.analog_channels = len([chnl for chnl in self.activation_config if 'a_ch' in chnl])
+        self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict)
+                                     self.amplitude_dict,
+                                     self.waveform_format + '/' + self.sequence_format)
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -248,11 +251,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
         self.sigCurrentSequenceUpdated.emit(self.current_sequence)
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict)
+                                     self.amplitude_dict,
+                                     self.waveform_format + '/' + self.sequence_format)
         self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
-    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict):
+    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict, sampling_format):
         """
         Sets all settings for the generator logic.
 
@@ -260,6 +264,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param laser_channel:
         @param sample_rate:
         @param amplitude_dict:
+        @param sampling_format:
         @return:
         """
         # check if the currently chosen laser channel is part of the config and adjust if this
@@ -279,8 +284,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.digital_channels = len([chnl for chnl in activation_config if 'd_ch' in chnl])
         self.amplitude_dict = amplitude_dict
         self.sample_rate = sample_rate
-        self.sigSettingsUpdated.emit(activation_config, laser_channel, sample_rate, amplitude_dict)
-        return self.activation_config, self.laser_channel, self.sample_rate, self.amplitude_dict
+        self.waveform_format = sampling_format.split('/')[0]
+        self.sequence_format = sampling_format.split('/')[1]
+        self.sigSettingsUpdated.emit(activation_config, laser_channel, sample_rate, amplitude_dict,
+                                     sampling_format)
+        return self.activation_config, self.laser_channel, self.sample_rate, self.amplitude_dict, \
+               sampling_format
 
 # -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -432,7 +441,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if ensemble.laser_channel is not None:
             self.laser_channel = ensemble.laser_channel
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict)
+                                     self.amplitude_dict,
+                                     self.waveform_format + '/' + self.sequence_format)
         self.current_ensemble = ensemble
         self.sigCurrentEnsembleUpdated.emit(ensemble)
         return
@@ -533,7 +543,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if sequence.laser_channel is not None:
             self.laser_channel = sequence.laser_channel
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict)
+                                     self.amplitude_dict,
+                                     self.waveform_format + '/' + self.sequence_format)
         self.current_sequence = sequence
         self.sigCurrentSequenceUpdated.emit(sequence)
         return
@@ -586,7 +597,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if len(sequence_files) > 1:
             self.log.error('More than one serialized sequence dict was found in {0}.\n'
                            'Using {1}.'.format(self.sequence_dir, sequence_files[-1]))
-            sequence_files = sequence_files[-1]
+        sequence_files = sequence_files[-1]
         try:
             with open(os.path.join(self.sequence_dir, sequence_files), 'rb') as infile:
                 self.saved_pulse_sequences = pickle.load(infile)
@@ -949,7 +960,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
             # go now through the sequence list and replace all the entries with the output of the
             # sampled ensemble file:
-            for ensemble_obj, seq_param  in sequence_obj.ensemble_param_list:
+            for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
 
                 temp_dict = dict()
                 temp_dict['name'] = sampled_ensembles[ensemble_obj.name]

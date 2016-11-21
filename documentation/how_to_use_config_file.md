@@ -8,10 +8,10 @@ where the required parameters are specified individually for a module.
 
 Our config file uses the [YAML](http://yaml.org/) format, a data serialization format designed for
 human readability and interaction with scripting languages. Qudi modifies the
-PyYAML implementation, which serves as a YAML parser. Therefore Qudi has
+ruamel.yaml implementation, which serves as a YAML parser. Therefore Qudi has
 implemented a loader and a dumper using an collections.OrderedDict() instead of
-the regular python dict() used by PyYAML.
-Additionally, it fixes a bug in PyYAML with scientific notation and allows
+the regular python dict() used by ruamel.yaml.
+Additionally, it fixes a bug in ruamel.yaml with scientific notation and allows
 to dump numpy.dtypes and numpy.ndarrays.
 
 ## Example of a config file

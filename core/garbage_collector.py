@@ -1,12 +1,13 @@
 import gc
 
+from qtpy.QtCore import QObject
 from qtpy.QtCore import QTimer
 from qtpy.QtCore import Slot
 import logging
 logger = logging.getLogger('gc')
 
 
-class GarbageCollector:
+class GarbageCollector(QObject):
     '''
     Disable automatic garbage collection and instead collect manually
     on a timer.
@@ -34,6 +35,7 @@ class GarbageCollector:
         @param interval float: timeout interval in seconds. Default: 1s
         @param debug bool: debug output. Default: False
         """
+        super().__init__()
         self.debug = debug
         if debug:
             gc.set_debug(gc.DEBUG_LEAK)

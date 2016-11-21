@@ -23,13 +23,13 @@ Now you can open `start.py` in the PyCharm project and execute it by right click
 
 ## Linux (Debian-based)
 
-Install subversion, do `git clone https://github.com/Ulm-IQO/qudi.git` .
+Install git, do `git clone https://github.com/Ulm-IQO/qudi.git` .
 
 Install all packages listed in the file `tools/debian-jessie-packages.txt`.
 
 Install all Python packages listed in the file `tools/debian-jessie-pip.txt` with pip3.
 
-You should now be able to run `python3 start.py` in the qudi folder.
+You should now be able to run `python3 start.py` in the qudi folder and get a manager window showing the example configuration.
 
 ## PyDAQmx fix
 
