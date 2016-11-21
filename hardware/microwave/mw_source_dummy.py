@@ -49,8 +49,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         try:
             import visa
         except:
-            self.log.error('No visa connection installed. Please install '
-                    'pyvisa.')
+            self.log.error('No visa connection installed. Please install pyvisa.')
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -124,8 +123,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(
-            power))
+        self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(power))
         return 0
 
 
@@ -201,6 +199,26 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        self.log.warning('MicrowaveDummy>ex_trigger')
+        return 0
 
+    def sweep_on(self):
+        """ Switches on the sweep mode.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self.log.warning('MicrowaveDummy>sweep_on')
+
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
+        """
+        self.log.warning('MicrowaveDummy>set_sweep {0} {1} {2} {3}'.format(start, stop, step, power))
+        return 0
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0
 
