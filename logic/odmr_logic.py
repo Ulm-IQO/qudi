@@ -270,7 +270,7 @@ class ODMRLogic(GenericLogic):
             self.sigMicrowaveListModeChanged.emit(False)
             self.sigOdmrStopped.emit()
             return -1
-            
+
         if self.scanmode == 'SWEEP':
             if len(self._mw_frequency_list) >= self.limits.sweep_maxentries:
                 self.stopRequested = True
@@ -575,9 +575,9 @@ class ODMRLogic(GenericLogic):
                                       num=int(len(x_data)*fit_granularity_fact))
 
         # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'axis': x_data,
+        kwargs = {'x_axis': x_data,
                   'data': y_data,
-                  'add_parameters': None}
+                  'add_params': None}
 
         if self.fit_function == 'Lorentzian':
 
@@ -677,7 +677,7 @@ class ODMRLogic(GenericLogic):
                 splitting_from_gui_config *= -1
                 additional_parameters['lorentz1_center'] = {'expr': 'lorentz0_center{0:+f}'.format(splitting_from_gui_config)}
 
-            kwargs['add_parameters'] = additional_parameters
+            kwargs['add_params'] = additional_parameters
 
 
             result = self._fit_logic.make_doublelorentzian_fit(**kwargs)

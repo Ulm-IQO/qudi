@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 from lmfit.models import Model
 import numpy as np
-from lmfit import Parameters
+
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -242,12 +242,14 @@ def estimate_linear(self, x_axis, data, params):
     return error, params
 
 
-def make_linear_fit(self, x_axis, data, add_parameters=None):
+def make_linear_fit(self, x_axis, data, add_params=None):
     """ Performe a linear fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -259,10 +261,8 @@ def make_linear_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_linear(x_axis, data, params)
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = linear.fit(data, x=x_axis, params=params)
     except:

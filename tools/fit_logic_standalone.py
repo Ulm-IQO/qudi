@@ -202,7 +202,7 @@ def N15_testing():
     else:
         x_axis_min = x[data_smooth_lorentz.argmin()]-hf_splitting
 
-    result=qudi_fitting.make_N15_fit(x,data_noisy)
+    result=qudi_fitting.make_N15_fit(x, data_noisy)
     print(result.best_values['lorentz0_center'])
     plt.plot(x,data_noisy)
     plt.plot(x,result.init_fit,'-y')
@@ -465,7 +465,7 @@ def twoD_testing():
 #            para.add('sigma_y',min=0.2*((15.-13.)/12.) ,           max=   10*(y[-1]-y[0]))
 #            para.add('x_zero',value=40,min=50,max=100)
 
-    result=qudi_fitting.make_twoDgaussian_fit(axis=axes,data=data,add_parameters=para)
+    result=qudi_fitting.make_twoDgaussian_fit(xy_axes=axes, data=data,add_parameters=para)
 
 #            print(result.fit_report())
 #            FIXME: What does "Tolerance seems to be too small." mean in message?
@@ -496,7 +496,7 @@ def oneD_testing():
 
     data_noisy=mod_final.eval(x=x, amplitude=100000,center=2,sigma=1.0, c=10000) + 8000*abs(np.random.normal(size=x.shape))
 ##            print(qudi_fitting.data_noisy)
-    result=qudi_fitting.make_gaussian_fit(axis=x,data=data_noisy)
+    result=qudi_fitting.make_gaussian_fit(x_axis=x, data=data_noisy)
 #
 #
 #    gaus=gaussian(3,5)
@@ -538,7 +538,7 @@ def useful_object_variables():
 #            para.add('sigma',vary=False,min=3,max=4)
     #also expression possible
 
-    result=qudi_fitting.make_lorentzian_fit(x,data_noisy,add_parameters=para)
+    result=qudi_fitting.make_lorentzian_fit(x, data_noisy, add_params=para)
 
 #            print('success',result.success)
 #            print('best value',result.best_values['center'])
@@ -770,7 +770,7 @@ def lorentzian_testing():
 #            para.add('amplitude',value=p['amplitude'].value)
 
 #            result=mod.fit(data_noisy,x=x,params=p)
-    result=qudi_fitting.make_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+    result=qudi_fitting.make_lorentzian_fit(x_axis=x, data=data_noisy, add_params=para)
 #            result=mod.fit(axis=x,data=data_noisy,add_parameters=p)
 
 #            print(result.fit_report())
@@ -933,8 +933,8 @@ def powerfluorescence_testing():
 
 #            data=np.loadtxt('Po_Fl.txt')
 
-    result=qudi_fitting.make_powerfluorescence_fit(axis=x,data=data_noisy,add_parameters=para)
-#            result=qudi_fitting.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
+    result=qudi_fitting.make_powerfluorescence_fit(x_axis=x, data=data_noisy, add_params=para)
+#            result=qudi_fitting.make_powerfluorescence_fit(x_axis=data[:,0], data=data[:,2]/1000, add_paras=para)
 
     print(result.fit_report())
 
@@ -1128,8 +1128,8 @@ def sine_testing():
  #           para['phase'] = {'vary': False, 'value': np.pi/2.}
   #          para['amplitude'] = {'min': 0.0}
 
-    result=qudi_fitting.make_sineoffset_fit(axis=x_axis,data=data_noisy,add_parameters=None)
-##            result=qudi_fitting.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
+    result=qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy, add_params=None)
+##            result=qudi_fitting.make_powerfluorescence_fit(x_axis=data[:,0],data=data[:,2]/1000,add_params=para)
 #
 #            print(result.fit_report())
 
@@ -1288,7 +1288,7 @@ def twoD_gaussian_magnet():
 #            para.add('sigma_y',min=0.2*((15.-13.)/12.) , max=   10*(y[-1]-y[0]))
 #            para.add('x_zero',value=40,min=50,max=100)
 
-    result=qudi_fitting.make_twoDgaussian_fit(axis=axes,data=data,add_parameters=para)
+    result=qudi_fitting.make_twoDgaussian_fit(xy_axes=axes, data=data, add_parameters=para)
     print(result.params)
 
     print(result.fit_report())
@@ -1486,7 +1486,7 @@ def double_poissonian_testing2():
     gaus=gaussian(10,10)
     data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
 
-    result = qudi_fitting.make_doublepoissonian_fit(x,data_noisy)
+    result = qudi_fitting.make_doublepoissonian_fit(x, data_noisy)
     print(result.fit_report())
 
     try:
@@ -1527,7 +1527,7 @@ def poissonian_testing():
     data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
 
 
-    result = qudi_fitting.make_poissonian_fit(x,data_noisy)
+    result = qudi_fitting.make_poissonian_fit(x, data_noisy)
     print(result.fit_report())
     try:
         plt.plot(x, data_noisy, '-b')
@@ -1599,13 +1599,13 @@ def gaussian_testing():
     update_dict['amplitude']={'min':-np.inf,'max':np.inf,'value':amplitude}
     print('params',params['c'])
     print('dict',update_dict['c'])
-    params = qudi_fitting._substitute_parameter(parameters=params, update_dict=update_dict)
+    params = qudi_fitting._substitute_params(initial_params=params, update_params=update_dict)
     print('params',params['c'])
 
     # overwrite values of additional parameters
 #            if add_parameters is not None:
-#                params = qudi_fitting._substitute_parameter(parameters=params,
-#                                                    update_parameters=add_parameters)
+#                params = qudi_fitting._substitute_parames(initial_params=params,
+#                                                          update_params=add_parameters)
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
@@ -1657,7 +1657,7 @@ def gaussianwithslope_testing():
     update["sigma"]={"min":-np.inf,"max":np.inf}
     update["center"]={"min":-np.inf,"max":np.inf}
     update["amplitude"]={"min":-np.inf,"max":np.inf}
-    result=qudi_fitting.make_gaussianwithslope_fit(axis=x,data=data_noisy,add_parameters=update)
+    result=qudi_fitting.make_gaussianwithslope_fit(x_axis=x, data=data_noisy, add_params=update)
 #
 ##
 #    gaus=gaussian(3,5)

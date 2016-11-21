@@ -141,14 +141,14 @@ def estimate_bareexponentialdecay(self, x_axis, data, params):
 
     return error, params
 
-def make_bareexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_bareexponentialdecay_fit(self, x_axis, data, add_params=None):
     """ Perform a fit for the bare exponential on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: optional, additional parameters for the fit,
-                                which will be used instead of the values from
-                                the estimator.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -159,15 +159,15 @@ def make_bareexponentialdecay_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_bareexponentialdecay(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    if add_params is not None:
+        params = self._substitute_params(initial_params=params,
+                                         update_params=add_params)
     try:
         result = bareexponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = bareexponentialdecay.fit(data, x=x_axis, params=params)
         logger.warning('The bare exponential decay fit did not work. lmfit '
-                'result message: {}'.format(str(result.message)))
+                       'result message: {}'.format(str(result.message)))
     return result
 
 ############################################################################
@@ -242,12 +242,14 @@ def estimate_exponentialdecay(self, x_axis, data, params):
 
     return error, params
 
-def make_exponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_exponentialdecay_fit(self, x_axis, data, add_params=None):
     """ Perform a fit for the exponential decay on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters for the fit
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -258,9 +260,8 @@ def make_exponentialdecay_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_exponentialdecay(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = exponentialdecay.fit(data, x=x_axis, params=params)
     except:
@@ -370,12 +371,14 @@ def estimate_exponentialdecayoffset(self, x_axis, data, params):
     return error, params
 
 
-def make_exponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_exponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Performes a exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -386,9 +389,8 @@ def make_exponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_exponentialdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = exponentialdecay.fit(data, x=x_axis, params=params)
     except:
@@ -476,12 +478,14 @@ def estimate_baredoubleexponentialdecay(self, x_axis, data, params):
 
     return error, params
 
-def make_baredoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_baredoubleexponentialdecay_fit(self, x_axis, data, add_params=None):
     """ Performes a bare double exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -492,9 +496,8 @@ def make_baredoubleexponentialdecay_fit(self, x_axis, data, add_parameters=None)
 
     error, params = self.estimate_baredoubleexponentialdecay(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = baredoubleexponentialdecay.fit(data, x=x_axis, params=params)
     except:
@@ -556,12 +559,14 @@ def estimate_doubleexponentialdecay(self, x_axis, data, params):
 
     return error, params
 
-def make_doubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_doubleexponentialdecay_fit(self, x_axis, data, add_params=None):
     """ Performes a double exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -572,9 +577,8 @@ def make_doubleexponentialdecay_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_doubleexponentialdecay(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = doubleexponentialdecay.fit(data, x=x_axis, params=params)
     except:
@@ -675,12 +679,14 @@ def estimate_doubleexponentialdecayoffset(self, x_axis, data, params):
 
 
 
-def make_doubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_doubleexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Performe a double exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -691,9 +697,8 @@ def make_doubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters=Non
 
     error, params = self.estimate_doubleexponentialdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = double_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
@@ -760,12 +765,14 @@ def estimate_stretchedexponentialdecay(self, x_axis, data, params):
 
     return error, params
 
-def make_stretchedexponentialdecay_fit(self, x_axis, data, add_parameters=None):
+def make_stretchedexponentialdecay_fit(self, x_axis, data, add_params=None):
     """ Performes a stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -776,9 +783,8 @@ def make_stretchedexponentialdecay_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_stretchedexponentialdecay(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = stret_exp_decay.fit(data, x=x_axis, params=params)
     except:
@@ -842,12 +848,14 @@ def estimate_stretchedexponentialdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Performes a stretched exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param dict add_parameters: Additional parameters
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -858,9 +866,8 @@ def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_parameters=
 
     error, params = self.estimate_stretchedexponentialdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:

@@ -136,7 +136,7 @@ def estimate_baresine(self, x_axis, data, params):
     return error, params
 
 
-def make_baresine_fit(self, x_axis, data, add_parameters=None):
+def make_baresine_fit(self, x_axis, data, add_params=None):
     """ Perform a bare sine fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -154,10 +154,8 @@ def make_baresine_fit(self, x_axis, data, add_parameters=None):
     baresine, params = self.make_sine_model()
     error, params = self.estimate_baresine(x_axis, data, params)
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = baresine.fit(data, x=x_axis, params=params)
     except:
@@ -257,7 +255,7 @@ def estimate_sine(self, x_axis, data, params):
     return error, params
 
 
-def make_sine_fit(self, x_axis, data, add_parameters=None):
+def make_sine_fit(self, x_axis, data, add_params=None):
     """ Perform a simple sine fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -275,10 +273,8 @@ def make_sine_fit(self, x_axis, data, add_parameters=None):
     sine, params = self.make_sine_model()
     error, params = self.estimate_sine(x_axis, data, params)
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = sine.fit(data, x=x_axis, params=params)
     except:
@@ -342,7 +338,7 @@ def estimate_sineoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_sineoffset_fit(self, x_axis, data, add_parameters=None):
+def make_sineoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine fit with a constant offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -361,10 +357,8 @@ def make_sineoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_sineoffset(x_axis, data, params)
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = sine.fit(data, x=x_axis, params=params)
     except:
@@ -511,7 +505,7 @@ def estimate_sineexponentialdecayoffset(self, x_axis, data, params=None):
 
     return error, params
 
-def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -527,9 +521,8 @@ def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None)
 
     error, params = self.estimate_sineexponentialdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
@@ -566,7 +559,7 @@ def make_sinedoubleexponentialdecayoffset_model(self, prefix=None):
 
     return model, params
 
-def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine double exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -586,9 +579,8 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_parameters
 
     error, params = self.estimate_sineexponentialdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
     except:
@@ -646,7 +638,7 @@ def estimate_sinestretchedexponentialdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -662,9 +654,8 @@ def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_paramet
 
     error, params = self.estimate_sinestretchedexponentialdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
     except:
@@ -746,7 +737,7 @@ def estimate_twosineoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_twosineoffset_fit(self, x_axis, data, add_parameters=None):
+def make_twosineoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a two sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -762,9 +753,8 @@ def make_twosineoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_twosineoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = two_sine_offset.fit(data, x=x_axis, params=params)
     except:
@@ -849,7 +839,7 @@ def estimate_twosineexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_twosineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_twosineexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a two sine with one exponential decay offset fit on the provided
         data.
 
@@ -866,9 +856,8 @@ def make_twosineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_twosineexpdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
@@ -955,7 +944,7 @@ def estimate_twosinetwoexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
 
@@ -972,9 +961,8 @@ def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_twosinetwoexpdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
@@ -1063,7 +1051,7 @@ def estimate_threesineoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_threesineoffset_fit(self, x_axis, data, add_parameters=None):
+def make_threesineoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a three sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -1079,9 +1067,8 @@ def make_threesineoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_threesineoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = two_sine_offset.fit(data, x=x_axis, params=params)
     except:
@@ -1175,7 +1162,7 @@ def estimate_threesineexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_threesineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_threesineexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a three sine with one exponential decay offset fit on the provided
         data.
 
@@ -1192,9 +1179,8 @@ def make_threesineexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
 
     error, params = self.estimate_threesineexpdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
@@ -1291,7 +1277,7 @@ def estimate_threesinethreeexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_parameters=None):
+def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a three sine with three exponential decay and offset fit on the
         provided data.
 
@@ -1308,9 +1294,8 @@ def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_parameters=Non
 
     error, params = self.estimate_threesinethreeexpdecayoffset(x_axis, data, params)
 
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:

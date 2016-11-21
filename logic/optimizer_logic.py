@@ -397,7 +397,7 @@ class OptimizerLogic(GenericLogic):
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(axis=axes, data=xy_fit_data)
+        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(xy_axis=axes, data=xy_fit_data)
         # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
@@ -438,19 +438,19 @@ class OptimizerLogic(GenericLogic):
                 'max': self.z_refocus_line.max()
             }
             result = self._fit_logic.make_gaussian_fit(
-                axis=self._zimage_Z_values,
+                x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line,
-                add_parameters=adjusted_param)
+                add_params=adjusted_param)
         else:
             if self.use_custom_params:
                 result = self._fit_logic.make_gaussian_fit(
-                    axis=self._zimage_Z_values,
+                    x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line,
-                    # Todo: It is required that the changed parameters are given as a dictionary
-                    add_parameters={})
+                    # Todo: It is required that the changed parameters are given as a dictionary or parameter object
+                    add_params=None)
             else:
                 result = self._fit_logic.make_gaussian_fit(
-                    axis=self._zimage_Z_values,
+                    x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line)
         self.z_params = result.params
 

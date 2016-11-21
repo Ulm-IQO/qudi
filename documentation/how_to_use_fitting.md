@@ -35,7 +35,7 @@ A fitting routine consists of three major parts:
     * Constraints are set, e.g. param['offset'].min=0
                                 param['offset'].max=data.max()
     * Additional parameters given by inputs can be overwritten by
-      substitute_parameter method
+      substitute_params method
     * Finally fit is done via model.fit(data, x=axis,params=params)
     * The fit routine from lmfit returns a dictionary with many
       parameters like: results with errors and correlations,

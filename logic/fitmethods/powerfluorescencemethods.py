@@ -75,7 +75,7 @@ def make_powerfluorescence_model(self):
 
     return model, params
 
-def make_powerfluorescence_fit(self, axis=None, data=None, add_parameters=None):
+def make_powerfluorescence_fit(self, x_axis, data, add_params=None):
     """ This method performes a fit of the fluorescence depending on power
         on the provided data.
 
@@ -91,18 +91,17 @@ def make_powerfluorescence_fit(self, axis=None, data=None, add_parameters=None):
 
     mod_final, params = self.make_powerfluorescence_model()
 
-    error, params = self.estimate_powerfluorescence(axis, data, params)
+    error, params = self.estimate_powerfluorescence(x_axis, data, params)
 
 
     # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The 1D gaussian fit did not work.')
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
         print(result.message)
 
     return result

@@ -29,8 +29,7 @@ from lmfit.models import Model, GaussianModel, ConstantModel
 from lmfit import Parameters
 
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.signal import gaussian
-from scipy.ndimage import filters
+
 
 ############################################################################
 #                                                                          #
@@ -70,15 +69,17 @@ def make_gaussian_model(self):
 
     return model, params
 
-def make_gaussian_fit(self, axis=None, data=None, add_parameters=None, estimator="confocalpeak"):
+def make_gaussian_fit(self, x_axis, data, add_params=None, estimator="confocalpeak"):
     """ This method performes a 1D gaussian fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[]  x_data: data
-    @param dict add_parameters: Additional parameters which will substitute the
-                                estimated parameters/bounds
-    @param string estimator: the string should contain the name of the function you want to use to estimate
-                             the parameters. The default estimator is confocalpeak.
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+    @param str estimator: the string should contain the name of the function you
+                          want to use to estimate the parameters. The default
+                          estimator is confocalpeak.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -89,27 +90,23 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None, estimator
     mod_final, params = self.make_gaussian_model()
 
     if estimator == "confocalpeak":
-        error, params = self.estimate_gaussian_confocalpeak(axis, data, params)
+        error, params = self.estimate_gaussian_confocalpeak(x_axis, data, params)
     elif estimator == "dip":
-        error, params = self.estimate_gaussian_dip(axis, data, params)
+        error, params = self.estimate_gaussian_dip(x_axis, data, params)
 
-
-
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The 1D gaussian fit did not work.')
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
         print(result.message)
 
     return result
 
 def estimate_gaussian_confocalpeak(self, x_axis=None, data=None, params=None):
-    """ This method provides a one dimensional gaussian estimator designed for 
+    """ This method provides a one dimensional gaussian estimator designed for
     a confocal image of a single color center in diamond.
 
     @param array x_axis: x values
@@ -201,7 +198,7 @@ def estimate_gaussian_dip(self, x_axis=None, data=None, params=None):
     # Define constraints
     params['center'].min = (x_axis[0]) - n_steps * stepsize
     params['center'].max = (x_axis[-1]) + n_steps * stepsize
-    params['amplitude'].min = -np.inf 
+    params['amplitude'].min = -np.inf
     params['amplitude'].max = 10**-20
     params['sigma'].min = 10**-20
     params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
@@ -248,14 +245,16 @@ def make_gaussianwithslope_model(self):
 
     return model, params
 
-def make_gaussianwithslope_fit(self, axis=None, data=None, add_parameters=None, estimator="estimate_gaussianwithslope_confocalpeak"):
+def make_gaussianwithslope_fit(self, x_axis, data, add_params=None,
+                               estimator="estimate_gaussianwithslope_confocalpeak"):
     """ This method performes a 1D gaussian fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[]  x_data: data
-    @param dict add_parameters: Additional parameters which will substitute the
-                                estimated parameters/bounds
-    @param string estimator: the string should contain the name of the function you want to use to estimate
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+    @param str estimator: the string should contain the name of the function you want to use to estimate
                              the parameters. The default estimator is confocalpeak.
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -267,19 +266,17 @@ def make_gaussianwithslope_fit(self, axis=None, data=None, add_parameters=None, 
     mod_final, params = self.make_gaussianwithslope_model()
 
     if estimator == "estimate_gaussianwithslope_confocalpeak":
-        error, params = self.estimate_gaussianwithslope_confocalpeak(axis, data, params)
+        error, params = self.estimate_gaussianwithslope_confocalpeak(x_axis, data, params)
 
     params["slope"].value = 0.
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The 1D gaussian fit did not work.')
-        result = mod_final.fit(data, x=axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params)
         print(result.message)
 
     return result
@@ -344,14 +341,18 @@ def estimate_gaussianwithslope_confocalpeak(self, x_axis=None, data=None, params
 #                                                                          #
 ############################################################################
 
-def make_twoDgaussian_fit(self, axis=None, data=None,
-                           add_parameters=None, estimator="estimate_twoDgaussian_MLE"):
+def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
+                          estimator="estimate_twoDgaussian_MLE"):
     """ This method performes a 2D gaussian fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[]  x_data: data
-    @param dict add_parameters: Additional parameters
-    @param string estimator: the string should contain the name of the function you want to use to estimate
+    @param numpy.array xy_axes: 2D axes values. xy_axes[0] contains x_axis and
+                                xy_axes[1] constains y_axis
+    @param numpy.array data: 2D matrix data, should have the dimension as
+                             len(xy_axes[0]) x len(xy_axes[1]).
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+    @param str estimator: the string should contain the name of the function you want to use to estimate
                              the parameters. The default estimator is estimate_twoDgaussian_MLE.
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -360,7 +361,7 @@ def make_twoDgaussian_fit(self, axis=None, data=None,
                            with best fit with given axis,...
     """
 
-    x_axis, y_axis = axis
+    x_axis, y_axis = xy_axes
 
     if estimator is "estimate_twoDgaussian_MLE":
         error,      \
@@ -405,14 +406,12 @@ def make_twoDgaussian_fit(self, axis=None, data=None,
 
 
 #           redefine values of additional parameters
-    if add_parameters is not None:
-        params=self._substitute_parameter(parameters=params,
-                                         update_dict=add_parameters)
-
+    params=self._substitute_params(initial_params=params,
+                                   update_params=add_params)
     try:
-        result=mod.fit(data, x=axis,params=params)
+        result=mod.fit(data, x=xy_axes, params=params)
     except:
-        result=mod.fit(data, x=axis,params=params)
+        result=mod.fit(data, x=xy_axes, params=params)
         logger.warning('The 2D gaussian fit did not work: {0}'.format(
             result.message))
 
@@ -723,7 +722,7 @@ def estimate_doublegaussian_odmr(self, x_axis=None, data=None, params=None,
     @param array data: value of each data point corresponding to
                         x values
     @param Parameters object params: Needed parameters
-    @param float threshold : Threshold to find second gaussian
+    @param float threshold_fraction : Threshold to find second gaussian
     @param float minimal_threshold: Threshold is lowerd to minimal this
                                     value as a fraction
     @param float sigma_threshold_fraction: Threshold for detecting
@@ -745,17 +744,18 @@ def estimate_doublegaussian_odmr(self, x_axis=None, data=None, params=None,
     return error, params
 
 
-def make_doublegaussian_fit(self, axis=None, data=None,
-                            add_parameters=None,
+def make_doublegaussian_fit(self, x_axis, data, add_params=None,
                             estimator='gated_counter',
                             threshold_fraction=0.4,
                             minimal_threshold=0.2,
                             sigma_threshold_fraction=0.3):
     """ This method performes a 1D double gaussian fit on the provided data.
 
-    @param array [] axis: axis values
-    @param array[]  data: data
-    @param dictionary add_parameters: Additional parameters
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
     @param float threshold_fraction : Threshold to find second gaussian
     @param float minimal_threshold: Threshold is lowerd to minimal this
                                     value as a fraction
@@ -773,7 +773,7 @@ def make_doublegaussian_fit(self, axis=None, data=None,
     model, params = self.make_multiplegaussian_model(no_of_gauss=2)
 
     if estimator == 'gated_counter':
-        error, params = self.estimate_doublegaussian_gatedcounter(axis, data, params,
+        error, params = self.estimate_doublegaussian_gatedcounter(x_axis, data, params,
                                                                   threshold_fraction,
                                                                   minimal_threshold,
                                                                   sigma_threshold_fraction)
@@ -784,19 +784,18 @@ def make_doublegaussian_fit(self, axis=None, data=None,
         params['gaussian1_amplitude'].min = 0.0
 
     elif estimator == 'odmr_dip':
-        error, params = self.estimate_doublegaussian_odmr(axis, data, params,
+        error, params = self.estimate_doublegaussian_odmr(x_axis, data, params,
                                                           threshold_fraction,
                                                           minimal_threshold,
                                                           sigma_threshold_fraction)
 
-    # redefine values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result = model.fit(data, x=axis, params=params)
+        result = model.fit(data, x=x_axis, params=params)
     except:
-        result = model.fit(data, x=axis, params=params)
+        result = model.fit(data, x=x_axis, params=params)
         logger.warning('The double gaussian fit did not work: {0}'.format(
             result.message))
 
