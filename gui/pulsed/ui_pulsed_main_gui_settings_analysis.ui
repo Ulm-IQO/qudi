@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>255</width>
-    <height>332</height>
+    <width>349</width>
+    <height>376</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -32,7 +32,7 @@
      <item row="7" column="0">
       <widget class="QLabel" name="ana_param_second_plot_y_axis_label_Label">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;br/&gt;y axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;br/&gt;dependent variable label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
@@ -46,21 +46,21 @@
      <item row="1" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>x axis unit:</string>
+        <string>controlled variable unit:</string>
        </property>
       </widget>
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="ana_param_y_axis_label_Label">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;y ayis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;dependent variable label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
      <item row="5" column="0">
       <widget class="QLabel" name="ana_param_second_plot_x_axis_label_Label">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;br/&gt;x axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;br/&gt;controlled variable label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
@@ -98,28 +98,28 @@
      <item row="0" column="0">
       <widget class="QLabel" name="ana_param_x_axis_label_Label">
        <property name="text">
-        <string>x axis label:</string>
+        <string>controlled variable label:</string>
        </property>
       </widget>
      </item>
      <item row="8" column="0">
       <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>y axis unit</string>
+        <string>dependent variable unit</string>
        </property>
       </widget>
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>y axis unit</string>
+        <string>dependent variable unit</string>
        </property>
       </widget>
      </item>
      <item row="6" column="0">
       <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>x axis unit:</string>
+        <string>controlled variable unit:</string>
        </property>
       </widget>
      </item>

@@ -19,58 +19,66 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
-from core.util.customexceptions import function_signature
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class VacuumPumpInterface:
+class VacuumPumpInterface(metaclass=InterfaceMetaclass):
     _modtype = 'PumpInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def get_extra_info(self):
         """ Present extra information about pump controller/device.
 
           @return str: arbitrary information about pump, like model nr, hardware version, firmware version
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_pressures(self):
         """All available pressures in Pascal.
 
           @return dict: dict of gauge name and pressure
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_pump_speeds(self):
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_pump_powers(self):
         """ All available pump powers in watts.
 
           @return dict: dict of pump name and pump power
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_pump_states(self):
         """All available pump states.
 
           @return dict: dict of pump name and pump state
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_pump_states(self, states):
         """Control the pump state.
           @param dict states: dict of pump name and desired state
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def get_system_state(self):
         """Get overall system state.
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 
+    @abc.abstractmethod
     def set_system_state(self, state):
         """Control the system state.
         """
-        raise InterfaceImplementationError('{0}->{1}'.format(type(self).__name__, function_signature()))
+        pass
 

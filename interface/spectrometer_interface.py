@@ -19,18 +19,22 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class SpectrometerInterface():
+class SpectrometerInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple
     optical spectrometer.
     """
+    @abc.abstractmethod
     def recordSpectrum(self):
-        raise InterfaceImplementationError
+        pass
 
+    @abc.abstractmethod
     def setExposure(self, exposureTime):
-        raise InterfaceImplementationError
+        pass
 
+    @abc.abstractmethod
     def getExposure(self):
-        raise InterfaceImplementationError
+        pass

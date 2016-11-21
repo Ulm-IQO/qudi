@@ -19,15 +19,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
 
 
-class ODMRCounterInterface():
+class ODMRCounterInterface(metaclass=InterfaceMetaclass):
     """ This is the Interface class supplies the controls for a simple ODMR."""
 
     _modtype = 'ODMRCounterInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def set_up_odmr_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -38,10 +40,9 @@ class ODMRCounterInterface():
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('ODMRCounterInterface>set_up_odmr_clock')
-        return -1
-
+    @abc.abstractmethod
     def set_up_odmr(self, counter_channel=None, photon_source=None,
                     clock_channel=None, odmr_trigger_channel=None):
         """ Configures the actual counter with a given clock.
@@ -57,10 +58,9 @@ class ODMRCounterInterface():
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('ODMRCounterInterface>set_up_odmr')
-        return -1
-
+    @abc.abstractmethod
     def set_odmr_length(self, length=100):
         """Set up the trigger sequence for the ODMR and the triggered microwave.
 
@@ -68,10 +68,9 @@ class ODMRCounterInterface():
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('ODMRCounterInterface>set_odmr_length')
-        return -1
-
+    @abc.abstractmethod
     def count_odmr(self, length = 100):
         """ Sweeps the microwave and returns the counts on that sweep.
 
@@ -79,24 +78,20 @@ class ODMRCounterInterface():
 
         @return float[]: the photon counts per second
         """
+        pass
 
-        raise InterfaceImplementationError('ODMRCounterInterface>count_odmr')
-        return [0.0]
-
+    @abc.abstractmethod
     def close_odmr(self):
         """ Close the odmr and clean up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
+        pass
 
-        raise InterfaceImplementationError('ODMRCounterInterface>close_odmr')
-        return -1
-
+    @abc.abstractmethod
     def close_odmr_clock(self):
         """ Close the odmr and clean up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-
-        raise InterfaceImplementationError('ODMRCounterInterface>close_odmr_clock')
-        return -1
+        pass
