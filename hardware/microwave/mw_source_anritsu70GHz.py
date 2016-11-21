@@ -267,9 +267,9 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         return 0
 
     def sweep_on(self):
-        """ Switches on the list mode.
+        """ Switches on sweep mode.
 
-        @return int: error code (1: ready, 0:not ready, -1:error)
+        @return int: error code ( 0:ok, -1:error)
         """
         print("sweep on")
         self._gpib_connection.write('SSP RF1')

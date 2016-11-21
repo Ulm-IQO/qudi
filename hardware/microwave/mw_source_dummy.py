@@ -126,7 +126,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(power))
         return 0
 
-
     def get_frequency(self):
         """ Gets the frequency of the microwave output.
 
@@ -142,8 +141,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>set_frequency, frequency: '
-                    '{0:f}'.format(freq))
+        self.log.warning('MicrowaveDummy>set_frequency, frequency: {0:f}'.format(freq))
         return 0
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
@@ -157,8 +155,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        self.log.warning('MicrowaveDummy>set_cw, frequency: {0:f}, power '
-                    '{0:f}:'.format(freq, power))
+        self.log.warning(
+            'MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(freq, power))
         return 0
 
     def set_list(self, freq=None, power=None):
@@ -170,8 +168,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('MicrowaveDummy>set_list,\nfrequency (Hz): {0}\n'
-                    'power (dBm): {1}'.format(freq, power))
+        self.log.warning(
+            'MicrowaveDummy>set_list,\nfrequency: {0}Hz\npower : {1}dBm'.format(freq, power))
         return 0
 
     def reset_listpos(self):
@@ -208,11 +206,13 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.warning('MicrowaveDummy>sweep_on')
+        return 0
 
     def set_sweep(self, start, stop, step, power):
         """ Sweep from frequency start to frequency sto pin steps of width stop with power.
         """
-        self.log.warning('MicrowaveDummy>set_sweep {0} {1} {2} {3}'.format(start, stop, step, power))
+        self.log.warning(
+            'MicrowaveDummy>set_sweep {0} {1} {2} {3}'.format(start, stop, step, power))
         return 0
 
     def reset_sweep(self):
@@ -221,4 +221,3 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         return 0
-

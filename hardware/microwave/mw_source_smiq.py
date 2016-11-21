@@ -37,10 +37,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
     _modclass = 'MicrowaveSmiq'
     _modtype = 'hardware'
-    ## declare connectors
+    # declare connectors
     _out = {'mwsourcesmiq': 'MicrowaveInterface'}
 
-    def on_activate(self,e):
+    def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -350,7 +350,3 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         return 0
-
-
-
-

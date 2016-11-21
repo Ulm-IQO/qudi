@@ -229,7 +229,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         return error
 
-    def reset_listpos(self):#
+    def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
 
         @return int: error code (0:OK, -1:error)
@@ -239,7 +239,6 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
 
         return 0
-
 
     def list_on(self):
         """ Switches on the list mode.
@@ -264,7 +263,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write(':TRIG:SOUR '+source)
         self._gpib_connection.write(':TRIG:SLOP '+pol)
         self._gpib_connection.write('*WAI')
-
+        return 0
 
     def set_sweep(self, start, stop, step, power):
         """
@@ -283,18 +282,20 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return nrpoints - 1
 
     def reset_sweep(self):
-        """ Reset of MW List Mode position to start from first given frequency
+        """ Reset of MW sweep mode
 
         @return int: error code (0:OK, -1:error)
         """
         self._gpib_connection.write(':ABORT')
         self._gpib_connection.write('*WAI')
+        return 0
 
     def sweep_on(self):
-        """ Switches on the list mode.
+        """ Switches on the sweep mode.
 
-        @return int: error code (1: ready, 0:not ready, -1:error)
+        @return int: error code (0:OK, -1:error)
         """
         self._gpib_connection.write(':FREQ:MODE SWEEP')
         self._gpib_connection.write(':OUTP ON')
         self._gpib_connection.write('*WAI')
+        return 0
