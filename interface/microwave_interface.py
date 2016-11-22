@@ -23,7 +23,19 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import abc
 from core.util.interfaces import InterfaceMetaclass
 from core.util.units import in_range
+from enum import Enum
 
+class TriggerEdge(Enum):
+    RISING = 0
+    FALLING = 1
+    NONE = 3
+    UNKNOWN = 4
+
+class MicrowaveMode(Enum):
+    CW = 0
+    LIST = 1
+    SWEEP = 3
+    ASWEEP = 4
 
 class MicrowaveInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple
@@ -149,11 +161,10 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
@@ -180,7 +191,12 @@ class MicrowaveLimits:
         # LIST: can load a list where frequencies are changed on trigger
         # SWEEP: can sweep frequency in form of start, stop, step with each step being triggered
         # AN_SWEEP: can sweep frequency from start to stop but only one trigger to start sweep
-        self.supported_modes = ('CW', 'LIST', 'SWEEP', 'AN_SWEEP')
+        self.supported_modes = (
+            MicrowaveMode.CW,
+            MicrowaveMode.LIST,
+            MicrowaveMode.SWEEP,
+            MicrowaveMode.ASWEEP,
+        )
 
         # frequency in Hz
         self.min_frequency = 1e6
