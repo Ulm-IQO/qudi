@@ -22,6 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore
 from collections import OrderedDict
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 import numpy as np
 import time
 import datetime
@@ -94,14 +96,14 @@ class ODMRLogic(GenericLogic):
         config = self.getConfiguration()
         self.limits = self._mw_device.get_limits()
         if 'scanmode' in config and ('sweep' in config['scanmode'] or 'SWEEP' in config['scanmode']):
-            self.scanmode = 'SWEEP'
-        else:
-            self.scanmode = 'LIST'
+            self.scanmode = MicrowaveMode.SWEEP
+        elif 'scanmode' in config and ('list' in config['scanmode'] or 'LIST' in config['scanmode']):
+            self.scanmode = MicrowaveMode.LIST
 
         # FIXME: that is not a general default parameter!!!
         # default parameters for NV ODMR
         self.MW_trigger_source = 'EXT'
-        self.MW_trigger_pol = 'POS'
+        self.MW_trigger_pol = TriggerEdge.RISING
 
         self._odmrscan_counter = 0
         self._clock_frequency = 200     # in Hz
@@ -171,7 +173,7 @@ class ODMRLogic(GenericLogic):
         self.set_frequency(frequency=self.mw_frequency)
         self.set_power(power=self.mw_power)
         self.MW_off()
-        self._mw_device.set_ex_trigger(source=self.MW_trigger_source, pol=self.MW_trigger_pol)
+        self._mw_device.set_ext_trigger(self.MW_trigger_pol)
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -237,11 +239,9 @@ class ODMRLogic(GenericLogic):
         self.mw_start = self.limits.frequency_in_range(self.mw_start)
         self.mw_stop = self.limits.frequency_in_range(self.mw_stop)
 
-        if self.scanmode == 'SWEEP':
-            mode = 'sweep'
+        if self.scanmode == MicrowaveMode.SWEEP:
             self.mw_step = self.limits.sweep_step_in_range(self.mw_step)
-        else:
-            mode = 'list'
+        elif self.scanmode == MicrowaveMode.LIST:
             self.mw_step = self.limits.list_step_in_range(self.mw_step)
 
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
@@ -271,7 +271,7 @@ class ODMRLogic(GenericLogic):
             self.sigOdmrStopped.emit()
             return -1
             
-        if self.scanmode == 'SWEEP':
+        if self.scanmode == MicrowaveMode.SWEEP:
             if len(self._mw_frequency_list) >= self.limits.sweep_maxentries:
                 self.stopRequested = True
                 self.sigNextLine.emit()
@@ -279,7 +279,7 @@ class ODMRLogic(GenericLogic):
             n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
             return_val = n - len(self._mw_frequency_list)
 
-        else:
+        elif self.scanmode == MicrowaveMode.LIST:
             if len(self._mw_frequency_list) >= self.limits.list_maxentries:
                 self.stopRequested = True
                 self.sigNextLine.emit()
@@ -289,9 +289,9 @@ class ODMRLogic(GenericLogic):
         if return_val != 0:
             self.stopRequested = True
         else:
-            if self.scanmode == 'SWEEP':
+            if self.scanmode == MicrowaveMode.SWEEP:
                 self._mw_device.sweep_on()
-            else:
+            elif self.scanmode == MicrowaveMode.LIST:
                 self._mw_device.list_on()
 
         self._initialize_ODMR_plot()
@@ -311,18 +311,18 @@ class ODMRLogic(GenericLogic):
             self.sigOdmrStopped.emit()
             return -1
 
-        if self.scanmode == 'SWEEP':
+        if self.scanmode == MicrowaveMode.SWEEP:
             n = self._mw_device.set_sweep(self.mw_start, self.mw_stop, self.mw_step, self.mw_power)
             return_val = n - len(self._mw_frequency_list)
-        else:
+        elif self.scanmode == MicrowaveMode.LIST:
             return_val = self._mw_device.set_list(self._mw_frequency_list, self.mw_power)
 
         if return_val != 0:
             self.stopRequested = True
         else:
-            if self.scanmode == 'SWEEP':
+            if self.scanmode == MicrowaveMode.SWEEP:
                 self._mw_device.sweep_on()
-            else:
+            elif self.scanmode == MicrowaveMode.LIST:
                 self._mw_device.list_on()
         self.sigOdmrStarted.emit()
         self.sigNextLine.emit()
@@ -376,9 +376,9 @@ class ODMRLogic(GenericLogic):
                 return
 
         # reset position so every line starts from the same frequency
-        if self.scanmode == 'SWEEP':
+        if self.scanmode == MicrowaveMode.SWEEP:
             self._mw_device.reset_sweep()
-        else:
+        elif self.scanmode == MicrowaveMode.LIST:
             self._mw_device.reset_listpos()
         new_counts = self._odmr_counter.count_odmr(length=len(self._mw_frequency_list))
         if new_counts[0] == -1:
