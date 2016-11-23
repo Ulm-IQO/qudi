@@ -23,7 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):
@@ -75,7 +78,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     def get_limits(self):
         """Dummy limits"""
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST', 'SWEEP', 'AN_SWEEP')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
 
         limits.min_frequency = 100e3
         limits.max_frequency = 20e9
@@ -188,16 +191,15 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.log.warning('MicrowaveDummy>list_on')
         return 0
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>ex_trigger')
+        self.log.warning('MicrowaveDummy>ext_trigger')
         return 0
 
     def sweep_on(self):

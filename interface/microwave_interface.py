@@ -26,12 +26,21 @@ from core.util.units import in_range
 from enum import Enum
 
 class TriggerEdge(Enum):
+    """ On which electrical signal edge does a trigger occur?
+      So edgy!
+    """
     RISING = 0
     FALLING = 1
     NONE = 3
     UNKNOWN = 4
 
 class MicrowaveMode(Enum):
+    """ Modes for microwave generators:
+        CW: continuous wave
+        LIST: ouptut list of arbitrary frequencies, each step triggered by electrical input
+        SWEEP: frequency sweep from f1 to f2, each step triggered by electrical input
+        ASWEEP: frequency sweep from f1 to f2, triggered only on the start of the sweep
+    """
     CW = 0
     LIST = 1
     SWEEP = 3
@@ -161,7 +170,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_ext_trigger(self, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
@@ -186,11 +195,6 @@ class MicrowaveLimits:
     def __init__(self):
         """Create an instance containing all parameters with default values."""
 
-        # how the microwave source can give you microwaves
-        # CW: can output single frequency continuously
-        # LIST: can load a list where frequencies are changed on trigger
-        # SWEEP: can sweep frequency in form of start, stop, step with each step being triggered
-        # AN_SWEEP: can sweep frequency from start to stop but only one trigger to start sweep
         self.supported_modes = (
             MicrowaveMode.CW,
             MicrowaveMode.LIST,

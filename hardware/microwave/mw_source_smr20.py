@@ -24,7 +24,10 @@ import visa
 import numpy as np
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveSMR20(Base, MicrowaveInterface):
@@ -331,11 +334,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         return 0
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
@@ -357,7 +359,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
           @return MicrowaveLimits: limits object
         """
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST)
 
         limits.min_frequency = self._FREQ_MIN
         limits.max_frequency = self._FREQ_MAX

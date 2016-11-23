@@ -27,7 +27,10 @@ import visa
 import numpy as np
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveSmiq(Base, MicrowaveInterface):
@@ -94,7 +97,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
     def get_limits(self):
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST', 'SWEEP')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
 
         limits.min_frequency = 300e3
         limits.max_frequency = 6.4e9
@@ -255,8 +258,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write(powcommand)
 
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
-        self._gpib_connection.write(':TRIG1:SLOP POS')
         self._gpib_connection.write(':LIST:MODE STEP')
         self._gpib_connection.write('*WAI')
 
@@ -340,13 +341,24 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
         return int(self._gpib_connection.query('*OPC?'))
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
+        if pol == TriggerEdge.RISING:
+            edge = 'POS'
+        elif pol == TriggerEdge.FALLING:
+            edge = 'NEG'
+        else:
+            return -1
+        try:
+            self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
+            self._gpib_connection.write(':TRIG1:SLOP {0}'.format(edge))
+        except:
+            return -1
         return 0
+
