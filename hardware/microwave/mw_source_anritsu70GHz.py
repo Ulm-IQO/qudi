@@ -26,7 +26,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
@@ -79,7 +82,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     def get_limits(self):
         """ Right now, this is for Anritsu MG3696B only."""
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST)
 
         limits.min_frequency = 10e6
         limits.max_frequency = 70e9
@@ -101,7 +104,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        print("on")
         self._gpib_connection.write('RF1')
 
         return 0
@@ -111,7 +113,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        print("off")
         self._gpib_connection.write('RF0')
 
         return 0
@@ -168,7 +169,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         Interleave option is used for arbitrary waveform generator devices.
         """
         error = 0
-        print("set cw")
         if freq is not None:
             error = self.set_frequency(freq)
         else:
@@ -228,17 +228,18 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self._gpib_connection.write('LST LEA RF1')
         return 0
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
-        print("trigger")
-        self._gpib_connection.write('MNT')
+        try:
+            self._gpib_connection.write('MNT')
+        except:
+            return -1
         return 0
 
     def set_sweep(self, start, stop, step, power):
@@ -250,11 +251,9 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         @param power:
         @return:
         """
-        print("sweep on")
         self.set_power(power)
         self._gpib_connection.write('F1 {0} Hz, SYZ {1} Hz, F2 {2} Hz, SF1'.format(start - step, step, stop))
         nrsteps = int(self._gpib_connection.query('OSS'))
-        print('steps', nrsteps)
         return nrsteps - 1
 
     def reset_sweep(self):
@@ -262,7 +261,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        print("reset sweep")
         self._gpib_connection.write('RSS')
         return 0
 
@@ -271,6 +269,5 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code ( 0:ok, -1:error)
         """
-        print("sweep on")
         self._gpib_connection.write('SSP RF1')
         return 0
