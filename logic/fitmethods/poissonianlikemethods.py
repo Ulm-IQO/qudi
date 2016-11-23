@@ -30,14 +30,13 @@ from lmfit import Parameters
 from scipy.signal import gaussian
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
-#from scipy.stats import poisson
 
 from scipy import special
 from scipy.special import gammaln as gamln
 
 ############################################################################
 #                                                                          #
-#                           poissonian model                               #
+#                           Poissonian model                               #
 #                                                                          #
 ############################################################################
 
@@ -53,10 +52,14 @@ def poisson(self,x,mu):
     """
     return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
 
-def make_poissonian_model(self, no_of_functions=None):
-    """ This method creates a model of a poissonian with an offset.
-    @param no_of_functions: if None or 1 there is one poissonian, else
-                            more functions are added
+def make_poissonian_model(self, prefix=None):
+    """ Create a model of a single poissonian with an offset.
+
+    param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
+
     @return tuple: (object model, object params)
 
     Explanation of the objects:
@@ -70,8 +73,6 @@ def make_poissonian_model(self, no_of_functions=None):
             denoting the parameters as string names and values which are
             lmfit.parameter.Parameter (without s) objects, keeping the
             information about the current value.
-            The used model has the Parameter with the meaning:
-                'mu' : expected value mu
     """
     def poisson_function(x, mu):
         """
@@ -83,29 +84,77 @@ def make_poissonian_model(self, no_of_functions=None):
         """
         return self.poisson(x, mu)
 
-    def amplitude_function(x, amplitude):
-        """
-        Function of a amplitude value.
-        @param x: variable variable
-        @param offset: independent variable - amplitude
+    amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
-        @return: amplitude function: in order to use it as a model
-        """
+    try:
+        poissonian_model = Model(poisson_function, independent_vars='x',
+                                 prefix=prefix)
+    except:
+        logger.error('Creating the Poisson model failed.\n'
+                     'The prefix with the value {0} and type {1} might not be '
+                     'a valid string. Therefore prefix was '
+                     'deleted.'.format(prefix, type(prefix)))
+        poissonian_model = Model(poisson_function, independent_vars='x')
 
-        return amplitude + 0.0 * x
+    poissonian_ampl_model = amplitude_model*poissonian_model
+    params = poissonian_ampl_model.make_params()
 
-    if no_of_functions is None or no_of_functions == 1:
-        model = ( Model(poisson_function, prefix='poissonian_') *
-                  Model(amplitude_function, prefix='poissonian_') )
+    return poissonian_ampl_model, params
+
+
+def make_multiplepoissonian_model(self, no_of_functions=1):
+    """ Create a model with multiple poissonians with amplitude.
+
+    @param no_of_functions: for default=1 there is one poissonian, else
+                            more functions are added
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_poissonian_model.
+    """
+
+
+    if no_of_functions == 1:
+        multi_poisson_model, params = self.make_poissonian_model()
     else:
-        model = (Model(poisson_function, prefix='poissonian{0}_'.format('0')) *
-                 Model(amplitude_function, prefix='poissonian{0}_'.format('0')))
-        for ii in range(no_of_functions-1):
-            model += (Model(poisson_function, prefix='poissonian{0}_'.format(ii+1)) *
-                      Model(amplitude_function, prefix='poissonian{0}_'.format(ii+1)))
-    params = model.make_params()
+        multi_poisson_model, params = self.make_poissonian_model(prefix='p0_')
 
-    return model, params
+        for ii in range(1, no_of_functions):
+            multi_poisson_model += self.make_poissonian_model(prefix='p{0:d}_'.format(ii))[0]
+    params = multi_poisson_model.make_params()
+
+    return multi_poisson_model, params
+
+# def make_poissonian_model(self, no_of_functions=None):
+#     """ Creates a model of a poissonian with an offset.
+#     @param no_of_functions: if None or 1 there is one poissonian, else
+#                             more functions are added
+#     @return tuple: (object model, object params)
+#
+#     Explanation of the objects:
+#         object lmfit.model.CompositeModel model:
+#             A model the lmfit module will use for that fit. Here a
+#             gaussian model. Returns an object of the class
+#             lmfit.model.CompositeModel.
+#
+#         object lmfit.parameter.Parameters params:
+#             It is basically an OrderedDict, so a dictionary, with keys
+#             denoting the parameters as string names and values which are
+#             lmfit.parameter.Parameter (without s) objects, keeping the
+#             information about the current value.
+#     """
+#
+#     if no_of_functions is None or no_of_functions == 1:
+#         model = ( Model(poisson_function, prefix='poissonian_') *
+#                   Model(amplitude_function, prefix='poissonian_') )
+#     else:
+#         model = (Model(poisson_function, prefix='poissonian{0}_'.format('0')) *
+#                  Model(amplitude_function, prefix='poissonian{0}_'.format('0')))
+#         for ii in range(no_of_functions-1):
+#             model += (Model(poisson_function, prefix='poissonian{0}_'.format(ii+1)) *
+#                       Model(amplitude_function, prefix='poissonian{0}_'.format(ii+1)))
+#     params = model.make_params()
+#
+#     return model, params
 
 
 def make_poissonian_fit(self, x_axis, data, add_params=None):

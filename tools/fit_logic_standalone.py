@@ -1128,7 +1128,9 @@ def sine_testing():
  #           para['phase'] = {'vary': False, 'value': np.pi/2.}
   #          para['amplitude'] = {'min': 0.0}
 
-    result=qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy, add_params=None)
+    result = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy)
+    fit_data = result.best_fit
+
 ##            result=qudi_fitting.make_powerfluorescence_fit(x_axis=data[:,0],data=data[:,2]/1000,add_params=para)
 #
 #            print(result.fit_report())
@@ -2969,9 +2971,9 @@ def three_sine_three_exp_decay_offset_testing2():
     ampl3 = 1
     freq3 = 0.05
 
-    lifetime1 = 170
-    lifetime2 = 250
-    lifetime3 = 200
+    lifetime1 = 120
+    lifetime2 = 150
+    lifetime3 = 50
     offset = 1.1
 
     data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1) * np.exp(-(x_axis/lifetime1)) + \
@@ -2979,7 +2981,7 @@ def three_sine_three_exp_decay_offset_testing2():
            ampl3 * np.sin(2*np.pi*freq3*x_axis +phase3) * np.exp(-(x_axis/lifetime3)) + \
            offset
 
-    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.8
+    noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.2
 
     result = qudi_fitting.make_threesinethreeexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
 

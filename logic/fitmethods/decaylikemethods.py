@@ -875,3 +875,4 @@ def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=None
         logger.warning('The double exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
+
