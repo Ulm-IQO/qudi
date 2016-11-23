@@ -34,13 +34,13 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy import special
 from scipy.special import gammaln as gamln
 
-############################################################################
-#                                                                          #
-#                           Poissonian model                               #
-#                                                                          #
-############################################################################
+################################################################################
+#                                                                              #
+#                              Poissonian model                                #
+#                                                                              #
+################################################################################
 
-def poisson(self,x,mu):
+def poisson(self, x, mu):
     """
     Poisson function taken from:
     https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
@@ -50,7 +50,27 @@ def poisson(self,x,mu):
     Author:  Travis Oliphant  2002-2011 with contributions from
              SciPy Developers 2004-2011
     """
-    return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
+    if len(np.atleast_1d(x)) == 1:
+        check_val = x
+    else:
+        check_val = x[0]
+
+    if check_val > 1e18:
+        logger.warning('The current value in the poissonian distribution '
+                       'exceeds 1e18! Due to numerical imprecision a valid '
+                       'functional output cannot be guaranteed any more!')
+
+    # According to the central limit theorem, a poissonian distribution becomes
+    # a gaussian distribution for large enough x. Since the numerical precision
+    # is limited to calculate the logarithmized poissonian and obtain from that
+    # the exponential value, a self defined cutoff is introduced and set to
+    # 1e12. Beyond that number a gaussian distribution is assumed, which is a
+    # completely valid assumption.
+
+    if check_val < 1e12:
+        return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
+    else:
+        return np.exp(-((x-mu)**2)/(2*mu)) / (np.sqrt(2*np.pi*mu))
 
 def make_poissonian_model(self, prefix=None):
     """ Create a model of a single poissonian with an offset.
@@ -102,6 +122,79 @@ def make_poissonian_model(self, prefix=None):
     return poissonian_ampl_model, params
 
 
+def estimate_poissonian(self, x_axis, data, params):
+    """ Provides an estimator for initial values of a poissonian function.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # a gaussian filter is appropriate due to the well approximation of poisson
+    # distribution
+    # gaus = gaussian(10,10)
+    # data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
+    data_smooth = self.gaussian_smoothing(data=data, filter_len=10,
+                                          filter_sigma=10)
+
+    # set parameters
+    mu = x_axis[np.argmax(data_smooth)]
+    params['mu'].value = mu
+    params['amplitude'].value = data_smooth.max()/self.poisson(mu,mu)
+
+    return error, params
+
+
+def make_poissonian_fit(self, x_axis, data, add_params=None):
+    """ Performe a poissonian fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    poissonian_model, params = self.make_poissonian_model()
+
+    error, params = self.estimate_poissonian(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+
+    try:
+        result = poissonian_model.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The poissonian fit did not work. Check if a poisson '
+                       'distribution is needed or a normal approximation can be'
+                       'used. For values above 10 a normal/ gaussian distribution'
+                       ' is a good approximation.')
+        result = poissonian_model.fit(data, x=x_axis, params=params)
+        print(result.message)
+
+    return result
+
+################################################################################
+#                                                                              #
+#                        Multiple Poissonian model                             #
+#                                                                              #
+################################################################################
+
+
 def make_multiplepoissonian_model(self, no_of_functions=1):
     """ Create a model with multiple poissonians with amplitude.
 
@@ -111,7 +204,6 @@ def make_multiplepoissonian_model(self, no_of_functions=1):
     @return tuple: (object model, object params), for more description see in
                    the method make_poissonian_model.
     """
-
 
     if no_of_functions == 1:
         multi_poisson_model, params = self.make_poissonian_model()
@@ -123,115 +215,6 @@ def make_multiplepoissonian_model(self, no_of_functions=1):
     params = multi_poisson_model.make_params()
 
     return multi_poisson_model, params
-
-# def make_poissonian_model(self, no_of_functions=None):
-#     """ Creates a model of a poissonian with an offset.
-#     @param no_of_functions: if None or 1 there is one poissonian, else
-#                             more functions are added
-#     @return tuple: (object model, object params)
-#
-#     Explanation of the objects:
-#         object lmfit.model.CompositeModel model:
-#             A model the lmfit module will use for that fit. Here a
-#             gaussian model. Returns an object of the class
-#             lmfit.model.CompositeModel.
-#
-#         object lmfit.parameter.Parameters params:
-#             It is basically an OrderedDict, so a dictionary, with keys
-#             denoting the parameters as string names and values which are
-#             lmfit.parameter.Parameter (without s) objects, keeping the
-#             information about the current value.
-#     """
-#
-#     if no_of_functions is None or no_of_functions == 1:
-#         model = ( Model(poisson_function, prefix='poissonian_') *
-#                   Model(amplitude_function, prefix='poissonian_') )
-#     else:
-#         model = (Model(poisson_function, prefix='poissonian{0}_'.format('0')) *
-#                  Model(amplitude_function, prefix='poissonian{0}_'.format('0')))
-#         for ii in range(no_of_functions-1):
-#             model += (Model(poisson_function, prefix='poissonian{0}_'.format(ii+1)) *
-#                       Model(amplitude_function, prefix='poissonian{0}_'.format(ii+1)))
-#     params = model.make_params()
-#
-#     return model, params
-
-
-def make_poissonian_fit(self, x_axis, data, add_params=None):
-    """ This method performes a poissonian fit on the provided data.
-
-    @param array[] axis: axis values
-    @param array[]  data: data
-    @param dict add_parameters: Additional parameters
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-
-    parameters = [x_axis, data]
-    for var in parameters:
-        if len(np.shape(var)) != 1:
-                logger.error('Given parameter is no one dimensional array.')
-
-    mod_final, params = self.make_poissonian_model()
-
-    error, params = self.estimate_poissonian(x_axis, data, params)
-
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The poissonian fit did not work. Check if a poisson '
-                'distribution is needed or a normal approximation can be'
-                'used. For values above 10 a normal/ gaussian distribution'
-                ' is a good approximation.')
-        result = mod_final.fit(data, x=x_axis, params=params)
-        print(result.message)
-
-    return result
-
-def estimate_poissonian(self, x_axis=None, data=None, params=None):
-    """ This method provides a poissonian function.
-
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to x values
-    @param Parameters object params: object includes parameter dictionary which can be set
-
-    @return tuple (error, params):
-
-    Explanation of the return parameter:
-        int error: error code (0:OK, -1:error)
-        Parameters object params: set parameters of initial values
-    """
-
-    error = 0
-    # check if parameters make sense
-    parameters = [x_axis, data]
-    for var in parameters:
-        if len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
-            error = -1
-    if not isinstance(params, Parameters):
-        logger.error('Parameters object is not valid in estimate_gaussian.')
-        error = -1
-
-    # a gaussian filter is appropriate due to the well approximation of poisson
-    # distribution
-    # gaus = gaussian(10,10)
-    # data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
-    data_smooth = self.gaussian_smoothing(data=data, filter_len=10, filter_sigma=10)
-
-    # set parameters
-    mu = x_axis[np.argmax(data_smooth)]
-    params['poissonian_mu'].value = mu
-    params['poissonian_amplitude'].value = data_smooth.max()/self.poisson(mu,mu)
-
-    return error, params
 
 
 def make_doublepoissonian_fit(self, x_axis, data, add_params=None):
