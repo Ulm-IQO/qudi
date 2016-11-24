@@ -100,9 +100,7 @@ class ODMRLogic(GenericLogic):
         elif 'scanmode' in config and ('list' in config['scanmode'] or 'LIST' in config['scanmode']):
             self.scanmode = MicrowaveMode.LIST
 
-        # FIXME: that is not a general default parameter!!!
-        # default parameters for NV ODMR
-        self.MW_trigger_source = 'EXT'
+        # theoretically this can be changed, but the current counting scheme willnot support that
         self.MW_trigger_pol = TriggerEdge.RISING
 
         self._odmrscan_counter = 0
