@@ -165,9 +165,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._gated_counter_daq_task = None
 
         # some default values for the hardware:
-        self._voltage_range = [-10., 10.]
-        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
-        self._current_position = [0., 0., 0., 0.]
+        self._voltage_range = [[-10, 10], [-10, 10], [-10, 10], [-10, 10]]
+        self._position_range = [[0, 100], [0, 100], [0, 100], [0, 100]]
+        self._current_position = [0, 0, 0, 0]
 
         self._max_counts = 3e7  # used as a default for expected maximum counts
         self._RWTimeout = 10     # timeout for the Read or/and write process in s
@@ -338,14 +338,63 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
-                self._voltage_range = [float(config['voltage_range'][0]),
-                                       float(config['voltage_range'][1])]
+                vlow = float(config['voltage_range'][0])
+                vhigh = float(config['voltage_range'][1])
+                self._voltage_range = [[vlow, vhigh], [vlow, vhigh], [vlow, vhigh], [vlow, vhigh]]
             else:
                 self.log.warning(
                     'Configuration ({}) of voltage_range incorrect, taking [-10,10] instead.'
                     ''.format(config['voltage_range']))
         else:
-            self.log.warning('No voltage_range configured taking [-10,10] instead.')
+            self.log.warning('No voltage_range configured, taking [-10,10] instead.')
+
+        if 'x_voltage_range' in config.keys():
+            if float(config['x_voltage_range'][0]) < float(config['x_voltage_range'][1]):
+                vlow = float(config['x_voltage_range'][0])
+                vhigh = float(config['x_voltage_range'][1])
+                self._voltage_range[0] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of x_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['x_voltage_range']))
+        else:
+            self.log.warning('No x_voltage_range configured, taking [-10, 10] instead.')
+
+        if 'y_voltage_range' in config.keys():
+            if float(config['y_voltage_range'][0]) < float(config['y_voltage_range'][1]):
+                vlow = float(config['y_voltage_range'][0])
+                vhigh = float(config['y_voltage_range'][1])
+                self._voltage_range[1] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of y_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['y_voltage_range']))
+        else:
+            self.log.warning('No y_voltage_range configured, taking [-10, 10] instead.')
+
+        if 'z_voltage_range' in config.keys():
+            if float(config['z_voltage_range'][0]) < float(config['z_voltage_range'][1]):
+                vlow = float(config['z_voltage__range'][0])
+                vhigh = float(config['z_voltage_range'][1])
+                self._voltage_range[2] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of z_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['z_voltage_range']))
+        else:
+            self.log.warning('No z_voltage_range configured, taking [-10, 10] instead.')
+
+        if 'a_voltage_range' in config.keys():
+            if float(config['a_voltage_range'][0]) < float(config['a_voltage_range'][1]):
+                vlow = float(config['a_voltage_range'][0])
+                vhigh = float(config['a_voltage_range'][1])
+                self._voltage_range[3] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of a_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['a_voltage_range']))
+        else:
+            self.log.warning('No a_voltage_range configured taking [-10, 10] instead.')
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
@@ -1223,11 +1272,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def _write_scanner_ao(self, voltages, length=1, start=False):
         """Writes a set of voltages to the analog outputs.
 
-        @param float[][4] voltages: array of 4-part tuples defining the voltage
+        @param float[][n] voltages: array of n-part tuples defining the voltage
                                     points
         @param int length: number of tuples to write
         @param bool start: write imediately (True)
                            or wait for start of task (False)
+
+        n depends on how many channels are configured for analog output
         """
         # Number of samples which were actually written, will be stored here.
         # The error code of this variable can be asked with .value to check
@@ -1257,46 +1308,35 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def _scanner_position_to_volt(self, positions=None):
         """ Converts a set of position pixels to acutal voltages.
 
-        @param float[][4] positions: array of 4-part tuples defining the pixels
+        @param float[][n] positions: array of n-part tuples defining the pixels
 
-        @return float[][4]: array of 4-part tuples of corresponing voltages
+        @return float[][n]: array of n-part tuples of corresponing voltages
 
-        The positions is actually a matrix like
-            [[x_values],[y_values],[z_values],[counts]]
-        where the count values will be overwritten by the scanning routine.
-
+        The positions is typically a matrix like
+            [[x_values], [y_values], [z_values], [a_values]]
+            but x, xy, xyz and xyza are allowed formats.
         """
 
         if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given position list is no array type.')
-            return np.array([-1., -1., -1., -1.])
+            return np.array([np.NaN])
 
-        # Calculate the voltages from the positions, their ranges and stack
-        # them together:
-        volts = np.vstack((
-            (self._voltage_range[1]-self._voltage_range[0])
-            / (self._position_range[0][1] - self._position_range[0][0])
-            * (positions[0] - self._position_range[0][0])
-            + self._voltage_range[0],
-            (self._voltage_range[1] - self._voltage_range[0])
-            / (self._position_range[1][1] - self._position_range[1][0])
-            * (positions[1] - self._position_range[1][0])
-            + self._voltage_range[0],
-            (self._voltage_range[1] - self._voltage_range[0])
-            / (self._position_range[2][1] - self._position_range[2][0])
-            * (positions[2] - self._position_range[2][0])
-            + self._voltage_range[0],
-            (self._voltage_range[1] - self._voltage_range[0])
-            / (self._position_range[3][1] - self._position_range[3][0])
-            * (positions[3] - self._position_range[3][0])
-            + self._voltage_range[0]
-        ))
+        vlist = []
+        for i, position in positions.enumerate():
+            vlist.append(
+                (self._voltage_range[i][1] - self._voltage_range[i][0])
+                / (self._position_range[i][1] - self._position_range[i][0])
+                * (position - self._position_range[i][0])
+                + self._voltage_range[i][0]
+            )
+        volts = np.vstack(vlist)
 
-        if volts.min() < self._voltage_range[0] or volts.max() > self._voltage_range[1]:
+        for v in volts.enumerate():
+        if v.min() < self._voltage_range[i][0] or v.max() > self._voltage_range[i][1]:
             self.log.error(
-                'Voltages {} exceed the limit, the positions have to '
-                'be adjusted to stay in the given range.'.format((volts.min(), volts.max())))
-            return np.array([-1., -1., -1., -1.])
+                'Voltages ({0}, {1}) exceed the limit, the positions have to '
+                'be adjusted to stay in the given range.'.format(v.min(), v.max()))
+            return np.array([np.NaN])
         return volts
 
     def get_scanner_position(self):
@@ -1398,14 +1438,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def scan_line(self, line_path=None):
         """ Scans a line and return the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the
-                                    voltage points
+        @param float[][n] line_path: array of n-part tuples defining the voltage points
 
         @return float[]: the photon counts per second
 
         The input array looks for a xy scan of 5x5 points at the position z=-2
         like the following:
-            [ [1,2,3,4,5],[1,1,1,1,],[-2,-2,-2,-2],[0,0,0,0]]
+            [ [1, 2, 3, 4, 5], [1, 1, 1, 1, 1], [-2, -2, -2, -2] ]
+        n is the number of scanner axes, which can vary. Typical values are 2 for galvo scanners,
+        3 for xyz scanners and 4 for xyz scanners with a special function on the a axis.
         """
         if self._scanner_counter_daq_task is None:
             self.log.error('No counter is running, cannot scan a line without one.')
@@ -1421,10 +1462,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_SampClk)
 
             self.set_up_line(np.shape(line_path)[1])
-
+            line_volts = self._scanner_position_to_volt(line_path)
             # write the positions to the analog output
             written_voltages = self._write_scanner_ao(
-                voltages=self._scanner_position_to_volt(line_path),
+                voltages=line_volts,
                 length=self._line_length,
                 start=False)
 
@@ -1453,7 +1494,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 self._RWTimeout * 2 * self._line_length)
 
             # count data will be written here
-            self._scan_data = np.empty((2*self._line_length,), dtype=np.uint32)
+            self._scan_data = np.empty(( 2 * self._line_length,), dtype=np.uint32)
 
             # number of samples which were read will be stored here
             n_read_samples = daq.int32()
