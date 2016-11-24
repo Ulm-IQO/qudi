@@ -58,7 +58,7 @@ class SamplingFunctions():
         # predefine a general range for the frequency, amplitude and phase
         # <general_parameter> = {}
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 1e3, 'dec': 8, 'unit_prefix': 'M', 'type':float}
+                    'view_stepsize': 1.0, 'dec': 10, 'unit_prefix': 'M', 'type':float}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
                     'view_stepsize': 0.001, 'dec': 3, 'unit_prefix': '', 'type': float}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,

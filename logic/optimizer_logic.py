@@ -187,10 +187,10 @@ class OptimizerLogic(GenericLogic):
 
         # Check the supplied optimization sequence only contains 'XY' and 'Z'
         if len(set(self.optimization_sequence).difference({'XY', 'Z'})) > 0:
-            self.log.error('Requested optimization sequence contains unknown '
-                    'steps. Please provide a sequence containing only \'XY\' '
-                    'and \'Z\' strings. The default [\'XY\', \'Z\'] will be '
-                    'used.')
+            self.log.error(
+                'Requested optimization sequence contains unknown steps.'
+                ' Please provide a sequence containing only \'XY\' '
+                'and \'Z\' strings. The default [\'XY\', \'Z\'] will be used.')
             self.optimization_sequence = ['XY', 'Z']
 
     def set_clock_frequency(self, clock_frequency):
@@ -229,27 +229,32 @@ class OptimizerLogic(GenericLogic):
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) == 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
         elif initial_pos is None:
-            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = self._scanning_device.get_scanner_position()[0:3]
+            scpos = self._scanning_device.get_scanner_position()[0:3]
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = scpos
         else:
             pass  # TODO: throw error
 
         # Keep track of where the start_refocus was initiated
         self._caller_tag = caller_tag
 
-        # Set the optim_pos values to match the initial_pos values.  This means we can use optim_pos in subsequent steps and ensure that we benefit from any completed optimization step.
+        # Set the optim_pos values to match the initial_pos values.
+        # This means we can use optim_pos in subsequent steps and ensure
+        # that we benefit from any completed optimization step.
         self.optim_pos_x = self._initial_pos_x
         self.optim_pos_y = self._initial_pos_y
         self.optim_pos_z = self._initial_pos_z
 
-        self.lock()
-        self.signal_refocus_started.emit()
         self._xy_scan_line_count = 0
-
         self._optimization_step = 0
         self.check_optimization_sequence()
 
-        self.start_scanner()
-
+        scanner_status = self.start_scanner()
+        if scanner_status < 0:
+            self.signal_refocus_finished.emit(
+                self._caller_tag,
+                [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
+            return
+        self.signal_refocus_started.emit()
         self._signal_do_next_optimization_step.emit()
 
     def stop_refocus(self):
@@ -309,25 +314,17 @@ class OptimizerLogic(GenericLogic):
         """
         scanner_pos = self._scanning_device.get_scanner_position()
 
-        move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
-                                                    start_pos[0],
-                                                    self.return_slowness),
-                                        np.linspace(scanner_pos[1],
-                                                    start_pos[1],
-                                                    self.return_slowness),
-                                        np.linspace(scanner_pos[2],
-                                                    start_pos[2],
-                                                    self.return_slowness),
-                                        np.linspace(0,
-                                                    0,
-                                                    self.return_slowness)))
-        try:
-            self._scanning_device.scan_line(move_to_start_line)
-            time.sleep(self.hw_settle_time)
+        move_to_start_line = np.vstack((
+            np.linspace(scanner_pos[0], start_pos[0], self.return_slowness),
+            np.linspace(scanner_pos[1], start_pos[1], self.return_slowness),
+            np.linspace(scanner_pos[2], start_pos[2], self.return_slowness),
+            np.linspace(0, 0, self.return_slowness)))
 
-        except Exception:
-            self.log.error('The scan went wrong, killing the scanner.')
-            self.stop_refocus()
+        counts = self._scanning_device.scan_line(move_to_start_line)
+        if counts[0] == -1:
+            return -1
+        time.sleep(self.hw_settle_time)
+        return 0
 
     def _refocus_xy_line(self):
         """Scanning a line of the xy optimization image.
@@ -340,38 +337,49 @@ class OptimizerLogic(GenericLogic):
                 self.stopRequested = False
                 self.finish_refocus()
                 self.signal_image_updated.emit()
-                self.signal_refocus_finished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
+                self.signal_refocus_finished.emit(
+                    self._caller_tag,
+                    [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
                 return
-
-        if self.tilt_correction:
-            self.xy_refocus_image[:,:,2] += self._calc_dz(x=self.xy_refocus_image[:,:,0],y=self.xy_refocus_image[:,:,1])
 
         # move to the start of the first line
         if self._xy_scan_line_count == 0:
-            self._move_to_start_pos([self.xy_refocus_image[0, 0, 0], self.xy_refocus_image[0, 0, 1], self.xy_refocus_image[0, 0, 2]])
+            status = self._move_to_start_pos(
+                [self.xy_refocus_image[0, 0, 0],
+                 self.xy_refocus_image[0, 0, 1],
+                 self.xy_refocus_image[0, 0, 2]])
+            if status < 0:
+                self.log.error('Error during move to starting point.')
+                self.stop_refocus()
+                self._signal_scan_next_xy_line.emit()
+                return
 
         # scan a line of the xy optimization image
-        try:
-            line = np.vstack((self.xy_refocus_image[self._xy_scan_line_count, :, 0],
-                              self.xy_refocus_image[self._xy_scan_line_count, :, 1],
-                              self.xy_refocus_image[self._xy_scan_line_count, :, 2],
-                              self._A_values))
+        line = np.vstack((
+            self.xy_refocus_image[self._xy_scan_line_count, :, 0],
+            self.xy_refocus_image[self._xy_scan_line_count, :, 1],
+            self.xy_refocus_image[self._xy_scan_line_count, :, 2],
+            self._A_values))
 
-            line_counts = self._scanning_device.scan_line(line)
-
-            return_line = np.vstack((self._return_X_values,
-                                     self.xy_refocus_image[
-                                         self._xy_scan_line_count, 0, 1] * np.ones(self._return_X_values.shape),
-                                     self.xy_refocus_image[
-                                         self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape),
-                                     self._return_A_values))
-
-            self._scanning_device.scan_line(return_line)
-
-        except Exception:
+        line_counts = self._scanning_device.scan_line(line)
+        if line_counts[0] == -1:
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._signal_scan_next_xy_line.emit()
+            return
+
+        return_line = np.vstack((
+            self._return_X_values,
+            self.xy_refocus_image[self._xy_scan_line_count, 0, 1] * np.ones(self._return_X_values.shape),
+            self.xy_refocus_image[self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape),
+            self._return_A_values))
+
+        return_line_counts = self._scanning_device.scan_line(return_line)
+        if return_line_counts[0] == -1:
+            self.log.error('The scan went wrong, killing the scanner.')
+            self.stop_refocus()
+            self._signal_scan_next_xy_line.emit()
+            return
 
         self.xy_refocus_image[self._xy_scan_line_count, :, 3] = line_counts
         self.signal_image_updated.emit()
@@ -424,8 +432,15 @@ class OptimizerLogic(GenericLogic):
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
             adjusted_param = {}
-            adjusted_param['c'] = {'value': 1e-12, 'min': -self.z_refocus_line.max(), 'max': self.z_refocus_line.max()}
-            result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=adjusted_param)
+            adjusted_param['c'] = {
+                'value': 1e-12,
+                'min': -self.z_refocus_line.max(),
+                'max': self.z_refocus_line.max()
+            }
+            result = self._fit_logic.make_gaussian_fit(
+                axis=self._zimage_Z_values,
+                data=self.z_refocus_line,
+                add_parameters=adjusted_param)
         else:
             if self.use_custom_params:
                 result = self._fit_logic.make_gaussian_fit(
@@ -473,7 +488,6 @@ class OptimizerLogic(GenericLogic):
     def finish_refocus(self):
         """ Finishes up and releases hardware after the optimizer scans."""
         self.kill_scanner()
-        self.unlock()
 
         self.log.info('Optimised from ({0:.3f},{1:.3f},{2:.3f}) to local '
                 'maximum at ({3:.3f},{4:.3f},{5:.3f}).'.format(
@@ -490,11 +504,13 @@ class OptimizerLogic(GenericLogic):
     def _scan_z_line(self):
         """Scans the z line for refocus."""
 
-        if self.tilt_correction:
-            self._zimage_Z_values += self._calc_dz(x=self.optim_pos_x,y=self.optim_pos_y)
-
         # Moves to the start value of the z-scan
-        self._move_to_start_pos([self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
+        status = self._move_to_start_pos(
+            [self.optim_pos_x,self.optim_pos_y, self._zimage_Z_values[0]])
+        if status < 0:
+            self.log.error('Error during move to starting point.')
+            self.stop_refocus()
+            return
 
         # defining trace of positions for z-refocus
         Z_line = self._zimage_Z_values
@@ -505,12 +521,11 @@ class OptimizerLogic(GenericLogic):
         line = np.vstack((X_line, Y_line, Z_line, A_line))
 
         # Perform scan
-        try:
-            line_counts = self._scanning_device.scan_line(line)
-        except Exception:
-            self.log.error('The scan went wrong, killing the scanner.')
+        line_counts = self._scanning_device.scan_line(line)
+        if line_counts[0] == -1:
+            self.log.error('Z scan went wrong, killing the scanner.')
             self.stop_refocus()
-            self._signal_scan_next_xy_line.emit()
+            return
 
         # Set the data
         self.z_refocus_line = line_counts
@@ -518,29 +533,45 @@ class OptimizerLogic(GenericLogic):
         # If subtracting surface, perform a displaced depth line scan
         if self.do_surface_subtraction:
             # Move to start of z-scan
-            self._move_to_start_pos([self.optim_pos_x + self.surface_subtr_scan_offset, self.optim_pos_y, self._zimage_Z_values[0]])
+            status = self._move_to_start_pos([
+                self.optim_pos_x + self.surface_subtr_scan_offset,
+                self.optim_pos_y,
+                self._zimage_Z_values[0]])
+            if status < 0:
+                self.log.error('Error during move to starting point.')
+                self.stop_refocus()
+                return
 
             # define an offset line to measure "background"
             line_bg = np.vstack((X_line + self.surface_subtr_scan_offset, Y_line, Z_line, A_line))
 
-            try:
-                line_bg = self._scanning_device.scan_line(line_bg)
-            except Exception:
+            line_bg_counts = self._scanning_device.scan_line(line_bg)
+            if line_bg_counts[0] == -1:
                 self.log.error('The scan went wrong, killing the scanner.')
                 self.stop_refocus()
-                self._signal_scan_next_xy_line.emit()
+                return
 
             # surface-subtracted line scan data is the difference
-            self.z_refocus_line = line_counts - line_bg
+            self.z_refocus_line = line_counts - line_bg_counts
 
     def start_scanner(self):
         """Setting up the scanner device.
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.lock()
-        self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
-        self._scanning_device.set_up_scanner()
+        self.lock()
+        clock_status = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
+        if clock_status < 0:
+            self.unlock()
+            return -1
+
+        scanner_status = self._scanning_device.set_up_scanner()
+        if scanner_status < 0:
+            self._scanning_device.close_scanner_clock()
+            self.unlock()
+            return -1
+
         return 0
 
     def kill_scanner(self):
@@ -548,9 +579,17 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.close_scanner()
-        self._scanning_device.close_scanner_clock()
-        self._scanning_device.unlock()
+        try:
+            self._scanning_device.close_scanner()
+        except:
+            self.log.exception('Closing refocus scanner failed.')
+            return -1
+        try:
+            self._scanning_device.close_scanner_clock()
+        except:
+            self.log.exception('Closing refocus scanner clock failed.')
+            return -1
+        self.unlock()
         return 0
 
     def _do_next_optimization_step(self):
@@ -559,7 +598,6 @@ class OptimizerLogic(GenericLogic):
 
         # At the end fo the sequence, finish the optimization
         if self._optimization_step == len(self.optimization_sequence):
-            # todo: make this a signal?
             self._signal_finished_all_optimization_steps.emit()
             return
 
@@ -567,7 +605,7 @@ class OptimizerLogic(GenericLogic):
         this_step = self.optimization_sequence[self._optimization_step]
 
         # Increment the step counter
-        self._optimization_step = self._optimization_step + 1
+        self._optimization_step += 1
 
         # Launch the next step
         if this_step == 'XY':
