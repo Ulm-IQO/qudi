@@ -28,6 +28,8 @@ class BlockEditor:
         self.activation_config = None
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
+
+        self.be_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
         return
 
     def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
@@ -399,6 +401,8 @@ class BlockOrganizer:
                                               'unit_prefix': '', 'type': int}
         self._cfg_param_pb = None
         self.block_dict = None
+
+        self.bo_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
         return
 
     def set_block_dict(self, block_dict):
@@ -635,6 +639,7 @@ class SequenceEditor:
                                                 'unit_prefix': '', 'type': int}
         self._cfg_param_ps = None
         self.ensemble_dict = None
+        self.se_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
         return
 
     def set_ensemble_dict(self, ensemble_dict):
