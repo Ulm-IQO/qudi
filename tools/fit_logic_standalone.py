@@ -1310,8 +1310,89 @@ def twoD_gaussian_magnet():
 
 #            print('Message:',result.message)
 
+def poissonian_testing():
+    start=0
+    stop=30
+    mu=8
+    num_points=1000
+    x = np.array(np.linspace(start, stop, num_points))
+#            x = np.array(x,dtype=np.int64)
+    mod,params = qudi_fitting.make_poissonian_model()
+    print('Parameters of the model',mod.param_names)
+
+    p=Parameters()
+    p.add('mu',value=mu)
+    p.add('amplitude',value=200.)
+
+    data_noisy=(mod.eval(x=x,params=p) *
+                np.array((1+0.001*np.random.normal(size=x.shape) *
+                p['amplitude'].value ) ) )
+
+    print('all int',all(isinstance(item, (np.int32,int, np.int64)) for item in x))
+    print('int',isinstance(x[1], int),float(x[1]).is_integer())
+    print(type(x[1]))
+    #make the filter an extra function shared and usable for other functions
+    gaus=gaussian(10,10)
+    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+
+
+    result = qudi_fitting.make_poissonian_fit(x, data_noisy)
+    print(result.fit_report())
+
+    plt.figure()
+    plt.plot(x, data_noisy, '-b', label='noisy data')
+    plt.plot(x, data_smooth, '-g', label='smoothed data')
+    plt.plot(x,result.init_fit,'-y', label='initial values')
+    plt.plot(x,result.best_fit,'-r',linewidth=2.0, label='fit')
+    plt.xlabel('counts')
+    plt.ylabel('occurences')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
 
 def double_poissonian_testing():
+    """ Testing of double poissonian with self created data.
+    First version of double poissonian fit."""
+
+    start=100
+    stop=300
+    num_points=int((stop-start)+1)*100
+    x = np.linspace(start, stop, num_points)
+
+    # double poissonian
+    mod,params = qudi_fitting.make_multiplepoissonian_model(no_of_functions=2)
+    print('Parameters of the model',mod.param_names)
+    parameter=Parameters()
+    parameter.add('p0_mu',value=200)
+    parameter.add('p1_mu',value=240)
+    parameter.add('p0_amplitude',value=1)
+    parameter.add('p1_amplitude',value=1)
+    data_noisy = ( np.array(mod.eval(x=x,params=parameter)) *
+                   np.array((1+0.2*np.random.normal(size=x.shape) )*
+                   parameter['p1_amplitude'].value) )
+
+
+    #make the filter an extra function shared and usable for other functions
+    gaus=gaussian(10,10)
+    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+
+    result = qudi_fitting.make_doublepoissonian_fit(x, data_noisy)
+    print(result.fit_report())
+
+    plt.figure()
+    plt.plot(x, data_noisy, '-b', label='noisy data')
+    plt.plot(x, data_smooth, '-g', label='smoothed data')
+    plt.plot(x,result.init_fit,'-y', label='initial values')
+    plt.plot(x,result.best_fit,'-r',linewidth=2.0, label='fit')
+    plt.xlabel('counts')
+    plt.ylabel('occurences')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+
+def double_poissonian_testing_data():
     """ Double poissonian fit with read in data.
     Second version of double poissonian fit."""
 
@@ -1438,11 +1519,11 @@ def double_poissonian_testing():
 
 
     # set the initial values for the fit:
-    params['poissonian0_mu'].value = x_axis_interpol[dip0_arg]
-    params['poissonian0_amplitude'].value = (interpol_hist[dip0_arg] / qudi_fitting.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
+    params['p0_mu'].value = x_axis_interpol[dip0_arg]
+    params['p0_amplitude'].value = (interpol_hist[dip0_arg] / qudi_fitting.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
 
-    params['poissonian1_mu'].value = x_axis_interpol[dip1_arg]
-    params['poissonian1_amplitude'].value = ( interpol_hist[dip1_arg] / qudi_fitting.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
+    params['p1_mu'].value = x_axis_interpol[dip1_arg]
+    params['p1_amplitude'].value = ( interpol_hist[dip1_arg] / qudi_fitting.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
 
     # REMEMBER: the fit will be still performed on the original data!!!
     #           The previous treatment of the data was just to find the
@@ -1461,86 +1542,6 @@ def double_poissonian_testing():
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-
-def double_poissonian_testing2():
-    """ Testing of double poissonian with self created data.
-    First version of double poissonian fit."""
-
-    start=100
-    stop=300
-    num_points=int((stop-start)+1)*100
-    x = np.linspace(start, stop, num_points)
-
-    # double poissonian
-    mod,params = qudi_fitting.make_poissonian_model(no_of_functions=2)
-    print('Parameters of the model',mod.param_names)
-    parameter=Parameters()
-    parameter.add('poissonian0_mu',value=200)
-    parameter.add('poissonian1_mu',value=240)
-    parameter.add('poissonian0_amplitude',value=1)
-    parameter.add('poissonian1_amplitude',value=1)
-    data_noisy = ( np.array(mod.eval(x=x,params=parameter)) *
-                   np.array((1+0.2*np.random.normal(size=x.shape) )*
-                   parameter['poissonian1_amplitude'].value) )
-
-
-    #make the filter an extra function shared and usable for other functions
-    gaus=gaussian(10,10)
-    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
-
-    result = qudi_fitting.make_doublepoissonian_fit(x, data_noisy)
-    print(result.fit_report())
-
-    try:
-        plt.plot(x, data_noisy, '-b')
-        plt.plot(x, data_smooth, '-g')
-        plt.plot(x,result.init_fit,'-y')
-        plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
-        plt.show()
-
-
-    except:
-        print('exception')
-
-
-def poissonian_testing():
-    start=0
-    stop=30
-    mu=8
-    num_points=1000
-    x = np.array(np.linspace(start, stop, num_points))
-#            x = np.array(x,dtype=np.int64)
-    mod,params = qudi_fitting.make_poissonian_model()
-    print('Parameters of the model',mod.param_names)
-
-    p=Parameters()
-    p.add('poissonian_mu',value=mu)
-    p.add('poissonian_amplitude',value=200.)
-
-    data_noisy=(mod.eval(x=x,params=p) *
-                np.array((1+0.001*np.random.normal(size=x.shape) *
-                p['poissonian_amplitude'].value ) ) )
-
-    print('all int',all(isinstance(item, (np.int32,int, np.int64)) for item in x))
-    print('int',isinstance(x[1], int),float(x[1]).is_integer())
-    print(type(x[1]))
-    #make the filter an extra function shared and usable for other functions
-    gaus=gaussian(10,10)
-    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
-
-
-    result = qudi_fitting.make_poissonian_fit(x, data_noisy)
-    print(result.fit_report())
-    try:
-        plt.plot(x, data_noisy, '-b')
-        plt.plot(x, data_smooth, '-g')
-        plt.plot(x,result.init_fit,'-y')
-        plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
-        plt.show()
-
-
-    except:
-        print('exception')
 
 def gaussian_testing():
     start=0
@@ -3093,9 +3094,9 @@ if __name__ == "__main__":
 #    sine_testing()
 ##    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
-#    poissonian_testing()
+    poissonian_testing()
 #    double_poissonian_testing()
-#    double_poissonian_testing2()
+#    double_poissonian_testing_data() # needs a selected file for data input
 #    bareexponentialdecay_testing()
 #    exponentialdecay_testing()
 #
@@ -3122,7 +3123,7 @@ if __name__ == "__main__":
 #    three_sine_exp_decay_offset_testing()
 #    three_sine_exp_decay_offset_testing2()
 #    three_sine_three_exp_decay_offset_testing()
-    three_sine_three_exp_decay_offset_testing2()
+#    three_sine_three_exp_decay_offset_testing2()
 
 
 #    voigt_testing()
