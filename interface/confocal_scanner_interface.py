@@ -65,7 +65,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
-        @param float [2] myrange: array containing lower and upper limit
+        @param float [4][2] myrange: array of 4 ranges  containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
