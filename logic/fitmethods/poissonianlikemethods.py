@@ -31,8 +31,7 @@ from scipy.signal import gaussian
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
 
-from scipy import special
-from scipy.special import gammaln as gamln
+from scipy.special import gammaln, xlogy
 
 ################################################################################
 #                                                                              #
@@ -68,7 +67,7 @@ def poisson(self, x, mu):
     # completely valid assumption.
 
     if check_val < 1e12:
-        return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
+        return np.exp(xlogy(x, mu) - gammaln(x + 1) - mu)
     else:
         return np.exp(-((x-mu)**2)/(2*mu)) / (np.sqrt(2*np.pi*mu))
 
@@ -123,7 +122,7 @@ def make_poissonian_model(self, prefix=None):
 
 
 def estimate_poissonian(self, x_axis, data, params):
-    """ Provides an estimator for initial values of a poissonian function.
+    """ Provide an estimator for initial values of a poissonian function.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -216,88 +215,40 @@ def make_multiplepoissonian_model(self, no_of_functions=1):
 
     return multi_poisson_model, params
 
+################################################################################
+#                                                                              #
+#                    Double Poissonian fitting model                           #
+#                                                                              #
+################################################################################
 
-def make_doublepoissonian_fit(self, x_axis, data, add_params=None):
-    """ This method performes a double poissonian fit on the provided data.
+def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4,
+                              minimal_threshold=0.1, sigma_threshold_fraction=0.2):
+    """ Provide initial values for a double poissonian fit.
 
-    @param array[] axis: axis values
-    @param array[]  data: data
-    @param dict add_parameters: Additional parameters
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-
-    parameters = [x_axis, data]
-    for var in parameters:
-        if len(np.shape(var)) != 1:
-                logger.error('Given parameter is no one dimensional array.')
-
-    mod_final, params = self.make_poissonian_model(no_of_functions=2)
-
-    error, params = self.estimate_doublepoissonian(x_axis, data, params)
-
-    # overwrite values of additional parameters
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The double poissonian fit did not work. Check if a '
-                'poisson distribution is needed or a normal approximation '
-                'can be used. For values above 10 a normal/ gaussian '
-                'distribution is a good approximation.')
-        result = mod_final.fit(data, x=x_axis, params=params)
-        print(result.message)
-
-    return result
-
-############################################################################
-#                                                                          #
-#                     double poissonian model                              #
-#                                                                          #
-############################################################################
-
-def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
-                              threshold_fraction=0.4, minimal_threshold=0.1,
-                              sigma_threshold_fraction=0.2):
-    """ This method provides a an estimator for a double poissonian fit
-    with the parameters coming from the physical properties of an experiment
-    done in gated counter:
-                    - positive peak
-                    - no values below 0
-                    - rather broad overlapping funcitons
-
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to
-                        x values
-    @param Parameters object params: Needed parameters
-    @param float threshold_fraction : Threshold to find second gaussian
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+    @param float threshold_fraction : Threshold to find second poissonian
     @param float minimal_threshold: Threshold is lowered to minimal this
                                     value as a fraction
     @param float sigma_threshold_fraction: Threshold for detecting
                                            the end of the peak
 
-    @return int error: error code (0:OK, -1:error)
-    @return Parameters object params: estimated values
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+
+    The parameters coming from the physical properties of an experiment
+    done in gated counter:
+                    - positive peak
+                    - no values below 0
+                    - rather broad overlapping functions
     """
 
-    error = 0
-    parameters = [x_axis, data]
-    for var in parameters:
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is no array.')
-            error = -1
-        elif len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
-            error = -1
-    if not isinstance(params, Parameters):
-        logger.error('Parameters object is not valid in estimate_gaussian.')
-        error = -1
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     #TODO: make the filter an extra function shared and usable for other functions.
     # Calculate here also an interpolation factor, which will be based on the
@@ -345,12 +296,46 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
     sigma1_argleft, dip1_arg, sigma1_argright = search_results[4:7]
 
     # set the initial values for the fit:
-    params['poissonian0_mu'].value = x_axis_interpol[dip0_arg]
-    params['poissonian0_amplitude'].value = (data_smooth[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
-    params['poissonian0_amplitude'].min = 1e-15
+    params['p0_mu'].set(value=x_axis_interpol[dip0_arg])
+    amplitude0 = (data_smooth[dip0_arg] / self.poisson(x_axis_interpol[dip0_arg], x_axis_interpol[dip0_arg]))
+    params['p0_amplitude'].set(value=amplitude0, min=1e-15)
 
-    params['poissonian1_mu'].value = x_axis_interpol[dip1_arg]
-    params['poissonian1_amplitude'].value = (data_smooth[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
-    params['poissonian1_amplitude'].min = 1e-15
+    params['p1_mu'].set(value=x_axis_interpol[dip1_arg])
+    amplitude1 = (data_smooth[dip1_arg] / self.poisson(x_axis_interpol[dip1_arg], x_axis_interpol[dip1_arg]))
+    params['p1_amplitude'].set(value=amplitude1, min=1e-15)
 
     return error, params
+
+def make_doublepoissonian_fit(self, x_axis, data, add_params=None):
+    """ Perform a double poissonian fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    double_poissonian_model, params = self.make_multiplepoissonian_model(no_of_functions=2)
+
+    error, params = self.estimate_doublepoissonian(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+
+    try:
+        result = double_poissonian_model.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The double poissonian fit did not work. Check if a '
+                       'poisson distribution is needed or a normal '
+                       'approximation can be used. For values above 10 a '
+                       'normal/ gaussian distribution is a good '
+                       'approximation.')
+        result = double_poissonian_model.fit(data, x=x_axis, params=params)
+
+    return result

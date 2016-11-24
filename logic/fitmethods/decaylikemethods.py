@@ -159,9 +159,8 @@ def make_bareexponentialdecay_fit(self, x_axis, data, add_params=None):
 
     error, params = self.estimate_bareexponentialdecay(x_axis, data, params)
 
-    if add_params is not None:
-        params = self._substitute_params(initial_params=params,
-                                         update_params=add_params)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
         result = bareexponentialdecay.fit(data, x=x_axis, params=params)
     except:
