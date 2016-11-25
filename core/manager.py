@@ -517,7 +517,7 @@ class Manager(QtCore.QObject):
             configuration = {}
 
         # get class from module by name
-        print(moduleObject, className)
+        #print(moduleObject, className)
         modclass = getattr(moduleObject, className)
 
         # FIXME: Check if the class we just obtained has the right inheritance

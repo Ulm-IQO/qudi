@@ -597,7 +597,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if len(sequence_files) > 1:
             self.log.error('More than one serialized sequence dict was found in {0}.\n'
                            'Using {1}.'.format(self.sequence_dir, sequence_files[-1]))
-            sequence_files = sequence_files[-1]
+        sequence_files = sequence_files[-1]
         try:
             with open(os.path.join(self.sequence_dir, sequence_files), 'rb') as infile:
                 self.saved_pulse_sequences = pickle.load(infile)
@@ -960,7 +960,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
             # go now through the sequence list and replace all the entries with the output of the
             # sampled ensemble file:
-            for ensemble_obj, seq_param  in sequence_obj.ensemble_param_list:
+            for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
 
                 temp_dict = dict()
                 temp_dict['name'] = sampled_ensembles[ensemble_obj.name]

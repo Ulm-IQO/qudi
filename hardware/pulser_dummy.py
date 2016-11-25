@@ -229,6 +229,7 @@ class PulserDummy(Base, PulserInterface):
         # for the different configurations can be customary chosen.
 
         activation_config = OrderedDict()
+        activation_config['config0'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         activation_config['config1'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
         # Usage of channel 1 only:
         activation_config['config2'] = ['a_ch2', 'd_ch1', 'd_ch2']
@@ -293,9 +294,8 @@ class PulserDummy(Base, PulserInterface):
         If nothing is passed, method will be skipped.
         """
         if asset_name is None:
-            self.log.warning('No asset name provided for upload!\n'
-                    'Correct that!\n'
-                    'Command will be ignored.')
+            self.log.warning('No asset name provided for upload!\nCorrect that!\nCommand will be '
+                             'ignored.')
             return -1
 
         saved_files = self._get_filenames_on_host()
@@ -304,9 +304,11 @@ class PulserDummy(Base, PulserInterface):
             if filename not in self.uploaded_files_list:
                 if (asset_name+'.seq') in filename:
                     self.uploaded_files_list.append(filename)
+                if (asset_name+'.seqx') in filename:
+                    self.uploaded_files_list.append(filename)
                 elif fnmatch(filename, asset_name+'_ch?.wfm'):
                     self.uploaded_files_list.append(filename)
-                elif fnmatch(filename, asset_name+'_ch?.WFMX'):
+                elif fnmatch(filename, asset_name+'_ch?.wfmx'):
                     self.uploaded_files_list.append(filename)
                 elif fnmatch(filename, asset_name+'.mat'):
                     self.uploaded_files_list.append(filename)
@@ -695,7 +697,7 @@ class PulserDummy(Base, PulserInterface):
         # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for name in file_list:
-            if fnmatch(name, '*_Ch?.WFMX') or fnmatch(name, '*_ch?.wfm'):
+            if fnmatch(name, '*_ch?.wfmx') or fnmatch(name, '*_ch?.wfm') or fnmatch(name, '*.seq') or fnmatch(name, '*.seqx'):
                 asset_name = name.rsplit('_', 1)[0]
                 if asset_name not in saved_assets:
                     saved_assets.append(asset_name)
@@ -723,7 +725,7 @@ class PulserDummy(Base, PulserInterface):
 
         files_to_delete = []
         for filename in self.uploaded_files_list:
-            if fnmatch(filename, asset_name+'.mat') or fnmatch(filename, asset_name+'_Ch?.WFMX') or fnmatch(filename, asset_name+'_ch?.wfm'):
+            if fnmatch(filename, asset_name+'.mat') or fnmatch(filename, asset_name+'_ch?.wfmx') or fnmatch(filename, asset_name+'_ch?.wfm' or fnmatch(filename, asset_name+'_ch?.seq') or fnmatch(filename, asset_name+'_ch?.seqx')):
                 files_to_delete.append(filename)
 
         for filename in files_to_delete:
@@ -841,7 +843,7 @@ class PulserDummy(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat') or f.endswith('.wfm') or f.endswith('.seq') or f.endswith('.seqx'))]
         return filename_list
 
     def _get_num_a_ch(self):
