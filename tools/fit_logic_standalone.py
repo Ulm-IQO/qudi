@@ -11,6 +11,16 @@ path_of_qudi = "<custom path>/qudi/"
 sys.path.append(path_of_qudi)
 from tools.fit_logic_standalone import FitLogic
 fitting = FitLogic(path_of_qudi)
+
+The fit_logic methods can be imported in any python code by using
+the folling lines:
+
+import sys
+path_of_qudi = "<custom path>/qudi/"
+sys.path.append(path_of_qudi)
+from tools.fit_logic_standalone import FitLogic
+fitting = FitLogic(path_of_qudi)       
+
         
 
 QuDi is free software: you can redistribute it and/or modify
@@ -483,31 +493,30 @@ def twoD_testing():
 
 
 def oneD_testing():
-    qudi_fitting.x = np.linspace(0, 5, 11)
+    x = np.linspace(0, 5, 11)
     x_nice=np.linspace(0, 5, 101)
 
     mod_final,params = qudi_fitting.make_gaussian_model()
 #            print('Parameters of the model',mod_final.param_names)
 
-    p=Parameters()
 
 #            p.add('center',max=+3)
 
-    qudi_fitting.data_noisy=mod_final.eval(x=qudi_fitting.x, amplitude=100000,center=1,sigma=1.2, c=10000) + 8000*abs(np.random.normal(size=qudi_fitting.x.shape))
-#            print(qudi_fitting.data_noisy)
-    result=qudi_fitting.make_gaussian_fit(axis=qudi_fitting.x,data=qudi_fitting.data_noisy,add_parameters=p)
+    data_noisy=mod_final.eval(x=x, amplitude=100000,center=2,sigma=1.0, c=10000) + 8000*abs(np.random.normal(size=x.shape))
+##            print(qudi_fitting.data_noisy)
+    result=qudi_fitting.make_gaussian_fit(axis=x,data=data_noisy)
+#
+#
+#    gaus=gaussian(3,5)
+#    qudi_fitting.data_smooth = filters.convolve1d(qudi_fitting.data_noisy, gaus/gaus.sum(),mode='mirror')
 
-
-    gaus=gaussian(3,5)
-    qudi_fitting.data_smooth = filters.convolve1d(qudi_fitting.data_noisy, gaus/gaus.sum(),mode='mirror')
-
-    plt.plot(qudi_fitting.x,qudi_fitting.data_noisy)
-    plt.plot(qudi_fitting.x,qudi_fitting.data_smooth,'-k')
-    plt.plot(qudi_fitting.x,result.init_fit,'-g',label='init')
-#            plt.plot(qudi_fitting.x,result.best_fit,'-r',label='fit')
-    plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r',label='fit')
+    plt.plot(x,data_noisy)
+#    plt.plot(qudi_fitting.x,qudi_fitting.data_smooth,'-k')
+#    plt.plot(qudi_fitting.x,result.init_fit,'-g',label='init')
+    plt.plot(x,result.best_fit,'-r',label='fit')
+#    plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r',label='fit')
     plt.show()
-    print(result.init_params)
+#    print(result.init_params)
 #            print(result.fit_report(show_correl=False))
 
 
@@ -1536,6 +1545,45 @@ def gaussian_testing():
     units={'center': 'counts/s','sigma': 'counts','amplitude': 'counts/s','c': 'N'}
     print(qudi_fitting.create_fit_string(result,mod_final,units=units))
 
+def gaussianwithslope_testing():
+    x = np.linspace(0, 5, 30)
+    x_nice=np.linspace(0, 5, 101)
+
+    mod_final,params = qudi_fitting.make_gaussianwithslope_model()
+    print(params)
+    
+#            print('Parameters of the model',mod_final.param_names)
+
+
+#            p.add('center',max=+3)
+    if True:
+        data=np.loadtxt("./../1D_shllow.csv")
+        data_noisy=data[:,1]
+        data_fit=data[:,3]
+        x=data[:,2]
+    #data_noisy=mod_final.eval(x=x, slope=-1000., amplitude=100000.,center=2.,sigma=0.32863, offset=100.) + 12000*abs(np.random.normal(size=x.shape))
+    
+    update=dict()
+    update["slope"]={"min":-np.inf,"max":np.inf}
+    update["offset"]={"min":-np.inf,"max":np.inf}
+    update["sigma"]={"min":-np.inf,"max":np.inf}
+    update["center"]={"min":-np.inf,"max":np.inf}
+    update["amplitude"]={"min":-np.inf,"max":np.inf}
+    result=qudi_fitting.make_gaussianwithslope_fit(axis=x,data=data_noisy,add_parameters=update)
+#
+##
+#    gaus=gaussian(3,5)
+#    qudi_fitting.data_smooth = filters.convolve1d(qudi_fitting.data_noisy, gaus/gaus.sum(),mode='mirror')
+
+    plt.plot(x,data_noisy,label="data")
+    plt.plot(x,data_fit,"k",label="old fit")
+    plt.plot(x,result.init_fit,'-g',label='init')
+    plt.plot(x,result.best_fit,'-r',label='fit')
+    plt.legend()
+    plt.show()
+    print(result.fit_report())
+
+    
 ################################################################################################################################
 def exponentialdecay_testing():
     #generation of data for testing
@@ -1789,24 +1837,25 @@ def fit_data():
 plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
-    N15_testing()
-    N14_testing()
-    oneD_testing()
-    gaussian_testing()
-    twoD_testing()
-    lorentzian_testing()
-    double_gaussian_testing()
-    double_gaussian_odmr_testing()
-    double_lorentzian_testing()
-    double_lorentzian_fixedsplitting_testing()
-    powerfluorescence_testing()
-    sine_testing()
-    twoD_gaussian_magnet()
-    poissonian_testing()
-    #double_poissonian_testing()
-    bareexponentialdecay_testing()
-    exponentialdecay_testing()
-    sineexponentialdecay_testing()
-    stretchedexponentialdecay_testing()
-    linear_testing()
+    gaussianwithslope_testing()
+#    N15_testing()
+#    N14_testing()
+#    oneD_testing()
+#    gaussian_testing()
+#    twoD_testing()
+#    lorentzian_testing()
+#    double_gaussian_testing()
+#    double_gaussian_odmr_testing()
+#    double_lorentzian_testing()
+#    double_lorentzian_fixedsplitting_testing()
+#    powerfluorescence_testing()
+#    sine_testing()
+#    twoD_gaussian_magnet()
+#    poissonian_testing()
+#    #double_poissonian_testing()
+#    bareexponentialdecay_testing()
+#    exponentialdecay_testing()
+#    sineexponentialdecay_testing()
+#    stretchedexponentialdecay_testing()
+#    linear_testing()
 
