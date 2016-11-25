@@ -142,39 +142,36 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def upload_asset(self, asset_name=None):
-        """ Upload an already hardware conform file to the device.
+        """ Upload an already hardware conform file to the device mass memory.
             Does NOT load it into channels.
 
-        @param asset_name: string, name of the ensemble/seqeunce to be uploaded
+        @param asset_name: string, name of the ensemble/sequence to be uploaded
 
         @return int: error code (0:OK, -1:error)
 
         If nothing is passed, method will be skipped.
+
+        This method has no effect when using pulser hardware without own mass memory
+        (i.e. PulseBlaster, FPGA)
         """
         pass
 
     @abc.abstractmethod
     def load_asset(self, asset_name, load_dict=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing
-            device.
+        """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
         @param str asset_name: The name of the asset to be loaded
 
-        @param dict load_dict:  a dictionary with keys being one of the
-                                available channel numbers and items being the
-                                name of the already sampled
-                                waveform/sequence files.
+        @param dict load_dict:  a dictionary with keys being one of the available channel numbers
+                                and items being the name of the already sampled waveform/sequence
+                                files.
                                 Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
                                             {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given
-                                then the channel association is invoked from
-                                the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
+                                This parameter is optional. If none is given then the channel
+                                association is invoked from the file name, i.e. the appendix
+                                (_ch1, _ch2 etc.)
 
         @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
         """
         pass
 
@@ -182,19 +179,15 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
 
-        @return str: Name of the current asset, that can be either a filename
-                     a waveform, a sequence ect.
+        @return str: Name of the current asset ready to play. (no filename)
         """
         pass
 
     @abc.abstractmethod
     def clear_all(self):
-        """ Clears all loaded waveforms from the pulse generators RAM.
+        """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
         @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without storage capability
-        (PulseBlaster, FPGA).
         """
         pass
 
@@ -202,10 +195,9 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return (int, dict): tuple with an interger value of the current status
-                             and a corresponding dictionary containing status
-                             description for all the possible status variables
-                             of the pulse generator hardware.
+        @return (int, dict): tuple with an interger value of the current status and a corresponding
+                             dictionary containing status description for all the possible status
+                             variables of the pulse generator hardware.
         """
         pass
 
@@ -215,8 +207,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         @return float: The current sample rate of the device (in Hz)
 
-        Do not return a saved sample rate in a class variable, but instead
-        retrieve the current sample rate directly from the device.
+        Do not return a saved sample rate from an attribute, but instead retrieve the current
+        sample rate directly from the device.
         """
         pass
 
@@ -226,10 +218,9 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         @param float sample_rate: The sampling rate to be set (in Hz)
 
-        @return float: the sample rate returned from the device.
+        @return float: the sample rate returned from the device (in Hz).
 
-        Note: After setting the sampling rate of the device, retrieve it again
-              for obtaining the actual set value and use that information for
+        Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
         pass
@@ -238,109 +229,98 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
-        @param list amplitude: optional, if a specific amplitude value (in Volt
-                               peak to peak, i.e. the full amplitude) of a
-                               channel is desired.
-        @param list offset: optional, if a specific high value (in Volt) of a
-                            channel is desired.
+        @param list amplitude: optional, if the amplitude value (in Volt peak to peak, i.e. the
+                               full amplitude) of a specific channel is desired.
+        @param list offset: optional, if the offset value (in Volt) of a specific channel is
+                            desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Amplitude is always denoted in
-                               Volt-peak-to-peak and Offset in (absolute)
-                               Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel descriptor string
+                               (i.e. 'a_ch1') and items being the values for those channels.
+                               Amplitude is always denoted in Volt-peak-to-peak and Offset in volts.
 
-        Note: Do not return a saved amplitude and/or offset value but instead
-              retrieve the current amplitude and/or offset directly from the
-              device.
+        Note: Do not return a saved amplitude and/or offset value but instead retrieve the current
+              amplitude and/or offset directly from the device.
 
-        If no entries provided then the levels of all channels where simply
-        returned. If no analog channels provided, return just an empty dict.
+        If nothing (or None) is passed then the levels of all channels will be returned. If no
+        analog channels are present in the device, return just empty dicts.
+
         Example of a possible input:
-            amplitude = [1,4], offset =[1,3]
-        to obtain the amplitude of channel 1 and 4 and the offset
-            {1: -0.5, 4: 2.0} {}
-        since no high request was performed.
+            amplitude = ['a_ch1', 'a_ch4'], offset = None
+        to obtain the amplitude of channel 1 and 4 and the offset of all channels
+            {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
 
-        The major difference to digital signals is that analog signals are
-        always oscillating or changing signals, otherwise you can use just
-        digital output. In contrast to digital output levels, analog output
-        levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal
-        oscillates, denoted by an (absolute) voltage).
+        The major difference to digital signals is that analog signals are always oscillating or
+        changing signals, otherwise you can use just digital output. In contrast to digital output
+        levels, analog output levels are defined by an amplitude (here total signal span, denoted in
+        Voltage peak to peak) and an offset (a value around which the signal oscillates, denoted by
+        an (absolute) voltage).
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is no bijective correspondence between (amplitude, offset) and
+        (value high, value low)!
         """
         pass
 
     @abc.abstractmethod
     def set_analog_level(self, amplitude=None, offset=None):
-        """ Set amplitude and/or offset value of the provided analog channel.
+        """ Set amplitude and/or offset value of the provided analog channel(s).
 
-        @param dict amplitude: dictionary, with key being the channel and items
-                               being the amplitude values (in Volt peak to peak,
-                               i.e. the full amplitude) for the desired channel.
-        @param dict offset: dictionary, with key being the channel and items
-                            being the offset values (in absolute volt) for the
-                            desired channel.
+        @param dict amplitude: dictionary, with key being the channel descriptor string
+                               (i.e. 'a_ch1', 'a_ch2') and items being the amplitude values
+                               (in Volt peak to peak, i.e. the full amplitude) for the desired
+                               channel.
+        @param dict offset: dictionary, with key being the channel descriptor string
+                            (i.e. 'a_ch1', 'a_ch2') and items being the offset values
+                            (in absolute volt) for the desired channel.
 
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                              amplitude and offset.
+        @return (dict, dict): tuple of two dicts with the actual set values for amplitude and
+                              offset for ALL channels.
 
-        If nothing is passed then the command will return two empty dicts.
+        If nothing is passed then the command will return the current amplitudes/offsets.
 
-        Note: After setting the analog and/or offset of the device, retrieve
-              them again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the amplitude and/or offset values of the device, use the actual set
+              return values for further processing.
 
-        The major difference to digital signals is that analog signals are
-        always oscillating or changing signals, otherwise you can use just
-        digital output. In contrast to digital output levels, analog output
-        levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal
-        oscillates, denoted by an (absolute) voltage).
+        The major difference to digital signals is that analog signals are always oscillating or
+        changing signals, otherwise you can use just digital output. In contrast to digital output
+        levels, analog output levels are defined by an amplitude (here total signal span, denoted in
+        Voltage peak to peak) and an offset (a value around which the signal oscillates, denoted by
+        an (absolute) voltage).
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is no bijective correspondence between (amplitude, offset) and
+        (value high, value low)!
         """
         pass
 
     @abc.abstractmethod
     def get_digital_level(self, low=None, high=None):
-        """ Retrieve the digital low and high level of the provided channels.
+        """ Retrieve the digital low and high level of the provided/all channels.
 
-        @param list low: optional, if a specific low value (in Volt) of a
-                         channel is desired.
-        @param list high: optional, if a specific high value (in Volt) of a
-                          channel is desired.
+        @param list low: optional, if the low value (in Volt) of a specific channel is desired.
+        @param list high: optional, if the high value (in Volt) of a specific channel is desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Both low and high value of a channel is
-                               denoted in (absolute) Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel descriptor strings
+                               (i.e. 'd_ch1', 'd_ch2') and items being the values for those
+                               channels. Both low and high value of a channel is denoted in volts.
 
         Note: Do not return a saved low and/or high value but instead retrieve
               the current low and/or high value directly from the device.
 
-        If no entries provided then the levels of all channels where simply
-        returned. If no digital channels provided, return just an empty dict.
+        If nothing (or None) is passed then the levels of all channels are being returned.
+        If no digital channels are present, return just an empty dict.
 
         Example of a possible input:
-            low = [1,4]
-        to obtain the low voltage values of digital channel 1 an 4. A possible
-        answer might be
-            {1: -0.5, 4: 2.0} {}
-        since no high request was performed.
+            low = ['d_ch1', 'd_ch4']
+        to obtain the low voltage values of digital channel 1 an 4. A possible answer might be
+            {'d_ch1': -0.5, 'd_ch4': 2.0} {'d_ch1': 1.0, 'd_ch2': 1.0, 'd_ch3': 1.0, 'd_ch4': 4.0}
+        Since no high request was performed, the high values for ALL channels are returned (here 4).
 
-        The major difference to analog signals is that digital signals are
-        either ON or OFF, whereas analog channels have a varying amplitude
-        range. In contrast to analog output levels, digital output levels are
-        defined by a voltage, which corresponds to the ON status and a voltage
-        which corresponds to the OFF status (both denoted in (absolute) voltage)
+        The major difference to analog signals is that digital signals are either ON or OFF,
+        whereas analog channels have a varying amplitude range. In contrast to analog output
+        levels, digital output levels are defined by a voltage, which corresponds to the ON status
+        and a voltage which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is no bijective correspondence between (amplitude, offset) and
+        (value high, value low)!
         """
         pass
 
@@ -348,29 +328,29 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
-        @param dict low: dictionary, with key being the channel and items being
-                         the low values (in volt) for the desired channel.
-        @param dict high: dictionary, with key being the channel and items being
-                         the high values (in volt) for the desired channel.
+        @param dict low: dictionary, with key being the channel descriptor string
+                         (i.e. 'd_ch1', 'd_ch2') and items being the low values (in volt) for the
+                         desired channel.
+        @param dict high: dictionary, with key being the channel descriptor string
+                          (i.e. 'd_ch1', 'd_ch2') and items being the high values (in volt) for the
+                          desired channel.
 
-        @return (dict, dict): tuple of two dicts where first dict denotes the
-                              current low value and the second dict the high
-                              value.
+        @return (dict, dict): tuple of two dicts where first dict denotes the current low value and
+                              the second dict the high value for ALL digital channels.
+                              Keys are the channel descriptor strings (i.e. 'd_ch1', 'd_ch2')
 
-        If nothing is passed then the command will return two empty dicts.
+        If nothing is passed then the command will return the current voltage levels.
 
-        Note: After setting the high and/or low values of the device, retrieve
-              them again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the high and/or low values of the device, use the actual set return
+              values for further processing.
 
-        The major difference to analog signals is that digital signals are
-        either ON or OFF, whereas analog channels have a varying amplitude
-        range. In contrast to analog output levels, digital output levels are
-        defined by a voltage, which corresponds to the ON status and a voltage
-        which corresponds to the OFF status (both denoted in (absolute) voltage)
+        The major difference to analog signals is that digital signals are either ON or OFF,
+        whereas analog channels have a varying amplitude range. In contrast to analog output
+        levels, digital output levels are defined by a voltage, which corresponds to the ON status
+        and a voltage which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is no bijective correspondence between (amplitude, offset) and
+        (value high, value low)!
         """
         pass
 
@@ -378,19 +358,18 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
-        @param list ch: optional, if specific analog or digital channels are
-                        needed to be asked without obtaining all the channels.
+        @param list ch: optional, if specific analog or digital channels are needed to be asked
+                        without obtaining all the channels.
 
-        @return dict:  where keys denoting the channel number and items boolean
-                       expressions whether channel are active or not.
+        @return dict:  where keys denoting the channel string and items boolean expressions whether
+                       channel are active or not.
 
         Example for an possible input (order is not important):
             ch = ['a_ch2', 'd_ch2', 'a_ch1', 'd_ch5', 'd_ch1']
         then the output might look like
             {'a_ch2': True, 'd_ch2': False, 'a_ch1': False, 'd_ch5': True, 'd_ch1': False}
 
-        If no parameters are passed to this method all channels will be asked
-        for their setting.
+        If no parameter (or None) is passed to this method all channel states will be returned.
         """
         pass
 
@@ -398,26 +377,23 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
-        @param dict ch: dictionary with keys being the analog or digital
-                          string generic names for the channels with items being
-                          a boolean value.
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
 
-        @return dict: with the actual set values for active channels for analog
-                      and digital values.
+        @return dict: with the actual set values for ALL active analog and digital channels
 
-        If nothing is passed then the command will return an empty dict.
+        If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the active channels of the device,
+              use the returned dict for further processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
         digital channel 1.
 
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
+        The hardware itself has to handle, whether separate channel activation is possible.
         """
         pass
 
@@ -425,18 +401,17 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
 
-        @return list: List of all uploaded asset name strings in the current
-                      device directory. This is no list of the file names.
+        @return list: List of all uploaded asset name strings in the current device directory.
+                      This is no list of the file names.
 
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
         """
         pass
 
     @abc.abstractmethod
     def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC.
-        This is no list of the file names.
+        """ Retrieve the names of all sampled and saved assets on the host PC. This is no list of
+            the file names.
 
         @return list: List of all saved asset name strings in the current
                       directory of the host PC.
@@ -445,16 +420,15 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name
-            from the device memory.
+        """ Delete all files associated with an asset with the passed asset_name from the device
+            memory (mass storage as well as i.e. awg workspace/channels).
 
         @param str asset_name: The name of the asset to be deleted
                                Optionally a list of asset names can be passed.
 
         @return list: a list with strings of the files which were deleted.
 
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
         """
         pass
 
@@ -466,20 +440,17 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         @return int: error code (0:OK, -1:error)
 
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
+        Unused for pulse generators without changeable file structure (PulseBlaster, FPGA).
         """
         pass
 
     @abc.abstractmethod
     def get_asset_dir_on_device(self):
-        """ Ask for the directory where the hardware conform files are stored on
-            the device.
+        """ Ask for the directory where the hardware conform files are stored on the device.
 
         @return str: The current file directory
 
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
+        Unused for pulse generators without changeable file structure (i.e. PulseBlaster, FPGA).
         """
         pass
 
@@ -489,7 +460,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         @return bool: True: ON, False: OFF
 
-        Unused for pulse generator hardware other than an AWG.
+        Will always return False for pulse generator hardware without interleave.
         """
         pass
 
