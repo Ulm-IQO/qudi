@@ -99,6 +99,10 @@ class ODMRLogic(GenericLogic):
             self.scanmode = MicrowaveMode.SWEEP
         elif 'scanmode' in config and ('list' in config['scanmode'] or 'LIST' in config['scanmode']):
             self.scanmode = MicrowaveMode.LIST
+        else:
+            self.scanmode = MicrowaveMode.LIST
+            self.log.warning('No scanmode defined in config for odmr_logic module.\n'
+                             'Falling back to list mode.')
 
         # theoretically this can be changed, but the current counting scheme willnot support that
         self.MW_trigger_pol = TriggerEdge.RISING
