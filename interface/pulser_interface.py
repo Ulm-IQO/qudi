@@ -25,7 +25,7 @@ import abc
 from core.util.interfaces import InterfaceMetaclass
 
 
-class PulserInterface():
+class PulserInterface(metaclass=InterfaceMetaclass):
     """ Interface class to define the abstract controls and
     communication with all pulsing devices.
     """
