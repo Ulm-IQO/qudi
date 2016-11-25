@@ -21,7 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from core.util.customexceptions import InterfaceImplementationError
+import abc
+from core.util.interfaces import InterfaceMetaclass
+
 
 class PulserInterface():
     """ Interface class to define the abstract controls and
@@ -31,6 +33,7 @@ class PulserInterface():
     _modtype = 'PulserInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Pulsing device.
 
@@ -119,39 +122,38 @@ class PulserInterface():
         activation_config['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
         constraints['activation_config'] = activation_config
         """
+        pass
 
-        raise InterfaceImplementationError('PulserInterface>get_constraints')
-        return constraints
-
+    @abc.abstractmethod
     def pulser_on(self):
         """ Switches the pulsing device on.
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('PulserInterface>pulser_on')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('PulserInterface>pulser_off')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device.
             Does NOT load it into channels.
 
-        @param name: string, name of the ensemble/seqeunce to be uploaded
+        @param asset_name: string, name of the ensemble/seqeunce to be uploaded
 
         @return int: error code (0:OK, -1:error)
 
         If nothing is passed, method will be skipped.
         """
-        raise InterfaceImplementationError('PulserInterface>upload_asset')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
@@ -174,20 +176,18 @@ class PulserInterface():
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        if load_dict is None:
-            load_dict = {}
-        raise InterfaceImplementationError('PulserInterface>load_asset')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
 
         @return str: Name of the current asset, that can be either a filename
                      a waveform, a sequence ect.
         """
-        raise InterfaceImplementationError('PulserInterface>get_loaded_asset')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def clear_all(self):
         """ Clears all loaded waveforms from the pulse generators RAM.
 
@@ -196,9 +196,9 @@ class PulserInterface():
         Unused for digital pulse generators without storage capability
         (PulseBlaster, FPGA).
         """
-        raise InterfaceImplementationError('PulserInterface>clear_all')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
@@ -207,16 +207,9 @@ class PulserInterface():
                              description for all the possible status variables
                              of the pulse generator hardware.
         """
-        status_dic = dict()
-        status_dic[-1] = 'Failed Request or Failed Communication with device.'
-        status_dic[0] = 'Device has stopped, but can receive commands.'
-        status_dic[1] = 'Device is active and running.'
-        # All the other status messages should have higher integer values
-        # then 1.
+        pass
 
-        raise InterfaceImplementationError('PulserInterface>get_status')
-        return (-1, status_dic)
-
+    @abc.abstractmethod
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
 
@@ -225,9 +218,9 @@ class PulserInterface():
         Do not return a saved sample rate in a class variable, but instead
         retrieve the current sample rate directly from the device.
         """
-        raise InterfaceImplementationError('PulserInterface>get_sampling_rate')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
 
@@ -239,9 +232,9 @@ class PulserInterface():
               for obtaining the actual set value and use that information for
               further processing.
         """
-        raise InterfaceImplementationError('PulserInterface>set_sampling_rate')
-        return -1.
+        pass
 
+    @abc.abstractmethod
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
@@ -279,13 +272,9 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
-        if amplitude is None:
-            amplitude = []
-        if offset is None:
-            offset = []
-        raise InterfaceImplementationError('PulserInterface>get_a_ch_amplitude')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel.
 
@@ -315,14 +304,9 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
-        if amplitude is None:
-            amplitude = {}
-        if offset is None:
-            offset = {}
+        pass
 
-        raise InterfaceImplementationError('PulserInterface>set_a_ch_amplitude')
-        return -1
-
+    @abc.abstractmethod
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
@@ -358,14 +342,9 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
-        if low is None:
-            low = []
-        if high is None:
-            high = []
+        pass
 
-        raise InterfaceImplementationError('PulserInterface>get_a_ch_offset')
-        return -1
-
+    @abc.abstractmethod
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
@@ -393,14 +372,9 @@ class PulserInterface():
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
-        if low is None:
-            low = {}
-        if high is None:
-            high = {}
+        pass
 
-        raise InterfaceImplementationError('PulserInterface>set_a_ch_offset')
-        return -1
-
+    @abc.abstractmethod
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
@@ -418,11 +392,9 @@ class PulserInterface():
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
-        if ch is None:
-            ch = []
-        raise InterfaceImplementationError('PulserInterface>get_active_channels')
-        return [-1]
+        pass
 
+    @abc.abstractmethod
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
@@ -447,11 +419,9 @@ class PulserInterface():
         The hardware itself has to handle, whether separate channel activation
         is possible.
         """
-        if ch is None:
-            ch = {}
-        raise InterfaceImplementationError('PulserInterface>set_active_channels')
-        return {}, {}
+        pass
 
+    @abc.abstractmethod
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
 
@@ -461,10 +431,9 @@ class PulserInterface():
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        names = []
-        raise InterfaceImplementationError('PulserInterface>get_uploaded_assets_names')
-        return names
+        pass
 
+    @abc.abstractmethod
     def get_saved_asset_names(self):
         """ Retrieve the names of all sampled and saved assets on the host PC.
         This is no list of the file names.
@@ -472,10 +441,9 @@ class PulserInterface():
         @return list: List of all saved asset name strings in the current
                       directory of the host PC.
         """
-        names = []
-        raise InterfaceImplementationError('PulserInterface>get_saved_asset_names')
-        return names
+        pass
 
+    @abc.abstractmethod
     def delete_asset(self, asset_name):
         """ Delete all files associated with an asset with the passed asset_name
             from the device memory.
@@ -488,9 +456,9 @@ class PulserInterface():
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        raise InterfaceImplementationError('PulserInterface>delete_asset')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def set_asset_dir_on_device(self, dir_path):
         """ Change the directory where the assets are stored on the device.
 
@@ -501,9 +469,9 @@ class PulserInterface():
         Unused for digital pulse generators without changeable file structure
         (PulseBlaster, FPGA).
         """
-        raise InterfaceImplementationError('PulserInterface>set_sequence_directory')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def get_asset_dir_on_device(self):
         """ Ask for the directory where the hardware conform files are stored on
             the device.
@@ -513,9 +481,9 @@ class PulserInterface():
         Unused for digital pulse generators without changeable file structure
         (PulseBlaster, FPGA).
         """
-        raise InterfaceImplementationError('PulserInterface>get_sequence_directory')
-        return ''
+        pass
 
+    @abc.abstractmethod
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
@@ -523,10 +491,9 @@ class PulserInterface():
 
         Unused for pulse generator hardware other than an AWG.
         """
+        pass
 
-        raise InterfaceImplementationError('PulserInterface>set_interleave')
-        return -1
-
+    @abc.abstractmethod
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
 
@@ -540,9 +507,9 @@ class PulserInterface():
 
         Unused for pulse generator hardware other than an AWG.
         """
-        raise InterfaceImplementationError('PulserInterface>set_interleave')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def tell(self, command):
         """ Sends a command string to the device.
 
@@ -550,9 +517,9 @@ class PulserInterface():
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('PulserInterface>tell')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def ask(self, question):
         """ Asks the device a 'question' and receive and return an answer from it.
 a
@@ -560,21 +527,21 @@ a
 
         @return string: the answer of the device to the 'question' in a string
         """
-        raise InterfaceImplementationError('PulserInterface>ask')
-        return ''
+        pass
 
+    @abc.abstractmethod
     def reset(self):
         """ Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('PulserInterface>reset')
-        return -1
+        pass
 
+    @abc.abstractmethod
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
         @return: bool, True for yes, False for no.
         """
-        raise InterfaceImplementationError('PulserInterface>has_sequence_mode')
-        return -1
+        pass
+
