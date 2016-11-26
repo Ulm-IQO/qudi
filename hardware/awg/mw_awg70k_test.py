@@ -650,6 +650,9 @@ class AWG70K(Base, MicrowaveInterface, PulserInterface):
             else:
                 self.awg.write('MMEM:OPEN "{0}"'.format(file_path))
             self.awg.query('*OPC?')
+        # Wait for the loading to completed
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def load_asset(self, asset_name, load_dict=None):
