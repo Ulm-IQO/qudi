@@ -2,6 +2,55 @@
 
 ## Relese 0.6
 
+Released on 25 Nov 2016.
+Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.6 .
+
+Changes/New features:
+
+ * Lots and lots of work leading to working and stable pulsed measurement modules, including
+   * Editor for fast analog and digital waveforms and AWG channel configuration
+   * Synthesize and upload waveforms to AWGs while respecting AWG limits and channels
+   * Pulse extraction from fast counter time trace and flourescence signal extraction
+   * Display of results for common measurements
+   * Works with Jupyter notebooks
+ * Some new documentation
+ * Preliminary GUI to show/edit configuration files
+ * Massive improvements to fit stability
+ * Most interfaces now use abstract base classes
+ * Confocal can show last scanned line and move Z while scanning XY
+ * Continuous integration support
+ * Nuclear spin operations experiment module
+ * Spinboxes with scientific notation support
+ * Use QtPy to support multiple Qt versions
+ * Configuration files now use the YAML file format
+ * Cooperative inheritance for modules
+ * Logging now based on standard Python logger
+ * HighFinesse WSU 30 wave meter support
+ * New and consistent colors for plots throughout Qudi
+ * PyQt5 compatibility
+ * Many fixes to QO and Pi3 FPGA fast counter modules
+ * Matplotlib inline plots and completion suport for Jupyter kernel
+ * Jupyter kernel for Qudi (including install script)
+ * Move project repository from SVN to git and to GitHub
+ * New dark color scheme for GUI (modified qdark)
+ * Lots of new predefined fitting methods
+ * Fit logic can now load fitting methods from python files in a subfolder
+ * Reusable fit settings GUI methods
+ * Tektronix AWG 70000, 7112 and 5002 support
+ * Gated counter logic and GUI modules
+ * Magnetic field alignment module for vector magnet and solid state magnet on a 4-axis stage
+ * Thorlabs APTmotor support
+ * Scan history (Forward/backward) in Confocal
+ * Qudi module state save/restore functionality (app_status folder)
+ * Automatic loading of configured modules on a remote system
+ * UI fixes
+ * TSYS_01 temperature sensor support
+ * Raspberry Pi PWM support for PID
+ * Software PID logic and GUI
+ * Fastcomtec 7887 and MCS6 support
+ * Picoharp300 support
+ * Python script to list qudi modules
+
 ## Release 0.5
 
 Released on 30 Dec 2015.
