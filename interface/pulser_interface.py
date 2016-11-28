@@ -143,7 +143,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device mass memory.
-            Does NOT load it into channels.
+            Also loads these files into the device workspace if present.
+            Does NOT load waveforms/sequences/patterns into channels.
 
         @param asset_name: string, name of the ensemble/sequence to be uploaded
 
@@ -159,6 +160,10 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
+        For devices that have a workspace (i.e. AWG) this will load the asset from the device
+        workspace into the channel.
+        For a device without mass memory this will transfer the waveform/sequence/pattern data
+        directly to the device so that it is ready to play.
 
         @param str asset_name: The name of the asset to be loaded
 
