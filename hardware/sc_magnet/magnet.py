@@ -61,25 +61,28 @@ class Magnet(Base, MagnetInterface):
         except socket.timeout:
             self.log.error("socket timeout for coil in z-direction")
 
-# default waiting time of the pc after a message was sent to the magnet
-# should be set in the config file
+        # default waiting time of the pc after a message was sent to the magnet
+        # should be set in the config file
         self.waitingtime = 0.01
 
-# this is a new thing. "normal_mode"
-# allows one to set magnetic fields up to 1 T along each axis
-# and the magnetic field vector can't be larger than 1.2 T
-# In z_mode you are allowed to move in a 5° solid angle along the z-axis
-# with a maximum field of 3 T.
-# For more documentation or how to change the mode look into
-# the function switch_mode
+        # This is saves in which interval the input theta was in the last movement
+        self._inter = 1
+
+        # this is a new thing. "normal_mode"
+        # allows one to set magnetic fields up to 1 T along each axis
+        # and the magnetic field vector can't be larger than 1.2 T
+        # In z_mode you are allowed to move in a 5° solid angle along the z-axis
+        # with a maximum field of 3 T.
+        # For more documentation or how to change the mode look into
+        # the function switch_mode
         self.mode = "normal_mode"
 
-# constraints of the superconducting magnet in kG
-# should be set in the config file
-# Normally you should get and set constraints in the
-# function get_constraints(). The problem is here that
-# the constraint rho is no constant and is dependent on the
-# current theta and phi value.
+        # constraints of the superconducting magnet in T
+        # should be set in the config file
+        # Normally you should get and set constraints in the
+        # function get_constraints(). The problem is here that
+        # the constraint rho is no constant and is dependent on the
+        # current theta and phi value.
         self.x_constr = 1.0
         self.y_constr = 1.0
         self.z_constr = 3.0
@@ -215,8 +218,8 @@ class Magnet(Base, MagnetInterface):
         axis1 = {}
         axis1['label'] = 'theta'       # name is just as a sanity included
         axis1['unit'] = 'rad'        # the SI units
-        axis1['pos_min'] = 0
-        axis1['pos_max'] = pos_max_dict['theta']  # that is basically the traveling range
+        axis1['pos_min'] = -1000  # arbitrary values for now ( there isn't any restriction on them )
+        axis1['pos_max'] = 1000  # that is basically the traveling range
         axis1['pos_step'] = 36000
         axis1['vel_min'] = 0
         axis1['vel_max'] = 0.0404*0.01799  #unit is T/s
@@ -226,8 +229,8 @@ class Magnet(Base, MagnetInterface):
         axis2 = {}
         axis2['label'] = 'phi'       # name is just as a sanity included
         axis2['unit'] = 'rad'        # the SI units
-        axis2['pos_min'] = 0
-        axis2['pos_max'] = pos_max_dict['phi']  # that is basically the traveling range
+        axis2['pos_min'] = -1000 # arbitrary values for now ( there isn't any restriction on them )
+        axis2['pos_max'] = 1000  # that is basically the traveling range
         axis2['pos_step'] = 92000
         axis2['vel_min'] = 0
         axis2['vel_max'] = 0.0380*0.07028 #unit is T/s
@@ -479,7 +482,7 @@ class Magnet(Base, MagnetInterface):
         return 0
 
     def target_field_setpoint(self, param_dict):
-        """ Function to set the target field (in kG), which will be reached through the
+        """ Function to set the target field (in T), which will be reached through the
             function ramp(self, param_list).
 
             @param dict param_dict: Contains as keys the axes to be set e.g. 'x' or 'y'
@@ -664,7 +667,70 @@ class Magnet(Base, MagnetInterface):
         coord_list.append(param_dict['theta'])
         coord_list.append(param_dict['phi'])
 
+        # lets adjust theta
+        theta = param_dict['theta']
+        phi = param_dict['phi']
+
+        # switch variable decides what has to be done ( in intervals [2*k*np.pi, 2k+1*np.pi] the movement would
+        # be ok ( no rotation in phi ). In the other intervals one has to see if there was a movement before this
+        # movement in one of these regions or not. If not just move, if there was shift to the interval [0, np.pi] and
+        # move there.
+        switch = np.ceil(theta / np.pi) % 2
+        inter1 = np.ceil(theta / np.pi)
+        inter1 = int(inter1)
+        # if inter1 > 0:
+        #     inter1 -= 1
+        # move the theta values in the right range
+        # for the constraints
+
+        # if in an even interval
+        if switch:
+            theta -= np.pi * (inter1 - 1)
+        else:
+            # get into the correct interval
+            theta -= np.pi * (inter1 - 1)
+            # now mirror at the center of the interval
+            theta = np.pi/2 - (theta - np.pi/2)
+        # interval was correct
+        if switch:
+            self._inter = inter1
+        # interval that needs rotation around z-axis in case it wasn't outside that interval before
+        else:
+            # actually it isn't necessary to distinguish here. I initially thought it is necessary and it would
+            # be if one would move the magnet based on the magnet field of previous values.
+            # I will leave the code here for now, when somebody in the future wants to extend this function
+            # to allow both behaviors he can use the existing code.
+            # theta was in a correct interval before but isn't now ( change of interval )
+            self.log.debug('need rotation around phi to adjust for negative theta value')
+            self.log.debug('old int: {0}, new int: {1}'.format(self._inter, inter1))
+            if int(np.abs(self._inter - inter1)) is 1:
+                phi += np.pi
+
+            # theta wasn't in a correct interval before and is still in the same interval ( in this case do nothing )
+            elif int(np.abs(self._inter - inter1)) is 0:
+                phi += np.pi
+
+            else:
+                self.log.warning("There was a difference in intervals larger "
+                                 "than one between two consecutive movements. This is not supported "
+                                 "yet.{0}".format(self._inter - inter1))
+            self._inter = inter1
+
+        # adjust the phi values so they are in the right interval. They might be in the wrong interval
+        # due to user input or theta values
+        inter2 = np.ceil(phi / (2 * np.pi))
+        inter2 = int(inter2)
+        # if inter2 > 0:
+        #     inter2 -= 1
+
+        phi -= 2 * np.pi * (inter2 - 1)
+
+        self.log.debug('show old dictionary: {0}'.format(param_dict))
+        # set the corrected values
+        param_dict['theta'] = theta
+        param_dict['phi'] = phi
         constr_dict = {mode: {'rad': coord_list}}
+        self.log.debug('show new dictionary: {0}'.format(param_dict))
         check_bool = self.check_constraints(constr_dict)
         if check_bool:
             check_1 = self.set_coordinates(param_dict)
@@ -1211,7 +1277,7 @@ class Magnet(Base, MagnetInterface):
 
                 if not my_boolean:
                     self.log.warning("In check_constraints your settings don't lie in the allowed cone. See the "
-                                "function for move information")
+                                "function for more information")
             return my_boolean
 
         return_val = False
@@ -1225,7 +1291,7 @@ class Magnet(Base, MagnetInterface):
                 cart_coord = self.transform_coordinates(transform_dict)
                 return_val = check_cart_constraints(cart_coord, 'normal_mode')
 
-# ok degree mode here won't work properly, because I don't check the move constraints
+            # ok degree mode here won't work properly, because I don't check the move constraints
             if param_dict['normal_mode'].get("deg") is not None:
                 transform_dict = {'deg': {'cart': param_dict['normal_mode']["deg"]}}
                 cart_coord = self.transform_coordinates(transform_dict)
