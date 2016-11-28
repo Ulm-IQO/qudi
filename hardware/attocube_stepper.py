@@ -49,6 +49,11 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
         config = self.getConfiguration()
 
+        # some default values for the hardware:
+        self._voltage_range = [0., 60.]
+        self._position_range = [[0., 5000.], [0., 5000.], [0., 7000.], [0., 5000.]]
+        self._current_position = [2500., 2500., 3500., 0.]
+
         # connect ethernet socket and FTP
         self.tn = telnetlib.Telnet(host, port)
         self.tn.open(host, port)
@@ -63,6 +68,50 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
             self.log.error(
                 'No parameter "attocube_axis" found in configuration!\n'
                 'Assign to that parameter an appropriated channel sorting!')
+
+        if 'x_range' in config.keys():
+            if float(config['x_range'][0]) < float(config['x_range'][1]):
+                self._position_range[0] = [float(config['x_range'][0]),
+                                           float(config['x_range'][1])]
+            else:
+                self.log.warning(
+                    'Configuration ({}) of x_range incorrect, taking [0,5000] instead.'
+                    ''.format(config['x_range']))
+        else:
+            self.log.warning('No x_range configured taking [0,5000] instead.')
+
+        if 'y_range' in config.keys():
+            if float(config['y_range'][0]) < float(config['y_range'][1]):
+                self._position_range[1] = [float(config['y_range'][0]),
+                                           float(config['y_range'][1])]
+            else:
+                self.log.warning(
+                    'Configuration ({}) of y_range incorrect, taking [0,5000] instead.'
+                    ''.format(config['y_range']))
+        else:
+            self.log.warning('No y_range configured taking [0,5000] instead.')
+
+        if 'z_range' in config.keys():
+            if float(config['z_range'][0]) < float(config['z_range'][1]):
+                self._position_range[2] = [float(config['z_range'][0]),
+                                           float(config['z_range'][1])]
+            else:
+                self.log.warning(
+                    'Configuration ({}) of z_range incorrect, taking [0,7000] instead.'
+                    ''.format(config['z_range']))
+        else:
+            self.log.warning('No z_range configured taking [0,7000] instead.')
+
+        if 'voltage_range' in config.keys():
+            if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
+                self._voltage_range = [float(config['voltage_range'][0]),
+                                       float(config['voltage_range'][1])]
+            else:
+                self.log.warning(
+                    'Configuration ({}) of voltage_range incorrect, taking [0,60] instead.'
+                    ''.format(config['voltage_range']))
+        else:
+            self.log.warning('No voltage_range configured taking [0,60] instead.')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -91,11 +140,9 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.tn.write(full_cmd) #send command
         #self.tn.read_until(full_cmd + b" = ") #read answer
         value = self.tn.read_eager()
-        #TODO: here needs to be an error check, if not working, return 1, if -1 return attocube response
+        #TODO: here needs to be an error check, if not working, return 1, if -1 return
+        # attocube response
         return 0
-
-    def step_attocube(self ):
-        pass
 
     def change_attocube_mode(self, axis, mode):
         """Changes Attocube axis mode
@@ -116,7 +163,8 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
             return -1
 
     def move_attocube(self, axis, mode, direction, steps=1):
-        """Moves attocubes either continuously or by a number of steps in the up or down direction.
+        """Moves attocubes either continuously or by a number of steps
+        in the up or down direction.
 
         @param str axis: axis to be moved, can only be part of dictionary axes
         @param str mode: continuous or stepping mode
@@ -144,7 +192,8 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
             return -1
 
     def stop_attocube_movement(self, axis):
-        """Stops attocube motion on specified axis, only necessary if attocubes are stepping in continuous mode
+        """Stops attocube motion on specified axis,
+        only necessary if attocubes are stepping in continuous mode
 
         @param str axis: axis to be moved, can only be part of dictionary axes
         @return int: error code (0: OK, -1:error)
@@ -166,9 +215,23 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.send_cmd("stop 3")
         self.send_cmd("stop 4")
         self.send_cmd("stop 5")
-        #There are at maximum 5 stepper axis per ANC300 module. If existing any motion on the axis is stopped
+        # There are at maximum 5 stepper axis per ANC300 module.
+        # If existing any motion on the axis is stopped
         self.log.info("any attocube stepper motion has been stopped")
         return 0
+
+    # =================== General Methods ==========================================
+
+    def _temperature_change(self):
+        if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
+            self._voltage_range = [float(config['voltage_range'][0]),
+                                   float(config['voltage_range'][1])]
+        else:
+            self.log.warning(
+                'Configuration ({}) of voltage_range incorrect, taking [0,60] instead.'
+                ''.format(config['voltage_range']))
+        #Todo: This needs to get a certain kind of config file change, as this then depends on
+            # temperature. also maybe method name is not appropriate
 
     # =================== ConfocalScannerInterface Commands ========================
     @abc.abstractmethod
@@ -178,7 +241,10 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        #Todo: Do we need this here, i do not deem it necessary, as can be accesed from multiple
+            # puttys
         pass
+
 
     @abc.abstractmethod
     def get_position_range(self):
@@ -187,28 +253,72 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         @return float [4][2]: array of 4 ranges with an array containing lower
                               and upper limit
         """
+
         pass
 
     @abc.abstractmethod
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
-        @param float [4][2] myrange: array of 4 ranges with an array containing
+        @param float [3][2] myrange: array of 3 ranges with an array containing
                                      lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        if myrange is None:
+            myrange = [[0, 5000], [0, 5000], [0, 5000]]
+
+        if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
+            self.log.error('Given range is no array type.')
+            return -1
+
+        if len(myrange) != 3:
+            self.log.error(
+                'Given range should have dimension 3, but has {0:d} instead.'
+                ''.format(len(myrange)))
+            return -1
+
+        for pos in myrange:
+            if len(pos) != 2:
+                self.log.error(
+                    'Given range limit {1:d} should have dimension 2, but has {0:d} instead.'
+                    ''.format(len(pos), pos))
+                return -1
+            if pos[0]>pos[1]:
+                self.log.error(
+                    'Given range limit {0:d} has the wrong order.'.format(pos))
+                return -1
+
+        self._position_range = myrange
+        return 0
 
     @abc.abstractmethod
     def set_voltage_range(self, myrange=None):
-        """ Sets the voltage range of the NI Card.
+        """ Sets the voltage range of the attocubes.
 
         @param float [2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        if myrange is None:
+            myrange = [0, 60.]
+
+        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Given range is no array type.')
+            return -1
+
+        if len(myrange) != 2:
+            self.log.error(
+                'Given range should have dimension 2, but has {0:d} instead.'
+                ''.format(len(myrange)))
+            return -1
+
+        if myrange[0] > myrange[1]:
+            self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
+            return -1
+
+        self._voltage_range = myrange
+        return 0
 
     @abc.abstractmethod
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
