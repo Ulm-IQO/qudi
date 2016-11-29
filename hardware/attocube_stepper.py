@@ -31,6 +31,7 @@ password = b"123456"
 port = "7230"
 _mode_list = ["gnd", "inp", "cap", "stp", "off", "stp+", "stp-"]
 
+
 class AttoCubeStepper(Base, ConfocalScannerInterface):
     """ This is the Interface class to define the controls for the simple
     microwave hardware.
@@ -58,7 +59,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.tn = telnetlib.Telnet(host, port)
         self.tn.open(host, port)
         self.tn.read_until(b"Authorization code: ")
-        self.tn.write(password+ b"\n")
+        self.tn.write(password + b"\n")
         value = self.tn.read_until(b'success')
         self.connected = True
 
@@ -127,7 +128,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
     # =================== Attocube Communication ========================
 
-    def send_cmd(self, cmd, expected_response=b"\r\nOK\r\n"):
+    def _send_cmd(self, cmd, expected_response=b"\r\nOK\r\n"):
         """Sends a command to the attocube steppers and checks repsonse value
 
         @param str cmd: Attocube ANC300 command
@@ -135,12 +136,12 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0: OK, -1:error)
         """
-        full_cmd = cmd.encode('ascii')+b"\r\n" #converting to binary
-        junk = self.tn.read_eager() #diregard old print outs
-        self.tn.write(full_cmd) #send command
-        #self.tn.read_until(full_cmd + b" = ") #read answer
+        full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
+        junk = self.tn.read_eager()  # diregard old print outs
+        self.tn.write(full_cmd)  # send command
+        # self.tn.read_until(full_cmd + b" = ") #read answer
         value = self.tn.read_eager()
-        #TODO: here needs to be an error check, if not working, return 1, if -1 return
+        # TODO: here needs to be an error check, if not working, return 1, if -1 return
         # attocube response
         return 0
 
@@ -153,13 +154,13 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
         if mode in _mode_list:
             if axis in ["x", "y", "z"]:
-                command = "setm "+ self._attocube_axis[axis]+ mode
-                return self.send_cmd(command)
+                command = "setm " + self._attocube_axis[axis] + mode
+                return self._send_cmd(command)
             else:
-                self.log.error("axis {} not in list of possible axes". format(self._attocube_axis))
+                self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
                 return -1
         else:
-            self.log.error("mode {} not in list of possible modes". format(mode))
+            self.log.error("mode {} not in list of possible modes".format(mode))
             return -1
 
     def move_attocube(self, axis, mode, direction, steps=1):
@@ -174,16 +175,16 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
         if mode in ["continuous", "stepping"]:
             if axis in ["x", "y", "z"]:
-                if direction=="up" or direction=="out":
-                    command = "stepu "+self._attocube_axis[axis]
+                if direction == "up" or direction == "out":
+                    command = "stepu " + self._attocube_axis[axis] + " "
                 else:
-                    command = "stepd "+self._attocube_axis[axis]
+                    command = "stepd " + self._attocube_axis[axis] + " "
 
                 if mode == "continuous":
                     command = command + "c"
                 else:
                     command = command + str(steps)
-                return self.send_cmd(command)
+                return self._send_cmd(command)
             else:
                 self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
                 return -1
@@ -199,8 +200,8 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         @return int: error code (0: OK, -1:error)
         """
         if axis in ["x", "y", "z"]:
-            command = "stop"+ self._attocube_axis[axis]
-            return self.send_cmd(command)
+            command = "stop" + self._attocube_axis[axis]
+            return self._send_cmd(command)
         else:
             self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
             return -1
@@ -210,11 +211,11 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return 0
         """
-        self.send_cmd("stop 1")
-        self.send_cmd("stop 2")
-        self.send_cmd("stop 3")
-        self.send_cmd("stop 4")
-        self.send_cmd("stop 5")
+        self._send_cmd("stop 1")
+        self._send_cmd("stop 2")
+        self._send_cmd("stop 3")
+        self._send_cmd("stop 4")
+        self._send_cmd("stop 5")
         # There are at maximum 5 stepper axis per ANC300 module.
         # If existing any motion on the axis is stopped
         self.log.info("any attocube stepper motion has been stopped")
@@ -230,7 +231,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
             self.log.warning(
                 'Configuration ({}) of voltage_range incorrect, taking [0,60] instead.'
                 ''.format(config['voltage_range']))
-        #Todo: This needs to get a certain kind of config file change, as this then depends on
+            # Todo: This needs to get a certain kind of config file change, as this then depends on
             # temperature. also maybe method name is not appropriate
 
     # =================== ConfocalScannerInterface Commands ========================
@@ -241,10 +242,9 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        #Todo: Do we need this here, i do not deem it necessary, as can be accesed from multiple
-            # puttys
+        # Todo: Do we need this here, i do not deem it necessary, as can be accesed from multiple
+        # puttys
         pass
-
 
     @abc.abstractmethod
     def get_position_range(self):
@@ -268,7 +268,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         if myrange is None:
             myrange = [[0, 5000], [0, 5000], [0, 5000]]
 
-        if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
+        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray,)):
             self.log.error('Given range is no array type.')
             return -1
 
@@ -284,7 +284,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
                     'Given range limit {1:d} should have dimension 2, but has {0:d} instead.'
                     ''.format(len(pos), pos))
                 return -1
-            if pos[0]>pos[1]:
+            if pos[0] > pos[1]:
                 self.log.error(
                     'Given range limit {0:d} has the wrong order.'.format(pos))
                 return -1
@@ -408,4 +408,3 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         pass
-
