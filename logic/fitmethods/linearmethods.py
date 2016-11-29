@@ -68,23 +68,20 @@ def make_constant_model(self, prefix=None):
 
         return offset
 
-    if prefix is None:
+    if not isinstance(prefix, str) and prefix is not None:
+
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
         model = Model(constant_function, independent_vars='x')
+
     else:
-        if not isinstance(prefix, str):
-            logger.error('Given prefix in constant model is no string. '
-                         'Deleting prefix.')
-        try:
-            model = Model(constant_function, independent_vars='x', prefix=prefix)
-        except:
-            logger.error('Creating the constant model failed. '
-                         'The prefix might not be a valid string. '
-                         'The prefix was deleted.')
-            model = Model(constant_function, independent_vars='x')
+        model = Model(constant_function, independent_vars='x', prefix=prefix)
 
     params = model.make_params()
 
     return model, params
+
 
 def make_amplitude_model(self, prefix=None):
     """ Create a constant model.
@@ -109,19 +106,17 @@ def make_amplitude_model(self, prefix=None):
 
         return amplitude
 
-    if prefix is None:
-        model = Model(amplitude_function, independent_vars='x', prefix=prefix)
+    if not isinstance(prefix, str) and prefix is not None:
+
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        model = Model(amplitude_function, independent_vars='x')
+
     else:
-        if not isinstance(prefix, str):
-            logger.error('Given prefix in constant model is no string. '
-                         'Deleting prefix.')
-        try:
-            model = Model(amplitude_function, independent_vars='x', prefix=prefix)
-        except:
-            logger.error('Creating the constant model failed. '
-                         'The prefix might not be a valid string. '
-                         'The prefix was deleted.')
-            model = Model(amplitude_function, independent_vars='x',)
+        model = Model(amplitude_function, independent_vars='x', prefix=prefix)
+
+
 
     params = model.make_params()
 
@@ -150,19 +145,15 @@ def make_slope_model(self, prefix=None):
 
         return slope
 
-    if prefix is None:
-        model = Model(slope_function, independent_vars='x', prefix=prefix)
+    if not isinstance(prefix, str) and prefix is not None:
+
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+
+        model = Model(slope_function, independent_vars='x')
     else:
-        if not isinstance(prefix, str):
-            logger.error('Given prefix in slope model is no string. '
-                         'Deleting prefix.')
-        try:
-            model = Model(slope_function, independent_vars='x', prefix=prefix)
-        except:
-            logger.error('Creating the slope model failed. '
-                         'The prefix might not be a valid string. '
-                         'The prefix was deleted.')
-            model = Model(slope_function, independent_vars='x',)
+        model = Model(slope_function, independent_vars='x', prefix=prefix)
 
     params = model.make_params()
 
@@ -191,10 +182,18 @@ def make_linear_model(self, prefix=None):
 
         return x
 
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        linear_mod = Model(linear_function, independent_vars='x')
+    else:
+        linear_mod = Model(linear_function, independent_vars='x', prefix=prefix)
+
     slope, slope_param = self.make_slope_model(prefix=prefix)
     constant, constant_param = self.make_constant_model(prefix=prefix)
 
-    model = slope * Model(linear_function, independent_vars='x', prefix=prefix) + constant
+    model = slope * linear_mod + constant
     params = model.make_params()
 
     return model, params
