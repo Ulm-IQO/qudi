@@ -258,7 +258,7 @@ class FastComtec(Base, FastCounterInterface):
                -1 = error state
                """
         status = AcqStatus()
-        self.log.info(str(self.dll.GetStatusData(ctypes.byref(status), 0)))
+        self.dll.GetStatusData(ctypes.byref(status), 0)
         if status.started==1:
             return 2
         elif status.started==0:
