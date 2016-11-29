@@ -72,10 +72,18 @@ def make_baresine_model(self, prefix=None):
 
         return np.sin(2*np.pi*frequency*x+phase)
 
-    model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        model = Model(bare_sine_function, independent_vars='x')
+    else:
+        model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
+
     params = model.make_params()
 
     return model, params
+
 
 def estimate_baresine(self, x_axis, data, params):
     """ Bare sine estimator with a frequency and phase.
@@ -191,6 +199,7 @@ def make_sine_model(self, prefix=None):
 
     return sine_model, params
 
+
 def estimate_sine(self, x_axis, data, params):
     """ Sine estimator, with an amplitude, frequency and phase.
 
@@ -290,6 +299,7 @@ def make_sine_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_sineoffset_model(self, prefix=None):
     """ Create a sine model with amplitude and offset.
 
@@ -308,6 +318,7 @@ def make_sineoffset_model(self, prefix=None):
     params = sine_offset_model.make_params()
 
     return sine_offset_model, params
+
 
 def estimate_sineoffset(self, x_axis, data, params):
     """ Provides an estimator to obtain initial values for sine fitting.
@@ -337,6 +348,7 @@ def estimate_sineoffset(self, x_axis, data, params):
     params['offset'].set(value=offset)
 
     return error, params
+
 
 def make_sineoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine fit with a constant offset on the provided data.
@@ -374,6 +386,7 @@ def make_sineoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_sineexponentialdecay_model(self, prefix=None):
     """ Create a model of a sine with exponential decay.
 
@@ -399,6 +412,7 @@ def make_sineexponentialdecay_model(self, prefix=None):
 #                                                                              #
 ################################################################################
 
+
 def make_sineexponentialdecayoffset_model(self, prefix=None):
     """ Create a model of a sine with exponential decay and offset.
 
@@ -417,6 +431,7 @@ def make_sineexponentialdecayoffset_model(self, prefix=None):
     params = sine_exp_decay_offset_model.make_params()
 
     return sine_exp_decay_offset_model, params
+
 
 def estimate_sineexponentialdecayoffset(self, x_axis, data, params=None):
     """ Provide an estimator to obtain initial values for a sine exponential
@@ -505,6 +520,7 @@ def estimate_sineexponentialdecayoffset(self, x_axis, data, params=None):
 
     return error, params
 
+
 def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine exponential decay fit on the provided data.
 
@@ -541,6 +557,7 @@ def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_sinedoubleexponentialdecayoffset_model(self, prefix=None):
     """ Create a model of sine with double exponential decay.
 
@@ -560,6 +577,7 @@ def make_sinedoubleexponentialdecayoffset_model(self, prefix=None):
     params = model.make_params()
 
     return model, params
+
 
 def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine double exponential decay fit on the provided data.
@@ -599,6 +617,7 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=Non
 #              Sinus with arbitrary exponential decay fitting                  #
 #                                                                              #
 ################################################################################
+
 
 def make_sinestretchedexponentialdecay_model(self, prefix=None):
     """ Create a model of a sine with stretched exponential decay.
@@ -642,6 +661,7 @@ def estimate_sinestretchedexponentialdecayoffset(self, x_axis, data, params):
 
     return error, params
 
+
 def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
@@ -678,6 +698,7 @@ def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=
 #                                                                              #
 ################################################################################
 
+
 def make_twosineoffset_model(self, prefix=None):
     """ Create a model of two summed sine with an offset.
 
@@ -703,6 +724,7 @@ def make_twosineoffset_model(self, prefix=None):
     params = two_sine_offset.make_params()
 
     return two_sine_offset, params
+
 
 def estimate_twosineoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of two sines with offset fitting.
@@ -743,6 +765,7 @@ def estimate_twosineoffset(self, x_axis, data, params):
 
     return error, params
 
+
 def make_twosineoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a two sine with offset fit on the provided data.
 
@@ -778,6 +801,7 @@ def make_twosineoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_twosineexpdecayoffset_model(self, prefix=None):
     """ Create a model of two summed sine with an exponential decay and offset.
 
@@ -804,6 +828,7 @@ def make_twosineexpdecayoffset_model(self, prefix=None):
     params = two_sine_exp_decay_offset.make_params()
 
     return two_sine_exp_decay_offset, params
+
 
 def estimate_twosineexpdecayoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of two sine with offset and
@@ -847,6 +872,7 @@ def estimate_twosineexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
+
 def make_twosineexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a two sine with one exponential decay offset fit on the provided
         data.
@@ -884,6 +910,7 @@ def make_twosineexpdecayoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_twosinetwoexpdecayoffset_model(self, prefix=None):
     """ Create a model of two summed sine with three exponential decays and offset.
 
@@ -909,6 +936,7 @@ def make_twosinetwoexpdecayoffset_model(self, prefix=None):
     params = two_sine_exp_decay_offset.make_params()
 
     return two_sine_exp_decay_offset, params
+
 
 def estimate_twosinetwoexpdecayoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of two sine with offset and
@@ -954,6 +982,7 @@ def estimate_twosinetwoexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
+
 def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
@@ -990,6 +1019,7 @@ def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_threesineoffset_model(self, prefix=None):
     """ Create a model of three summed sine with an offset.
 
@@ -1016,6 +1046,7 @@ def make_threesineoffset_model(self, prefix=None):
     params = three_sine_offset.make_params()
 
     return three_sine_offset, params
+
 
 def estimate_threesineoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of three sines with offset fitting.
@@ -1063,6 +1094,7 @@ def estimate_threesineoffset(self, x_axis, data, params):
 
     return error, params
 
+
 def make_threesineoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a three sine with offset fit on the provided data.
 
@@ -1098,6 +1130,7 @@ def make_threesineoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_threesineexpdecayoffset_model(self, prefix=None):
     """ Create a model of three summed sine with an exponential decay and offset.
 
@@ -1125,6 +1158,7 @@ def make_threesineexpdecayoffset_model(self, prefix=None):
     params = three_sine_exp_decay_offset.make_params()
 
     return three_sine_exp_decay_offset, params
+
 
 def estimate_threesineexpdecayoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of three sine with offset and
@@ -1176,6 +1210,7 @@ def estimate_threesineexpdecayoffset(self, x_axis, data, params):
 
     return error, params
 
+
 def make_threesineexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a three sine with one exponential decay offset fit on the provided
         data.
@@ -1213,6 +1248,7 @@ def make_threesineexpdecayoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
+
 def make_threesinethreeexpdecayoffset_model(self, prefix=None):
     """ Create a model of three summed sine with three exponential decays and offset.
 
@@ -1239,6 +1275,7 @@ def make_threesinethreeexpdecayoffset_model(self, prefix=None):
     params = three_sine_exp_decay_offset.make_params()
 
     return three_sine_exp_decay_offset, params
+
 
 def estimate_threesinethreeexpdecayoffset(self, x_axis, data, params):
     """ Provides an estimator for initial values of three sine with offset and
@@ -1292,6 +1329,7 @@ def estimate_threesinethreeexpdecayoffset(self, x_axis, data, params):
     params['offset'].set(value=data.mean())
 
     return error, params
+
 
 def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a three sine with three exponential decay and offset fit on the
