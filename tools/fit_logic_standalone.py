@@ -10,8 +10,9 @@ import sys
 path_of_qudi = "<custom path>/qudi/"
 sys.path.append(path_of_qudi)
 from tools.fit_logic_standalone import FitLogic
-fitting = FitLogic(path_of_qudi)
+fitting = FitLogic(path_of_qudi)       
 
+        
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
