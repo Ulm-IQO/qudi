@@ -2012,12 +2012,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 # Reserved for future use. Pass NULL (here None) to this parameter
                 None)
 
-        # Chops the array or read sample to the length that it exactly returns
-        # acquired data and not more
-        if read_available_samples:
-            return _gated_count_data[0][:n_read_samples.value], n_read_samples.value
-        else:
-            return _gated_count_data
+            # Chops the array or read sample to the length that it exactly returns
+            # acquired data and not more
+            if read_available_samples:
+                return _gated_count_data[0][:n_read_samples.value], n_read_samples.value
+            else:
+                return _gated_count_data
         except:
             self.log.exception('Error while reading gated count data.')
             return np.array([-1])
@@ -2052,9 +2052,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.exception('Error while closing gated counter.')
             retval = -1
         try:
-        # clear the task
-        daq.DAQmxClearTask(self._gated_counter_daq_task)
-        self._gated_counter_daq_task = None
+            # clear the task
+            daq.DAQmxClearTask(self._gated_counter_daq_task)
+            self._gated_counter_daq_task = None
         except:
             self.log.exception('Error while clearing gated counter.')
             retval = -1
