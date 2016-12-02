@@ -35,6 +35,11 @@ class OkFpgaPulser(Base, PulserInterface):
     Ch1    A3
     Ch2    C5
     Ch3    D6
+    Ch4    B6
+    Ch5    C7
+    Ch6    B8
+    Ch7    D9
+    Ch8    C9
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
@@ -58,24 +63,29 @@ class OkFpgaPulser(Base, PulserInterface):
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified '
-                    'in the config for SequenceGeneratorLogic as directory '
-                    'for the pulsed files!\nThe default home directory\n{0}\n'
-                    'will be taken instead.'.format(self.pulsed_file_dir))
+            self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
+                             'OkFpgaPulser as directory for the pulsed files!\nThe default home '
+                             'directory\n{0}\nwill be taken instead.'.format(self.pulsed_file_dir))
 
         if 'fpga_serial' in config.keys():
             self.fpga_serial = config['fpga_serial']
         else:
             self.fpga_serial = ''
-            self.log.error('No parameter "fpga_serial" was specified in the '
-                        'config for FPGA pulse generator.')
+            self.log.error('No parameter "fpga_serial" was specified in the config for FPGA pulse '
+                           'generator.')
+
+        if 'fpga_type' in config.keys():
+            self._fpga_type = config['fpga_type']
+        else:
+            self._fpga_type = 'XEM6310_LX150'
+            self.log.warning('No parameter "fpga_type" specified in the config!\nPossible types are'
+                             ' "XEM6310_LX150" or "XEM6310_LX45".\nTaking the type "{0}" as '
+                             'default.'.format(self._fpga_type))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
         self.current_status = -1
         self.sample_rate = 950e6
-        self.current_loaded_asset = None
-        # self.lock = Mutex()
         self.current_loaded_asset = None
 
     def on_activate(self, e):
@@ -207,72 +217,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # ignore if no asset_name is given
-        if asset_name is None:
-            self.log.warning('"upload_asset" called with asset_name = None.')
-            return 0
-
-        # check if asset exists
-        saved_assets = self.get_saved_asset_names()
-        if asset_name not in saved_assets:
-            self.log.error('No asset with name "{0}" found for FPGA pulser.\n'
-                    '"upload_asset" call ignored.'.format(asset_name))
-            return -1
-
-        # get samples from file
-        filepath = os.path.join(self.host_waveform_directory, asset_name+'.fpga')
-        with open(filepath, 'rb') as asset_file:
-            samples = bytearray(asset_file.read())
-
-        # calculate size of the two bytearrays to be transmitted
-        # the biggest part is tranfered in 1024 byte blocks and the rest is transfered in 32 byte blocks
-        big_bytesize = (len(samples) // 1024) * 1024
-        small_bytesize = len(samples) - big_bytesize
-
-        # try repeatedly to upload the samples to the FPGA RAM
-        # stop if the upload was successful
-        loop_count = 0
-        while True:
-            loop_count += 1
-            # reset FPGA
-            self.fpga.SetWireInValue(0x00,0x04)
-            self.fpga.UpdateWireIns()
-            self.fpga.SetWireInValue(0x00,0x00)
-            self.fpga.UpdateWireIns()
-            # upload sequence
-            if big_bytesize != 0:
-                #enable sequence write mode in FPGA
-                self.fpga.SetWireInValue(0x00, (255 << 24)+2)
-                self.fpga.UpdateWireIns()
-                #write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 1024, samples[0:big_bytesize])
-            if small_bytesize != 0:
-                #enable sequence write mode in FPGA
-                self.fpga.SetWireInValue(0x00, (8 << 24)+2)
-                self.fpga.UpdateWireIns()
-                #write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 32, samples[big_bytesize:big_bytesize+small_bytesize])
-
-            # check if upload was successful
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
-            # start the pulse sequence
-            self.fpga.SetWireInValue(0x00, 0x01)
-            self.fpga.UpdateWireIns()
-            # wait for 600ms
-            time.sleep(0.6)
-            # get status flags from FPGA
-            self.fpga.UpdateWireOuts()
-            flags = self.fpga.GetWireOutValue(0x20)
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
-            # check if the memory readout works.
-            if flags == 0:
-                self.log.info('Upload of the asset "{0}" to FPGA was '
-                        'successful.\nUpload attempts needed: {1}'.format(
-                            asset_name, loop_count))
-                break
-        self.current_loaded_asset = asset_name
+        self.log.debug('FPGA pulser has no own storage capability.\n"upload_asset" call ignored.')
         return 0
 
     def load_asset(self, asset_name, load_dict=None):
@@ -297,10 +242,72 @@ class OkFpgaPulser(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        if load_dict is None:
-            load_dict = {}
-        self.log.info('FPGA pulser has no own storage capability.\n'
-                    '"load_asset" call ignored.')
+        # ignore if no asset_name is given
+        if asset_name is None:
+            self.log.warning('"load_asset" called with asset_name = None.')
+            return 0
+
+        # check if asset exists
+        saved_assets = self.get_saved_asset_names()
+        if asset_name not in saved_assets:
+            self.log.error('No asset with name "{0}" found for FPGA pulser.\n'
+                           '"load_asset" call ignored.'.format(asset_name))
+            return -1
+
+        # get samples from file
+        filepath = os.path.join(self.host_waveform_directory, asset_name + '.fpga')
+        with open(filepath, 'rb') as asset_file:
+            samples = bytearray(asset_file.read())
+
+        # calculate size of the two bytearrays to be transmitted
+        # the biggest part is tranfered in 1024 byte blocks and the rest is transfered in 32 byte blocks
+        big_bytesize = (len(samples) // 1024) * 1024
+        small_bytesize = len(samples) - big_bytesize
+
+        # try repeatedly to upload the samples to the FPGA RAM
+        # stop if the upload was successful
+        loop_count = 0
+        while True:
+            loop_count += 1
+            # reset FPGA
+            self.fpga.SetWireInValue(0x00, 0x04)
+            self.fpga.UpdateWireIns()
+            self.fpga.SetWireInValue(0x00, 0x00)
+            self.fpga.UpdateWireIns()
+            # upload sequence
+            if big_bytesize != 0:
+                # enable sequence write mode in FPGA
+                self.fpga.SetWireInValue(0x00, (255 << 24) + 2)
+                self.fpga.UpdateWireIns()
+                # write to FPGA DDR2-RAM
+                self.fpga.WriteToBlockPipeIn(0x80, 1024, samples[0:big_bytesize])
+            if small_bytesize != 0:
+                # enable sequence write mode in FPGA
+                self.fpga.SetWireInValue(0x00, (8 << 24) + 2)
+                self.fpga.UpdateWireIns()
+                # write to FPGA DDR2-RAM
+                self.fpga.WriteToBlockPipeIn(0x80, 32,
+                                             samples[big_bytesize:big_bytesize + small_bytesize])
+
+            # check if upload was successful
+            self.fpga.SetWireInValue(0x00, 0x00)
+            self.fpga.UpdateWireIns()
+            # start the pulse sequence
+            self.fpga.SetWireInValue(0x00, 0x01)
+            self.fpga.UpdateWireIns()
+            # wait for 600ms
+            time.sleep(0.6)
+            # get status flags from FPGA
+            self.fpga.UpdateWireOuts()
+            flags = self.fpga.GetWireOutValue(0x20)
+            self.fpga.SetWireInValue(0x00, 0x00)
+            self.fpga.UpdateWireIns()
+            # check if the memory readout works.
+            if flags == 0:
+                self.log.info('Loading of the asset "{0}" to FPGA was successful.\n'
+                              'Upload attempts needed: {1}'.format(asset_name, loop_count))
+                break
+        self.current_loaded_asset = asset_name
         return 0
 
     def clear_all(self):
@@ -349,20 +356,21 @@ class OkFpgaPulser(Base, PulserInterface):
               for obtaining the actual set value and use that information for
               further processing.
         """
+        bitfile_name = 'pulsegen_8chnl_'
         if sample_rate == 950e6:
-            bitfile_path = os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'pulsegen_8chnl_950MHz.bit')
+            bitfile_name = bitfile_name + '950MHz_' + self._fpga_type + '.bit'
         elif sample_rate == 500e6:
-            bitfile_path = os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'pulsegen_8chnl_500MHz.bit')
+            bitfile_name = bitfile_name + '500MHz_' + self._fpga_type + '.bit'
         else:
-            self.log.error('Setting "{0}" as sample rate for FPGA pulse '
-                    'generator is not allowed. Use 950e6 or 500e6 instead.')
+            self.log.error('Setting "{0:.3e}" as sample rate for FPGA pulse generator is not allowed. '
+                           'Use 950e6 or 500e6 instead.'.format(sample_rate))
             return -1
+        bitfile_path = os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', bitfile_name)
 
         self.sample_rate = sample_rate
         self.fpga.ConfigureFPGA(bitfile_path)
-        self.log.info('FPGA pulse generator configured with {0}'.format(
-            bitfile_path))
-        return 0
+        self.log.debug('FPGA pulse generator configured with {0}'.format(bitfile_path))
+        return self.sample_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -379,10 +387,6 @@ class OkFpgaPulser(Base, PulserInterface):
                                Volt-peak-to-peak and Offset in (absolute)
                                Voltage.
         """
-        if amplitude is None:
-            amplitude = []
-        if offset is None:
-            offset = []
         return {}, {}
 
     def set_analog_level(self, amplitude=None, offset=None):
@@ -400,11 +404,6 @@ class OkFpgaPulser(Base, PulserInterface):
 
         If nothing is passed then the command will return two empty dicts.
         """
-        if amplitude is None:
-            amplitude = {}
-        if offset is None:
-            offset = {}
-
         return {}, {}
 
     def get_digital_level(self, low=None, high=None):
@@ -490,8 +489,7 @@ class OkFpgaPulser(Base, PulserInterface):
             low = {}
         if high is None:
             high = {}
-        self.log.warning('FPGA pulse generator logic level cannot be '
-                'adjusted!')
+        self.log.warning('FPGA pulse generator logic level cannot be adjusted!')
         return 0
 
     def get_active_channels(self,  ch=None):
@@ -499,8 +497,8 @@ class OkFpgaPulser(Base, PulserInterface):
             ch = {}
         d_ch_dict = {}
         if len(ch) < 1:
-            for chnr in range(8):
-                d_ch_dict['d_ch{0}'.format(chnr+1)] = True
+            for chnl in range(1, 9):
+                d_ch_dict['d_ch{0}'.format(chnl)] = True
         else:
             for channel in ch:
                 d_ch_dict[channel] = True
@@ -540,14 +538,6 @@ class OkFpgaPulser(Base, PulserInterface):
         names = []
         return names
 
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
-
-        @return str: Name of the current asset, that can be either a filename
-                     a waveform, a sequence ect.
-        """
-        return self.current_loaded_asset
-
     def get_saved_asset_names(self):
         """ Retrieve the names of all sampled and saved assets on the host PC.
         This is no list of the file names.
@@ -563,7 +553,6 @@ class OkFpgaPulser(Base, PulserInterface):
                 asset_name = filename.rsplit('.', 1)[0]
                 if asset_name not in saved_assets:
                     saved_assets.append(asset_name)
-
         return saved_assets
 
     def delete_asset(self, asset_name):
@@ -658,7 +647,7 @@ a
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
-        @return: bool, True for y   es, False for no.
+        @return: bool, True for yes, False for no.
         """
         return False
 
@@ -671,8 +660,7 @@ a
         # Check connection
         if not self.fpga.IsFrontPanelEnabled():
             self.current_status = -1
-            self.log.error('ERROR: FrontPanel is not enabled in FPGA pulse '
-                    'generator!')
+            self.log.error('ERROR: FrontPanel is not enabled in FPGA pulse generator!')
             return -1
         else:
             self.current_status = 0
@@ -684,7 +672,7 @@ a
         stop FPGA and disconnect
         """
         # set FPGA in reset state
-        self.fpga.SetWireInValue(0x00,0x04)
+        self.fpga.SetWireInValue(0x00, 0x04)
         self.fpga.UpdateWireIns()
         self.current_status = -1
         del self.fpga
@@ -696,7 +684,6 @@ a
         @param name: string, name of the folder
         @return: string, absolute path to the directory with folder 'name'.
         """
-
         path = os.path.join(self.pulsed_file_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
