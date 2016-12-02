@@ -94,10 +94,10 @@ def make_poissonian_model(self, prefix=None):
             information about the current value.
     """
     def poisson_function(x, mu):
-        """
-        Function of a poisson distribution.
-        @param x: occurences
-        @param mu: expected value
+        """ Function of a poisson distribution.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. occurences
+        @param float mu: expectation value
 
         @return: poisson function: in order to use it as a model
         """
@@ -105,15 +105,18 @@ def make_poissonian_model(self, prefix=None):
 
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
-    try:
+    if not isinstance(prefix, str) and prefix is not None:
+
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+
+        poissonian_model = Model(poisson_function, independent_vars='x')
+
+    else:
+
         poissonian_model = Model(poisson_function, independent_vars='x',
                                  prefix=prefix)
-    except:
-        logger.error('Creating the Poisson model failed.\n'
-                     'The prefix with the value {0} and type {1} might not be '
-                     'a valid string. Therefore prefix was '
-                     'deleted.'.format(prefix, type(prefix)))
-        poissonian_model = Model(poisson_function, independent_vars='x')
 
     poissonian_ampl_model = amplitude_model*poissonian_model
     params = poissonian_ampl_model.make_params()

@@ -66,8 +66,17 @@ def make_barestretchedexponentialdecay_model(self, prefix=None):
         """
         return np.exp(-np.power(x/lifetime, beta))
 
-    model = Model(barestretchedexponentialdecay_function, independent_vars='x',
-                  prefix=prefix)
+    if not isinstance(prefix, str) and prefix is not None:
+
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        model = Model(barestretchedexponentialdecay_function,
+                      independent_vars='x')
+    else:
+        model = Model(barestretchedexponentialdecay_function,
+                      independent_vars='x', prefix=prefix)
+
     params = model.make_params()
 
     return model, params
