@@ -358,9 +358,9 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         bitfile_name = 'pulsegen_8chnl_'
         if sample_rate == 950e6:
-            bitfile_name = bitfile_name + '950MHz_' + self._fpga_type + '.bit'
+            bitfile_name = bitfile_name + '950MHz_' + self._fpga_type.split('_')[1] + '.bit'
         elif sample_rate == 500e6:
-            bitfile_name = bitfile_name + '500MHz_' + self._fpga_type + '.bit'
+            bitfile_name = bitfile_name + '500MHz_' + self._fpga_type.split('_')[1] + '.bit'
         else:
             self.log.error('Setting "{0:.3e}" as sample rate for FPGA pulse generator is not allowed. '
                            'Use 950e6 or 500e6 instead.'.format(sample_rate))
