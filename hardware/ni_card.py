@@ -165,9 +165,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._gated_counter_daq_task = None
 
         # some default values for the hardware:
-        self._voltage_range = [[-10, 10], [-10, 10], [-10, 10], [-10, 10]]
-        self._position_range = [[0, 100], [0, 100], [0, 100], [0, 100]]
-        self._current_position = [0, 0, 0, 0]
+        self._voltage_range = [[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
+        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
+        self._current_position = [0., 0., 0., 0.]
 
         self._max_counts = 3e7  # used as a default for expected maximum counts
         self._RWTimeout = 10     # timeout for the Read or/and write process in s
@@ -402,7 +402,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
-        self._start_analog_output()
+        if self._start_analog_output() < 0:
+            self.log.error('Failed to start analog output.')
+            raise Exception('Failed to start NI Card module due to analog output failure.')
 
     def on_deactivate(self, e=None):
         """ Shut down the NI card.
@@ -555,14 +557,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
 
         if self._clock_daq_task is None and clock_channel is None:
-            self.log.error('No clock running, call set_up_clock before '
-                    'starting the counter.')
+            self.log.error('No clock running, call set_up_clock before starting the counter.')
             return -1
         if self._counter_daq_task is not None:
-            self.log.error('Another counter is already running, close this '
-                    'one first.')
+            self.log.error('Another counter is already running, close this one first.')
             return -1
-
 
         if counter_channel is not None:
             self._counter_channel = counter_channel
@@ -969,13 +968,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """ Scanner axes depends on how many channels tha analog output task has.
         """
         if self._scanner_ao_task is None:
+            self.log.error('Cannot get channel number, analog output task does not exist.')
             return []
         
-        n_channels = daq.int32()
-        daq.DAQmxGetTaskNumChans(self._scanner_ao_task, daq.byref(n_channels))
+        #n_channels = daq.int32()
+        #daq.DAQmxGetTaskNumChans(self._scanner_ao_task, daq.byref(n_channels))
         possible_channels = ['x', 'y', 'z', 'a']
 
-        return possible_channels[0:n_channels]
+        return possible_channels[0:3]
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -1025,26 +1025,28 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
-        @param float [2] myrange: array containing lower and upper limit
+        @param float [n][2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        n_ch = len(self.get_scanner_axes())
         if myrange is None:
-            myrange = [-10., 10.]
+            myrange = [[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]][0:n_ch]
 
-        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
+        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray)):
             self.log.error('Given range is no array type.')
             return -1
 
-        if len(myrange) != 2:
+        if len(myrange) != n_ch:
             self.log.error(
                 'Given range should have dimension 2, but has {0:d} instead.'
                 ''.format(len(myrange)))
             return -1
 
-        if myrange[0] > myrange[1]:
-            self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
-            return -1
+        for r in myrange:
+            if r[0] > r[1]:
+                self.log.error('Given range limit {0:d} has the wrong order.'.format(r))
+                return -1
 
         self._voltage_range = myrange
         return 0
@@ -1078,19 +1080,20 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             daq.DAQmxCreateAOVoltageChan(
                 # The AO voltage operation function is assigned to this task.
                 self._scanner_ao_task,
-                # use (all) sanncer ao_channels for the output
+                # use scanner ao_channels for the output
                 self._scanner_ao_channels,
                 # assign a name for that task
                 'Analog Control',
                 # minimum possible voltage
-                self._voltage_range[0],
+                self._voltage_range[0][0],
                 # maximum possible voltage
-                self._voltage_range[1],
+                self._voltage_range[0][1],
                 # units is Volt
                 daq.DAQmx_Val_Volts,
                 # empty for future use
                 '')
         except:
+            self.log.exception('Error starting analog output task.')
             return -1
         return 0
 
@@ -1114,7 +1117,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.exception('Error changing analog output mode.')
             retval = -1
         return retval
-
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -1338,7 +1340,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return np.array([np.NaN])
 
         vlist = []
-        for i, position in positions.enumerate():
+        for i, position in enumerate(positions):
             vlist.append(
                 (self._voltage_range[i][1] - self._voltage_range[i][0])
                 / (self._position_range[i][1] - self._position_range[i][0])
@@ -1347,7 +1349,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             )
         volts = np.vstack(vlist)
 
-        for v in volts.enumerate():
+        for i, v in enumerate(volts):
             if v.min() < self._voltage_range[i][0] or v.max() > self._voltage_range[i][1]:
                 self.log.error(
                     'Voltages ({0}, {1}) exceed the limit, the positions have to '
