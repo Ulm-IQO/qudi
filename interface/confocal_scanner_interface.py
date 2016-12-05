@@ -73,19 +73,19 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def get_scanner_axes(self):
-    """ Find out how many axes the scanning device is using for confocal and their names.
-
-    @return list(str): list of axis names
-
-    Example:
-      For 3D confocal microscopy in cartesian coordinates, ['x', 'y', 'z'] is a sensible value.
-      For 2D, ['x', 'y'] would be typical.
-      You could build a turntable microscope with ['r', 'phi', 'z'].
-      Most callers of this function will only care about the number of axes, though.
-
-      On error, return an empty list.
-    """
-    pass
+        """ Find out how many axes the scanning device is using for confocal and their names.
+ 
+        @return list(str): list of axis names
+ 
+        Example:
+          For 3D confocal microscopy in cartesian coordinates, ['x', 'y', 'z'] is a sensible value.
+          For 2D, ['x', 'y'] would be typical.
+          You could build a turntable microscope with ['r', 'phi', 'z'].
+          Most callers of this function will only care about the number of axes, though.
+ 
+          On error, return an empty list.
+        """
+        pass
 
     @abc.abstractmethod
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
