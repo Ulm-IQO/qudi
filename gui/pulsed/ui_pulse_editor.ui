@@ -425,7 +425,7 @@ last</string>
       <item row="0" column="0">
        <widget class="QLabel" name="pbe_length_label">
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Length (s):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Length:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
@@ -447,7 +447,7 @@ last</string>
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
         <property name="suffix">
-         <string/>
+         <string>s</string>
         </property>
         <property name="decimals">
          <number>5</number>
@@ -457,7 +457,7 @@ last</string>
       <item row="1" column="0">
        <widget class="QLabel" name="pbe_bins_label">
         <property name="text">
-         <string>Length (bins):</string>
+         <string>Length:</string>
         </property>
        </widget>
       </item>
@@ -478,15 +478,14 @@ last</string>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
+        <property name="suffix">
+         <string>bins</string>
+        </property>
+        <property name="prefix">
+         <string/>
+        </property>
         <property name="maximum">
          <number>1000000000</number>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="pbe_size_label">
-        <property name="text">
-         <string>Size (MB)</string>
         </property>
        </widget>
       </item>
@@ -510,8 +509,11 @@ last</string>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
+        <property name="suffix">
+         <string>MB</string>
+        </property>
         <property name="decimals">
-         <number>3</number>
+         <number>2</number>
         </property>
         <property name="maximum">
          <double>200000.000000000000000</double>
@@ -646,6 +648,13 @@ last</string>
         </property>
         <property name="text">
          <string>Load</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="pbe_size_label">
+        <property name="text">
+         <string>File size:</string>
         </property>
        </widget>
       </item>

@@ -181,7 +181,7 @@ class SamplesWriteMethods():
         if is_last_chunk:
             for channel in ana_chnl_numbers:
                 tmp_filepath = os.path.join(self.temp_dir, name + '_ch' + str(channel) + '_digi' + '.tmp')
-                wfmx_filepath = os.path.join(self.waveform_dir, name + '_ch' + str(channel) + '.WFMX')
+                wfmx_filepath = os.path.join(self.waveform_dir, name + '_ch' + str(channel) + '.wfmx')
                 with open(wfmx_filepath, 'ab') as wfmxfile:
                     with open(tmp_filepath, 'rb') as tmpfile:
                         # read and write files in max. write_overhead_bytes chunks to reduce
@@ -195,10 +195,6 @@ class SamplesWriteMethods():
                 os.remove(tmp_filepath)
         return created_files
 
-
-    # TODO: Implement chunkwise writing
-    # FIXME: This method seems to be in an early state and could be inefficient when larger
-    # waveforms are written. Several temporary copys of the sample arrays are created.
     def _write_wfm(self, name, analog_samples, digital_samples, total_number_of_samples,
                     is_first_chunk, is_last_chunk):
         """
@@ -233,9 +229,6 @@ class SamplesWriteMethods():
         digi_chnl_numbers = [int(chnl.split('ch')[-1]) for chnl in self.activation_config if
                              'd_ch' in chnl]
 
-        # dict for marker creation
-        _marker_byte_dict = {0: b'\x00', 1: b'\x01', 2: b'\x02', 3: b'\x03'}
-
         # IMPORTANT: These numbers build the header in the wfm file. Needed
         # by the device program to understand wfm file. If it is wrong,
         # AWG will not be able to understand the written file.
@@ -249,59 +242,53 @@ class SamplesWriteMethods():
         # After this number a 14bit binary representation of the channel
         # and the marker are followed.
         for channel_index, channel_number in enumerate(ana_chnl_numbers):
-
             filename = name + '_ch' + str(channel_number) + '.wfm'
-
             created_files.append(filename)
-
             filepath = os.path.join(self.waveform_dir, filename)
 
-            with open(filepath, 'ab') as wfm_file:
-                if is_first_chunk:
+            if is_first_chunk:
+                with open(filepath, 'wb') as wfm_file:
                     # write the first line, which is the header file, if first chunk is passed:
-                    num_bytes = str(int(digital_samples.shape[1] * 5))
+                    num_bytes = str(int(total_number_of_samples * 5))
                     num_digits = str(len(num_bytes))
                     header = str.encode('MAGIC 1000\r\n#' + num_digits + num_bytes)
                     wfm_file.write(header)
 
-                # now write at once the whole file in binary representation:
+            # now write the samples chunk in binary representation:
+            # First we create a structured numpy array representing one byte (numpy uint8)
+            # for the markers and 4 byte (numpy float32) for the analog samples.
+            write_array = np.empty(digital_samples.shape[1], dtype='float32, uint8')
 
-                # convert the presampled numpy array of the analog channels
-                # to a float number represented by 8bits:
-                shape_for_wavetmp = analog_samples.shape[1]
-                wavetmp = np.zeros(shape_for_wavetmp * 5, dtype='c')
-                wavetmp = wavetmp.reshape((-1, 5))
-                wavetmp[:, :4] = np.frombuffer(memoryview(analog_samples[channel_index] / 4),
-                                               dtype='c').reshape((-1, 4))
+            # now we determine which markers are active for this channel and write them to
+            # write_array.
+            if (channel_number * 2) - 1 in digi_chnl_numbers and (channel_number * 2) in digi_chnl_numbers:
+                # both markers active for this channel
+                digi_index = digi_chnl_numbers.index(channel_number * 2)
+                write_array['f1'] = np.add(
+                    np.left_shift(digital_samples[digi_index][:].astype('uint8'), 7),
+                    np.left_shift(digital_samples[digi_index - 1][:].astype('uint8'), 6))
+            elif (channel_number * 2) - 1 in digi_chnl_numbers and (channel_number * 2) not in digi_chnl_numbers:
+                # only marker 1 active for this channel
+                digi_index = digi_chnl_numbers.index((channel_number * 2) - 1)
+                write_array['f1'] = np.left_shift(
+                    digital_samples[digi_index][:].astype('uint8'), 6)
+            elif (channel_number * 2) - 1 not in digi_chnl_numbers and (channel_number * 2) in digi_chnl_numbers:
+                # only marker 2 active for this channel
+                digi_index = digi_chnl_numbers.index(channel_number * 2)
+                write_array['f1'] = np.left_shift(
+                    digital_samples[digi_index][:].astype('uint8'), 7)
+            else:
+                # no markers active for this channel
+                write_array['f1'] = np.zeros(digital_samples.shape[1], dtype='uint8')
 
-                # The previously created array wavetmp contains one additional column, where
-                # the marker states will be written into:
-                # check if for this analogue channel markers are specified
-                if (channel_number * 2 - 1) not in digi_chnl_numbers and (
-                    channel_number * 2) not in digi_chnl_numbers:
-                    # no digital channels to write for this analog channel
-                    marker = np.zeros(digital_samples.shape[1], dtype='int32')
-                elif (channel_number * 2 - 1) in digi_chnl_numbers and (
-                    channel_number * 2) not in digi_chnl_numbers:
-                    # Only marker one is active for this channel
-                    digi_index = digi_chnl_numbers.index(channel_number * 2 - 1)
-                    marker = digital_samples[digi_index].astype('int32')
-                elif (channel_number * 2 - 1) not in digi_chnl_numbers and (
-                    channel_number * 2) in digi_chnl_numbers:
-                    # Only marker two is active for this channel
-                    digi_index = digi_chnl_numbers.index(channel_number * 2)
-                    marker = digital_samples[digi_index] * 2
-                else:
-                    # Both markers are active for this channel
-                    marker = digital_samples[channel_index * 2] + digital_samples[
-                                                                      channel_index * 2 + 1] * 2
+            # Write analog samples into the write_array
+            write_array['f0'] = analog_samples[channel_index][:]
 
-                marker_byte = np.array([_marker_byte_dict[m] for m in marker], dtype='c')
-                wavetmp[:, -1] = marker_byte
+            # Write write_array to file
+            with open(filepath, 'ab') as wfm_file:
+                wfm_file.write(write_array)
 
-                # now write everything to file:
-                wfm_file.write(wavetmp.tobytes())
-
+                # append footer if it's the last chunk to write
                 if is_last_chunk:
                     # the footer encodes the sample rate, which was used for that file:
                     footer = str.encode('CLOCK {0:16.10E}\r\n'.format(self.sample_rate))
@@ -417,22 +404,15 @@ class SamplesWriteMethods():
 
                 # for one channel:
                 if len(seq_param_dict['name']) == 1:
-                    seq_file.write(
-                        '"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'.format(seq_param_dict['name'][0],
-                                                                       repeat,
-                                                                       trigger_wait,
-                                                                       go_to,
-                                                                       event_jump_to).encode(
-                            'UTF-8'))
+                    seq_file.write('"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'
+                                   ''.format(seq_param_dict['name'][0], repeat, trigger_wait, go_to,
+                                             event_jump_to).encode('UTF-8'))
                 # for two channel:
                 else:
-                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'.format(
-                        seq_param_dict['name'][0],
-                        seq_param_dict['name'][1],
-                        repeat,
-                        trigger_wait,
-                        go_to,
-                        event_jump_to).encode('UTF-8'))
+                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'
+                                   ''.format(seq_param_dict['name'][0], seq_param_dict['name'][1],
+                                             repeat, trigger_wait, go_to,
+                                             event_jump_to).encode('UTF-8'))
 
             # write the footer:
             table_jump = 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'
