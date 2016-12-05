@@ -2,15 +2,18 @@
 
 
 * [License](@ref license)
+* [Changelog](@ref changelog)
 * Setup
     * [Installation](@ref installation)
     * [Required packages](@ref required-python-packages)
     * [Jupyter Notebook integration](@ref jupyterkernel)
     * [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
+* [Programming style](@ref programming-style)
 * [How to use the logger](@ref logger_usage)
 * [Graphical User Interface Design Concept](@ref uiguidelines)
 * [Step-by-step guide for pulsed measurements](@ref pulsedmeasurement-explanation)
+* [Build the documentation](@ref build-docs)
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)
     * [Manager GUI](@ref managergui)

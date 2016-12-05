@@ -38,12 +38,19 @@ class ShutterState(Enum):
 class LaserState(Enum):
     OFF = 0
     ON = 1
-    BLOCKED = 2
+    LOCKED = 2
     UNKNOWN = 3
 
 class SimpleLaserInterface(metaclass=InterfaceMetaclass):
     _modtype = 'SimpleLaserInterface'
     _modclass = 'interface'
+
+    @abc.abstractmethod
+    def get_power_range(self):
+        """ Return laser power
+        @return tuple(p1, p2): Laser power range in watts
+        """
+        pass
 
     @abc.abstractmethod
     def get_power(self):
@@ -69,9 +76,23 @@ class SimpleLaserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def get_current_unit(self):
+        """ Return laser current unit
+        @return str: unit
+        """
+        pass
+
+    @abc.abstractmethod
     def get_current(self):
         """ Return laser current
         @return float: actual laser current as ampere or percentage of maximum current
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_current_range(self):
+        """ Return laser current range
+        @return tuple(c1, c2): Laser current range in current units
         """
         pass
 
