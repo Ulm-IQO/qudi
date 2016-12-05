@@ -1381,73 +1381,73 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._line_length = length
 
         try:
-           # Just a formal check whether length is not a too huge number
-           if length < np.inf:
+            # Just a formal check whether length is not a too huge number
+            if length < np.inf:
 
-               # Configure the Sample Clock Timing.
-               # Set up the timing of the scanner counting while the voltages are
-               # being scanned (i.e. that you go through each voltage, which
-               # corresponds to a position. How fast the voltages are being
-               # changed is combined with obtaining the counts per voltage peak).
-               daq.DAQmxCfgSampClkTiming(
-                   # add to this task
-                   self._scanner_ao_task,
-                   # use this channel as clock
-                   self._my_scanner_clock_channel+'InternalOutput',
-                   # Maximum expected clock frequency
-                   self._scanner_clock_frequency,
-                   # Generate sample on falling edge
-                   daq.DAQmx_Val_Falling,
-                   # generate finite number of samples
-                   daq.DAQmx_Val_FiniteSamps,
-                   # number of samples to generate
-                   self._line_length)
+                # Configure the Sample Clock Timing.
+                # Set up the timing of the scanner counting while the voltages are
+                # being scanned (i.e. that you go through each voltage, which
+                # corresponds to a position. How fast the voltages are being
+                # changed is combined with obtaining the counts per voltage peak).
+                daq.DAQmxCfgSampClkTiming(
+                    # add to this task
+                    self._scanner_ao_task,
+                    # use this channel as clock
+                    self._my_scanner_clock_channel+'InternalOutput',
+                    # Maximum expected clock frequency
+                    self._scanner_clock_frequency,
+                    # Generate sample on falling edge
+                    daq.DAQmx_Val_Falling,
+                    # generate finite number of samples
+                    daq.DAQmx_Val_FiniteSamps,
+                    # number of samples to generate
+                    self._line_length)
 
-           # Configure Implicit Timing for the clock.
-           # Set timing for scanner clock task to the number of pixel.
-           daq.DAQmxCfgImplicitTiming(
-               # define task
-               self._scanner_clock_daq_task,
-               # only a limited number of# counts
-               daq.DAQmx_Val_FiniteSamps,
-               # count twice for each voltage +1 for safety
-               self._line_length + 1)
+            # Configure Implicit Timing for the clock.
+            # Set timing for scanner clock task to the number of pixel.
+            daq.DAQmxCfgImplicitTiming(
+                # define task
+                self._scanner_clock_daq_task,
+                # only a limited number of# counts
+                daq.DAQmx_Val_FiniteSamps,
+                # count twice for each voltage +1 for safety
+                self._line_length + 1)
 
-           # Configure Implicit Timing for the scanner counting task.
-           # Set timing for scanner count task to the number of pixel.
-           daq.DAQmxCfgImplicitTiming(
-               # define task
-               self._scanner_counter_daq_task,
-               # only a limited number of counts
-               daq.DAQmx_Val_FiniteSamps,
-               # count twice for each voltage +1 for safety
-               2 * self._line_length + 1)
+            # Configure Implicit Timing for the scanner counting task.
+            # Set timing for scanner count task to the number of pixel.
+            daq.DAQmxCfgImplicitTiming(
+                # define task
+                self._scanner_counter_daq_task,
+                # only a limited number of counts
+                daq.DAQmx_Val_FiniteSamps,
+                # count twice for each voltage +1 for safety
+                2 * self._line_length + 1)
 
-           # Set the Read point Relative To an operation.
-           # Specifies the point in the buffer at which to begin a read operation,
-           # here we read samples from beginning of acquisition and do not overwrite
-           daq.DAQmxSetReadRelativeTo(
-               # define to which task to connect this function
-               self._scanner_counter_daq_task,
-               # Start reading samples relative to the last sample returned by the previous read
-               daq.DAQmx_Val_CurrReadPos)
+            # Set the Read point Relative To an operation.
+            # Specifies the point in the buffer at which to begin a read operation,
+            # here we read samples from beginning of acquisition and do not overwrite
+            daq.DAQmxSetReadRelativeTo(
+                # define to which task to connect this function
+                self._scanner_counter_daq_task,
+                # Start reading samples relative to the last sample returned by the previous read
+                daq.DAQmx_Val_CurrReadPos)
 
-           # Set the Read Offset.
-           # Specifies an offset in samples per channel at which to begin a read
-           # operation. This offset is relative to the location you specify with
-           # RelativeTo. Here we do not read the first sample.
-           daq.DAQmxSetReadOffset(
-               # connect to this taks
-               self._scanner_counter_daq_task,
-               # Offset after which to read
-               1)
+            # Set the Read Offset.
+            # Specifies an offset in samples per channel at which to begin a read
+            # operation. This offset is relative to the location you specify with
+            # RelativeTo. Here we do not read the first sample.
+            daq.DAQmxSetReadOffset(
+                # connect to this taks
+                self._scanner_counter_daq_task,
+                # Offset after which to read
+                1)
 
-           # Set Read OverWrite Mode.
-           # Specifies whether to overwrite samples in the buffer that you have
-           # not yet read. Unread data in buffer will be overwritten:
-           daq.DAQmxSetReadOverWrite(
-               self._scanner_counter_daq_task,
-               daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
+            # Set Read OverWrite Mode.
+            # Specifies whether to overwrite samples in the buffer that you have
+            # not yet read. Unread data in buffer will be overwritten:
+            daq.DAQmxSetReadOverWrite(
+                self._scanner_counter_daq_task,
+                daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
         except:
             self.log.exception('Error while setting up scanner to scan a line.')
             return -1
