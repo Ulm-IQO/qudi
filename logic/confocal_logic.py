@@ -631,8 +631,7 @@ class ConfocalLogic(GenericLogic):
         self._scanning_device.scanner_set_position(
             x=self._current_x,
             y=self._current_y,
-            z=self._current_z,
-            a=self._current_a
+            z=self._current_z
         )
         return 0
 
