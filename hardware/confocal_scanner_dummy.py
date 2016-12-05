@@ -50,17 +50,16 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             self._clock_frequency = config['clock_frequency']
         else:
             self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
+            self.log.warning('No clock_frequency configured taking 100 Hz instead.')
 
 
         # Internal parameters
         self._line_length = None
         self._scanner_counter_daq_task = None
-        self._voltage_range = [-10., 10.]
+        self._voltage_range = [-10, 10]
 
-        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
-        self._current_position = [0., 0., 0., 0.]
+        self._position_range = [[0, 100], [0, 100], [0, 100], [0, 1]]
+        self._current_position = [0, 0, 0, 0]
 
         self._num_points = 500
 
@@ -81,9 +80,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
         # amplitude
-        self._points[:, 0] = np.random.normal(4e5,
-                                              1e5,
-                                              self._num_points)
+        self._points[:, 0] = np.random.normal(4e5, 1e5, self._num_points)
         # x_zero
         self._points[:, 1] = np.random.uniform(self._position_range[0][0],
                                                self._position_range[0][1],
@@ -93,13 +90,9 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                                                self._position_range[1][1],
                                                self._num_points)
         # sigma_x
-        self._points[:, 3] = np.random.normal(0.7,
-                                              0.1,
-                                              self._num_points)
+        self._points[:, 3] = np.random.normal(0.7, 0.1, self._num_points)
         # sigma_y
-        self._points[:, 4] = np.random.normal(0.7,
-                                              0.1,
-                                              self._num_points)
+        self._points[:, 4] = np.random.normal(0.7, 0.1, self._num_points)
         # theta
         self._points[:, 5] = 10
         # offset
@@ -110,19 +103,13 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         self._points_z = np.empty([self._num_points, 4])
         # amplitude
-        self._points_z[:, 0] = np.random.normal(1,
-                                                0.05,
-                                                self._num_points)
+        self._points_z[:, 0] = np.random.normal(1, 0.05, self._num_points)
 
         # x_zero
-        self._points_z[:, 1] = np.random.uniform(45,
-                                                 55,
-                                                 self._num_points)
+        self._points_z[:, 1] = np.random.uniform(45, 55, self._num_points)
 
         # sigma
-        self._points_z[:, 2] = np.random.normal(0.5,
-                                              0.1,
-                                              self._num_points)
+        self._points_z[:, 2] = np.random.normal(0.5, 0.1, self._num_points)
 
         # offset
         self._points_z[:, 3] = 0
@@ -175,9 +162,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         for pos in myrange:
             if len(pos) != 2:
                 self.log.error('Given range limit {1:d} should have '
-                        'dimension 2, but has {0:d} instead.'.format(
-                            len(pos),
-                            pos))
+                        'dimension 2, but has {0:d} instead.'
+                        ''.format(len(pos), pos))
                 return -1
             if pos[0]>pos[1]:
                 self.log.error('Given range limit {0:d} has the wrong '
@@ -185,18 +171,17 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                 return -1
 
         self._position_range = myrange
-
         return 0
 
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
-        @param float [2] myrange: array containing lower and upper limit
+        @param float [4][2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
         if myrange is None:
-            myrange = [-10.,10.]
+            myrange = [[-10, 10], [-10, 10], [-10, 10], [-10, 10]]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')
@@ -282,14 +267,11 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         if self.getState() == 'locked':
-            self.log.error('A Scanner is already running, close this one '
-                    'first.')
+            self.log.error('A Scanner is already running, close this one first.')
             return -1
 
         time.sleep(0.01)
-
         self._current_position = [x, y, z, a]
-
         return 0
 
     def get_scanner_position(self):
@@ -309,9 +291,6 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         self._line_length = length
-
-#        self.log.debug('ConfocalScannerInterfaceDummy>set_up_line')
-
         return 0
 
 
@@ -357,8 +336,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                               *(self._points_z[i]))))
 
 
-        time.sleep(self._line_length*1./self._clock_frequency)
-        time.sleep(self._line_length*1./self._clock_frequency)
+        time.sleep(self._line_length * 1/self._clock_frequency)
+        time.sleep(self._line_length * 1/self._clock_frequency)
 
 #        self.log.warning('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length))
 
@@ -433,17 +412,12 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         x_zero = float(x_zero)
         y_zero = float(y_zero)
 
-        a = (np.cos(theta)**2)/(2*sigma_x**2) \
-                                    + (np.sin(theta)**2)/(2*sigma_y**2)
-        b = -(np.sin(2*theta))/(4*sigma_x**2) \
-                                    + (np.sin(2*theta))/(4*sigma_y**2)
-        c = (np.sin(theta)**2)/(2*sigma_x**2) \
-                                    + (np.cos(theta)**2)/(2*sigma_y**2)
-        g = offset + amplitude*np.exp( - (a*((x-x_zero)**2) \
-                                + 2*b*(x-x_zero)*(y-y_zero) \
-                                + c*((y-y_zero)**2)))
+        a = (np.cos(theta)**2) / (2 * sigma_x**2) + (np.sin(theta)**2) / (2 * sigma_y**2)
+        b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
+        c = (np.sin(theta)**2) / (2 * sigma_x**2) + (np.cos(theta)**2) / (2 * sigma_y**2)
+        g = offset + amplitude * np.exp(
+            - (a*((x-x_zero)**2) + 2*b*(x-x_zero)*(y-y_zero) c * ((y - y_zero)**2)))
         return g.ravel()
-
 
     def gaussian_function(self, x_data=None, amplitude=None, x_zero=None,
                           sigma=None, offset=None):
