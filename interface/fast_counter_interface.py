@@ -86,10 +86,10 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         @param int number_of_gates: optional, number of gates in the pulse
                                     sequence. Ignore for not gated counter.
 
-        @return tuple(binwidth_s, gate_length_s, number_of_gates):
+        @return tuple(binwidth_s, record_length_s, number_of_gates):
                     binwidth_s: float the actual set binwidth in seconds
-                    gate_length_s: the actual set gate length in seconds
-                    number_of_gates: the number of gated, which are accepted
+                    gate_length_s: the actual record length in seconds
+                    number_of_gates: the number of gated, which are accepted, None if not-gated
         """
         pass
 
@@ -102,7 +102,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         1 = idle
         2 = running
         3 = paused
-        -1 = error state
+      -1 = error state
         """
         pass
 

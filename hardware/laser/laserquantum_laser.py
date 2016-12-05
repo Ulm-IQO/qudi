@@ -56,6 +56,10 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         config = self.getConfiguration()
         self.psu = PSUTypes[config['psu']]
         self.connect_laser(config['interface'])
+        if 'maxpower' in config:
+            self.maxpower = config['maxpower']
+        else:
+            self.maxpower = 0.250
 
     def on_deactivate(self, e):
         """
@@ -80,9 +84,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
                 write_termination='\r\n',
                 read_termination='\r\n',
                 send_end=True)
-            self.inst.timeout = 50
+            self.inst.timeout = 500
         except visa.VisaIOError as e:
-            self.log.exception("")
+            self.log.exception('Communication Failure:')
             return False
         else:
             return True
@@ -152,7 +156,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        if self.psu != PSUTypes.SMD6000:
+        if self.psu == PSUTypes.FPU:
             answer = self.inst.query('SETPOWER?')
             if "mW" in answer:
                 return float(answer.split('mW')[0]) / 1000
@@ -163,7 +167,14 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         else:
             return self.get_power()
 
-    def set_power_setpoint(self, power):
+    def get_power_range(self):
+        """
+
+        @return:
+        """
+        return 0, self.maxpower
+
+    def set_power(self, power):
         """
 
         @param power:
@@ -173,6 +184,12 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             self.inst.query('POWER={0:f}'.format(power))
         else:
             self.inst.query('POWER={0:f}'.format(power*1000))
+
+    def get_current_unit(self):
+        return '%'
+
+    def get_current_range(self):
+        return 0, 100
 
     def get_current(self):
         """
@@ -355,8 +372,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         extra = ''
         extra += '\n'.join(self.get_firmware_version())
         extra += '\n'
-        extra += '\n'.join(self.dump())
-        extra += '\n'
+        if self.psu == PSUTypes.FPU:
+            extra += '\n'.join(self.dump())
+            extra += '\n'
         extra += '\n'.join(self.timers())
         extra += '\n'
         return extra

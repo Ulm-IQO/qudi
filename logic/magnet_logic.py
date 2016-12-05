@@ -245,10 +245,10 @@ class MagnetLogic(GenericLogic):
         self.alignment_methods = ['2d_fluorescence', '2d_odmr', '2d_nuclear']
 
         # Fluorescence alignment settings:
-        if '_optimize_pos' in self._statusVariables:
-            self._optimize_pos = self._statusVariables['_optimize_pos']
+        if '_optimize_pos_freq' in self._statusVariables:
+            self._optimize_pos_freq = self._statusVariables['_optimize_pos_freq']
         else:
-            self._optimize_pos = False
+            self._optimize_pos_freq = 1
 
         if 'fluorescence_integration_time' in self._statusVariables:
             self.fluorescence_integration_time = self._statusVariables['fluorescence_integration_time']
@@ -404,7 +404,7 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        self._statusVariables['optimize_pos'] =  self._optimize_pos
+        self._statusVariables['optimize_pos_freq'] =  self._optimize_pos_freq
         self._statusVariables['fluorescence_integration_time'] =  self.fluorescence_integration_time
 
         self._statusVariables['odmr_2d_low_center_freq'] =  self.odmr_2d_low_center_freq
@@ -514,9 +514,9 @@ class MagnetLogic(GenericLogic):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
         """
-        # self._magnet_device.move_abs(param_dict)
-        start_pos = self.get_pos(list(param_dict))
-        self.sigMoveAbs.emit(param_dict)
+        self._magnet_device.move_abs(param_dict)
+        # start_pos = self.get_pos(list(param_dict))
+        # self.sigMoveAbs.emit(param_dict)
 
         # self._check_position_reached_loop(start_pos, param_dict)
 
@@ -845,6 +845,10 @@ class MagnetLogic(GenericLogic):
         #
         # actual measurement routine, which is called to start the measurement
 
+        # start measurement value
+
+
+
         self._start_measurement_time = datetime.datetime.now()
         self._stop_measurement_time = None
 
@@ -852,6 +856,24 @@ class MagnetLogic(GenericLogic):
 
         self._axis0_name = axis0_name
         self._axis1_name = axis1_name
+
+        # get name of other axis to control their values
+        self._control_dict = {}
+        pos_dict = self.get_pos()
+        key_set1 = set(pos_dict.keys())
+        key_set2 = set([self._axis1_name, self._axis0_name])
+        key_complement = key_set1 - key_set2
+        self._control_dict = {key : pos_dict[key] for key in key_complement}
+
+        # additional values to save
+        self._2d_error = []
+        self._2d_measured_fields = []
+        self._2d_intended_fields = []
+
+
+        self.log.debug("contro_dict {0}".format(self._control_dict))
+
+
 
         # save only the position of the axis, which are going to be moved
         # during alignment, the return will be a dict!
@@ -922,11 +944,13 @@ class MagnetLogic(GenericLogic):
         move_dict_abs, \
         move_dict_rel = self._move_to_index(self._pathway_index, self._pathway)
 
-        self.set_velocity(move_dict_vel)
-        self.move_abs(move_dict_abs)
+        self.log.debug("I'm in _move_to_curr_pathway_index: {0}".format(move_dict_abs))
+        # self.set_velocity(move_dict_vel)
+        self._magnet_device.move_abs(move_dict_abs)
         # self.move_rel(move_dict_rel)
-
-
+        while self._check_is_moving():
+            time.sleep(self._checktime)
+            self.log.debug("Went into while loop in _move_to_curr_pathway_index")
 
         # this function will return to this function if position is reached:
         start_pos = self._saved_pos_before_align
@@ -934,9 +958,6 @@ class MagnetLogic(GenericLogic):
         for axis_name in self._saved_pos_before_align:
             end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
-        while self._check_is_moving():
-            time.sleep(self._checktime)
-            self.log.debug("Went into while loop in _move_to_curr_pathway_index")
 
         self.log.debug("(first movement) magnet moving ? {0}".format(self._check_is_moving()))
 
@@ -960,8 +981,36 @@ class MagnetLogic(GenericLogic):
 
         self._do_premeasurement_proc()
         pos = self._magnet_device.get_pos()
-        self.log.debug("Current magnetic field before alignment measurement rho:{0}".format(pos['rho'])
-                       + "phi: {0}".format(pos['phi']) + "theta: {0}".format(pos['theta']))
+        end_pos = self._pathway[self._pathway_index]
+        self.log.debug('end_pos {0}'.format(end_pos))
+        differences = []
+        for key in end_pos:
+            differences.append((pos[key] - end_pos[key]['move_abs'])**2)
+
+        for key in self._control_dict:
+            differences.append((pos[key] - self._control_dict[key])**2)
+
+        distance = 0
+        for difference in differences:
+            distance += difference
+
+
+        # this is not the actual distance (in a physical sense), just some sort of mean of the
+        # variation of the measurement variables. ( Don't know which coordinates are used ... spheric, cartesian ... )
+        distance = np.sqrt(distance)
+        self._2d_error.append(distance)
+        self._2d_measured_fields.append(pos)
+        # the desired field
+        act_pos = {key: self._pathway[self._pathway_index][key]['move_abs'] for key in self._pathway[self._pathway_index]}
+        # wanted_pos = {**self._control_dict, **act_pos}
+        # Workaround for Python 3.4.4
+        self._control_dict.update(act_pos)
+        wanted_pos = self._control_dict
+
+
+        self._2d_intended_fields.append(wanted_pos)
+
+        self.log.debug("Distance from desired position: {0}".format(distance))
         # perform here one of the chosen alignment measurements
         meas_val, add_meas_val = self._do_alignment_measurement()
 
@@ -981,8 +1030,15 @@ class MagnetLogic(GenericLogic):
             move_dict_abs, \
             move_dict_rel = self._move_to_index(self._pathway_index, self._pathway)
 
-            self.set_velocity(move_dict_vel)
-            self.move_abs(move_dict_abs)
+            # commenting this out for now, because it is kind of useless for us
+            # self.set_velocity(move_dict_vel)
+            self._magnet_device.move_abs(move_dict_abs)
+
+            while self._check_is_moving():
+                time.sleep(self._checktime)
+                self.log.debug("Went into while loop in stepwise_loop_body")
+
+            self.log.debug("stepwise_loop_body reports magnet moving ? {0}".format(self._check_is_moving()))
 
             # this function will return to this function if position is reached:
             start_pos = dict()
@@ -991,11 +1047,7 @@ class MagnetLogic(GenericLogic):
                 start_pos[axis_name] = self._backmap[self._pathway_index - 1][axis_name]
                 end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
-            while self._check_is_moving():
-                time.sleep(self._checktime)
-                self.log.debug("Went into while loop in stepwise_loop_body")
 
-            self.log.debug("stepwise_loop_body reports magnet moving ? {0}".format(self._check_is_moving()))
 
             # rerun this loop again
             self._sigStepwiseAlignmentNext.emit()
@@ -1039,7 +1091,7 @@ class MagnetLogic(GenericLogic):
         for axis_name in self._saved_pos_before_align:
             last_pos[axis_name] = self._backmap[self._pathway_index-1][axis_name]
 
-        self.move_abs(self._saved_pos_before_align)
+        self._magnet_device.move_abs(self._saved_pos_before_align)
 
         while self._check_is_moving():
             time.sleep(self._checktime)
@@ -1114,7 +1166,7 @@ class MagnetLogic(GenericLogic):
         axes = [i for i in self._magnet_device.get_constraints()]
         state = self._magnet_device.get_status()
 
-        return (state[axes[0]][0] or state[axes[1]][0] or state[axes[2]][0]) is (1 or -1)
+        return (state[axes[0]] or state[axes[1]] or state[axes[2]]) is (1 or -1)
 
 
     def _set_meas_point(self, meas_val, add_meas_val, pathway_index, back_map):
@@ -1164,9 +1216,25 @@ class MagnetLogic(GenericLogic):
 
 
         # first attempt of an optimizer usage:
-        if self._optimize_pos:
-            self._do_optimize_pos()
+        # Trying to implement that a user can adjust the frequency
+        # at which he wants to refocus.
+        freq = self._optimize_pos_freq
+        ii = self._pathway_index
 
+        if freq >= 1:
+            freq = int(np.round(freq))
+            for ii in range(freq):
+                self._do_optimize_pos()
+
+        elif 0 < freq < 1:
+            freq = int(np.round(1/freq))
+            if not ii%freq:
+                self._do_optimize_pos()
+
+        elif freq < 0:
+            self.log.error('No refocus happend, because negative frequency was given')
+
+        # If frequency is 0, then no refocus will happen at all, which is intended.
         return
 
     def _do_optimize_pos(self):
@@ -1866,10 +1934,16 @@ class MagnetLogic(GenericLogic):
             filelabel = tag + '_magnet_alignment_data'
             filelabel2 = tag + '_magnet_alignment_add_data'
             filelabel3 = tag + '_magnet_alignment_data_table'
+            filelabel4 = tag + '_intended_field_values'
+            filelabel5 = tag + '_reached_field_values'
+            filelabel6 = tag + '_error_in_field'
         else:
             filelabel = 'magnet_alignment_data'
             filelabel2 = 'magnet_alignment_add_data'
             filelabel3 = 'magnet_alignment_data_table'
+            filelabel4 = 'intended_field_values'
+            filelabel5 = 'reached_field_values'
+            filelabel6 = 'error_in_field'
 
         # prepare the data in a dict or in an OrderedDict:
 
@@ -1956,10 +2030,36 @@ class MagnetLogic(GenericLogic):
                 save_dict[axis1_key].append(y_val[jj])
                 save_dict[counts_key].append(col_counts)
 
+        # making saveable dictionaries
+
         self._save_logic.save_data(save_dict, filepath,
                                    filelabel=filelabel3, timestamp=timestamp,
                                    as_text=True)
+        keys = self._2d_intended_fields[0].keys()
+        intended_fields = OrderedDict()
+        for key in keys:
+            field_values = [coord_dict[key] for coord_dict in self._2d_intended_fields]
+            intended_fields[key] = field_values
 
+        self._save_logic.save_data(intended_fields, filepath,
+                                   filelabel=filelabel4, timestamp=timestamp,
+                                   as_text=True)
+
+        measured_fields = OrderedDict()
+        for key in keys:
+            field_values = [coord_dict[key] for coord_dict in self._2d_measured_fields]
+            measured_fields[key] = field_values
+
+        self._save_logic.save_data(measured_fields, filepath,
+                                   filelabel=filelabel5, timestamp=timestamp,
+                                   as_text=True)
+
+        error = OrderedDict()
+        error['quadratic error'] = self._2d_error
+
+        self._save_logic.save_data(error, filepath,
+                                   filelabel=filelabel6, timestamp=timestamp,
+                                   as_text=True)
 
     def _move_to_index(self, pathway_index, pathway):
 
@@ -2000,9 +2100,9 @@ class MagnetLogic(GenericLogic):
     def get_2d_axis_arrays(self):
         return self._2D_axis0_data, self._2D_axis1_data
 
-    def set_optimize_pos(self, state=True):
-        """ Activate the optimize position option. """
-        self._optimize_pos = state
+    def set_optimize_pos_freq(self, freq):
+        """ Set the optimization frequency """
+        self._optimize_pos_freq = freq
 
     def get_optimize_pos(self):
         """ Retrieve whether the optimize position is set.

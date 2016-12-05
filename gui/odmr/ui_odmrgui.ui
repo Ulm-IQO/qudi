@@ -214,7 +214,14 @@
     </property>
     <addaction name="action_Settings"/>
    </widget>
+   <widget class="QMenu" name="menu_View">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="action_RestoreDefault"/>
+   </widget>
    <addaction name="menu_File"/>
+   <addaction name="menu_View"/>
    <addaction name="menu_Options"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -657,6 +664,11 @@
    </property>
    <property name="toolTip">
     <string>resume odmr measurement</string>
+   </property>
+  </action>
+  <action name="action_RestoreDefault">
+   <property name="text">
+    <string>Restore &amp;default</string>
    </property>
   </action>
  </widget>

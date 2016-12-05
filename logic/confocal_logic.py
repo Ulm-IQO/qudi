@@ -315,17 +315,18 @@ class ConfocalLogic(GenericLogic):
         # restore here ...
         self.history = []
         if 'max_history_length' in self._statusVariables:
-                self.max_history_length = self._statusVariables ['max_history_length']
+                self.max_history_length = self._statusVariables['max_history_length']
                 for i in reversed(range(1, self.max_history_length)):
                     try:
                         new_history_item = ConfocalHistoryEntry(self)
-                        new_history_item.deserialize(self._statusVariables['history_{0}'.format(i)])
+                        new_history_item.deserialize(
+                            self._statusVariables['history_{0}'.format(i)])
                         self.history.append(new_history_item)
                     except KeyError:
                         pass
                     except OldConfigFileError:
-                        self.log.warning('Old style config file detected. '
-                                'History {0} ignored.'.format(i))
+                        self.log.warning(
+                            'Old style config file detected. History {0} ignored.'.format(i))
                     except:
                         self.log.warning(
                                 'Restoring history {0} failed.'.format(i))
@@ -415,7 +416,6 @@ class ConfocalLogic(GenericLogic):
         self.signal_start_scanning.emit()
         return 0
 
-
     def continue_scanning(self,zscan):
         """Continue scanning
 
@@ -428,7 +428,6 @@ class ConfocalLogic(GenericLogic):
             self._scan_counter = self._xy_line_pos
         self.signal_continue_scanning.emit()
         return 0
-
 
     def stop_scanning(self):
         """Stops the scan
@@ -534,25 +533,30 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self.lock()
+
         self._scanning_device.lock()
         if self.initialize_image() < 0:
             self._scanning_device.unlock()
             self.unlock()
             return -1
 
-        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
-        if returnvalue < 0:
-            self._scanning_device.unlock()
-            self.unlock()
-            self.set_position('scanner')
-            return
+        clock_status = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
 
-        returnvalue = self._scanning_device.set_up_scanner()
-        if returnvalue < 0:
+        if clock_status < 0:
             self._scanning_device.unlock()
             self.unlock()
             self.set_position('scanner')
-            return
+            return -1
+
+        scanner_status = self._scanning_device.set_up_scanner()
+
+        if scanner_status < 0:
+            self._scanning_device.close_scanner_clock()
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
 
         self.signal_scan_lines_next.emit()
         return 0
@@ -576,10 +580,12 @@ class ConfocalLogic(GenericLogic):
         """
         try:
             self._scanning_device.close_scanner()
+        except Exception as e:
+            self.log.exception('Could not close the scanner.')
+        try:
             self._scanning_device.close_scanner_clock()
         except Exception as e:
-            self.log.exception('Could not even close the scanner, giving up.')
-            raise e
+            self.log.exception('Could not close the scanner clock.')
         try:
             self._scanning_device.unlock()
         except Exception as e:
@@ -640,7 +646,6 @@ class ConfocalLogic(GenericLogic):
         #FIXME: change that to SI units!
         return self._scanning_device.get_scanner_position()[:3]
 
-
     def _scan_line(self):
         """scanning an image in either depth or xy
 
@@ -681,6 +686,10 @@ class ConfocalLogic(GenericLogic):
                     ))
                 # move to the start position of the scan, counts are thrown away
                 start_line_counts = self._scanning_device.scan_line(start_line)
+                if start_line_counts[0] == -1:
+                    self.stopRequested = True
+                    self.signal_scan_lines_next.emit()
+                    return
 
             # adjust z of line in image to current z before building the line
             if not self._zscan:
@@ -693,6 +702,11 @@ class ConfocalLogic(GenericLogic):
                               image[self._scan_counter, :, 3]))
             # scan the line in the scan
             line_counts = self._scanning_device.scan_line(line)
+            if line_counts[0] == -1:
+                self.stopRequested = True
+                self.signal_scan_lines_next.emit()
+                return
+
             # make a line to go to the starting position of the next scan line
             if self.depth_scan_dir_is_xz:
                 return_line = np.vstack((
@@ -711,6 +725,10 @@ class ConfocalLogic(GenericLogic):
 
             # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
+            if return_line_counts[0] == -1:
+                self.stopRequested = True
+                self.signal_scan_lines_next.emit()
+                return
 
             # update image with counts from the line we just scanned
             if self._zscan:
@@ -743,8 +761,6 @@ class ConfocalLogic(GenericLogic):
             self.log.critical('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
-            raise e
-
 
     def save_xy_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal xy data to file.

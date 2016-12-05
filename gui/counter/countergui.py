@@ -210,8 +210,10 @@ class CounterGui(GUIBase):
 
         if self._counting_logic.getState() == 'locked':
             self._mw.start_counter_Action.setText('Stop counter')
+            self._mw.start_counter_Action.setChecked(True)
         else:
             self._mw.start_counter_Action.setText('Start counter')
+            self._mw.start_counter_Action.setChecked(False)
 
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
