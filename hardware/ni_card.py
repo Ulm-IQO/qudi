@@ -358,7 +358,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({0}) of x_voltage_range incorrect, taking [-10, 10] instead.'
                     ''.format(config['x_voltage_range']))
         else:
-            self.log.warning('No x_voltage_range configured, taking [-10, 10] instead.')
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No x_voltage_range configured, taking [-10, 10] instead.')
 
         if 'y_voltage_range' in config.keys():
             if float(config['y_voltage_range'][0]) < float(config['y_voltage_range'][1]):
@@ -370,7 +371,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({0}) of y_voltage_range incorrect, taking [-10, 10] instead.'
                     ''.format(config['y_voltage_range']))
         else:
-            self.log.warning('No y_voltage_range configured, taking [-10, 10] instead.')
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No y_voltage_range configured, taking [-10, 10] instead.')
 
         if 'z_voltage_range' in config.keys():
             if float(config['z_voltage_range'][0]) < float(config['z_voltage_range'][1]):
@@ -382,7 +384,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({0}) of z_voltage_range incorrect, taking [-10, 10] instead.'
                     ''.format(config['z_voltage_range']))
         else:
-            self.log.warning('No z_voltage_range configured, taking [-10, 10] instead.')
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No z_voltage_range configured, taking [-10, 10] instead.')
 
         if 'a_voltage_range' in config.keys():
             if float(config['a_voltage_range'][0]) < float(config['a_voltage_range'][1]):
@@ -394,7 +397,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({0}) of a_voltage_range incorrect, taking [-10, 10] instead.'
                     ''.format(config['a_voltage_range']))
         else:
-            self.log.warning('No a_voltage_range configured taking [-10, 10] instead.')
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No a_voltage_range configured taking [-10, 10] instead.')
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
@@ -1344,11 +1348,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         volts = np.vstack(vlist)
 
         for v in volts.enumerate():
-        if v.min() < self._voltage_range[i][0] or v.max() > self._voltage_range[i][1]:
-            self.log.error(
-                'Voltages ({0}, {1}) exceed the limit, the positions have to '
-                'be adjusted to stay in the given range.'.format(v.min(), v.max()))
-            return np.array([np.NaN])
+            if v.min() < self._voltage_range[i][0] or v.max() > self._voltage_range[i][1]:
+                self.log.error(
+                    'Voltages ({0}, {1}) exceed the limit, the positions have to '
+                    'be adjusted to stay in the given range.'.format(v.min(), v.max()))
+                return np.array([np.NaN])
         return volts
 
     def get_scanner_position(self):
