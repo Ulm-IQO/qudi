@@ -961,6 +961,18 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 retval = -1
         return retval
 
+    def get_scanner_axes(self):
+        """ Scanner axes depends on how many channels tha analog output task has.
+        """
+        if self._scanner_ao_task is None:
+            return []
+        
+        n_channels = daq.int32()
+        daq.DAQmxGetTaskNumChans(self._scanner_ao_task, daq.byref(n_channels))
+        possible_channels = ['x', 'y', 'z', 'a']
+
+        return possible_channels[0:n_channels]
+
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 

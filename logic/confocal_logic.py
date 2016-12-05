@@ -673,6 +673,7 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
+        n_ch = len(self._scanning_device.get_scanner_axes())
 
         try:
             if self._scan_counter == 0:
@@ -683,7 +684,7 @@ class ConfocalLogic(GenericLogic):
                     np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
                     np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
                     np.full((self.return_slowness, ), self._current_a)
-                    ))
+                    )[0:n_ch])
                 # move to the start position of the scan, counts are thrown away
                 start_line_counts = self._scanning_device.scan_line(start_line)
                 if start_line_counts[0] == -1:
@@ -700,7 +701,7 @@ class ConfocalLogic(GenericLogic):
                               image[self._scan_counter, :, 1],
                               image[self._scan_counter, :, 2],
                               np.full(image[self._scan_counter, :, 3].shape, self._current_a)
-                              ))
+                              )[0:n_ch])
             # scan the line in the scan
             line_counts = self._scanning_device.scan_line(line)
             if line_counts[0] == -1:
@@ -715,14 +716,14 @@ class ConfocalLogic(GenericLogic):
                     image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
                     image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
                     self._return_AL * self._current_a
-                    ))
+                    )[0:n_ch])
             else:
                 return_line = np.vstack((
                     image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
                     self._return_YL,
                     image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
                     self._return_AL * self._current_a
-                    ))
+                    )[0:n_ch])
 
             # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
