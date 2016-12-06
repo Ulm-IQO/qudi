@@ -94,17 +94,47 @@ class MotorStagePI(Base, MotorInterface):
         #axis definition:
         if 'pi_first_axis_label' in config.keys():
             self._first_axis_label = config['pi_first_axis_label']
+        else:
+            self._first_axis_label = 'x'
+            self.log.warning('No parameter "pi_first_axis_label" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._first_axis_label))
         if 'pi_second_axis_label' in config.keys():
             self._second_axis_label = config['pi_second_axis_label']
+        else:
+            self._second_axis_label = 'y'
+            self.log.warning('No parameter "pi_second_axis_label" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._second_axis_label))
         if 'pi_third_axis_label' in config.keys():
             self._third_axis_label = config['pi_third_axis_label']
+        else:
+            self._third_axis_label = 'z'
+            self.log.warning('No parameter "pi_third_axis_label" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._third_axis_label))
 
         if 'pi_first_axis_ID' in config.keys():
             self._first_axis_ID = config['pi_first_axis_ID']
+        else:
+            self._first_axis_ID = '1'
+            self.log.warning('No parameter "pi_first_axis_ID" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._first_axis_ID))
         if 'pi_second_axis_ID' in config.keys():
             self._second_axis_ID = config['pi_second_axis_ID']
+        else:
+            self._second_axis_ID = '2'
+            self.log.warning('No parameter "pi_second_axis_ID" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._second_axis_ID))
         if 'pi_third_axis_ID' in config.keys():
             self._third_axis_ID = config['pi_third_axis_ID']
+        else:
+            self._third_axis_ID = '3'
+            self.log.warning('No parameter "pi_third_axis_ID" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._third_axis_ID))
 
 
         self.rm = visa.ResourceManager()
@@ -320,7 +350,7 @@ class MotorStagePI(Base, MotorInterface):
                 time.sleep(0.2)
             return 0
         except:
-            self.log.error('MAGNET MOVEMENT NOT STOPPED!!!)')
+            self.log.error('MOTOR MOVEMENT NOT STOPPED!!!)')
             return -1
 
     def get_pos(self, param_list=None):
@@ -499,7 +529,7 @@ class MotorStagePI(Base, MotorInterface):
         try:
             #self.log.info(constraints[axis]['ID'] + command + '\n')
             self._serial_connection_xyz.write(constraints[axis]['ID'] + command + '\n')
-            trash=self._read_answer_xyz()
+            trash=self._read_answer_xyz()   # deletes possible answers
             return 0
         except:
             self.log.error('Command was no accepted')
@@ -507,7 +537,7 @@ class MotorStagePI(Base, MotorInterface):
 
     def _read_answer_xyz(self):
         '''this method reads the answer from the motor!
-        @return answer string: answer of magnet
+        @return answer string: answer of motor
         '''
 
         still_reading = True
@@ -526,7 +556,7 @@ class MotorStagePI(Base, MotorInterface):
 
         @param command string: command
 
-        @return answer string: answer of magnet
+        @return answer string: answer of motor
         '''
         constraints = self.get_constraints()
         self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
