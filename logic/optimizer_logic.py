@@ -320,6 +320,7 @@ class OptimizerLogic(GenericLogic):
             np.linspace(scanner_pos[2], start_pos[2], self.return_slowness),
             np.linspace(0, 0, self.return_slowness)))
 
+        #Todo: react when array is np.array([-1.])
         counts = self._scanning_device.scan_line(move_to_start_line)
         if counts[0] == -1:
             return -1
@@ -361,6 +362,7 @@ class OptimizerLogic(GenericLogic):
             self.xy_refocus_image[self._xy_scan_line_count, :, 2],
             self._A_values))
 
+        #Todo: react when array is np.array([-1.])
         line_counts = self._scanning_device.scan_line(line)
         if line_counts[0] == -1:
             self.log.error('The scan went wrong, killing the scanner.')
@@ -374,6 +376,7 @@ class OptimizerLogic(GenericLogic):
             self.xy_refocus_image[self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape),
             self._return_A_values))
 
+        #Todo: react when array is np.array([-1.])
         return_line_counts = self._scanning_device.scan_line(return_line)
         if return_line_counts[0] == -1:
             self.log.error('The scan went wrong, killing the scanner.')
@@ -521,6 +524,7 @@ class OptimizerLogic(GenericLogic):
         line = np.vstack((X_line, Y_line, Z_line, A_line))
 
         # Perform scan
+        #Todo: react when array is np.array([-1.])
         line_counts = self._scanning_device.scan_line(line)
         if line_counts[0] == -1:
             self.log.error('Z scan went wrong, killing the scanner.')
@@ -545,6 +549,7 @@ class OptimizerLogic(GenericLogic):
             # define an offset line to measure "background"
             line_bg = np.vstack((X_line + self.surface_subtr_scan_offset, Y_line, Z_line, A_line))
 
+            #Todo: react when array is np.array([-1.])
             line_bg_counts = self._scanning_device.scan_line(line_bg)
             if line_bg_counts[0] == -1:
                 self.log.error('The scan went wrong, killing the scanner.')
@@ -562,12 +567,16 @@ class OptimizerLogic(GenericLogic):
         self.lock()
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
+        #Todo: React on clock_status, but here error code 0 is hardcoded in ni_card,
+        #can it stay like that?
         if clock_status < 0:
             self.unlock()
             return -1
 
         scanner_status = self._scanning_device.set_up_scanner()
+        #Todo: Can it stay like this?
         if scanner_status < 0:
+            #Todo: This is always 0 when closing clock
             self._scanning_device.close_scanner_clock()
             self.unlock()
             return -1
@@ -580,11 +589,13 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         try:
+            #Todo: React here!
             self._scanning_device.close_scanner()
         except:
             self.log.exception('Closing refocus scanner failed.')
             return -1
         try:
+            #Todo: Here the return in ni_card is always 0
             self._scanning_device.close_scanner_clock()
         except:
             self.log.exception('Closing refocus scanner clock failed.')
