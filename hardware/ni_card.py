@@ -1551,7 +1551,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self._real_data += self._scan_data[1::2]
 
             # update the scanner position instance variable
-            self._current_position = list(line_path[:,-1])
+            self._current_position = list(line_path[:, -1])
         except:
             self.log.exception('Error while scanning line.')
             return np.array([-1.])
