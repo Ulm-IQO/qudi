@@ -222,6 +222,11 @@ def estimate_sine(self, x_axis, data, params):
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
+    # sort the input
+    sorted_indices = x_axis.argsort()
+    x_axis = x_axis[sorted_indices]
+    data = data[sorted_indices]
+
     # estimate amplitude
     ampl_val = max(np.abs(data.min()), np.abs(data.max()))
 
@@ -233,7 +238,25 @@ def estimate_sine(self, x_axis, data, params):
     frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
 
     # find minimal distance to the next meas point in the corresponding time value>
-    min_x_diff = np.ediff1d(x_axis).min()
+    diff_array = np.ediff1d(x_axis)
+    min_x_diff = diff_array.min()
+
+    # if at least two identical values are in the array, then the difference is of course zero,
+    # catch that case.
+    for tries in range(len(diff_array)):
+        if np.isclose(min_x_diff, 0.0):
+            index = np.argmin(diff_array)
+            diff_array = np.delete(diff_array, index)
+            min_x_diff = diff_array.min()
+
+        else:
+            if len(diff_array) == 0:
+                logger.error('The passed x_axis for the sinus estimation contains the same values! Cannot do the fit!')
+
+                return -1, params
+            else:
+                min_x_diff = diff_array.min()
+            break
 
     # How many points are used to sample the estimated frequency with min_x_diff:
     iter_steps = int(1/(frequency_max*min_x_diff))
@@ -251,7 +274,7 @@ def estimate_sine(self, x_axis, data, params):
         func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
         sum_res[iter_s] = np.abs(data - func_val).sum()
 
-    # The minimum indicates where the sine function was fittng the worst,
+    # The minimum indicates where the sine function was fitting the worst,
     # therefore subtract pi. This will also ensure that the estimated phase will
     # be in the interval [-pi,pi].
     phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
@@ -593,7 +616,7 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=Non
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    sine_double_exp_decay, params = self.make_sinedoubleexponentialdecay_model()
+    sine_double_exp_decay, params = self.make_sinedoubleexponentialdecayoffset_model()
 
     # use the sine exponential decay with offset estimator, since the only
     # which is slighly different would be the lifetime, and the exponential
@@ -619,7 +642,7 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=Non
 ################################################################################
 
 
-def make_sinestretchedexponentialdecay_model(self, prefix=None):
+def make_sinestretchedexponentialdecayoffset_model(self, prefix=None):
     """ Create a model of a sine with stretched exponential decay.
 
     @param str prefix: optional, if multiple models should be used in a
