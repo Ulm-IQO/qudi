@@ -145,7 +145,7 @@ class MotorStagePI(Base, MotorInterface):
         # Should be in config I guess
 
         # setting the ranges of the axes - PI uses units of 10nm. Thus in order to convert to meters
-        # a multiplication with 1e8 is necessary
+        # a multiplication with 1e7 is necessary
         if 'pi_first_min' in config.keys():
             self._min_first = config['pi_first_min']
         else:
@@ -186,21 +186,21 @@ class MotorStagePI(Base, MotorInterface):
         if 'pi_first_axis_step' in config.keys():
             self.step_first_axis = config['pi_first_axis_step']
         else:
-            self.step_first_axis = 1e-8
+            self.step_first_axis = 1e-7
             self.log.warning('No parameter "pi_first_axis_step" found in config!\n'
                     'Taking 10nm instead.')
 
         if 'pi_second_axis_step' in config.keys():
             self.step_second_axis = config['pi_second_axis_step']
         else:
-            self.step_second_axis = 1e-8
+            self.step_second_axis = 1e-7
             self.log.warning('No parameter "pi_second_axis_step" found in config!\n'
                     'Taking 10nm instead.')
 
         if 'pi_third_axis_step' in config.keys():
             self.step_third_axis = config['pi_third_axis_step']
         else:
-            self.step_third_axis = 1e-8
+            self.step_third_axis = 1e-7
             self.log.warning('No parameter "pi_third_axis_step" found in config!\n'
                     'Taking 10nm instead.')
         return 0
@@ -321,7 +321,7 @@ class MotorStagePI(Base, MotorInterface):
         """
         try:
             for axis_label in param_dict:
-                move = int(param_dict[axis_label])
+                move = param_dict[axis_label]
                 self._do_move_abs(axis_label, move)
 
             while not self._motor_stopped():
@@ -371,11 +371,11 @@ class MotorStagePI(Base, MotorInterface):
             if param_list is not None:
                 for axis_label in param_list:
                     pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                    param_dict[axis_label] = pos * 1e-8
+                    param_dict[axis_label] = pos * 1e-7
             else:
                 for axis_label in constraints:
                     pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                    param_dict[axis_label] = pos * 1e-8
+                    param_dict[axis_label] = pos * 1e-7
             return param_dict
         except:
             self.log.error('Could not find current magnet position')
@@ -432,22 +432,22 @@ class MotorStagePI(Base, MotorInterface):
 
         constraints = self.get_constraints()
         param_dict = {}
-
-        for axis_label in param_list:
-            param_dict[axis_label] = -0.025
+        #
+        # for axis_label in param_list:
+        #     param_dict[axis_label] = -0.25
         try:
-            self.move_abs(param_dict)
-            while not self._motor_stopped():
-                time.sleep(0.2)
+            # self.move_abs(param_dict)
+            # while not self._motor_stopped():
+            #     time.sleep(0.2)
+            # for axis_label in param_list:
+            #     self._write_xyz(axis_label,'DH')
+            # for axis_label in param_list:
+            #     param_dict[axis_label] = 0.09
+            # self.move_abs(param_dict)
+            # while not self._motor_stopped():
+            #     time.sleep(0.2)
             for axis_label in param_list:
-                self._write_xyz(axis_label,'DH')
-            for axis_label in param_list:
-                param_dict[axis_label] = 0.009
-            self.move_abs(param_dict)
-            while not self._motor_stopped():
-                time.sleep(0.2)
-            for axis_label in param_list:
-                self._write_xyz(axis_label,'FE1')
+                self._write_xyz(axis_label,'FE2')
             while not self._motor_stopped():
                 time.sleep(0.2)
             for axis_label in param_list:
@@ -479,11 +479,11 @@ class MotorStagePI(Base, MotorInterface):
             if param_list is not None:
                 for axis_label in param_list:
                     vel = int(self._ask_xyz(axis_label, 'TY')[8:])
-                    param_dict[axis_label] = vel * 1e-8
+                    param_dict[axis_label] = vel * 1e-7
             else:
                 for axis_label in constraints:
                     vel = int(self._ask_xyz(axis_label, 'TY')[8:])
-                    param_dict[axis_label] = vel * 1e-8
+                    param_dict[axis_label] = vel * 1e-7
             return param_dict
         except:
             self.log.error('Could not find current axis velocity')
@@ -503,7 +503,7 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         try:
             for axis_label in param_dict:
-                vel = int(param_dict[axis_label] * 1.0e8)
+                vel = int(param_dict[axis_label] * 1.0e7)
                 self._write_xyz(axis_label, 'SV{0:d}'.format((vel)))
             param_dict2 = self.get_velocity()
             return param_dict2
@@ -576,7 +576,7 @@ class MotorStagePI(Base, MotorInterface):
                 move float: absolute position to move to
         """
         constraints = self.get_constraints()
-        if not(constraints[axis]['pos_step'] < step):
+        if not(abs(constraints[axis]['pos_step']) < abs(step)):
             self.log.warning('Cannot make the movement of the axis "{0}"'
                 'since the step is too small! Ignore command!')
         else:
@@ -602,7 +602,7 @@ class MotorStagePI(Base, MotorInterface):
                 'since the border [{1},{2}] would be crossed! Ignore command!'
                 ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
         else:
-            self._write_xyz(axis,'MA{0}'.format(int(move*1e8)))
+            self._write_xyz(axis,'MA{0}'.format(int(move*1e7)))  # 1e7 to convert meter to SI units
             #self._write_xyz(axis, 'MP')
         return axis, move
 
@@ -633,7 +633,7 @@ class MotorStagePI(Base, MotorInterface):
         stopped=True
         for axis_label in param_dict:
             if param_dict[axis_label] != 0:
-                self.log.info(axis_label + 'is moving')
+                self.log.info(axis_label + ' is moving')
                 stopped=False
         return stopped
 
