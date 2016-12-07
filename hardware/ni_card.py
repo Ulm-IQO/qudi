@@ -179,14 +179,20 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         config = self.getConfiguration()
 
+        self._scanner_ao_channels = []
         # handle all the parameters given by the config
         # FIXME: Suggestion: and  partially set the parameters to default values
         # if not given by the config
-        if 'scanner_ao_channels' in config.keys():
-            self._scanner_ao_channels = config['scanner_ao_channels']
-        else:
+        if 'scanner_x_ao' in config.keys():
+            self._scanner_ao_channels.append(config['scanner_x_ao'])
+            if 'scanner_y_ao' in config.keys():
+                self._scanner_ao_channels.append(config['scanner_y_ao'])
+                if 'scanner_z_ao' in config.keys():
+                    self._scanner_ao_channels.append(config['scanner_z_ao'])
+        if len(self._scanner_ao_channels) < 1:
             self.log.error(
-                'No "scanner_ao_channels" found in the configuration!\n'
+                'Not enough scanner channels found in the configuration!\n'
+                'Be sure to start with scanner_x_ao\n'
                 'Assign to that parameter an appropriated channel from your NI Card,'
                 ' otherwise you cannot control the analog channels!')
 
@@ -935,17 +941,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         retval = 0
         chanlist = (
-            self._scanner_ao_channels,
             self._odmr_trigger_channel,
             self._clock_channel,
             self._counter_channel,
             self._counter_channel2,
             self._scanner_clock_channel,
             self._scanner_counter_channel,
-            self._photon_source,
             self._photon_source2,
             self._gate_in_channel
-            )
+            ) + tuple(self._scanner_ao_channels)
         devicelist = []
         for ch in chanlist:
             if ch is None:
@@ -970,12 +974,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if self._scanner_ao_task is None:
             self.log.error('Cannot get channel number, analog output task does not exist.')
             return []
-        
-        #n_channels = daq.int32()
-        #daq.DAQmxGetTaskNumChans(self._scanner_ao_task, daq.byref(n_channels))
+
+        n_channels = daq.uInt32()
+        daq.DAQmxGetTaskNumChans(self._scanner_ao_task, n_channels)
         possible_channels = ['x', 'y', 'z', 'a']
 
-        return possible_channels[0:3]
+        return possible_channels[0:int(n_channels.value)]
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -1075,23 +1079,23 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # create the actual analog output task on the hardware device. Via
             # byref you pass the pointer of the object to the TaskCreation function:
             daq.DAQmxCreateTask('ScannerAO', daq.byref(self._scanner_ao_task))
-
-            # Assign and configure the created task to an analog output voltage channel.
-            daq.DAQmxCreateAOVoltageChan(
-                # The AO voltage operation function is assigned to this task.
-                self._scanner_ao_task,
-                # use scanner ao_channels for the output
-                self._scanner_ao_channels,
-                # assign a name for that task
-                'Analog Control',
-                # minimum possible voltage
-                self._voltage_range[0][0],
-                # maximum possible voltage
-                self._voltage_range[0][1],
-                # units is Volt
-                daq.DAQmx_Val_Volts,
-                # empty for future use
-                '')
+            for n, chan in enumerate(self._scanner_ao_channels):
+                # Assign and configure the created task to an analog output voltage channel.
+                daq.DAQmxCreateAOVoltageChan(
+                    # The AO voltage operation function is assigned to this task.
+                    self._scanner_ao_task,
+                    # use (all) scanner ao_channels for the output
+                    chan,
+                    # assign a name for that channel
+                    'Scanner AO Channel {0}'.format(n),
+                    # minimum possible voltage
+                    self._voltage_range[n][0],
+                    # maximum possible voltage
+                    self._voltage_range[n][1],
+                    # units is Volt
+                    daq.DAQmx_Val_Volts,
+                    # empty for future use
+                    '')
         except:
             self.log.exception('Error starting analog output task.')
             return -1
@@ -1117,6 +1121,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.exception('Error changing analog output mode.')
             retval = -1
         return retval
+
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -1150,7 +1155,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                      channel where the photons are to count from
         @param string clock_channel: optional, if defined, this specifies the
                                      clock for the counter
-        @param string scanner_ao_channels: optional, if defined, this specifies
+        @param list(str) scanner_ao_channels: optional, if defined, this specifies
                                            the analog output channels
 
         @return int: error code (0:OK, -1:error)
