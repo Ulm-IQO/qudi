@@ -33,11 +33,11 @@ from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 
-############################################################################
-#                                                                          #
-#                             Lorentzian Model                             #
-#                                                                          #
-############################################################################
+################################################################################
+#                                                                              #
+#                               Lorentzian Model                               #
+#                                                                              #
+################################################################################
 
 
 """
@@ -51,7 +51,10 @@ The lorentzian has the following general form:
     f(x; A, x_0, sigma) = ----- |  ---------------------- |
                             pi  |_ (x_0 - x)^2 + sigma^2 _|
 
-which can be redefined with
+That is the appearance if the lorentzian is considered as a probability
+distribution. Then it is also called a Cauchy distribution. For physical
+applications it is sensible to redefine the Lorentzian like that:
+
                  !      A
     f(x=x_0) = I = -----------
                     pi * sigma
@@ -62,18 +65,21 @@ which can be redefined with
     L(x; I, x_0, sigma) =   I * |  --------------------------  |
                                 |_ (x_0 - x)^2 + (sigma)^2  _|
 
+This notation we will call as the physical definition of the Lorentzian, with
+I as the height of the Lorentzian, x_0 is its location and sigma as the half
+width at half maximum.
 
-Note that the fitting algorithm is using the equation f(x; A, x_0, sigma) and
-not L(x; I, x_0, sigma), therefore all the parameters are defined according to
-f(x; A, x_0, sigma). The full width at half maximum is therefore 2*sigma.
+Note that the fitting algorithm is using now the equation L(x; I, x_0, sigma)
+and not f(x; A, x_0, sigma), therefore all the parameters are defined according
+to L(x; I, x_0, sigma). The full width at half maximum is therefore 2*sigma.
 
 The indefinite Integral of the Lorentzian is
 
-    int(f(x),x) = A/pi *Arctan( (x-x0)/sigma)
+    integral(f(x),x) = A/pi *Arctan( (x-x0)/sigma)
 
 Plugging in the limits [0 to inf] we get:
 
-    int(f(x), {x,0,inf}) = (A * sigma/pi) *(  pi/(2*sigma) + Arctan(x_0/sigma)/sigma) ) = F
+    integral(f(x), {x,0,inf}) = (A * sigma/pi) *(  pi/(2*sigma) + Arctan(x_0/sigma)/sigma) ) = F
 
 (You can confirm that with Mathematica.) For the assumption that
 
@@ -227,6 +233,23 @@ def make_lorentzian_fit(self, x_axis, data, add_params=None):
         logger.warning('The 1D lorentzian fit did not work. Error '
                 'message: {0}\n'.format(result.message))
     return result
+
+################################################################################
+#                                                                              #
+#                        Lorentzian Model with offset                          #
+#                                                                              #
+################################################################################
+
+
+
+################################################################################
+#                                                                              #
+#                   Multiple Lorentzian Model with offset                      #
+#                                                                              #
+################################################################################
+
+
+
 
 ############################################################################
 #                                                                          #
