@@ -10,9 +10,9 @@ import sys
 path_of_qudi = "<custom path>/qudi/"
 sys.path.append(path_of_qudi)
 from tools.fit_logic_standalone import FitLogic
-fitting = FitLogic(path_of_qudi)       
+fitting = FitLogic(path_of_qudi)
 
-        
+
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -1060,8 +1060,11 @@ def double_gaussian_odmr_testing():
 
 
 def sine_testing():
+    """ Sinus fit testing with a self defined estimator. """
 
-    x_axis = np.linspace(0, 50, 151)
+    x_axis = np.linspace(0, 25, 75)
+    x_axis1 = np.linspace(25, 50, 75)
+    x_axis = np.append(x_axis, x_axis1)
     x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
 
     mod,params = qudi_fitting.make_sineoffset_model()
@@ -1069,12 +1072,14 @@ def sine_testing():
           ' with the independet variable',mod.independent_vars)
 
     print(1/(x_axis[1]-x_axis[0]))
-    params['amplitude'].value=0.2 + np.random.normal(0,0.4)
-    params['frequency'].value=0.1+np.random.normal(0,0.5)
+    params['amplitude'].value=0.9 + np.random.normal(0,0.4)
+    params['frequency'].value=0.1
+#    params['frequency'].value=0.1+np.random.normal(0,0.5)
     params['phase'].value=np.pi*1.0
-    params['offset'].value=0.94+np.random.normal(0,0.4)
+    params['offset'].value=3.94+np.random.normal(0,0.4)
+
     data_noisy=(mod.eval(x=x_axis,params=params)
-                            + 0.5*np.random.normal(size=x_axis.shape))
+                            + 0.3*np.random.normal(size=x_axis.shape))
 
 
     # set the offset as the average of the data
@@ -1084,80 +1089,147 @@ def sine_testing():
     data_level = data_noisy - offset
 
     # estimate amplitude
- #           params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+    ampl_val = max(np.abs(data_level.min()), np.abs(data_level.max()))
 
-    # perform fourier transform
-    data_level_zeropaded=np.zeros(int(len(data_level)*2))
-    data_level_zeropaded[:len(data_level)]=data_level
-    fourier = np.fft.fft(data_level_zeropaded)
-    stepsize = x_axis[1]-x_axis[0]  # for frequency axis
-    freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    frequency_max = np.abs(freq[np.log(fourier).argmax()])
+    # calculate dft with zeropadding to obtain nicer interpolation between the
+    # appearing peaks.
+    dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
 
-    print(params['frequency'].value,np.round(frequency_max,3))
-#            plt.xlim(0,freq.max())
-    plt.plot(freq[:int(len(freq)/2)],abs(fourier)[:int(len(freq)/2)])
-#            plt.plot(freq,np.log(abs(fourier)),'-r')
+    plt.figure()
+    plt.plot(dft_x, dft_y, label='dft of data')
+    plt.xlabel('Frequency')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
+    stepsize = x_axis[1]-x_axis[0]  # for frequency axis
+    frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
+
+    print(frequency_max)
     print('offset',offset)
-#            print((x_axis[-1]-x_axis[0])*frequency_max)
+#
+    # find minimal distance to the next meas point in the corresponding time
+    # value
+    diff_array = np.ediff1d(x_axis)
+    min_x_diff = diff_array.min()
 
-   # shift_tmp = (data_level[0])/params['amplitude'].value
-    #shift = abs(np.arcsin(shift_tmp))
-#            print('shift', shift)
-#            if np.gradient(data_noisy)[0]<0 and data_level[0]>0:
-#                shift=np.pi-shift
-#                print('ho ', shift)
- #           elif np.gradient(data_noisy)[0]<0 and data_level[0]<0:
-  #              shift+=np.pi
-   #             print('hi1')
-#        elif np.gradient(data_noisy)[0]>0 and data_level[0]<0:
- #           shift = 2.*np.pi - shift
-  #          print('hi2')
+    # if at least two identical values are in the array, then the difference is
+    # of course zero, catch that case.
+    for tries in range(len(diff_array)):
+        if np.isclose(min_x_diff, 0.0):
+            index = np.argmin(diff_array)
+            diff_array = np.delete(diff_array, index)
+            min_x_diff = diff_array.min()
 
-   #     print(params['phase'].value,shift)
+        else:
+            if len(diff_array) == 0:
+                logger.error('The passed x_axis for the sinus estimation contains the same values! Cannot do the fit!')
+
+                return -1, params
+            else:
+                min_x_diff = diff_array.min()
+            break
+
+    # How many points are used to sample the estimated frequency with min_x_diff:
+    iter_steps = int(1/(frequency_max*min_x_diff))
+    if iter_steps < 1:
+        iter_steps = 1
+
+    sum_res = np.zeros(iter_steps)
+
+    # Procedure: Create sin waves with different phases and perform a summation.
+    #            The sum shows how well the sine was fitting to the actual data.
+    #            The best fitting sine should be a maximum of the summed time
+    #            trace.
+
+    for iter_s in range(iter_steps):
+        func_val = ampl_val * np.sin(2*np.pi*frequency_max*x_axis + iter_s/iter_steps *2*np.pi)
+        sum_res[iter_s] = np.abs(data_level - func_val).sum()
+
+    plt.figure()
+    plt.plot(list(range(iter_steps)), sum_res, label='sum of different phase iteration')
+    plt.xlabel('iteration')
+    plt.ylabel('summed value')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    # The minimum indicates where the sine function was fitting the worst,
+    # therefore subtract pi. This will also ensure that the estimated phase will
+    # be in the interval [-pi,pi].
+    phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
+
+    mod, params = qudi_fitting.make_sineoffset_model()
+
+    # values and bounds of initial parameters
+    params['amplitude'].set(value=ampl_val)
+    params['frequency'].set(value=frequency_max, min=0.0, max=1/(stepsize)*3)
+    params['phase'].set(value=phase, min=-np.pi, max=np.pi)
+    params['offset'].set(value=offset)
+
+    # perform fit:
+    result = mod.fit(data_noisy, x=x_axis, params=params)
+
+#    plt.plot(x_nice,mod.eval(x=x_nice,params=params),'-g', label='nice data')
+    plt.plot(x_axis,data_noisy,'ob', label='noisy data')
+    plt.plot(x_axis,result.init_fit,'-y', label='initial values')
+    plt.plot(x_axis,result.best_fit,'-r',linewidth=2.0, label='actual fit')
+    #plt.plot(x_axis,np.gradient(data_noisy)+offset,'-g',linewidth=2.0,)
+    plt.xlabel('time')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+
+    plt.show()
+
+#    print(result.fit_report())
+
+def sine_testing2():
+    """ Sinus fit testing with the direct fit method. """
 
 
-#            params['frequency'].value = frequency_max
- #           params['phase'].value = shift
-  #          params['offset'].value = offset
+    x_axis = np.linspace(0, 250, 75)
+    x_axis1 = np.linspace(250, 500, 75)
+    x_axis = np.append(x_axis, x_axis1)
+    x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
 
-#            print(params.pretty_print())
-#            print(data_noisy)
-#            para={}
- #           para['phase'] = {'vary': False, 'value': np.pi/2.}
-  #          para['amplitude'] = {'min': 0.0}
+
+    mod, params = qudi_fitting.make_sineoffset_model()
+
+    params['phase'].value =  np.random.uniform()*2*np.pi
+    params['frequency'].value = 0.01
+    params['amplitude'].value = 1.5
+    params['offset'].value = 0.4
+
+    data = mod.eval(x=x_axis, params=params)
+    data_noisy = (mod.eval(x=x_axis, params=params)
+                  + 1.5* np.random.normal(size=x_axis.shape))
+
+#    sorted_indices = x_axis.argsort()
+#    x_axis = x_axis[sorted_indices]
+#    data = data[sorted_indices]
+#    diff_array = np.ediff1d(x_axis)
+#    print(diff_array)
+#    print(diff_array.min())
+#    min_x_diff = diff_array.min()
+#    if np.isclose(min_x_diff, 0.0):
+#        index = np.argmin(diff_array)
+#        print('index',index)
+#        diff_array = np.delete(diff_array, index)
+#        print('diff_array',diff_array)
+
 
     result = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy)
-    fit_data = result.best_fit
 
-##            result=qudi_fitting.make_powerfluorescence_fit(x_axis=data[:,0],data=data[:,2]/1000,add_params=para)
-#
-#            print(result.fit_report())
 
-#            x_nice= np.linspace(0,data[:,0].max(), 101)
 
-#            plt.plot(data[:,0],data[:,2]/1000,'ob')
-
-    plt.plot(x_nice,mod.eval(x=x_nice,params=params),'-g')
-    plt.plot(x_axis,data_noisy,'ob')
-    plt.plot(x_axis,result.init_fit,'-y')
-    plt.plot(x_axis,result.best_fit,'-r',linewidth=2.0,)
-    #plt.plot(x_axis,np.gradient(data_noisy)+offset,'-g',linewidth=2.0,)
-
+    plt.figure()
+    plt.plot(x_axis, data)
+    plt.plot(x_axis, data_noisy)
+    plt.plot(x_axis, result.best_fit)
     plt.show()
 
-#            print(result.fit_report())
-
-#            units=dict()
-#            units['frequency']='GHz'
- #           units['phase']='rad'
-  #          units['offset']='arb. u.'
-#            units['amplitude']='arb. u.'
-   #         print(qudi_fitting.create_fit_string(result,mod,units))
-
-#        print(result.best_values['phase']/np.pi*180)
 
 def sine_testing_data():
     """ Testing with read in data. """
@@ -3092,10 +3164,11 @@ if __name__ == "__main__":
 #    double_lorentzian_testing()
 #    double_lorentzian_fixedsplitting_testing()
 #    powerfluorescence_testing()
-#    sine_testing()
+    sine_testing()
+#    sine_testing2()
 ##    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
-    poissonian_testing()
+#    poissonian_testing()
 #    double_poissonian_testing()
 #    double_poissonian_testing_data() # needs a selected file for data input
 #    bareexponentialdecay_testing()
