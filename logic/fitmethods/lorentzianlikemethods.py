@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import ConstantModel, LorentzianModel, VoigtModel, PseudoVoigtModel
 from lmfit import Parameters
+from lmfit.models import Model
 
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -100,6 +101,91 @@ maximal/minimal value of the Lorentzian. If the area F is calculated
 numerically, then the parameter sigma can be estimated.
 
 """
+
+def make_lorentzian_model(self, prefix=None):
+    """ Create a model of a bare physical Lorentzian with an amplitude.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+        For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
+    """
+
+    def physical_lorentzian(x, center, sigma):
+        """ Function of a Lorentzian with unit height at center.
+
+        @param numpy.array x: independant variable - e.g. frequency
+        @param float center: center around which the distributions will be
+        @param float sigma: half length at half maximum
+
+        @return: numpy.array with length equals to input x and with the values
+                 of a lorentzian.
+        """
+        return np.power(sigma, 2) / ( np.power( (center - x), 2) + np.power(sigma, 2) )
+
+    amplitude_model, params = self.make_amplitude_model(prefix=prefix)
+
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        lorentz_model = Model(physical_lorentzian, independent_vars='x')
+    else:
+        lorentz_model = Model(physical_lorentzian, independent_vars='x', prefix=prefix)
+
+    full_lorentz_model = amplitude_model* lorentz_model
+    params = full_lorentz_model.make_params()
+
+    return full_lorentz_model, params
+
+
+################################################################################
+#                                                                              #
+#                        Lorentzian Model with offset                          #
+#                                                                              #
+################################################################################
+
+def make_lorentzianoffset_model(self, prefix=None):
+    """ Create a sine model with amplitude and offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_baresine_model.
+    """
+
+    lorentz_model, params = self.make_lorentzian_model(prefix=prefix)
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    lorentz_offset_model = lorentz_model + constant_model
+    params = lorentz_offset_model.make_params()
+
+    return lorentz_offset_model, params
+
+################################################################################
+#                                                                              #
+#                   Multiple Lorentzian Model with offset                      #
+#                                                                              #
+################################################################################
+
 
 
 def make_lorentzian_model(self):
@@ -234,19 +320,7 @@ def make_lorentzian_fit(self, x_axis, data, add_params=None):
                 'message: {0}\n'.format(result.message))
     return result
 
-################################################################################
-#                                                                              #
-#                        Lorentzian Model with offset                          #
-#                                                                              #
-################################################################################
 
-
-
-################################################################################
-#                                                                              #
-#                   Multiple Lorentzian Model with offset                      #
-#                                                                              #
-################################################################################
 
 
 
