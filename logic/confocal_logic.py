@@ -568,8 +568,25 @@ class ConfocalLogic(GenericLogic):
         """
         self.lock()
         self._scanning_device.lock()
-        self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
-        self._scanning_device.set_up_scanner()
+
+        clock_status = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
+
+        if clock_status < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
+        scanner_status = self._scanning_device.set_up_scanner()
+
+        if scanner_status < 0:
+            self._scanning_device.close_scanner_clock()
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
         self.signal_scan_lines_next.emit()
         return 0
 
@@ -634,6 +651,10 @@ class ConfocalLogic(GenericLogic):
             z=self._current_z,
             a=self._current_a
         )
+
+        self._current_x,self._current_y,self._current_z,self._current_a = \
+            self._scanning_device.get_scanner_position()[:4]
+
         return 0
 
 
