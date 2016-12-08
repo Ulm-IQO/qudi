@@ -1002,7 +1002,12 @@ class MagnetLogic(GenericLogic):
         self._2d_measured_fields.append(pos)
         # the desired field
         act_pos = {key: self._pathway[self._pathway_index][key]['move_abs'] for key in self._pathway[self._pathway_index]}
-        wanted_pos = {**self._control_dict, **act_pos}
+        # wanted_pos = {**self._control_dict, **act_pos}
+        # Workaround for Python 3.4.4
+        self._control_dict.update(act_pos)
+        wanted_pos = self._control_dict
+
+
         self._2d_intended_fields.append(wanted_pos)
 
         self.log.debug("Distance from desired position: {0}".format(distance))

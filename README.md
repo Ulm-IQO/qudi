@@ -17,7 +17,7 @@ Originally built around a confocal fluorescence microscope experiments, it has g
 
 ## Citation
 If you are publishing scientific results, mentioning Qudi in your methods decscription is the least you can do as good scientific practice.
-We are preparing a paper about the software and DOIs for releases, which will make this process easier and more reliable.
+Until we have a proper peer-reviewed paper published, you should cite  the preprint [arXiv:1611.09146](https://arxiv.org/abs/1611.09146) \[quant-ph\] for this purpose.
 
 ## Documentation
 User and code documentation about Qudi is located at http://qosvn.physik.uni-ulm.de/qudi-docs .
