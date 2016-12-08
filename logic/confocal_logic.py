@@ -493,7 +493,7 @@ class ConfocalLogic(GenericLogic):
 
         # Arrays for retrace line
         self._return_XL = np.linspace(self._XL[-1], self._XL[0], self.return_slowness)
-        self._return_AL = np.zeros(self._return_XL.shape)
+        self._return_AL = np.ones(self._return_XL.shape)
 
         if self._zscan:
             if self.depth_scan_dir_is_xz:
@@ -514,7 +514,7 @@ class ConfocalLogic(GenericLogic):
                 self.depth_image[:, :, 2] = z_value_matrix.transpose()
                 # now we are scanning along the y-axis, so we need a new return line along Y:
                 self._return_YL = np.linspace(self._YL[-1], self._YL[0], self.return_slowness)
-                self._return_AL = np.zeros(self._return_YL.shape)
+                self._return_AL = np.ones(self._return_YL.shape)
             self.sigImageDepthInitialized.emit()
         else:
             self._image_vert_axis = self._Y
@@ -648,8 +648,7 @@ class ConfocalLogic(GenericLogic):
         self._scanning_device.scanner_set_position(
             x=self._current_x,
             y=self._current_y,
-            z=self._current_z,
-            a=self._current_a
+            z=self._current_z
         )
 
         self._current_x,self._current_y,self._current_z,self._current_a = \
@@ -694,6 +693,7 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
+        n_ch = len(self._scanning_device.get_scanner_axes())
 
         try:
             if self._scan_counter == 0:
@@ -703,8 +703,8 @@ class ConfocalLogic(GenericLogic):
                     np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
                     np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
                     np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
-                    np.linspace(self._current_a, 0, self.return_slowness)
-                    ))
+                    np.full((self.return_slowness, ), self._current_a)
+                    )[0:n_ch])
                 # move to the start position of the scan, counts are thrown away
                 start_line_counts = self._scanning_device.scan_line(start_line)
                 if start_line_counts[0] == -1:
@@ -720,7 +720,8 @@ class ConfocalLogic(GenericLogic):
             line = np.vstack((image[self._scan_counter, :, 0],
                               image[self._scan_counter, :, 1],
                               image[self._scan_counter, :, 2],
-                              image[self._scan_counter, :, 3]))
+                              np.full(image[self._scan_counter, :, 3].shape, self._current_a)
+                              )[0:n_ch])
             # scan the line in the scan
             line_counts = self._scanning_device.scan_line(line)
             if line_counts[0] == -1:
@@ -734,15 +735,15 @@ class ConfocalLogic(GenericLogic):
                     self._return_XL,
                     image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
                     image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                    self._return_AL
-                    ))
+                    self._return_AL * self._current_a
+                    )[0:n_ch])
             else:
                 return_line = np.vstack((
                     image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
                     self._return_YL,
                     image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
-                    self._return_AL
-                    ))
+                    self._return_AL * self._current_a
+                    )[0:n_ch])
 
             # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
