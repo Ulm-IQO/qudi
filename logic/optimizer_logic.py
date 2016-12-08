@@ -145,7 +145,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gaussian_model()
+        model, params = self._fit_logic.make_gaussianwithslope_model()
         self.z_params = params
         self.use_custom_params = False
         #####################################################
@@ -432,24 +432,24 @@ class OptimizerLogic(GenericLogic):
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
             adjusted_param = {}
-            adjusted_param['c'] = {
+            adjusted_param['offset'] = {
                 'value': 1e-12,
                 'min': -self.z_refocus_line.max(),
                 'max': self.z_refocus_line.max()
             }
-            result = self._fit_logic.make_gaussian_fit(
+            result = self._fit_logic.make_gaussianwithslope_fit(
                 axis=self._zimage_Z_values,
                 data=self.z_refocus_line,
                 add_parameters=adjusted_param)
         else:
             if self.use_custom_params:
-                result = self._fit_logic.make_gaussian_fit(
+                result = self._fit_logic.make_gaussianwithslope_fit(
                     axis=self._zimage_Z_values,
                     data=self.z_refocus_line,
                     # Todo: It is required that the changed parameters are given as a dictionary
                     add_parameters={})
             else:
-                result = self._fit_logic.make_gaussian_fit(
+                result = self._fit_logic.make_gaussianwithslope_fit(
                     axis=self._zimage_Z_values,
                     data=self.z_refocus_line)
         self.z_params = result.params
@@ -465,7 +465,7 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gaussian_model()
+                    gauss, params = self._fit_logic.make_gaussianwithslope_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
