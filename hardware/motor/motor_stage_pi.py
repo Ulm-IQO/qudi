@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
-import serial
+
+from collections import OrderedDict
 
 from core.base import Base
 from interface.motor_interface import MotorInterface
@@ -203,6 +204,65 @@ class MotorStagePI(Base, MotorInterface):
             self.step_third_axis = 1e-7
             self.log.warning('No parameter "pi_third_axis_step" found in config!\n'
                     'Taking 10nm instead.')
+
+
+        if 'vel_first_min' in config.keys():
+            self._vel_min_first = config['vel_first_min']
+        else:
+            self._vel_min_first = 1e-5
+            self.log.warning('No parameter "vel_first_min" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+        if 'vel_first_max' in config.keys():
+            self._vel_max_first = config['vel_first_max']
+        else:
+            self._vel_max_first = 5e-2
+            self.log.warning('No parameter "vel_first_max" found in config!\n'
+                             'Taking 5e-2m/s instead.')
+        if 'vel_second_min' in config.keys():
+            self._vel_min_second = config['vel_second_min']
+        else:
+            self._vel_min_second = 1e-5
+            self.log.warning('No parameter "vel_second_min" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+        if 'vel_second_max' in config.keys():
+            self._vel_max_second = config['vel_second_max']
+        else:
+            self._vel_max_second = 5e-2
+            self.log.warning('No parameter "vel_second_max" found in config!\n'
+                             'Taking 5e-2m/s instead.')
+        if 'vel_third_min' in config.keys():
+            self._vel_min_third = config['vel_third_min']
+        else:
+            self._vel_min_z = 1e-5
+            self.log.warning('No parameter "vel_third_min" found in config!\n'
+                             'Taking 1e-5m instead.')
+        if 'vel_third_max' in config.keys():
+            self._vel_max_third = config['vel_third_max']
+        else:
+            self._vel_max_third = 5e-2
+            self.log.warning('No parameter "vel_third_max" found in config!\n'
+                             'Taking 5e-2m/s instead.')
+
+        if 'vel_first_axis_step' in config.keys():
+            self._vel_step_first = config['vel_first_axis_step']
+        else:
+            self._vel_step_first = 1e-5
+            self.log.warning('No parameter "vel_first_axis_step" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+
+        if 'vel_second_axis_step' in config.keys():
+            self._vel_step_second = config['vel_second_axis_step']
+        else:
+            self._vel_step_second = 1e-5
+            self.log.warning('No parameter "vel_second_axis_step" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+
+        if 'vel_third_axis_step' in config.keys():
+            self._vel_step_third = config['vel_third_axis_step']
+        else:
+            self._vel_step_third = 1e-5
+            self.log.warning('No parameter "vel_third_axis_step" found in config!\n'
+                             'Taking 1e-5m/s instead.')
         return 0
 
 
@@ -228,7 +288,7 @@ class MotorStagePI(Base, MotorInterface):
         Each constraint is a tuple of the form
             (min_value, max_value, stepsize)
         """
-        constraints = {}
+        constraints = OrderedDict()
 
         axis0 = {}
         axis0['label'] = self._first_axis_label
@@ -238,9 +298,9 @@ class MotorStagePI(Base, MotorInterface):
         axis0['pos_min'] = self._min_first
         axis0['pos_max'] = self._max_first
         axis0['pos_step'] = self.step_first_axis
-        axis0['vel_min'] = None
-        axis0['vel_max'] = None
-        axis0['vel_step'] = None
+        axis0['vel_min'] = self._vel_min_first
+        axis0['vel_max'] = self._vel_max_first
+        axis0['vel_step'] = self._vel_step_first
         axis0['acc_min'] = None
         axis0['acc_max'] = None
         axis0['acc_step'] = None
@@ -253,9 +313,9 @@ class MotorStagePI(Base, MotorInterface):
         axis1['pos_min'] = self._min_second
         axis1['pos_max'] = self._max_second
         axis1['pos_step'] = self.step_second_axis
-        axis1['vel_min'] = None
-        axis1['vel_max'] = None
-        axis1['vel_step'] = None
+        axis1['vel_min'] = self._vel_min_second
+        axis1['vel_max'] = self._vel_max_second
+        axis1['vel_step'] = self._vel_step_second
         axis1['acc_min'] = None
         axis1['acc_max'] = None
         axis1['acc_step'] = None
@@ -268,9 +328,9 @@ class MotorStagePI(Base, MotorInterface):
         axis2['pos_min'] = self._min_third
         axis2['pos_max'] = self._max_third
         axis2['pos_step'] = self.step_third_axis
-        axis2['vel_min'] = None
-        axis2['vel_max'] = None
-        axis2['vel_step'] = None
+        axis2['vel_min'] = self._vel_min_third
+        axis2['vel_max'] = self._vel_max_third
+        axis2['vel_step'] = self._vel_step_third
         axis2['acc_min'] = None
         axis2['acc_max'] = None
         axis2['acc_step'] = None
@@ -367,18 +427,35 @@ class MotorStagePI(Base, MotorInterface):
 
         constraints = self.get_constraints()
         param_dict = {}
+        # unfortunately, probably due to connection problems this specific command sometimes failing
+        # although it should run.... therefore some retries are added
+
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                    param_dict[axis_label] = pos * 1e-7
+                    for attempt in range(25):
+                        # self.log.debug(attempt)
+                        try:
+                            pos = int(self._ask_xyz(axis_label,'TT')[8:])
+                            param_dict[axis_label] = pos * 1e-7
+                        except:
+                            continue
+                        else:
+                            break
             else:
                 for axis_label in constraints:
-                    pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                    param_dict[axis_label] = pos * 1e-7
+                    for attempt in range(25):
+                        #self.log.debug(attempt)
+                        try:
+                            pos = int(self._ask_xyz(axis_label,'TT')[8:])
+                            param_dict[axis_label] = pos * 1e-7
+                        except:
+                            continue
+                        else:
+                            break
             return param_dict
         except:
-            self.log.error('Could not find current magnet position')
+            self.log.error('Could not find current xyz motor position')
             return -1
 
     def get_status(self, param_list=None):
@@ -399,9 +476,7 @@ class MotorStagePI(Base, MotorInterface):
         param_dict = {}
         try:
             if param_list is not None:
-                self.log.warning(param_list)
                 for axis_label in param_list:
-                    self.log.warning(axis_label)
                     status = self._ask_xyz(axis_label,'TS')[8:]
                     param_dict[axis_label] = status
             else:
@@ -430,22 +505,9 @@ class MotorStagePI(Base, MotorInterface):
         """
 
 
-        constraints = self.get_constraints()
+        #constraints = self.get_constraints()
         param_dict = {}
-        #
-        # for axis_label in param_list:
-        #     param_dict[axis_label] = -0.25
         try:
-            # self.move_abs(param_dict)
-            # while not self._motor_stopped():
-            #     time.sleep(0.2)
-            # for axis_label in param_list:
-            #     self._write_xyz(axis_label,'DH')
-            # for axis_label in param_list:
-            #     param_dict[axis_label] = 0.09
-            # self.move_abs(param_dict)
-            # while not self._motor_stopped():
-            #     time.sleep(0.2)
             for axis_label in param_list:
                 self._write_xyz(axis_label,'FE2')
             while not self._motor_stopped():
@@ -465,7 +527,7 @@ class MotorStagePI(Base, MotorInterface):
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes in m/s.
 
-        @param dict param_list: optional, if a specific velocity of an axis
+        @param list param_list: optional, if a specific velocity of an axis
                                     is desired, then the labels of the needed
                                     axis should be passed as the param_list.
                                     If nothing is passed, then from each axis the
@@ -498,9 +560,9 @@ class MotorStagePI(Base, MotorInterface):
                                      'axis_label' must correspond to a label given
                                      to one of the axis.
 
-        @return int: dict param_dict2: dictionary with the updated axis velocity
+        @return dict param_dict2: dictionary with the updated axis velocity
         """
-        constraints = self.get_constraints()
+        #constraints = self.get_constraints()
         try:
             for axis_label in param_dict:
                 vel = int(param_dict[axis_label] * 1.0e7)
