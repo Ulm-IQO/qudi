@@ -1007,7 +1007,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
             # create the actual analog output task on the hardware device. Via
             # byref you pass the pointer of the object to the TaskCreation function:
-            daq.DAQmxCreateTask('ScannerAO', daq.byref(self._scanner_ao_task))
+        daq.DAQmxCreateTask('ScannerAnalogOutput', daq.byref(self._scanner_ao_task))
 
             # Assign and configure the created task to an analog output voltage channel.
             daq.DAQmxCreateAOVoltageChan(
