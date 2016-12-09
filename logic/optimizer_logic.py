@@ -563,11 +563,13 @@ class OptimizerLogic(GenericLogic):
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
         if clock_status < 0:
+            self.log.exception('Setting up scanner clock failed.')
             self.unlock()
             return -1
 
         scanner_status = self._scanning_device.set_up_scanner()
         if scanner_status < 0:
+            self.log.exception('Setting up scanner failed.')
             self._scanning_device.close_scanner_clock()
             self.unlock()
             return -1
@@ -580,12 +582,18 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         try:
-            self._scanning_device.close_scanner()
+            scanner_status = self._scanning_device.close_scanner()
+            if scanner_status < 0:
+                self.log.exception('Closing refocus scanner failed.')
+                return -1
         except:
             self.log.exception('Closing refocus scanner failed.')
             return -1
         try:
-            self._scanning_device.close_scanner_clock()
+            clock_status = self._scanning_device.close_scanner_clock()
+            if clock_status < 0:
+                self.log.exception('Closing refocus scanner clock failed.')
+                return -1
         except:
             self.log.exception('Closing refocus scanner clock failed.')
             return -1
