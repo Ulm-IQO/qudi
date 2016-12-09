@@ -65,9 +65,25 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
-        @param float [2] myrange: array containing lower and upper limit
+        @param float [4][2] myrange: array of 4 ranges  containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_scanner_axes(self):
+        """ Find out how many axes the scanning device is using for confocal and their names.
+ 
+        @return list(str): list of axis names
+ 
+        Example:
+          For 3D confocal microscopy in cartesian coordinates, ['x', 'y', 'z'] is a sensible value.
+          For 2D, ['x', 'y'] would be typical.
+          You could build a turntable microscope with ['r', 'phi', 'z'].
+          Most callers of this function will only care about the number of axes, though.
+ 
+          On error, return an empty list.
         """
         pass
 
