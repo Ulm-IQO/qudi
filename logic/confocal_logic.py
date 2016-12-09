@@ -1093,7 +1093,7 @@ class ConfocalLogic(GenericLogic):
 
         return fig
 
-    ##################################### Tilit correction ########################################
+    ##################################### Tilt correction ########################################
 
     def set_tilt_point1(self):
         """ Gets the first reference point for tilt correction."""

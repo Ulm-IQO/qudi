@@ -397,9 +397,9 @@ def make_sineoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = sine.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sine fit did not work.')
         result = sine.fit(data, x=x_axis, params=params)
-        print(result.message)
+        logger.error('The sine fit did not work.\n'
+                     'Error message: {0}\n'.format(result.message))
 
     return result
 
@@ -567,9 +567,11 @@ def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sineexponentialdecayoffset fit did not work. '
-                'Error message: {}'.format(str(result.message)))
+
         result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+        logger.error('The sineexponentialdecayoffset fit did not work.\n'
+                     'Error message: {0}'.format(result.message))
+        
 
     return result
 
@@ -629,9 +631,9 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=Non
     try:
         result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sineexponentialdecay fit did not work. '
-                'Error message: {}'.format(str(result.message)))
         result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
+        logger.error('The sinedoubleexponentialdecayoffset fit did not work.\n'
+                     'Error message: {0}'.format(result.message))
 
     return result
 
@@ -708,9 +710,9 @@ def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=
     try:
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sineexponentialdecay fit did not work. '
-                'Error message: {}'.format(str(result.message)))
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
+        logger.error('The sineexponentialdecay fit did not work.\n'
+                     'Error message: {0}'.format(result.message))
 
     return result
 
