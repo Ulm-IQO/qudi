@@ -145,7 +145,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gaussian_model()
+        model, params = self._fit_logic.make_gaussianwithslope_model()
         self.z_params = params
         self.use_custom_params = False
         #####################################################
@@ -432,24 +432,24 @@ class OptimizerLogic(GenericLogic):
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
             adjusted_param = {}
-            adjusted_param['c'] = {
+            adjusted_param['offset'] = {
                 'value': 1e-12,
                 'min': -self.z_refocus_line.max(),
                 'max': self.z_refocus_line.max()
             }
-            result = self._fit_logic.make_gaussian_fit(
+            result = self._fit_logic.make_gaussianwithslope_fit(
                 x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line,
                 add_params=adjusted_param)
         else:
             if self.use_custom_params:
-                result = self._fit_logic.make_gaussian_fit(
+                result = self._fit_logic.make_gaussianwithslope_fit(
                     x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line,
                     # Todo: It is required that the changed parameters are given as a dictionary or parameter object
                     add_params=None)
             else:
-                result = self._fit_logic.make_gaussian_fit(
+                result = self._fit_logic.make_gaussianwithslope_fit(
                     x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line)
         self.z_params = result.params
@@ -465,7 +465,7 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gaussian_model()
+                    gauss, params = self._fit_logic.make_gaussianwithslope_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
@@ -563,11 +563,13 @@ class OptimizerLogic(GenericLogic):
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
         if clock_status < 0:
+            self.log.exception('Setting up scanner clock failed.')
             self.unlock()
             return -1
 
         scanner_status = self._scanning_device.set_up_scanner()
         if scanner_status < 0:
+            self.log.exception('Setting up scanner failed.')
             self._scanning_device.close_scanner_clock()
             self.unlock()
             return -1
@@ -580,12 +582,18 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         try:
-            self._scanning_device.close_scanner()
+            scanner_status = self._scanning_device.close_scanner()
+            if scanner_status < 0:
+                self.log.exception('Closing refocus scanner failed.')
+                return -1
         except:
             self.log.exception('Closing refocus scanner failed.')
             return -1
         try:
-            self._scanning_device.close_scanner_clock()
+            clock_status = self._scanning_device.close_scanner_clock()
+            if clock_status < 0:
+                self.log.exception('Closing refocus scanner clock failed.')
+                return -1
         except:
             self.log.exception('Closing refocus scanner clock failed.')
             return -1

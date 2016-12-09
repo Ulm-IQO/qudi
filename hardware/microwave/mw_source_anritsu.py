@@ -26,7 +26,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAnritsu(Base, MicrowaveInterface):
@@ -90,7 +93,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
     def get_limits(self):
         """ Right now, this is for Anritsu MG37022A with Option 4 only."""
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST', 'SWEEP')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
 
         limits.min_frequency = 10e6
         limits.max_frequency = 20e9
@@ -229,7 +232,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         return error
 
-    def reset_listpos(self):#
+    def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
 
         @return int: error code (0:OK, -1:error)
@@ -239,7 +242,6 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
 
         return 0
-
 
     def list_on(self):
         """ Switches on the list mode.
@@ -252,19 +254,27 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         return 0
 
-    def set_ex_trigger(self, source, pol='POS'):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':TRIG:SOUR '+source)
-        self._gpib_connection.write(':TRIG:SLOP '+pol)
-        self._gpib_connection.write('*WAI')
-
+        if pol == TriggerEdge.RISING:
+            edge = 'POS'
+        elif pol == TriggerEdge.FALLING:
+            edge = 'NEG'
+        else:
+            return -1
+        try:
+            self._gpib_connection.write(':TRIG:SOUR EXT')
+            self._gpib_connection.write(':TRIG:SLOP {0}'.format(edge))
+            self._gpib_connection.write('*WAI')
+        except:
+            return -1
+        return 0
 
     def set_sweep(self, start, stop, step, power):
         """
@@ -283,18 +293,20 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return nrpoints - 1
 
     def reset_sweep(self):
-        """ Reset of MW List Mode position to start from first given frequency
+        """ Reset of MW sweep mode
 
         @return int: error code (0:OK, -1:error)
         """
         self._gpib_connection.write(':ABORT')
         self._gpib_connection.write('*WAI')
+        return 0
 
     def sweep_on(self):
-        """ Switches on the list mode.
+        """ Switches on the sweep mode.
 
-        @return int: error code (1: ready, 0:not ready, -1:error)
+        @return int: error code (0:OK, -1:error)
         """
         self._gpib_connection.write(':FREQ:MODE SWEEP')
         self._gpib_connection.write(':OUTP ON')
         self._gpib_connection.write('*WAI')
+        return 0

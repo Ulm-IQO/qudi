@@ -165,7 +165,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._gated_counter_daq_task = None
 
         # some default values for the hardware:
-        self._voltage_range = [-10., 10.]
+        self._voltage_range = [[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
         self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         self._current_position = [0., 0., 0., 0.]
 
@@ -338,18 +338,73 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
-                self._voltage_range = [float(config['voltage_range'][0]),
-                                       float(config['voltage_range'][1])]
+                vlow = float(config['voltage_range'][0])
+                vhigh = float(config['voltage_range'][1])
+                self._voltage_range = [[vlow, vhigh], [vlow, vhigh], [vlow, vhigh], [vlow, vhigh]]
             else:
                 self.log.warning(
                     'Configuration ({}) of voltage_range incorrect, taking [-10,10] instead.'
                     ''.format(config['voltage_range']))
         else:
-            self.log.warning('No voltage_range configured taking [-10,10] instead.')
+            self.log.warning('No voltage_range configured, taking [-10,10] instead.')
+
+        if 'x_voltage_range' in config.keys():
+            if float(config['x_voltage_range'][0]) < float(config['x_voltage_range'][1]):
+                vlow = float(config['x_voltage_range'][0])
+                vhigh = float(config['x_voltage_range'][1])
+                self._voltage_range[0] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of x_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['x_voltage_range']))
+        else:
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No x_voltage_range configured, taking [-10, 10] instead.')
+
+        if 'y_voltage_range' in config.keys():
+            if float(config['y_voltage_range'][0]) < float(config['y_voltage_range'][1]):
+                vlow = float(config['y_voltage_range'][0])
+                vhigh = float(config['y_voltage_range'][1])
+                self._voltage_range[1] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of y_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['y_voltage_range']))
+        else:
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No y_voltage_range configured, taking [-10, 10] instead.')
+
+        if 'z_voltage_range' in config.keys():
+            if float(config['z_voltage_range'][0]) < float(config['z_voltage_range'][1]):
+                vlow = float(config['z_voltage__range'][0])
+                vhigh = float(config['z_voltage_range'][1])
+                self._voltage_range[2] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of z_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['z_voltage_range']))
+        else:
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No z_voltage_range configured, taking [-10, 10] instead.')
+
+        if 'a_voltage_range' in config.keys():
+            if float(config['a_voltage_range'][0]) < float(config['a_voltage_range'][1]):
+                vlow = float(config['a_voltage_range'][0])
+                vhigh = float(config['a_voltage_range'][1])
+                self._voltage_range[3] = [vlow, vhigh]
+            else:
+                self.log.warning(
+                    'Configuration ({0}) of a_voltage_range incorrect, taking [-10, 10] instead.'
+                    ''.format(config['a_voltage_range']))
+        else:
+            if 'voltage_range' not in config.keys():
+                self.log.warning('No a_voltage_range configured taking [-10, 10] instead.')
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
-        self._start_analog_output()
+        if self._start_analog_output() < 0:
+            self.log.error('Failed to start analog output.')
+            raise Exception('Failed to start NI Card module due to analog output failure.')
 
     def on_deactivate(self, e=None):
         """ Shut down the NI card.
@@ -502,14 +557,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
 
         if self._clock_daq_task is None and clock_channel is None:
-            self.log.error('No clock running, call set_up_clock before '
-                    'starting the counter.')
+            self.log.error('No clock running, call set_up_clock before starting the counter.')
             return -1
         if self._counter_daq_task is not None:
-            self.log.error('Another counter is already running, close this '
-                    'one first.')
+            self.log.error('Another counter is already running, close this one first.')
             return -1
-
 
         if counter_channel is not None:
             self._counter_channel = counter_channel
@@ -912,6 +964,19 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 retval = -1
         return retval
 
+    def get_scanner_axes(self):
+        """ Scanner axes depends on how many channels tha analog output task has.
+        """
+        if self._scanner_ao_task is None:
+            self.log.error('Cannot get channel number, analog output task does not exist.')
+            return []
+        
+        #n_channels = daq.int32()
+        #daq.DAQmxGetTaskNumChans(self._scanner_ao_task, daq.byref(n_channels))
+        possible_channels = ['x', 'y', 'z', 'a']
+
+        return possible_channels[0:3]
+
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 
@@ -960,26 +1025,28 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
-        @param float [2] myrange: array containing lower and upper limit
+        @param float [n][2] myrange: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        n_ch = len(self.get_scanner_axes())
         if myrange is None:
-            myrange = [-10., 10.]
+            myrange = [[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]][0:n_ch]
 
-        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
+        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray)):
             self.log.error('Given range is no array type.')
             return -1
 
-        if len(myrange) != 2:
+        if len(myrange) != n_ch:
             self.log.error(
                 'Given range should have dimension 2, but has {0:d} instead.'
                 ''.format(len(myrange)))
             return -1
 
-        if myrange[0] > myrange[1]:
-            self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
-            return -1
+        for r in myrange:
+            if r[0] > r[1]:
+                self.log.error('Given range limit {0:d} has the wrong order.'.format(r))
+                return -1
 
         self._voltage_range = myrange
         return 0
@@ -1007,25 +1074,26 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
             # create the actual analog output task on the hardware device. Via
             # byref you pass the pointer of the object to the TaskCreation function:
-            daq.DAQmxCreateTask('ScannerAO', daq.byref(self._scanner_ao_task))
+        daq.DAQmxCreateTask('ScannerAnalogOutput', daq.byref(self._scanner_ao_task))
 
             # Assign and configure the created task to an analog output voltage channel.
             daq.DAQmxCreateAOVoltageChan(
                 # The AO voltage operation function is assigned to this task.
                 self._scanner_ao_task,
-                # use (all) sanncer ao_channels for the output
+                # use scanner ao_channels for the output
                 self._scanner_ao_channels,
                 # assign a name for that task
                 'Analog Control',
                 # minimum possible voltage
-                self._voltage_range[0],
+                self._voltage_range[0][0],
                 # maximum possible voltage
-                self._voltage_range[1],
+                self._voltage_range[0][1],
                 # units is Volt
                 daq.DAQmx_Val_Volts,
                 # empty for future use
                 '')
         except:
+            self.log.exception('Error starting analog output task.')
             return -1
         return 0
 
@@ -1049,7 +1117,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.exception('Error changing analog output mode.')
             retval = -1
         return retval
-
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -1223,11 +1290,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def _write_scanner_ao(self, voltages, length=1, start=False):
         """Writes a set of voltages to the analog outputs.
 
-        @param float[][4] voltages: array of 4-part tuples defining the voltage
+        @param float[][n] voltages: array of n-part tuples defining the voltage
                                     points
         @param int length: number of tuples to write
         @param bool start: write imediately (True)
                            or wait for start of task (False)
+
+        n depends on how many channels are configured for analog output
         """
         # Number of samples which were actually written, will be stored here.
         # The error code of this variable can be asked with .value to check
@@ -1257,46 +1326,35 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def _scanner_position_to_volt(self, positions=None):
         """ Converts a set of position pixels to acutal voltages.
 
-        @param float[][4] positions: array of 4-part tuples defining the pixels
+        @param float[][n] positions: array of n-part tuples defining the pixels
 
-        @return float[][4]: array of 4-part tuples of corresponing voltages
+        @return float[][n]: array of n-part tuples of corresponing voltages
 
-        The positions is actually a matrix like
-            [[x_values],[y_values],[z_values],[counts]]
-        where the count values will be overwritten by the scanning routine.
-
+        The positions is typically a matrix like
+            [[x_values], [y_values], [z_values], [a_values]]
+            but x, xy, xyz and xyza are allowed formats.
         """
 
         if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given position list is no array type.')
-            return np.array([-1., -1., -1., -1.])
+            return np.array([np.NaN])
 
-        # Calculate the voltages from the positions, their ranges and stack
-        # them together:
-        volts = np.vstack((
-            (self._voltage_range[1]-self._voltage_range[0])
-            / (self._position_range[0][1] - self._position_range[0][0])
-            * (positions[0] - self._position_range[0][0])
-            + self._voltage_range[0],
-            (self._voltage_range[1] - self._voltage_range[0])
-            / (self._position_range[1][1] - self._position_range[1][0])
-            * (positions[1] - self._position_range[1][0])
-            + self._voltage_range[0],
-            (self._voltage_range[1] - self._voltage_range[0])
-            / (self._position_range[2][1] - self._position_range[2][0])
-            * (positions[2] - self._position_range[2][0])
-            + self._voltage_range[0],
-            (self._voltage_range[1] - self._voltage_range[0])
-            / (self._position_range[3][1] - self._position_range[3][0])
-            * (positions[3] - self._position_range[3][0])
-            + self._voltage_range[0]
-        ))
+        vlist = []
+        for i, position in enumerate(positions):
+            vlist.append(
+                (self._voltage_range[i][1] - self._voltage_range[i][0])
+                / (self._position_range[i][1] - self._position_range[i][0])
+                * (position - self._position_range[i][0])
+                + self._voltage_range[i][0]
+            )
+        volts = np.vstack(vlist)
 
-        if volts.min() < self._voltage_range[0] or volts.max() > self._voltage_range[1]:
-            self.log.error(
-                'Voltages {} exceed the limit, the positions have to '
-                'be adjusted to stay in the given range.'.format((volts.min(), volts.max())))
-            return np.array([-1., -1., -1., -1.])
+        for i, v in enumerate(volts):
+            if v.min() < self._voltage_range[i][0] or v.max() > self._voltage_range[i][1]:
+                self.log.error(
+                    'Voltages ({0}, {1}) exceed the limit, the positions have to '
+                    'be adjusted to stay in the given range.'.format(v.min(), v.max()))
+                return np.array([np.NaN])
         return volts
 
     def get_scanner_position(self):
@@ -1323,73 +1381,73 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._line_length = length
 
         try:
-           # Just a formal check whether length is not a too huge number
-           if length < np.inf:
+            # Just a formal check whether length is not a too huge number
+            if length < np.inf:
 
-               # Configure the Sample Clock Timing.
-               # Set up the timing of the scanner counting while the voltages are
-               # being scanned (i.e. that you go through each voltage, which
-               # corresponds to a position. How fast the voltages are being
-               # changed is combined with obtaining the counts per voltage peak).
-               daq.DAQmxCfgSampClkTiming(
-                   # add to this task
-                   self._scanner_ao_task,
-                   # use this channel as clock
-                   self._my_scanner_clock_channel+'InternalOutput',
-                   # Maximum expected clock frequency
-                   self._scanner_clock_frequency,
-                   # Generate sample on falling edge
-                   daq.DAQmx_Val_Falling,
-                   # generate finite number of samples
-                   daq.DAQmx_Val_FiniteSamps,
-                   # number of samples to generate
-                   self._line_length)
+                # Configure the Sample Clock Timing.
+                # Set up the timing of the scanner counting while the voltages are
+                # being scanned (i.e. that you go through each voltage, which
+                # corresponds to a position. How fast the voltages are being
+                # changed is combined with obtaining the counts per voltage peak).
+                daq.DAQmxCfgSampClkTiming(
+                    # add to this task
+                    self._scanner_ao_task,
+                    # use this channel as clock
+                    self._my_scanner_clock_channel+'InternalOutput',
+                    # Maximum expected clock frequency
+                    self._scanner_clock_frequency,
+                    # Generate sample on falling edge
+                    daq.DAQmx_Val_Falling,
+                    # generate finite number of samples
+                    daq.DAQmx_Val_FiniteSamps,
+                    # number of samples to generate
+                    self._line_length)
 
-           # Configure Implicit Timing for the clock.
-           # Set timing for scanner clock task to the number of pixel.
-           daq.DAQmxCfgImplicitTiming(
-               # define task
-               self._scanner_clock_daq_task,
-               # only a limited number of# counts
-               daq.DAQmx_Val_FiniteSamps,
-               # count twice for each voltage +1 for safety
-               self._line_length + 1)
+            # Configure Implicit Timing for the clock.
+            # Set timing for scanner clock task to the number of pixel.
+            daq.DAQmxCfgImplicitTiming(
+                # define task
+                self._scanner_clock_daq_task,
+                # only a limited number of# counts
+                daq.DAQmx_Val_FiniteSamps,
+                # count twice for each voltage +1 for safety
+                self._line_length + 1)
 
-           # Configure Implicit Timing for the scanner counting task.
-           # Set timing for scanner count task to the number of pixel.
-           daq.DAQmxCfgImplicitTiming(
-               # define task
-               self._scanner_counter_daq_task,
-               # only a limited number of counts
-               daq.DAQmx_Val_FiniteSamps,
-               # count twice for each voltage +1 for safety
-               2 * self._line_length + 1)
+            # Configure Implicit Timing for the scanner counting task.
+            # Set timing for scanner count task to the number of pixel.
+            daq.DAQmxCfgImplicitTiming(
+                # define task
+                self._scanner_counter_daq_task,
+                # only a limited number of counts
+                daq.DAQmx_Val_FiniteSamps,
+                # count twice for each voltage +1 for safety
+                2 * self._line_length + 1)
 
-           # Set the Read point Relative To an operation.
-           # Specifies the point in the buffer at which to begin a read operation,
-           # here we read samples from beginning of acquisition and do not overwrite
-           daq.DAQmxSetReadRelativeTo(
-               # define to which task to connect this function
-               self._scanner_counter_daq_task,
-               # Start reading samples relative to the last sample returned by the previous read
-               daq.DAQmx_Val_CurrReadPos)
+            # Set the Read point Relative To an operation.
+            # Specifies the point in the buffer at which to begin a read operation,
+            # here we read samples from beginning of acquisition and do not overwrite
+            daq.DAQmxSetReadRelativeTo(
+                # define to which task to connect this function
+                self._scanner_counter_daq_task,
+                # Start reading samples relative to the last sample returned by the previous read
+                daq.DAQmx_Val_CurrReadPos)
 
-           # Set the Read Offset.
-           # Specifies an offset in samples per channel at which to begin a read
-           # operation. This offset is relative to the location you specify with
-           # RelativeTo. Here we do not read the first sample.
-           daq.DAQmxSetReadOffset(
-               # connect to this taks
-               self._scanner_counter_daq_task,
-               # Offset after which to read
-               1)
+            # Set the Read Offset.
+            # Specifies an offset in samples per channel at which to begin a read
+            # operation. This offset is relative to the location you specify with
+            # RelativeTo. Here we do not read the first sample.
+            daq.DAQmxSetReadOffset(
+                # connect to this taks
+                self._scanner_counter_daq_task,
+                # Offset after which to read
+                1)
 
-           # Set Read OverWrite Mode.
-           # Specifies whether to overwrite samples in the buffer that you have
-           # not yet read. Unread data in buffer will be overwritten:
-           daq.DAQmxSetReadOverWrite(
-               self._scanner_counter_daq_task,
-               daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
+            # Set Read OverWrite Mode.
+            # Specifies whether to overwrite samples in the buffer that you have
+            # not yet read. Unread data in buffer will be overwritten:
+            daq.DAQmxSetReadOverWrite(
+                self._scanner_counter_daq_task,
+                daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
         except:
             self.log.exception('Error while setting up scanner to scan a line.')
             return -1
@@ -1398,14 +1456,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def scan_line(self, line_path=None):
         """ Scans a line and return the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the
-                                    voltage points
+        @param float[][n] line_path: array of n-part tuples defining the voltage points
 
         @return float[]: the photon counts per second
 
         The input array looks for a xy scan of 5x5 points at the position z=-2
         like the following:
-            [ [1,2,3,4,5],[1,1,1,1,],[-2,-2,-2,-2],[0,0,0,0]]
+            [ [1, 2, 3, 4, 5], [1, 1, 1, 1, 1], [-2, -2, -2, -2] ]
+        n is the number of scanner axes, which can vary. Typical values are 2 for galvo scanners,
+        3 for xyz scanners and 4 for xyz scanners with a special function on the a axis.
         """
         if self._scanner_counter_daq_task is None:
             self.log.error('No counter is running, cannot scan a line without one.')
@@ -1421,10 +1480,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_SampClk)
 
             self.set_up_line(np.shape(line_path)[1])
-
+            line_volts = self._scanner_position_to_volt(line_path)
             # write the positions to the analog output
             written_voltages = self._write_scanner_ao(
-                voltages=self._scanner_position_to_volt(line_path),
+                voltages=line_volts,
                 length=self._line_length,
                 start=False)
 
@@ -1453,7 +1512,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 self._RWTimeout * 2 * self._line_length)
 
             # count data will be written here
-            self._scan_data = np.empty((2*self._line_length,), dtype=np.uint32)
+            self._scan_data = np.empty(( 2 * self._line_length,), dtype=np.uint32)
 
             # number of samples which were read will be stored here
             n_read_samples = daq.int32()
@@ -1492,7 +1551,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self._real_data += self._scan_data[1::2]
 
             # update the scanner position instance variable
-            self._current_position = list(line_path[:,-1])
+            self._current_position = list(line_path[:, -1])
         except:
             self.log.exception('Error while scanning line.')
             return np.array([-1.])
