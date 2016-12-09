@@ -609,7 +609,6 @@ class MagnetGui(GUIBase):
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
-
         # set the parameters in the curr_pos_DockWidget:
         for index, axis_label in enumerate(constraints):
 
@@ -1063,7 +1062,6 @@ class MagnetGui(GUIBase):
         """
         constraints = self._magnet_logic.get_hardware_constraints()
         curr_pos =  self._magnet_logic.get_pos()
-
         if (param_list is not None) and (type(param_list) is not bool):
             param_list = list(param_list)
             # param_list =list(param_list) # convert for safety to a list
