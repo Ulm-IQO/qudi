@@ -1210,10 +1210,6 @@ def double_gaussian_odmr_testing():
 #                print('Peakutils',x[indices])
 #                pplot(x,data,indices)
 
-
-
-
-
 def sine_testing():
     """ Sinus fit testing with a self defined estimator. """
 
@@ -2340,7 +2336,7 @@ def linear_testing():
     data_noisy = (mod.eval(x=x_axis, params=params)
                   + 10 * np.random.normal(size=x_axis.shape))
 
-    result = qudi_fitting.make_linear_fit(x_axis=x_axis, data=data_noisy, add_parameters=None)
+    result = qudi_fitting.make_linear_fit(axis=x_axis, data=data_noisy, add_parameters=None)
     plt.plot(x_axis, data_noisy, 'ob')
     plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
     print(result.fit_report())
@@ -2350,17 +2346,27 @@ def linear_testing():
     plt.show()
 
 def fit_data():
-    data=np.loadtxt('E:\\Polarization_Experiments\\Aligned\\2016\\08\\14\\AWG_pulsed\\160814_22h15m_DQT_Rabi_calibration_before_1.6_ana2_time.asc')
+    data=np.loadtxt('data.dat')
     print(data)
     params = dict()
-    params["phase"] = {"value" : 0.}
-    result = qudi_fitting.make_sine_fit(axis=data[:,0], data=data[:,1], add_parameters=params)
+    params["c"] = {"min" : -np.inf,"max" : np.inf}
+    result = qudi_fitting.make_lorentzian_fit(axis=data[:,0], data=data[:,3], add_parameters=params)
     print(result.fit_report())
-    plt.plot(data[:,0],data[:,1],label="data")
-    plt.plot(data[:,0],result.best_fit,label="fit")
-    plt.plot(data[:,0],result.init_fit,label="init")
-    plt.legend()
+    plt.plot(data[:,0],-data[:,3]+2,"b-o",label="data mean")
+#    plt.plot(data[:,0],data[:,1],label="data")
+#    plt.plot(data[:,0],data[:,2],label="data")
+    plt.plot(data[:,0],-result.best_fit+2,"r-",linewidth=2.,label="fit")
+#    plt.plot(data[:,0],result.init_fit,label="init")
+    plt.xlabel("time (ns)")
+    plt.ylabel("polarization transfer (arb. u.)")
+    plt.legend(loc=1)
+#    plt.savefig("pol20_24repetition_pol.pdf")
+#    plt.savefig("pol20_24repetition_pol.png")
     plt.show()
+    savedata=[[data[ii,0],-data[ii,3]+2,-result.best_fit[ii]+2] for ii in range(len(data[:,0]))]
+    np.savetxt("pol_data_fit.csv",savedata)
+#    print(result.params)
+            
     print(result.params)
 
 
@@ -3349,7 +3355,7 @@ if __name__ == "__main__":
 #    two_sine_two_exp_decay_offset_testing()
 #    two_sine_two_exp_decay_offset_testing2()
 #    three_sine_offset_testing()
-#    three_sine_offset_testing2()
+    three_sine_offset_testing2()
 #    three_sine_exp_decay_offset_testing()
 #    three_sine_exp_decay_offset_testing2()
 #    three_sine_three_exp_decay_offset_testing()
