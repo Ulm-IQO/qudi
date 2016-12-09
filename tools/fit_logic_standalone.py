@@ -752,44 +752,199 @@ def double_lorentzian_fixedsplitting_testing():
         plt.show()
 
 def lorentzian_testing():
-    x = np.linspace(800, 1000, 301)
+    """ Test the lorentzian estimator. """
+    x_axis = np.linspace(800, 1000, 101)
 
-    mod,params = qudi_fitting.make_lorentzian_model()
+    mod, params = qudi_fitting.make_lorentzianoffset_model()
     print('Parameters of the model',mod.param_names)
-    p=Parameters()
+    params = Parameters()
 
-    params.add('amplitude',value=-30.)
+    params.add('amplitude',value=-20.)
     params.add('center',value=920.)
-    params.add('sigma',value=10)
-    params.add('c',value=10.)
+    params.add('sigma',value=5)
+    params.add('offset', value=10.)
 
-    data_noisy=(mod.eval(x=x,params=params)
-                            + 0.2*np.random.normal(size=x.shape))
+    data_nice = mod.eval(x=x_axis,params=params)
+    data_noisy= data_nice + 6.0*np.random.normal(size=x_axis.shape)
 
-    para=Parameters()
+
+
+#    gaus = gaussian(10,10)
+#    gaus = 1
+#    data_gauss_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
+#    data_gauss_smooth = filters.convolve1d(data_noisy, gaus)
+#    std_dev = 10
+#    data_gauss_smooth = filters.gaussian_filter1d(data_noisy, std_dev)
+
+
+    data_smooth, offset = qudi_fitting.find_offset_parameter(x_axis, data_noisy)
+    print('offset',offset)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label='noisy data')
+#    plt.plot(x_axis, data_gauss_smooth, label='gauss smooth data')
+    plt.plot(x_axis, data_smooth, label='convoluted smooth data')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+#    offset = data_smooth.max()
+#    offset = data_gauss_smooth.max()
+
+
+#    data_level = data_gauss_smooth - offset
+    data_level = data_smooth - offset
+#    data_level = data_noisy - data_smooth.max()
+#    data_level = data_noisy - offset
+
+    amplitude = data_level.min()
+    print('amplitude',amplitude)
+
+    data_min = data_smooth.min()
+    data_max = data_smooth.max()
+    print('data_min',data_min)
+
+
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    numerical_integral = abs(function.integral(x_axis[0], x_axis[-1]))
+
+    if data_max > abs(data_min):
+        logger.warning('The lorentzian estimator set the peak to the '
+                'minimal value, if you want to fit a peak instead '
+                'of a dip rewrite the estimator.')
+
+    amplitude_median = data_min
+    x_zero = x_axis[np.argmin(data_smooth)]
+
+    # For the fitting procedure it is much better to start with a larger sigma
+    # then with a smaller one. A small sigma is prone to larger instabilities
+    # in the fit.
+    oversize_sigma = 1
+
+    sigma = abs((numerical_integral*oversize_sigma) / (np.pi * amplitude_median))
+
+    print('sigma', sigma)
+
+#    amplitude = -1 *abs(amplitude_median * np.pi * sigma)
+
+#    amplitude = data_min
+
+    # auxiliary variables
+    stepsize = x_axis[1]-x_axis[0]
+    n_steps = len(x_axis)
+
+    mod, params = qudi_fitting.make_lorentzianoffset_model()
+
+    params['amplitude'].set(value=amplitude, max=-1e-12)
+    params['sigma'].set(value=sigma, min=stepsize/2,
+                        max=(x_axis[-1]-x_axis[0])*10)
+    params['center'].set(value=x_zero, min=(x_axis[0])-n_steps*stepsize,
+                         max=(x_axis[-1])+n_steps*stepsize)
+    params['offset'].set(value=offset)
+#    para=Parameters()
 #            para.add('sigma',value=p['sigma'].value)
 #            para.add('amplitude',value=p['amplitude'].value)
 
 #            result=mod.fit(data_noisy,x=x,params=p)
-    result=qudi_fitting.make_lorentzian_fit(x_axis=x, data=data_noisy, add_params=para)
+#    result=qudi_fitting.make_lorentzian_fit(x_axis=x, data=data_noisy, add_params=para)
+
+    result = mod.fit(data_noisy, x=x_axis, params=params)
 #            result=mod.fit(axis=x,data=data_noisy,add_parameters=p)
 
-#            print(result.fit_report())
+    print(result.fit_report())
 #           gaussian filter
-    gaus=gaussian(10,10)
-    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
+#    gaus=gaussian(10,10)
+#    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
 
-    print(result.init_values['c'])
+#    print(result.init_values['offset'])
     plt.figure()
-    plt.plot(x, data_noisy, label='data')
-    plt.plot(x, result.init_fit, '-g', label='initial fit')
-    plt.plot(x, result.best_fit, '-r', label='actual fit')
-    plt.plot(x, data_smooth, '-y', label='smoothed data')
+    plt.plot(x_axis, data_nice, label='ideal data')
+    plt.plot(x_axis, data_noisy, label='noisy data')
+    plt.plot(x_axis, result.init_fit, '-g', label='initial fit')
+    plt.plot(x_axis, result.best_fit, '-r', label='actual fit')
+    plt.plot(x_axis, data_smooth, '-y', label='smoothed data')
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
-
-#            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')
     plt.show()
+
+
+def lorentzian_testing2():
+    """ Test the lorentzian fit directy with simulated data. """
+    x_axis = np.linspace(800, 1000, 101)
+
+    mod, params = qudi_fitting.make_lorentzianoffset_model()
+    print('Parameters of the model',mod.param_names)
+    params = Parameters()
+
+    params.add('amplitude',value=-10.)
+    params.add('center',value=920.)
+    params.add('sigma',value=5)
+    params.add('offset', value=10.)
+
+    data_nice = mod.eval(x=x_axis,params=params)
+    data_noisy = data_nice + 6.0*np.random.normal(size=x_axis.shape)
+
+    result = qudi_fitting.make_lorentzianoffsetdip_fit(x_axis=x_axis, data=data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_nice, label='ideal data')
+    plt.plot(x_axis, data_noisy, label='noisy simulated data')
+    plt.plot(x_axis, result.best_fit, '-r', label='actual fit')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+def compute_inv_dft(x_val, y_val, zeropad_num=0):
+    """ Compute the inverse Discrete fourier Transform
+
+    @param numpy.array x_val: 1D array
+    @param numpy.array y_val: 1D array of same size as x_val
+    @param int zeropad_num: zeropadding (adding zeros to the end of the array).
+                            zeropad_num >= 0, the size of the array, which is
+                            add to the end of the y_val before performing the
+                            dft. The resulting array will have the length
+                                (len(y_val)/2)*(zeropad_num+1)
+                            Note that zeropadding will not change or add more
+                            information to the dft, it will solely interpolate
+                            between the dft_y values.
+
+    @return: tuple(dft_x, dft_y):
+                be aware that the return arrays' length depend on the zeropad
+                number like
+                    len(dft_x) = len(dft_y) = (len(y_val)/2)*(zeropad_num+1)
+
+
+    """
+
+    x_val = np.array(x_val)
+    y_val = np.array(y_val)
+
+    corrected_y = np.abs(y_val - y_val.max())
+    # The absolute values contain the fourier transformed y values
+
+#    zeropad_arr = np.zeros(len(corrected_y)*(zeropad_num+1))
+#    zeropad_arr[:len(corrected_y)] = corrected_y
+    fft_y = np.fft.ifft(corrected_y)
+
+    # Due to the sampling theorem you can only identify frequencies at half
+    # of the sample rate, therefore the FT contains an almost symmetric
+    # spectrum (the asymmetry results from aliasing effects). Therefore take
+    # the half of the values for the display.
+    middle = int((len(corrected_y)+1)//2)
+
+    # sample spacing of x_axis, if x is a time axis than it corresponds to a
+    # timestep:
+    x_spacing = np.round(x_val[-1] - x_val[-2], 12)
+
+    # use the helper function of numpy to calculate the x_values for the
+    # fourier space. That function will handle an occuring devision by 0:
+    fft_x = np.fft.fftfreq(len(corrected_y), d=x_spacing)
+
+#    return abs(fft_x[:middle]), fft_y[:middle]
+    return fft_x[:middle], fft_y[:middle]
+#    return fft_x, fft_y
 
 def double_gaussian_testing():
     for ii in range(1):
@@ -3159,12 +3314,13 @@ if __name__ == "__main__":
 #    gaussian_testing()
 #    twoD_testing()
 #    lorentzian_testing()
+    lorentzian_testing2()
 #    double_gaussian_testing()
 #    double_gaussian_odmr_testing()
 #    double_lorentzian_testing()
 #    double_lorentzian_fixedsplitting_testing()
 #    powerfluorescence_testing()
-    sine_testing()
+#    sine_testing()
 #    sine_testing2()
 ##    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
