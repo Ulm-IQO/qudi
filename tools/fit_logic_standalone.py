@@ -751,7 +751,7 @@ def double_lorentzian_fixedsplitting_testing():
             print('exception')
         plt.show()
 
-def lorentzian_testing():
+def lorentziandip_testing():
     """ Test the lorentzian estimator. """
     x_axis = np.linspace(800, 1000, 101)
 
@@ -870,7 +870,7 @@ def lorentzian_testing():
     plt.show()
 
 
-def lorentzian_testing2():
+def lorentziandip_testing2():
     """ Test the lorentzian fit directy with simulated data. """
     x_axis = np.linspace(800, 1000, 101)
 
@@ -887,6 +887,32 @@ def lorentzian_testing2():
     data_noisy = data_nice + 6.0*np.random.normal(size=x_axis.shape)
 
     result = qudi_fitting.make_lorentzianoffsetdip_fit(x_axis=x_axis, data=data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_nice, label='ideal data')
+    plt.plot(x_axis, data_noisy, label='noisy simulated data')
+    plt.plot(x_axis, result.best_fit, '-r', label='actual fit')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+def lorentzianpeak_testing2():
+    """ Test the lorentzian fit directy with simulated data. """
+    x_axis = np.linspace(800, 1000, 101)
+
+    mod, params = qudi_fitting.make_lorentzianoffset_model()
+    print('Parameters of the model',mod.param_names)
+    params = Parameters()
+
+    params.add('amplitude',value=10.)
+    params.add('center',value=920.)
+    params.add('sigma',value=5)
+    params.add('offset', value=10.)
+
+    data_nice = mod.eval(x=x_axis,params=params)
+    data_noisy = data_nice + 5.0*np.random.normal(size=x_axis.shape)
+
+    result = qudi_fitting.make_lorentzianoffsetpeak_fit(x_axis=x_axis, data=data_noisy)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -2366,7 +2392,7 @@ def fit_data():
     savedata=[[data[ii,0],-data[ii,3]+2,-result.best_fit[ii]+2] for ii in range(len(data[:,0]))]
     np.savetxt("pol_data_fit.csv",savedata)
 #    print(result.params)
-            
+
     print(result.params)
 
 
@@ -3319,8 +3345,9 @@ if __name__ == "__main__":
 #    oneD_testing()
 #    gaussian_testing()
 #    twoD_testing()
-#    lorentzian_testing()
-    lorentzian_testing2()
+#    lorentziandip_testing()
+#    lorentziandip_testing2()
+    lorentzianpeak_testing2()
 #    double_gaussian_testing()
 #    double_gaussian_odmr_testing()
 #    double_lorentzian_testing()
@@ -3355,7 +3382,7 @@ if __name__ == "__main__":
 #    two_sine_two_exp_decay_offset_testing()
 #    two_sine_two_exp_decay_offset_testing2()
 #    three_sine_offset_testing()
-    three_sine_offset_testing2()
+#    three_sine_offset_testing2()
 #    three_sine_exp_decay_offset_testing()
 #    three_sine_exp_decay_offset_testing2()
 #    three_sine_three_exp_decay_offset_testing()
