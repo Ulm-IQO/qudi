@@ -228,11 +228,11 @@ def estimate_lorentzoffsetdip(self, x_axis, data, params):
     @param lmfit.Parameters params: object includes parameter dictionary which
                                     can be set
 
-    @return int error: error code (0:OK, -1:error)
-    @return float amplitude: estimated amplitude
-    @return float x_zero: estimated x value of maximum
-    @return float sigma_x: estimated standard deviation in x direction
-    @return float offset: estimated offset
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
     """
 
     # check if parameters make sense
@@ -253,7 +253,6 @@ def estimate_lorentzoffsetdip(self, x_axis, data, params):
 
     x_zero = x_axis[np.argmin(data_smooth)]
 
-
     # according to the derived formula, calculate sigma. The crucial part is
     # here that the offset was estimated correctly, then the area under the
     # curve is calculated correctly:
@@ -273,7 +272,7 @@ def estimate_lorentzoffsetdip(self, x_axis, data, params):
     return error, params
 
 def make_lorentzianoffsetdip_fit(self, x_axis, data, add_params=None):
-    """ This method performes a 1D lorentzian fit on the provided data.
+    """ Perform a 1D lorentzian dip fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -307,113 +306,66 @@ def make_lorentzianoffsetdip_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
-def estimate_lorentzpeak (self, x_axis=None, data=None):
-    """ This method provides a lorentzian function to fit a peak.
+def estimate_lorentzoffsetpeak (self, x_axis, data, params):
+    """ Provides a lorentzian offset peak estimator.
 
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to x values
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
 
+    @return tuple (error, params):
 
-    @return int error: error code (0:OK, -1:error)
-    @return float amplitude: estimated amplitude
-    @return float x_zero: estimated x value of maximum
-    @return float sigma_x: estimated standard deviation in x direction
-    @return float offset: estimated offset
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
     """
 
-    #TODO: make sigma and amplitude good, this is only a dirty fast solution
-    error = 0
     # check if parameters make sense
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    parameters = [x_axis, data]
-    for var in parameters:
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is no array.')
-            error = -1
-        elif len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
-    #set paraameters
+    # the peak and dip lorentzians have the same parameters:
+    params_dip = params
+    data_negative = data * (-1)
 
-    data_smooth, offset = self.find_offset_parameter(x_axis, data)
-    data_level = data-offset
-    data_min = data_level.min()
-    data_max = data_level.max()
+    error, params_ret = self.estimate_lorentzoffsetdip(x_axis, data_negative, params_dip)
 
+    params['sigma'] = params_ret['sigma']
+    params['offset'] = params_ret['offset']
+    # set the maximum to infinity, since that is the default value.
+    params['amplitude'].set(value=-params_ret['amplitude'].value, min=-1e-12,
+                            max=np.inf)
+    params['center'] = params_ret['center']
 
-    numerical_integral = np.sum(data_level) * \
-                        (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
+    return error, params
 
 
-
-    if data_max<abs(data_min):
-        logger.warning('This lorentzian estimator set the peak to the '
-                'maximum value, if you want to fit a dip '
-                'instead of a peak use estimate_lorentz.')
-
-    amplitude_median = data_max
-    x_zero = x_axis[np.argmax(data)]
-    sigma = np.abs(numerical_integral / (np.pi * amplitude_median))
-    amplitude = amplitude_median * np.pi * sigma
-
-
-    return error, amplitude, x_zero, sigma, offset
-
-def make_lorentzianpeak_fit(self, x_axis, data, add_params=None):
+def make_lorentzianoffsetpeak_fit(self, x_axis, data, add_params=None):
     """ Perform a 1D Lorentzian peak fit on the provided data.
 
-    @param array [] axis: axis values
-    @param array[]  x_data: data
-    @param dictionary add_parameters: Additional parameters
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
-    @return lmfit.model.ModelFit result: All parameters provided about
-                                         the fitting, like: success,
-                                         initial fitting values, best
-                                         fitting values, data with best
-                                         fit with given axis,...
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
     """
 
-    error,      \
-    amplitude,  \
-    x_zero,     \
-    sigma,      \
-    offset      = self.estimate_lorentzpeak(x_axis, data)
-
-
-    model, params = self.make_lorentzian_model()
-
-    # auxiliary variables:
-    stepsize=np.abs(x_axis[1]-x_axis[0])
-    n_steps=len(x_axis)
-
-#            TODO: Make sigma amplitude and x_zero better
-
-    #Defining standard parameters
-
-    if x_axis[1]-x_axis[0]>0:
-
-    #                   (Name,        Value,     Vary, Min,                        Max,                         Expr)
-        params.add_many(('amplitude', amplitude, True, 2e-12,                      None,                        None),
-                        ('sigma',     sigma,     True, (x_axis[1]-x_axis[0])/2,        (x_axis[-1]-x_axis[0])*10,       None),
-                        ('center',    x_zero,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None),
-                        ('c',         offset,    True, None,                       None,                        None))
-    if x_axis[0]-x_axis[1]>0:
-
-    #                   (Name,        Value,     Vary, Min,                  Max,                  Expr)
-        params.add_many(('amplitude', amplitude, True, 2e-12,                None,                 None),
-                        ('sigma',     sigma,     True, (x_axis[0]-x_axis[1])/2 , (x_axis[0]-x_axis[1])*10, None),
-                        ('center',    x_zero,    True, (x_axis[-1]),           (x_axis[0]),            None),
-                        ('c',         offset,    True, None,                 None,                 None))
-
-    #redefine values of additional parameters
+    model, params = self.make_lorentzianoffset_model()
+    error, params = self.estimate_lorentzoffsetpeak(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result=model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params)
     except:
-        result=model.fit(data, x=x_axis, params=params)
-        logger.warning('The 1D gaussian fit did not work. Error '
-                'message:' + result.message)
+        result = model.fit(data, x=x_axis, params=params)
+        logger.warning('The Lorentzian peak fit did not work. Error '
+                       'message:' + result.message)
 
     return result
 
