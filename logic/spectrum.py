@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
+import matplotlib.pyplot as plt
 
 from core.util.mutex import Mutex
 from core.util.network import netobtain
@@ -198,9 +199,23 @@ class SpectrumLogic(GenericLogic):
         else:
             data['signal'] = self.spectrum_data[1, :]
 
+        # Prepare the figure to save as a "data thumbnail"
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        fig, ax1 = plt.subplots()
+
+        ax1.plot(data['wavelength'], data['signal'])
+
+        ax1.set_xlabel('Wavelength (nm)')
+        ax1.set_ylabel('Signal (arb. u.)')
+
+        fig.tight_layout()
+
         # Save to file
         self._save_logic.save_data(data,
                                    filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
-                                   as_text=True)
+                                   as_text=True,
+                                   plotfig=fig
+                                   )
