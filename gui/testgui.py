@@ -53,11 +53,14 @@ class TestGui(GUIBase):
         self.cwdget = QtWidgets.QWidget()
         self.button = QtWidgets.QPushButton(self.buttonText)
         self.buttonerror = QtWidgets.QPushButton('Giff Error!')
+        self.checkbutton = QtWidgets.QPushButton('Status Error')
+        self.checkbutton.setCheckable(True)
         self.button.clicked.connect(self.handleButton)
         self.buttonerror.clicked.connect(self.handleButtonError)
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.button)
         self.layout.addWidget(self.buttonerror)
+        self.layout.addWidget(self.checkbutton)
         self.cwdget.setLayout(self.layout)
         self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
@@ -79,3 +82,9 @@ class TestGui(GUIBase):
         """ Produce an exception for testing.
         """
         raise Exception('Сука Блять')
+
+    def getState(self):
+        if hasattr(self, 'checkbutton') and self.checkbutton.isChecked():
+            raise Exception('Fail.')
+        else:
+            return super().getState()
