@@ -333,7 +333,7 @@ def estimate_lorentzoffsetpeak (self, x_axis, data, params):
                                                        params_dip)
 
     params['sigma'] = params_ret['sigma']
-    params['offset'] = params_ret['offset']
+    params['offset'].set(value=-params_ret['offset'])
     # set the maximum to infinity, since that is the default value.
     params['amplitude'].set(value=-params_ret['amplitude'].value, min=-1e-12,
                             max=np.inf)
@@ -516,6 +516,91 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
     return result
 
 
+
+
+################################################################################
+#                                                                              #
+#                  Double Lorentzian Peak with offset fitting                  #
+#                                                                              #
+################################################################################
+
+
+def estimate_doublelorentzpeakoffset(self, x_axis, data, params,
+                                    threshold_fraction=0.3,
+                                    minimal_threshold=0.01,
+                                    sigma_threshold_fraction=0.3):
+    """ Provide an estimator for double lorentzian peak with offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    # check if parameters make sense
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # the peak and dip lorentzians have the same parameters:
+    params_dip = params
+    data_negative = data * (-1)
+
+    error, params_ret = self.estimate_doublelorentzdipoffset(x_axis,
+                                                             data_negative,
+                                                             params_dip)
+
+    params['l0_sigma'] = params_ret['l0_sigma']
+    # set the maximum to infinity, since that is the default value.
+    params['l0_amplitude'].set(value=-params_ret['l0_amplitude'].value, min=-1e-12,
+                               max=np.inf)
+    params['l0_center'] = params_ret['l0_center']
+    params['l1_amplitude'].set(value=-params_ret['l1_amplitude'].value, min=-1e-12,
+                               max=np.inf)
+    params['l1_sigma'] = params_ret['l1_sigma']
+    params['l1_center'] = params_ret['l1_center']
+
+    params['offset'].set(value=-params_ret['offset'])
+
+    return error, params
+
+
+def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
+    """ Perform a 1D double lorentzian peak fit with offset on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+
+    """
+
+
+
+    model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
+    error, params = self.estimate_doublelorentzpeakoffset(x_axis, data, params)
+
+    #redefine values of additional parameters
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params)
+    except:
+        result = model.fit(data, x=x_axis, params=params)
+        logger.error('The double lorentzian fit did not '
+                     'work: {0}'.format(result.message))
+
+    return result
 
 #                           OLD STUFF
 ################################################################################
