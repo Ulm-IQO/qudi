@@ -743,6 +743,52 @@ def double_lorentzdip_testing2():
 #    print(result.fit_report()
 
 
+def double_lorentzpeak_testing2():
+    """ Function to check the implemented double lorentz peak fit with offset. """
+    start = 2800
+    stop = 2950
+    num_points = int((stop-start)/2)*1
+    x = np.linspace(start, stop, num_points)
+
+    x_nice = np.linspace(start, stop, num_points*4)
+
+    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+#    print('Parameters of the model',mod.param_names)
+
+    p=Parameters()
+
+    #============ Create data ==========
+
+#                center=np.random.random(1)*50+2805
+#            p.add('center',max=-1)
+    p.add('l0_amplitude',value=abs(np.random.random(1)*2+20))
+    p.add('l0_center',value=np.random.random(1)*150.0+2800)
+    p.add('l0_sigma',value=abs(np.random.random(1)*1.+1.))
+    p.add('l1_center',value=np.random.random(1)*150.0+2800)
+    p.add('l1_sigma',value=abs(np.random.random(1)*4.+1.))
+    p.add('l1_amplitude',value=abs(np.random.random(1)*1+10))
+
+    p.add('offset',value=100.)
+
+    data_noisy=(mod.eval(x=x,params=p)
+                + 6*np.random.normal(size=x.shape))
+
+#    data_noisy_inv = data_noisy*(-1)
+
+    result = qudi_fitting.make_doublelorentzpeakoffset_fit(x_axis=x, data=data_noisy)
+
+    plt.figure()
+    plt.plot(x, data_noisy,'o', label='noisy data')
+    plt.plot(x, result.init_fit,'-y', label='initial fit')
+    plt.plot(x, result.best_fit,'-r', linewidth=2.0, label='actual fit')
+    plt.plot(x_nice, mod.eval(x=x_nice,params=result.params),'b',label='original')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=2, mode="expand", borderaxespad=0.)
+
+    plt.show()
+#    print(result.fit_report()
+
+
 def double_lorentzian_fixedsplitting_testing():
     # This method does not work and has to be fixed!!!
     for ii in range(1):
@@ -3401,8 +3447,9 @@ if __name__ == "__main__":
 #    lorentzianpeak_testing2()
 #    double_gaussian_testing()
 #    double_gaussian_odmr_testing()
-    double_lorentzdip_testing()
+#    double_lorentzdip_testing()
 #    double_lorentzdip_testing2()
+    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    powerfluorescence_testing()
 #    sine_testing()
