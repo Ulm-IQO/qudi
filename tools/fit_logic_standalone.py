@@ -556,78 +556,41 @@ def useful_object_variables():
 #            plt.plot(data_smooth,'-r')
 #            plt.show()
 
+def double_lorentzdip_testing():
+    """ Test function to implement the estimator for the double lorentz dip
+        fit with offset. """
 
-def double_lorentzian_testing():
-    for ii in range(1):
-#                time.sleep(0.51)
-        start=2800
-        stop=2950
-        num_points=int((stop-start)/2)
-        x = np.linspace(start, stop, num_points)
+    start = 2800
+    stop = 2950
+    num_points = int((stop-start)/2)*1
+    x_axis = np.linspace(start, stop, num_points)
 
-        mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_lor=2)
-#            print('Parameters of the model',mod.param_names)
+    x_nice = np.linspace(start, stop, num_points*4)
 
-        p=Parameters()
+    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+#    print('Parameters of the model',mod.param_names)
 
-        #============ Create data ==========
+    p=Parameters()
+
+    #============ Create data ==========
 
 #                center=np.random.random(1)*50+2805
 #            p.add('center',max=-1)
-        p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
-        p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
-        p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
-        p.add('lorentz1_center',value=np.random.random(1)*150.0+2800)
-        p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
-        p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
+    p.add('l0_amplitude',value=-abs(np.random.random(1)*2+20))
+    p.add('l0_center',value=np.random.random(1)*150.0+2800)
+    p.add('l0_sigma',value=abs(np.random.random(1)*1.+1.))
+    p.add('l1_center',value=np.random.random(1)*150.0+2800)
+    p.add('l1_sigma',value=abs(np.random.random(1)*4.+1.))
+    p.add('l1_amplitude',value=-abs(np.random.random(1)*1+10))
 
+    p.add('offset',value=100.)
 
-#                p.add('lorentz0_amplitude',value=-1500)
-#                p.add('lorentz0_center',value=2860)
-#                p.add('lorentz0_sigma',value=12)
-#                p.add('lorentz1_amplitude',value=-1500)
-#                p.add('lorentz1_center',value=2900)
-#                p.add('lorentz1_sigma',value=12)
-        p.add('c',value=100.)
+    data_noisy=(mod.eval(x=x_axis,params=p)
+                + 6*np.random.normal(size=x_axis.shape))
 
-#                print(p)
-##               von odmr dummy
-#                sigma=7.
-#                length=stop-start
-#                plt.rcParams['figure.figsize'] = (10.0, 3.0)
-#                p.add('lorentz0_amplitude',value=-20000.*np.pi*sigma)
-#                p.add('lorentz0_center',value=length/3+start)
-#                p.add('lorentz0_sigma',value=sigma)
-#                p.add('lorentz1_amplitude',value=-15000*np.pi*sigma)
-#                p.add('lorentz1_center',value=2*length/3+start)
-#                p.add('lorentz1_sigma',value=sigma)
-#                p.add('c',value=80000.)
-#                print(p['lorentz0_center'].value,p['lorentz1_center'].value)
-#                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
-        data_noisy=(mod.eval(x=x,params=p)
-                                + 2*np.random.normal(size=x.shape))
-#                data_noisy=np.loadtxt('C:\\Data\\2016\\03\\20160321\\ODMR\\20160321-0938-11_ODMR_data.dat')[:,1]
-#                x=np.loadtxt('C:\\Data\\2016\\03\\20160321\\ODMR\\20160321-0938-11_ODMR_data.dat')[:,0]
-        para=Parameters()
-#                para.add('lorentz1_center',value=2*length/3+start)
-#                para.add('bounded',expr='abs(lorentz0_center-lorentz1_center)>10')
-#                para.add('delta',value=20,min=10)
-#                para.add('lorentz1_center',expr='lorentz0_center+delta')
-#                print(para['delta'])
-#                para.add('lorentz1_center',expr='lorentz0_center+10.0')
-#                error, lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma, offset = qudi_fitting.estimate_double_lorentz(x,data_noisy)
+    result = qudi_fitting.make_doublelorentzdipoffset_fit(x_axis=x_axis, data=data_noisy)
 
-#                print(lorentz0_center>lorentz1_center)
-        result=qudi_fitting.make_doublelorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
-#                print(result)
-#                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
-
-#                print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
-        #           gaussian filter
-#                gaus=gaussian(10,10)
-#                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
-
-        data_smooth, offset = qudi_fitting.find_offset_parameter(x,data_noisy)
+    data_smooth, offset = qudi_fitting.find_offset_parameter(x_axis, data_noisy)
 
 #                print('Offset:',offset)
 #                print('Success:',result.success)
@@ -635,63 +598,151 @@ def double_lorentzian_testing():
 #                print(result.lmdif_message)
 #                print(result.fit_report(show_correl=False))
 
-        data_level=data_smooth-offset
+    data_level = data_smooth - offset
 
-        #search for double lorentzian
+    threshold_fraction = 0.3
+    minimal_threshold =  0.01
+    sigma_threshold_fraction = 0.3
 
-        error, \
-        sigma0_argleft, dip0_arg, sigma0_argright, \
-        sigma1_argleft, dip1_arg , sigma1_argright = \
-        qudi_fitting._search_double_dip(x, data_level,make_prints=False)
+    ret_val = qudi_fitting._search_double_dip(x_axis, data_level,
+                                              threshold_fraction,
+                                              minimal_threshold,
+                                              sigma_threshold_fraction)
 
-        print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
-        print(x[dip0_arg], x[dip1_arg])
+    error = ret_val[0]
+    sigma0_argleft, dip0_arg, sigma0_argright = ret_val[1:4]
+    sigma1_argleft, dip1_arg , sigma1_argright = ret_val[4:7]
 
-        plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_noisy.min() ,data_noisy.max()), 'b-')
-        plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_noisy.min() ,data_noisy.max()), 'b-')
+    if dip0_arg == dip1_arg:
+        lorentz0_amplitude = data_level[dip0_arg]/2.
+        lorentz1_amplitude = lorentz0_amplitude
+    else:
+        lorentz0_amplitude = data_level[dip0_arg]
+        lorentz1_amplitude = data_level[dip1_arg]
 
-        plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
-        plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
-
-        try:
-#            print(result.fit_report()
-            plt.plot(x,data_noisy,'o')
-            plt.plot(x,result.init_fit,'-y')
-            plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
-            plt.plot(x,data_smooth,'-g')
-        except:
-            print('exception')
-##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
-        plt.show()
-
-#                print('Peaks:',p['lorentz0_center'].value,p['lorentz1_center'].value)
-#                print('Estimator:',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
-#
-#                data=-1*data_smooth+data_smooth.max()
-##                print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
-#                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
-#                print('Peakutils',x[indices])
-#                pplot(x,data,indices)
+    lorentz0_center = x_axis[dip0_arg]
+    lorentz1_center = x_axis[dip1_arg]
 
 
-#                if p['lorentz0_center'].value<p['lorentz1_center'].value:
-#                    results[0,ii]=p['lorentz0_center'].value
-#                    results[1,ii]=p['lorentz1_center'].value
-#                else:
-#                    results[0,ii]=p['lorentz1_center'].value
-#                    results[1,ii]=p['lorentz0_center'].value
-#                if result.best_values['lorentz0_center']<result.best_values['lorentz1_center']:
-#                    results[2,ii]=result.best_values['lorentz0_center']
-#                    results[3,ii]=result.best_values['lorentz1_center']
-#                else:
-#                    results[2,ii]=result.best_values['lorentz1_center']
-#                    results[3,ii]=result.best_values['lorentz0_center']
-#                time.sleep(1)
-#            plt.plot(runs[:],results[0,:],'-r')
-#            plt.plot(runs[:],results[1,:],'-g')
-#            plt.plot(runs[:],results[2,:],'-b')
-#            plt.plot(runs[:],results[3,:],'-y')
-#            plt.show()
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    function = InterpolatedUnivariateSpline(x_axis, data_level,
+                                            k=smoothing_spline)
+    numerical_integral_0 = function.integral(x_axis[sigma0_argleft],
+                                             x_axis[sigma0_argright])
+
+    lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
+
+    numerical_integral_1 = numerical_integral_0
+
+    lorentz1_sigma = abs(numerical_integral_1 / (np.pi * lorentz1_amplitude))
+
+    stepsize = x_axis[1]-x_axis[0]
+    full_width = x_axis[-1]-x_axis[0]
+    n_steps = len(x_axis)
+
+    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+
+    if lorentz0_center < lorentz1_center:
+        params['l0_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l0_sigma'].set(value=lorentz0_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l0_center'].set(value=lorentz0_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+        params['l1_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l1_sigma'].set(value=lorentz1_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l1_center'].set(value=lorentz1_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+    else:
+        params['l0_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l0_sigma'].set(value=lorentz1_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l0_center'].set(value=lorentz1_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+        params['l1_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l1_sigma'].set(value=lorentz0_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l1_center'].set(value=lorentz0_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+
+    params['offset'].set(value=offset)
+
+    result = mod.fit(data_noisy, x=x_axis, params=params)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy,'o', label='noisy data')
+    plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
+    plt.plot(x_axis, result.best_fit,'-r', linewidth=2.0, label='actual fit')
+    plt.plot(x_axis, data_smooth,'-g', label='smooth data')
+    plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'b',label='original')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=2, mode="expand", borderaxespad=0.)
+
+    plt.show()
+#    print(result.fit_report()
+
+
+
+def double_lorentzdip_testing2():
+    """ Function to check the implemented double lorentz dip fit with offset. """
+    start = 2800
+    stop = 2950
+    num_points = int((stop-start)/2)*1
+    x = np.linspace(start, stop, num_points)
+
+    x_nice = np.linspace(start, stop, num_points*4)
+
+    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+#    print('Parameters of the model',mod.param_names)
+
+    p=Parameters()
+
+    #============ Create data ==========
+
+#                center=np.random.random(1)*50+2805
+#            p.add('center',max=-1)
+    p.add('l0_amplitude',value=-abs(np.random.random(1)*2+20))
+    p.add('l0_center',value=np.random.random(1)*150.0+2800)
+    p.add('l0_sigma',value=abs(np.random.random(1)*1.+1.))
+    p.add('l1_center',value=np.random.random(1)*150.0+2800)
+    p.add('l1_sigma',value=abs(np.random.random(1)*4.+1.))
+    p.add('l1_amplitude',value=-abs(np.random.random(1)*1+10))
+
+    p.add('offset',value=100.)
+
+    data_noisy=(mod.eval(x=x,params=p)
+                + 6*np.random.normal(size=x.shape))
+
+    result = qudi_fitting.make_doublelorentzdipoffset_fit(x_axis=x, data=data_noisy)
+
+    data_smooth, offset = qudi_fitting.find_offset_parameter(x,data_noisy)
+
+#                print('Offset:',offset)
+#                print('Success:',result.success)
+#                print(result.message)
+#                print(result.lmdif_message)
+#                print(result.fit_report(show_correl=False))
+
+    data_level = data_smooth - offset
+
+
+    plt.figure()
+    plt.plot(x, data_noisy,'o', label='noisy data')
+    plt.plot(x, result.init_fit,'-y', label='initial fit')
+    plt.plot(x, result.best_fit,'-r', linewidth=2.0, label='actual fit')
+    plt.plot(x, data_smooth,'-g', label='smooth data')
+    plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'b',label='original')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=2, mode="expand", borderaxespad=0.)
+
+    plt.show()
+#    print(result.fit_report()
+
+
 def double_lorentzian_fixedsplitting_testing():
     # This method does not work and has to be fixed!!!
     for ii in range(1):
@@ -3347,10 +3398,11 @@ if __name__ == "__main__":
 #    twoD_testing()
 #    lorentziandip_testing()
 #    lorentziandip_testing2()
-    lorentzianpeak_testing2()
+#    lorentzianpeak_testing2()
 #    double_gaussian_testing()
 #    double_gaussian_odmr_testing()
-#    double_lorentzian_testing()
+    double_lorentzdip_testing()
+#    double_lorentzdip_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    powerfluorescence_testing()
 #    sine_testing()
