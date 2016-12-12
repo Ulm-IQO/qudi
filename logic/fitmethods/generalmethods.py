@@ -462,7 +462,7 @@ def find_offset_parameter(self, x_values=None, data=None):
 
     """
     # lorentzian filter
-    mod, params = self.make_lorentzian_model()
+    mod, params = self.make_lorentzoffset_model()
 
     # Todo: exclude filter in seperate method to be used in other methods
 
@@ -473,7 +473,7 @@ def find_offset_parameter(self, x_values=None, data=None):
     else:
         len_x = int(len(x_values)/10.)+1
 
-    lorentz = mod.eval(x=np.linspace(0, len_x, len_x), amplitude=1, c=0.,
+    lorentz = mod.eval(x=np.linspace(0, len_x, len_x), amplitude=1, offset=0.,
                        sigma=len_x/4., center=len_x/2.)
     data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(),
                                      mode='constant', cval=data.max())

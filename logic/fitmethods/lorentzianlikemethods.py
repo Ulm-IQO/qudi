@@ -102,7 +102,7 @@ numerically, then the parameter sigma can be estimated.
 
 """
 
-def make_lorentzian_model(self, prefix=None):
+def make_lorentz_model(self, prefix=None):
     """ Create a model of a bare physical Lorentzian with an amplitude.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -147,7 +147,8 @@ def make_lorentzian_model(self, prefix=None):
                      'Correct that!'.format(prefix, type(prefix)))
         lorentz_model = Model(physical_lorentzian, independent_vars='x')
     else:
-        lorentz_model = Model(physical_lorentzian, independent_vars='x', prefix=prefix)
+        lorentz_model = Model(physical_lorentzian, independent_vars='x',
+                              prefix=prefix)
 
     full_lorentz_model = amplitude_model * lorentz_model
     params = full_lorentz_model.make_params()
@@ -161,7 +162,7 @@ def make_lorentzian_model(self, prefix=None):
 #                                                                              #
 ################################################################################
 
-def make_lorentzianoffset_model(self, prefix=None):
+def make_lorentzoffset_model(self, prefix=None):
     """ Create a sine model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -172,7 +173,7 @@ def make_lorentzianoffset_model(self, prefix=None):
                    the method make_lorentzian_model.
     """
 
-    lorentz_model, params = self.make_lorentzian_model(prefix=prefix)
+    lorentz_model, params = self.make_lorentz_model(prefix=prefix)
     constant_model, params = self.make_constant_model(prefix=prefix)
 
     lorentz_offset_model = lorentz_model + constant_model
@@ -188,7 +189,7 @@ def make_lorentzianoffset_model(self, prefix=None):
 ################################################################################
 
 
-def make_multiplelorentzianoffset_model(self, no_of_functions=1):
+def make_multiplelorentzoffset_model(self, no_of_functions=1):
     """ Create a model with multiple lorentzians with offset.
 
     @param no_of_functions: for default=1 there is one lorentzian, else
@@ -199,12 +200,12 @@ def make_multiplelorentzianoffset_model(self, no_of_functions=1):
     """
 
     if no_of_functions == 1:
-        multi_lorentz_model, params = self.make_lorentzianoffset_model()
+        multi_lorentz_model, params = self.make_lorentzoffset_model()
     else:
-        multi_lorentz_model, params = self.make_lorentzian_model(prefix='l0_')
+        multi_lorentz_model, params = self.make_lorentz_model(prefix='l0_')
 
         for ii in range(1, no_of_functions):
-            multi_lorentz_model += self.make_lorentzian_model(prefix='l{0:d}_'.format(ii))[0]
+            multi_lorentz_model += self.make_lorentz_model(prefix='l{0:d}_'.format(ii))[0]
 
         constant_model, params = self.make_constant_model()
         multi_lorentz_model = multi_lorentz_model + constant_model
@@ -271,7 +272,7 @@ def estimate_lorentzoffsetdip(self, x_axis, data, params):
 
     return error, params
 
-def make_lorentzianoffsetdip_fit(self, x_axis, data, add_params=None):
+def make_lorentzoffsetdip_fit(self, x_axis, data, add_params=None):
     """ Perform a 1D lorentzian dip fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -286,7 +287,7 @@ def make_lorentzianoffsetdip_fit(self, x_axis, data, add_params=None):
                           with best fit with given axis,...
     """
 
-    model, params = self.make_lorentzianoffset_model()
+    model, params = self.make_lorentzoffset_model()
     error, params = self.estimate_lorentzoffsetdip(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
@@ -328,7 +329,8 @@ def estimate_lorentzoffsetpeak (self, x_axis, data, params):
     params_dip = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_lorentzoffsetdip(x_axis, data_negative, params_dip)
+    error, params_ret = self.estimate_lorentzoffsetdip(x_axis, data_negative,
+                                                       params_dip)
 
     params['sigma'] = params_ret['sigma']
     params['offset'] = params_ret['offset']
@@ -340,7 +342,7 @@ def estimate_lorentzoffsetpeak (self, x_axis, data, params):
     return error, params
 
 
-def make_lorentzianoffsetpeak_fit(self, x_axis, data, add_params=None):
+def make_lorentzoffsetpeak_fit(self, x_axis, data, add_params=None):
     """ Perform a 1D Lorentzian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -355,7 +357,7 @@ def make_lorentzianoffsetpeak_fit(self, x_axis, data, add_params=None):
                           with best fit with given axis,...
     """
 
-    model, params = self.make_lorentzianoffset_model()
+    model, params = self.make_lorentzoffset_model()
     error, params = self.estimate_lorentzoffsetpeak(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
@@ -370,65 +372,153 @@ def make_lorentzianoffsetpeak_fit(self, x_axis, data, add_params=None):
     return result
 
 
-
-#                   Old Stuff:
+################################################################################
+#                                                                              #
+#                   Double Lorentzian Dip with offset fitting                  #
+#                                                                              #
 ################################################################################
 
-# def make_lorentzian_model(self):
-#     """ This method creates a model of lorentzian with an offset. The
-#     parameters are: 'amplitude', 'center', 'sigma, 'fwhm' and offset
-#     'c'. For function see:
-#     http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
-#
-#     @return lmfit.model.CompositeModel model: Returns an object of the
-#                                               class CompositeModel
-#     @return object params: lmfit.parameter.Parameters object, returns an
-#                            object of the class Parameters with all
-#                            parameters for the lorentzian model.
-#     """
-#
-#     model = LorentzianModel()+ConstantModel()
-#     params = model.make_params()
-#
-#     return model, params
+def estimate_doublelorentzdipoffset(self, x_axis, data, params,
+                                    threshold_fraction=0.3,
+                                    minimal_threshold=0.01,
+                                    sigma_threshold_fraction=0.3):
+    """ Provide an estimator for double lorentzian dip with offset.
 
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
 
+    @return tuple (error, params):
 
-
-
-
-
-
-
-############################################################################
-#                                                                          #
-#                          Double Lorentzian Model                         #
-#                                                                          #
-############################################################################
-
-def make_multiplelorentzian_model(self, no_of_lor=None):
-    """ This method creates a model of lorentzian with an offset. The
-    parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
-    'c'. For function see:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
-
-    @return lmfit.model.CompositeModel model: Returns an object of the
-                                              class CompositeModel
-    @return lmfit.parameter.Parameters params: Returns an object of the
-                                               class Parameters with all
-                                               parameters for the
-                                               lorentzian model.
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
     """
 
-    model=ConstantModel()
-    for ii in range(no_of_lor):
-        model += LorentzianModel(prefix='lorentz{0}_'.format(ii))
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    params = model.make_params()
+    # smooth with gaussian filter and find offset:
+    data_smooth, offset = self.find_offset_parameter(x_axis,data)
 
-    return model, params
+    # level data:
+    data_level = data_smooth - offset
+
+    # search for double lorentzian dip:
+    ret_val = self._search_double_dip(x_axis, data_level, threshold_fraction,
+                                      minimal_threshold,
+                                      sigma_threshold_fraction)
+
+    error = ret_val[0]
+    sigma0_argleft, dip0_arg, sigma0_argright = ret_val[1:4]
+    sigma1_argleft, dip1_arg , sigma1_argright = ret_val[4:7]
+
+    if dip0_arg == dip1_arg:
+        lorentz0_amplitude = data_level[dip0_arg]/2.
+        lorentz1_amplitude = lorentz0_amplitude
+    else:
+        lorentz0_amplitude = data_level[dip0_arg]
+        lorentz1_amplitude = data_level[dip1_arg]
+
+    lorentz0_center = x_axis[dip0_arg]
+    lorentz1_center = x_axis[dip1_arg]
+
+    # Both sigmas are set to the same value
+    # numerical_integral_0 = (np.sum(data_level[sigma0_argleft:sigma0_argright]) *
+    #                    (x_axis[sigma0_argright] - x_axis[sigma0_argleft]) /
+    #                     len(data_level[sigma0_argleft:sigma0_argright]))
 
 
+    smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
+    function = InterpolatedUnivariateSpline(x_axis, data_level,
+                                            k=smoothing_spline)
+    numerical_integral_0 = function.integral(x_axis[sigma0_argleft],
+                                             x_axis[sigma0_argright])
+
+    lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
+
+    numerical_integral_1 = numerical_integral_0
+
+    lorentz1_sigma = abs(numerical_integral_1 / (np.pi * lorentz1_amplitude))
+
+    #esstimate amplitude
+    # lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
+    # lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
+
+    stepsize = x_axis[1]-x_axis[0]
+    full_width = x_axis[-1]-x_axis[0]
+    n_steps = len(x_axis)
+
+    if lorentz0_center < lorentz1_center:
+        params['l0_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l0_sigma'].set(value=lorentz0_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l0_center'].set(value=lorentz0_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+        params['l1_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l1_sigma'].set(value=lorentz1_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l1_center'].set(value=lorentz1_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+    else:
+        params['l0_amplitude'].set(value=lorentz1_amplitude, max=-0.01)
+        params['l0_sigma'].set(value=lorentz1_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l0_center'].set(value=lorentz1_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+        params['l1_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
+        params['l1_sigma'].set(value=lorentz0_sigma, min=stepsize/2,
+                               max=full_width*4)
+        params['l1_center'].set(value=lorentz0_center,
+                                min=(x_axis[0])-n_steps*stepsize,
+                                max=(x_axis[-1])+n_steps*stepsize)
+
+    params['offset'].set(value=offset)
+
+    return error, params
+
+
+
+def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
+    """ Perform a 1D double lorentzian dip fit with offset on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+
+    """
+
+
+
+    model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
+    error, params = self.estimate_doublelorentzdipoffset(x_axis, data, params)
+
+    #redefine values of additional parameters
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params)
+    except:
+        result = model.fit(data, x=x_axis, params=params)
+        logger.error('The double lorentzian fit did not '
+                     'work: {0}'.format(result.message))
+
+    return result
+
+
+
+#                           OLD STUFF
+################################################################################
 
 
 def estimate_doublelorentz(self, x_axis=None, data=None,
@@ -450,21 +540,16 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
     @return float lorentz1_sigma: estimated sigma of 2nd peak
     @return float offset: estimated offset
     """
-    error = 0
-    # check if parameters make sense
-    parameters = [x_axis,data]
-    for var in parameters:
-        if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is no array.')
-            error=-1
-        elif len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
+
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
 
 
     #set paraameters
-    data_smooth,offset=self.find_offset_parameter(x_axis,data)
+    data_smooth, offset = self.find_offset_parameter(x_axis,data)
 
-    data_level=data_smooth-offset
+    data_level = data_smooth-offset
 
     #search for double lorentzian
 
@@ -520,6 +605,7 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
            lorentz0_center,lorentz1_center, lorentz0_sigma, \
            lorentz1_sigma, offset
 
+
 def make_doublelorentzian_fit(self, x_axis, data, add_params=None):
     """ This method performes a 1D lorentzian fit on the provided data.
 
@@ -571,6 +657,13 @@ def make_doublelorentzian_fit(self, x_axis, data, add_params=None):
                 'work: {0}'.format(result.message))
 
     return result
+
+
+#                   Old Stuff:
+################################################################################
+
+
+
 
 ############################################################################
 #                                                                          #
