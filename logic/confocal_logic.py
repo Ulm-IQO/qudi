@@ -649,8 +649,9 @@ class ConfocalLogic(GenericLogic):
                                                    y=self._current_y,
                                                    z=self._current_z)
 
-        self._current_x,self._current_y,self._current_z,self._current_a = \
-            self._scanning_device.get_scanner_position()[:4]
+        #self._current_x,self._current_y,self._current_z,self._current_a = \
+        self._current_x, self._current_y, self._current_z = \
+            self._scanning_device.get_scanner_position()[:3]
         # FIXME: This is just a temporary fix
         self._current_a = 0.0
         return 0
@@ -693,6 +694,8 @@ class ConfocalLogic(GenericLogic):
 
         image = self.depth_image if self._zscan else self.xy_image
         n_ch = len(self._scanning_device.get_scanner_axes())
+        # FIXME: This is set to 4 because NIcard is throwing errors when the list has dim<4
+        n_ch = 4
 
         try:
             if self._scan_counter == 0:
