@@ -26,7 +26,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 logger = logging.getLogger(__name__)
 import numpy as np
-from lmfit.models import ConstantModel, LorentzianModel, VoigtModel, PseudoVoigtModel
 from lmfit import Parameters
 from lmfit.models import Model
 
@@ -498,8 +497,6 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
 
     """
 
-
-
     model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
     error, params = self.estimate_doublelorentzdipoffset(x_axis, data, params)
 
@@ -582,10 +579,7 @@ def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
                           provided about the fitting, like: success,
                           initial fitting values, best fitting values, data
                           with best fit with given axis,...
-
     """
-
-
 
     model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
     error, params = self.estimate_doublelorentzpeakoffset(x_axis, data, params)
@@ -602,153 +596,6 @@ def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
 
     return result
 
-#                           OLD STUFF
-################################################################################
-
-
-def estimate_doublelorentz(self, x_axis=None, data=None,
-                            threshold_fraction=0.3,
-                            minimal_threshold=0.01,
-                            sigma_threshold_fraction=0.3):
-    """ This method provides a lorentzian function.
-
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to
-                        x values
-
-    @return int error: error code (0:OK, -1:error)
-    @return float lorentz0_amplitude: estimated amplitude of 1st peak
-    @return float lorentz1_amplitude: estimated amplitude of 2nd peak
-    @return float lorentz0_center: estimated x value of 1st maximum
-    @return float lorentz1_center: estimated x value of 2nd maximum
-    @return float lorentz0_sigma: estimated sigma of 1st peak
-    @return float lorentz1_sigma: estimated sigma of 2nd peak
-    @return float offset: estimated offset
-    """
-
-
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
-
-
-
-    #set paraameters
-    data_smooth, offset = self.find_offset_parameter(x_axis,data)
-
-    data_level = data_smooth-offset
-
-    #search for double lorentzian
-
-    error, \
-    sigma0_argleft, dip0_arg, sigma0_argright, \
-    sigma1_argleft, dip1_arg , sigma1_argright = \
-    self._search_double_dip(x_axis, data_level, threshold_fraction,
-                           minimal_threshold, sigma_threshold_fraction)
-
-
-
-    if dip0_arg == dip1_arg:
-        lorentz0_amplitude = data_level[dip0_arg]/2.
-        lorentz1_amplitude = lorentz0_amplitude
-    else:
-        lorentz0_amplitude=data_level[dip0_arg]
-        lorentz1_amplitude=data_level[dip1_arg]
-
-    lorentz0_center = x_axis[dip0_arg]
-    lorentz1_center = x_axis[dip1_arg]
-
-    #Both sigmas are set to the same value
-    numerical_integral_0=(np.sum(data_level[sigma0_argleft:sigma0_argright]) *
-                       (x_axis[sigma0_argright] - x_axis[sigma0_argleft]) /
-                        len(data_level[sigma0_argleft:sigma0_argright]))
-
-    lorentz0_sigma = abs(numerical_integral_0 /
-                         (np.pi * lorentz0_amplitude) )
-
-    numerical_integral_1=numerical_integral_0
-
-    lorentz1_sigma = abs( numerical_integral_1
-                          / (np.pi * lorentz1_amplitude)  )
-
-    #esstimate amplitude
-    lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
-    lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
-
-
-    if lorentz1_center < lorentz0_center :
-        lorentz0_amplitude_temp = lorentz0_amplitude
-        lorentz0_amplitude = lorentz1_amplitude
-        lorentz1_amplitude = lorentz0_amplitude_temp
-        lorentz0_center_temp    = lorentz0_center
-        lorentz0_center    = lorentz1_center
-        lorentz1_center    = lorentz0_center_temp
-        lorentz0_sigma_temp= lorentz0_sigma
-        lorentz0_sigma     = lorentz1_sigma
-        lorentz1_sigma     = lorentz0_sigma_temp
-
-
-    return error, lorentz0_amplitude,lorentz1_amplitude, \
-           lorentz0_center,lorentz1_center, lorentz0_sigma, \
-           lorentz1_sigma, offset
-
-
-def make_doublelorentzian_fit(self, x_axis, data, add_params=None):
-    """ This method performes a 1D lorentzian fit on the provided data.
-
-    @param array [] axis: axis values
-    @param array[]  x_data: data
-    @param dictionary add_parameters: Additional parameters
-
-    @return lmfit.model.ModelFit result: All parameters provided about
-                                         the fitting, like: success,
-                                         initial fitting values, best
-                                         fitting values, data with best
-                                         fit with given axis,...
-
-    """
-
-    error,              \
-    lorentz0_amplitude, \
-    lorentz1_amplitude, \
-    lorentz0_center,    \
-    lorentz1_center,    \
-    lorentz0_sigma,     \
-    lorentz1_sigma,     \
-    offset              = self.estimate_doublelorentz(x_axis, data)
-
-    model, params = self.make_multiplelorentzian_model(no_of_lor=2)
-
-    # Auxiliary variables:
-    stepsize=x_axis[1]-x_axis[0]
-    n_steps=len(x_axis)
-
-    #Defining standard parameters
-    #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-    params.add('lorentz0_amplitude', lorentz0_amplitude, True, None,                       -0.01,                       None)
-    params.add('lorentz0_sigma',     lorentz0_sigma,     True, (x_axis[1]-x_axis[0])/2 ,       (x_axis[-1]-x_axis[0])*4,        None)
-    params.add('lorentz0_center',    lorentz0_center,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None)
-    params.add('lorentz1_amplitude', lorentz1_amplitude, True, None,                       -0.01,                       None)
-    params.add('lorentz1_sigma',     lorentz1_sigma,     True, (x_axis[1]-x_axis[0])/2 ,       (x_axis[-1]-x_axis[0])*4,        None)
-    params.add('lorentz1_center',    lorentz1_center,    True, (x_axis[0])-n_steps*stepsize, (x_axis[-1])+n_steps*stepsize, None)
-    params.add('c',                  offset,             True, None,                       None,                        None)
-
-    #redefine values of additional parameters
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result=model.fit(data, x=x_axis, params=params)
-    except:
-        result=model.fit(data, x=x_axis, params=params)
-        logger.warning('The double lorentzian fit did not '
-                'work: {0}'.format(result.message))
-
-    return result
-
-
-#                   Old Stuff:
-################################################################################
-
-
-
 
 ############################################################################
 #                                                                          #
@@ -756,22 +603,29 @@ def make_doublelorentzian_fit(self, x_axis, data, add_params=None):
 #                                                                          #
 ############################################################################
 
-def estimate_N14(self, x_axis=None, data=None):
-    """ Provide an estimation of all fitting parameters for fitting the
-    three equdistant lorentzian dips of the hyperfine interaction
+def estimate_N14(self, x_axis, data, params):
+    """ Estimation of a the hyperfine interaction of a N14 nuclear spin.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+
+    Provide an estimation of all fitting parameters for fitting the
+    three equidistant lorentzian dips of the hyperfine interaction
     of a N14 nuclear spin. Here the splitting is set as an expression,
     if the splitting is not exactly 2.15MHz the fit will not work.
 
-    @param array x_axis: x values in Hz
-    @param array data: value of each data point corresponding to
-                        x values
-
-    @return lmfit.parameter.Parameters parameters: New object corresponding
-                                                   parameters like offset,
-                                                   the three sigma's, the
-                                                   three amplitudes and centers
-
     """
+
+    # check if parameters make sense
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     # find the offset parameter, which should be in the fit the zero level:
     data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
@@ -781,8 +635,9 @@ def estimate_N14(self, x_axis=None, data=None):
     # data, where the maximal contribution will be if the peaks are within the
     # filter. Take that to obtain from that the accurate peak position:
 
-    #filter of one dip should always have a length of approx linewidth 1MHz
+    # filter of one dip should always have a length of approx linewidth 1MHz
     points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
+
     # filter should have a width of 5MHz
     x_filter = np.linspace(0, 5*points_within_1MHz, 5*points_within_1MHz)
     lorentz = np.piecewise(x_filter, [(x_filter >= 0)                   * (x_filter < len(x_filter)*1/5),
@@ -794,18 +649,17 @@ def estimate_N14(self, x_axis=None, data=None):
 
     # if the filter is smaller than 5 points a convolution does not make sense
     if len(lorentz) >= 5:
-        data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
+        data_convolved = filters.convolve1d(data_smooth_lorentz,
+                                            lorentz/lorentz.sum(),
+                                            mode='constant',
+                                            cval=data_smooth_lorentz.max())
         x_axis_min = x_axis[data_convolved.argmin()]-2.15*1e6
     else:
         x_axis_min = x_axis[data_smooth_lorentz.argmin()]-2.15*1e6
 
-    # Create the parameter container, with the estimated values, which should be
-    # passed to the fit algorithm:
-    parameters = Parameters()
-
     # level of the data, that means the offset is subtracted and the real data
     # are present
-    data_level = data_smooth_lorentz - data_smooth_lorentz.mean()
+    data_level = data_smooth_lorentz - offset
     minimum_level = data_level.min()
 
     # In order to perform a smooth integral to obtain the area under the curve
@@ -817,65 +671,79 @@ def estimate_N14(self, x_axis=None, data=None):
     function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
     integrated_area = function.integral(x_axis[0], x_axis[-1])
 
-    sigma = abs(integrated_area / (minimum_level/np.pi))
+    # sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:
-    # sigma = abs(integrated_area /(np.pi * minimum_level) )
+    sigma = abs(integrated_area /(np.pi * minimum_level))
 
-    amplitude = -1*abs(minimum_level*np.pi*sigma)
+    amplitude = -1*abs(minimum_level)
 
     # Since the total amplitude of the lorentzian is depending on sigma it makes
     # sense to vary sigma within an interval, which is smaller than the minimal
     # distance between two points. Then the fit algorithm will have a larger
     # range to determine the amplitude properly. That is the main issue with the
     # fit!
-    linewidth = sigma
     minimal_linewidth = (x_axis[1]-x_axis[0])/4
     maximal_linewidth = x_axis[-1]-x_axis[0]
 
     # The linewidth of all the lorentzians are set to be the same! that is a
     # physical constraint for the N14 fitting.
 
-    #            (Name,                  Value,          Vary, Min,             Max,           Expr)
-    parameters.add('lorentz0_amplitude', value=amplitude,                                                  max=-1e-6)
-    parameters.add('lorentz0_center',    value=x_axis_min)
-    parameters.add('lorentz0_sigma',     value=linewidth,                           min=minimal_linewidth, max=maximal_linewidth)
-    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
-    parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6,                                      expr='lorentz0_center+2.15*1e6')
-    parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
-    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value,                     max=-1e-6)
-    parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6,                                      expr='lorentz0_center+4.3*1e6')
-    parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value,  min=minimal_linewidth, max=maximal_linewidth, expr='lorentz0_sigma')
-    parameters.add('c',                  value=data_smooth_lorentz.max())
+    # Fill the parameter container, with the estimated values, which should be
+    # passed to the fit algorithm:
+    params['l0_amplitude'].set(value=amplitude, max=-1e-6)
+    params['l0_center'].set(value=x_axis_min)
+    params['l0_sigma'].set(value=sigma, min=minimal_linewidth,
+                                 max=maximal_linewidth)
+    params['l1_amplitude'].set(value=amplitude, max=-1e-6)
+    params['l1_center'].set(value=x_axis_min+2.15*1e6,
+                                  expr='l0_center+2.15*1e6')
+    params['l1_sigma'].set(value=sigma, min=minimal_linewidth,
+                                 max=maximal_linewidth, expr='l0_sigma')
+    params['l2_amplitude'].set(value=amplitude, max=-1e-6)
+    params['l2_center'].set(value=x_axis_min+2.15*1e6,
+                                  expr='l0_center+4.3*1e6')
+    params['l2_sigma'].set(value=sigma, min=minimal_linewidth,
+                                 max=maximal_linewidth, expr='l0_sigma')
+    params['offset'].set(value=data_smooth_lorentz.max())
 
-    return parameters
+    return error, params
 
 
 def make_N14_fit(self, x_axis, data, add_params=None):
-    """ This method performs a fit on the provided data where a N14
-    hyperfine interaction of 2.15 MHz is taken into account.
+    """ Perform a N14 fit by taking the hyperfine interaction of 2.15 MHz into
+        account.
 
-    @param array [] axis: axis values
-    @param array[]  data: data
-    @param dictionary add_parameters: Additional parameters
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
-    @return lmfit.model.ModelFit result: All parameters provided about
-                                         the fitting, like: success,
-                                         initial fitting values, best
-                                         fitting values, data with best
-                                         fit with given axis,...
-
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
     """
 
-    parameters = self.estimate_N14(x_axis, data)
+    model, params = self.make_multiplelorentzoffset_model(no_of_functions=3)
+    error, params = self.estimate_N14(x_axis, data, params)
 
-    parameters = self._substitute_params(initial_params=parameters,
-                                        update_params=add_params)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
 
-    mod, params = self.make_multiplelorentzian_model(no_of_lor=3)
-
-    result = mod.fit(data=data, x=x_axis, params=parameters)
+    try:
+        result = model.fit(data, x=x_axis, params=params)
+    except:
+        result = model.fit(data, x=x_axis, params=params)
+        logger.error('The N14 fit did not '
+                     'work: {0}'.format(result.message))
 
     return result
+
+
+
+#                   Old Stuff:
+################################################################################
 
 ############################################################################
 #                                                                          #
