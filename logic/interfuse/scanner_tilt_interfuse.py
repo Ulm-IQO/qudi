@@ -101,10 +101,6 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
             myrange = [-10., 10.]
         return self._scanning_device.set_voltage_range(myrange)
 
-    def get_scanner_axes(self):
-        """ Pass through scanner axes """
-        return self._scanning_device.get_scanner_axes()
-
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
