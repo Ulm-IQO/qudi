@@ -581,7 +581,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_xy_image_updated.connect(self.refresh_scan_line)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_scan_line)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_depth_image)
-        self._optimizer_logic.signal_image_updated.connect(self.refresh_refocus_image)
+        self._optimizer_logic.sigImageUpdated.connect(self.refresh_refocus_image)
         self._scanning_logic.sigImageXYInitialized.connect(self.adjust_xy_window)
         self._scanning_logic.sigImageDepthInitialized.connect(self.adjust_depth_window)
 
@@ -590,9 +590,9 @@ class ConfocalGui(GUIBase):
 
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
-        self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
-        self._optimizer_logic.signal_refocus_XY_size_changed.connect(self.update_roi_xy_size)
-        self._optimizer_logic.signal_refocus_Z_size_changed.connect(self.update_roi_depth_size)
+        self._optimizer_logic.sigRefocusFinished.connect(self._refocus_finished_wrapper)
+        self._optimizer_logic.sigRefocusXySizeChanged.connect(self.update_roi_xy_size)
+        self._optimizer_logic.sigRefocusZSizeChanged.connect(self.update_roi_depth_size)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
