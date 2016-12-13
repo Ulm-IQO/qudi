@@ -57,28 +57,6 @@ class OptimizerLogic(GenericLogic):
     sigClockFrequencyChanged = QtCore.Signal(int)
     sigPositionChanged = QtCore.Signal(float, float, float)
 
-    sigLaserToShowChanged = QtCore.Signal(int, bool)
-    sigDoFit = QtCore.Signal(str)
-    sigStartMeasurement = QtCore.Signal(str)
-    sigStopMeasurement = QtCore.Signal(str)
-    sigPauseMeasurement = QtCore.Signal()
-    sigContinueMeasurement = QtCore.Signal()
-    sigStartPulser = QtCore.Signal()
-    sigStopPulser = QtCore.Signal()
-    sigFastCounterSettingsChanged = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool, float)
-    sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
-    sigUploadAsset = QtCore.Signal(str)
-    sigLoadAsset = QtCore.Signal(str, dict)
-    sigClearPulseGenerator = QtCore.Signal()
-    sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
-    sigExtMicrowaveStartStop = QtCore.Signal(bool)
-    sigTimerIntervalChanged = QtCore.Signal(float)
-    sigAnalysisWindowsChanged = QtCore.Signal(int, int, int, int)
-    sigManuallyPullData = QtCore.Signal()
-    sigRequestMeasurementInitValues = QtCore.Signal()
-    sigAnalysisMethodChanged = QtCore.Signal(float)
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
