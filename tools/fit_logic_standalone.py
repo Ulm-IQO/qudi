@@ -162,58 +162,155 @@ qudi_fitting=FitLogic()
 
 
 def N15_testing():
-    x = np.linspace(2840, 2860, 101)*1e6
+    """ Test function to implement the estimator for the N15 fit with offset. """
+    x_axis = np.linspace(2850, 2860, 101)*1e6
 
-    mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_lor=2)
+    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
 #            print('Parameters of the model',mod.param_names)
 
     p=Parameters()
 
-    p.add('lorentz0_amplitude',value=-3e7)
-    p.add('lorentz0_center',value=2850*1e6+abs(np.random.random(1)*8)*1e6)
+    p.add('l0_amplitude',value=-1e4)
+    p.add('l0_center',value=2850*1e6+abs(np.random.random(1)*8)*1e6)
 #            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)*1e6+0.5*1e6)
-    p.add('lorentz0_sigma',value=0.5*1e6)
-    p.add('lorentz1_amplitude',value=p['lorentz0_amplitude'].value)
-    p.add('lorentz1_center',value=p['lorentz0_center'].value+3.03*1e6)
-    p.add('lorentz1_sigma',value=p['lorentz0_sigma'].value)
-    p.add('c',value=100.)
+    p.add('l0_sigma',value=0.5*1e6)
+    p.add('l1_amplitude',value=p['l0_amplitude'].value)
+    p.add('l1_center',value=p['l0_center'].value+3.03*1e6)
+    p.add('l1_sigma',value=p['l0_sigma'].value)
+    p.add('offset',value=100000.)
 
-    data_noisy=(mod.eval(x=x,params=p)
-                            + 1.5*np.random.normal(size=x.shape))
+    data_nice = mod.eval(x=x_axis, params=p)
 
-    data_smooth_lorentz, offset = qudi_fitting.find_offset_parameter(x, data_noisy)
+    data_noisy= data_nice + 6000*np.random.normal(size=x_axis.shape)
 
+    data_smooth_lorentz, offset = qudi_fitting.find_offset_parameter(x_axis,
+                                                                     data_noisy)
+
+    print('offset:', offset)
+
+    x_offset = np.array([offset]*len(x_axis))
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label='noisy data')
+    plt.plot(x_axis, data_smooth_lorentz, label='smoothed data')
+    plt.plot(x_axis, x_offset, label='offset estimation')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
 
     hf_splitting = 3.03 * 1e6 # Hz
-    #filter should always have a length of approx linewidth 1MHz
-    points_within_1MHz = len(x)/(x.max()-x.min()) * 1e6
+
+    # filter should always have a length of approx linewidth 1MHz
+    points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
+
     # filter should have a width of 4 MHz
     x_filter = np.linspace(0,4*points_within_1MHz,4*points_within_1MHz)
-    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
-                                    (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4),
-                                    (x_filter >= len(x_filter)*3/4)], [1, 0,1])
+    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter < len(x_filter)/4),
+                                      (x_filter >= len(x_filter)/4)*(x_filter < len(x_filter)*3/4),
+                                      (x_filter >= len(x_filter)*3/4)],
+                           [1, 0, 1])
 
-    # if the filter is smaller than 5 points a convolution does not make sense
+    # if the filter is smaller than 3 points a convolution does not make sense
     if len(lorentz) >= 3:
-        data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),
-                                     mode='constant', cval=data_smooth_lorentz.max())
-        x_axis_min = x[data_convolved.argmin()]-hf_splitting
-        plt.plot(x,data_convolved,'-g')
-
+        data_convolved = filters.convolve1d(data_smooth_lorentz,
+                                            lorentz/lorentz.sum(),
+                                            mode='constant',
+                                            cval=data_smooth_lorentz.max())
+        x_axis_min = x_axis[data_convolved.argmin()]-hf_splitting/2.
     else:
-        x_axis_min = x[data_smooth_lorentz.argmin()]-hf_splitting
+        x_axis_min = x_axis[data_smooth_lorentz.argmin()]
 
-    result=qudi_fitting.make_N15_fit(x, data_noisy)
-    print(result.best_values['lorentz0_center'])
-    plt.plot(x,data_noisy)
-    plt.plot(x,result.init_fit,'-y')
-    plt.plot(x,result.best_fit,'-r')
+    # data_level = data_smooth_lorentz - data_smooth_lorentz.max()
+    data_level = data_smooth_lorentz - offset
+
+    # multiply
+    minimum_level = data_level.min()
+
+    x_min_level = np.array([minimum_level]*len(x_axis))
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy-offset, label='leveled noisy data')
+    plt.plot(x_axis, data_level, label='leveled smoothed data')
+    plt.plot(x_axis, x_min_level, label='minimum level estimation')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    # integral of data:
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = function.integral(x_axis[0], x_axis[-1])
+
+    # assume both peaks contribute to the linewidth, so devive by 2:
+    sigma = abs(Integral /(np.pi * minimum_level) )/2
+
+    # amplitude = -1*abs(minimum_level*np.pi*sigma)
+    amplitude = -abs(minimum_level)
+
+    minimal_sigma = x_axis[1]-x_axis[0]
+    maximal_sigma = x_axis[-1]-x_axis[0]
+
+    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+
+    params['l0_amplitude'].set(value=amplitude, max=-1e-6)
+    params['l0_center'].set(value=x_axis_min)
+    params['l0_sigma'].set(value=sigma, min=minimal_sigma,
+                                 max=maximal_sigma)
+    params['l1_amplitude'].set(value=params['l0_amplitude'].value,
+                               max=-1e-6)
+    params['l1_center'].set(value=params['l0_center'].value+hf_splitting,
+                            expr='l0_center+3.03*1e6')
+    params['l1_sigma'].set(value=params['l0_sigma'].value,
+                           min=minimal_sigma, max=maximal_sigma,
+                           expr='l0_sigma')
+    params['offset'].set(value=offset)
+
+    result = mod.fit(data_noisy, x=x_axis, params=params)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label='original data')
+    plt.plot(x_axis, result.init_fit,'-y', label='initial values')
+    plt.plot(x_axis, result.best_fit,'-r', label='actual fit')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
 
 def N15_testing2():
     """ Test direkt the implemented fit method with simulated data."""
-    pass
+
+    x_axis = np.linspace(2850, 2860, 101)*1e6
+
+    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+#            print('Parameters of the model',mod.param_names)
+
+    p=Parameters()
+
+    p.add('l0_amplitude',value=-3e4)
+    p.add('l0_center',value=2850*1e6+abs(np.random.random(1)*8)*1e6)
+#            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)*1e6+0.5*1e6)
+    p.add('l0_sigma',value=0.5*1e6)
+    p.add('l1_amplitude',value=p['l0_amplitude'].value)
+    p.add('l1_center',value=p['l0_center'].value+3.03*1e6)
+    p.add('l1_sigma',value=p['l0_sigma'].value)
+    p.add('offset',value=100.)
+
+    data_nice = mod.eval(x=x_axis, params=p)
+
+    data_noisy=(data_nice + 14000*np.random.normal(size=x_axis.shape))
+
+    result = qudi_fitting.make_N15_fit(x_axis, data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy,'-b', label='data')
+    plt.plot(x_axis, result.init_fit,'-y', label='initial values')
+    plt.plot(x_axis, result.best_fit,'-r', label='actual fit')
+    plt.plot(x_axis, data_nice,'-g', label='actual fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
 
 def N14_testing():
     """ Test function to implement the estimator for the N14 fit with offset. """
@@ -223,7 +320,7 @@ def N14_testing():
     mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
 
 #    x_axis = np.linspace(2850, 2860, 101)*1e6
-    x_axis = np.linspace(2820, 2890, 301)*1e6
+    x_axis = np.linspace(2720, 2890, 301)*1e6
 
 
     sigma = 1e6  # linewidth
@@ -249,7 +346,7 @@ def N14_testing():
     params['offset'].set(value=offset)
 
     data_noisy=(mod.eval(x=x_axis, params=params) + \
-                8000*np.random.normal(size=x_axis.shape))
+                7000*np.random.normal(size=x_axis.shape))
 
     data_smooth_lorentz, offset = qudi_fitting.find_offset_parameter(x_axis, data_noisy)
 
@@ -361,7 +458,7 @@ def N14_testing():
                                   expr='l0_center+4.3*1e6')
     params['l2_sigma'].set(value=sigma, min=minimal_linewidth,
                                  max=maximal_linewidth, expr='l0_sigma')
-    params['offset'].set(value=data_smooth_lorentz.max())
+    params['offset'].set(value=offset)
 
     result = mod.fit(data_noisy, x=x_axis, params=params)
 
@@ -387,7 +484,7 @@ def N14_testing2():
     # ability to get the used parameter container for the fit.
     mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
 
-    x_axis = np.linspace(2850, 2860, 101)*1e6
+    x_axis = np.linspace(2845, 2860, 101)*1e6
 
     sigma = 1e6  # linewidth
 #   sigma = abs(np.random.random(1)*1)+0.5
@@ -424,7 +521,7 @@ def N14_testing2():
 #            plt.plot(x_axis, data_convolved,'-y',linewidth=2.0, label='convolved data')
 #            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
 #            plt.plot(x, result2.best_fit,'-r', label='fit')
-#    plt.plot(x_axis, result.best_fit,'-r', label='best fit result')
+    plt.plot(x_axis, result.best_fit,'-r', label='best fit result')
     plt.plot(x_axis, result.init_fit,'-g',label='initial fit')
 #            plt.plot(x_axis, data_test,'-k', label='test data')
     plt.xlabel('Frequency (Hz)')
@@ -584,6 +681,42 @@ def N14_testing_data():
 #            plt.plot(x_axis, data_convolved,'-y',linewidth=2.0, label='convolved data')
 #            plt.plot(x_axis, result.init_fit,'-y', label='initial fit')
 #            plt.plot(x, result2.best_fit,'-r', label='fit')
+    plt.plot(x_axis,result.best_fit,'-r', label='best fit result')
+    plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
+#            plt.plot(x_axis, data_test,'-k', label='test data')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+
+
+def N14_testing_data2():
+    """ Test the N14 fit with data from file. """
+
+    # get the model of the three lorentzian peak, this gives you the
+    # ability to get the used parameter container for the fit.
+    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
+
+    # you can insert the whole path with the windows separator
+    # symbol \ just use the r in front of the string to indicated
+    # that this is a raw input. The os package will do the rest.
+    path = os.path.abspath(r'C:\Users\astark\Dropbox\Doctorwork\Software\QuDi-Git\qudi\pulsedODMRdata.csv')
+    data = np.genfromtxt(path,delimiter=',')
+#    data = np.loadtxt(path, delimiter=',')
+#    print(data)
+
+    # The data for the fit:
+    x_axis = data[:,0]*1e8
+    data_noisy = data[:,1]
+
+
+    result = qudi_fitting.make_N14_fit(x_axis, data_noisy)
+
+    print(result.fit_report())
+
+    plt.plot(x_axis, data_noisy,'-b', label='data')
     plt.plot(x_axis,result.best_fit,'-r', label='best fit result')
     plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
 #            plt.plot(x_axis, data_test,'-k', label='test data')
@@ -3596,8 +3729,6 @@ plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
 #    gaussianwithslope_testing()
-
-
 #    oneD_testing()
 #    gaussian_testing()
 #    twoD_testing()
@@ -3610,14 +3741,16 @@ if __name__ == "__main__":
 #    double_lorentzdip_testing2()
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
-     N14_testing()
-#     N14_testing2()
-#     N14_testing_data()
-    #    N15_testing()
+#    N14_testing()
+#    N14_testing2()
+#    N14_testing_data()
+#    N14_testing_data2()
+#    N15_testing()
+#    N15_testing2()
 #    powerfluorescence_testing()
 #    sine_testing()
 #    sine_testing2()
-##    sine_testing_data() # needs a selected file for data input
+#    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
 #    poissonian_testing()
 #    double_poissonian_testing()
