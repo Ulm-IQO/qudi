@@ -219,3 +219,5 @@ class SpectrumLogic(GenericLogic):
                                    as_text=True,
                                    plotfig=fig
                                    )
+        plt.close(fig)
+        self.log.debug('Spectrum saved to:\n{0}'.format(filepath))
