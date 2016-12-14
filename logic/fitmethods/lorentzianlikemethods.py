@@ -625,10 +625,29 @@ def estimate_N14(self, x_axis, data, params):
     three equidistant lorentzian dips of the hyperfine interaction
     of a N14 nuclear spin. Here the splitting is set as an expression,
     if the splitting is not exactly 2.15MHz the fit will not work.
+
+    Note that this estimator is really specific to a physical scenario.
+    Therefore the x_axis is expected to be in SI units Hz, and the x_axis should
+    be at least half of the hyperfine interaction long (2.15MHz) but also be
+    less then 1 GHz. Otherwise the underlying estimation algorithm will not
+    work.
     """
 
     # check if parameters make sense
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    hf_splitting = 2.15e6 # hyperfine splitting for a N14 spin
+
+    # this is an estimator, for a physical application, therefore the x_axis
+    # should fulfill certain constraints:
+    length_x_scan = x_axis[-1] - x_axis[0]
+
+    if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
+        logger.error('The N14 estimator expects an x_axis with a length in the '
+                     'range [{0},{1}]Hz, but the passed x_axis has a length of '
+                     '{2}, which is not sensible for the N14 estimator. Correct '
+                     'that!'.format(hf_splitting/2, 1e9, length_x_scan))
+        return -1, params
 
     # find the offset parameter, which should be in the fit the zero level:
     data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
@@ -676,7 +695,7 @@ def estimate_N14(self, x_axis, data, params):
 
     # sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:
-    sigma = abs(integrated_area /(np.pi * minimum_level))
+    sigma = abs(integrated_area /(np.pi * minimum_level))/3
 
     amplitude = -1*abs(minimum_level)
 
@@ -696,18 +715,18 @@ def estimate_N14(self, x_axis, data, params):
     params['l0_amplitude'].set(value=amplitude, max=-1e-6)
     params['l0_center'].set(value=x_axis_min)
     params['l0_sigma'].set(value=sigma, min=minimal_linewidth,
-                                 max=maximal_linewidth)
+                           max=maximal_linewidth)
     params['l1_amplitude'].set(value=amplitude, max=-1e-6)
-    params['l1_center'].set(value=x_axis_min+2.15*1e6,
-                                  expr='l0_center+2.15*1e6')
+    params['l1_center'].set(value=x_axis_min+hf_splitting,
+                            expr='l0_center+{0}'.format(hf_splitting))
     params['l1_sigma'].set(value=sigma, min=minimal_linewidth,
-                                 max=maximal_linewidth, expr='l0_sigma')
+                           max=maximal_linewidth, expr='l0_sigma')
     params['l2_amplitude'].set(value=amplitude, max=-1e-6)
-    params['l2_center'].set(value=x_axis_min+2.15*1e6,
-                                  expr='l0_center+4.3*1e6')
+    params['l2_center'].set(value=x_axis_min+hf_splitting*2,
+                            expr='l0_center+{0}'.format(hf_splitting*2))
     params['l2_sigma'].set(value=sigma, min=minimal_linewidth,
-                                 max=maximal_linewidth, expr='l0_sigma')
-    params['offset'].set(value=data_smooth_lorentz.max())
+                           max=maximal_linewidth, expr='l0_sigma')
+    params['offset'].set(value=offset)
 
     return error, params
 
@@ -773,9 +792,20 @@ def estimate_N15(self, x_axis, data, params):
     # check if parameters make sense
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
-
     hf_splitting = 3.03 * 1e6 # Hz
+
+    # this is an estimator, for a physical application, therefore the x_axis
+    # should fulfill certain constraints:
+    length_x_scan = x_axis[-1] - x_axis[0]
+
+    if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
+        logger.error('The N15 estimator expects an x_axis with a length in the '
+                     'range [{0},{1}]Hz, but the passed x_axis has a length of '
+                     '{2}, which is not sensible for the N15 estimator. Correct '
+                     'that!'.format(hf_splitting/2, 1e9, length_x_scan))
+        return -1, params
+
+    data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
 
     # filter should always have a length of approx linewidth 1MHz
     points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
@@ -821,7 +851,7 @@ def estimate_N15(self, x_axis, data, params):
     params['l1_amplitude'].set(value=params['l0_amplitude'].value,
                                max=-1e-6)
     params['l1_center'].set(value=params['l0_center'].value+hf_splitting,
-                            expr='l0_center+3.03*1e6')
+                            expr='l0_center+{0}'.format(hf_splitting))
     params['l1_sigma'].set(value=params['l0_sigma'].value,
                            min=minimal_sigma, max=maximal_sigma,
                            expr='l0_sigma')
