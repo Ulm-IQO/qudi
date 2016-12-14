@@ -88,6 +88,16 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def get_scanner_count_channels(self):
+        """ Returns the list of channels that are recorded while scanning an image.
+
+        @return list(str): channel names
+
+        Most methods calling this might just care about the number of channels.
+        """
+        pass
+
+    @abc.abstractmethod
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -101,7 +111,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_up_scanner(self, counter_channel=None, photon_source=None,
+    def set_up_scanner(self, counter_channels=None, sources=None,
                        clock_channel=None, scanner_ao_channels=None):
         """ Configures the actual scanner with a given clock.
 
@@ -135,7 +145,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
 
-        @return float[]: current position in (x, y, z, a).
+        @return float[n]: current position in (x, y, z, ...).
         """
         pass
 
@@ -153,10 +163,10 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def scan_line(self, line_path=None):
         """ Scans a line and returns the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the
+        @param float[][n] line_path: array of n-part tuples defining the
                                      positions pixels
 
-        @return float[]: the photon counts per second
+        @return float[][]: the photon counts per second
         """
         pass
 
@@ -169,7 +179,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def close_scanner_clock(self, power=0):
+    def close_scanner_clock(self):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)

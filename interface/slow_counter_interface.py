@@ -45,16 +45,14 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def set_up_counter(self,
-                       counter_channel=None,
-                       photon_source=None,
-                       counter_channel2=None,
-                       photon_source2=None,
+                       counter_channels=None,
+                       sources=None,
                        clock_channel=None,
                        counter_buffer=None):
         """ Configures the actual counter with a given clock.
 
-        @param str counter_channel: optional, physical channel of the counter
-        @param str photon_source: optional, physical channel where the photons
+        @param list(str) counter_channels: optional, physical channel of the counter
+        @param list(str) sources: optional, physical channel where the photons
                                   are to count from
         @param str counter_channel2: optional, physical channel of the counter 2
         @param str photon_source2: optional, second physical channel where the
@@ -66,6 +64,10 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
                                    are saved.
 
         @return int: error code (0:OK, -1:error)
+
+        There need to be exactly the same number sof sources and counter channels and
+        they need to be given in the same order.
+        All counter channels share the same clock.
         """
         pass
 
@@ -76,6 +78,16 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
         @param int samples: if defined, number of samples to read in one go
 
         @return numpy.array(uint32): the photon counts per second
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_counter_channels(self):
+        """ Returns the list of counter channel names.
+
+        @return list(str): channel names
+
+        Most methods calling this might just care about the number of channels, though.
         """
         pass
 

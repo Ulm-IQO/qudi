@@ -539,10 +539,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         return 0
 
     def set_up_counter(self,
-                       counter_channel=None,
-                       photon_source=None,
-                       counter_channel2=None,
-                       photon_source2=None,
+                       counter_channels=None,
+                       sources=None,
                        clock_channel=None,
                        counter_buffer=None):
         """ Configures the actual counter with a given clock.
@@ -779,6 +777,17 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
 
         return 0
+
+    def get_counter_channels(self):
+        """ Returns the list of counter channel names.
+
+        @return tuple(str): channel names
+
+        Most methods calling this might just care about the number of channels, though.
+        """
+        if self._photon_source2 is not None:
+            return (self._photon_source, self._photon_source2)
+        return (self._photon_source, )
 
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
