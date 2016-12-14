@@ -307,7 +307,7 @@ class ODMRLogic(GenericLogic):
         else:
             param_dict = {'mw_power': self.mw_power,
                           '_mw_frequency_list': self._mw_frequency_list}
-            self.sigParameterChanged(param_dict)
+            self.sigParameterChanged.emit(param_dict)
 
             if self.scanmode == MicrowaveMode.SWEEP:
                 self._mw_device.sweep_on()
@@ -479,8 +479,8 @@ class ODMRLogic(GenericLogic):
             error_code = self._mw_device.set_power(
                 self.limits.power_in_range(power))
             if error_code == 0:
-                param_dict = {'mw_power', self.mw_power}
-                self.sigParameterChanged(param_dict)
+                param_dict = {'mw_power': self.mw_power}
+                self.sigParameterChanged.emit(param_dict)
             return error_code
 
     def get_power(self):
@@ -508,8 +508,8 @@ class ODMRLogic(GenericLogic):
             error_code = self._mw_device.set_frequency(
                 self.limits.frequency_in_range(frequency))
             if error_code == 0:
-                param_dict = {'mw_frequency', self.mw_frequency}
-                self.sigParameterChanged(param_dict)
+                param_dict = {'mw_frequency': self.mw_frequency}
+                self.sigParameterChanged.emit(param_dict)
             return error_code
 
     def get_frequency(self):
