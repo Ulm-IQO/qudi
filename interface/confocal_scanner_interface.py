@@ -111,13 +111,16 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_up_scanner(self, counter_channels=None, sources=None,
-                       clock_channel=None, scanner_ao_channels=None):
+    def set_up_scanner(self,
+                       counter_channels=None,
+                       sources=None,
+                       clock_channel=None,
+                       scanner_ao_channels=None):
         """ Configures the actual scanner with a given clock.
 
-        @param str counter_channel: if defined, this is the physical channel
+        @param str counter_channels: if defined, this is the physical channel
                                     of the counter
-        @param str photon_source: if defined, this is the physical channel where
+        @param str sources: if defined, this is the physical channel where
                                   the photons are to count from
         @param str clock_channel: if defined, this specifies the clock for the
                                   counter
