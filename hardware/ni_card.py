@@ -164,33 +164,45 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._odmr_length = None
         self._gated_counter_daq_task = None
 
-        # some default values for the hardware:
-        self._voltage_range = [[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
-        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
-        self._current_position = [0., 0., 0., 0.]
-
-        self._max_counts = 3e7  # used as a default for expected maximum counts
-        self._RWTimeout = 10     # timeout for the Read or/and write process in s
+        # used as a default for expected maximum counts
+        self._max_counts = 3e7
+        # timeout for the Read or/and write process in s
+        self._RWTimeout = 10
 
         self._clock_frequency_default = 100             # in Hz
         self._scanner_clock_frequency_default = 100     # in Hz
-        self._samples_number_default = 50      # number of readout samples
-                                                # mainly used for gated counter
+        # number of readout samples mainly used for gated counter
+        self._samples_number_default = 50
 
         config = self.getConfiguration()
 
         self._scanner_ao_channels = []
+        self._voltage_range = []
+        self._position_range = []
+        self._current_position = []
+
         # handle all the parameters given by the config
-        # FIXME: Suggestion: and  partially set the parameters to default values
-        # if not given by the config
         if 'scanner_x_ao' in config.keys():
             self._scanner_ao_channels.append(config['scanner_x_ao'])
+            self._current_position.append(0)
+            self._position_range.append([0., 100.])
+            self._voltage_range.append([-10., 10.])
             if 'scanner_y_ao' in config.keys():
                 self._scanner_ao_channels.append(config['scanner_y_ao'])
+                self._current_position.append(0)
+                self._position_range.append([0., 100.])
+                self._voltage_range.append([-10., 10.])
                 if 'scanner_z_ao' in config.keys():
                     self._scanner_ao_channels.append(config['scanner_z_ao'])
+                    self._current_position.append(0)
+                    self._position_range.append([0., 100.])
+                    self._voltage_range.append([-10., 10.])
                     if 'scanner_a_ao' in config.keys():
                         self._scanner_ao_channels.append(config['scanner_a_ao'])
+                        self._current_position.append(0)
+                        self._position_range.append([0., 100.])
+                        self._voltage_range.append([-10., 10.])
+
         if len(self._scanner_ao_channels) < 1:
             self.log.error(
                 'Not enough scanner channels found in the configuration!\n'
@@ -300,7 +312,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 ''.format(self._samples_number_default))
             self._samples_number = self._samples_number_default
 
-        if 'x_range' in config.keys():
+        if 'x_range' in config.keys() and len(self._position_range) > 0:
             if float(config['x_range'][0]) < float(config['x_range'][1]):
                 self._position_range[0] = [float(config['x_range'][0]),
                                            float(config['x_range'][1])]
@@ -309,9 +321,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({}) of x_range incorrect, taking [0,100] instead.'
                     ''.format(config['x_range']))
         else:
-            self.log.warning('No x_range configured taking [0,100] instead.')
+            if len(self._position_range) > 0:
+                self.log.warning('No x_range configured taking [0,100] instead.')
 
-        if 'y_range' in config.keys():
+        if 'y_range' in config.keys() and len(self._position_range) > 1:
             if float(config['y_range'][0]) < float(config['y_range'][1]):
                 self._position_range[1] = [float(config['y_range'][0]),
                                            float(config['y_range'][1])]
@@ -320,9 +333,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({}) of y_range incorrect, taking [0,100] instead.'
                     ''.format(config['y_range']))
         else:
-            self.log.warning('No y_range configured taking [0,100] instead.')
+            if len(self._position_range) > 1:
+                self.log.warning('No y_range configured taking [0,100] instead.')
 
-        if 'z_range' in config.keys():
+        if 'z_range' in config.keys() and len(self._position_range) > 2:
             if float(config['z_range'][0]) < float(config['z_range'][1]):
                 self._position_range[2] = [float(config['z_range'][0]),
                                            float(config['z_range'][1])]
@@ -331,9 +345,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({}) of z_range incorrect, taking [0,100] instead.'
                     ''.format(config['z_range']))
         else:
-            self.log.warning('No z_range configured taking [0,100] instead.')
+            if len(self._position_range) > 2:
+                self.log.warning('No z_range configured taking [0,100] instead.')
 
-        if 'a_range' in config.keys():
+        if 'a_range' in config.keys() and len(self._position_range) > 3:
             if float(config['a_range'][0]) < float(config['a_range'][1]):
                 self._position_range[3] = [float(config['a_range'][0]),
                                            float(config['a_range'][1])]
@@ -342,13 +357,16 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Configuration ({}) of a_range incorrect, taking [0,100] instead.'
                     ''.format(config['a_range']))
         else:
-            self.log.warning('No a_range configured taking [0,100] instead.')
+            if len(self._position_range) > 3:
+                self.log.warning('No a_range configured taking [0,100] instead.')
 
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
                 vlow = float(config['voltage_range'][0])
                 vhigh = float(config['voltage_range'][1])
-                self._voltage_range = [[vlow, vhigh], [vlow, vhigh], [vlow, vhigh], [vlow, vhigh]]
+                self._voltage_range = [
+                    [vlow, vhigh], [vlow, vhigh], [vlow, vhigh], [vlow, vhigh]
+                    ][0:len(self._voltage_range)]
             else:
                 self.log.warning(
                     'Configuration ({}) of voltage_range incorrect, taking [-10,10] instead.'
@@ -356,7 +374,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         else:
             self.log.warning('No voltage_range configured, taking [-10,10] instead.')
 
-        if 'x_voltage_range' in config.keys():
+        if 'x_voltage_range' in config.keys() and len(self._voltage_range) > 0:
             if float(config['x_voltage_range'][0]) < float(config['x_voltage_range'][1]):
                 vlow = float(config['x_voltage_range'][0])
                 vhigh = float(config['x_voltage_range'][1])
@@ -369,7 +387,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             if 'voltage_range' not in config.keys():
                 self.log.warning('No x_voltage_range configured, taking [-10, 10] instead.')
 
-        if 'y_voltage_range' in config.keys():
+        if 'y_voltage_range' in config.keys() and len(self._voltage_range) > 1:
             if float(config['y_voltage_range'][0]) < float(config['y_voltage_range'][1]):
                 vlow = float(config['y_voltage_range'][0])
                 vhigh = float(config['y_voltage_range'][1])
@@ -382,7 +400,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             if 'voltage_range' not in config.keys():
                 self.log.warning('No y_voltage_range configured, taking [-10, 10] instead.')
 
-        if 'z_voltage_range' in config.keys():
+        if 'z_voltage_range' in config.keys() and len(self._voltage_range) > 2:
             if float(config['z_voltage_range'][0]) < float(config['z_voltage_range'][1]):
                 vlow = float(config['z_voltage_range'][0])
                 vhigh = float(config['z_voltage_range'][1])
@@ -395,7 +413,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             if 'voltage_range' not in config.keys():
                 self.log.warning('No z_voltage_range configured, taking [-10, 10] instead.')
 
-        if 'a_voltage_range' in config.keys():
+        if 'a_voltage_range' in config.keys() and len(self._voltage_range) > 3:
             if float(config['a_voltage_range'][0]) < float(config['a_voltage_range'][1]):
                 vlow = float(config['a_voltage_range'][0])
                 vhigh = float(config['a_voltage_range'][1])
@@ -1289,7 +1307,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         # then directly write the position to the hardware
         try:
-            self._write_scanner_ao(voltages=self._scanner_position_to_volt(my_position), start=True)
+            self._write_scanner_ao(
+                voltages=self._scanner_position_to_volt(my_position),
+                start=True)
         except:
             return -1
         return 0
@@ -1558,7 +1578,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self._real_data += self._scan_data[1::2]
 
             # update the scanner position instance variable
-            self._current_position = list(line_path[:,-1])
+            self._current_position = list(line_path[:, -1])
         except:
             self.log.exception('Error while scanning line.')
             return np.array([-1.])
