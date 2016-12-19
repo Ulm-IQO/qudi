@@ -110,9 +110,15 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.counter = Counter(self._tagger, channels=[self._photon_source], binwidth=int((1/self._count_frequency)*1e12), n_values=1)
+        self.counter = Counter(
+            self._tagger,
+            channels=[self._photon_source],
+            binwidth=int((1/self._count_frequency)*1e12),
+            n_values=1)
         self.log.info('set up counter with {0}'.format(self._count_frequency))
         return 0
+
+
 
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
