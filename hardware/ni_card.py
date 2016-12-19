@@ -189,6 +189,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 self._scanner_ao_channels.append(config['scanner_y_ao'])
                 if 'scanner_z_ao' in config.keys():
                     self._scanner_ao_channels.append(config['scanner_z_ao'])
+                    if 'scanner_a_ao' in config.keys():
+                        self._scanner_ao_channels.append(config['scanner_a_ao'])
         if len(self._scanner_ao_channels) < 1:
             self.log.error(
                 'Not enough scanner channels found in the configuration!\n'
@@ -382,7 +384,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         if 'z_voltage_range' in config.keys():
             if float(config['z_voltage_range'][0]) < float(config['z_voltage_range'][1]):
-                vlow = float(config['z_voltage__range'][0])
+                vlow = float(config['z_voltage_range'][0])
                 vhigh = float(config['z_voltage_range'][1])
                 self._voltage_range[2] = [vlow, vhigh]
             else:
