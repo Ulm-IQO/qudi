@@ -133,7 +133,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def scanner_set_position(self, x=None, y=None, z=None, a=None):
-        """Move stage to x, y, z, a (where a is the fourth voltage channel).
+        """Move stage to x, y, z, a (where a is the fourth voltage channel).ha
 
         @param float x: postion in x-direction (volts)
         @param float y: postion in y-direction (volts)

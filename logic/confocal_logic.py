@@ -613,6 +613,8 @@ class ConfocalLogic(GenericLogic):
             self._current_y = y
         if z is not None:
             self._current_z = z
+        if a is not None:
+            self._current_a = a
 
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
@@ -627,14 +629,15 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        # if tag == 'optimizer' or tag == 'scanner' or tag == 'activation':
-        self._scanning_device.scanner_set_position(
-            x=self._current_x,
-            y=self._current_y,
-            z=self._current_z
-        )
-        return 0
+        ch_array = ['x', 'y', 'z', 'a']
+        pos_array = [self._current_x, self._current_y, self._current_z, self._current_a]
+        pos_dict = {}
 
+        for i, ch in enumerate(self._scanning_device.get_scanner_axes()):
+            pos_dict[ch_array[i]] = pos_array[i]
+
+        self._scanning_device.scanner_set_position(**pos_dict)
+        return 0
 
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
@@ -643,7 +646,7 @@ class ConfocalLogic(GenericLogic):
                       position in microns
         """
         #FIXME: change that to SI units!
-        return self._scanning_device.get_scanner_position()[:3]
+        return self._scanning_device.get_scanner_position()
 
     def _scan_line(self):
         """scanning an image in either depth or xy
