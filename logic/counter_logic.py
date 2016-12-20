@@ -137,9 +137,13 @@ class CounterLogic(GenericLogic):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
+        #print('{0} -> {1}'.format(e.src, e.dst))
+        if e.src == 'idle':
+            return
+
         self.stopCount()
         for attempt in range(20):
-            if self.getState() == 'idle':
+            if not self.stopRequested:
                 break
             QtCore.QCoreApplication.processEvents()
             time.sleep(0.1)
@@ -538,7 +542,7 @@ class CounterLogic(GenericLogic):
                 newdata =  np.empty((len(chans) + 1, ))
                 newdata[0] = time.time() - self._saving_start_time
                 for i, ch in enumerate(chans):
-                    newdata[i+1] = self.countdata[-1]
+                    newdata[i+1] = self.countdata[i, -1]
 
                 self._data_to_save.append(newdata)
 
