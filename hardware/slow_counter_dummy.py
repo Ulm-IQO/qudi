@@ -120,6 +120,16 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         """
         pass
 
+    def get_constraints(self):
+        """ Return a constraints dictionary for the slow counter."""
+        constraints = {}
+        constraints['#detectors'] = 2
+        constraints['min_count_frequency'] = 5e-5
+        constraints['max_count_frequency'] = 5e5
+        constraints['counting_mode'] = ['continuous','gated','finite_gated']
+
+        return constraints
+
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
