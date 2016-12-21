@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
-import serial
+
+from collections import OrderedDict
 
 from core.base import Base
 from interface.motor_interface import MotorInterface
@@ -40,21 +41,6 @@ class MotorStagePI(Base, MotorInterface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # should be in config I guess
-
-        #axis definition:
-        self._x_axis_label = 'x'
-        self._y_axis_label = 'y'
-        self._z_axis_label = 'z'
-
-        self._x_axis_ID = '1'
-        self._y_axis_ID = '3'
-        self._z_axis_ID = '2'
-
-
-#FIXME:  vielleicht sollte überall .ask anstatt .write genommen werden,
-#        da die stage glaube ich immer was zurückgibt....
-
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -66,6 +52,7 @@ class MotorStagePI(Base, MotorInterface):
                          the state before the event happened and the destination
                          of the state which should be reached after the event
                          had happened.
+        @return: error code
         """
         # Read configs from config-file
         config = self.getConfiguration()
@@ -105,6 +92,51 @@ class MotorStagePI(Base, MotorInterface):
                     'config!\nTaking the term_char {0} '
                     'instead.'.format(self._pi_xyz_term_char))
 
+        #axis definition:
+        if 'pi_first_axis_label' in config.keys():
+            self._first_axis_label = config['pi_first_axis_label']
+        else:
+            self._first_axis_label = 'x'
+            self.log.warning('No parameter "pi_first_axis_label" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._first_axis_label))
+        if 'pi_second_axis_label' in config.keys():
+            self._second_axis_label = config['pi_second_axis_label']
+        else:
+            self._second_axis_label = 'y'
+            self.log.warning('No parameter "pi_second_axis_label" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._second_axis_label))
+        if 'pi_third_axis_label' in config.keys():
+            self._third_axis_label = config['pi_third_axis_label']
+        else:
+            self._third_axis_label = 'z'
+            self.log.warning('No parameter "pi_third_axis_label" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._third_axis_label))
+
+        if 'pi_first_axis_ID' in config.keys():
+            self._first_axis_ID = config['pi_first_axis_ID']
+        else:
+            self._first_axis_ID = '1'
+            self.log.warning('No parameter "pi_first_axis_ID" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._first_axis_ID))
+        if 'pi_second_axis_ID' in config.keys():
+            self._second_axis_ID = config['pi_second_axis_ID']
+        else:
+            self._second_axis_ID = '2'
+            self.log.warning('No parameter "pi_second_axis_ID" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._second_axis_ID))
+        if 'pi_third_axis_ID' in config.keys():
+            self._third_axis_ID = config['pi_third_axis_ID']
+        else:
+            self._third_axis_ID = '3'
+            self.log.warning('No parameter "pi_third_axis_ID" found in '
+                    'config!\nTaking the term_char {0} '
+                    'instead.'.format(self._third_axis_ID))
+
 
         self.rm = visa.ResourceManager()
         self._serial_connection_xyz = self.rm.open_resource(resource_name=self._com_port_pi_xyz,
@@ -113,43 +145,125 @@ class MotorStagePI(Base, MotorInterface):
 
         # Should be in config I guess
 
-        # setting the ranges of the axes - factor 10000. needed to have everything in millimeters
-        if 'pi_x_min' in config.keys():
-            self._min_x = config['pi_x_min'] * 10000.
+        # setting the ranges of the axes - PI uses units of 10nm. Thus in order to convert to meters
+        # a multiplication with 1e7 is necessary
+        if 'pi_first_min' in config.keys():
+            self._min_first = config['pi_first_min']
         else:
-            self._min_x = -100. * 10000.
-            self.log.warning('No parameter "pi_x_min" found in config!\n'
-                    'Taking -100mm instead.')
-        if 'pi_x_max' in config.keys():
-            self._max_x = config['pi_x_max'] * 10000.
+            self._min_first = -0.1
+            self.log.warning('No parameter "pi_first_min" found in config!\n'
+                    'Taking -0.1m instead.')
+        if 'pi_first_max' in config.keys():
+            self._max_first = config['pi_first_max']
         else:
-            self._max_x = 100. * 10000.
-            self.log.warning('No parameter "pi_x_max" found in config!\n'
-                    'Taking 100mm instead.')
-        if 'pi_y_min' in config.keys():
-            self._min_y = config['pi_y_min'] * 10000.
+            self._max_first = 0.1
+            self.log.warning('No parameter "pi_first_max" found in config!\n'
+                    'Taking 0.1m instead.')
+        if 'pi_second_min' in config.keys():
+            self._min_second = config['pi_second_min']
         else:
-            self._min_y = -100. * 10000.
-            self.log.warning('No parameter "pi_y_min" found in config!\n'
-                    'Taking -100mm instead.')
-        if 'pi_y_max' in config.keys():
-            self._max_y = config['pi_y_max'] * 10000.
+            self._min_second = -0.1
+            self.log.warning('No parameter "pi_second_min" found in config!\n'
+                    'Taking -0.1m instead.')
+        if 'pi_second_max' in config.keys():
+            self._max_second = config['pi_second_max']
         else:
-            self._max_y = 100. * 10000.
-            self.log.warning('No parameter "pi_y_max" found in config!\n'
-                    'Taking 100mm instead.')
-        if 'pi_z_min' in config.keys():
-            self._min_z = config['pi_z_min'] * 10000.
+            self._max_second = 0.1
+            self.log.warning('No parameter "pi_second_max" found in config!\n'
+                    'Taking 0.1m instead.')
+        if 'pi_third_min' in config.keys():
+            self._min_third = config['pi_third_min']
         else:
-            self._min_z = -100. * 10000.
-            self.log.warning('No parameter "pi_z_min" found in config!\n'
-                    'Taking -100mm instead.')
-        if 'pi_z_max' in config.keys():
-            self._max_z = config['pi_z_max'] * 10000.
+            self._min_z = -0.1
+            self.log.warning('No parameter "pi_third_min" found in config!\n'
+                    'Taking -0.1m instead.')
+        if 'pi_third_max' in config.keys():
+            self._max_third = config['pi_third_max']
         else:
-            self._max_z = 100. * 10000.
-            self.log.warning('No parameter "pi_z_max" found in config!\n'
-                    'Taking 100mm instead.')
+            self._max_third = 0.1
+            self.log.warning('No parameter "pi_third_max" found in config!\n'
+                    'Taking 0.1m instead.')
+
+        if 'pi_first_axis_step' in config.keys():
+            self.step_first_axis = config['pi_first_axis_step']
+        else:
+            self.step_first_axis = 1e-7
+            self.log.warning('No parameter "pi_first_axis_step" found in config!\n'
+                    'Taking 10nm instead.')
+
+        if 'pi_second_axis_step' in config.keys():
+            self.step_second_axis = config['pi_second_axis_step']
+        else:
+            self.step_second_axis = 1e-7
+            self.log.warning('No parameter "pi_second_axis_step" found in config!\n'
+                    'Taking 10nm instead.')
+
+        if 'pi_third_axis_step' in config.keys():
+            self.step_third_axis = config['pi_third_axis_step']
+        else:
+            self.step_third_axis = 1e-7
+            self.log.warning('No parameter "pi_third_axis_step" found in config!\n'
+                    'Taking 10nm instead.')
+
+
+        if 'vel_first_min' in config.keys():
+            self._vel_min_first = config['vel_first_min']
+        else:
+            self._vel_min_first = 1e-5
+            self.log.warning('No parameter "vel_first_min" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+        if 'vel_first_max' in config.keys():
+            self._vel_max_first = config['vel_first_max']
+        else:
+            self._vel_max_first = 5e-2
+            self.log.warning('No parameter "vel_first_max" found in config!\n'
+                             'Taking 5e-2m/s instead.')
+        if 'vel_second_min' in config.keys():
+            self._vel_min_second = config['vel_second_min']
+        else:
+            self._vel_min_second = 1e-5
+            self.log.warning('No parameter "vel_second_min" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+        if 'vel_second_max' in config.keys():
+            self._vel_max_second = config['vel_second_max']
+        else:
+            self._vel_max_second = 5e-2
+            self.log.warning('No parameter "vel_second_max" found in config!\n'
+                             'Taking 5e-2m/s instead.')
+        if 'vel_third_min' in config.keys():
+            self._vel_min_third = config['vel_third_min']
+        else:
+            self._vel_min_z = 1e-5
+            self.log.warning('No parameter "vel_third_min" found in config!\n'
+                             'Taking 1e-5m instead.')
+        if 'vel_third_max' in config.keys():
+            self._vel_max_third = config['vel_third_max']
+        else:
+            self._vel_max_third = 5e-2
+            self.log.warning('No parameter "vel_third_max" found in config!\n'
+                             'Taking 5e-2m/s instead.')
+
+        if 'vel_first_axis_step' in config.keys():
+            self._vel_step_first = config['vel_first_axis_step']
+        else:
+            self._vel_step_first = 1e-5
+            self.log.warning('No parameter "vel_first_axis_step" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+
+        if 'vel_second_axis_step' in config.keys():
+            self._vel_step_second = config['vel_second_axis_step']
+        else:
+            self._vel_step_second = 1e-5
+            self.log.warning('No parameter "vel_second_axis_step" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+
+        if 'vel_third_axis_step' in config.keys():
+            self._vel_step_third = config['vel_third_axis_step']
+        else:
+            self._vel_step_third = 1e-5
+            self.log.warning('No parameter "vel_third_axis_step" found in config!\n'
+                             'Taking 1e-5m/s instead.')
+        return 0
 
 
     def on_deactivate(self, e):
@@ -157,9 +271,11 @@ class MotorStagePI(Base, MotorInterface):
 
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
+        @return: error code
         """
         self._serial_connection_xyz.close()
         self.rm.close()
+        return 0
 
 
     def get_constraints(self):
@@ -172,49 +288,49 @@ class MotorStagePI(Base, MotorInterface):
         Each constraint is a tuple of the form
             (min_value, max_value, stepsize)
         """
-        constraints = {}
+        constraints = OrderedDict()
 
         axis0 = {}
-        axis0['label'] = self._x_axis_label # '1'
-        axis0['ID'] = self._x_axis_ID
-        axis0['unit'] = 'mm'                 # the SI units
+        axis0['label'] = self._first_axis_label
+        axis0['ID'] = self._first_axis_ID
+        axis0['unit'] = 'm'                 # the SI units
         axis0['ramp'] = None # a possible list of ramps
-        axis0['pos_min'] = self._min_x
-        axis0['pos_max'] = self._max_x
-        axis0['pos_step'] = 0.001
-        axis0['vel_min'] = None
-        axis0['vel_max'] = None
-        axis0['vel_step'] = None
+        axis0['pos_min'] = self._min_first
+        axis0['pos_max'] = self._max_first
+        axis0['pos_step'] = self.step_first_axis
+        axis0['vel_min'] = self._vel_min_first
+        axis0['vel_max'] = self._vel_max_first
+        axis0['vel_step'] = self._vel_step_first
         axis0['acc_min'] = None
         axis0['acc_max'] = None
         axis0['acc_step'] = None
 
         axis1 = {}
-        axis1['label'] = self._y_axis_label # '3'
-        axis1['ID'] = self._y_axis_ID
-        axis1['unit'] = 'mm'        # the SI units
+        axis1['label'] = self._second_axis_label
+        axis1['ID'] = self._second_axis_ID
+        axis1['unit'] = 'm'        # the SI units
         axis1['ramp'] = None # a possible list of ramps
-        axis1['pos_min'] = self._min_y
-        axis1['pos_max'] = self._max_y
-        axis1['pos_step'] = 0.001
-        axis1['vel_min'] = None
-        axis1['vel_max'] = None
-        axis1['vel_step'] = None
+        axis1['pos_min'] = self._min_second
+        axis1['pos_max'] = self._max_second
+        axis1['pos_step'] = self.step_second_axis
+        axis1['vel_min'] = self._vel_min_second
+        axis1['vel_max'] = self._vel_max_second
+        axis1['vel_step'] = self._vel_step_second
         axis1['acc_min'] = None
         axis1['acc_max'] = None
         axis1['acc_step'] = None
 
         axis2 = {}
-        axis2['label'] = self._z_axis_label # '2'
-        axis2['ID'] = self._z_axis_ID
-        axis2['unit'] = 'mm'        # the SI units
+        axis2['label'] = self._third_axis_label
+        axis2['ID'] = self._third_axis_ID
+        axis2['unit'] = 'm'        # the SI units
         axis2['ramp'] = None # a possible list of ramps
-        axis2['pos_min'] = self._min_z
-        axis2['pos_max'] = self._max_z
-        axis2['pos_step'] = 0.001
-        axis2['vel_min'] = None
-        axis2['vel_max'] = None
-        axis2['vel_step'] = None
+        axis2['pos_min'] = self._min_third
+        axis2['pos_max'] = self._max_third
+        axis2['pos_step'] = self.step_third_axis
+        axis2['vel_min'] = self._vel_min_third
+        axis2['vel_max'] = self._vel_max_third
+        axis2['vel_step'] = self._vel_step_third
         axis2['acc_min'] = None
         axis2['acc_max'] = None
         axis2['acc_step'] = None
@@ -236,36 +352,19 @@ class MotorStagePI(Base, MotorInterface):
                                  {'axis_label': <the-abs-pos-value>}.
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
-                                The values for the axes are in millimeter.
 
-        @return int: error code (0:OK, -1:error)
+
+        @return dict pos: dictionary with the current magnet position
         """
         try:
-            if 'x' in param_dict:
-                step = int(param_dict['x']*10000)
-                self._do_move_rel('x', step)
-            if 'y' in param_dict:
-                step = int(param_dict['y']*10000)
-                self._do_move_rel('y', step)
-            if 'z' in param_dict:
-                step = int(param_dict['z']*10000)
-                self._do_move_rel('z', step)
-            return 0
+            for axis_label in param_dict:
+                step = param_dict[axis_label]
+                self._do_move_rel(axis_label, step)
         except:
-            return -1
+            self.log.error('Magnet cannot move!')
 
-
-    def _do_move_rel(self, axis, step):
-        """internal method for the relative move
-
-        @param axis string: name of the axis that should be moved
-
-        @param float step: step in millimeter
-        """
-        current_pos = self._internal_get_pos('z')
-        move = current_pos + step
-        self._do_move_abs(axis, move)
-
+        pos = self.get_pos()
+        return pos
 
     def move_abs(self, param_dict):
         """Moves stage to absolute position
@@ -278,48 +377,24 @@ class MotorStagePI(Base, MotorInterface):
                                 The values for the axes are in millimeter,
                                 the value for the rotation is in degrees.
 
-        @return int: error code (0:OK, -1:error)
+        @return dict pos: dictionary with the current axis position
         """
         try:
-            if 'x' in param_dict:
-                move = int(param_dict['x']*10000)
-                self._do_move_abs('x', move)
-            if 'y' in param_dict:
-                move = int(param_dict['y']*10000)
-                self._do_move_abs('y', move)
-            if 'z' in param_dict:
-                move = int(param_dict['z']*10000)
-                self._do_move_abs('z', move)
+            for axis_label in param_dict:
+                move = param_dict[axis_label]
+                self._do_move_abs(axis_label, move)
 
-            [a, b, c] = self._in_movement_xyz()
-            while a != 0 or b != 0 or c != 0:
+            while not self._motor_stopped():
                 print('xyz-stage moving...')
-                [a, b, c] = self._in_movement_xyz()
                 time.sleep(0.2)
 
             print('stage ready')
-            return 0
+
         except:
-            return -1
+            self.log.error('Magnet cannot move!')
 
-
-    def _do_move_abs(self, axis, move):
-        """internal method for the absolute move
-
-        @param axis string: name of the axis that should be moved
-
-        @param float move: desired position in millimeter
-        """
-        #constraints = self.get_constraints()
-        self.log.info(axis + 'MA{0!s}'.format(move))
-        # if not(constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
-        #     self.log.warning('Cannot make the movement of the axis "{0}"'
-        #         'since the border [{1},{2}] would be crossed! Ignore command!'
-        #         ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
-        #else:
-        self._write_xyz(axis,'MA{0!s}'.format(move))
-
-
+        pos = self.get_pos()
+        return pos
 
 
     def abort(self):
@@ -329,165 +404,14 @@ class MotorStagePI(Base, MotorInterface):
         """
         constraints = self.get_constraints()
         try:
-            self._write_xyz('x','AB')
-            self._write_xyz('y', 'AB')
-            self._write_xyz('z', 'AB')
+            for axis_label in constraints:
+                self._write_xyz(axis_label,'AB')
+            while not self._motor_stopped():
+                time.sleep(0.2)
             return 0
         except:
+            self.log.error('MOTOR MOVEMENT NOT STOPPED!!!)')
             return -1
-
-
-
-
-    def calibrate(self, param_list=None):
-        """ Calibrates the stage.
-
-        @param dict param_list: param_list: optional, if a specific calibration
-                                of an axis is desired, then the labels of the
-                                needed axis should be passed in the param_list.
-                                If nothing is passed, then all connected axis
-                                will be calibrated.
-
-        @return int: error code (0:OK, -1:error)
-
-        After calibration the stage moves to home position which will be the
-        zero point for the passed axis.
-        """
-        #TODO: implement calibration x, y and z
-        try:
-            if param_list is not None and set(['x','y','z']) <= set(param_list) or param_list is None:
-                self._calibrate_xyz()
-            if param_list is not None and 'x' in param_list or param_list is None:
-                self._calibrate_axis('x')
-            if param_list is not None and 'y' in param_list or param_list is None:
-                self._calibrate_axis('y')
-            if param_list is not None and 'z' in param_list or param_list is None:
-                self._calibrate_axis('z')
-            return 0
-        except:
-            return -1 #maybe return the new position here?
-
-
-
-    def _calibrate_xyz(self):
-        """ internal method to calibrate xyz simultaneously """
-
-        self._serial_connection_xyz.write('123MA-2500000\n')
-
-        [a, b, c] = self._in_movement_xyz()
-        while a != 0 or b != 0 or c != 0:
-            self.log.info('moving to the corner...')
-            [a, b, c] = self._in_movement_xyz()
-            self.log.info('moving on x-Axis: ', a)
-            self.log.info('moving on y-Axis: ', b)
-            self.log.info('moving on z-Axis: ', c,'\n')
-            time.sleep(0.5)
-            self.log.info('in edge')
-
-        self._serial_connection_xyz.write('123DH\n')
-        self._serial_connection_xyz.write('123MA900000\n')
-        time.sleep(.1)
-        self.log.info(str(self._serial_connection_xyz.read(17)))
-        self.log.info('define the tmps')
-        [a, b, c] = self._in_movement_xyz()
-        while a != 0 or b != 0 or c != 0:
-            self.log.info('moving to the center...')
-            [a, b, c] = self._in_movement_xyz()
-            self.log.info('moving on x-Axis: ', a)
-            self.log.info('moving on y-Axis: ', b)
-            self.log.info('moving on z-Axis: ', c,'\n')
-            time.sleep(0.5)
-            self.log.info('fast movement finished')
-
-        time.sleep(0.1)
-        self._serial_connection_xyz.write('13FE1\n')
-        self.log.info(self._read_xyz())
-        [a, b, c] = self._in_movement_xyz()
-        while a != 0 or b != 0 or c != 0:
-            self.log.info('find centerposition...')
-            [a, b, c] = self._in_movement_xyz()
-            self.log.info('moving on x-Axis: ', a)
-            self.log.info('moving on y-Axis: ', b)
-            self.log.info('moving on z-Axis: ', c,'\n')
-            time.sleep(0.5)
-
-        self._serial_connection_xyz.write('123DH\n')
-        self.log.info('calibration finished')
-
-
-    def _calibrate_axis(self, axis):
-        """ internal method to calibrate individual axis
-
-        @param axis string: name of the axis that should be calibrated
-        """
-        constraints = self.get_constraints()
-
-        self._serial_connection_xyz.write(constraints[axis]['ID']+'MA-2500000\n')
-
-        [a, b, c] = self._in_movement_xyz()
-        while a != 0 or b != 0 or c != 0:
-            self.log.info('moving to the corner...')
-            [a, b, c] = self._in_movement_xyz()
-            time.sleep(0.5)
-        self.log.info('in edge')
-
-        self._serial_connection_xyz.write(constraints[axis]['ID']+'DH\n')
-        self._serial_connection_xyz.write(constraints[axis]['ID']+'MA900000\n')
-        time.sleep(.1)
-        self.log.info(str(self._read_answer_xyz()))
-        self.log.info('define the tmps')
-        [a, b, c] = self._in_movement_xyz()
-        while a != 0 or b != 0 or c != 0:
-            self.log.info('moving to the center...')
-            [a, b, c] = self._in_movement_xyz()
-            time.sleep(0.5)
-        self.log.info('fast movement finished')
-
-        time.sleep(0.1)
-        if axis in ('x', 'y'):
-            self._serial_connection_xyz.write(constraints[axis]['ID']+'FE1\n')
-            self.log.info(self._serial_connection_xyz._read_answer_xyz())
-            [a, b, c] = self._in_movement_xyz()
-            while a != 0 or b != 0 or c != 0:
-                self.log.info('find centerposition...')
-                [a, b, c] = self._in_movement_xyz()
-
-        self._serial_connection_xyz.write(constraints[axis]['ID']+'DH\n')
-        self.log.info('calibration finished')
-
-
-
-
-
-    def set_velocity(self, param_dict):
-        """ Write new value for velocity.
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed. Usage:
-                                 {'axis_label': <the-velocity-value>}.
-                                 'axis_label' must correspond to a label given
-                                 to one of the axis.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        try:
-            if 'x' in param_dict:
-                vel = int(param_dict['x']*10000)
-                self._write_xyz('x','SV{0:d}'.format((vel)))
-            if 'y' in param_dict:
-                vel = int(param_dict['y']*10000)
-                self._write_xyz('y', 'SV{0:d}'.format((vel)))
-            if 'z' in param_dict:
-                vel = int(param_dict['z']*10000)
-                self._write_xyz('z', 'SV{0:d}'.format((vel)))
-            return 0
-        except:
-            return -1
-
-
-
-########################## internal methods ##################################
-
 
     def get_pos(self, param_list=None):
         """ Gets current position of the stage arms
@@ -503,48 +427,36 @@ class MotorStagePI(Base, MotorInterface):
 
         constraints = self.get_constraints()
         param_dict = {}
+        # unfortunately, probably due to connection problems this specific command sometimes failing
+        # although it should run.... therefore some retries are added
+
         try:
-            if param_list is not None and 'x' in param_list or param_list is None:
-                x_value = int(self._ask_xyz('x','TT')[8:])
-                param_dict['x'] = x_value
-            if param_list is not None and 'y' in param_list or param_list is None:
-                y_value = int(self._ask_xyz('y', 'TT')[8:])
-                param_dict['y'] = y_value
-            if param_list is not None and 'z' in param_list or param_list is None:
-                z_value = int(self._ask_xyz('z', 'TT')[8:])
-                param_dict['z'] = z_value
+            if param_list is not None:
+                for axis_label in param_list:
+                    for attempt in range(25):
+                        # self.log.debug(attempt)
+                        try:
+                            pos = int(self._ask_xyz(axis_label,'TT')[8:])
+                            param_dict[axis_label] = pos * 1e-7
+                        except:
+                            continue
+                        else:
+                            break
+            else:
+                for axis_label in constraints:
+                    for attempt in range(25):
+                        #self.log.debug(attempt)
+                        try:
+                            pos = int(self._ask_xyz(axis_label,'TT')[8:])
+                            param_dict[axis_label] = pos * 1e-7
+                        except:
+                            continue
+                        else:
+                            break
             return param_dict
         except:
-            self.log.error('Could not find current magnet position')
+            self.log.error('Could not find current xyz motor position')
             return -1
-
-    def get_velocity(self, param_list=None):
-        """ Gets the current velocity for all connected axes.
-
-        @param dict param_list: optional, if a specific velocity of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed as the param_list.
-                                If nothing is passed, then from each axis the
-                                velocity is asked.
-
-        @return dict : with the axis label as key and the velocity as item.
-        """
-        constraints = self.get_constraints()
-        param_dict = {}
-        try:
-            if param_list is not None and 'x' in param_list or param_list is None:
-                x_vel = int(self._ask_xyz('x','TY')[8:])
-                param_dict['x'] = x_vel/10000.
-            if param_list is not None and 'y' in param_list or param_list is None:
-                y_vel = int(self._ask_xyz('y','TY')[8:])
-                param_dict['y'] = y_vel/10000.
-            if param_list is not None and 'z' in param_list or param_list is None:
-                z_vel = int(self._ask_xyz('z','TY')[8:])
-                param_dict['z'] = z_vel/10000.
-            return param_dict
-        except:
-            return -1
-
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -563,41 +475,133 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         param_dict = {}
         try:
-            if param_list is not None and 'x' in param_list or param_list is None:
-                x_status = self._ask_xyz('x','TS')[8:]
-                time.sleep(0.1)
-                param_dict['x'] = x_status
-            if param_list is not None and 'y' in param_list or param_list is None:
-                y_status = self._ask_xyz('y','TS')[8:]
-                time.sleep(0.1)
-                param_dict['y'] = y_status
-            if param_list is not None and 'z' in param_list or param_list is None:
-                z_status = self._ask_xyz('z','TS')[8:]
-                time.sleep(0.1)
-                param_dict['z'] = z_status
+            if param_list is not None:
+                for axis_label in param_list:
+                    status = self._ask_xyz(axis_label,'TS')[8:]
+                    param_dict[axis_label] = status
+            else:
+                for axis_label in constraints:
+                    status = self._ask_xyz(axis_label, 'TS')[8:]
+                    param_dict[axis_label] = status
             return param_dict
         except:
+            self.log.error('Status request unsuccessful')
+            return -1
+
+
+    def calibrate(self, param_list=None):
+        """ Calibrates the stage.
+
+        @param dict param_list: param_list: optional, if a specific calibration
+                                of an axis is desired, then the labels of the
+                                needed axis should be passed in the param_list.
+                                If nothing is passed, then all connected axis
+                                will be calibrated.
+
+        After calibration the stage moves to home position which will be the
+        zero point for the passed axis.
+
+        @return dict pos: dictionary with the current position of the ac#xis
+        """
+
+
+        #constraints = self.get_constraints()
+        param_dict = {}
+        try:
+            for axis_label in param_list:
+                self._write_xyz(axis_label,'FE2')
+            while not self._motor_stopped():
+                time.sleep(0.2)
+            for axis_label in param_list:
+                self._write_xyz(axis_label,'DH')
+        except:
+            self.log.error('Calibration did not work')
+
+        for axis_label in param_list:
+            param_dict[axis_label] = 0.0
+        self.move_abs(param_dict)
+
+        pos = self.get_pos()
+        return pos
+
+    def get_velocity(self, param_list=None):
+        """ Gets the current velocity for all connected axes in m/s.
+
+        @param list param_list: optional, if a specific velocity of an axis
+                                    is desired, then the labels of the needed
+                                    axis should be passed as the param_list.
+                                    If nothing is passed, then from each axis the
+                                    velocity is asked.
+
+        @return dict : with the axis label as key and the velocity as item.
+            """
+        constraints = self.get_constraints()
+        param_dict = {}
+        try:
+            if param_list is not None:
+                for axis_label in param_list:
+                    vel = int(self._ask_xyz(axis_label, 'TY')[8:])
+                    param_dict[axis_label] = vel * 1e-7
+            else:
+                for axis_label in constraints:
+                    vel = int(self._ask_xyz(axis_label, 'TY')[8:])
+                    param_dict[axis_label] = vel * 1e-7
+            return param_dict
+        except:
+            self.log.error('Could not find current axis velocity')
+            return -1
+
+    def set_velocity(self, param_dict):
+        """ Write new value for velocity in m/s.
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                    parameters, which should be changed. Usage:
+                                     {'axis_label': <the-velocity-value>}.
+                                     'axis_label' must correspond to a label given
+                                     to one of the axis.
+
+        @return dict param_dict2: dictionary with the updated axis velocity
+        """
+        #constraints = self.get_constraints()
+        try:
+            for axis_label in param_dict:
+                vel = int(param_dict[axis_label] * 1.0e7)
+                self._write_xyz(axis_label, 'SV{0:d}'.format((vel)))
+            param_dict2 = self.get_velocity()
+            return param_dict2
+
+        except:
+            self.log.error('Could not set axis velocity')
             return -1
 
 
 
-    def _in_movement_xyz(self):
-        '''this method checks if the magnet is still moving and returns
-        a list which of the axis are moving.
-        Ex: return is [1,1,0]-> x and y ax are moving and z axis is imobile.
+########################## internal methods ##################################
+
+
+    def _write_xyz(self,axis,command):
+        '''this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
+        @param axis string: name of the axis that should be asked
+
+        @param command string: command
+
+        @return error code (0:OK, -1:error)
         '''
-        tmpx = int(self._ask_xyz('x','TS')[8:])
-        self.log.warning(tmpx%2)
-        time.sleep(0.1)
-        tmpy = int(self._ask_xyz('y','TS')[8:])
-        self.log.warning(tmpy)
-        time.sleep(0.1)
-        tmpz = int(self._ask_xyz('z','TS')[8:])
-        self.log.warning(tmpz)
-        time.sleep(0.1)
-        return [tmpx%2, tmpy%2, tmpz%2]
+        constraints = self.get_constraints()
+        try:
+            #self.log.info(constraints[axis]['ID'] + command + '\n')
+            self._serial_connection_xyz.write(constraints[axis]['ID'] + command + '\n')
+            trash=self._read_answer_xyz()   # deletes possible answers
+            return 0
+        except:
+            self.log.error('Command was no accepted')
+            return -1
 
     def _read_answer_xyz(self):
+        '''this method reads the answer from the motor!
+        @return answer string: answer of motor
+        '''
+
         still_reading = True
         answer=''
         while still_reading == True:
@@ -605,27 +609,99 @@ class MotorStagePI(Base, MotorInterface):
                 answer = answer + self._serial_connection_xyz.read()[:-1]
             except:
                 still_reading = False
-        self.log.info(answer)
+        #self.log.info(answer)
         return answer
 
     def _ask_xyz(self,axis,question):
+        '''this method combines writing a command and reading the answer
+        @param axis string: name of the axis that should be asked
+
+        @param command string: command
+
+        @return answer string: answer of motor
+        '''
         constraints = self.get_constraints()
-        self.log.warning(constraints[axis]['ID']+question+'\n')
         self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
         answer=self._read_answer_xyz()
         return answer
 
-    def _write_xyz(self,axis,command):
-        constraints = self.get_constraints()
-        try:
-            self._serial_connection_xyz.write(constraints[axis]['ID'] + command + '\n')
-            trash=self._read_answer_xyz()
-            return 0
-        except:
-            self.log.error('Command was no accepted')
-            return -1
 
-      #########################################################################################
+
+    def _do_move_rel(self, axis, step):
+        """internal method for the relative move
+
+        @param axis string: name of the axis that should be moved
+
+        @param float step: step in millimeter
+
+        @return str axis: axis which is moved
+                move float: absolute position to move to
+        """
+        constraints = self.get_constraints()
+        if not(abs(constraints[axis]['pos_step']) < abs(step)):
+            self.log.warning('Cannot make the movement of the axis "{0}"'
+                'since the step is too small! Ignore command!')
+        else:
+            current_pos = self.get_pos(axis)[axis]
+            move = current_pos + step
+            self._do_move_abs(axis, move)
+        return axis,move
+
+    def _do_move_abs(self, axis, move):
+        """internal method for the absolute move in meter
+
+        @param axis string: name of the axis that should be moved
+
+        @param float move: desired position in millimeter
+
+        @return str axis: axis which is moved
+                move float: absolute position to move to
+        """
+        constraints = self.get_constraints()
+        #self.log.info(axis + 'MA{0}'.format(int(move*1e8)))
+        if not(constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
+            self.log.warning('Cannot make the movement of the axis "{0}"'
+                'since the border [{1},{2}] would be crossed! Ignore command!'
+                ''.format(axis, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
+        else:
+            self._write_xyz(axis,'MA{0}'.format(int(move*1e7)))  # 1e7 to convert meter to SI units
+            #self._write_xyz(axis, 'MP')
+        return axis, move
+
+
+
+    def _in_movement_xyz(self):
+        '''this method checks if the magnet is still moving and returns
+        a dictionary which of the axis are moving.
+
+        @return: dict param_dict: Dictionary displaying if axis are moving:
+        0 for immobile and 1 for moving
+        '''
+        constraints=self.get_constraints()
+        param_dict = {}
+        for axis_label in constraints:
+            tmp0 = int(self._ask_xyz(constraints[axis_label]['label'],'TS')[8:])
+            param_dict[axis_label] = tmp0%2
+
+        return param_dict
+
+    def _motor_stopped(self):
+        '''this method checks if the magnet is still moving and returns
+            False if it is moving and True of it is immobile
+
+            @return: bool stopped: False for immobile and True for moving
+                '''
+        param_dict=self._in_movement_xyz()
+        stopped=True
+        for axis_label in param_dict:
+            if param_dict[axis_label] != 0:
+                self.log.info(axis_label + ' is moving')
+                stopped=False
+        return stopped
+
+
+
+            #########################################################################################
 #########################################################################################
 #########################################################################################
 

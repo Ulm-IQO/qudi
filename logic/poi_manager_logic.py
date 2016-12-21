@@ -230,7 +230,7 @@ class PoiManagerLogic(GenericLogic):
         self.track_point_list[sample._key] = sample
 
         # listen for the refocus to finish
-        self._optimizer_logic.signal_refocus_finished.connect(self._refocus_done)
+        self._optimizer_logic.sigRefocusFinished.connect(self._refocus_done)
 
         # listen for the deactivation of a POI caused by moving to a different position
         self._confocal_logic.signal_change_position.connect(self.user_move_deactivates_poi)
