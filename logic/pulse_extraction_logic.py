@@ -268,3 +268,42 @@ class PulseExtractionLogic(GenericLogic):
         conv = ndimage.filters.gaussian_filter1d(data, std_dev)
         conv_deriv = np.gradient(conv)
         return conv_deriv
+
+
+    def extract_laser_pulses(self,data, count_treshold, min_len_laser,
+                           exception,ignore_first):
+
+        x_data = []
+        y_data = []
+        laser_x = []
+        laser_y = []
+        excep=0
+        for ii in range(len(data)):
+
+                if data[ii] >= count_treshold:
+
+                    x_data.append(ii)
+                    y_data.append(data[ii])
+
+                else:
+                    if excep < exception:
+                        x_data.append(ii)
+                        y_data.append(data[ii])
+                        excep=excep+1
+
+                    elif len(x_data)>min_len_laser:
+                        laser_x.append(np.array(x_data))
+                        laser_y.append(np.array(y_data))
+                        x_data=[]
+                        y_data=[]
+                        excep=0
+                    else:
+                        x_data=[]
+                        y_data=[]
+                        excep=0
+        if ignore_first:
+            laser_x=laser_x[1:][:]
+            laser_y=laser_y[1:][:]
+
+
+        return laser_x, laser_y
