@@ -1,5 +1,7 @@
 # Required Packages  {#required-python-packages}
 
+# Do not use this list to install Qudi for normal use. Check the Installation page to see how to do that.
+[Installation page with full install instructions](@ref installation)
 
 These package have to be installed in order to run Qudi (easily installed with Anaconda console: pip install "packagename"):
 
