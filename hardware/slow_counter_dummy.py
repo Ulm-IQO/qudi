@@ -26,6 +26,8 @@ import time
 
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterConstraints
+from interface.slow_counter_interface import CountingMode
 
 
 class SlowCounterDummy(Base, SlowCounterInterface):
@@ -121,12 +123,14 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         pass
 
     def get_constraints(self):
-        """ Return a constraints dictionary for the slow counter."""
-        constraints = {}
-        constraints['#detectors'] = 2
-        constraints['min_count_frequency'] = 5e-5
-        constraints['max_count_frequency'] = 5e5
-        constraints['counting_mode'] = ['continuous','gated','finite_gated']
+        """ Return a constraints class for the slow counter."""
+        constraints = SlowCounterConstraints()
+        constraints.min_count_frequency = 5e-5
+        constraints.max_count_frequency = 5e5
+        constraints.counting_mode = [
+            CountingMode.CONTINUOUS,
+            CountingMode.GATED,
+            CountingMode.FINITE_GATED]
 
         return constraints
 

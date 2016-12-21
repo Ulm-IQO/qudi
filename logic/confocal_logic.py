@@ -675,7 +675,7 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
-        n_ch = len(self._scanning_device.get_scanner_axes())
+        n_ch = np.clip(len(self._scanning_device.get_scanner_axes()), 1, 3)
 
         try:
             if self._scan_counter == 0:
@@ -684,12 +684,11 @@ class ConfocalLogic(GenericLogic):
                 start_line = np.vstack((
                     np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
                     np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
-                    np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
-                    np.full((self.return_slowness, ), self._current_a)
+                    np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness)
                     )[0:n_ch])
                 # move to the start position of the scan, counts are thrown away
-                start_line_counts = self._scanning_device.scan_line(start_line)
-                if start_line_counts[0] == -1:
+                start_line_counts = self._scanning_device.scan_line(start_line)[0]
+                if np.any(start_line_counts[0] == -1):
                     self.stopRequested = True
                     self.signal_scan_lines_next.emit()
                     return
@@ -701,12 +700,11 @@ class ConfocalLogic(GenericLogic):
             # make a line in the scan, _scan_counter says which one it is
             line = np.vstack((image[self._scan_counter, :, 0],
                               image[self._scan_counter, :, 1],
-                              image[self._scan_counter, :, 2],
-                              np.full(image[self._scan_counter, :, 3].shape, self._current_a)
+                              image[self._scan_counter, :, 2]
                               )[0:n_ch])
             # scan the line in the scan
-            line_counts = self._scanning_device.scan_line(line)
-            if line_counts[0] == -1:
+            line_counts = self._scanning_device.scan_line(line)[0]
+            if np.any(line_counts[0] == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
@@ -716,20 +714,18 @@ class ConfocalLogic(GenericLogic):
                 return_line = np.vstack((
                     self._return_XL,
                     image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                    self._return_AL * self._current_a
+                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
                     )[0:n_ch])
             else:
                 return_line = np.vstack((
                     image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
                     self._return_YL,
                     image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
-                    self._return_AL * self._current_a
                     )[0:n_ch])
 
             # return the scanner to the start of next line, counts are thrown away
-            return_line_counts = self._scanning_device.scan_line(return_line)
-            if return_line_counts[0] == -1:
+            return_line_counts = self._scanning_device.scan_line(return_line)[0]
+            if np.any(return_line_counts[0] == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
@@ -761,8 +757,8 @@ class ConfocalLogic(GenericLogic):
 
             self.signal_scan_lines_next.emit()
 
-        except Exception as e:
-            self.log.critical('The scan went wrong, killing the scanner.')
+        except:
+            self.log.exception('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
 

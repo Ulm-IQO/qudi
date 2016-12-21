@@ -27,6 +27,8 @@ import PyDAQmx as daq
 
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterConstraints
+from interface.slow_counter_interface import CountingMode
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
@@ -439,6 +441,20 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self.reset_hardware()
 
     # =================== SlowCounterInterface Commands ========================
+
+    def get_constraints(self):
+        """ Get hardware limits of NI device.
+
+        @return SlowCounterConstraints: constraints class for slow counter
+
+        FIXME: ask hardware for limits when module is loaded
+        """
+        constraints = SlowCounterConstraints()
+        constraints.max_detectors = 4
+        constraints.min_count_frequency = 1e-3
+        constraints.max_count_frequency = 10e9
+        conetraints.countin_mode = []
+        return constraints
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None, scanner=False, idle=False):
         """ Configures the hardware clock of the NiDAQ card to give the timing.

@@ -101,7 +101,7 @@ class CounterLogic(GenericLogic):
         self._save_logic = self.get_in_connector('savelogic')
 
         constraints = self.get_hardware_constraints()
-        number_of_detectors = constraints['#detectors']
+        number_of_detectors = constraints.max_detectors
 
         self.countdata = np.zeros(
             (len(self.get_channels()), self._count_length))
@@ -153,7 +153,7 @@ class CounterLogic(GenericLogic):
     def get_hardware_constraints(self):
         """ Retrieve the hardware constrains from the counter device.
 
-        @return dict: dict with constraints for the counter
+        @return SlowCounterConstraints: object with constraints for the counter
         """
         return self._counting_device.get_constraints()
 
@@ -205,7 +205,7 @@ class CounterLogic(GenericLogic):
         This makes sure, the counter is stopped first and restarted afterwards.
         """
         constraints = self.get_hardware_constraints()
-        if constraints['min_count_frequency'] <= frequency <= constraints['max_count_frequency']:
+        if constraints.min_count_frequency <= frequency <= constraints.max_count_frequency:
             restart = self.stop_counter()
             self._count_frequency = frequency
             # if the counter was running, restart it
@@ -357,7 +357,7 @@ class CounterLogic(GenericLogic):
         """
         constraints = self.get_hardware_constraints()
 
-        if mode in constraints['counting_mode']:
+        if mode in constraints.counting_mode:
             self._counting_mode = mode
             self.log.debug(self._counting_mode)
         else:

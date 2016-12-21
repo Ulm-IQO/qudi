@@ -58,7 +58,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self._voltage_range = [-10, 10]
 
         self._position_range = [[0, 100], [0, 100], [0, 100], [0, 1]]
-        self._current_position = [0, 0, 0, 0]
+        self._current_position = [0, 0, 0, 0][0:len(self.get_scanner_axes())]
 
         self._num_points = 500
 
@@ -270,7 +270,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             return -1
 
         time.sleep(0.01)
-        self._current_position = [x, y, z, a]
+        self._current_position = [x, y, z, a][0:len(self.get_scanner_axes())]
         return 0
 
     def get_scanner_position(self):
@@ -279,7 +279,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return float[]: current position in (x, y, z, a).
         """
 
-        return self._current_position
+        return self._current_position[0:len(self.get_scanner_axes())]
 
     def set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.

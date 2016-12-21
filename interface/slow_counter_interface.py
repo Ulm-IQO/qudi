@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import abc
+import Enum
 from core.util.interfaces import InterfaceMetaclass
 
 
@@ -34,7 +35,7 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
     def get_constraints(self):
         """ Retrieve the hardware constrains from the counter device.
 
-        @return dict: dict with constraints for the counter
+        @return SlowCounterConstraints: object with constraints for the counter
         """
         pass
 
@@ -112,3 +113,18 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)
         """
         pass
+
+
+class CountingMode(Enum):
+    CONTINUOUS = 0
+    GATED = 1
+    FINITE_GATED = 2
+
+class SlowCounterConstraints:
+
+    def __init__(self):
+        self.max_detectors = 0
+        constraints.min_count_frequency = 5e-5
+        constraints.max_count_frequency = 5e5
+        constraints.counting_mode = []
+
