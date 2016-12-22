@@ -317,11 +317,11 @@ class OptimizerLogic(GenericLogic):
         move_to_start_line = np.vstack((
             np.linspace(scanner_pos[0], start_pos[0], self.return_slowness),
             np.linspace(scanner_pos[1], start_pos[1], self.return_slowness),
-            np.linspace(scanner_pos[2], start_pos[2], self.return_slowness),
-            np.linspace(0, 0, self.return_slowness)))
+            np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
+            ))
 
-        counts = self._scanning_device.scan_line(move_to_start_line)
-        if counts[0] == -1:
+        counts = self._scanning_device.scan_line(move_to_start_line)[0]
+        if np.any(counts[0] == -1):
             return -1
         time.sleep(self.hw_settle_time)
         return 0
@@ -358,11 +358,11 @@ class OptimizerLogic(GenericLogic):
         line = np.vstack((
             self.xy_refocus_image[self._xy_scan_line_count, :, 0],
             self.xy_refocus_image[self._xy_scan_line_count, :, 1],
-            self.xy_refocus_image[self._xy_scan_line_count, :, 2],
-            self._A_values))
+            self.xy_refocus_image[self._xy_scan_line_count, :, 2]
+            ))
 
-        line_counts = self._scanning_device.scan_line(line)
-        if line_counts[0] == -1:
+        line_counts = self._scanning_device.scan_line(line)[0]
+        if np.any(line_counts[0] == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._signal_scan_next_xy_line.emit()
@@ -371,11 +371,11 @@ class OptimizerLogic(GenericLogic):
         return_line = np.vstack((
             self._return_X_values,
             self.xy_refocus_image[self._xy_scan_line_count, 0, 1] * np.ones(self._return_X_values.shape),
-            self.xy_refocus_image[self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape),
-            self._return_A_values))
+            self.xy_refocus_image[self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape)
+            ))
 
-        return_line_counts = self._scanning_device.scan_line(return_line)
-        if return_line_counts[0] == -1:
+        return_line_counts = self._scanning_device.scan_line(return_line)[0]
+        if np.any(return_line_counts[0] == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._signal_scan_next_xy_line.emit()
@@ -516,13 +516,12 @@ class OptimizerLogic(GenericLogic):
         Z_line = self._zimage_Z_values
         X_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
         Y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
-        A_line = np.zeros(self._zimage_Z_values.shape)
 
-        line = np.vstack((X_line, Y_line, Z_line, A_line))
+        line = np.vstack((X_line, Y_line, Z_line))
 
         # Perform scan
-        line_counts = self._scanning_device.scan_line(line)
-        if line_counts[0] == -1:
+        line_counts = self._scanning_device.scan_line(line)[0]
+        if np.any(line_counts[0] == -1):
             self.log.error('Z scan went wrong, killing the scanner.')
             self.stop_refocus()
             return
@@ -543,10 +542,10 @@ class OptimizerLogic(GenericLogic):
                 return
 
             # define an offset line to measure "background"
-            line_bg = np.vstack((X_line + self.surface_subtr_scan_offset, Y_line, Z_line, A_line))
+            line_bg = np.vstack((X_line + self.surface_subtr_scan_offset, Y_line, Z_line))
 
-            line_bg_counts = self._scanning_device.scan_line(line_bg)
-            if line_bg_counts[0] == -1:
+            line_bg_counts = self._scanning_device.scan_line(line_bg)[0]
+            if np.any(line_bg_counts[0] == -1):
                 self.log.error('The scan went wrong, killing the scanner.')
                 self.stop_refocus()
                 return

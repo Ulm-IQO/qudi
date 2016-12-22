@@ -25,6 +25,8 @@ import time
 
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterConstraints
+from interface.slow_counter_interface import CountingMode
 
 
 class TimeTaggerCounter(Base, SlowCounterInterface):
@@ -87,10 +89,8 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         return 0
 
     def set_up_counter(self,
-                       counter_channel=None,
-                       photon_source=None,
-                       counter_channel2=None,
-                       photon_source2=None,
+                       counter_channels=None,
+                       sources=None,
                        clock_channel=None,
                        counter_buffer=None):
         """ Configures the actual counter with a given clock.
@@ -109,7 +109,6 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self.counter = Counter(
             self._tagger,
             channels=[self._photon_source],
@@ -118,7 +117,23 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         self.log.info('set up counter with {0}'.format(self._count_frequency))
         return 0
 
+    def get_counter_channels(self):
+        """ Return one channel for now. """
+        return ['Ctr0']
 
+    def get_constraints(self):
+        """ Get hardware limits of NI device.
+
+        @return SlowCounterConstraints: constraints class for slow counter
+
+        FIXME: ask hardware for limits when module is loaded
+        """
+        constraints = SlowCounterConstraints()
+        constraints.max_detectors = 1
+        constraints.min_count_frequency = 1e-3
+        constraints.max_count_frequency = 10e9
+        conetraints.counting_mode = [CountingMode.CONTINUOUS]
+        return constraints
 
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
@@ -127,17 +142,14 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
         @return numpy.array(uint32): the photon counts per second
         """
-
         time.sleep(2/self._count_frequency)
-        return self.counter.getData()
+        return [self.counter.getData()]
 
     def close_counter(self):
         """ Closes the counter and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-
-
         return 0
 
     def close_clock(self):
@@ -145,6 +157,4 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
-
         return 0

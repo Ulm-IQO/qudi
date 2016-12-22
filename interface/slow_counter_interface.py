@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import abc
-import Enum
+from enum import Enum
 from core.util.interfaces import InterfaceMetaclass
 
 
@@ -84,7 +84,7 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
 
         @param int samples: if defined, number of samples to read in one go
 
-        @return numpy.array(uint32): the photon counts per second
+        @return numpy.array((n, uint32)): the photon counts per second for n channels
         """
         pass
 
@@ -123,8 +123,11 @@ class CountingMode(Enum):
 class SlowCounterConstraints:
 
     def __init__(self):
+        # maximum numer of possible detectors for slow counter
         self.max_detectors = 0
-        constraints.min_count_frequency = 5e-5
-        constraints.max_count_frequency = 5e5
-        constraints.counting_mode = []
+        # frequencies in Hz
+        self.min_count_frequency = 5e-5
+        self.max_count_frequency = 5e5
+        # add CountingMode enums to this list in instances
+        self.counting_mode = []
 

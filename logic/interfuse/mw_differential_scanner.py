@@ -131,6 +131,10 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         self.log.warning('Scanning Device will be reset.')
         return 0
 
+    def get_scanner_axes(self):
+        """ Dmmy scanner axes. """
+        return ['x', 'y', 'z']
+
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 
@@ -243,7 +247,6 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         #    return -1
 
         time.sleep(0.2)
-
         return 0
 
 
@@ -266,7 +269,6 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         time.sleep(0.01)
 
         self._current_position = [x, y, z, a]
-
         return 0
 
     def get_scanner_position(self):

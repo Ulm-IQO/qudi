@@ -453,7 +453,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         constraints.max_detectors = 4
         constraints.min_count_frequency = 1e-3
         constraints.max_count_frequency = 10e9
-        conetraints.countin_mode = []
+        conetraints.counting_mode = [CountingMode.CONTINUOUS]
         return constraints
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None, scanner=False, idle=False):
