@@ -270,14 +270,46 @@ class PulseExtractionLogic(GenericLogic):
         return conv_deriv
 
 
-    def extract_laser_pulses(self,data, count_treshold, min_len_laser,
-                           exception,ignore_first):
+    def extract_laser_pulses(self,data,count_treshold,min_len_laser,
+                           exception):
 
+        """ Detects the laser pulses in the ungated timetrace data and extracts
+            them.
+
+        @param numpy.ndarray data: 1D array the raw timetrace data from an
+                                         ungated fast counter
+        @param int count_treshold: The treshold to seperate between laser and noise
+        @param int min_len_laser:  Minimum length of laser pulse
+        @param int exception:      how many bin may be under treshold but still count
+                                   for the laser
+
+
+        @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the
+                                  timetrace, dimensions:
+                                        0: laser number,
+                                        1: time bin
+
+        @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the
+                                  timetrace, dimensions:
+                                        0: laser number,
+                                        1: counts time bin
+
+        Procedure:
+            Treshold detection:
+            ---------------
+
+            All count data from the time trace is compared to a trehold value.
+            Values above the trehold are considered to belong to a laser pulse.
+            If the length of a pulse would be below the minium length the pulse is discarded
+        """
+
+        # initialize
         x_data = []
         y_data = []
         laser_x = []
         laser_y = []
         excep=0
+
         for ii in range(len(data)):
 
                 if data[ii] >= count_treshold:
@@ -301,9 +333,25 @@ class PulseExtractionLogic(GenericLogic):
                         x_data=[]
                         y_data=[]
                         excep=0
-        if ignore_first:
-            laser_x=laser_x[1:][:]
-            laser_y=laser_y[1:][:]
 
+        # find the longest laser pulse
+        length=np.zeros(len(laser_y))
+        for jj in range(len(laser_y)):
+            length[jj]=len(laser_y[jj])
+        longest = np.max(length)
 
-        return laser_x, laser_y
+        #symmetrize all pulses so that they have the same length
+        for jj in range(len(laser_y)):
+            while len(laser_y[jj])<longest:
+                laser_x[jj]=np.append(laser_x[jj],laser_x[jj][-1]+1)
+                laser_y[jj]=np.append(laser_y[jj],laser_y[jj][-1])
+
+        #FIXME: It should be possible to return laser_x aswell but therefor
+        #FIXME: the functions above also would have to be changed
+
+        laser_arr=np.asarray(laser_y)
+
+        return laser_arr.astype(int)
+
+    def excise_laser_pulses(self,count_data,aom_delay,initial_offset,initial_length,increment_length):
+        pass

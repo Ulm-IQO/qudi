@@ -104,13 +104,29 @@ class PulsedExtractionExternalGui(GUIBase):
         self._mw.extracted_laser_PlotWidget.setLabel('left', 'intensity', units='a.u.')
         self._mw.extracted_laser_PlotWidget.setLabel('bottom', 'bins', units='')
         self._mw.result_PlotWidget.setLabel('left', 'normalized intensity')
-        self._mw.result_PlotWidget.setLabel('bottom', 'tau', units='ns')
+        self._mw.result_PlotWidget.setLabel('bottom', 'tau')
 
         ########## connect the buttons to their respective function ###########
 
+        self._mw.data_filename_LineEdit.editingFinished.connect(self.load_data)
+        self._mw.analysis_method_ComboBox.currentIndexChanged.connect(self.change_parameters)
         self._mw.load_data_PushButton.clicked.connect(self.load_data_clicked)
         self._mw.analyze_PushButton.clicked.connect(self.analyze)
         self._mw.choose_laserpulse_ComboBox.currentIndexChanged.connect(self.plot_just_laser)
+
+        self._mw.save_result_PushButton.clicked.connect(self.save_result)
+        self._mw.start_SpinBox.editingFinished.connect(self.plot_result)
+        self._mw.increment_SpinBox.editingFinished.connect(self.plot_result)
+        self._mw.xlabel_LineEdit.editingFinished.connect(self.plot_result)
+        self._mw.ylabel_LineEdit.editingFinished.connect(self.plot_result)
+
+
+        ########## Analysis method combobox setup ##########
+
+        methods=self._epe_logic.get_analysis_methods()
+        for method in methods:
+            self._mw.analysis_method_ComboBox.addItem(method)
+
 
 
 
@@ -134,14 +150,14 @@ class PulsedExtractionExternalGui(GUIBase):
     def load_data_clicked(self):
         filename = QtGui.QFileDialog.getOpenFileName(None,"Load File","","All Files (*)")
         self._mw.data_filename_LineEdit.setText(filename)
-        len_header=self._mw.header_SpinBox.value()
-        column=self._mw.column_SpinBox.value()-1
-        filename=self._mw.data_filename_LineEdit.text()
-        self.load_data(len_header,column,filename)
+        self.load_data()
         return
 
 
-    def load_data(self,len_header=100,column=10,filename=''):
+    def load_data(self):
+        len_header=self._mw.header_SpinBox.value()
+        column=self._mw.column_SpinBox.value()-1
+        filename=self._mw.data_filename_LineEdit.text()
         self.data = self._epe_logic.load_data(len_header,column,filename)
         self.plot_raw_data(self.data)        #
         return self.data
@@ -150,26 +166,37 @@ class PulsedExtractionExternalGui(GUIBase):
 
 
     def extract_laser_pulses(self):
-        count_treshold=self._mw.treshold_SpinBox.value()
-        min_len_laser=self._mw.min_laser_SpinBox.value()
-        exception=self._mw.exception_SpinBox.value()
-        ignore_first=False
-        #FIXME: self.data
-        self.laser_x,self.laser_y=self._epe_logic.extract_laser_pulses(count_treshold,min_len_laser,
-                             exception,ignore_first)
+        ignore_first=self._mw.ignore_first_CheckBox.checkState()
+        method=self._mw.analysis_method_ComboBox.currentText()
+        param_dict={}
+        if method == 'treshold':
+            param_dict['count_treshold']=self._mw.treshold_SpinBox.value()
+            param_dict['min_len_laser']=self._mw.min_laser_SpinBox.value()
+            param_dict['exception']=self._mw.exception_SpinBox.value()
+            self.log.warning(param_dict)
+            #FIXME: self.data
 
-        self._mw.number_pulses_lcdNumber.display(len(self.laser_x))
+        if method == 'Niko':
+            param_dict['number_laser'] = self._mw.number_pulses_SpinBox.value()
+            param_dict['conv'] = self._mw.filter_SpinBox.value()
+            self.log.warning(param_dict)
+
+        if method == 'old':
+            param_dict['aom_delay'] = self._mw.aom_delay_SpinBox.value()
+            param_dict['initial_offset'] = self._mw.initial_offset_SpinBox.value()
+            param_dict['initial_length'] = self._mw.initial_length_SpinBox.value()
+            param_dict['increment_length'] = self._mw.increment_length_SpinBox.value()
+
+
+        self.laser_y=self._epe_logic.extract_laser_pulses(method,ignore_first,param_dict)
+        self._mw.number_pulses_lcdNumber.display(len(self.laser_y))
         self._mw.choose_laserpulse_ComboBox.clear()
-        self._mw.choose_laserpulse_ComboBox.addItem('all')
+        self._mw.choose_laserpulse_ComboBox.addItem('sum')
         for laserindex in range(len(self.laser_y)):
             	self._mw.choose_laserpulse_ComboBox.addItem(str(laserindex+1))
-
         self.plot_just_laser()
-
-        longest=self._epe_logic.find_longest_laser_pulse(self.laser_y)
+        longest=self._epe_logic.length_laser_pulses(self.laser_y)
         self._mw.length_pulse_lcdNumber.display(longest)
-        sum_pulses = self._epe_logic.sum_pulses(self.laser_x,self.laser_y)
-        self.plot_sum_pulses(sum_pulses)
 
         return self.laser_x,self.laser_y
 
@@ -206,36 +233,97 @@ class PulsedExtractionExternalGui(GUIBase):
     def plot_just_laser(self):
         index = self._mw.choose_laserpulse_ComboBox.currentIndex()
         self._mw.extracted_laser_PlotWidget.clear()
+        #prepare x_axis_
+        self.laser_x=np.linspace(1,len(self.laser_y[1]),len(self.laser_y[1]))
         if index == 0:
-            for nn in range(len(self.laser_x)):
-                self._mw.extracted_laser_PlotWidget.addItem(pg.PlotDataItem(self.laser_x[nn][:],
-                                                                    self.laser_y[nn][:]))
+            sum=self._epe_logic.sum_pulses(self.laser_y)
+            self._mw.extracted_laser_PlotWidget.addItem(pg.PlotDataItem(self.laser_x,sum))
         else:
-            self._mw.extracted_laser_PlotWidget.addItem(pg.PlotDataItem(self.laser_x[index-1][:],
+            self._mw.extracted_laser_PlotWidget.addItem(pg.PlotDataItem(self.laser_x,
                                                                     self.laser_y[index-1][:]))
         return
 
-    def plot_sum_pulses(self,sum_pulses):
-        x_values=np.linspace(1,len(sum_pulses),len(sum_pulses))
-        self._mw.sum_laser_PlotWidget.clear()
-        self._mw.sum_laser_PlotWidget.addItem(pg.PlotDataItem(x_values,sum_pulses))
-        return
 
 
     def plot_result(self):
 
         self._mw.result_PlotWidget.clear()
+        start=self._mw.start_SpinBox.value()
+        increment=self._mw.increment_SpinBox.value()
+        xlabel=self._mw.xlabel_LineEdit.text()
+        ylabel=self._mw.ylabel_LineEdit.text()
+
         if self._mw.alternating_CheckBox.isChecked():
             if (len(self.signal))%2!=0:
                 print('data is not even!!!')
             else:
-                x_values=np.linspace(0,len(self.signal)/2-1,len(self.signal)/2)*self._mw.tau_increment_SpinBox.value()+self._mw.tau_start_SpinBox.value()
+                x_values = self._epe_logic.compute_x_values(start,increment,True)
                 self._mw.result_PlotWidget.addItem(pg.PlotDataItem(x_values, self.signal[0::2]))
                 self._mw.result_PlotWidget.addItem(pg.PlotDataItem(x_values, self.signal[1::2],pen='r'))
         else:
-            x_values=np.linspace(0,len(self.signal)-1,len(self.signal))*self._mw.tau_increment_SpinBox.value()+self._mw.tau_start_SpinBox.value()
+            x_values = self._epe_logic.compute_x_values(start,increment,False)
             self._mw.result_PlotWidget.addItem(pg.PlotDataItem(x_values, self.signal))
-            return
+
+        self._mw.result_PlotWidget.setLabel('left',ylabel)
+        self._mw.result_PlotWidget.setLabel('bottom',xlabel)
+
+        return
+
+    def change_parameters(self):
+        method = self._mw.analysis_method_ComboBox.currentText()
+        self._mw.number_pulses_Label.setVisible(False)
+        self._mw.number_pulses_SpinBox.setVisible(False)
+        self._mw.filter_Label.setVisible(False)
+        self._mw.filter_SpinBox.setVisible(False)
+        self._mw.treshold_Label.setVisible(False)
+        self._mw.treshold_SpinBox.setVisible(False)
+        self._mw.min_laser_Label.setVisible(False)
+        self._mw.min_laser_SpinBox.setVisible(False)
+        self._mw.exception_Label.setVisible(False)
+        self._mw.exception_SpinBox.setVisible(False)
+        self._mw.aom_delay_Label.setVisible(False)
+        self._mw.aom_delay_SpinBox.setVisible(False)
+        self._mw.initial_offset_Label.setVisible(False)
+        self._mw.initial_offset_SpinBox.setVisible(False)
+        self._mw.initial_length_Label.setVisible(False)
+        self._mw.inital_length_SpinBox.setVisible(False)
+        self._mw.increment_length_Label.setVisible(False)
+        self._mw.increment_length_SpinBox.setVisible(False)
+        if method == 'Niko':
+            self._mw.number_pulses_Label.setVisible(True)
+            self._mw.number_pulses_SpinBox.setVisible(True)
+            self._mw.filter_Label.setVisible(True)
+            self._mw.filter_SpinBox.setVisible(True)
+        elif method == 'treshold':
+            self._mw.treshold_Label.setVisible(True)
+            self._mw.treshold_SpinBox.setVisible(True)
+            self._mw.min_laser_Label.setVisible(True)
+            self._mw.min_laser_SpinBox.setVisible(True)
+            self._mw.exception_Label.setVisible(True)
+            self._mw.exception_SpinBox.setVisible(True)
+        elif method == 'old':
+            self._mw.aom_delay_Label.setVisible(True)
+            self._mw.aom_delay_SpinBox.setVisible(True)
+            self._mw.initial_offset_Label.setVisible(True)
+            self._mw.initial_offset_SpinBox.setVisible(True)
+            self._mw.initial_length_Label.setVisible(True)
+            self._mw.inital_length_SpinBox.setVisible(True)
+            self._mw.increment_length_Label.setVisible(True)
+            self._mw.increment_length_SpinBox.setVisible(True)
+
+        else:
+            self.log.warning('Not yet implemented')
+        return method
+
+
+    ########## Save data ##########
+
+    def save_result(self):
+        self._epe_logic.save_file()
+        self._epe_logic.save_figure()
+        return
+
+
 
 
 
