@@ -609,7 +609,6 @@ class MagnetGui(GUIBase):
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
-
         # set the parameters in the curr_pos_DockWidget:
         for index, axis_label in enumerate(constraints):
 
