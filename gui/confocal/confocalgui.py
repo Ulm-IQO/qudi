@@ -243,6 +243,7 @@ class ConfocalGui(GUIBase):
         self.initSettingsUI(e)  # initialize the settings GUI
         self.initOptimizerSettingsUI(e)  # initialize the optimizer settings GUI
 
+
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
 
@@ -500,6 +501,10 @@ class ConfocalGui(GUIBase):
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
         self.depth_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_depth)
 
+        #FIXME
+        self._mw.actionForward.setEnabled(False)
+        self._mw.actionBack.setEnabled(False)
+
         #################################################################
         #                           Actions                             #
         #################################################################
@@ -576,7 +581,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_xy_image_updated.connect(self.refresh_scan_line)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_scan_line)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_depth_image)
-        self._optimizer_logic.signal_image_updated.connect(self.refresh_refocus_image)
+        self._optimizer_logic.sigImageUpdated.connect(self.refresh_refocus_image)
         self._scanning_logic.sigImageXYInitialized.connect(self.adjust_xy_window)
         self._scanning_logic.sigImageDepthInitialized.connect(self.adjust_depth_window)
 
@@ -585,9 +590,9 @@ class ConfocalGui(GUIBase):
 
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
-        self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
-        self._optimizer_logic.signal_refocus_XY_size_changed.connect(self.update_roi_xy_size)
-        self._optimizer_logic.signal_refocus_Z_size_changed.connect(self.update_roi_depth_size)
+        self._optimizer_logic.sigRefocusFinished.connect(self._refocus_finished_wrapper)
+        self._optimizer_logic.sigRefocusXySizeChanged.connect(self.update_roi_xy_size)
+        self._optimizer_logic.sigRefocusZSizeChanged.connect(self.update_roi_depth_size)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
@@ -934,14 +939,17 @@ class ConfocalGui(GUIBase):
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
-        if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
-            self._mw.actionForward.setEnabled(True)
-        else:
-            self._mw.actionForward.setEnabled(False)
-        if enable and self._scanning_logic.history_index > 0:
-            self._mw.actionBack.setEnabled(True)
-        else:
-            self._mw.actionBack.setEnabled(False)
+        # if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
+        #     self._mw.actionForward.setEnabled(True)
+        # else:
+        #     self._mw.actionForward.setEnabled(False)
+        # if enable and self._scanning_logic.history_index > 0:
+        #     self._mw.actionBack.setEnabled(True)
+        # else:
+        #     self._mw.actionBack.setEnabled(False)
+        self._mw.actionBack.setEnabled(False)
+        self._mw.actionForward.setEnabled(False)
+
 
     def menu_settings(self):
         """ This method opens the settings menu. """

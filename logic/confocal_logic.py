@@ -257,10 +257,17 @@ class ConfocalLogic(GenericLogic):
     # signals
     signal_start_scanning = QtCore.Signal()
     signal_continue_scanning = QtCore.Signal()
+    signal_stop_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
+    signal_xy_data_saved = QtCore.Signal()
+    signal_depth_data_saved = QtCore.Signal()
+    signal_tiltcorrection_activated = QtCore.Signal()
+    signal_tiltcorrection_deactivated = QtCore.Signal()
+    singal_draw_figure_completed = QtCore.Signal()
+    signal_position_changed = QtCore.Signal()
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -437,6 +444,7 @@ class ConfocalLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
+        self.signal_stop_scanning.emit()
         return 0
 
     def initialize_image(self):
@@ -568,8 +576,25 @@ class ConfocalLogic(GenericLogic):
         """
         self.lock()
         self._scanning_device.lock()
-        self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
-        self._scanning_device.set_up_scanner()
+
+        clock_status = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
+
+        if clock_status < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
+        scanner_status = self._scanning_device.set_up_scanner()
+
+        if scanner_status < 0:
+            self._scanning_device.close_scanner_clock()
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
         self.signal_scan_lines_next.emit()
         return 0
 
@@ -634,6 +659,7 @@ class ConfocalLogic(GenericLogic):
             z=self._current_z,
             a=self._current_a
         )
+        self.signal_position_changed.emit()
         return 0
 
 
@@ -673,6 +699,8 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
+        # FIXME: This is set to 4 because NIcard is throwing errors when the list has dim<4
+        n_ch = 4
 
         try:
             if self._scan_counter == 0:
@@ -867,6 +895,7 @@ class ConfocalLogic(GenericLogic):
         #, as_xml=False, precision=None, delimiter=None)
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.signal_xy_data_saved.emit()
 
     def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
@@ -977,6 +1006,7 @@ class ConfocalLogic(GenericLogic):
         #, as_xml=False, precision=None, delimiter=None)
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.signal_depth_data_saved.emit()
 
     def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
@@ -1090,7 +1120,7 @@ class ConfocalLogic(GenericLogic):
                              verticalalignment='center',
                              rotation=90
                              )
-
+        self.singal_draw_figure_completed.emit()
         return fig
 
     ##################################### Tilit correction ########################################
@@ -1119,11 +1149,13 @@ class ConfocalLogic(GenericLogic):
         self._scanning_device.tiltcorrection = True
         self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
         self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
+        self.signal_tiltcorrection_activated.emit()
 
     def deactivate_tiltcorrection(self):
         self._scanning_device.tiltcorrection = False
         self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
         self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
+        self.signal_tiltcorrection_deactivated.emit()
 
     def history_forward(self):
         if self.history_index < len(self.history) - 1:
