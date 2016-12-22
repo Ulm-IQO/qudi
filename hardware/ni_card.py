@@ -2057,6 +2057,8 @@ class SlowGatedNICard(NICard):
 
         config = self.getConfiguration()
 
+        if 'counter_channel' in config.keys():
+            self._counter_channel = config['counter_channel']
         if 'photon_source' in config.keys():
             self._photon_source=config['photon_source']
         else:
