@@ -113,7 +113,7 @@ class PulsedExtractionExternalLogic(GenericLogic):
         return laser_y
 
     def length_laser_pulses(self,laser):
-        return len(laser)
+        return len(laser[0])
 
     def sum_pulses(self,laser_2):
         return np.sum(laser_2,axis=0)

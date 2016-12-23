@@ -119,6 +119,7 @@ class PulsedExtractionExternalGui(GUIBase):
         self._mw.increment_SpinBox.editingFinished.connect(self.plot_result)
         self._mw.xlabel_LineEdit.editingFinished.connect(self.plot_result)
         self._mw.ylabel_LineEdit.editingFinished.connect(self.plot_result)
+        self._mw.errorbars_CheckBox.toggled.connect(self.plot_result)
 
 
         ########## Analysis method combobox setup ##########
@@ -263,6 +264,12 @@ class PulsedExtractionExternalGui(GUIBase):
         else:
             x_values = self._epe_logic.compute_x_values(start,increment,False)
             self._mw.result_PlotWidget.addItem(pg.PlotDataItem(x_values, self.signal))
+            if self._mw.errorbars_CheckBox.isChecked():
+                beamwidth=self.compute_errorbar_beamwidth(x_values)
+                self._mw.result_PlotWidget.addItem(pg.ErrorBarItem(x=x_values, y=self.signal,
+                                                               top=self.measuring_error,
+                                                               bottom=self.measuring_error,
+                                                                   beam=beamwidth))
 
         self._mw.result_PlotWidget.setLabel('left',ylabel)
         self._mw.result_PlotWidget.setLabel('bottom',xlabel)
@@ -314,6 +321,15 @@ class PulsedExtractionExternalGui(GUIBase):
         else:
             self.log.warning('Not yet implemented')
         return method
+
+    def compute_errorbar_beamwidth(self,x_data):
+        beamwidth = np.inf
+        for i in range(len(x_data) - 1):
+            width = x_data[i + 1] - x_data[i]
+            width = width / 3
+            if width <= beamwidth:
+                beamwidth = width
+        return beamwidth
 
 
     ########## Save data ##########
