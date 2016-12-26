@@ -37,7 +37,7 @@ class SimpleAcq(Base, SimpleDataInterface):
     def on_activate(self, e):
         self.rm = visa.ResourceManager('@py')
         print(self.rm.list_resources())
-        self.my_instrument = self.rm.open_resource('ASRL/dev/ttyUSB0::INSTR', baud_rate=115200)
+        self.my_instrument = self.rm.open_resource('ASRL/dev/ttyACM0::INSTR', baud_rate=115200)
 
 
     def on_deactivate(self, e):
@@ -47,7 +47,7 @@ class SimpleAcq(Base, SimpleDataInterface):
 
     def getData(self):
         try:
-            return int(self.my_instrument.read_raw().decode('utf-8').rstrip())
+            return int(self.my_instrument.read_raw().decode('utf-8').rstrip().split()[1])
         except:
             return 0
 
