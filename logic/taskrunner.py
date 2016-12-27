@@ -122,6 +122,8 @@ class TaskRunner(GenericLogic):
         config = self.getConfiguration()
         if not 'tasks' in config:
             return
+        if (config['tasks'] is None):
+            return
         for task in config['tasks']:
             t = {}
             t['ok'] = False
