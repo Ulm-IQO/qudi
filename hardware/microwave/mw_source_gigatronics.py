@@ -287,7 +287,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         return 0
 
-    def set_ext_trigger(self, pol=TriggerEde.RISING):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
