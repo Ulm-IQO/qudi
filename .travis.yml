@@ -5,7 +5,7 @@ env:
     - SETUP_XVFB=True
     - CONDA_CHANNELS="qttesting"
     - CONDA_DEPENDENCIES="jedi jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
-    - PIP_DEPENDENCIES="fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy pyqtgraph rpyc ruamel.yaml smmap spidev i2cdev"
+    - PIP_DEPENDENCIES="doxypypy fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy pyqtgraph rpyc ruamel.yaml smmap spidev i2cdev"
 
   matrix:
     - PYTHON_VERSION=3.4 USE_QT_API=PyQt4
@@ -26,9 +26,13 @@ before_install:
 #    git clone https://github.com/pyqtgraph/pyqtgraph.git;
 #    (cd pyqtgraph; python setup.py install;)
 #    fi
+  - mkdir -p ~/bin
+  - echo "#!/bin/bash\ndoxypypy -a -c $1" > ~/bin/py_filter
+  - export PATH=$PATH:~/bin
 
 install:
   - python tools/qudikernel.py install
+  - doxygen documentation/doxyfile
 
 script:
   - ./tools/test.sh
