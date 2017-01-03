@@ -36,10 +36,10 @@ before_install:
   - mkdir -p ~/bin
   - echo "#!/bin/bash\ndoxypypy -a -c $1" > ~/bin/py_filter
   - chmod +x ~/bin/py_filter
-  - export PATH=$PATH:~/bin
 
 install:
   - python tools/qudikernel.py install
+  - export PATH=$PATH:~/bin
   - doxygen documentation/doxyfile
 
 script:
