@@ -34,7 +34,7 @@ before_install:
 #    (cd pyqtgraph; python setup.py install;)
 #    fi
   - mkdir -p $HOME/bin
-  - echo "#!/bin/bash\ndoxypypy -a -c $1" > $HOME/bin/py_filter
+  - echo -e "#!/bin/bash\ndoxypypy -a -c $1" > $HOME/bin/py_filter
   - chmod +x $HOME/bin/py_filter
 
 install:
