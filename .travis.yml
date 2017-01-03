@@ -39,8 +39,7 @@ before_install:
 
 install:
   - python tools/qudikernel.py install
-  - export PATH=$PATH:$HOME/bin
-  - doxygen documentation/doxyfile
+  - PATH=$PATH:$HOME/bin doxygen documentation/doxyfile
 
 script:
   - ./tools/test.sh
