@@ -33,13 +33,13 @@ before_install:
 #    git clone https://github.com/pyqtgraph/pyqtgraph.git;
 #    (cd pyqtgraph; python setup.py install;)
 #    fi
-  - mkdir -p ~/bin
-  - echo "#!/bin/bash\ndoxypypy -a -c $1" > ~/bin/py_filter
-  - chmod +x ~/bin/py_filter
+  - mkdir -p $HOME/bin
+  - echo "#!/bin/bash\ndoxypypy -a -c $1" > $HOME/bin/py_filter
+  - chmod +x $HOME/bin/py_filter
 
 install:
   - python tools/qudikernel.py install
-  - export PATH=$PATH:~/bin
+  - export PATH=$PATH:$HOME/bin
   - doxygen documentation/doxyfile
 
 script:
