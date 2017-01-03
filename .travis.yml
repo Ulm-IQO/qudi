@@ -35,6 +35,7 @@ before_install:
 #    fi
   - mkdir -p ~/bin
   - echo "#!/bin/bash\ndoxypypy -a -c $1" > ~/bin/py_filter
+  - chmod +x ~/bin/py_filter
   - export PATH=$PATH:~/bin
 
 install:
