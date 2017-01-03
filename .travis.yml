@@ -42,6 +42,8 @@ install:
   - export PATH=$PATH:$HOME/bin
   - PATH=$PATH:$HOME/bin doxygen documentation/doxyfile
   - echo $PATH
+  - ls -alh $HOME/bin
+  - $HOME/bin/py_filter
 
 script:
   - ./tools/test.sh
