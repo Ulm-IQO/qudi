@@ -224,7 +224,8 @@ class ODMRLogic(GenericLogic):
             self.unlock()
             return -1
         else:
-            return 0
+            pass
+            # return 0
 
         counter_status = self._odmr_counter.set_up_odmr()
         if counter_status < 0:
