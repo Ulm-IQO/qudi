@@ -40,10 +40,8 @@ before_install:
 install:
   - python tools/qudikernel.py install
   - export PATH=$PATH:$HOME/bin
-  - PATH=$PATH:$HOME/bin doxygen documentation/doxyfile
   - echo $PATH
-  - ls -alh $HOME/bin
-  - $HOME/bin/py_filter
+  - doxygen documentation/doxyfile
 
 script:
   - ./tools/test.sh
