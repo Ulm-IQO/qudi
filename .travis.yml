@@ -21,10 +21,10 @@ addons:
   apt:
     sources:
       # for Doxygen
-      - debian-sid
+      - george-edison55-precise-backports
     packages:
-     - doxygen
-     - graphviz
+     - cmake
+     - libgraphviz-dev
 
 before_install:
   # Test environments for different Qt bindings

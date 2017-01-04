@@ -14,6 +14,7 @@ COMMIT_USER="Qudi Documentation Builder"
 COMMIT_EMAIL="qudi@uni-ulm.de"
 CHANGESET=$(git rev-parse --verify HEAD)
 MY_BUILD_DIR=$(pwd)
+DOXYGEN_VERSION="1.8.13"
 
 # Build documentation only for one of the targets
 if [[ ${BUILD_DOCS} != "True" ]]; then
@@ -29,6 +30,17 @@ fi;
 if [[ ${TRAVIS_PULL_REQUEST} != "false" ]]; then
     echo "Documentation is not built for pull requests."
     exit 0;
+fi;
+
+# get doxygen
+cd $HOME
+wget -O doxygen.tar.gz "http://ftp.stack.nl/pub/users/dimitri/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
+tar xzf doxygen.tar.gz
+mv "${HOME}/doxygen-${DOXYGEN_VERSION}/bin/doxygen" ${HOME}/bin
+
+if [[ $? -ne 0 ]]; then
+    echo "Getting doxygen failed." >&2
+    exit 1;
 fi;
 
 # Get a clean version of the HTML documentation repo.
