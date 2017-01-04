@@ -16,8 +16,8 @@ CHANGESET=$(git rev-parse --verify HEAD)
 MY_BUILD_DIR=$(pwd)
 
 # Build documentation only for one of the targets
-if [[ ${PYTHON_VERSION} != 3.5 ]] || [[ ${USE_QT_API} != PyQt5 ]]; then
-    echo "Documentation is built only on Python 3.5 and Qt5."
+if [[ ${BUILD_DOCS} != "True" ]]; then
+    echo "Documentation is built only once."
     exit 0;
 fi;
 
