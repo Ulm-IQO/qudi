@@ -22,7 +22,7 @@ if [[ ${BUILD_DOCS} != "True" ]]; then
     exit 0;
 fi;
 
-if [[ ${TRAVIS_BRANCH} != "travis-doxygen" ]]; then
+if [[ ${TRAVIS_BRANCH} != "master" ]]; then
     echo "Documentation is built only for the master branch."
     exit 0;
 fi;
