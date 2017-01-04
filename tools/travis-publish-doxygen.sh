@@ -8,12 +8,12 @@
 #   GH_TOKEN                decrypted secret from travis.yml
 
 # Settings
-REPO_PATH=github.com:Ulm-IQO/qudi.git
+REPO_PATH=github.com/Ulm-IQO/qudi.git
 HTML_PATH=${HOME}/docs/html
 COMMIT_USER="Qudi Documentation Builder"
 COMMIT_EMAIL="qudi@uni-ulm.de"
 CHANGESET=$(git rev-parse --verify HEAD)
-
+MY_BUILD_DIR=$(pwd)
 
 # Build documentation only for one of the targets
 if [[ ${PYTHON_VERSION} != 3.5 ]] || [[ ${USE_QT_API} != PyQt5 ]]; then
@@ -34,12 +34,12 @@ fi;
 # Get a clean version of the HTML documentation repo.
 rm -rf ${HTML_PATH}
 mkdir -p ${HTML_PATH}
-git clone -b gh-pages "${REPO_PATH}" --single-branch ${HTML_PATH}
+git clone -b gh-pages "https://${REPO_PATH}" --single-branch ${HTML_PATH}
 
 # rm all the files through git to prevent stale files.
 cd ${HTML_PATH}
 git rm -rf .
-cd -
+cd "${MY_BUILD_DIR}"
 
 # Generate the HTML documentation.
 doxygen documentation/doxyfile
@@ -59,5 +59,5 @@ git config --global push.default simple
 git commit -m "Automated documentation build for changeset ${CHANGESET}."
 # Redirect output to /dev/null here so the GH_TOKEN does not get leaked.
 git push "https://${GH_TOKEN}@${REPO_PATH}" gh-pages > /dev/null 2>&1
-cd -
+cd ${MY_BUILD_DIR}"
 
