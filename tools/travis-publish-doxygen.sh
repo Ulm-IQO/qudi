@@ -16,7 +16,7 @@ CHANGESET=$(git rev-parse --verify HEAD)
 
 
 # Build documentation only for one of the targets
-if [[ ${PYTHON_VERSION} != 3.5 -o ${USE_QT_API} != PyQt5 ]]; then
+if [[ ${PYTHON_VERSION} != 3.5 ]] || [[ ${USE_QT_API} != PyQt5 ]]; then
     echo "Documentation is built only on Python 3.5 and Qt5."
     exit 0;
 fi;
