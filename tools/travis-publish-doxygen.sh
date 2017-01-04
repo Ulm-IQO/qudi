@@ -21,7 +21,7 @@ if [[ ${PYTHON_VERSION} != 3.5 -o ${USE_QT_API} != PyQt5 ]]; then
     exit 0;
 fi;
 
-if [[ ${TRAVIS_BRANCH} != "master" ]]; then
+if [[ ${TRAVIS_BRANCH} != "travis-doxygen" ]]; then
     echo "Documentation is built only for the master branch."
     exit 0;
 fi;

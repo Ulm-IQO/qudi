@@ -49,7 +49,6 @@ before_install:
 install:
   - python tools/qudikernel.py install
   - export PATH=$PATH:$HOME/bin
-  - echo "PATH: $PATH"
 
 script:
   - ./tools/test.sh
