@@ -23,8 +23,7 @@ addons:
       # for Doxygen
       - george-edison55-precise-backports
     packages:
-     - cmake
-     - libgraphviz-dev
+     - graphviz
 
 before_install:
   # Test environments for different Qt bindings
