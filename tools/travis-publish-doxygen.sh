@@ -10,8 +10,8 @@
 # Settings
 REPO_PATH=github.com/Ulm-IQO/qudi.git
 HTML_PATH=${HOME}/docs/html
-COMMIT_USER="Qudi Documentation Builder"
-COMMIT_EMAIL="qudi@uni-ulm.de"
+COMMIT_USER=Qudi Documentation Builder
+COMMIT_EMAIL=qudi@uni-ulm.de
 CHANGESET=$(git rev-parse --verify HEAD)
 MY_BUILD_DIR=$(pwd)
 
@@ -36,23 +36,28 @@ rm -rf ${HTML_PATH}
 mkdir -p ${HTML_PATH}
 git clone -b gh-pages "https://${REPO_PATH}" --single-branch ${HTML_PATH}
 
+if [[ $? -ne 0 ]]; then
+    echo "gh-pages branch clone failed!" >&2
+    exit 1;
+fi;
+
 # rm all the files through git to prevent stale files.
 cd ${HTML_PATH}
 git rm -rf .
 cd "${MY_BUILD_DIR}"
 
 # Generate the HTML documentation.
-doxygen documentation/doxyfile
+doxygen documentation/doxyfile > /dev/null
 mv documentation/generated/html ${HTML_PATH}/html-docs
 
 if [[ $? -ne 0 ]]; then
     echo "Documentation not present, something went wrong!" >&2
-    exit 0;
+    exit 1;
 fi;
 
 # Create and commit the documentation repo.
 cd ${HTML_PATH}
-git add .
+git add . > /dev/null 2>&1
 git config user.name "${COMMIT_USER}"
 git config user.email "${COMMIT_EMAIL}"
 git config --global push.default simple
