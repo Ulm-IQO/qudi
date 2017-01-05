@@ -96,7 +96,7 @@ class LaserGUI(GUIBase):
         for k in self._laser_logic.data:
             if k != 'time':
                 self.plots[k] = plot1.plot()
-                self.plots[k].setPen(colorlist[(2*i)%len(colorlist)])
+                self.plots[k].setPen(colorlist[(2*i) % len(colorlist)])
                 i += 1
 
         self.updateButtonsEnabled()
@@ -142,20 +142,25 @@ class LaserGUI(GUIBase):
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.adjustDockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.plotDockWidget)
 
-
+    @QtCore.Slot(bool)
     def changeLaserState(self, on):
-        """ """
+        """ Disable lser power button and give logic signal.
+            Logic reaction to that signal will enable the button again.
+        """
         self._mw.laserButton.setEnabled(False)
         self.sigLaser.emit(on)
 
+    @QtCore.Slot(bool)
     def changeShutterState(self, on):
-        """ """
+        """ Disable laser shutter button and give logic signal.
+            Logic reaction to that signal will enable the button again.
+        """
         self._mw.shutterButton.setEnabled(False)
         self.sigShutter.emit(on)
 
     @QtCore.Slot(int)
     def changeControlMode(self, buttonId):
-        """ """
+        """ Process signal from laser control mode radio button group. """
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()
         pwr = self._mw.powerRadioButton.isChecked() and self._mw.powerRadioButton.isEnabled()
         if pwr and not cur:
@@ -177,13 +182,15 @@ class LaserGUI(GUIBase):
         
     @QtCore.Slot()
     def updateButtonsEnabled(self):
-        """ """
+        """ Logic told us to update our button states, so set the buttons accordingly. """
         self._mw.laserButton.setEnabled(self._laser_logic.laser_can_turn_on)
         if self._laser_logic.laser_state == LaserState.ON:
             self._mw.laserButton.setText('Laser: ON')
+            self._mw.laserButton.setChecked(True)
             self._mw.laserButton.setStyleSheet('')
         elif self._laser_logic.laser_state == LaserState.OFF:
             self._mw.laserButton.setText('Laser: OFF')
+            self._mw.laserButton.setChecked(False)
         elif self._laser_logic.laser_state == LaserState.LOCKED:
             self._mw.laserButton.setText('INTERLOCK')
         else:
@@ -204,7 +211,7 @@ class LaserGUI(GUIBase):
 
     @QtCore.Slot()
     def updateGui(self):
-        """ """
+        """ Update labels, the plot and button states with new data. """
         self._mw.currentLabel.setText(
             '{0:6.3f} {1}'.format(
                 self._laser_logic.laser_current,
