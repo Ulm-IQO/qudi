@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>900</width>
-    <height>600</height>
+    <width>689</width>
+    <height>509</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -149,8 +149,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>900</width>
-     <height>30</height>
+     <width>689</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -228,7 +228,7 @@
       </widget>
      </item>
      <item row="4" column="0">
-      <widget class="QDoubleSpinBox" name="setValueDoubleSpinBox"/>
+      <widget class="ScienDSpinBox" name="setValueDoubleSpinBox"/>
      </item>
      <item row="5" column="0">
       <widget class="QSlider" name="setValueVerticalSlider">
@@ -283,9 +283,6 @@
    <property name="text">
     <string>Show Graph</string>
    </property>
-   <property name="softKeyRole">
-    <enum>QAction::SelectSoftKey</enum>
-   </property>
   </action>
   <action name="actionShow_Controls">
    <property name="checkable">
@@ -309,6 +306,11 @@
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

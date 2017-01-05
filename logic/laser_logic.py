@@ -72,7 +72,6 @@ class LaserLogic(GenericLogic):
 
         self.has_shutter = self._laser.get_shutter_state() != ShutterState.NOSHUTTER
         self.init_data_logging()
-        #QtCore.QTimer.singleShot(100, self.start_query_loop)
         self.start_query_loop()
 
     def on_deactivate(self, e):
@@ -89,24 +88,28 @@ class LaserLogic(GenericLogic):
             self.stop()
             self.stopRequest = False
             return
+        qi = self.queryInterval
+        try:
+            self.laser_state = self._laser.get_laser_state()
+            self.laser_shutter = self._laser.get_shutter_state()
+            self.laser_power = self._laser.get_power()
+            self.laser_current = self._laser.get_current()
+            self.laser_temps = self._laser.get_temperatures()
 
-        self.laser_state = self._laser.get_laser_state()
-        self.laser_shutter = self._laser.get_shutter_state()
-        self.laser_power = self._laser.get_power()
-        self.laser_current = self._laser.get_current()
-        self.laser_temps = self._laser.get_temperatures()
+            for k in self.data:
+                self.data[k] = np.roll(self.data[k], -1)
 
-        for k in self.data:
-            self.data[k] = np.roll(self.data[k], -1)
+            self.data['power'][-1] = self.laser_power
+            self.data['current'][-1] = self.laser_current
+            self.data['time'][-1] = time.time()
 
-        self.data['power'][-1] = self.laser_power
-        self.data['current'][-1] = self.laser_current
-        self.data['time'][-1] = time.time()
+            for k, v in self.laser_temps.items():
+                self.data[k][-1] = v
+        except:
+            qi = 3000
+            self.log.exception("Exception in laser status loop, throttling refresh rate.")
 
-        for k,v in self.laser_temps.items():
-            self.data[k][-1] = v
-
-        self.queryTimer.start(self.queryInterval)
+        self.queryTimer.start(qi)
         self.sigUpdate.emit()
 
     @QtCore.Slot()
@@ -137,15 +140,18 @@ class LaserLogic(GenericLogic):
     @QtCore.Slot(ControlMode)
     def set_control_mode(self, mode):
         """ """
+
         if mode in self._laser.allowed_control_modes():
+            ctrl_mode = ControlMode.MIXED
             if mode == ControlMode.POWER:
                 self.laser_power = self._laser.get_power()
                 self._laser.set_power(self.laser_power)
-                self._laser.set_control_mode(mode)
+                ctrl_mode = self._laser.set_control_mode(mode)
             elif mode == ControlMode.CURRENT:
                 self.laser_current = self._laser.get_current()
                 self._laser.set_current(self.laser_current)
-                self._laser.set_control_mode(mode)
+                ctrl_mode = self._laser.set_control_mode(mode)
+            self.log.info('Changed control mode to {0}'.format(ctrl_mode))
 
     @QtCore.Slot(float)
     def set_laser_state(self, state):
