@@ -68,6 +68,8 @@ if [[ $? -ne 0 ]]; then
     exit 1;
 fi;
 
+find documentation -path documentation/generated -prune -o -name '*.png' -exec cp {} ${HTML_PATH}/html-docs/ \;
+
 # Create and commit the documentation repo.
 cd ${HTML_PATH}
 git add . > /dev/null 2>&1
