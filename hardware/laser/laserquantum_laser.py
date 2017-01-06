@@ -134,11 +134,11 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             if mode == ControlMode.POWER:
                 reply1 = self.inst.query('PFB=OFF')
                 reply2 = self.inst.query('CONTROL=POWER')
-                self.log.debug("Set POWER control mode {0}, {1}.".formt(reply1, reply2))
+                self.log.debug("Set POWER control mode {0}, {1}.".format(reply1, reply2))
             else:
                 reply1 = self.inst.query('PFB=ON')
                 reply2 = self.inst.query('CONTROL=CURRENT')
-                self.log.debug("Set CURRENT control mode {0}, {1}.".formt(reply1, reply2))
+                self.log.debug("Set CURRENT control mode {0}, {1}.".format(reply1, reply2))
         return self.get_control_mode()
 
     def get_power(self):
