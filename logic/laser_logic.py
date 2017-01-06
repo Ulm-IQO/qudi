@@ -26,6 +26,7 @@ import time
 from logic.generic_logic import GenericLogic
 from interface.simple_laser_interface import ControlMode, ShutterState, LaserState
 
+
 class LaserLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """

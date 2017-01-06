@@ -54,8 +54,16 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         config = self.getConfiguration()
-        self.psu = PSUTypes[config['psu']]
-        self.connect_laser(config['interface'])
+        if 'psu' in config:
+            self.psu = PSUTypes[config['psu']]
+        else:
+            self.log.error('No laser PSU type given, this will not work.')
+
+        if 'interface' in config:
+            self.connect_laser(config['interface'])
+        else:
+            self.log.error('No port given, this will not work.')
+
         if 'maxpower' in config:
             self.maxpower = config['maxpower']
         else:
@@ -219,6 +227,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
             return float(self.inst.query('SETCURRENT1?').split('%')[0])
+        elif self.psu == PSUTypes.SMD6000:
+            return float(self.inst.query('CURRENT?').split('%')[0])
         else:
             return float(self.inst.query('SETCURRENT?').split('%')[0])
 

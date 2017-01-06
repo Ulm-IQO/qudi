@@ -104,12 +104,13 @@ class LaserGUI(GUIBase):
         self._mw.plotWidget = pg.PlotWidget(axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self._mw.pwContainer.layout().addWidget(self._mw.plotWidget)
 
-        plot1 =  self._mw.plotWidget.getPlotItem()
+        plot1 = self._mw.plotWidget.getPlotItem()
         plot1.setLabel('left', 'power', units='W', color=palette.c1.name())
         plot1.setLabel('bottom', 'Time', units=None)
         plot1.setLabel('right', 'Temperature', units='°C', color=palette.c3.name())
 
         plot2 = pg.ViewBox()
+        plot2.
         plot1.scene().addItem(plot2)
         plot1.getAxis('right').linkToView(plot2)
         plot2.setXLink(plot1)
@@ -180,7 +181,7 @@ class LaserGUI(GUIBase):
     @QtCore.Slot()
     def updateViews(self):
         """ Keep plot views for left and right axis identical when resizing the plot widget. """
-        ## view has resized; update auxiliary views to match
+        # view has resized; update auxiliary views to match
         self.plot2.setGeometry(self.plot1.vb.sceneBoundingRect())
 
         # need to re-update linked axes since this was called incorrectly while views had different
@@ -284,7 +285,7 @@ class LaserGUI(GUIBase):
     def updateFromSlider(self):
         """ The user has changed the slider, update all other values from that. """
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()
-        pwr = self._mw.powerRadioButton.isChecked() and  self._mw.powerRadioButton.isEnabled()
+        pwr = self._mw.powerRadioButton.isChecked() and self._mw.powerRadioButton.isEnabled()
         if pwr and not cur:
             lpr = self._laser_logic.laser_power_range
             self._mw.setValueDoubleSpinBox.setValue(
