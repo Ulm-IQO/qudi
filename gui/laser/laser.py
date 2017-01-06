@@ -101,7 +101,8 @@ class LaserGUI(GUIBase):
         self._mw.actionReset_View.triggered.connect(self.restoreDefaultView)
 
         # set up plot
-        self._mw.plotWidget = pg.PlotWidget(axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self._mw.plotWidget = pg.PlotWidget(
+            axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self._mw.pwContainer.layout().addWidget(self._mw.plotWidget)
 
         plot1 = self._mw.plotWidget.getPlotItem()
@@ -110,7 +111,6 @@ class LaserGUI(GUIBase):
         plot1.setLabel('right', 'Temperature', units='°C', color=palette.c3.name())
 
         plot2 = pg.ViewBox()
-        plot2.
         plot1.scene().addItem(plot2)
         plot1.getAxis('right').linkToView(plot2)
         plot2.setXLink(plot1)
