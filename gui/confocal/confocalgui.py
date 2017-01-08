@@ -243,7 +243,6 @@ class ConfocalGui(GUIBase):
         self.initSettingsUI(e)  # initialize the settings GUI
         self.initOptimizerSettingsUI(e)  # initialize the optimizer settings GUI
 
-
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
 
@@ -500,10 +499,6 @@ class ConfocalGui(GUIBase):
         # Connect the change of the viewed area to an adjustment of the ROI:
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
         self.depth_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_depth)
-
-        #FIXME
-        self._mw.actionForward.setEnabled(False)
-        self._mw.actionBack.setEnabled(False)
 
         #################################################################
         #                           Actions                             #
@@ -939,17 +934,14 @@ class ConfocalGui(GUIBase):
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
-        # if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
-        #     self._mw.actionForward.setEnabled(True)
-        # else:
-        #     self._mw.actionForward.setEnabled(False)
-        # if enable and self._scanning_logic.history_index > 0:
-        #     self._mw.actionBack.setEnabled(True)
-        # else:
-        #     self._mw.actionBack.setEnabled(False)
-        self._mw.actionBack.setEnabled(False)
-        self._mw.actionForward.setEnabled(False)
-
+        if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
+            self._mw.actionForward.setEnabled(True)
+        else:
+            self._mw.actionForward.setEnabled(False)
+        if enable and self._scanning_logic.history_index > 0:
+            self._mw.actionBack.setEnabled(True)
+        else:
+            self._mw.actionBack.setEnabled(False)
 
     def menu_settings(self):
         """ This method opens the settings menu. """
