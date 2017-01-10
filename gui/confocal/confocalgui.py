@@ -740,7 +740,10 @@ class ConfocalGui(GUIBase):
         """
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
-        x_pos, y_pos, z_pos = self._scanning_logic.get_position()   # in micrometers
+        position = self._scanning_logic.get_position()   # in micrometers
+        x_pos = position[0]
+        y_pos = position[1]
+        z_pos = position[2]
 
         if modifiers == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_Right:
