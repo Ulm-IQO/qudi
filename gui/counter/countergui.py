@@ -386,14 +386,14 @@ class CounterGui(GUIBase):
     def update_count_status_Action(self,running):
         """Function to ensure that the GUI-save_action displays the current status
 
-        @param bool start: True if the counting is started
-        @return bool start: see above
+        @param bool running: True if the counting is started
+        @return bool running: see above
         """
         if running:
             self._mw.start_counter_Action.setText('Stop counter')
         else:
             self._mw.start_counter_Action.setText('Start counter')
-        return start
+        return running
 
 
     #TODO:
