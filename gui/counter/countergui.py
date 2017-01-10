@@ -154,7 +154,27 @@ class CounterGui(GUIBase):
         self.sigStartCounter.connect(self._counting_logic.startCount)
         self.sigStopCounter.connect(self._counting_logic.stopCount)
 
+        ################### Handling signals from the logic
+
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
+
+        #ToDo:
+        #self._counting_logic.sigCountContinuousNext.connect()
+        #self._counting_logic.sigCountGatedNext.connect()
+        #self._counting_logic.sigCountFiniteGatedNext.connect()
+        #self._counting_logic.sigGatedCounterFinished.connect()
+        #self._counting_logic.sigGatedCounterContinue.connect()
+
+        self._counting_logic.sigCountingSamplesChanged.connect(self.update_oversampling_SpinBox)
+        self._counting_logic.sigCountLengthChanged.connect(self.update_count_length_SpinBox)
+        self._counting_logic.sigCountFrequencyChanged.connect(self.update_count_freq_SpinBox)
+        self._counting_logic.sigStartSavingChanged.connect(self.update_saving_Action)
+        self._counting_logic.sigDataSaved.connect(self.update_saving_Action)
+        self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
+
+        return 0
+
+
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -162,6 +182,7 @@ class CounterGui(GUIBase):
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+        return
 
     def on_deactivate(self, e):
         # FIXME: !
@@ -171,6 +192,7 @@ class CounterGui(GUIBase):
                          explanation can be found in the method initUI.
         """
         self._mw.close()
+        return
 
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
@@ -198,6 +220,7 @@ class CounterGui(GUIBase):
                     self._curve4.setData(y=self._counting_logic.countdata_smoothed2,
                                          x=x_vals
                                          )
+        return 0
 
         if self._counting_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Save')
@@ -224,6 +247,9 @@ class CounterGui(GUIBase):
         else:
             self._mw.start_counter_Action.setText('Stop counter')
             self.sigStartCounter.emit()
+        return self._counting_logic.getState()
+
+
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -238,6 +264,9 @@ class CounterGui(GUIBase):
             self._mw.count_freq_SpinBox.setEnabled(False)
             self._mw.oversampling_SpinBox.setEnabled(False)
             self._counting_logic.start_saving()
+        return self._counting_logic.get_saving_state()
+
+    ######### Input parameters changed via GUI
 
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
@@ -248,6 +277,8 @@ class CounterGui(GUIBase):
             0,
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
+        return self._mw.count_length_SpinBox.value()
+
 
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
@@ -258,6 +289,8 @@ class CounterGui(GUIBase):
             0,
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
+        return self._mw.count_freq_SpinBox.value()
+
 
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
@@ -267,6 +300,11 @@ class CounterGui(GUIBase):
             0,
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
+        return self._mw.oversampling_SpinBox.value()
+
+
+    ######### Restore default values
+
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -291,3 +329,36 @@ class CounterGui(GUIBase):
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
                             self._mw.counting_control_ToolBar)
+        return 0
+
+
+########### Handle signals from logic
+
+    def update_oversampling_SpinBox(self,oversampling):
+        self._mw.oversampling_SpinBox.setValue(oversampling)
+        return oversampling
+
+    def update_count_freq_SpinBox(self,count_freq):
+        self._mw.count_freq_SpinBox.setValue(count_freq)
+        return count_freq
+
+    def update_count_length_SpinBox(self,count_length):
+        self._mw.count_length_SpinBox.setValue(count_length)
+        return count_length
+
+    def update_saving_Action(self,start):
+        if start:
+            self._mw.record_counts_Action.setText('Save')
+            self._mw.count_freq_SpinBox.setEnabled(False)
+            self._mw.oversampling_SpinBox.setEnabled(False)
+        else:
+            self._mw.record_counts_Action.setText('Start Saving Data')
+            self._mw.count_freq_SpinBox.setEnabled(True)
+            self._mw.oversampling_SpinBox.setEnabled(True)
+        return start
+
+    def update_counting_mode_ComboBox(self):
+        self.log.warning('Not implemented yet')
+        return 0
+
+

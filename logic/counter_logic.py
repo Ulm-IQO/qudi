@@ -45,6 +45,14 @@ class CounterLogic(GenericLogic):
     sigGatedCounterFinished = QtCore.Signal()
     sigGatedCounterContinue = QtCore.Signal(bool)
 
+    sigCountingSamplesChanged = QtCore.Signal(int)
+    sigCountLengthChanged = QtCore.Signal(int)
+    sigCountFrequencyChanged = QtCore.Signal(float)
+    sigStartSavingChanged = QtCore.Signal(bool)
+    sigDataSaved = QtCore.Signal(bool)
+    sigCountingModeChanged = QtCore.Signal(str)
+
+
     _modclass = 'CounterLogic'
     _modtype = 'logic'
 
@@ -155,6 +163,8 @@ class CounterLogic(GenericLogic):
         if restart:
             self.startCount()
 
+        self.sigCountingSamplesChanged.emit(self._counting_samples)
+
         return 0
 
     def set_count_length(self, length = 300):
@@ -181,6 +191,8 @@ class CounterLogic(GenericLogic):
         # if the counter was running, restart it
         if restart:
             self.startCount()
+
+        self.sigCountLengthChanged.emit(self._count_length)
 
         return 0
 
@@ -209,6 +221,8 @@ class CounterLogic(GenericLogic):
         # if the counter was running, restart it
         if restart:
             self.startCount()
+
+        self.sigCountFrequencyChanged.emit(self._count_frequency)
 
         return 0
 
@@ -254,6 +268,8 @@ class CounterLogic(GenericLogic):
         # If the counter is not running, then it should start running so there is data to save
         if self.isstate('idle'):
             self.startCount()
+
+        self.sigStartSavingChanged.emit(self._saving)
 
         return 0
 
@@ -304,6 +320,8 @@ class CounterLogic(GenericLogic):
             plt.close(fig)
             self.log.debug('Counter Trace saved to:\n{0}'.format(filepath))
 
+        self.sigDataSaved.emit(False)
+
         return self._data_to_save, parameters
 
     def draw_figure(self, data):
@@ -350,6 +368,8 @@ class CounterLogic(GenericLogic):
         """
         self._counting_mode = mode
 
+        self.sigCountingModeChanged.emit(self._counting_mode)
+
     def get_counting_mode(self):
         """ Retrieve the current counting mode.
 
@@ -373,6 +393,8 @@ class CounterLogic(GenericLogic):
             self._startCount_finite_gated()
         else:
             self.log.error('Unknown counting mode, cannot start the counter.')
+
+
 
     def _startCount_continuous(self):
         """Prepare to start counting change state and start counting 'loop'."""
