@@ -48,8 +48,8 @@ class CounterLogic(GenericLogic):
     sigCountingSamplesChanged = QtCore.Signal(int)
     sigCountLengthChanged = QtCore.Signal(int)
     sigCountFrequencyChanged = QtCore.Signal(float)
-    sigStartSavingChanged = QtCore.Signal(bool)
-    sigDataSaved = QtCore.Signal(bool)
+    sigSavingStatusChanged = QtCore.Signal(bool)
+    sigCountStatusChanged = QtCore.Signal(bool)
     sigCountingModeChanged = QtCore.Signal(str)
 
 
@@ -165,7 +165,7 @@ class CounterLogic(GenericLogic):
 
         self.sigCountingSamplesChanged.emit(self._counting_samples)
 
-        return 0
+        return self._counting_samples
 
     def set_count_length(self, length = 300):
         """ Sets the length of the counted bins.
@@ -269,7 +269,7 @@ class CounterLogic(GenericLogic):
         if self.isstate('idle'):
             self.startCount()
 
-        self.sigStartSavingChanged.emit(self._saving)
+        self.sigSavingStatusChanged.emit(self._saving)
 
         return 0
 
@@ -320,7 +320,7 @@ class CounterLogic(GenericLogic):
             plt.close(fig)
             self.log.debug('Counter Trace saved to:\n{0}'.format(filepath))
 
-        self.sigDataSaved.emit(False)
+        self.sigSavingStatusChanged.emit(self._saving)
 
         return self._data_to_save, parameters
 
@@ -394,6 +394,8 @@ class CounterLogic(GenericLogic):
         else:
             self.log.error('Unknown counting mode, cannot start the counter.')
 
+        self.sigCountStatusChanged.emit(True)
+
 
 
     def _startCount_continuous(self):
@@ -442,6 +444,9 @@ class CounterLogic(GenericLogic):
         """
         with self.threadlock:
             self.stopRequested = True
+
+        self.sigCountStatusChanged.emit(False)
+
 
     def _startCount_finite_gated(self):
         """Prepare to start finite gated counting.
