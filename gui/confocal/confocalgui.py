@@ -1063,13 +1063,14 @@ class ConfocalGui(GUIBase):
         Ignore the update when it is tagged with one of the tags that the
         confocal gui emits, as the GUI elements were already adjusted.
         """
-        if not 'roi' in tag and not 'slider' in tag and not 'key' in tag and not 'input' in tag:
-            x_pos, y_pos, z_pos = self._scanning_logic.get_position()
-
+        if 'roi' not in tag and 'slider' not in tag and 'key' not in tag and 'input' not in tag:
+            position = self._scanning_logic.get_position()
+            x_pos = position[0]
+            y_pos = position[1]
+            z_pos = position[2]
             roi_x_view = x_pos - self.roi_xy.size()[0] * 0.5
             roi_y_view = y_pos - self.roi_xy.size()[1] * 0.5
             self.roi_xy.setPos([roi_x_view, roi_y_view])
-
 
             roi_x_view = x_pos - self.roi_depth.size()[0] * 0.5
             roi_y_view = z_pos - self.roi_depth.size()[1] * 0.5
@@ -1162,8 +1163,8 @@ class ConfocalGui(GUIBase):
         xcenter = xpos+0.5*xsize
         ycenter = ypos+0.5*ysize
         newsize = self._optimizer_logic.refocus_XY_size
-        self.roi_xy.setSize([newsize,newsize])
-        self.roi_xy.setPos([xcenter-newsize/2,ycenter-newsize/2])
+        self.roi_xy.setSize([newsize, newsize])
+        self.roi_xy.setPos([xcenter-newsize/2, ycenter-newsize/2])
 
     def update_roi_depth_size(self):
         xpos = self.roi_depth.pos()[0]
@@ -1174,8 +1175,8 @@ class ConfocalGui(GUIBase):
         ycenter = ypos+0.5*ysize
         newsize_z = self._optimizer_logic.refocus_Z_size
         newsize_xy = self._optimizer_logic.refocus_XY_size
-        self.roi_depth.setSize([newsize_xy,newsize_z])
-        self.roi_depth.setPos([xcenter-newsize_xy/2,ycenter-newsize_z/2])
+        self.roi_depth.setSize([newsize_xy, newsize_z])
+        self.roi_depth.setPos([xcenter-newsize_xy/2, ycenter-newsize_z/2])
 
     def update_roi_depth(self, x=None, z=None):
         """ Adjust the depth ROI position if the value has changed.
