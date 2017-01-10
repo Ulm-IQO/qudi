@@ -34,6 +34,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from collections import OrderedDict
 import numpy
 import re
+import os
 import ruamel.yaml as yaml
 from io import BytesIO
 
@@ -63,12 +64,21 @@ def ordered_load(stream, Loader=yaml.Loader):
 
     def construct_ndarray(loader, node):
         """
-        The ndarray constructor.
+        The ndarray constructor, correctly saves a numpy array
+        inside the config file as a string.
         """
         value = loader.construct_yaml_binary(node)
         with BytesIO(bytes(value)) as f:
             arrays = numpy.load(f)
             return arrays['array']
+
+    def construct_external_ndarray(loader, node):
+        """
+        The constructor for an numoy array that is saved in an external file.
+        """
+        filename = loader.construct_yaml_str(node)
+        arrays = numpy.load(filename)
+        return arrays['array']
 
     def construct_str(loader, node):
         """
@@ -101,6 +111,9 @@ def ordered_load(stream, Loader=yaml.Loader):
             '!ndarray',
             construct_ndarray)
     OrderedLoader.add_constructor(
+            '!extndarray',
+            construct_external_ndarray)
+    OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
             construct_str)
 
@@ -125,6 +138,8 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         A Dumper using an OrderedDict
         """
+        external_ndarray_counter = 0
+
         def ignore_aliases(self, data):
             """
             ignore aliases and anchors
@@ -155,11 +170,22 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         Representer for numpy ndarrays
         """
-        with BytesIO() as f:
-            numpy.savez_compressed(f, array=data)
-            compressed_string = f.getvalue()
-        node = dumper.represent_binary(compressed_string)
-        node.tag = '!ndarray'
+        try:
+            filename = os.path.splitext(os.path.basename(stream.name))[0]
+            configdir = os.path.dirname(stream.name)
+            newpath = '{0}-{1:06}.npz'.format(
+                os.path.join(configdir, filename),
+                dumper.external_ndarray_counter)
+            numpy.savez_compressed(newpath, array=data)
+            node = dumper.represent_str(newpath)
+            node.tag = '!extndarray'
+            dumper.external_ndarray_counter += 1
+        except:
+            with BytesIO() as f:
+                numpy.savez_compressed(f, array=data)
+                compressed_string = f.getvalue()
+            node = dumper.represent_binary(compressed_string)
+            node.tag = '!ndarray'
         return node
 
     # add representers
