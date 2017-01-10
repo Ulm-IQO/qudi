@@ -54,8 +54,16 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         config = self.getConfiguration()
-        self.psu = PSUTypes[config['psu']]
-        self.connect_laser(config['interface'])
+        if 'psu' in config:
+            self.psu = PSUTypes[config['psu']]
+        else:
+            self.log.error('No laser PSU type given, this will not work.')
+
+        if 'interface' in config:
+            self.connect_laser(config['interface'])
+        else:
+            self.log.error('No port given, this will not work.')
+
         if 'maxpower' in config:
             self.maxpower = config['maxpower']
         else:
@@ -84,8 +92,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
                 write_termination='\r\n',
                 read_termination='\r\n',
                 send_end=True)
-            self.inst.timeout = 500
-        except visa.VisaIOError as e:
+            # give laser 2 seconds maximum to reply
+            self.inst.timeout = 2000
+        except visa.VisaIOError:
             self.log.exception('Communication Failure:')
             return False
         else:
@@ -131,11 +140,13 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return ControlMode.POWER
         else:
             if mode == ControlMode.POWER:
-                self.inst.query('PFB=OFF')
-                self.inst.query('CONTROL=POWER')
+                reply1 = self.inst.query('PFB=OFF')
+                reply2 = self.inst.query('CONTROL=POWER')
+                self.log.debug("Set POWER control mode {0}, {1}.".format(reply1, reply2))
             else:
-                self.inst.query('PFB=ON')
-                self.inst.query('CONTROL=CURRENT')
+                reply1 = self.inst.query('PFB=ON')
+                reply2 = self.inst.query('CONTROL=CURRENT')
+                self.log.debug("Set CURRENT control mode {0}, {1}.".format(reply1, reply2))
         return self.get_control_mode()
 
     def get_power(self):
@@ -144,12 +155,16 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         answer = self.inst.query('POWER?')
-        if "mW" in answer:
-            return float(answer.split('mW')[0])/1000
-        elif 'W' in answer:
-            return float(answer.split('W')[0])
-        else:
-            return float(answer)
+        try:
+            if "mW" in answer:
+                return float(answer.split('mW')[0])/1000
+            elif 'W' in answer:
+                return float(answer.split('W')[0])
+            else:
+                return float(answer)
+        except ValueError:
+            self.log.exception("Answer was {0}.".format(answer))
+            return -1
 
     def get_power_setpoint(self):
         """
@@ -158,12 +173,16 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes.FPU:
             answer = self.inst.query('SETPOWER?')
-            if "mW" in answer:
-                return float(answer.split('mW')[0]) / 1000
-            elif 'W' in answer:
-                return float(answer.split('W')[0])
-            else:
-                return float(answer)
+            try:
+                if "mW" in answer:
+                    return float(answer.split('mW')[0]) / 1000
+                elif 'W' in answer:
+                    return float(answer.split('W')[0])
+                else:
+                    return float(answer)
+            except ValueError:
+                self.log.exception("Answer was {0}.".format(answer))
+                return -1
         else:
             return self.get_power()
 
@@ -208,6 +227,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
             return float(self.inst.query('SETCURRENT1?').split('%')[0])
+        elif self.psu == PSUTypes.SMD6000:
+            return float(self.inst.query('CURRENT?').split('%')[0])
         else:
             return float(self.inst.query('SETCURRENT?').split('%')[0])
 
