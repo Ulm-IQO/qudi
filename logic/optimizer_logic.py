@@ -178,9 +178,6 @@ class OptimizerLogic(GenericLogic):
         self._statusVariables['return_slowness'] = self.return_slowness
         return 0
 
-    def testing(self):
-        pass
-
     def check_optimization_sequence(self):
         """ Check the sequence of scan events for the optimization.
         """
@@ -215,7 +212,6 @@ class OptimizerLogic(GenericLogic):
     def set_refocus_Z_size(self,size):
         self.refocus_Z_size = size
         self.signal_refocus_Z_size_changed.emit()
-
 
     def start_refocus(self, initial_pos=None, caller_tag='unknown'):
         """Starts the optimization scan around initial_pos
@@ -312,13 +308,15 @@ class OptimizerLogic(GenericLogic):
 
         @param start_pos float[]: 3-point vector giving x, y, z position to go to.
         """
+        n_ch = len(self._scanning_device.get_scanner_axes())
         scanner_pos = self._scanning_device.get_scanner_position()
-
-        move_to_start_line = np.vstack((
-            np.linspace(scanner_pos[0], start_pos[0], self.return_slowness),
-            np.linspace(scanner_pos[1], start_pos[1], self.return_slowness),
-            np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
-            ))
+        lsx = np.linspace(scanner_pos[0], start_pos[0], self.return_slowness)
+        lsy = np.linspace(scanner_pos[1], start_pos[1], self.return_slowness)
+        lsz = np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
+        if n_ch <= 3:
+            move_to_start_line = np.vstack((lsx, lsy, lsz)[0:n_ch])
+        else:
+            move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
 
         counts = self._scanning_device.scan_line(move_to_start_line)[0]
         if np.any(counts[0] == -1):
@@ -331,6 +329,7 @@ class OptimizerLogic(GenericLogic):
         This method repeats itself using the _signal_scan_next_xy_line
         until the xy optimization image is complete.
         """
+        n_ch = len(self._scanning_device.get_scanner_axes())
         # stop scanning if instructed
         if self.stopRequested:
             with self.threadlock:
@@ -339,7 +338,7 @@ class OptimizerLogic(GenericLogic):
                 self.signal_image_updated.emit()
                 self.signal_refocus_finished.emit(
                     self._caller_tag,
-                    [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
+                    [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0][0:n_ch])
                 return
 
         # move to the start of the first line
@@ -354,12 +353,15 @@ class OptimizerLogic(GenericLogic):
                 self._signal_scan_next_xy_line.emit()
                 return
 
+        lsx = self.xy_refocus_image[self._xy_scan_line_count, :, 0]
+        lsy = self.xy_refocus_image[self._xy_scan_line_count, :, 1]
+        lsz = self.xy_refocus_image[self._xy_scan_line_count, :, 2]
+
         # scan a line of the xy optimization image
-        line = np.vstack((
-            self.xy_refocus_image[self._xy_scan_line_count, :, 0],
-            self.xy_refocus_image[self._xy_scan_line_count, :, 1],
-            self.xy_refocus_image[self._xy_scan_line_count, :, 2]
-            ))
+        if n_ch <= 3:
+            line = np.vstack((lsx, lsy, lsz)[0:n_ch])
+        else:
+            line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
         line_counts = self._scanning_device.scan_line(line)[0]
         if np.any(line_counts[0] == -1):
@@ -368,11 +370,13 @@ class OptimizerLogic(GenericLogic):
             self._signal_scan_next_xy_line.emit()
             return
 
-        return_line = np.vstack((
-            self._return_X_values,
-            self.xy_refocus_image[self._xy_scan_line_count, 0, 1] * np.ones(self._return_X_values.shape),
-            self.xy_refocus_image[self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape)
-            ))
+        lsx = self._return_X_values
+        lsy = self.xy_refocus_image[self._xy_scan_line_count, 0, 1] * np.ones(lsx.shape)
+        lsz = self.xy_refocus_image[self._xy_scan_line_count, 0, 2] * np.ones(lsx.shape)
+        if n_ch <= 3:
+            return_line = np.vstack((lsx, lsy, lsz))
+        else:
+            return_line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
         return_line_counts = self._scanning_device.scan_line(return_line)[0]
         if np.any(return_line_counts[0] == -1):
@@ -506,18 +510,21 @@ class OptimizerLogic(GenericLogic):
 
         # Moves to the start value of the z-scan
         status = self._move_to_start_pos(
-            [self.optim_pos_x,self.optim_pos_y, self._zimage_Z_values[0]])
+            [self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
         if status < 0:
             self.log.error('Error during move to starting point.')
             self.stop_refocus()
             return
+        n_ch = len(self._scanning_device.get_scanner_axes())
 
         # defining trace of positions for z-refocus
         Z_line = self._zimage_Z_values
         X_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
         Y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
-
-        line = np.vstack((X_line, Y_line, Z_line))
+        if n_ch <= 3:
+            line = np.vstack((X_line, Y_line, Z_line)[0:n_ch])
+        else:
+            line = np.vstack((X_line, Y_line, Z_line, np.zeros(X_line.shape)))
 
         # Perform scan
         line_counts = self._scanning_device.scan_line(line)[0]
@@ -542,7 +549,15 @@ class OptimizerLogic(GenericLogic):
                 return
 
             # define an offset line to measure "background"
-            line_bg = np.vstack((X_line + self.surface_subtr_scan_offset, Y_line, Z_line))
+            if n_ch <= 3:
+                line_bg = np.vstack(
+                    (X_line + self.surface_subtr_scan_offset, Y_line, Z_line)[0:n_ch])
+            else:
+                line_bg = np.vstack(
+                    (X_line + self.surface_subtr_scan_offset,
+                     Y_line,
+                     Z_line,
+                     np.zeros(X_line.shape)))
 
             line_bg_counts = self._scanning_device.scan_line(line_bg)[0]
             if np.any(line_bg_counts[0] == -1):
