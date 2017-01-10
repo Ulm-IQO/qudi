@@ -37,11 +37,12 @@ import re
 import ruamel.yaml as yaml
 from io import BytesIO
 
+
 def ordered_load(stream, Loader=yaml.Loader):
     """
     Loads a YAML formatted data from stream and puts it into an OrderedDict
 
-    @param stream Stream: stream the data is read from
+    @param Stream stream: stream the data is read from
     @param Loader Loader: Loader base class
 
     Returns OrderedDict with data. If stream is empty then an empty
@@ -116,8 +117,8 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     """
     dumps (OrderedDict) data in YAML format
 
-    @param data OrderedDict: the data
-    @param stream Stream: where the data in YAML is dumped
+    @param OrderedDict data: the data
+    @param Stream stream: where the data in YAML is dumped
     @param Dumper Dumper: The dumper that is used as a base class
     """
     class OrderedDumper(Dumper):
