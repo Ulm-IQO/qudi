@@ -479,30 +479,40 @@
        </item>
        <item row="1" column="0">
         <layout class="QGridLayout" name="gridLayout_3">
+         <item row="1" column="30">
+          <widget class="QSpinBox" name="initial_length_SpinBox">
+           <property name="maximum">
+            <number>99999</number>
+           </property>
+           <property name="value">
+            <number>1420</number>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="26">
+          <widget class="QSpinBox" name="pulse_length_SpinBox">
+           <property name="maximum">
+            <number>99999</number>
+           </property>
+           <property name="value">
+            <number>900</number>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="24">
           <widget class="QSpinBox" name="exception_SpinBox">
            <property name="maximum">
-            <number>999999999</number>
+            <number>99999</number>
            </property>
           </widget>
          </item>
-         <item row="1" column="5">
-          <widget class="QSpinBox" name="number_pulses_SpinBox">
-           <property name="maximum">
-            <number>999999999</number>
-           </property>
-           <property name="value">
-            <number>60</number>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QCheckBox" name="alternating_CheckBox">
-           <property name="layoutDirection">
-            <enum>Qt::RightToLeft</enum>
-           </property>
+         <item row="1" column="23">
+          <widget class="QLabel" name="exception_Label">
            <property name="text">
-            <string>alternating</string>
+            <string>Exception:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -516,13 +526,13 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="31">
-          <widget class="QLabel" name="increment_length_Label">
-           <property name="text">
-            <string>increment:</string>
+         <item row="1" column="22">
+          <widget class="QSpinBox" name="min_laser_SpinBox">
+           <property name="maximum">
+            <number>999999999</number>
            </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           <property name="value">
+            <number>150</number>
            </property>
           </widget>
          </item>
@@ -530,36 +540,6 @@
           <widget class="QLabel" name="filter_Label">
            <property name="text">
             <string>filter:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="13">
-          <widget class="QLabel" name="treshold_Label">
-           <property name="text">
-            <string>treshold:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="14">
-          <widget class="QSpinBox" name="treshold_SpinBox">
-           <property name="maximum">
-            <number>999999999</number>
-           </property>
-           <property name="value">
-            <number>25</number>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="23">
-          <widget class="QLabel" name="exception_Label">
-           <property name="text">
-            <string>Exception:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -576,6 +556,16 @@
            </property>
           </widget>
          </item>
+         <item row="1" column="1">
+          <widget class="QCheckBox" name="alternating_CheckBox">
+           <property name="layoutDirection">
+            <enum>Qt::RightToLeft</enum>
+           </property>
+           <property name="text">
+            <string>alternating</string>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="4">
           <widget class="QLabel" name="number_pulses_Label">
            <property name="text">
@@ -583,6 +573,26 @@
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="13">
+          <widget class="QLabel" name="treshold_Label">
+           <property name="text">
+            <string>treshold:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="5">
+          <widget class="QSpinBox" name="number_pulses_SpinBox">
+           <property name="maximum">
+            <number>999999999</number>
+           </property>
+           <property name="value">
+            <number>60</number>
            </property>
           </widget>
          </item>
@@ -596,6 +606,36 @@
            </property>
           </widget>
          </item>
+         <item row="1" column="31">
+          <widget class="QLabel" name="increment_length_Label">
+           <property name="text">
+            <string>increment:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="25">
+          <widget class="QLabel" name="pulse_length_Label">
+           <property name="text">
+            <string>pulselength:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="14">
+          <widget class="QSpinBox" name="treshold_SpinBox">
+           <property name="maximum">
+            <number>999999999</number>
+           </property>
+           <property name="value">
+            <number>25</number>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="29">
           <widget class="QLabel" name="initial_length_Label">
            <property name="text">
@@ -603,46 +643,6 @@
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="30">
-          <widget class="QDoubleSpinBox" name="inital_length_SpinBox">
-           <property name="maximum">
-            <double>999999999.990000009536743</double>
-           </property>
-           <property name="value">
-            <double>10.000000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="28">
-          <widget class="QDoubleSpinBox" name="initial_offset_SpinBox">
-           <property name="maximum">
-            <double>999999999.990000009536743</double>
-           </property>
-           <property name="value">
-            <double>10.000000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="25">
-          <widget class="QLabel" name="aom_delay_Label">
-           <property name="text">
-            <string>AOM delay:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="32">
-          <widget class="QDoubleSpinBox" name="increment_length_SpinBox">
-           <property name="maximum">
-            <double>999999999.990000009536743</double>
-           </property>
-           <property name="value">
-            <double>10.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -656,23 +656,23 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="26">
-          <widget class="QDoubleSpinBox" name="aom_delay_SpinBox">
+         <item row="1" column="28">
+          <widget class="QSpinBox" name="initial_offset_SpinBox">
            <property name="maximum">
-            <double>999999999.990000009536743</double>
+            <number>99999</number>
            </property>
            <property name="value">
-            <double>10.000000000000000</double>
+            <number>82</number>
            </property>
           </widget>
          </item>
-         <item row="1" column="22">
-          <widget class="QSpinBox" name="min_laser_SpinBox">
+         <item row="1" column="32">
+          <widget class="QSpinBox" name="increment_length_SpinBox">
            <property name="maximum">
-            <number>999999999</number>
+            <number>99999</number>
            </property>
            <property name="value">
-            <number>150</number>
+            <number>10</number>
            </property>
           </widget>
          </item>
@@ -691,7 +691,7 @@
     <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
-    <bool>true</bool>
+    <bool>false</bool>
    </attribute>
    <addaction name="actionTest"/>
   </widget>
