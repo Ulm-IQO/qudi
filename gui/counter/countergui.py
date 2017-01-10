@@ -168,9 +168,9 @@ class CounterGui(GUIBase):
         self._counting_logic.sigCountingSamplesChanged.connect(self.update_oversampling_SpinBox)
         self._counting_logic.sigCountLengthChanged.connect(self.update_count_length_SpinBox)
         self._counting_logic.sigCountFrequencyChanged.connect(self.update_count_freq_SpinBox)
-        self._counting_logic.sigStartSavingChanged.connect(self.update_saving_Action)
-        self._counting_logic.sigDataSaved.connect(self.update_saving_Action)
+        self._counting_logic.sigSavingStatusChanged.connect(self.update_saving_Action)
         self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
+        self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
 
         return 0
 
@@ -335,18 +335,44 @@ class CounterGui(GUIBase):
 ########### Handle signals from logic
 
     def update_oversampling_SpinBox(self,oversampling):
+        """Function to ensure that the GUI displays the current value of the logic
+
+        @param int oversampling: adjusted oversampling to update in the GUI in bins
+        @return int oversampling: see above
+        """
+        self._mw.oversampling_SpinBox.blockSignals(True)
         self._mw.oversampling_SpinBox.setValue(oversampling)
+        self._mw.oversampling_SpinBox.blockSignals(False)
         return oversampling
 
     def update_count_freq_SpinBox(self,count_freq):
+        """Function to ensure that the GUI displays the current value of the logic
+
+        @param float count_freq: adjusted count frequency in Hz
+        @return float count_freq: see above
+        """
+        self._mw.count_freq_SpinBox.blockSignals(True)
         self._mw.count_freq_SpinBox.setValue(count_freq)
+        self._mw.count_freq_SpinBox.blockSignals(False)
         return count_freq
 
     def update_count_length_SpinBox(self,count_length):
+        """Function to ensure that the GUI displays the current value of the logic
+
+        @param int count_length: adjusted count length in bins
+        @return int count_length: see above
+        """
+        self._mw.count_length_SpinBox.blockSignals(True)
         self._mw.count_length_SpinBox.setValue(count_length)
+        self._mw.count_length_SpinBox.blockSignals(False)
         return count_length
 
     def update_saving_Action(self,start):
+        """Function to ensure that the GUI-save_action displays the current status
+
+        @param bool start: True if the measurment saving is started
+        @return bool start: see above
+        """
         if start:
             self._mw.record_counts_Action.setText('Save')
             self._mw.count_freq_SpinBox.setEnabled(False)
@@ -357,6 +383,20 @@ class CounterGui(GUIBase):
             self._mw.oversampling_SpinBox.setEnabled(True)
         return start
 
+    def update_count_status_Action(self,running):
+        """Function to ensure that the GUI-save_action displays the current status
+
+        @param bool start: True if the counting is started
+        @return bool start: see above
+        """
+        if running:
+            self._mw.start_counter_Action.setText('Stop counter')
+        else:
+            self._mw.start_counter_Action.setText('Start counter')
+        return start
+
+
+    #TODO:
     def update_counting_mode_ComboBox(self):
         self.log.warning('Not implemented yet')
         return 0
