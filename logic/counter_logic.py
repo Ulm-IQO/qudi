@@ -413,6 +413,8 @@ class CounterLogic(GenericLogic):
         """Prepare to start counting change state and start counting 'loop'."""
         # setting up the counter
         # set a lock, to signify the measurment is running
+
+        #@return error: 0 is OK, -1 is error
         self.lock()
 
         clock_status = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
@@ -439,6 +441,7 @@ class CounterLogic(GenericLogic):
             (len(self.get_channels()), self._counting_samples))
 
         self.sigCountContinuousNext.emit()
+        return 0
 
     #FIXME: To Do!
     def _startCount_gated(self):
@@ -543,7 +546,6 @@ class CounterLogic(GenericLogic):
         for i, ch in enumerate(self.get_channels()):
             # remember the new count data in circular array
             self.countdata[i, 0] = np.average(self.rawdata[i])
-
         # move the array to the left to make space for the new data
         self.countdata = np.roll(self.countdata, -1, axis=1)
         # also move the smoothing array
