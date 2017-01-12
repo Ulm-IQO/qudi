@@ -331,10 +331,8 @@ class CounterLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        # TODO: Draw plot for second APD if it is connected
-        # TODO: One plot for all apds or for every APD one plot?
 
-        count_data = data[:, 1]
+        count_data = data[:, 1:len(self.get_channels())+1]
         time_data = data[:, 0]
 
         # Scale count values using SI prefix
@@ -457,6 +455,20 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
         self.sigCountStatusChanged.emit(False)
+
+
+    def stop_counter(self):
+        """ Stops the counter if it is running and returns whether it was running.
+        @return bool restart: True if counter was running
+        """
+        if self.getState() == 'locked':
+            restart = True
+            self.stopCount()
+            while self.getState() == 'locked':
+                time.sleep(0.01)
+        else:
+            restart = False
+        return restart
 
 
     def _startCount_finite_gated(self):
