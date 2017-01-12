@@ -116,6 +116,7 @@ class CountingMode(Enum):
     GATED = 1
     FINITE_GATED = 2
 
+
 class SlowCounterConstraints:
 
     def __init__(self):
