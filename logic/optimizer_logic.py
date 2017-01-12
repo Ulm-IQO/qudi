@@ -218,10 +218,10 @@ class OptimizerLogic(GenericLogic):
         @param initial_pos
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
-        if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size == 3:
-            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
-        elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) == 3:
-            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
+        if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
+        elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif initial_pos is None:
             scpos = self._scanning_device.get_scanner_position()[0:3]
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = scpos
@@ -244,8 +244,9 @@ class OptimizerLogic(GenericLogic):
 
         scanner_status = self.start_scanner()
         if scanner_status < 0:
-            self.sigRefocusFinished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y,
-                                                            self.optim_pos_z, 0])
+            self.sigRefocusFinished.emit(
+                self._caller_tag,
+                [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
             return
         self.sigRefocusStarted.emit()
         self._sigDoNextOptimizationStep.emit()
