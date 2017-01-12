@@ -27,6 +27,8 @@ from qtpy import QtCore
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterConstraints
+from interface.slow_counter_interface import CountingMode
 from interface.fast_counter_interface import FastCounterInterface
 
 # =============================================================================
@@ -1007,7 +1009,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         return 0
 
-    def set_up_counter(self, counter_channel = 1, photon_source = None,
+    def set_up_counter(self, counter_channels=1, sources=None,
                        clock_channel = None):
         """ Ensure Interface compatibility. The counter allows no set up.
 
@@ -1019,7 +1021,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._count_channel = counter_channel
+        self._count_channel = counter_channels
         self.log.info('Picoharp: The counter allows no set up!\n'
                     'The implementation of this command ensures Interface '
                     'compatibility.')
@@ -1027,6 +1029,24 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         #FIXME: make the counter channel chooseable in config
         #FIXME: add second photon source either to config or in a better way to file
         return 0
+ 
+    def get_counter_channels(self):
+        """ Return one counter channel. """
+        return ['Ctr0']
+
+    def get_constraints(self):
+        """ Get hardware limits of NI device.
+
+        @return SlowCounterConstraints: constraints class for slow counter
+
+        FIXME: ask hardware for limits when module is loaded
+        """
+        constraints = SlowCounterConstraints()
+        constraints.max_detectors = 1
+        constraints.min_count_frequency = 1e-3
+        constraints.max_count_frequency = 10e9
+        conetraints.counting_mode = [CountingMode.CONTINUOUS]
+        return constraints
 
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.

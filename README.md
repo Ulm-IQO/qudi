@@ -20,12 +20,13 @@ If you are publishing scientific results, mentioning Qudi in your methods decscr
 Until we have a proper peer-reviewed paper published, you should cite  the preprint [arXiv:1611.09146](https://arxiv.org/abs/1611.09146) \[quant-ph\] for this purpose.
 
 ## Documentation
-User and code documentation about Qudi is located at http://qosvn.physik.uni-ulm.de/qudi-docs .
+User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi/html-docs/ .
 
 ## Continuous integration 
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
-[![Build status](https://ci.appveyor.com/api/projects/status/xbrn22i4jdda3t8e?svg=true)](https://ci.appveyor.com/project/drogenlied/qudi-3s43k)
+[![Build status](https://ci.appveyor.com/api/projects/status/ma1a125b31cbl6tu/branch/master?svg=true)](https://ci.appveyor.com/project/InstituteforQuantumOptics/qudi/branch/master)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/?branch=master)
+[![Code Issues](https://www.quantifiedcode.com/api/v1/project/d31724e4b9704732ac1f508c7de1999d/badge.svg)](https://www.quantifiedcode.com/app/project/d31724e4b9704732ac1f508c7de1999d)
 
 ## Collaboration
 Feel free to register and add issues to our trac at http://qosvn.physik.uni-ulm.de/trac/qudi .

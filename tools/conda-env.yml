@@ -4,7 +4,7 @@ dependencies:
 - comtypes=1.1.2=py34_0
 - cycler=0.10.0=py34_0
 - decorator=4.0.4=py34_0
-- h5py=2.5.0=np110py34_4
+- h5py=2.6.0=np111py34_2
 - hdf5=1.8.15.1=vc10_4
 - ipykernel=4.5.0=py34_0
 - ipython=4.0.1=py34_0
@@ -22,14 +22,14 @@ dependencies:
 - libtiff=4.0.6=vc10_1
 - lxml=3.5.0=py34_0
 - markupsafe=0.23=py34_0
-- matplotlib=1.5.1=np110py34_0
+- matplotlib=1.5.1=np111py34_0
 - mistune=0.7.1=py34_0
-- mkl=11.3.1=0
+- mkl=11.3.3=1
 - msvc_runtime=1.0.1=vc10_0
 - nbconvert=4.2.0=py34_0
 - nbformat=4.1.0=py34_0
 - notebook=4.2.3=py34_0
-- numpy=1.10.4=py34_0
+- numpy=1.11.2=py34_0
 - openssl=1.0.2j=vc10_0
 - path.py=8.1.2=py34_1
 - pickleshare=0.5=py34_0
@@ -46,7 +46,7 @@ dependencies:
 - qt=4.8.7=vc10_8
 - qtconsole=4.1.1=py34_1
 - qtpy=1.1.2=py34_0
-- scipy=0.16.0=np110py34_0
+- scipy=0.18.1=np111py34_0
 - setuptools=19.6.2=py34_0
 - simplegeneric=0.8.1=py34_0
 - sip=4.18=py34_0
@@ -66,7 +66,7 @@ dependencies:
   - lmfit==0.9.5
   - plumbum==1.6.0
   - pydaqmx==1.3.2
-  - pyqtgraph==0.9.10
+  - pyqtgraph==0.10.0
   - pyvisa==1.8
   - pyvisa-py==0.2
   - rpyc==3.3.0

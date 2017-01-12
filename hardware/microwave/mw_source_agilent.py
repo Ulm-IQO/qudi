@@ -33,17 +33,17 @@ from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveSmiq(Base, MicrowaveInterface):
+class MicrowaveAgilent(Base, MicrowaveInterface):
     """ This is the Interface class to define the controls for the simple
         microwave hardware.
     """
 
-    _modclass = 'MicrowaveSmiq'
+    _modclass = 'MicrowaveAgilent'
     _modtype = 'hardware'
-    # declare connectors
-    _out = {'mwsourcesmiq': 'MicrowaveInterface'}
+    ## declare connectors
+    _out = {'mwsourceagilent': 'MicrowaveInterface'}
 
-    def on_activate(self, e):
+    def on_activate(self,e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -56,34 +56,31 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         """
         # checking for the right configuration
         config = self.getConfiguration()
-        if 'gpib_address' in config.keys():
-            self._gpib_address = config['gpib_address']
+        # agilent mw source has USB connection, therefore configuration checks for USB address
+        if 'usb_address' in config.keys():
+            self._usb_address = config['usb_address']
         else:
             self.log.error(
-                'This is MWSMIQ: did not find >>gpib_address<< in '
+                'This is MWAGILENT: did not find >>usb_address<< in '
                 'configration.')
 
-        if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = int(config['gpib_timeout'])*1000
+        if 'usb_timeout' in config.keys():
+            self._usb_timeout = int(config['usb_timeout'])*1000
         else:
-            self._gpib_timeout = 10*1000
+            self._usb_timeout = 10*1000
             self.log.error(
-                'This is MWSMIQ: did not find >>gpib_timeout<< in '
+                'This is MWAGILENT: did not find >>usb_timeout<< in '
                 'configration. I will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
-        try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
-        except:
-            self.log.error(
-                'This is MWSMIQ: could not connect to the GPIB '
-                'address >>{}<<.'.format(self._gpib_address))
-            raise
+        self._usb_connection = self.rm.open_resource(resource_name=self._usb_address,
+                                                            timeout=self._usb_timeout)
 
-        self.log.info('MWSMIQ initialised and connected to hardware.')
-        self.model = self._gpib_connection.query('*IDN?').split(',')[1]
+
+
+        self.log.info('MWAGILENT initialised and connected to hardware.')
+        self.model = self._usb_connection.query('*IDN?').split(',')[1]
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -92,12 +89,12 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
                          explanation can be found in method activation.
         """
 
-        self._gpib_connection.close()
+        self._usb_connection.close()
         self.rm.close()
 
     def get_limits(self):
         limits = MicrowaveLimits()
-        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
+        limits.supported_modes = ('CW', 'LIST', 'SWEEP')
 
         limits.min_frequency = 300e3
         limits.max_frequency = 6.4e9
@@ -113,21 +110,11 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         limits.sweep_maxstep = 6.4e9
         limits.sweep_maxentries = 10001
 
-        if self.model == 'SMIQ02B':
-            limits.max_frequency = 2.2e9
-            limits.max_power = 13
-        elif self.model == 'SMIQ03B':
-            limits.max_frequency = 3.3e9
-            limits.max_power = 13
-        elif self.model == 'SMIQ03HD':
-            limits.max_frequency = 3.3e9
-            limits.max_power = 13
-        elif self.model == 'SMIQ04B':
-            limits.max_frequency = 4.4e9
-        elif self.model == 'SMIQ06B':
-            pass
-        elif self.model == 'SMIQ06ATE':
-            pass
+        if self.model == 'N9310A':
+            limits.min_frequency = 9e3
+            limits.max_frequency = 3.0e9
+            limits.min_power = -127
+            limits.max_power = 20
         else:
             self.log.warning('Model string unknown, hardware limits may be wrong.')
         limits.list_maxstep = limits.max_frequency
@@ -140,8 +127,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':RFO:STAT ON')
+        self._usb_connection.write('*WAI')
 
         return 0
 
@@ -151,10 +138,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self._gpib_connection.query(':FREQ:MODE?') != 'CW':
-            self._gpib_connection.write(':FREQ:MODE CW')
-        self._gpib_connection.write(':OUTP OFF')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':RFO:STAT OFF')
+        self._usb_connection.write('*WAI')
 
         return 0
 
@@ -163,7 +148,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        return float(self._gpib_connection.query(':POW?'))
+        return float(self._usb_connection.query(':AMPL:CW?'))
 
     def set_power(self, power=0.):
         """ Sets the microwave output power.
@@ -173,7 +158,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if power is not None:
-            self._gpib_connection.write(':POW {0:f}'.format(power))
+            self._usb_connection.write(':AMPL:CW {0:f}'.format(power))
             return 0
         else:
             return -1
@@ -183,7 +168,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        return float(self._gpib_connection.query(':FREQ?'))
+        return float(self._usb_connection.query(':FREQ:CW?'))
 
     def set_frequency(self, freq=None):
         """ Sets the frequency of the microwave output.
@@ -193,13 +178,14 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         if freq is not None:
-            self._gpib_connection.write(':FREQ {0:e}'.format(freq))
+            self._usb_connection.write(':FREQ:CW {0:e} Hz'.format(freq))
             return 0
         else:
             return -1
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
         """ Sets the MW mode to cw and additionally frequency and power
+        #For agilent device there is no CW mode, so just do nothing
 
         @param float freq: frequency to set in Hz
         @param float power: power to set in dBm
@@ -210,7 +196,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         Interleave option is used for arbitrary waveform generator devices.
         """
         error = 0
-        self._gpib_connection.write(':FREQ:MODE CW')
 
         if freq is not None:
             error = self.set_frequency(freq)
@@ -223,57 +208,58 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return error
 
     def set_list(self, freq=None, power=None):
-        """ Sets the MW mode to list mode
+        """ There is no list mode for agilent
+        # Also the list is created by giving 'start_freq, step, stop_freq'
 
         @param list freq: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
 
-        @return int: error code (0:OK, -1:error)
         """
-        error = 0
 #        if self.set_cw(freq[0],power) != 0:
 #            error = -1
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:DEL:ALL')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(":LIST:SEL 'ODMR'")
 
-        # put al frequencies into a string, first element is doubled
+        #self._usb_connection.write(':SWE:RF:STAT ON')
+
+        # put all frequencies into a string, first element is doubled
         # so there are n+1 list entries for scanning n frequencies
         # due to counter/trigger issues
-        freqstring = ' {0:f},'.format(freq[0])
-        for f in freq[:-1]:
-            freqstring += ' {0:f},'.format(f)
-        freqstring += ' {0:f}'.format(freq[-1])
+        #freqstring = ' {0:f},'.format(freq[0])
+        #for f in freq[:-1]:
+        #    freqstring += ' {0:f},'.format(f)
+        #freqstring += ' {0:f}'.format(freq[-1])
 
-        freqcommand = ':LIST:FREQ' + freqstring
-        #print(freqcommand)
-        self._gpib_connection.write(freqcommand)
-        self._gpib_connection.write('*WAI')
+        #freqcommand = ':LIST:FREQ' + freqstring
 
-        # there are n+1 list entries for scanning n frequencies
-        # due to counter/trigger issues
-        powcommand = ':LIST:POW {0}{1}'.format(power, (', ' + str(power)) * len(freq))
-        #print(powcommand)
-        self._gpib_connection.write(powcommand)
+        n = len(freq)
 
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:MODE STEP')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':SWE:RF:STAR {0:e} Hz'.format(freq[0]))
+        self._usb_connection.write(':SWE:RF:STOP {0:e} Hz'.format(freq[-1]))
+        self._usb_connection.write(':SWE:STEP:POIN {0}'.format(n))
+        self._usb_connection.write(':SWE:STEP:DWEL 10 ms')
+        self._usb_connection.write('*WAI')
 
-        n = int(np.round(float(self._gpib_connection.query(':LIST:FREQ:POIN?'))))
+        self._usb_connection.write(':SWE:AMPL:STAR {0:f}'.format(power))
+        self._usb_connection.write(':SWE:AMPL:STOP {0:f}'.format(power))
+        self._usb_connection.write(':SWE:REP CONT')
+        self._usb_connection.write(':SWE:STRG IMM')
+#        self._usb_connection.write(':SWE:STRG:SLOP EXTP')
+        self._usb_connection.write(':SWE:PTRG IMM')
+#        self._usb_connection.write(':SWE:PTRG:SLOP EXTP')
+        self._usb_connection.write(':SWE:DIR:UP')
+        self._usb_connection.write('*WAI')
 
-        if n != len(freq) + 1:
-            error = -1
-        return error
+        self._usb_connection.write(':RFO:STAT ON')
+        self._usb_connection.write(':SWE:RF:STAT ON')
+
+        return 0
 
     def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':ABOR:LIST')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':SWE:RF:STAT OFF')
+        self._usb_connection.write('*WAI')
         return 0
 
     def set_sweep(self, start, stop, step, power):
@@ -285,8 +271,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @param power:
         @return:
         """
-        self._gpib_connection.write(':SOUR:POW ' + str(power))
-        self._gpib_connection.write('*WAI')
+        #self._usb_connection.write(':SOUR:POW ' + str(power))
+        #self._usb_connection.write('*WAI')
 
         self._gpib_connection.write(':SWE:MODE STEP')
         self._gpib_connection.write(':SOUR:FREQ:STAR ' + str(start-step))
@@ -307,8 +293,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':ABOR:SWE')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':RFO:STAT OFF')
+        self._usb_connection.write(':SWE:RF:STAT OFF')
+        self._usb_connection.write('*WAI')
         return 0
 
     def sweep_on(self):
@@ -316,49 +303,47 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (1: ready, 0:not ready, -1:error)
         """
-        self._gpib_connection.write(':FREQ:MODE SWE')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':RFO:STAT ON')
+        self._usb_connection.write(':SWE:RF:STAT ON')
+        self._usb_connection.write('*WAI')
         # If there are timeout  problems after this command, update the smiq
         # firmware to > 5.90 as there was a problem with excessive wait times
         # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
-        return int(self._gpib_connection.query('*OPC?'))
+        return 0
 
     def list_on(self):
         """ Switches on the list mode.
 
         @return int: error code (1: ready, 0:not ready, -1:error)
         """
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:LEARN')
-        self._gpib_connection.write('*WAI')
+        self._usb_connection.write(':RFO:STAT ON')
+        self._usb_connection.write('*WAI')
         # If there are timeout  problems after this command, update the smiq
         # firmware to > 5.90 as there was a problem with excessive wait times
         # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
-        self._gpib_connection.write(':FREQ:MODE LIST')
-        self._gpib_connection.write('*WAI')
-        return int(self._gpib_connection.query('*OPC?'))
+        self._usb_connection.write(':SWE:RF:STAT ON')
+        self._usb_connection.write('*WAI')
+
+
+        return 0
 
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
+        @param str source: channel name, where external trigger is expected.
+        @param str pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
         if pol == TriggerEdge.RISING:
-            edge = 'POS'
+            edge = 'EXTP'
         elif pol == TriggerEdge.FALLING:
-            edge = 'NEG'
+            edge = 'EXTN'
         else:
             return -1
         try:
-            self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
-            self._gpib_connection.write(':TRIG1:SLOP {0}'.format(edge))
+            self._usb_connection.write(':SWE:STRG:SLOP {0}'.format(edge))
         except:
             return -1
         return 0
-

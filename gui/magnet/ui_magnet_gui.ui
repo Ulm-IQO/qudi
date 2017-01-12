@@ -108,7 +108,7 @@
              <enum>QTabWidget::Rounded</enum>
             </property>
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <property name="documentMode">
              <bool>false</bool>
@@ -1298,12 +1298,12 @@ contrast alignment</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox</header>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
    <class>ScienSpinBox</class>
    <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox</header>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
    <class>PlotWidgetModified</class>

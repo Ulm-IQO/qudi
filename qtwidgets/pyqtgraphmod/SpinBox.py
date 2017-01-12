@@ -9,6 +9,8 @@ from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-
 from decimal import *
 import weakref
 
+from qtpy.QtCore import Property
+
 __all__ = ['SpinBox']
 class SpinBox(QtGui.QAbstractSpinBox):
     """
@@ -351,6 +353,10 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         return value
 
+    value_float = Property(float, value, setValue,
+                           doc='Qt property value as type float')
+    value_int = Property(int, value, setValue,
+                         doc='Qt property value as type int')
 
     def emitChanged(self):
         self.lastValEmitted = self.val

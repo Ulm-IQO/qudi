@@ -268,3 +268,120 @@ class PulseExtractionLogic(GenericLogic):
         conv = ndimage.filters.gaussian_filter1d(data, std_dev)
         conv_deriv = np.gradient(conv)
         return conv_deriv
+
+
+    def extract_laser_pulses(self,data,count_treshold,min_len_laser,
+                           exception):
+
+        """ Detects the laser pulses in the ungated timetrace data and extracts
+            them.
+
+        @param numpy.ndarray data: 1D array the raw timetrace data from an
+                                         ungated fast counter
+        @param int count_treshold: The treshold to seperate between laser and noise
+        @param int min_len_laser:  Minimum length of laser pulse
+        @param int exception:      how many bin may be under treshold but still count
+                                   for the laser
+
+
+        @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the
+                                  timetrace, dimensions:
+                                        0: laser number,
+                                        1: time bin
+
+        @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the
+                                  timetrace, dimensions:
+                                        0: laser number,
+                                        1: counts time bin
+
+        Procedure:
+            Treshold detection:
+            ---------------
+
+            All count data from the time trace is compared to a trehold value.
+            Values above the trehold are considered to belong to a laser pulse.
+            If the length of a pulse would be below the minium length the pulse is discarded
+        """
+
+        # initialize
+        x_data = []
+        y_data = []
+        laser_x = []
+        laser_y = []
+        excep=0
+
+        for ii in range(len(data)):
+
+                if data[ii] >= count_treshold:
+
+                    x_data.append(ii)
+                    y_data.append(data[ii])
+
+                else:
+                    if excep < exception:
+                        x_data.append(ii)
+                        y_data.append(data[ii])
+                        excep=excep+1
+
+                    elif len(x_data)>min_len_laser:
+                        laser_x.append(np.array(x_data))
+                        laser_y.append(np.array(y_data))
+                        x_data=[]
+                        y_data=[]
+                        excep=0
+                    else:
+                        x_data=[]
+                        y_data=[]
+                        excep=0
+
+        # find the longest laser pulse
+        length=np.zeros(len(laser_y))
+        for jj in range(len(laser_y)):
+            length[jj]=len(laser_y[jj])
+        longest = np.max(length)
+
+        #symmetrize all pulses so that they have the same length
+        for jj in range(len(laser_y)):
+            while len(laser_y[jj])<longest:
+                laser_x[jj]=np.append(laser_x[jj],laser_x[jj][-1]+1)
+                laser_y[jj]=np.append(laser_y[jj],laser_y[jj][-1])
+
+        #FIXME: It should be possible to return laser_x aswell but therefor
+        #FIXME: the functions above also would have to be changed
+
+        laser_arr=np.asarray(laser_y)
+
+        return laser_arr.astype(int)
+
+    def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
+
+
+        laser_x = []
+        laser_y = []
+
+        x_data = np.linspace(initial_offset,initial_offset+laser_length,laser_length+1)
+        y_data = count_data[initial_offset:initial_offset+laser_length]
+        laser_x.append(x_data)
+        laser_y.append(y_data)
+
+        time = initial_length + initial_offset
+
+        for laser in range(int(num_lasers)-1):
+
+            x_data = np.linspace(time,time+laser_length,laser_length+1)
+            y_data = count_data[time:(time+laser_length)]
+            laser_x.append(np.array(x_data))
+            laser_y.append(np.array(y_data))
+
+
+            time = time + initial_length + (laser+1)*increment
+
+
+
+
+        laser_arr=np.asarray(laser_y)
+
+        self.log.debug(laser_y)
+
+        return laser_arr.astype(int)
+
