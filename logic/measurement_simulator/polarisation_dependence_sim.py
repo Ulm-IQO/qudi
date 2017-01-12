@@ -77,6 +77,10 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         self.clock_frequency = clock_frequency
         return self._counter_hw.set_up_clock(clock_frequency = clock_frequency, clock_channel = clock_channel)
 
+    def get_constraints(self):
+        """ Pass through counter constraints. """
+        return self._counter_hw.get_constraints()
+
     def set_up_counter(self,
                        counter_channel=None,
                        photon_source=None,
