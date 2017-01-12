@@ -97,33 +97,29 @@ class CounterGui(GUIBase):
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('bottom', 'Time', units='s')
 
-        # Create an empty plot curve to be filled later, set its pen
-        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1),#, style=QtCore.Qt.DotLine),
-                                       symbol=None
-                                       #symbol='o',
-                                       #symbolPen=palette.c1,
-                                       #symbolBrush=palette.c1,
-                                       #symbolSize=5
-                                       )
-        self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None)
+        self.curves = []
 
-        self._pw.addItem(self._curve1)
-        self._pw.addItem(self._curve2)
-
-        # TODO: This is pretty bad, to directly inquire about the HW device from the GUI via the
-        #       logic.  There needs to be a much better way to do this!
-        if hasattr(self._counting_logic._counting_device, '_photon_source2'):
-            if self._counting_logic._counting_device._photon_source2 is not None:
-                self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-                                               symbol='s',
-                                               symbolPen=palette.c3,
-                                               symbolBrush=palette.c3,
-                                               symbolSize=5
-                                               )
-                self._curve4 = pg.PlotDataItem(pen=pg.mkPen(palette.c4, width=3), symbol=None)
-
-                self._pw.addItem(self._curve3)
-                self._pw.addItem(self._curve4)
+        for i, ch in enumerate(self._counting_logic.get_channels()):
+            if i % 2 == 0:
+                # Create an empty plot curve to be filled later, set its pen
+                self.curves.append(
+                    pg.PlotDataItem(pen=pg.mkPen(palette.c1), symbol=None))
+                self._pw.addItem(self.curves[-1])
+                self.curves.append(
+                    pg.PlotDataItem(pen=pg.mkPen(palette.c2, width=3), symbol=None))
+                self._pw.addItem(self.curves[-1])
+            else:
+                self.curves.append(
+                    pg.PlotDataItem(
+                        pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+                        symbol='s',
+                        symbolPen=palette.c3,
+                        symbolBrush=palette.c3,
+                        symbolSize=5))
+                self._pw.addItem(self.curves[-1])
+                self.curves.append(
+                    pg.PlotDataItem(pen=pg.mkPen(palette.c4, width=3), symbol=None))
+                self._pw.addItem(self.curves[-1])
 
         # setting the x axis length correctly
         self._pw.setXRange(
@@ -154,7 +150,27 @@ class CounterGui(GUIBase):
         self.sigStartCounter.connect(self._counting_logic.startCount)
         self.sigStopCounter.connect(self._counting_logic.stopCount)
 
+        ################### Handling signals from the logic
+
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
+
+        #ToDo:
+        #self._counting_logic.sigCountContinuousNext.connect()
+        #self._counting_logic.sigCountGatedNext.connect()
+        #self._counting_logic.sigCountFiniteGatedNext.connect()
+        #self._counting_logic.sigGatedCounterFinished.connect()
+        #self._counting_logic.sigGatedCounterContinue.connect()
+
+        self._counting_logic.sigCountingSamplesChanged.connect(self.update_oversampling_SpinBox)
+        self._counting_logic.sigCountLengthChanged.connect(self.update_count_length_SpinBox)
+        self._counting_logic.sigCountFrequencyChanged.connect(self.update_count_freq_SpinBox)
+        self._counting_logic.sigSavingStatusChanged.connect(self.update_saving_Action)
+        self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
+        self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
+
+        return 0
+
+
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -162,6 +178,7 @@ class CounterGui(GUIBase):
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+        return
 
     def on_deactivate(self, e):
         # FIXME: !
@@ -171,6 +188,7 @@ class CounterGui(GUIBase):
                          explanation can be found in the method initUI.
         """
         self._mw.close()
+        return
 
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
@@ -178,26 +196,15 @@ class CounterGui(GUIBase):
 
         if self._counting_logic.getState() == 'locked':
             self._mw.count_value_Label.setText(
-                '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1])
-            )
+                '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[0, -1]))
 
-            x_vals = (np.arange(0, self._counting_logic.get_count_length())
-                      / self._counting_logic.get_count_frequency()
-                      )
+            x_vals = (
+                np.arange(0, self._counting_logic.get_count_length())
+                / self._counting_logic.get_count_frequency())
 
-            self._curve1.setData(y=self._counting_logic.countdata, x=x_vals)
-            self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=x_vals)
-
-            # TODO: This is pretty bad, to directly inquire about the HW device from the GUI via
-            #       the logic.  There needs to be a much better way to do this!
-            if hasattr(self._counting_logic._counting_device, '_photon_source2'):
-                if self._counting_logic._counting_device._photon_source2 is not None:
-                    self._curve3.setData(y=self._counting_logic.countdata2,
-                                         x=x_vals
-                                         )
-                    self._curve4.setData(y=self._counting_logic.countdata_smoothed2,
-                                         x=x_vals
-                                         )
+            for i, ch in enumerate(self._counting_logic.get_channels()):
+                self.curves[2*i].setData(y=self._counting_logic.countdata[i], x=x_vals)
+                self.curves[2*i+1].setData(y=self._counting_logic.countdata_smoothed[i], x=x_vals)
 
         if self._counting_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Save')
@@ -224,6 +231,7 @@ class CounterGui(GUIBase):
         else:
             self._mw.start_counter_Action.setText('Stop counter')
             self.sigStartCounter.emit()
+        return self._counting_logic.getState()
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -238,26 +246,31 @@ class CounterGui(GUIBase):
             self._mw.count_freq_SpinBox.setEnabled(False)
             self._mw.oversampling_SpinBox.setEnabled(False)
             self._counting_logic.start_saving()
+        return self._counting_logic.get_saving_state()
+
+    ######### Input parameters changed via GUI
 
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
         """
-#        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counting_logic.set_count_length(self._mw.count_length_SpinBox.value())
         self._pw.setXRange(
             0,
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
+        return self._mw.count_length_SpinBox.value()
+
 
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
-#        print ('count_frequency_changed: {0:d}'.format(self._mw.count_freq_SpinBox.value()))
         self._counting_logic.set_count_frequency(self._mw.count_freq_SpinBox.value())
         self._pw.setXRange(
             0,
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
+        return self._mw.count_freq_SpinBox.value()
+
 
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
@@ -267,6 +280,9 @@ class CounterGui(GUIBase):
             0,
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
+        return self._mw.oversampling_SpinBox.value()
+
+    ######### Restore default values
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -291,3 +307,73 @@ class CounterGui(GUIBase):
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
                             self._mw.counting_control_ToolBar)
+        return 0
+
+########### Handle signals from logic
+
+    def update_oversampling_SpinBox(self,oversampling):
+        """Function to ensure that the GUI displays the current value of the logic
+
+        @param int oversampling: adjusted oversampling to update in the GUI in bins
+        @return int oversampling: see above
+        """
+        self._mw.oversampling_SpinBox.blockSignals(True)
+        self._mw.oversampling_SpinBox.setValue(oversampling)
+        self._mw.oversampling_SpinBox.blockSignals(False)
+        return oversampling
+
+    def update_count_freq_SpinBox(self,count_freq):
+        """Function to ensure that the GUI displays the current value of the logic
+
+        @param float count_freq: adjusted count frequency in Hz
+        @return float count_freq: see above
+        """
+        self._mw.count_freq_SpinBox.blockSignals(True)
+        self._mw.count_freq_SpinBox.setValue(count_freq)
+        self._mw.count_freq_SpinBox.blockSignals(False)
+        return count_freq
+
+    def update_count_length_SpinBox(self,count_length):
+        """Function to ensure that the GUI displays the current value of the logic
+
+        @param int count_length: adjusted count length in bins
+        @return int count_length: see above
+        """
+        self._mw.count_length_SpinBox.blockSignals(True)
+        self._mw.count_length_SpinBox.setValue(count_length)
+        self._mw.count_length_SpinBox.blockSignals(False)
+        return count_length
+
+    def update_saving_Action(self,start):
+        """Function to ensure that the GUI-save_action displays the current status
+
+        @param bool start: True if the measurment saving is started
+        @return bool start: see above
+        """
+        if start:
+            self._mw.record_counts_Action.setText('Save')
+            self._mw.count_freq_SpinBox.setEnabled(False)
+            self._mw.oversampling_SpinBox.setEnabled(False)
+        else:
+            self._mw.record_counts_Action.setText('Start Saving Data')
+            self._mw.count_freq_SpinBox.setEnabled(True)
+            self._mw.oversampling_SpinBox.setEnabled(True)
+        return start
+
+    def update_count_status_Action(self,running):
+        """Function to ensure that the GUI-save_action displays the current status
+
+        @param bool running: True if the counting is started
+        @return bool running: see above
+        """
+        if running:
+            self._mw.start_counter_Action.setText('Stop counter')
+        else:
+            self._mw.start_counter_Action.setText('Start counter')
+        return running
+
+    #TODO:
+    def update_counting_mode_ComboBox(self):
+        self.log.warning('Not implemented yet')
+        return 0
+

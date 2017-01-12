@@ -115,14 +115,14 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._depth_line_pos = self.depth_line_position
         confocal._xyscan_continuable = self.xy_scan_continuable
         confocal._zscan_continuable = self.depth_scan_continuable
-        confocal._scanning_device.tiltcorrection = self.tilt_correction
         confocal.point1 = np.copy(self.point1)
         confocal.point2 = np.copy(self.point2)
         confocal.point3 = np.copy(self.point3)
-        confocal._tiltreference_x = self.tilt_reference_x
-        confocal._tiltreference_y = self.tilt_reference_y
-        confocal._tilt_variable_ax = self.tilt_slope_x
-        confocal._tilt_variable_ay = self.tilt_slope_y
+        confocal._scanning_device._tilt_variable_ax = self.tilt_slope_x
+        confocal._scanning_device._tilt_variable_ay = self.tilt_slope_y
+        confocal._scanning_device.tilt_reference_x = self.tilt_reference_x
+        confocal._scanning_device.tilt_reference_y = self.tilt_reference_y
+        confocal._scanning_device.tiltcorrection = self.tilt_correction
 
         confocal.initialize_image()
         try:
@@ -156,13 +156,13 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.xy_scan_continuable = confocal._xyscan_continuable
         self.depth_scan_continuable = confocal._zscan_continuable
         self.tilt_correction = confocal._scanning_device.tiltcorrection
+        self.tilt_slope_x = confocal._scanning_device.tilt_variable_ax
+        self.tilt_slope_y = confocal._scanning_device.tilt_variable_ay
+        self.tilt_reference_x = confocal._scanning_device.tilt_reference_x
+        self.tilt_reference_y = confocal._scanning_device.tilt_reference_y
         self.point1 = np.copy(confocal.point1)
         self.point2 = np.copy(confocal.point2)
         self.point3 = np.copy(confocal.point3)
-        self.tilt_reference_x = confocal._tiltreference_x
-        self.tilt_reference_y = confocal._tiltreference_y
-        self.tilt_slope_x = confocal._tilt_variable_ax
-        self.tilt_slope_y = confocal._tilt_variable_ay
         self.xy_image = np.copy(confocal.xy_image)
         self.depth_image = np.copy(confocal.depth_image)
 
@@ -170,19 +170,19 @@ class ConfocalHistoryEntry(QtCore.QObject):
         """ Give out a dictionary that can be saved via the usual means """
         serialized = dict()
         serialized['focus_position'] = [self.current_x, self.current_y, self.current_z, self.current_a]
-        serialized['x_range'] = self.image_x_range
-        serialized['y_range'] = self.image_y_range
-        serialized['z_range'] = self.image_z_range
+        serialized['x_range'] = list(self.image_x_range)
+        serialized['y_range'] = list(self.image_y_range)
+        serialized['z_range'] = list(self.image_z_range)
         serialized['xy_resolution'] = self.xy_resolution
         serialized['z_resolution'] = self.z_resolution
         serialized['xy_line_position'] = self.xy_line_position
-        serialized['depth_linne_position'] = self.depth_line_position
+        serialized['depth_line_position'] = self.depth_line_position
         serialized['xy_scan_cont'] = self.xy_scan_continuable
         serialized['depth_scan_cont'] = self.depth_scan_continuable
         serialized['tilt_correction'] = self.tilt_correction
-        serialized['tilt_point1'] = self.point1
-        serialized['tilt_point2'] = self.point2
-        serialized['tilt_point3'] = self.point3
+        serialized['tilt_point1'] = list(self.point1)
+        serialized['tilt_point2'] = list(self.point2)
+        serialized['tilt_point3'] = list(self.point3)
         serialized['tilt_reference'] = [self.tilt_reference_x, self.tilt_reference_y]
         serialized['tilt_slope'] = [self.tilt_slope_x, self.tilt_slope_y]
         serialized['xy_image'] = self.xy_image
@@ -214,11 +214,11 @@ class ConfocalHistoryEntry(QtCore.QObject):
         if 'tilt_slope' in serialized and len(serialized['tilt_slope']) == 2:
             self.tilt_slope_x = serialized['tilt_slope'][0]
             self.tilt_slope_y = serialized['tilt_slope'][1]
-        if 'tilt_point1' in serialized and len(serialized['tilt_point1'] ) == 3:
+        if 'tilt_point1' in serialized and len(serialized['tilt_point1']) == 3:
             self.point1 = np.array(serialized['tilt_point1'])
-        if 'tilt_point2' in serialized and len(serialized['tilt_point2'] ) == 3:
+        if 'tilt_point2' in serialized and len(serialized['tilt_point2']) == 3:
             self.point2 = np.array(serialized['tilt_point2'])
-        if 'tilt_point3' in serialized and len(serialized['tilt_point3'] ) == 3:
+        if 'tilt_point3' in serialized and len(serialized['tilt_point3']) == 3:
             self.point3 = np.array(serialized['tilt_point3'])
         if 'xy_image' in serialized:
             if isinstance(serialized['xy_image'], np.ndarray):
@@ -257,10 +257,17 @@ class ConfocalLogic(GenericLogic):
     # signals
     signal_start_scanning = QtCore.Signal()
     signal_continue_scanning = QtCore.Signal()
+    signal_stop_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
+    signal_xy_data_saved = QtCore.Signal()
+    signal_depth_data_saved = QtCore.Signal()
+    signal_tilt_correction_active = QtCore.Signal(bool)
+    signal_tilt_correction_update = QtCore.Signal()
+    signal_draw_figure_completed = QtCore.Signal()
+    signal_position_changed = QtCore.Signal()
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -437,6 +444,7 @@ class ConfocalLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
+        self.signal_stop_scanning.emit()
         return 0
 
     def initialize_image(self):
@@ -568,8 +576,25 @@ class ConfocalLogic(GenericLogic):
         """
         self.lock()
         self._scanning_device.lock()
-        self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
-        self._scanning_device.set_up_scanner()
+
+        clock_status = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
+
+        if clock_status < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
+        scanner_status = self._scanning_device.set_up_scanner()
+
+        if scanner_status < 0:
+            self._scanning_device.close_scanner_clock()
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
         self.signal_scan_lines_next.emit()
         return 0
 
@@ -613,6 +638,8 @@ class ConfocalLogic(GenericLogic):
             self._current_y = y
         if z is not None:
             self._current_z = z
+        if a is not None:
+            self._current_a = a
 
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
@@ -627,15 +654,15 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        # if tag == 'optimizer' or tag == 'scanner' or tag == 'activation':
-        self._scanning_device.scanner_set_position(
-            x=self._current_x,
-            y=self._current_y,
-            z=self._current_z,
-            a=self._current_a
-        )
-        return 0
+        ch_array = ['x', 'y', 'z', 'a']
+        pos_array = [self._current_x, self._current_y, self._current_z, self._current_a]
+        pos_dict = {}
 
+        for i, ch in enumerate(self._scanning_device.get_scanner_axes()):
+            pos_dict[ch_array[i]] = pos_array[i]
+ 
+        self._scanning_device.scanner_set_position(**pos_dict)
+        return 0
 
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
@@ -644,7 +671,7 @@ class ConfocalLogic(GenericLogic):
                       position in microns
         """
         #FIXME: change that to SI units!
-        return self._scanning_device.get_scanner_position()[:3]
+        return self._scanning_device.get_scanner_position()
 
     def _scan_line(self):
         """scanning an image in either depth or xy
@@ -673,59 +700,83 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
+        n_ch = len(self._scanning_device.get_scanner_axes())
 
         try:
             if self._scan_counter == 0:
                 # make a line from the current cursor position to 
                 # the starting position of the first scan line of the scan
-                start_line = np.vstack((
-                    np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
-                    np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
-                    np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
-                    np.linspace(self._current_a, 0, self.return_slowness)
-                    ))
+                rs = self.return_slowness
+                lsx = np.linspace(self._current_x, image[self._scan_counter, 0, 0], rs)
+                lsy = np.linspace(self._current_y, image[self._scan_counter, 0, 1], rs)
+                lsz = np.linspace(self._current_z, image[self._scan_counter, 0, 2], rs)
+                if n_ch <= 3:
+                    start_line = np.vstack([lsx, lsy, lsz][0:n_ch])
+                else:
+                    start_line = np.vstack(
+                        [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
                 # move to the start position of the scan, counts are thrown away
-                start_line_counts = self._scanning_device.scan_line(start_line)
-                if start_line_counts[0] == -1:
+                start_line_counts = self._scanning_device.scan_line(start_line)[0]
+                if np.any(start_line_counts[0] == -1):
                     self.stopRequested = True
                     self.signal_scan_lines_next.emit()
                     return
 
             # adjust z of line in image to current z before building the line
             if not self._zscan:
-                image[self._scan_counter, :, 2] = self._current_z * np.ones(image[self._scan_counter, :, 2].shape)
+                z_shape = image[self._scan_counter, :, 2].shape
+                image[self._scan_counter, :, 2] = self._current_z * np.ones(z_shape)
 
             # make a line in the scan, _scan_counter says which one it is
-            line = np.vstack((image[self._scan_counter, :, 0],
-                              image[self._scan_counter, :, 1],
-                              image[self._scan_counter, :, 2],
-                              image[self._scan_counter, :, 3]))
+            lsx = image[self._scan_counter, :, 0]
+            lsy = image[self._scan_counter, :, 1]
+            lsz = image[self._scan_counter, :, 2]
+            if n_ch <= 3:
+                line = np.vstack([lsx, lsy, lsz][0:n_ch])
+            else:
+                line = np.vstack(
+                    [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
+
             # scan the line in the scan
-            line_counts = self._scanning_device.scan_line(line)
-            if line_counts[0] == -1:
+            line_counts = self._scanning_device.scan_line(line)[0]
+            if np.any(line_counts[0] == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
 
             # make a line to go to the starting position of the next scan line
             if self.depth_scan_dir_is_xz:
-                return_line = np.vstack((
-                    self._return_XL,
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                    self._return_AL
-                    ))
+                if n_ch <= 3:
+                    return_line = np.vstack([
+                        self._return_XL,
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
+                        ][0:n_ch])
+                else:
+                    return_line = np.vstack([
+                        self._return_XL,
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
+                        np.ones(self._return_XL.shape) * self._current_a
+                        ])
             else:
-                return_line = np.vstack((
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                    self._return_YL,
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
-                    self._return_AL
-                    ))
-
+                if n_ch <= 3:
+                    return_line = np.vstack([
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                        self._return_YL,
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
+                        ][0:n_ch])
+                else:
+                    return_line = np.vstack([
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                        self._return_YL,
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
+                        np.ones(self._return_YL.shape) * self._current_a
+                        ])
+ 
             # return the scanner to the start of next line, counts are thrown away
-            return_line_counts = self._scanning_device.scan_line(return_line)
-            if return_line_counts[0] == -1:
+            return_line_counts = self._scanning_device.scan_line(return_line)[0]
+            if np.any(return_line_counts[0] == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
@@ -756,9 +807,8 @@ class ConfocalLogic(GenericLogic):
                     self._scan_counter = 0
 
             self.signal_scan_lines_next.emit()
-
-        except Exception as e:
-            self.log.critical('The scan went wrong, killing the scanner.')
+        except:
+            self.log.exception('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
 
@@ -806,7 +856,7 @@ class ConfocalLogic(GenericLogic):
                    'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
 
         # Prepare a figure to be saved
-        figure_data = self.xy_image[:,:,3]
+        figure_data = self.xy_image[:, :, 3]
         image_extent = [self.image_x_range[0],
                         self.image_x_range[1],
                         self.image_y_range[0],
@@ -867,6 +917,7 @@ class ConfocalLogic(GenericLogic):
         #, as_xml=False, precision=None, delimiter=None)
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.signal_xy_data_saved.emit()
 
     def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
@@ -977,6 +1028,7 @@ class ConfocalLogic(GenericLogic):
         #, as_xml=False, precision=None, delimiter=None)
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.signal_depth_data_saved.emit()
 
     def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
@@ -1090,40 +1142,44 @@ class ConfocalLogic(GenericLogic):
                              verticalalignment='center',
                              rotation=90
                              )
-
+        self.signal_draw_figure_completed.emit()
         return fig
 
-    ##################################### Tilit correction ########################################
+    # Tilt correction
 
+    @QtCore.Slot()
     def set_tilt_point1(self):
         """ Gets the first reference point for tilt correction."""
         self.point1 = np.array(self._scanning_device.get_scanner_position()[:3])
+        self.signal_tilt_correction_update.emit()
 
+    @QtCore.Slot()
     def set_tilt_point2(self):
         """ Gets the second reference point for tilt correction."""
         self.point2 = np.array(self._scanning_device.get_scanner_position()[:3])
+        self.signal_tilt_correction_update.emit()
 
+    @QtCore.Slot()
     def set_tilt_point3(self):
         """Gets the third reference point for tilt correction."""
         self.point3 = np.array(self._scanning_device.get_scanner_position()[:3])
+        self.signal_tilt_correction_update.emit()
 
+    @QtCore.Slot()
     def calc_tilt_correction(self):
-        """Calculates the values for the tilt correction."""
+        """ Calculates the values for the tilt correction. """
         a = self.point2 - self.point1
         b = self.point3 - self.point1
-        n = np.cross(a,b)
+        n = np.cross(a, b)
         self._scanning_device.tilt_variable_ax = n[0] / n[2]
         self._scanning_device.tilt_variable_ay = n[1] / n[2]
 
-    def activate_tiltcorrection(self):
-        self._scanning_device.tiltcorrection = True
+    @QtCore.Slot(bool)
+    def set_tilt_correction(self, enabled):
+        self._scanning_device.tiltcorrection = enabled
         self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
         self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
-
-    def deactivate_tiltcorrection(self):
-        self._scanning_device.tiltcorrection = False
-        self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
-        self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
+        self.signal_tilt_correction_active.emit(enabled)
 
     def history_forward(self):
         if self.history_index < len(self.history) - 1:
@@ -1131,6 +1187,8 @@ class ConfocalLogic(GenericLogic):
             self.history[self.history_index].restore(self)
             self.signal_xy_image_updated.emit()
             self.signal_depth_image_updated.emit()
+            self.signal_tilt_correction_update.emit()
+            self.signal_tilt_correction_active.emit(self._scanning_device.tiltcorrection)
             self._change_position('history')
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
@@ -1141,6 +1199,8 @@ class ConfocalLogic(GenericLogic):
             self.history[self.history_index].restore(self)
             self.signal_xy_image_updated.emit()
             self.signal_depth_image_updated.emit()
+            self.signal_tilt_correction_update.emit()
+            self.signal_tilt_correction_active.emit(self._scanning_device.tiltcorrection)
             self._change_position('history')
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
