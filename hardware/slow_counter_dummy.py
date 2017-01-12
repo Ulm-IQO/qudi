@@ -26,6 +26,8 @@ import time
 
 from core.base import Base
 from interface.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterConstraints
+from interface.slow_counter_interface import CountingMode
 
 
 class SlowCounterDummy(Base, SlowCounterInterface):
@@ -77,25 +79,21 @@ class SlowCounterDummy(Base, SlowCounterInterface):
                     'Slow Counter Dummy, taking the default value of {0} '
                     'instead.'.format(self._samples_number))
 
-        if 'photon_source2' in config.keys():
-            self._photon_source2 = 1
+        if 'source_channels' in config.keys():
+            self.source_channels = int(config['source_channels'])
         else:
-            self._photon_source2 = None
+            self.source_channels = 2
 
         if 'count_distribution' in config.keys():
             self.dist = config['count_distribution']
         else:
             self.dist = 'dark_bright_gaussian'
-            self.log.warning('No parameter "count_distribution" given in the '
-                        'configuration for the Slow Counter Dummy. Possible '
-                        'distributions are "dark_bright_gaussian", "uniform", '
-                        '"exponential", "single_poisson", '
-                        '"dark_bright_poisson" and "single_gaussian". Taking '
-                        'the default distribution "{0}".'.format(self.dist))
-
-        # possibilities are:
-        # dark_bright_gaussian, uniform, exponential, single_poisson,
-        # dark_bright_poisson, single_gaussian
+            self.log.warning(
+                'No parameter "count_distribution" given in the configuration for the'
+                'Slow Counter Dummy. Possible distributions are "dark_bright_gaussian",'
+                '"uniform", "exponential", "single_poisson", "dark_bright_poisson"'
+                'and "single_gaussian". Taking the default distribution "{0}".'
+                ''.format(self.dist))
 
         # parameters
         if self.dist == 'dark_bright_poisson':
@@ -124,6 +122,18 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         """
         pass
 
+    def get_constraints(self):
+        """ Return a constraints class for the slow counter."""
+        constraints = SlowCounterConstraints()
+        constraints.min_count_frequency = 5e-5
+        constraints.max_count_frequency = 5e5
+        constraints.counting_mode = [
+            CountingMode.CONTINUOUS,
+            CountingMode.GATED,
+            CountingMode.FINITE_GATED]
+
+        return constraints
+
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -135,18 +145,13 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
         if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
-
         self.log.warning('slowcounterdummy>set_up_clock')
-
         time.sleep(0.1)
-
         return 0
 
     def set_up_counter(self,
-                       counter_channel=None,
-                       photon_source=None,
-                       counter_channel2=None,
-                       photon_source2=None,
+                       counter_channels=None,
+                       sources=None,
                        clock_channel=None,
                        counter_buffer=None):
         """ Configures the actual counter with a given clock.
@@ -159,9 +164,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         """
 
         self.log.warning('slowcounterdummy>set_up_counter')
-
         time.sleep(0.1)
-
         return 0
 
     def get_counter(self, samples=None):
@@ -171,18 +174,20 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
         @return float: the photon counts per second
         """
+        count_data = np.array(
+            [self._simulate_counts(samples) + i * self.mean_signal 
+                for i, ch in enumerate(self.get_counter_channels())]
+            )
 
-        count_data_1 = self._simulate_counts(samples)
-
-        count_data = count_data_1
-
-        if self._photon_source2 is not None:
-            count_data_2 = self._simulate_counts(samples) + self.mean_signal
-            count_data = np.array([count_data_1, count_data_2])
-
-        time.sleep(1. / self._clock_frequency * samples)
-
+        time.sleep(1 / self._clock_frequency * samples)
         return count_data
+
+    def get_counter_channels(self):
+        """ Returns the list of counter channel names.
+        @return tuple(str): channel names
+        Most methods calling this might just care about the number of channels, though.
+        """
+        return ['Ctr{0}'.format(i) for i in range(self.source_channels)]
 
     def _simulate_counts(self, samples=None):
         """ Simulate counts signal from an APD.  This can be called for each dummy counter channel.
@@ -197,19 +202,16 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         else:
             samples = int(samples)
 
-        timestep = 1. / self._clock_frequency * samples
+        timestep = 1 / self._clock_frequency * samples
 
-        count_data = np.empty([samples], dtype=np.uint32)  # count data will be written here in the NumPy array
+        # count data will be written here in the NumPy array
+        count_data = np.empty([samples], dtype=np.uint32)
 
         for i in range(samples):
-
             if self.dist == 'single_gaussian':
                 count_data[i] = np.random.normal(self.mean_signal, self.noise_amplitude / 2)
-
             elif self.dist == 'dark_bright_gaussian':
-
                 self.total_time = self.total_time + timestep
-
                 if self.total_time > self.current_dec_time:
                     if self.curr_state_b:
                         self.curr_state_b = False
@@ -220,8 +222,8 @@ class SlowCounterDummy(Base, SlowCounterInterface):
                         self.current_dec_time = np.random.exponential(self.life_time_bright)
                     self.total_time = 0.0
 
-                count_data[i] = np.random.normal(self.mean_signal, self.noise_amplitude) * self.curr_state_b + \
-                                   np.random.normal(self.mean_signal2, self.noise_amplitude) * (1-self.curr_state_b)
+                count_data[i] = (np.random.normal(self.mean_signal, self.noise_amplitude) * self.curr_state_b
+                                + np.random.normal(self.mean_signal2, self.noise_amplitude) * (1-self.curr_state_b))
 
             elif self.dist == 'uniform':
                 count_data[i] = self.mean_signal + random.uniform(-self.noise_amplitude / 2, self.noise_amplitude / 2)
@@ -245,8 +247,8 @@ class SlowCounterDummy(Base, SlowCounterInterface):
                         self.current_dec_time = np.random.exponential(self.life_time_bright)
                     self.total_time = 0.0
 
-                count_data[i] = np.random.poisson(self.mean_signal)*self.curr_state_b + np.random.poisson(self.mean_signal2)*(1-self.curr_state_b)
-
+                count_data[i] = (np.random.poisson(self.mean_signal) * self.curr_state_b
+                                + np.random.poisson(self.mean_signal2) * (1-self.curr_state_b))
             else:
                 # make uniform as default
                 count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)

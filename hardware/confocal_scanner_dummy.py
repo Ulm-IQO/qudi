@@ -56,12 +56,10 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         # Internal parameters
         self._line_length = None
-        self._scanner_counter_daq_task = None
-        self._voltage_range = [-10., 10.]
+        self._voltage_range = [-10, 10]
 
-        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
-        self._current_position = [0., 0., 0., 0.]
-
+        self._position_range = [[0, 100], [0, 100], [0, 100], [0, 1]]
+        self._current_position = [0, 0, 0, 0][0:len(self.get_scanner_axes())]
         self._num_points = 500
 
     def on_activate(self, e):
@@ -221,6 +219,14 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         return 0
 
+    def get_scanner_axes(self):
+        """ Dummy scanner is always 3D cartesian.
+        """
+        return ['x', 'y', 'z']
+
+    def get_scanner_count_channels(self):
+        """ Only one counting channel in dummy confocal."""
+        return ['Ctr1'] 
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -236,14 +242,12 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
-        self.log.warning('ConfocalScannerDummy>set_up_scanner_clock')
-
+        self.log.debug('ConfocalScannerDummy>set_up_scanner_clock')
         time.sleep(0.2)
-
         return 0
 
 
-    def set_up_scanner(self, counter_channel=None, photon_source=None,
+    def set_up_scanner(self, counter_channels=None, sources=None,
                        clock_channel=None, scanner_ao_channels=None):
         """ Configures the actual scanner with a given clock.
 
@@ -260,13 +264,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         self.log.debug('ConfocalScannerDummy>set_up_scanner')
-
-        #if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
-        #    self.log.error('Another scanner is already running, close this one first.')
-        #    return -1
-
         time.sleep(0.2)
-
         return 0
 
 
@@ -282,14 +280,12 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         if self.getState() == 'locked':
-            self.log.error('A Scanner is already running, close this one '
-                    'first.')
+            self.log.error('A Scanner is already running, close this one first.')
             return -1
 
         time.sleep(0.01)
 
-        self._current_position = [x, y, z, a]
-
+        self._current_position = [x, y, z, a][0:len(self.get_scanner_axes())]
         return 0
 
     def get_scanner_position(self):
@@ -297,8 +293,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         @return float[]: current position in (x, y, z, a).
         """
-
-        return self._current_position
+        return self._current_position[0:len(self.get_scanner_axes())]
 
     def set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.
@@ -324,50 +319,39 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
 
-        #if self.getState() == 'locked':
-        #    self.log.error('A scan_line is already running, close this one first.')
-        #    return -1
-        #
-        #self.lock()
-
         if not isinstance(line_path, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given voltage list is no array type.')
-            return np.array([-1.])
+            return np.array([[-1.]])
 
         if np.shape(line_path)[1] != self._line_length:
             self.set_up_line(np.shape(line_path)[1])
 
-        #print('line',line_path[0,:])
         count_data = np.random.uniform(0, 2e4, self._line_length)
         z_data = line_path[2, :]
 
         #TODO: Change the gaussian function here to the one from fitlogic and delete the local modules to calculate
         #the gaussian functions
         if line_path[0, 0] != line_path[0, 1]:
-            x_data,y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
+            x_data, y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
             for i in range(self._num_points):
                 count_data += self.twoD_gaussian_function((x_data,y_data),
                               *(self._points[i])) * ((self.gaussian_function(np.array(z_data),
                               *(self._points_z[i]))))
         else:
-            x_data,y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])
+            x_data, y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])
             for i in range(self._num_points):
                 count_data += self.twoD_gaussian_function((x_data,y_data),
                               *(self._points[i])) * ((self.gaussian_function(z_data,
                               *(self._points_z[i]))))
 
 
-        time.sleep(self._line_length*1./self._clock_frequency)
-        time.sleep(self._line_length*1./self._clock_frequency)
-
-#        self.log.warning('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length))
-
-        #self.unlock()
+        time.sleep(self._line_length * 1. / self._clock_frequency)
+        time.sleep(self._line_length * 1. / self._clock_frequency)
 
         # update the scanner position instance variable
         self._current_position = list(line_path[:, -1])
 
-        return count_data
+        return [count_data]
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
@@ -376,9 +360,6 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
 
         self.log.debug('ConfocalScannerDummy>close_scanner')
-
-        self._scanner_counter_daq_task = None
-
         return 0
 
     def close_scanner_clock(self,power=0):
@@ -433,17 +414,14 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         x_zero = float(x_zero)
         y_zero = float(y_zero)
 
-        a = (np.cos(theta)**2)/(2*sigma_x**2) \
-                                    + (np.sin(theta)**2)/(2*sigma_y**2)
-        b = -(np.sin(2*theta))/(4*sigma_x**2) \
-                                    + (np.sin(2*theta))/(4*sigma_y**2)
-        c = (np.sin(theta)**2)/(2*sigma_x**2) \
-                                    + (np.cos(theta)**2)/(2*sigma_y**2)
-        g = offset + amplitude*np.exp( - (a*((x-x_zero)**2) \
-                                + 2*b*(x-x_zero)*(y-y_zero) \
-                                + c*((y-y_zero)**2)))
+        a = (np.cos(theta)**2) / (2 * sigma_x**2) + (np.sin(theta)**2) / (2 * sigma_y**2)
+        b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
+        c = (np.sin(theta)**2) / (2 * sigma_x**2) + (np.cos(theta)**2) / (2 * sigma_y**2)
+        g = offset + amplitude * np.exp(
+            - (a * ((x - x_zero)**2) 
+                + 2 * b * (x - x_zero) * (y - y_zero) 
+                + c * ((y - y_zero)**2)))
         return g.ravel()
-
 
     def gaussian_function(self, x_data=None, amplitude=None, x_zero=None,
                           sigma=None, offset=None):
