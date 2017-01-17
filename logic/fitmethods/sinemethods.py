@@ -571,7 +571,7 @@ def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
         result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
         logger.error('The sineexponentialdecayoffset fit did not work.\n'
                      'Error message: {0}'.format(result.message))
-        
+
 
     return result
 
