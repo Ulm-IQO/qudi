@@ -22,14 +22,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import ctypes
-import re
+import os
 
 import PyDAQmx as daq
 
 from core.base import Base
-from interfaces.pulser_interface import PulserInterface
+from interface.pulser_interface import PulserInterface
+from collections import OrderedDict
 
-class NIPulser(PulserInterface):
+class NIPulser(Base, PulserInterface):
     """ Pulse generator using NI-DAQmx
     """
 
@@ -59,53 +60,76 @@ class NIPulser(PulserInterface):
                 'as directory for the pulsed files!\nThe default home directory\n{0}\n'
                 'will be taken instead.'.format(self.pulsed_file_dir))
 
+        if 'device' in config.keys():
+            self.device = config['device']
+        else:
+            self.device = 'Dev0'
+
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
         self.current_status = -1
         self.current_loaded_asset = None
         self.sample_rate = self.get_sample_rate()
 
+
     def on_deactivate(self, e):
         pass
 
     def init_constraints(self):
-
-       constraints = {}
+        device = self.device
+        constraints = {}
 
         n = 2048
         ao_max_freq = daq.float64()
         ao_min_freq = daq.float64()
-        ao_voltage_ranges = np.zeros(128, dtype=np.float64)
-        ao_clock_support = daq.bool32()
         ao_physical_chans = ctypes.create_string_buffer(n)
+        ao_voltage_ranges = np.zeros(16, dtype=np.float64)
+        ao_clock_support = daq.bool32()
         do_max_freq = daq.float64()
         do_lines = ctypes.create_string_buffer(n)
         do_ports = ctypes.create_string_buffer(n)
-        do_clock_support = daq.bool32()
         product_dev_type = ctypes.create_string_buffer(n)
         product_cat = daq.int32()
         serial_num = daq.uInt32()
         product_num = daq.uInt32()
 
         daq.DAQmxGetDevAOMinRate(device, daq.byref(ao_min_freq))
+        self.log.debug('Analog min freq: {0}'.format(ao_min_freq.value))
         daq.DAQmxGetDevAOMaxRate(device, daq.byref(ao_max_freq))
+        self.log.debug('Analog max freq: {0}'.format(ao_max_freq.value))
         daq.DAQmxGetDevAOSampClkSupported(device, daq.byref(ao_clock_support))
+        self.log.debug('Analog supports clock: {0}'.format(ao_clock_support.value))
         daq.DAQmxGetDevAOPhysicalChans(device, ao_physical_chans, n)
-        daq.DAQmxGetDevAOVoltageRngs(device, ao_voltage_ranges, n)
+        analog_channels = str(ao_physical_chans.value, encoding='utf-8').split(', ')
+        self.log.debug('Analog channels: {0}'.format(analog_channels))
+        daq.DAQmxGetDevAOVoltageRngs(
+            device,
+            ao_voltage_ranges.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            len(ao_voltage_ranges))
+        self.log.debug('Analog voltage range: {0}'.format(ao_voltage_ranges[0:2]))
 
         daq.DAQmxGetDevDOMaxRate(self.device, daq.byref(do_max_freq))
-        daq.DAQmxGetPhysicalChanDOSampClkSupported(device, daq.byref(do_clock_support))
+        self.log.debug('Digital max freq: {0}'.format(do_max_freq.value))
         daq.DAQmxGetDevDOLines(device, do_lines, n)
+        digital_channels = str(do_lines.value, encoding='utf-8').split(', ')
+        self.log.debug('Digital channels: {0}'.format(digital_channels))
         daq.DAQmxGetDevDOPorts(device, do_ports, n)
+        digital_bundles = str(do_ports.value, encoding='utf-8').split(', ')
+        self.log.debug('Digital ports: {0}'.format(digital_bundles))
 
         daq.DAQmxGetDevSerialNum(device, daq.byref(serial_num))
+        self.log.debug('Card serial number: {0}'.format(serial_num.value))
         daq.DAQmxGetDevProductNum(device, daq.byref(product_num))
+        self.log.debug('Product number: {0}'.format(product_num.value))
         daq.DAQmxGetDevProductType(device, product_dev_type, n)
+        product = str(product_dev_type.value, encoding='utf-8')
+        self.log.debug('Product name: {0}'.format(product))
         daq.DAQmxGetDevProductCategory(device, daq.byref(product_cat))
+        self.log.debug(product_cat.value)
 
         constraints['sample_rate'] = {
-            'min': ao_min_freq,
-            'max': ao_max_freq,
+            'min': ao_min_freq.value,
+            'max': ao_max_freq.value,
             'step': 0.0,
             'unit': 'Samples/s'}
 
@@ -117,13 +141,13 @@ class NIPulser(PulserInterface):
         # the stepsize will be determined by the DAC in combination with the
         # maximal output amplitude (in Vpp):
         constraints['a_ch_amplitude'] = {
-            'min': 0.0,
-            'max': 10.0,
+            'min': 0,
+            'max': ao_voltage_ranges[1],
             'step': 0.0,
             'unit': 'Vpp'}
         constraints['a_ch_offset'] = {
-            'min': 0.0,
-            'max': 10.0,
+            'min': ao_voltage_ranges[0],
+            'max': ao_voltage_ranges[1],
             'step': 0.0,
             'unit': 'V'}
         constraints['d_ch_low'] = {
