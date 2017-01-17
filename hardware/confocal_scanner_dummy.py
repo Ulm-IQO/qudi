@@ -77,25 +77,30 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
         # amplitude
-        self._points[:, 0] = np.random.normal(4e5,
-                                              1e5,
-                                              self._num_points)
+        self._points[:, 0] = np.random.normal(
+            4e5,
+            1e5,
+            self._num_points)
         # x_zero
-        self._points[:, 1] = np.random.uniform(self._position_range[0][0],
-                                               self._position_range[0][1],
-                                               self._num_points)
+        self._points[:, 1] = np.random.uniform(
+            self._position_range[0][0],
+            self._position_range[0][1],
+            self._num_points)
         # y_zero
-        self._points[:, 2] = np.random.uniform(self._position_range[1][0],
-                                               self._position_range[1][1],
-                                               self._num_points)
+        self._points[:, 2] = np.random.uniform(
+            self._position_range[1][0],
+            self._position_range[1][1],
+            self._num_points)
         # sigma_x
-        self._points[:, 3] = np.random.normal(0.7,
-                                              0.1,
-                                              self._num_points)
+        self._points[:, 3] = np.random.normal(
+            0.7e-6,
+            0.1e-6,
+            self._num_points)
         # sigma_y
-        self._points[:, 4] = np.random.normal(0.7,
-                                              0.1,
-                                              self._num_points)
+        self._points[:, 4] = np.random.normal(
+            0.7e-6,
+            0.1e-6,
+            self._num_points)
         # theta
         self._points[:, 5] = 10
         # offset
@@ -106,19 +111,22 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         self._points_z = np.empty([self._num_points, 4])
         # amplitude
-        self._points_z[:, 0] = np.random.normal(1,
-                                                0.05,
-                                                self._num_points)
+        self._points_z[:, 0] = np.random.normal(
+            1,
+            0.05,
+            self._num_points)
 
         # x_zero
-        self._points_z[:, 1] = np.random.uniform(45,
-                                                 55,
-                                                 self._num_points)
+        self._points_z[:, 1] = np.random.uniform(
+            45e-6,
+            55e-6,
+            self._num_points)
 
         # sigma
-        self._points_z[:, 2] = np.random.normal(0.5,
-                                              0.1,
-                                              self._num_points)
+        self._points_z[:, 2] = np.random.normal(
+            0.5e-6,
+            0.1e-6,
+            self._num_points)
 
         # offset
         self._points_z[:, 3] = 0
