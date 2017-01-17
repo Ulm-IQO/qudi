@@ -25,7 +25,7 @@ License:
 
 Usage Policy (Trademarks and Project Identity)
 
-	The Qudi Logo represents graphically the identiy of the Qudi project and
+	The Qudi Logo represents graphically the identity of the Qudi project and
 	software suite.  As such, its use is regulated by trademark law (as well
 	as copyright law).  The CC-BY-NC-SA license addresses copyright
 	regulations, but the following guidelines protect the Qudi project

@@ -460,7 +460,12 @@ def N14_testing():
                                  max=maximal_linewidth, expr='l0_sigma')
     params['offset'].set(value=offset)
 
+
     result = mod.fit(data_noisy, x=x_axis, params=params)
+
+    result.params['offset'].unit = 'Hz'
+
+#    print('result:',dir(result))
 
     plt.figure()
     plt.plot(x_axis, data_noisy,'-b', label='data')
@@ -476,6 +481,7 @@ def N14_testing():
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
+    return result
 
 def N14_testing2():
     """ Test direkt the implemented fit method with simulated data."""
@@ -777,9 +783,9 @@ def twoD_testing():
 #            print('Message:',result.message)
 
 
-def oneD_testing():
+def gaussian_testing():
     x = np.linspace(0, 5, 11)
-    x_nice=np.linspace(0, 5, 101)
+    x_nice = np.linspace(0, 5, 101)
 
     mod_final,params = qudi_fitting.make_gaussian_model()
 #            print('Parameters of the model',mod_final.param_names)
@@ -787,7 +793,7 @@ def oneD_testing():
 
 #            p.add('center',max=+3)
 
-    data_noisy=mod_final.eval(x=x, amplitude=100000,center=2,sigma=1.0, c=10000) + 8000*abs(np.random.normal(size=x.shape))
+    data_noisy=mod_final.eval(x=x, amplitude=100000, center=2, sigma=1.0, c=10000) + 8000*abs(np.random.normal(size=x.shape))
 ##            print(qudi_fitting.data_noisy)
     result=qudi_fitting.make_gaussian_fit(x_axis=x, data=data_noisy)
 #
@@ -2182,7 +2188,7 @@ def double_poissonian_testing_data():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-def gaussian_testing():
+def gaussian_testing2():
     start=0
     stop=300
     mu=100
@@ -3729,8 +3735,8 @@ plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
 #    gaussianwithslope_testing()
-#    oneD_testing()
 #    gaussian_testing()
+#    gaussian_testing2()
 #    twoD_testing()
 #    lorentziandip_testing()
 #    lorentziandip_testing2()
@@ -3741,7 +3747,7 @@ if __name__ == "__main__":
 #    double_lorentzdip_testing2()
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
-#    N14_testing()
+    N14_testing()
 #    N14_testing2()
 #    N14_testing_data()
 #    N14_testing_data2()
