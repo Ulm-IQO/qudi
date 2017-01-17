@@ -221,6 +221,7 @@ class CounterGui(GUIBase):
         else:
             self._mw.start_counter_Action.setText('Start counter')
             self._mw.start_counter_Action.setChecked(False)
+        return 0
 
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
@@ -330,6 +331,7 @@ class CounterGui(GUIBase):
         """
         self._mw.count_freq_SpinBox.blockSignals(True)
         self._mw.count_freq_SpinBox.setValue(count_freq)
+        self._pw.setXRange(0,self._counting_logic.get_count_length() / count_freq)
         self._mw.count_freq_SpinBox.blockSignals(False)
         return count_freq
 
@@ -341,6 +343,7 @@ class CounterGui(GUIBase):
         """
         self._mw.count_length_SpinBox.blockSignals(True)
         self._mw.count_length_SpinBox.setValue(count_length)
+        self._pw.setXRange(0,count_length / self._counting_logic.get_count_frequency())
         self._mw.count_length_SpinBox.blockSignals(False)
         return count_length
 
@@ -374,6 +377,11 @@ class CounterGui(GUIBase):
 
     #TODO:
     def update_counting_mode_ComboBox(self):
+        self.log.warning('Not implemented yet')
+        return 0
+
+    #TODO:
+    def update_smoothing_ComboBox(self):
         self.log.warning('Not implemented yet')
         return 0
 

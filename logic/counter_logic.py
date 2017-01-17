@@ -331,10 +331,8 @@ class CounterLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        # TODO: Draw plot for second APD if it is connected
-        # TODO: One plot for all apds or for every APD one plot?
 
-        count_data = data[:, 1]
+        count_data = data[:, 1:len(self.get_channels())+1]
         time_data = data[:, 0]
 
         # Scale count values using SI prefix
@@ -415,6 +413,8 @@ class CounterLogic(GenericLogic):
         """Prepare to start counting change state and start counting 'loop'."""
         # setting up the counter
         # set a lock, to signify the measurment is running
+
+        #@return error: 0 is OK, -1 is error
         self.lock()
 
         clock_status = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
@@ -441,6 +441,7 @@ class CounterLogic(GenericLogic):
             (len(self.get_channels()), self._counting_samples))
 
         self.sigCountContinuousNext.emit()
+        return 0
 
     #FIXME: To Do!
     def _startCount_gated(self):
@@ -457,6 +458,20 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
         self.sigCountStatusChanged.emit(False)
+
+
+    def stop_counter(self):
+        """ Stops the counter if it is running and returns whether it was running.
+        @return bool restart: True if counter was running
+        """
+        if self.getState() == 'locked':
+            restart = True
+            self.stopCount()
+            while self.getState() == 'locked':
+                time.sleep(0.01)
+        else:
+            restart = False
+        return restart
 
 
     def _startCount_finite_gated(self):
@@ -531,7 +546,6 @@ class CounterLogic(GenericLogic):
         for i, ch in enumerate(self.get_channels()):
             # remember the new count data in circular array
             self.countdata[i, 0] = np.average(self.rawdata[i])
-
         # move the array to the left to make space for the new data
         self.countdata = np.roll(self.countdata, -1, axis=1)
         # also move the smoothing array
