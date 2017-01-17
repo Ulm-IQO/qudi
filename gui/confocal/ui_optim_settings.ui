@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>463</width>
-    <height>346</height>
+    <width>465</width>
+    <height>350</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -36,12 +36,12 @@
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
-          <string>XY Range (µm):</string>
+          <string>XY Range:</string>
          </property>
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="xy_optimizer_range_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="xy_optimizer_range_DoubleSpinBox">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Scan range of the optimizer in the xy area.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
@@ -51,17 +51,20 @@
          <property name="specialValueText">
           <string/>
          </property>
+         <property name="suffix">
+          <string>m</string>
+         </property>
          <property name="decimals">
           <number>3</number>
          </property>
          <property name="maximum">
-          <double>10.000000000000000</double>
+          <double>1.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.010000000000000</double>
+          <double>0.000001000000000</double>
          </property>
          <property name="value">
-          <double>0.600000000000000</double>
+          <double>1.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -88,17 +91,17 @@
        <item row="1" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Z Range (µm):</string>
+          <string>Z Range:</string>
          </property>
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="z_optimizer_range_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="z_optimizer_range_DoubleSpinBox">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Scan range of the optimizer in the z direction.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="suffix">
-          <string/>
+          <string>m</string>
          </property>
          <property name="decimals">
           <number>3</number>
@@ -249,6 +252,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>buttonBox</tabstop>
  </tabstops>

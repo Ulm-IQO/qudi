@@ -99,7 +99,7 @@ class OptimizerLogic(GenericLogic):
         if 'xy_size' in self._statusVariables:
             self.refocus_XY_size = self._statusVariables['xy_size']
         else:
-            self.refocus_XY_size = 0.6  # micron
+            self.refocus_XY_size = 0.6e-6  # meters
 
         if 'xy_resolution' in self._statusVariables:
             self.optimizer_XY_res = self._statusVariables['xy_resolution']
@@ -109,17 +109,17 @@ class OptimizerLogic(GenericLogic):
         if 'z_size' in self._statusVariables:
             self.refocus_Z_size = self._statusVariables['z_size']
         else:
-            self.refocus_Z_size = 2  # micron
+            self.refocus_Z_size = 2e-6  # meters
 
         if 'z_resolution' in self._statusVariables:
             self.optimizer_Z_res = self._statusVariables['z_resolution']
         else:
-            self.optimizer_Z_res = 30 
+            self.optimizer_Z_res = 30
 
         if 'settle_time' in self._statusVariables:
             self.hw_settle_time = self._statusVariables['settle_time']
         else:
-            self.hw_settle_time = 0.1  # s 
+            self.hw_settle_time = 0.1  # seconds
 
         if 'optimization_sequence' in self._statusVariables:
             self.optimization_sequence = self._statusVariables['optimization_sequence']

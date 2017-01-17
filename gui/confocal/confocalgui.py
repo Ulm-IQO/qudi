@@ -207,8 +207,8 @@ class ConfocalGui(GUIBase):
         self.image_y_padding = config['image_y_padding']
         self.image_z_padding = config['image_z_padding']
 
-        self.slider_small_step = 10         # initial value in nanometer
-        self.slider_big_step = 100          # initial value in nanometer
+        self.slider_small_step = 10e-9         # initial value in meter
+        self.slider_big_step = 100e-9          # initial value in meter
 
         # the 4 possible orientations, where the first entry of the array
         # tells you the actual position. The number tells you how often a 90
@@ -331,12 +331,12 @@ class ConfocalGui(GUIBase):
         self._mw.depth_refocus_ViewWidget_2.addItem(self.depth_refocus_image)
 
         # Labelling axes
-        self._mw.xy_refocus_ViewWidget_2.setLabel('bottom', 'X position', units='µm')
-        self._mw.xy_refocus_ViewWidget_2.setLabel('left', 'Y position', units='µm')
+        self._mw.xy_refocus_ViewWidget_2.setLabel('bottom', 'X position', units='m')
+        self._mw.xy_refocus_ViewWidget_2.setLabel('left', 'Y position', units='m')
 
         self._mw.depth_refocus_ViewWidget_2.addItem(self.depth_refocus_fit_image)
 
-        self._mw.depth_refocus_ViewWidget_2.setLabel('bottom', 'Z position', units='µm')
+        self._mw.depth_refocus_ViewWidget_2.setLabel('bottom', 'Z position', units='m')
         self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         # Add crosshair to the xy refocus scan
@@ -358,10 +358,10 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget.addItem(self.depth_image)
 
         # Label the axes:
-        self._mw.xy_ViewWidget.setLabel('bottom', 'X position', units='µm')
-        self._mw.xy_ViewWidget.setLabel('left', 'Y position', units='µm')
-        self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='µm')
-        self._mw.depth_ViewWidget.setLabel('left', 'Z position', units='µm')
+        self._mw.xy_ViewWidget.setLabel('bottom', 'X position', units='m')
+        self._mw.xy_ViewWidget.setLabel('left', 'Y position', units='m')
+        self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='m')
+        self._mw.depth_ViewWidget.setLabel('left', 'Z position', units='m')
 
         # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI(
@@ -437,9 +437,9 @@ class ConfocalGui(GUIBase):
 
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming
-        # from the Logic module must be in micrometer.
-        # 1 nanometer resolution per one change, units are micrometer
-        self.slider_res = 0.001
+        # from the Logic module must be in meters.
+        # 1 nanometer resolution per one change, units are meters
+        self.slider_res = 1e-9
 
         # How many points are needed for that kind of resolution:
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0]) / self.slider_res
@@ -746,39 +746,39 @@ class ConfocalGui(GUIBase):
         """
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
-        position = self._scanning_logic.get_position()   # in micrometers
+        position = self._scanning_logic.get_position()   # in meters
         x_pos = position[0]
         y_pos = position[1]
         z_pos = position[2]
 
         if modifiers == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_Right:
-                self.update_from_key(x=float(round(x_pos + self.slider_big_step * 0.001, 4)))
+                self.update_from_key(x=float(round(x_pos + self.slider_big_step, 10)))
             elif event.key() == QtCore.Qt.Key_Left:
-                self.update_from_key(x=float(round(x_pos - self.slider_big_step * 0.001, 4)))
+                self.update_from_key(x=float(round(x_pos - self.slider_big_step, 10)))
             elif event.key() == QtCore.Qt.Key_Up:
-                self.update_from_key(y=float(round(y_pos + self.slider_big_step * 0.001, 4)))
+                self.update_from_key(y=float(round(y_pos + self.slider_big_step, 10)))
             elif event.key() == QtCore.Qt.Key_Down:
-                self.update_from_key(y=float(round(y_pos - self.slider_big_step * 0.001, 4)))
+                self.update_from_key(y=float(round(y_pos - self.slider_big_step, 10)))
             elif event.key() == QtCore.Qt.Key_PageUp:
-                self.update_from_key(z=float(round(z_pos + self.slider_big_step * 0.001, 4)))
+                self.update_from_key(z=float(round(z_pos + self.slider_big_step, 10)))
             elif event.key() == QtCore.Qt.Key_PageDown:
-                self.update_from_key(z=float(round(z_pos - self.slider_big_step * 0.001, 4)))
+                self.update_from_key(z=float(round(z_pos - self.slider_big_step, 10)))
             else:
                 event.ignore()
         else:
             if event.key() == QtCore.Qt.Key_Right:
-                self.update_from_key(x=float(round(x_pos + self.slider_small_step * 0.001, 4)))
+                self.update_from_key(x=float(round(x_pos + self.slider_small_step, 10)))
             elif event.key() == QtCore.Qt.Key_Left:
-                self.update_from_key(x=float(round(x_pos - self.slider_small_step * 0.001, 4)))
+                self.update_from_key(x=float(round(x_pos - self.slider_small_step, 10)))
             elif event.key() == QtCore.Qt.Key_Up:
-                self.update_from_key(y=float(round(y_pos + self.slider_small_step * 0.001, 4)))
+                self.update_from_key(y=float(round(y_pos + self.slider_small_step, 10)))
             elif event.key() == QtCore.Qt.Key_Down:
-                self.update_from_key(y=float(round(y_pos - self.slider_small_step * 0.001, 4)))
+                self.update_from_key(y=float(round(y_pos - self.slider_small_step, 10)))
             elif event.key() == QtCore.Qt.Key_PageUp:
-                self.update_from_key(z=float(round(z_pos + self.slider_small_step * 0.001, 4)))
+                self.update_from_key(z=float(round(z_pos + self.slider_small_step, 10)))
             elif event.key() == QtCore.Qt.Key_PageDown:
-                self.update_from_key(z=float(round(z_pos - self.slider_small_step * 0.001, 4)))
+                self.update_from_key(z=float(round(z_pos - self.slider_small_step, 10)))
             else:
                 event.ignore()
 
@@ -964,8 +964,8 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.depth_scan_dir_is_xz = self._sd.depth_dir_x_radioButton.isChecked()
         self.fixed_aspect_ratio_xy = self._sd.fixed_aspect_xy_checkBox.isChecked()
         self.fixed_aspect_ratio_depth = self._sd.fixed_aspect_depth_checkBox.isChecked()
-        self.slider_small_step = self._sd.slider_small_step_SpinBox.value()
-        self.slider_big_step = self._sd.slider_big_step_SpinBox.value()
+        self.slider_small_step = self._sd.slider_small_step_DoubleSpinBox.value()
+        self.slider_big_step = self._sd.slider_big_step_DoubleSpinBox.value()
 
         # Update GUI icons to new loop-scan state
         self._set_scan_icons()
@@ -982,8 +982,8 @@ class ConfocalGui(GUIBase):
 
         self._sd.fixed_aspect_xy_checkBox.setChecked(self.fixed_aspect_ratio_xy)
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
-        self._sd.slider_small_step_SpinBox.setValue(int(self.slider_small_step))
-        self._sd.slider_big_step_SpinBox.setValue(int(self.slider_big_step))
+        self._sd.slider_small_step_DoubleSpinBox.setValue(float(self.slider_small_step))
+        self._sd.slider_big_step_DoubleSpinBox.setValue(float(self.slider_big_step))
 
     def menu_optimizer_settings(self):
         """ This method opens the settings menu. """
@@ -1268,9 +1268,9 @@ class ConfocalGui(GUIBase):
     def update_from_key(self, x=None, y=None, z=None):
         """The user pressed a key to move the crosshair, adjust all GUI elements.
 
-        @param float x: new x position in µm
-        @param float y: new y position in µm
-        @param float z: new z position in µm
+        @param float x: new x position in m
+        @param float y: new y position in m
+        @param float z: new z position in m
         """
         if x is not None:
             self.update_roi_xy(x=x)
@@ -1320,7 +1320,7 @@ class ConfocalGui(GUIBase):
     def update_input_x(self, x_pos):
         """ Update the displayed x-value.
 
-        @param float x_pos: the current value of the x position in µm
+        @param float x_pos: the current value of the x position in m
         """
         # Convert x_pos to number of points for the slider:
         self._mw.x_current_InputWidget.setValue(x_pos)
@@ -1328,7 +1328,7 @@ class ConfocalGui(GUIBase):
     def update_input_y(self, y_pos):
         """ Update the displayed y-value.
 
-        @param float y_pos: the current value of the y position in µm
+        @param float y_pos: the current value of the y position in m
         """
         # Convert x_pos to number of points for the slider:
         self._mw.y_current_InputWidget.setValue(y_pos)
@@ -1336,7 +1336,7 @@ class ConfocalGui(GUIBase):
     def update_input_z(self, z_pos):
         """ Update the displayed z-value.
 
-        @param float z_pos: the current value of the z position in µm
+        @param float z_pos: the current value of the z position in m
         """
         # Convert x_pos to number of points for the slider:
         self._mw.z_current_InputWidget.setValue(z_pos)
@@ -1378,21 +1378,21 @@ class ConfocalGui(GUIBase):
     def update_slider_x(self, x_pos):
         """ Update the x slider when a change happens.
 
-        @param float x_pos: x position in µm
+        @param float x_pos: x position in m
         """
         self._mw.x_SliderWidget.setValue((x_pos - self._scanning_logic.x_range[0]) / self.slider_res)
 
     def update_slider_y(self, y_pos):
         """ Update the y slider when a change happens.
 
-        @param float y_pos: x yosition in µm
+        @param float y_pos: x yosition in m
         """
         self._mw.y_SliderWidget.setValue((y_pos - self._scanning_logic.y_range[0]) / self.slider_res)
 
     def update_slider_z(self, z_pos):
         """ Update the z slider when a change happens.
 
-        @param float z_pos: z position in µm
+        @param float z_pos: z position in m
         """
         self._mw.z_SliderWidget.setValue((z_pos - self._scanning_logic.z_range[0]) / self.slider_res)
 
