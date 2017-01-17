@@ -28,8 +28,8 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
-    """This is the Interface class to define the controls for the simple
-    microwave hardware.
+    """ Dummy confocal scanner.
+        Produces a picture with several gaussian spots.
     """
     _modclass = 'ConfocalScannerDummy'
     _modtype = 'hardware'
@@ -50,15 +50,13 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             self._clock_frequency = config['clock_frequency']
         else:
             self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
-
+            self.log.warning('No clock_frequency configured taking 100 Hz instead.')
 
         # Internal parameters
         self._line_length = None
         self._voltage_range = [-10, 10]
 
-        self._position_range = [[0, 100], [0, 100], [0, 100], [0, 1]]
+        self._position_range = [[0, 100e-6], [0, 100e-6], [0, 100e-6], [0, 1e-6]]
         self._current_position = [0, 0, 0, 0][0:len(self.get_scanner_axes())]
         self._num_points = 500
 
@@ -159,7 +157,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         if myrange is None:
-            myrange = [[0, 1], [0, 1], [0, 1], [0, 1]]
+            myrange = [[0, 1e-6], [0, 1e-6], [0, 1e-6], [0, 1e-6]]
 
         if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given range is no array type.')
@@ -362,7 +360,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self.log.debug('ConfocalScannerDummy>close_scanner')
         return 0
 
-    def close_scanner_clock(self,power=0):
+    def close_scanner_clock(self, power=0):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
