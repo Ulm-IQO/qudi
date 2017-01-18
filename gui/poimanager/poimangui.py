@@ -51,7 +51,7 @@ class PoiMark(pg.CircleROI):
     color = "F0F"
     selectcolor = "FFF"
     selected = False
-    radius = 0.6
+    radius = 0.6e-6
 
     def __init__(self, pos, poi=None, click_action=None, viewwidget=None, **args):
         pg.CircleROI.__init__(
@@ -255,8 +255,8 @@ class PoiManagerGui(GUIBase):
         # Connectors
         self._poi_manager_logic = self.get_in_connector('poimanagerlogic1')
         self._confocal_logic = self.get_in_connector('confocallogic1')
-        print("POI Manager logic is", self._poi_manager_logic)
-        print("Confocal logic is", self._confocal_logic)
+        self.log.debug("POI Manager logic is {0}".format(self._poi_manager_logic))
+        self.log.debug("Confocal logic is {0}".format(self._confocal_logic))
 
         # Initializing the GUIs
         self.initMainUI(e)
@@ -446,7 +446,6 @@ class PoiManagerGui(GUIBase):
         # Redraw the sample_shift axes if the range changes
         self._mw.sample_shift_ViewWidget.plotItem.sigRangeChanged.connect(self._redraw_sample_shift)
 
-#        print('Main POI Manager Window shown:')
         self._mw.show()
 
     def initReorientRoiDialogUI(self, e):
@@ -615,14 +614,11 @@ class PoiManagerGui(GUIBase):
 
     def goto_poi(self, key):
         """ Go to the last known position of poi <key>."""
-
         self._poi_manager_logic.go_to_poi(poikey=self.selected_poi_key)
-
-#        print(self._poi_manager_logic.get_last_point(poikey=key))
 
     def populate_poi_list(self):
         """ Populate the dropdown box for selecting a poi. """
-        print('started populate_poi_list at ', time.time())
+        self.log.debug('started populate_poi_list at {0}'.format(time.time()))
         self._mw.active_poi_ComboBox.clear()
         self._mw.offset_anchor_ComboBox.clear()
         self._rrd.ref_a_poi_ComboBox.clear()
@@ -645,7 +641,7 @@ class PoiManagerGui(GUIBase):
         # Set the selected POI in the combobox
         self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(self.selected_poi_key))
 
-        print('finished populating at ', time.time())
+        self.log.debug('finished populating at '.format(time.time()))
 
     def change_refind_method(self):
         """ Make appropriate changes in the GUI to reflect the newly chosen refind method."""
@@ -656,7 +652,7 @@ class PoiManagerGui(GUIBase):
             self._mw.offset_anchor_ComboBox.setEnabled(True)
         else:
             # TODO: throw an error
-            print('error 123')
+            self.log.debug('error 123')
 
     def set_roi_name(self):
         """ Set the name of a ROI (useful when saving)."""
@@ -711,10 +707,6 @@ class PoiManagerGui(GUIBase):
             self._poi_manager_logic.go_to_crosshair_after_refocus = True
 
     def _update_timer(self):
-        # placeholder=QtGui.QLineEdit()
-        # placeholder.setText('{0:.1f}'.format(self._poi_manager_logic.time_left))
-
-        #        print(self._poi_manager_logic.time_left)
         self._mw.time_till_next_update_ProgressBar.setValue(self._poi_manager_logic.time_left)
 
     def change_track_period(self):
@@ -817,7 +809,7 @@ class PoiManagerGui(GUIBase):
 
     def _redraw_poi_markers(self):
 
-        print('starting redraw_poi_markers', time.time())
+        self.log.debug('starting redraw_poi_markers {0}'.format(time.time()))
 
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
@@ -829,12 +821,13 @@ class PoiManagerGui(GUIBase):
                     self._markers[key].deselect()
                 else:
                     # Create Region of Interest as marker:
-                    marker = PoiMark(position,
-                                     poi=self._poi_manager_logic.track_point_list[key],
-                                     click_action=self.select_poi_from_marker,
-                                     movable=False,
-                                     scaleSnap=False,
-                                     snapSize=1.0)
+                    marker = PoiMark(
+                        position,
+                        poi=self._poi_manager_logic.track_point_list[key],
+                        click_action=self.select_poi_from_marker,
+                        movable=False,
+                        scaleSnap=False,
+                        snapSize=1.0e-6)
 
                     # Add to the Map Widget
                     marker.add_to_viewwidget(self._mw.roi_map_ViewWidget)
