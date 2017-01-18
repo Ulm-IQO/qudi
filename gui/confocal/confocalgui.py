@@ -1591,7 +1591,7 @@ class ConfocalGui(GUIBase):
         ##########
         # Set the optimized position label
         self._mw.refocus_position_label.setText(
-            '({0:.3f}, {1:.3f}, {2:.3f})'.format(
+            '({0:.3e}, {1:.3e}, {2:.3e})'.format(
                 self._optimizer_logic.optim_pos_x,
                 self._optimizer_logic.optim_pos_y,
                 self._optimizer_logic.optim_pos_z

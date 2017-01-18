@@ -723,7 +723,12 @@ class PoiManagerLogic(GenericLogic):
         data['Y'] = y_coords
         data['Z'] = z_coords
 
-        self._save_logic.save_data(data, filepath, filelabel=self.roi_name, as_text=True)
+        self._save_logic.save_data(
+            data,
+            filepath,
+            filelabel=self.roi_name,
+            precision='.3e',
+            as_text=True)
 
         self.log.debug('ROI saved to:\n{0}'.format(filepath))
 

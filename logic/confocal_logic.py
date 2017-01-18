@@ -857,33 +857,36 @@ class ConfocalLogic(GenericLogic):
 
         # Prepare a figure to be saved
         figure_data = self.xy_image[:, :, 3]
-        image_extent = [self.image_x_range[0],
-                        self.image_x_range[1],
-                        self.image_y_range[0],
-                        self.image_y_range[1]
-                        ]
+        image_extent = [
+            self.image_x_range[0],
+            self.image_x_range[1],
+            self.image_y_range[0],
+            self.image_y_range[1]
+            ]
         axes = ['X', 'Y']
         crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
-        fig = self.draw_figure(data=figure_data,
-                               image_extent=image_extent,
-                               scan_axis=axes,
-                               cbar_range=colorscale_range,
-                               percentile_range=percentile_range,
-                               crosshair_pos=crosshair_pos
-                               )
+        fig = self.draw_figure(
+            data=figure_data,
+            image_extent=image_extent,
+            scan_axis=axes,
+            cbar_range=colorscale_range,
+            percentile_range=percentile_range,
+            crosshair_pos=crosshair_pos
+            )
 
         # Save the image data and figure
         filelabel = 'confocal_xy_image'
-        self._save_logic.save_data(image_data,
-                                   filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   as_text=True,
-                                   timestamp=save_time,
-                                   plotfig=fig
-                                   )
-        #, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(
+            image_data,
+            filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            as_text=True,
+            timestamp=save_time,
+            precision='.3e',
+            plotfig=fig
+            )
         plt.close(fig)
 
         # prepare the full raw data in an OrderedDict:
@@ -900,21 +903,22 @@ class ConfocalLogic(GenericLogic):
                 z_data.append(entry[2])
                 counts_data.append(entry[3])
 
-        data['x values (micron)'] = x_data
-        data['y values (micron)'] = y_data
-        data['z values (micron)'] = z_data
+        data['x values (m)'] = x_data
+        data['y values (m)'] = y_data
+        data['z values (m)'] = z_data
         data['count values (c/s)'] = counts_data
 
         # Save the raw data to file
         filelabel = 'confocal_xy_data'
-        self._save_logic.save_data(data,
-                                   filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   as_text=True,
-                                   timestamp=save_time
-                                   )
-        #, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(
+            data,
+            filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            as_text=True,
+            precision='.3e',
+            timestamp=save_time
+            )
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
         self.signal_xy_data_saved.emit()
@@ -970,31 +974,34 @@ class ConfocalLogic(GenericLogic):
             axes = ['Y', 'Z']
             crosshair_pos = [self.get_position()[1], self.get_position()[2]]
 
-        image_extent = [horizontal_range[0],
-                        horizontal_range[1],
-                        self.image_z_range[0],
-                        self.image_z_range[1]
-                        ]
+        image_extent = [
+            horizontal_range[0],
+            horizontal_range[1],
+            self.image_z_range[0],
+            self.image_z_range[1]
+            ]
 
-        fig = self.draw_figure(data=figure_data,
-                               image_extent=image_extent,
-                               scan_axis=axes,
-                               cbar_range=colorscale_range,
-                               percentile_range=percentile_range,
-                               crosshair_pos=crosshair_pos
-                               )
+        fig = self.draw_figure(
+            data=figure_data,
+            image_extent=image_extent,
+            scan_axis=axes,
+            cbar_range=colorscale_range,
+            percentile_range=percentile_range,
+            crosshair_pos=crosshair_pos
+            )
 
         # Save the image data and figure
         filelabel = 'confocal_xy_image'
-        self._save_logic.save_data(image_data,
-                                   filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   as_text=True,
-                                   timestamp=save_time,
-                                   plotfig=fig
-                                   )
-        #, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(
+            image_data,
+            filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            as_text=True,
+            timestamp=save_time,
+            precision='.3e',
+            plotfig=fig
+            )
         plt.close(fig)
 
         # prepare the full raw data in an OrderedDict:
@@ -1018,14 +1025,15 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_depth_data'
-        self._save_logic.save_data(data,
-                                   filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   as_text=True,
-                                   timestamp=save_time
-                                   )
-        #, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(
+            data,
+            filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            as_text=True,
+            precision='.3e',
+            timestamp=save_time
+            )
 
         self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
         self.signal_depth_data_saved.emit()

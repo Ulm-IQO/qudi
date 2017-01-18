@@ -300,13 +300,17 @@ class PoiManagerGui(GUIBase):
 
         # Load the image in the display:
         self.roi_map_image = pg.ImageItem(self.roi_xy_image_data)
-        self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[
-                                   1] - self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1] - self._confocal_logic.image_y_range[0]))
+        self.roi_map_image.setRect(
+            QtCore.QRectF(
+                self._confocal_logic.image_x_range[0],
+                self._confocal_logic.image_y_range[0],
+                self._confocal_logic.image_x_range[1] - self._confocal_logic.image_x_range[0],
+                self._confocal_logic.image_y_range[1] - self._confocal_logic.image_y_range[0]))
 
         # Add the display item to the roi map ViewWidget defined in the UI file
         self._mw.roi_map_ViewWidget.addItem(self.roi_map_image)
-        self._mw.roi_map_ViewWidget.setLabel('bottom', 'X position', units='µm')
-        self._mw.roi_map_ViewWidget.setLabel('left', 'Y position', units='µm')
+        self._mw.roi_map_ViewWidget.setLabel('bottom', 'X position', units='m')
+        self._mw.roi_map_ViewWidget.setLabel('left', 'Y position', units='m')
 
         # Set to fixed 1.0 aspect ratio, since the metaphor is a "map" of the sample
         self._mw.roi_map_ViewWidget.setAspectLocked(lock=True, ratio=1.0)
@@ -329,30 +333,36 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Load image in the display
-        self.x_shift_plot = pg.PlotDataItem([0], [0],
-                                            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                            symbol='o',
-                                            symbolPen=palette.c1,
-                                            symbolBrush=palette.c1,
-                                            symbolSize=5,
-                                            name='x'
-                                            )
-        self.y_shift_plot = pg.PlotDataItem([0], [0],
-                                            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
-                                            symbol='s',
-                                            symbolPen=palette.c2,
-                                            symbolBrush=palette.c2,
-                                            symbolSize=5,
-                                            name='y'
-                                            )
-        self.z_shift_plot = pg.PlotDataItem([0], [0],
-                                            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-                                            symbol='t',
-                                            symbolPen=palette.c3,
-                                            symbolBrush=palette.c3,
-                                            symbolSize=5,
-                                            name='z'
-                                            )
+        self.x_shift_plot = pg.PlotDataItem(
+            [0],
+            [0],
+            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c1,
+            symbolBrush=palette.c1,
+            symbolSize=5,
+            name='x'
+            )
+        self.y_shift_plot = pg.PlotDataItem(
+            [0],
+            [0],
+            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+            symbol='s',
+            symbolPen=palette.c2,
+            symbolBrush=palette.c2,
+            symbolSize=5,
+            name='y'
+            )
+        self.z_shift_plot = pg.PlotDataItem(
+            [0],
+            [0],
+            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+            symbol='t',
+            symbolPen=palette.c3,
+            symbolBrush=palette.c3,
+            symbolSize=5,
+            name='z'
+            )
 
         self._mw.sample_shift_ViewWidget.addLegend()
 
@@ -507,10 +517,12 @@ class PoiManagerGui(GUIBase):
         self.roi_map_ymax = np.max(self._poi_manager_logic.roi_map_data[:, :, 1])
 
         self.roi_map_image.getViewBox().enableAutoRange()
-        self.roi_map_image.setRect(QtCore.QRectF(self.roi_map_xmin,
-                                                 self.roi_map_ymin,
-                                                 self.roi_map_xmax - self.roi_map_xmin,
-                                                 self.roi_map_ymax - self.roi_map_ymin))
+        self.roi_map_image.setRect(
+            QtCore.QRectF(
+                self.roi_map_xmin,
+                self.roi_map_ymin,
+                self.roi_map_xmax - self.roi_map_xmin,
+                self.roi_map_ymax - self.roi_map_ymin))
         self.roi_map_image.setImage(image=self.roi_xy_image_data, autoLevels=True)
 
     def shortcut_to_roi_cb_manual(self):
@@ -792,9 +804,9 @@ class PoiManagerGui(GUIBase):
             self._mw.sample_shift_ViewWidget.setLabel('bottom', 'Time', units='')
 
         # Subtract initial position to get shifts
-        x_shift_data = (poi_trace[:, 1] - poi_trace[0, 1]) / 1.0e6
-        y_shift_data = (poi_trace[:, 2] - poi_trace[0, 2]) / 1.0e6
-        z_shift_data = (poi_trace[:, 3] - poi_trace[0, 3]) / 1.0e6
+        x_shift_data = (poi_trace[:, 1] - poi_trace[0, 1])
+        y_shift_data = (poi_trace[:, 2] - poi_trace[0, 2])
+        z_shift_data = (poi_trace[:, 3] - poi_trace[0, 3])
 
         # Plot data
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
@@ -832,8 +844,8 @@ class PoiManagerGui(GUIBase):
                     self._markers[key].select()
                     cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=self.selected_poi_key)
                     self._mw.poi_coords_label.setText(
-                        '({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
-        print('finished redraw at ', time.time())
+                        '({0:.2e}, {1:.2e}, {2:.2e})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
+        self.log.debug('finished redraw at {0}'.format(time.time()))
 
     def make_new_roi(self):
         """ Start new ROI by removing all POIs and resetting the sample history."""
