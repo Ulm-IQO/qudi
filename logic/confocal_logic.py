@@ -833,16 +833,16 @@ class ConfocalLogic(GenericLogic):
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
-        parameters['X image min (micrometer)'] = self.image_x_range[0]
-        parameters['X image max (micrometer)'] = self.image_x_range[1]
-        parameters['X image range (micrometer)'] = self.image_x_range[1] - self.image_x_range[0]
+        parameters['X image min (m)'] = self.image_x_range[0]
+        parameters['X image max (m)'] = self.image_x_range[1]
+        parameters['X image range (m)'] = self.image_x_range[1] - self.image_x_range[0]
 
         parameters['Y image min'] = self.image_y_range[0]
         parameters['Y image max'] = self.image_y_range[1]
         parameters['Y image range'] = self.image_y_range[1] - self.image_y_range[0]
 
         parameters['XY resolution (samples per range)'] = self.xy_resolution
-        parameters['XY Image at z position (micrometer)'] = self._current_z
+        parameters['XY Image at z position (m)'] = self._current_z
 
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
@@ -939,9 +939,9 @@ class ConfocalLogic(GenericLogic):
         parameters = OrderedDict()
 
         # TODO: This needs to check whether the scan was XZ or YZ direction
-        parameters['X image min (micrometer)'] = self.image_x_range[0]
-        parameters['X image max (micrometer)'] = self.image_x_range[1]
-        parameters['X image range (micrometer)'] = self.image_x_range[1] - self.image_x_range[0]
+        parameters['X image min (m)'] = self.image_x_range[0]
+        parameters['X image max (m)'] = self.image_x_range[1]
+        parameters['X image range (m)'] = self.image_x_range[1] - self.image_x_range[0]
 
         parameters['Z image min'] = self.image_z_range[0]
         parameters['Z image max'] = self.image_z_range[1]
@@ -949,7 +949,7 @@ class ConfocalLogic(GenericLogic):
 
         parameters['XY resolution (samples per range)'] = self.xy_resolution
         parameters['Z resolution (samples per range)'] = self.z_resolution
-        parameters['Depth Image at y position (micrometer)'] = self._current_y
+        parameters['Depth Image at y position (m)'] = self._current_y
 
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
