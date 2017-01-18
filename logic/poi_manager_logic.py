@@ -724,7 +724,7 @@ class PoiManagerLogic(GenericLogic):
             data,
             filepath,
             filelabel=self.roi_name,
-            precision='.3e',
+            precision=':.3e',
             as_text=True)
 
         self.log.debug('ROI saved to:\n{0}'.format(filepath))
