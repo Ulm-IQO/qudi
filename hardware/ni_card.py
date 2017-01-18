@@ -1711,7 +1711,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self.set_odmr_length(length)
         try:
             # start the scanner counting task that acquires counts synchroneously
-            daq.DAQmxStartTask(self._scanner_counter_daq_task)
+            daq.DAQmxStartTask(self._scanner_counter_daq_tasks[0])
         except:
             self.log.exception('Cannot start ODMR counter.')
             return np.array([-1.])
@@ -1726,9 +1726,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 self._RWTimeout * 2 * self._odmr_length)
 
             # count data will be written here
-            self._odmr_data = np.full((2 * self._odmr_length + 1, ),
-                                      222,
-                                      dtype=np.uint32)
+            self._odmr_data = np.full(
+                (2 * self._odmr_length + 1, ),
+                222,
+                dtype=np.uint32)
 
             #number of samples which were read will be stored here
             n_read_samples = daq.int32()
@@ -1736,7 +1737,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # actually read the counted photons
             daq.DAQmxReadCounterU32(
                 # read from this task
-                self._scanner_counter_daq_task[0],
+                self._scanner_counter_daq_tasks[0],
                 # Read number of double the# number of samples
                 2 * self._odmr_length + 1,
                 # Maximal timeout for the read # process
@@ -1751,7 +1752,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 None)
 
             # stop the counter task
-            daq.DAQmxStopTask(self._scanner_counter_daq_task[0])
+            daq.DAQmxStopTask(self._scanner_counter_daq_tasks[0])
             daq.DAQmxStopTask(self._scanner_clock_daq_task)
 
             # create a new array for the final data (this time of the length
