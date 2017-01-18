@@ -341,9 +341,19 @@ class ConfocalGui(GUIBase):
 
         # Add crosshair to the xy refocus scan
         self.vLine = pg.InfiniteLine(
-            pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=90, movable=False)
+            pen=QtGui.QPen(
+                palette.green,
+                self._optimizer_logic.refocus_XY_size / 50),
+            pos=50,
+            angle=90,
+            movable=False)
         self.hLine = pg.InfiniteLine(
-            pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=0, movable=False)
+            pen=QtGui.QPen(
+                palette.green,
+                self._optimizer_logic.refocus_XY_size / 50),
+            pos=50,
+            angle=0,
+            movable=False)
         self._mw.xy_refocus_ViewWidget_2.addItem(self.vLine, ignoreBounds=True)
         self._mw.xy_refocus_ViewWidget_2.addItem(self.hLine, ignoreBounds=True)
 
