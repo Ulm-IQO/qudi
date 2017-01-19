@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains a scientificspinbox delegate.
+This file contains a scientific double spinbox delegate.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,9 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtwidgets.scientific_spinbox import ScienDSpinBox
+from pyqtgraph import fn
 
-class DoubleSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
-    """ Make a QDoubleSpinBox delegate for the QTableWidget."""
+class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
+    """ Make a ScienDSpinBox delegate for the QTableWidget."""
 
     def __init__(self, parent, item_dict):
         """
@@ -53,6 +54,7 @@ class DoubleSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
     def get_unit_prefix(self):
         """ Return the unit prefix of that view element to determine the
             magnitude.
+
         @return str: unit prefic
         """
         return self.item_dict['unit_prefix']
@@ -104,13 +106,76 @@ class DoubleSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         return editor
 
     def setEditorData(self, editor, index):
-        pass
+        """ Set the display of the current value of the used editor.
 
-    def setModelData(self, spinBox_ref, model, index):
-        pass
+        @param ScienDSpinBox editor: QObject which was created in createEditor
+                                     function, here a ScienDSpinBox.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+
+        This function converts the passed data to an value, which can be
+        understood by the editor.
+        """
+
+        value = index.data(self.model_data_access)
+
+        if not isinstance(value, float):
+            value = self.item_dict['init_val']/self.norm_val
+        editor.setValue(value)
+        editor.selectNumber()   # that is specific for the ScientificSpinBox
+
+    def setModelData(self, scien_spinBox_ref, model, index):
+        """ Save the data of the editor to the model of the QTableWidget.
+
+        @param ScienDSpinBox scien_spinBox_ref: QObject which was created in
+                                                createEditor function, here a
+                                                ScienDSpinBox.
+        @param QtCore.QAbstractTableModel model: That is the object which
+                                                 contains the data of the
+                                                 QTableWidget.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+
+        Before the editor is destroyed the current selection should be saved
+        in the model of the data. The setModelData() function reads the content
+        of the editor, and writes it to the model. Furthermore here the
+        postprocessing of the data can happen, where the data can be
+        manipulated for the model.
+        """
+
+        # spinBox_ref.interpretText()
+        scien_spinBox_ref.interpret()
+        value = scien_spinBox_ref.value()
+        self.value = value
+        # set the data to the table model:
+        model.setData(index, value, self.model_data_access)
 
     def updateEditorGeometry(self, editor, option, index):
-        pass
+        """ State how the editor should behave if it is opened.
 
-    def displayText(self, conv_object, qlocal):
-        pass
+        @param ScienDSpinBox editor: QObject which was created in createEditor
+                                     function, here a ScienDSpinBox.
+        @param QtGui.QStyleOptionViewItemV4 option: This is a setting option
+                                                    which you can use for style
+                                                    configuration.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+
+        This function updates the editor widget's geometry using the
+        information supplied in the style option. This is the minimum that the
+        delegate must do in this case.
+        Here you can basically change the appearance of you displayed editor.
+        """
+        editor.setGeometry(option.rect)
+
+    def displayText(self, value, locale):
+        """ Alter the string representation of the output of the used viewbox.
+
+        @param float value: the data value of the spinbox, saved here as a
+                            float in the model.
+        @param QtCore.QLocale locale: object, which helps to convert between
+                                      numbers and their string representations
+                                      in various languages.
+
+        @return str: the converted representation of the passed value into a
+                     suitable string (QString is equal to string in python3).
+        """
+
+        return fn.siFormat(value, precision=12)
