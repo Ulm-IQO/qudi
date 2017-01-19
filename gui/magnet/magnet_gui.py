@@ -54,7 +54,7 @@ class CrossROI(pg.ROI):
         self.userDrag = False
         pg.ROI.__init__(self, pos, size, **args)
         # That is a relative position of the small box inside the region of
-        # interest, where 0 is the lowest value and 1 is the higherst:
+        # interest, where 0 is the lowest value and 1 is the highest:
         center = [0.5, 0.5]
         # Translate the center to the intersection point of the crosshair.
         self.addTranslateHandle(center)
@@ -609,7 +609,6 @@ class MagnetGui(GUIBase):
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
-
         # set the parameters in the curr_pos_DockWidget:
         for index, axis_label in enumerate(constraints):
 
@@ -839,6 +838,7 @@ class MagnetGui(GUIBase):
         extension = len(constraints)
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
         self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
+        self._mw.move_abs_PushButton.clicked.connect(self.update_roi_from_abs_movement)
 
     def _function_builder_move_rel(self, func_name, axis_label, direction):
         """ Create a function/method, which gets executed for pressing move_rel.
@@ -1063,7 +1063,6 @@ class MagnetGui(GUIBase):
         """
         constraints = self._magnet_logic.get_hardware_constraints()
         curr_pos =  self._magnet_logic.get_pos()
-
         if (param_list is not None) and (type(param_list) is not bool):
             param_list = list(param_list)
             # param_list =list(param_list) # convert for safety to a list
@@ -1076,8 +1075,8 @@ class MagnetGui(GUIBase):
             dspinbox_pos_ref.setValue(curr_pos[axis_label])
 
             # update the values also of the absolute movement display:
-            dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
-            dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
+            # dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
+            # dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
 
     def run_stop_2d_alignment(self, is_checked):
@@ -1454,3 +1453,39 @@ class MagnetGui(GUIBase):
         self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(x_pos, y_pos))
         # I only need to update my label here.
         # which I would like to create in the QtDesigner
+
+    def update_roi_from_abs_movement(self):
+        """
+        User changed magnetic field through absolute movement, therefore the roi has to be adjusted.
+        @return:
+        """
+        axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
+        axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
+        self.log.debug('get the axis0_name: {0}'.format(axis0_name))
+        self.log.debug('get the axis0_name: {0}'.format(axis1_name))
+        axis0_value = self.get_ref_curr_pos_ScienDSpinBox(axis0_name).value()
+        axis1_value = self.get_ref_curr_pos_ScienDSpinBox(axis1_name).value()
+
+        self.roi_magnet.setPos(axis0_value, axis1_value)
+        self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(axis0_value, axis1_value))
+        width_x = self.roi_magnet.size()[0]
+        width_y = self.roi_magnet.size()[1]
+        self.log.debug('x, y from boxes:{0},{1}'.format(axis0_value, axis1_value))
+        x_r = axis0_value - width_x / 2.0
+        y_r = axis1_value - width_y / 2.0
+        self.roi_magnet.setPos(x_r, y_r)
+
+def get_ref_curr_pos_ScienDSpinBox(self, label):
+    """ Get the reference to the double spin box for the passed label. """
+
+    dspinbox_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(label)
+    dspinbox_ref = getattr(self._mw, dspinbox_name)
+    return dspinbox_ref
+
+
+def get_ref_move_rel_ScienDSpinBox(self, label):
+    """ Get the reference to the double spin box for the passed label. """
+
+    dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
+    dspinbox_ref = getattr(self._mw, dspinbox_name)
+    return dspinbox_ref

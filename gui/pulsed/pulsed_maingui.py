@@ -212,6 +212,8 @@ class PulsedMeasurementGui(GUIBase):
 
         self.show()
 
+        self._pa.ext_control_mw_freq_DoubleSpinBox.setMaximum(999999999999)
+
     def on_deactivate(self, e):
         """ Undo the Definition, configuration and initialisation of the pulsed
             measurement GUI.
