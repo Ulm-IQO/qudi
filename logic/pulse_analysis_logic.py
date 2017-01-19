@@ -20,7 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+import os
+import importlib
+import inspect
 from logic.generic_logic import GenericLogic
+from collections import OrderedDict
+from qtpy import QtCore
 
 
 class PulseAnalysisLogic(GenericLogic):
@@ -31,6 +36,8 @@ class PulseAnalysisLogic(GenericLogic):
 
     # declare connectors
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
+
+    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -52,7 +59,32 @@ class PulseAnalysisLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        pass
+        self.analysis_methods = OrderedDict()
+        filename_list = []
+        # The assumption is that in the directory pulsed_analysis_methods, there are
+        # *.py files, which contain only methods!
+        path = os.path.join(self.get_main_dir(), 'logic', 'pulsed_analysis_methods')
+        for entry in os.listdir(path):
+            if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
+                filename_list.append(entry[:-3])
+
+        for filename in filename_list:
+            mod = importlib.import_module('logic.pulsed_analysis_methods.{0}'.format(filename))
+            for method in dir(mod):
+                try:
+                    # Check for callable function or method:
+                    ref = getattr(mod, method)
+                    if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
+                        # Bind the method as an attribute to the Class
+                        setattr(PulseAnalysisLogic, method, getattr(mod, method))
+                        # Add method to dictionary if it is a generator method
+                        if method.startswith('analyse_'):
+                            self.analysis_methods[method[8:]] = eval('self.' + method)
+                except:
+                    self.log.error('It was not possible to import element {0} from {1} into '
+                                   'PulseAnalysisLogic.'.format(method, filename))
+        self.sigAnalysisMethodsUpdated.emit(self.analysis_methods)
+        return
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
