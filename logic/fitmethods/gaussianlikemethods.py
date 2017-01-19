@@ -33,7 +33,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 
 ############################################################################
 #                                                                          #
-#                          1D gaussian model                               #
+#                          1D Gaussian model                               #
 #                                                                          #
 ############################################################################
 
@@ -91,13 +91,13 @@ def make_gauss_model(self, prefix=None):
 
 ################################################################################
 #                                                                              #
-#                         Gaussian Model with offset                           #
+#                       1D Gaussian Model with offset                          #
 #                                                                              #
 ################################################################################
 
 
 def make_gaussoffset_model(self, prefix=None):
-    """ Create a sine model with amplitude and offset.
+    """ Create a gauss model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
                        composite way and the parameters of each model should be
@@ -115,6 +115,64 @@ def make_gaussoffset_model(self, prefix=None):
 
     return gauss_offset_model, params
 
+
+################################################################################
+#                                                                              #
+#                 1D Gaussian Model with linear offset                         #
+#                                                                              #
+################################################################################
+
+
+def make_gausslinearoffset_model(self, prefix=None):
+    """ Create a gauss with a linear offset (i.e. a slope).
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gauss_model.
+    """
+
+    linear_model, params = self.make_linear_model(prefix)
+    gauss_model, params = self.make_gauss_model(prefix)
+
+    gauss_linear_offset =  gauss_model + linear_model
+    params = gauss_linear_offset.make_params()
+
+    return gauss_linear_offset, params
+
+################################################################################
+#                                                                              #
+#                   Multiple Gaussian Model with offset                        #
+#                                                                              #
+################################################################################
+
+
+def make_multiplegaussoffset_model(self, no_of_functions=1):
+    """ Create a model with multiple gaussian with offset.
+
+    @param no_of_functions: for default=1 there is one gaussian, else
+                            more functions are added
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gauss_model.
+    """
+
+    if no_of_functions == 1:
+        multi_gauss_model, params = self.make_gaussoffset_model()
+    else:
+        multi_gauss_model, params = self.make_gauss_model(prefix='g0_')
+
+        for ii in range(1, no_of_functions):
+            multi_gauss_model += self.make_gauss_model(prefix='g{0:d}_'.format(ii))[0]
+
+        constant_model, params = self.make_constant_model()
+        multi_gauss_model = multi_gauss_model + constant_model
+
+    params = multi_gauss_model.make_params()
+
+    return multi_gauss_model, params
 
 
 def make_gaussian_fit(self, x_axis, data, add_params=None, estimator="confocalpeak"):
