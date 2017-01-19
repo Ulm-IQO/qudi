@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import time
 import re
+import numpy as np
 from socket import socket, AF_INET, SOCK_STREAM
 from ftplib import FTP
 from collections import OrderedDict
@@ -30,6 +31,7 @@ from fnmatch import fnmatch
 
 from core.base import Base
 from interface.pulser_interface import PulserInterface
+
 
 class AWG70K(Base, PulserInterface):
     """
@@ -93,7 +95,6 @@ class AWG70K(Base, PulserInterface):
         if 'ftp_login' in config.keys() and 'ftp_passwd' in config.keys():
             self.user = config['ftp_login']
             self.passwd = config['ftp_passwd']
-
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -1098,6 +1099,105 @@ class AWG70K(Base, PulserInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.tell('*RST\n')
+        return 0
+
+    def create_direct_waveform(self, name, ana_samples, digi_samples):
+        """
+        @param name: Name for the waveform to be created.
+        @param ana_samples: 1-dimensional numpy.ndarray of type float32 containing the voltage
+                            samples.
+        @param digi_samples:    2-dimensional numpy.ndarray of type bool containing the marker states
+                                for each sample.
+                                First dimension is marker index; second dimension is sample number
+        @return:
+        """
+        # check input
+        if not name:
+            self.log.error('Please specify a waveform name for direct waveform creation.')
+            return -1
+
+        if type(ana_samples).__name__ != 'ndarray':
+            self.log.warning('Analog samples for direct waveform creation have wrong data type.\n'
+                             'Converting to numpy.ndarray of float32.')
+            ana_samples = np.array(ana_samples, dtype='float32')
+
+        if type(digi_samples).__name__ != 'ndarray':
+            self.log.warning('Digital samples for direct waveform creation have wrong data type.\n'
+                             'Converting to numpy.ndarray of bool.')
+            digi_samples = np.array(digi_samples, dtype=bool)
+
+        min_samples = int(self.awg.query('WLIS:WAV:LMIN?'))
+        if ana_samples.size < min_samples or digi_samples.shape[1] < min_samples:
+            self.log.error('Minimum waveform length for AWG70000A series is {0} samples.\n'
+                           'Direct waveform creation failed.'.format(min_samples))
+            return -1
+
+        if ana_samples.size != digi_samples.shape[1]:
+            self.log.error('Number of analog and digital samples must be the same.\n'
+                           'Direct waveform creation failed.')
+            return -1
+
+        # Encode marker information in an array of bytes (uint8)
+        mrk_bytes = np.add(np.left_shift(digi_samples[1].astype('uint8'), 7),
+                           np.left_shift(digi_samples[0].astype('uint8'), 6))
+
+        # Check if waveform already exists and delete if necessary.
+        if name in self._get_waveform_names_memory():
+            self.awg.write('WLIS:WAV:DEL "{0}"'.format(name))
+
+        # Create waveform in AWG workspace and fill in sample data
+        self.awg.write('WLIS:WAV:NEW "{0}", {1}'.format(name, ana_samples.size))
+        self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(name), ana_samples)
+        self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(name), mrk_bytes)
+        return 0
+
+    def create_direct_sequence(self, name, waveform_list, repeat_list, jumpto_list, trigger_list):
+        """
+        @param name:
+        @param waveform_list:
+        @param repeat_list:
+        @param jumpto_list:
+        @param trigger_list:
+        @return:
+        """
+        trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
+
+        if type(waveform_list[0]) is list:
+            num_tracks = 2
+            num_steps = len(waveform_list[0])
+        else:
+            num_tracks = 1
+            num_steps = len(waveform_list)
+
+        # Check if sequence already exists and delete if necessary.
+        if name in self._get_sequence_names_memory():
+            self.awg.write('SLIS:SEQ:DEL "{0}"'.format(name))
+
+        # Create new sequence and set jump timing to immediate
+        self.awg.write('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(name, num_steps, num_tracks))
+        self.awg.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(name))
+
+        # Fill in sequence information
+        for step in range(num_steps):
+            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, name, trig_dict[trigger_list[step]]))
+
+        if jumpto_list[step] < 0:
+            jumpto = 'NEXT'
+        else:
+            jumpto = str(jumpto_list[step])
+            self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1, name, jumpto))
+
+        if repeat_list[step] <= 0:
+            repeat = 'INF'
+        else:
+            repeat = str(repeat_list[step])
+            self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1, name, repeat))
+
+        if num_tracks == 1:
+            self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[step]))
+        elif num_tracks == 2:
+            self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[0][step]))
+            self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[1][step]))
         return 0
 
     def _init_loaded_asset(self):
