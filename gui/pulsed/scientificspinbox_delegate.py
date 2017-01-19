@@ -142,7 +142,7 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         """
 
         # spinBox_ref.interpretText()
-        scien_spinBox_ref.interpret()
+        scien_spinBox_ref.interpret() # that is specific for the ScientificSpinBox
         value = scien_spinBox_ref.value()
         self.value = value
         # set the data to the table model:
