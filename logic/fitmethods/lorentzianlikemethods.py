@@ -131,7 +131,7 @@ def make_lorentz_model(self, prefix=None):
     def physical_lorentzian(x, center, sigma):
         """ Function of a Lorentzian with unit height at center.
 
-        @param numpy.array x: independant variable - e.g. frequency
+        @param numpy.array x: independent variable - e.g. frequency
         @param float center: center around which the distributions will be
         @param float sigma: half length at half maximum
 
@@ -165,7 +165,7 @@ def make_lorentz_model(self, prefix=None):
 
 
 def make_lorentzoffset_model(self, prefix=None):
-    """ Create a sine model with amplitude and offset.
+    """ Create a Lorentz model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
                        composite way and the parameters of each model should be

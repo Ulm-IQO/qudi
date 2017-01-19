@@ -37,8 +37,8 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 #                                                                          #
 ############################################################################
 
-def make_gaussian_model(self):
-    """ This method creates a model of a gaussian with an offset.
+def make_gauss_model(self, prefix=None):
+    """ Create a model of a gaussian with specified amplitude.
 
     @return tuple: (object model, object params)
 
@@ -53,21 +53,69 @@ def make_gaussian_model(self):
             denoting the parameters as string names and values which are
             lmfit.parameter.Parameter (without s) objects, keeping the
             information about the current value.
-            The used model has the Parameter with the meaning:
-                'amplitude' : amplitude
-                'center'    : center
-                'sigm'      : sigma
-                'fwhm'      : full width half maximum
-                'c'         : offset
 
     For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html
     """
 
-    model = GaussianModel() + ConstantModel()
-    params = model.make_params()
+    def physical_gauss(x, center, sigma):
+        """ Function of a bare Gaussian with unit height at center.
 
-    return model, params
+        @param numpy.array x: independent variable - e.g. frequency
+        @param float center: center around which the distributions (expectation
+                             value).
+        @param float sigma: standard deviation of the gaussian
+
+        @return: numpy.array with length equals to input x and with the values
+                 of a bare Gaussian.
+        """
+        return np.exp(- np.power((center - x), 2)/(2 * np.power(sigma, 2)))
+
+    amplitude_model, params = self.make_amplitude_model(prefix=prefix)
+
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        gaussian_model = Model(physical_gauss, independent_vars='x')
+    else:
+        gaussian_model = Model(physical_gauss, independent_vars='x',
+                              prefix=prefix)
+
+    full_gaussian_model = amplitude_model * gaussian_model
+
+    params = full_gaussian_model.make_params()
+
+    return full_gaussian_model, params
+
+
+################################################################################
+#                                                                              #
+#                         Gaussian Model with offset                           #
+#                                                                              #
+################################################################################
+
+
+def make_gaussoffset_model(self, prefix=None):
+    """ Create a sine model with amplitude and offset.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gauss_model.
+    """
+
+    gauss_model, params = self.make_gauss_model(prefix=prefix)
+    constant_model, params = self.make_constant_model(prefix=prefix)
+
+    gauss_offset_model = gauss_model + constant_model
+    params = gauss_offset_model.make_params()
+
+    return gauss_offset_model, params
+
+
 
 def make_gaussian_fit(self, x_axis, data, add_params=None, estimator="confocalpeak"):
     """ This method performes a 1D gaussian fit on the provided data.
