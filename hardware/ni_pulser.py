@@ -288,7 +288,9 @@ class NIPulser(Base, PulserInterface):
         Do not return a saved sample rate from an attribute, but instead retrieve the current
         sample rate directly from the device.
         """
-        pass
+        rate = daq.float64()
+        daq.DAQmxGetSampClkRate(self.pulser_task, daq.byref(rate))
+        return rate.value
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
@@ -300,7 +302,14 @@ class NIPulser(Base, PulserInterface):
         Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
-        pass
+        task = self.pulser_task
+        source = daq.OnboardClock
+        rate = sample_rate
+        edge = daq.DAQmx_Val_Rising
+        mode = daq.DAQmx_Val_ContSamps
+        samples = 10000
+        daq.DAQmxCfgSampClkTiming(task, source, rate, edge, mode, samples)
+        return self.get_sample_rate()
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -443,7 +452,10 @@ class NIPulser(Base, PulserInterface):
 
         If no parameter (or None) is passed to this method all channel states will be returned.
         """
-        pass
+        bufsize = 2048
+        buf = ctypes.create_string_buffer(bufsize)
+        daq.DAQmxGetTaskChannels(task, buf, bufsize)
+        return str(buf.value, encoding='utf-8').split()
 
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
