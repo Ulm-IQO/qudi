@@ -50,12 +50,12 @@ class FitSettingsWidget(QtWidgets.QWidget):
         self.widgets = {}
         n = 2
         for name, param in parameters.items():
-            self.widgets[name+"_label"] = parameterNameLabel = QtWidgets.QLabel(str(name))
-            self.widgets[name+'_value'] = valueSpinbox =  SpinBox()
-            self.widgets[name+'_min'] = minimumSpinbox = SpinBox()
-            self.widgets[name+'_max'] = maximumSpinbox = SpinBox()
-            self.widgets[name+'_expr'] = expressionLineEdit = QtWidgets.QLineEdit()
-            self.widgets[name+'_vary'] = varyCheckbox = QtWidgets.QCheckBox()
+            self.widgets[name+"_label"] = parameterNameLabel = QtWidgets.QLabel(str(name),parent=self)
+            self.widgets[name+'_value'] = valueSpinbox =  SpinBox(parent=self)
+            self.widgets[name+'_min'] = minimumSpinbox = SpinBox(parent=self)
+            self.widgets[name+'_max'] = maximumSpinbox = SpinBox(parent=self)
+            self.widgets[name+'_expr'] = expressionLineEdit = QtWidgets.QLineEdit(parent=self)
+            self.widgets[name+'_vary'] = varyCheckbox = QtWidgets.QCheckBox(parent=self)
             valueSpinbox.setDecimals(3)
             valueSpinbox.setSingleStep(0.01)
             valueSpinbox.setMaximum(np.inf)
