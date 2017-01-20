@@ -1226,7 +1226,11 @@ class Manager(QtCore.QObject):
         """Nicely request that all modules shut down."""
         for mbase,bdict in self.tree['loaded'].items():
             for module in bdict:
-                self.stopModule(mbase, module)
+                try:
+                    self.stopModule(mbase, module)
+                except:
+                    logger.exception(
+                        'Module {0} failed to stop, continuing anyway.'.format(module))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
 
@@ -1235,8 +1239,12 @@ class Manager(QtCore.QObject):
         """Nicely request that all modules shut down for application restart."""
         for mbase,bdict in self.tree['loaded'].items():
             for module in bdict:
-                if self.isModuleActive(mbase, module):
-                    self.deactivateModule(mbase, module)
+                try:
+                    if self.isModuleActive(mbase, module):
+                        self.deactivateModule(mbase, module)
+                except:
+                    logger.exception(
+                        'Module {0} failed to stop, continuing anyway.'.format(module))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 
