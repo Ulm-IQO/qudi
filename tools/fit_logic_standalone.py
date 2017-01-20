@@ -783,7 +783,7 @@ def twoD_testing():
 #            print('Message:',result.message)
 
 
-def gaussian_testing():
+def gaussianpeak_testing():
     """ Test the Gaussian peak or dip estimator. """
 
     x_axis = np.linspace(0, 5, 50)
@@ -889,8 +889,8 @@ def gaussian_testing():
     plt.show()
     print(result.fit_report())
 
-def gaussian_testing2():
-    """ Test the implemented Gaussian fit. """
+def gaussianpeak_testing2():
+    """ Test the implemented Gaussian peak fit. """
 
     x_axis = np.linspace(0, 5, 11)
 
@@ -905,6 +905,34 @@ def gaussian_testing2():
                                 2000*abs(np.random.normal(size=x_axis.shape))
 
     result = qudi_fitting.make_gaussoffsetpeak_fit(x_axis=x_axis, data=data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy,'-b', label='data')
+    plt.plot(x_axis, result.best_fit,'-r', label='best fit result')
+    plt.plot(x_axis, result.init_fit,'-g',label='initial fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(result.fit_report())
+
+def gaussiandip_testing2():
+    """ Test the implemented Gaussian dip fit. """
+
+    x_axis = np.linspace(0, 5, 11)
+
+    ampl = -10000
+    center = 3
+    sigma = 1
+    offset = 10000
+
+    mod_final, params = qudi_fitting.make_gaussoffset_model()
+    data_noisy = mod_final.eval(x=x_axis, amplitude=ampl, center=center,
+                                sigma=sigma, offset=offset) + \
+                                5000*abs(np.random.normal(size=x_axis.shape))
+
+    result = qudi_fitting.make_gaussoffsetdip_fit(x_axis=x_axis, data=data_noisy)
 
     plt.figure()
     plt.plot(x_axis, data_noisy,'-b', label='data')
@@ -3749,9 +3777,9 @@ plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
 #    gaussianwithslope_testing()
-    gaussian_testing()
-    gaussian_testing2()
-#    gaussian_testing2()
+#    gaussianpeak_testing()
+#    gaussianpeak_testing2()
+    gaussiandip_testing2()
 #    twoD_testing()
 #    lorentziandip_testing()
 #    lorentziandip_testing2()
