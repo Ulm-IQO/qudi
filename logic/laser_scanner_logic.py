@@ -390,7 +390,7 @@ class LaserScannerLogic(GenericLogic):
             return -1
         try:
             # scan of a single line
-            counts_on_scan_line = self._scanning_device.scan_line(line_to_scan)
+            counts_on_scan_line = self._scanning_device.scan_line(line_to_scan)[0]
 
             return counts_on_scan_line
 

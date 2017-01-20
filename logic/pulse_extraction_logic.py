@@ -353,5 +353,35 @@ class PulseExtractionLogic(GenericLogic):
 
         return laser_arr.astype(int)
 
-    def excise_laser_pulses(self,count_data,aom_delay,initial_offset,initial_length,increment_length):
-        pass
+    def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
+
+
+        laser_x = []
+        laser_y = []
+
+        x_data = np.linspace(initial_offset,initial_offset+laser_length,laser_length+1)
+        y_data = count_data[initial_offset:initial_offset+laser_length]
+        laser_x.append(x_data)
+        laser_y.append(y_data)
+
+        time = initial_length + initial_offset
+
+        for laser in range(int(num_lasers)-1):
+
+            x_data = np.linspace(time,time+laser_length,laser_length+1)
+            y_data = count_data[time:(time+laser_length)]
+            laser_x.append(np.array(x_data))
+            laser_y.append(np.array(y_data))
+
+
+            time = time + initial_length + (laser+1)*increment
+
+
+
+
+        laser_arr=np.asarray(laser_y)
+
+        self.log.debug(laser_y)
+
+        return laser_arr.astype(int)
+

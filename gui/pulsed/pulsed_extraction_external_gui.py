@@ -183,7 +183,8 @@ class PulsedExtractionExternalGui(GUIBase):
             self.log.warning(param_dict)
 
         if method == 'old':
-            param_dict['aom_delay'] = self._mw.aom_delay_SpinBox.value()
+            param_dict['number_laser'] = self._mw.number_pulses_SpinBox.value()
+            param_dict['laser_length'] = self._mw.pulse_length_SpinBox.value()
             param_dict['initial_offset'] = self._mw.initial_offset_SpinBox.value()
             param_dict['initial_length'] = self._mw.initial_length_SpinBox.value()
             param_dict['increment_length'] = self._mw.increment_length_SpinBox.value()
@@ -288,12 +289,12 @@ class PulsedExtractionExternalGui(GUIBase):
         self._mw.min_laser_SpinBox.setVisible(False)
         self._mw.exception_Label.setVisible(False)
         self._mw.exception_SpinBox.setVisible(False)
-        self._mw.aom_delay_Label.setVisible(False)
-        self._mw.aom_delay_SpinBox.setVisible(False)
+        self._mw.pulse_length_Label.setVisible(False)
+        self._mw.pulse_length_SpinBox.setVisible(False)
         self._mw.initial_offset_Label.setVisible(False)
         self._mw.initial_offset_SpinBox.setVisible(False)
         self._mw.initial_length_Label.setVisible(False)
-        self._mw.inital_length_SpinBox.setVisible(False)
+        self._mw.initial_length_SpinBox.setVisible(False)
         self._mw.increment_length_Label.setVisible(False)
         self._mw.increment_length_SpinBox.setVisible(False)
         if method == 'Niko':
@@ -309,12 +310,14 @@ class PulsedExtractionExternalGui(GUIBase):
             self._mw.exception_Label.setVisible(True)
             self._mw.exception_SpinBox.setVisible(True)
         elif method == 'old':
-            self._mw.aom_delay_Label.setVisible(True)
-            self._mw.aom_delay_SpinBox.setVisible(True)
+            self._mw.number_pulses_Label.setVisible(True)
+            self._mw.number_pulses_SpinBox.setVisible(True)
+            self._mw.pulse_length_Label.setVisible(True)
+            self._mw.pulse_length_SpinBox.setVisible(True)
             self._mw.initial_offset_Label.setVisible(True)
             self._mw.initial_offset_SpinBox.setVisible(True)
             self._mw.initial_length_Label.setVisible(True)
-            self._mw.inital_length_SpinBox.setVisible(True)
+            self._mw.initial_length_SpinBox.setVisible(True)
             self._mw.increment_length_Label.setVisible(True)
             self._mw.increment_length_SpinBox.setVisible(True)
 
