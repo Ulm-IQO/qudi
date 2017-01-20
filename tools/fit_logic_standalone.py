@@ -889,7 +889,33 @@ def gaussian_testing():
     plt.show()
     print(result.fit_report())
 
+def gaussian_testing2():
+    """ Test the implemented Gaussian fit. """
 
+    x_axis = np.linspace(0, 5, 11)
+
+    ampl = 10000
+    center = 3
+    sigma = 1
+    offset = 10000
+
+    mod_final, params = qudi_fitting.make_gaussoffset_model()
+    data_noisy = mod_final.eval(x=x_axis, amplitude=ampl, center=center,
+                                sigma=sigma, offset=offset) + \
+                                2000*abs(np.random.normal(size=x_axis.shape))
+
+    result = qudi_fitting.make_gaussoffsetpeak_fit(x_axis=x_axis, data=data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy,'-b', label='data')
+    plt.plot(x_axis, result.best_fit,'-r', label='best fit result')
+    plt.plot(x_axis, result.init_fit,'-g',label='initial fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(result.fit_report())
 
 def useful_object_variables():
     x = np.linspace(2800, 2900, 101)
