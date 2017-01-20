@@ -733,56 +733,6 @@ def N14_testing_data2():
     plt.show()
 
 
-def twoD_testing():
-    data = np.empty((121,1))
-    amplitude=np.random.normal(3e5,1e5)
-    x_zero=91+np.random.normal(0,0.8)
-    y_zero=14+np.random.normal(0,0.8)
-    sigma_x=np.random.normal(0.7,0.2)
-    sigma_y=np.random.normal(0.7,0.2)
-    offset=0
-    x = np.linspace(90,92,11)
-    y = np.linspace(13,15,12)
-    xx, yy = np.meshgrid(x, y)
-
-    axes=(xx.flatten(),yy.flatten())
-
-    theta_here=10./360.*(2*np.pi)
-
-#            data=qudi_fitting.twoD_gaussian_function((xx,yy),*(amplitude,x_zero,y_zero,sigma_x,sigma_y,theta_here,offset))
-    gmod,params = qudi_fitting.make_twoDgaussian_model()
-
-    data= gmod.eval(x=axes,amplitude=amplitude,x_zero=x_zero,y_zero=y_zero,sigma_x=sigma_x,sigma_y=sigma_y,theta=theta_here, offset=offset)
-    data+=50000*np.random.random_sample(np.shape(data))
-
-    gmod,params = qudi_fitting.make_twoDgaussian_model()
-
-    para=Parameters()
-#            para.add('theta',vary=False)
-#            para.add('x_zero',expr='0.5*y_zero')
-#            para.add('sigma_x',min=0.2*((92.-90.)/11.) ,           max=   10*(x[-1]-y[0]) )
-#            para.add('sigma_y',min=0.2*((15.-13.)/12.) ,           max=   10*(y[-1]-y[0]))
-#            para.add('x_zero',value=40,min=50,max=100)
-
-    result=qudi_fitting.make_twoDgaussian_fit(xy_axes=axes, data=data,add_parameters=para)
-
-#            print(result.fit_report())
-#            FIXME: What does "Tolerance seems to be too small." mean in message?
-#            print(result.message)
-    plt.close('all')
-    fig, ax = plt.subplots(1, 1)
-    ax.hold(True)
-
-    ax.imshow(result.data.reshape(len(y),len(x)),
-              cmap=plt.cm.jet, origin='bottom', extent=(x.min(), x.max(),
-                                       y.min(), y.max()),interpolation="nearest")
-    ax.contour(x, y, result.best_fit.reshape(len(y),len(x)), 8
-                , colors='w')
-    plt.show()
-
-#            print('Message:',result.message)
-
-
 def gaussianpeak_testing():
     """ Test the Gaussian peak or dip estimator. """
 
@@ -1377,6 +1327,72 @@ def two_gaussian_dip_testing2():
     plt.show()
 
     print(result.fit_report())
+
+
+
+
+def gaussian_twoD_testing():
+    """ Implement and check the estimator for a 2D gaussian fit. """
+
+    data = np.empty((121,1))
+    amplitude=np.random.normal(3e5,1e5)
+    center_x=91+np.random.normal(0,0.8)
+    center_y=14+np.random.normal(0,0.8)
+    sigma_x=np.random.normal(0.7,0.2)
+    sigma_y=np.random.normal(0.7,0.2)
+    offset=0
+    x = np.linspace(90,92,11)
+    y = np.linspace(13,15,12)
+    xx, yy = np.meshgrid(x, y)
+
+    axes=(xx.flatten(), yy.flatten())
+
+    theta_here=10./360.*(2*np.pi)
+
+#            data=qudi_fitting.twoD_gaussian_function((xx,yy),*(amplitude,center_x,center_y,sigma_x,sigma_y,theta_here,offset))
+    gmod,params = qudi_fitting.make_twoDgaussian_model()
+
+    data = gmod.eval(x=axes, amplitude=amplitude, center_x=center_x,
+                     center_y=center_y, sigma_x=sigma_x, sigma_y=sigma_y,
+                     theta=theta_here, offset=offset)
+    data += 50000*np.random.random_sample(np.shape(data))
+
+    gmod, params = qudi_fitting.make_twoDgaussian_model()
+
+    para=Parameters()
+#    para.add('theta',vary=False)
+#    para.add('center_x',expr='0.5*center_y')
+#    para.add('sigma_x',min=0.2*((92.-90.)/11.), max=   10*(x[-1]-y[0]) )
+#    para.add('sigma_y',min=0.2*((15.-13.)/12.), max=   10*(y[-1]-y[0]))
+#    para.add('center_x',value=40,min=50,max=100)
+
+    result = qudi_fitting.make_twoDgaussian_fit(xy_axes=axes, data=data)#,add_parameters=para)
+
+#
+#            FIXME: What does "Tolerance seems to be too small." mean in message?
+#            print(result.message)
+    plt.close('all')
+
+    fig, ax = plt.subplots(1, 1)
+    ax.hold(True)
+    ax.imshow(result.data.reshape(len(y),len(x)),
+              cmap=plt.cm.jet, origin='bottom', extent=(x.min(), x.max(),
+                                       y.min(), y.max()),interpolation="nearest")
+    ax.contour(x, y, result.best_fit.reshape(len(y),len(x)), 8
+                , colors='w')
+    plt.show()
+#    plt.close('all')
+
+    print(result.fit_report())
+
+#            print('Message:',result.message)
+
+
+
+
+
+
+
 
 def useful_object_variables():
     x = np.linspace(2800, 2900, 101)
@@ -1977,6 +1993,8 @@ def powerfluorescence_testing():
     print(result.message)
 
 def double_gaussian_odmr_testing():
+    """ DEPRECATED!!! WILL NOT WORK WITH THE CURRENT FIT IMPLEMENTATION!!!
+    """
     for ii in range(1):
 
         start=2800
@@ -4062,9 +4080,10 @@ if __name__ == "__main__":
 #    gaussianlinearoffset_testing_data()
 #    two_gaussian_peak_testing()
 #    two_gaussian_peak_testing2()
-    two_gaussian_dip_testing2()
+#    two_gaussian_dip_testing2()
+    gaussian_twoD_testing()
 #    double_gaussian_odmr_testing()
-#    twoD_testing()
+
 #    lorentziandip_testing()
 #    lorentziandip_testing2()
 #    lorentzianpeak_testing2()
