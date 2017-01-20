@@ -638,6 +638,8 @@ class ConfocalLogic(GenericLogic):
             self._current_y = y
         if z is not None:
             self._current_z = z
+        if a is not None:
+            self._current_a = a
 
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
@@ -652,16 +654,15 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        # if tag == 'optimizer' or tag == 'scanner' or tag == 'activation':
-        self._scanning_device.scanner_set_position(
-            x=self._current_x,
-            y=self._current_y,
-            z=self._current_z,
-            a=self._current_a
-        )
-        self.signal_position_changed.emit()
-        return 0
+        ch_array = ['x', 'y', 'z', 'a']
+        pos_array = [self._current_x, self._current_y, self._current_z, self._current_a]
+        pos_dict = {}
 
+        for i, ch in enumerate(self._scanning_device.get_scanner_axes()):
+            pos_dict[ch_array[i]] = pos_array[i]
+ 
+        self._scanning_device.scanner_set_position(**pos_dict)
+        return 0
 
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
@@ -670,7 +671,7 @@ class ConfocalLogic(GenericLogic):
                       position in microns
         """
         #FIXME: change that to SI units!
-        return self._scanning_device.get_scanner_position()[:3]
+        return self._scanning_device.get_scanner_position()
 
     def _scan_line(self):
         """scanning an image in either depth or xy
@@ -699,61 +700,83 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
-        # FIXME: This is set to 4 because NIcard is throwing errors when the list has dim<4
-        n_ch = 4
+        n_ch = len(self._scanning_device.get_scanner_axes())
 
         try:
             if self._scan_counter == 0:
                 # make a line from the current cursor position to 
                 # the starting position of the first scan line of the scan
-                start_line = np.vstack((
-                    np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
-                    np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
-                    np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
-                    np.linspace(self._current_a, 0, self.return_slowness)
-                    ))
+                rs = self.return_slowness
+                lsx = np.linspace(self._current_x, image[self._scan_counter, 0, 0], rs)
+                lsy = np.linspace(self._current_y, image[self._scan_counter, 0, 1], rs)
+                lsz = np.linspace(self._current_z, image[self._scan_counter, 0, 2], rs)
+                if n_ch <= 3:
+                    start_line = np.vstack([lsx, lsy, lsz][0:n_ch])
+                else:
+                    start_line = np.vstack(
+                        [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
                 # move to the start position of the scan, counts are thrown away
-                start_line_counts = self._scanning_device.scan_line(start_line)
-                if start_line_counts[0] == -1:
+                start_line_counts = self._scanning_device.scan_line(start_line)[0]
+                if np.any(start_line_counts[0] == -1):
                     self.stopRequested = True
                     self.signal_scan_lines_next.emit()
                     return
 
             # adjust z of line in image to current z before building the line
             if not self._zscan:
-                image[self._scan_counter, :, 2] = self._current_z * np.ones(image[self._scan_counter, :, 2].shape)
+                z_shape = image[self._scan_counter, :, 2].shape
+                image[self._scan_counter, :, 2] = self._current_z * np.ones(z_shape)
 
             # make a line in the scan, _scan_counter says which one it is
-            line = np.vstack((image[self._scan_counter, :, 0],
-                              image[self._scan_counter, :, 1],
-                              image[self._scan_counter, :, 2],
-                              image[self._scan_counter, :, 3]))
+            lsx = image[self._scan_counter, :, 0]
+            lsy = image[self._scan_counter, :, 1]
+            lsz = image[self._scan_counter, :, 2]
+            if n_ch <= 3:
+                line = np.vstack([lsx, lsy, lsz][0:n_ch])
+            else:
+                line = np.vstack(
+                    [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
+
             # scan the line in the scan
-            line_counts = self._scanning_device.scan_line(line)
-            if line_counts[0] == -1:
+            line_counts = self._scanning_device.scan_line(line)[0]
+            if np.any(line_counts[0] == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
 
             # make a line to go to the starting position of the next scan line
             if self.depth_scan_dir_is_xz:
-                return_line = np.vstack((
-                    self._return_XL,
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                    self._return_AL
-                    ))
+                if n_ch <= 3:
+                    return_line = np.vstack([
+                        self._return_XL,
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
+                        ][0:n_ch])
+                else:
+                    return_line = np.vstack([
+                        self._return_XL,
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
+                        np.ones(self._return_XL.shape) * self._current_a
+                        ])
             else:
-                return_line = np.vstack((
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                    self._return_YL,
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
-                    self._return_AL
-                    ))
-
+                if n_ch <= 3:
+                    return_line = np.vstack([
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                        self._return_YL,
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
+                        ][0:n_ch])
+                else:
+                    return_line = np.vstack([
+                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                        self._return_YL,
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
+                        np.ones(self._return_YL.shape) * self._current_a
+                        ])
+ 
             # return the scanner to the start of next line, counts are thrown away
-            return_line_counts = self._scanning_device.scan_line(return_line)
-            if return_line_counts[0] == -1:
+            return_line_counts = self._scanning_device.scan_line(return_line)[0]
+            if np.any(return_line_counts[0] == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
@@ -784,9 +807,8 @@ class ConfocalLogic(GenericLogic):
                     self._scan_counter = 0
 
             self.signal_scan_lines_next.emit()
-
-        except Exception as e:
-            self.log.critical('The scan went wrong, killing the scanner.')
+        except:
+            self.log.exception('The scan went wrong, killing the scanner.')
             self.stop_scanning()
             self.signal_scan_lines_next.emit()
 
@@ -834,7 +856,7 @@ class ConfocalLogic(GenericLogic):
                    'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
 
         # Prepare a figure to be saved
-        figure_data = self.xy_image[:,:,3]
+        figure_data = self.xy_image[:, :, 3]
         image_extent = [self.image_x_range[0],
                         self.image_x_range[1],
                         self.image_y_range[0],
