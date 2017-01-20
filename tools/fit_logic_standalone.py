@@ -945,6 +945,115 @@ def gaussiandip_testing2():
     plt.show()
     print(result.fit_report())
 
+
+def gaussianlinearoffset_testing():
+    """ Test the implemented Estimator for Gaussian peak with linear offset """
+
+    x_axis = np.linspace(0, 5, 30)
+
+    mod_final, params = qudi_fitting.make_gausslinearoffset_model()
+
+    slope = -10000
+    amplitude = 100000
+    center = 3
+    sigma = 0.62863
+    offset = 100
+
+    data_noisy = mod_final.eval(x=x_axis, slope=slope, amplitude=amplitude,
+                               center=center, sigma=sigma, offset=offset) + \
+                               12000 * abs(np.random.normal(size=x_axis.shape))
+
+    # try at first a fit with the ordinary gauss function
+    res_ordinary_gauss = qudi_fitting.make_gaussoffsetpeak_fit(x_axis=x_axis,
+                                                               data=data_noisy)
+
+    # subtract the result and perform again a linear fit:
+    data_subtracted = data_noisy - res_ordinary_gauss.best_fit
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+    plt.plot(x_axis, res_ordinary_gauss.best_fit, label="initial gauss fit")
+    plt.plot(x_axis, data_subtracted, label="data subtacted")
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    res_linear = qudi_fitting.make_linear_fit(x_axis=x_axis,
+                                              data=data_subtracted)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+    plt.plot(x_axis, res_linear.best_fit, label="linear fit on data")
+    plt.plot(x_axis, data_subtracted, label="data subtacted")
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    # this way works much better than performing at first a linear fit,
+    # subtracting the fit and make an ordinary gaussian fit. Especially for a
+    # peak at the borders, this method is much more beneficial.
+
+    # assign the obtained values for the initial fit:
+    params['offset'] = res_ordinary_gauss.params['offset']
+    params['center'] = res_ordinary_gauss.params['center']
+    params['amplitude'] = res_ordinary_gauss.params['amplitude']
+    params['sigma'] = res_ordinary_gauss.params['sigma']
+    params['slope'] = res_linear.params['slope']
+
+
+    result = mod_final.fit(data_noisy, x=x_axis, params=params)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+    plt.plot(x_axis, result.init_fit, label='init fit')
+    plt.plot(x_axis, result.best_fit, label='best fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+#    print(result.fit_report())
+
+
+def gaussianlinearoffset_testing_data():
+
+    x = np.linspace(0, 5, 30)
+    x_nice=np.linspace(0, 5, 101)
+
+    mod_final,params = qudi_fitting.make_gaussianwithslope_model()
+
+    data=np.loadtxt("./../1D_shllow.csv")
+    data_noisy=data[:,1]
+    data_fit=data[:,3]
+    x=data[:,2]
+
+
+    update=dict()
+    update["slope"]={"min":-np.inf,"max":np.inf}
+    update["offset"]={"min":-np.inf,"max":np.inf}
+    update["sigma"]={"min":-np.inf,"max":np.inf}
+    update["center"]={"min":-np.inf,"max":np.inf}
+    update["amplitude"]={"min":-np.inf,"max":np.inf}
+    result=qudi_fitting.make_gaussianwithslope_fit(x_axis=x, data=data_noisy, add_params=update)
+#
+##
+#    gaus=gaussian(3,5)
+#    qudi_fitting.data_smooth = filters.convolve1d(qudi_fitting.data_noisy, gaus/gaus.sum(),mode='mirror')
+
+    plt.plot(x,data_noisy,label="data")
+    plt.plot(x,data_fit,"k",label="old fit")
+    plt.plot(x,result.init_fit,'-g',label='init')
+    plt.plot(x,result.best_fit,'-r',label='fit')
+    plt.legend()
+    plt.show()
+    print(result.fit_report())
+
+
+
 def useful_object_variables():
     x = np.linspace(2800, 2900, 101)
 
@@ -2321,45 +2430,6 @@ def double_poissonian_testing_data():
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-
-
-def gaussianwithslope_testing():
-    x = np.linspace(0, 5, 30)
-    x_nice=np.linspace(0, 5, 101)
-
-    mod_final,params = qudi_fitting.make_gaussianwithslope_model()
-    print(params)
-
-#            print('Parameters of the model',mod_final.param_names)
-
-
-#            p.add('center',max=+3)
-    if True:
-        data=np.loadtxt("./../1D_shllow.csv")
-        data_noisy=data[:,1]
-        data_fit=data[:,3]
-        x=data[:,2]
-    #data_noisy=mod_final.eval(x=x, slope=-1000., amplitude=100000.,center=2.,sigma=0.32863, offset=100.) + 12000*abs(np.random.normal(size=x.shape))
-
-    update=dict()
-    update["slope"]={"min":-np.inf,"max":np.inf}
-    update["offset"]={"min":-np.inf,"max":np.inf}
-    update["sigma"]={"min":-np.inf,"max":np.inf}
-    update["center"]={"min":-np.inf,"max":np.inf}
-    update["amplitude"]={"min":-np.inf,"max":np.inf}
-    result=qudi_fitting.make_gaussianwithslope_fit(x_axis=x, data=data_noisy, add_params=update)
-#
-##
-#    gaus=gaussian(3,5)
-#    qudi_fitting.data_smooth = filters.convolve1d(qudi_fitting.data_noisy, gaus/gaus.sum(),mode='mirror')
-
-    plt.plot(x,data_noisy,label="data")
-    plt.plot(x,data_fit,"k",label="old fit")
-    plt.plot(x,result.init_fit,'-g',label='init')
-    plt.plot(x,result.best_fit,'-r',label='fit')
-    plt.legend()
-    plt.show()
-    print(result.fit_report())
 
 
 ################################################################################################################################
@@ -3776,10 +3846,13 @@ def voigt_testing():
 plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
-#    gaussianwithslope_testing()
+
 #    gaussianpeak_testing()
 #    gaussianpeak_testing2()
-    gaussiandip_testing2()
+#    gaussiandip_testing2()
+    gaussianlinearoffset_testing()
+#    gaussianlinearoffset_testing2()
+#    gaussianlinearoffset_testing_data()
 #    twoD_testing()
 #    lorentziandip_testing()
 #    lorentziandip_testing2()
