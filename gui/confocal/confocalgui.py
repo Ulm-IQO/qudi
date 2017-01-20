@@ -243,7 +243,6 @@ class ConfocalGui(GUIBase):
         self.initSettingsUI(e)  # initialize the settings GUI
         self.initOptimizerSettingsUI(e)  # initialize the optimizer settings GUI
 
-
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
 
@@ -281,7 +280,7 @@ class ConfocalGui(GUIBase):
         self.xy_image = pg.ImageItem(arr01)
         self.depth_image = pg.ImageItem(arr02)
 
-        # Hide Tiltcorrection window
+        # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
 
         # Hide scan line display
@@ -341,8 +340,10 @@ class ConfocalGui(GUIBase):
         self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         # Add crosshair to the xy refocus scan
-        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=90, movable=False)
-        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=0, movable=False)
+        self.vLine = pg.InfiniteLine(
+            pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(
+            pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=0, movable=False)
         self._mw.xy_refocus_ViewWidget_2.addItem(self.vLine, ignoreBounds=True)
         self._mw.xy_refocus_ViewWidget_2.addItem(self.hLine, ignoreBounds=True)
 
@@ -501,10 +502,6 @@ class ConfocalGui(GUIBase):
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
         self.depth_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_depth)
 
-        #FIXME
-        self._mw.actionForward.setEnabled(False)
-        self._mw.actionBack.setEnabled(False)
-
         #################################################################
         #                           Actions                             #
         #################################################################
@@ -530,7 +527,8 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
 
         # Get initial tilt correction values
-        self._mw.action_TiltCorrection.setChecked(self._scanning_logic._scanning_device.tiltcorrection)
+        self._mw.action_TiltCorrection.setChecked(
+            self._scanning_logic._scanning_device.tiltcorrection)
 
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
@@ -544,12 +542,15 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
-        # Connect tiltcorrection stuff
-        self._mw.action_TiltCorrection.triggered.connect(self.use_tiltcorrection_clicked)
-        self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)
-        self._mw.tilt_set_02_pushButton.clicked.connect(self.set_tiltpoint_02_clicked)
-        self._mw.tilt_set_03_pushButton.clicked.connect(self.set_tiltpoint_03_clicked)
-        self._mw.calc_tilt_pushButton.clicked.connect(self.calculate_tiltcorrection_clicked)
+        # Connect tilt correction buttons
+        self._mw.action_TiltCorrection.triggered.connect(self._scanning_logic.set_tilt_correction)
+        self._mw.tilt_set_01_pushButton.clicked.connect(self._scanning_logic.set_tilt_point1)
+        self._mw.tilt_set_02_pushButton.clicked.connect(self._scanning_logic.set_tilt_point2)
+        self._mw.tilt_set_03_pushButton.clicked.connect(self._scanning_logic.set_tilt_point3)
+        self._mw.calc_tilt_pushButton.clicked.connect(self._scanning_logic.calc_tilt_correction)
+        self._scanning_logic.signal_tilt_correction_update.connect(self.update_tilt_correction)
+        self._scanning_logic.signal_tilt_correction_active.connect(
+            self._mw.action_TiltCorrection.setChecked)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -745,7 +746,10 @@ class ConfocalGui(GUIBase):
         """
         modifiers = QtWidgets.QApplication.keyboardModifiers()
 
-        x_pos, y_pos, z_pos = self._scanning_logic.get_position()   # in micrometers
+        position = self._scanning_logic.get_position()   # in micrometers
+        x_pos = position[0]
+        y_pos = position[1]
+        z_pos = position[2]
 
         if modifiers == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_Right:
@@ -939,17 +943,14 @@ class ConfocalGui(GUIBase):
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
-        # if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
-        #     self._mw.actionForward.setEnabled(True)
-        # else:
-        #     self._mw.actionForward.setEnabled(False)
-        # if enable and self._scanning_logic.history_index > 0:
-        #     self._mw.actionBack.setEnabled(True)
-        # else:
-        #     self._mw.actionBack.setEnabled(False)
-        self._mw.actionBack.setEnabled(False)
-        self._mw.actionForward.setEnabled(False)
-
+        if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
+            self._mw.actionForward.setEnabled(True)
+        else:
+            self._mw.actionForward.setEnabled(False)
+        if enable and self._scanning_logic.history_index > 0:
+            self._mw.actionBack.setEnabled(True)
+        else:
+            self._mw.actionBack.setEnabled(False)
 
     def menu_settings(self):
         """ This method opens the settings menu. """
@@ -1071,13 +1072,15 @@ class ConfocalGui(GUIBase):
         Ignore the update when it is tagged with one of the tags that the
         confocal gui emits, as the GUI elements were already adjusted.
         """
-        if not 'roi' in tag and not 'slider' in tag and not 'key' in tag and not 'input' in tag:
-            x_pos, y_pos, z_pos = self._scanning_logic.get_position()
+        if 'roi' not in tag and 'slider' not in tag and 'key' not in tag and 'input' not in tag:
+            position = self._scanning_logic.get_position()
+            x_pos = position[0]
+            y_pos = position[1]
+            z_pos = position[2]
 
             roi_x_view = x_pos - self.roi_xy.size()[0] * 0.5
             roi_y_view = y_pos - self.roi_xy.size()[1] * 0.5
             self.roi_xy.setPos([roi_x_view, roi_y_view])
-
 
             roi_x_view = x_pos - self.roi_depth.size()[0] * 0.5
             roi_y_view = z_pos - self.roi_depth.size()[1] * 0.5
@@ -1167,23 +1170,23 @@ class ConfocalGui(GUIBase):
         ypos = self.roi_xy.pos()[1]
         xsize = self.roi_xy.size()[0]
         ysize = self.roi_xy.size()[1]
-        xcenter = xpos+0.5*xsize
-        ycenter = ypos+0.5*ysize
+        xcenter = xpos + 0.5 * xsize
+        ycenter = ypos + 0.5 * ysize
         newsize = self._optimizer_logic.refocus_XY_size
-        self.roi_xy.setSize([newsize,newsize])
-        self.roi_xy.setPos([xcenter-newsize/2,ycenter-newsize/2])
+        self.roi_xy.setSize([newsize, newsize])
+        self.roi_xy.setPos([xcenter-newsize / 2, ycenter-newsize / 2])
 
     def update_roi_depth_size(self):
         xpos = self.roi_depth.pos()[0]
         ypos = self.roi_depth.pos()[1]
         xsize = self.roi_depth.size()[0]
         ysize = self.roi_depth.size()[1]
-        xcenter = xpos+0.5*xsize
-        ycenter = ypos+0.5*ysize
+        xcenter = xpos + 0.5 * xsize
+        ycenter = ypos + 0.5 * ysize
         newsize_z = self._optimizer_logic.refocus_Z_size
         newsize_xy = self._optimizer_logic.refocus_XY_size
-        self.roi_depth.setSize([newsize_xy,newsize_z])
-        self.roi_depth.setPos([xcenter-newsize_xy/2,ycenter-newsize_z/2])
+        self.roi_depth.setSize([newsize_xy, newsize_z])
+        self.roi_depth.setPos([xcenter-newsize_xy / 2, ycenter-newsize_z / 2])
 
     def update_roi_depth(self, x=None, z=None):
         """ Adjust the depth ROI position if the value has changed.
@@ -1416,34 +1419,16 @@ class ConfocalGui(GUIBase):
         """ Adjust the image range for z in the logic. """
         self._scanning_logic.image_z_range = [self._mw.z_min_InputWidget.value(), self._mw.z_max_InputWidget.value()]
 
-    def use_tiltcorrection_clicked(self, e):
-        """ """
-        if e:
-            self._scanning_logic.activate_tiltcorrection()
-        else:
-            self._scanning_logic.deactivate_tiltcorrection()
-
-    def calculate_tiltcorrection_clicked(self):
-        """ """
-        self._scanning_logic.calc_tilt_correction()
-
-    def set_tiltpoint_01_clicked(self):
-        """Set the crosshair position as the first reference point for tilt correction calculation."""
-        self._scanning_logic.set_tilt_point1()
+    def update_tilt_correction(self):
+        """ Update all tilt points from the scanner logic. """
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
         self._mw.tilt_01_z_pos_doubleSpinBox.setValue(self._scanning_logic.point1[2])
 
-    def set_tiltpoint_02_clicked(self):
-        """Set the crosshair position as the second reference point for tilt correction calculation."""
-        self._scanning_logic.set_tilt_point2()
         self._mw.tilt_02_x_pos_doubleSpinBox.setValue(self._scanning_logic.point2[0])
         self._mw.tilt_02_y_pos_doubleSpinBox.setValue(self._scanning_logic.point2[1])
         self._mw.tilt_02_z_pos_doubleSpinBox.setValue(self._scanning_logic.point2[2])
 
-    def set_tiltpoint_03_clicked(self):
-        """Set the crosshair position as the third reference point for tilt correction calculation."""
-        self._scanning_logic.set_tilt_point3()
         self._mw.tilt_03_x_pos_doubleSpinBox.setValue(self._scanning_logic.point3[0])
         self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])

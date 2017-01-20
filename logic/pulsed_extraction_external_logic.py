@@ -98,11 +98,12 @@ class PulsedExtractionExternalLogic(GenericLogic):
             exception=param_dict['exception']
             laser_y = self._pe_logic.extract_laser_pulses(self.data,count_treshold,min_len_laser,exception)
         elif method == 'old':
-            aom_delay=param_dict['aom_delay']
+            number_laser=param_dict['number_laser']
+            laser_length=param_dict['laser_length']
             initial_offset=param_dict['initial_offset']
             initial_length=param_dict['initial_length']
             increment_length=param_dict['increment_length']
-            laser_y = self._pe_logic.excise_laser_pulses(self.data,aom_delay,
+            laser_y = self._pe_logic.excise_laser_pulses(self.data,number_laser,laser_length,
                                                          initial_offset,initial_length,increment_length)
         else:
             self.log.warning('Not yet implemented')
