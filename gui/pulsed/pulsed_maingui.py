@@ -149,6 +149,17 @@ class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
 
         uic.loadUi(ui_file, self)
 
+class SSRFastComTec(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_SSR_fastcomtec.ui')
+
+        # Load it
+        super().__init__()
+
+        uic.loadUi(ui_file, self)
+
 
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
@@ -269,10 +280,19 @@ class PulsedMeasurementGui(GUIBase):
         self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_predefined_methods_config)
 
+
         if 'predefined_methods_to_show' in self._statusVariables:
             self._predefined_methods_to_show = self._statusVariables['predefined_methods_to_show']
         if 'functions_to_show' in self._statusVariables:
             self._functions_to_show = self._statusVariables['functions_to_show']
+
+        self._pm_ssr = SSRFastComTec()
+        self._pm_ssr.accepted.connect(self.apply_ssr_fastcomtec)
+        self._pm_ssr.rejected.connect(self.keep_former_ssr_fastcomtec)
+        self._pm_ssr.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_ssr_fastcomtec)
+
+        self._mw.action_ssr_fastcomtec.triggered.connect(self.show_ssr_fastcomtec)
 
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
@@ -519,6 +539,27 @@ class PulsedMeasurementGui(GUIBase):
 
         self._pm.hintLabel.setVisible(len(self._predefined_methods_to_show) == 0)
         return
+
+    def apply_ssr_fastcomtec(self):
+        state = self._pm_ssr.ssr_fastcomtec_Checkbox.checkState()
+        preset = self._pm_ssr.preset_SpinBox.value()
+        cycles = self._pm_ssr.cycles_SpinBox.value()
+        self._pulsed_master_logic._measurement_logic.set_ssr_fastcomtec(state,preset,cycles)
+        return
+
+    def keep_former_ssr_fastcomtec(self):
+        state, preset, cycles = self._pulsed_master_logic._measurement_logic.get_ssr_fastcomtec()
+        self._pm_ssr.ssr_fastcomtec_Checkbox.setCheckState(state)
+        self._pm_ssr.preset_SpinBox.setValue(preset)
+        self._pm_ssr.cycles_SpinBox.setValue(cycles)
+        return
+
+    def show_ssr_fastcomtec(self):
+        """ Opens the Window for the config of predefined methods."""
+        self._pm_ssr.show()
+        self._pm_ssr.raise_()
+        return
+
 
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
