@@ -65,13 +65,14 @@ class SlowGatedNICard(NICard):
         config = self.getConfiguration()
 
         self._counter_channels = []
-
+        self._counter_channel = []
         if 'counter_channel' in config.keys():
             self._counter_channels.append(config['counter_channel'])
             n = 2
             while 'counter_channel{0}'.format(n) in config.keys():
                 self._counter_channels.append(config['counter_channel{0}'.format(n)])
                 n += 1
+            self._counter_channel = config['counter_channel']
         else:
             self.log.error(
                 'No parameter "counter_channel" configured.\n'
