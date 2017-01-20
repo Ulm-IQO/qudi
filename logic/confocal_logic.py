@@ -255,8 +255,8 @@ class ConfocalLogic(GenericLogic):
     _out = {'scannerlogic': 'ConfocalLogic'}
 
     # signals
-    signal_start_scanning = QtCore.Signal()
-    signal_continue_scanning = QtCore.Signal()
+    signal_start_scanning = QtCore.Signal(str)
+    signal_continue_scanning = QtCore.Signal(str)
     signal_stop_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
@@ -403,7 +403,7 @@ class ConfocalLogic(GenericLogic):
         else:
             return 0
 
-    def start_scanning(self, zscan = False):
+    def start_scanning(self, zscan = False, tag='logic'):
         """Starts scanning
 
         @param bool zscan: zscan if true, xyscan if false
@@ -420,10 +420,10 @@ class ConfocalLogic(GenericLogic):
         else:
             self._xyscan_continuable = True
 
-        self.signal_start_scanning.emit()
+        self.signal_start_scanning.emit(tag)
         return 0
 
-    def continue_scanning(self,zscan):
+    def continue_scanning(self,zscan,tag='logic'):
         """Continue scanning
 
         @return int: error code (0:OK, -1:error)
@@ -433,7 +433,7 @@ class ConfocalLogic(GenericLogic):
             self._scan_counter = self._depth_line_pos
         else:
             self._scan_counter = self._xy_line_pos
-        self.signal_continue_scanning.emit()
+        self.signal_continue_scanning.emit(tag)
         return 0
 
     def stop_scanning(self):
