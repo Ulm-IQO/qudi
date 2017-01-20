@@ -427,7 +427,7 @@ def make_multiplegaussoffset_model(self, no_of_functions=1):
 
 ############################################################################
 #                                                                          #
-#                    Double Gaussian Peak Fitting                          #
+#                       Two Gaussian Peak Fitting                          #
 #                                                                          #
 ############################################################################
 
@@ -440,7 +440,7 @@ def estimate_twogausspeakoffset(self, x_axis, data, params,
     coming from the physical properties of an experiment done in gated counter:
                     - positive peak
                     - no values below 0
-                    - rather broad overlapping funcitons
+                    - rather broad overlapping functions
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -484,7 +484,7 @@ def make_twogausspeakoffset_fit(self, x_axis, data, add_params=None,
                                 threshold_fraction=0.4,
                                 minimal_threshold=0.2,
                                 sigma_threshold_fraction=0.3):
-    """ Performe a 1D two gaussian peak fit on the provided data.
+    """ Perform a 1D two gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -522,25 +522,25 @@ def make_twogausspeakoffset_fit(self, x_axis, data, add_params=None,
     return result
 
 
-################################################################################
-################################################################################
-#               OLD STUFF FROM HERE
+############################################################################
+#                                                                          #
+#                       Two Gaussian Dip Fitting                          #
+#                                                                          #
+############################################################################
 
-
-def estimate_doublegaussian_odmr(self, x_axis=None, data=None, params=None,
-                                 threshold_fraction=0.4,
-                                 minimal_threshold=0.1,
-                                 sigma_threshold_fraction=0.2):
-    """ This method provides a an estimator for a double gaussian fit with the parameters
+def estimate_twogaussdipoffset(self, x_axis, data, params,
+                               threshold_fraction=0.4, minimal_threshold=0.1,
+                               sigma_threshold_fraction=0.2):
+    """ Provide an estimator for a double gaussian dip fit with the parameters
     coming from the physical properties of an experiment done in gated counter:
                     - positive peak
                     - no values below 0
-                    - rather broad overlapping funcitons
+                    - rather broad overlapping functions
 
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to
-                        x values
-    @param Parameters object params: Needed parameters
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
     @param float threshold_fraction : Threshold to find second gaussian
     @param float minimal_threshold: Threshold is lowerd to minimal this
                                     value as a fraction
@@ -551,24 +551,33 @@ def estimate_doublegaussian_odmr(self, x_axis=None, data=None, params=None,
     @return Parameters object params: estimated values
     """
 
-    error, \
-    params['gaussian0_amplitude'].value, \
-    params['gaussian1_amplitude'].value, \
-    params['gaussian0_center'].value, \
-    params['gaussian1_center'].value, \
-    params['gaussian0_sigma'].value, \
-    params['gaussian1_sigma'].value, \
-    params['c'].value = self.estimate_doublelorentz(x_axis, data)
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    mod_lor, params_lor = self.make_multiplelorentzoffset_model(no_of_functions=2)
+
+    error, params_lor = self.estimate_doublelorentzdipoffset(x_axis=x_axis,
+                                                     data=data,
+                                                     params=params_lor,
+                                                     threshold_fraction=threshold_fraction,
+                                                     minimal_threshold=minimal_threshold,
+                                                     sigma_threshold_fraction=sigma_threshold_fraction)
+
+    params['g0_amplitude'].value = params_lor['l0_amplitude'].value
+    params['g0_center'].value = params_lor['l0_center'].value
+    params['g0_sigma'].value = params_lor['l0_sigma'].value/(np.sqrt(2*np.log(2)))
+    params['g1_amplitude'].value = params_lor['l1_amplitude'].value
+    params['g1_center'].value = params_lor['l1_center'].value
+    params['g1_sigma'].value = params_lor['l1_sigma'].value/(np.sqrt(2*np.log(2)))
+    params['offset'].value = params_lor['offset'].value
 
     return error, params
 
 
-def make_doublegaussian_fit(self, x_axis, data, add_params=None,
-                            estimator='gated_counter',
-                            threshold_fraction=0.4,
-                            minimal_threshold=0.2,
-                            sigma_threshold_fraction=0.3):
-    """ This method performes a 1D double gaussian fit on the provided data.
+def make_twogaussdipoffset_fit(self, x_axis, data, add_params=None,
+                                threshold_fraction=0.4,
+                                minimal_threshold=0.2,
+                                sigma_threshold_fraction=0.3):
+    """ Perform a 1D two gaussian dip fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -581,33 +590,18 @@ def make_doublegaussian_fit(self, x_axis, data, add_params=None,
     @param float sigma_threshold_fraction: Threshold for detecting
                                            the end of the peak
 
-    @return lmfit.model.ModelFit result: All parameters provided about
-                                         the fitting, like: success,
-                                         initial fitting values, best
-                                         fitting values, data with best
-                                         fit with given axis,...
-
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
     """
 
-    model, params = self.make_multiplegaussian_model(no_of_gauss=2)
+    model, params = self.make_multiplegaussoffset_model(no_of_functions=2)
 
-    if estimator == 'gated_counter':
-        error, params = self.estimate_doublegaussian_gatedcounter(x_axis, data, params,
-                                                                  threshold_fraction,
-                                                                  minimal_threshold,
-                                                                  sigma_threshold_fraction)
-        # Defining constraints
-        params['c'].min = 0.0
-
-        params['gaussian0_amplitude'].min = 0.0
-        params['gaussian1_amplitude'].min = 0.0
-
-    elif estimator == 'odmr_dip':
-        error, params = self.estimate_doublegaussian_odmr(x_axis, data, params,
-                                                          threshold_fraction,
-                                                          minimal_threshold,
-                                                          sigma_threshold_fraction)
-
+    error, params = self.estimate_twogaussdipoffset(x_axis, data, params,
+                                                    threshold_fraction,
+                                                    minimal_threshold,
+                                                    sigma_threshold_fraction)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -615,10 +609,15 @@ def make_doublegaussian_fit(self, x_axis, data, add_params=None,
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The double gaussian fit did not work: {0}'.format(
+        logger.warning('The double gaussian dip fit did not work: {0}'.format(
             result.message))
 
     return result
+
+################################################################################
+################################################################################
+#               OLD STUFF FROM HERE
+
 
 
 ############################################################################
