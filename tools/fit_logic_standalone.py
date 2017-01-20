@@ -1328,6 +1328,55 @@ def two_gaussian_peak_testing2():
 
     print(result.fit_report())
 
+def two_gaussian_dip_testing2():
+    """ Test the implemented Two Gaussian dip with offset fit. """
+
+    start=100000
+    stop= 500000
+    num_points=int((stop-start)/2000)
+    x_axis = np.linspace(start, stop, num_points)
+
+    mod, params = qudi_fitting.make_multiplegaussoffset_model(no_of_functions=2)
+
+
+    amplitude0 = -75000+np.random.random(1)*50000
+    amplitude1 = amplitude0*1.5
+#    splitting = 100000  # abs(np.random.random(1)*100000)
+    splitting = abs(np.random.random(1)*200000)
+    center0 = 160000
+#    center1 = 300000
+    center1 = center0 + splitting
+    sigma0 = 2500+np.random.random(1)*8000
+    sigma1 = 2500+np.random.random(1)*8000
+    splitting = 100000  # abs(np.random.random(1)*300000)
+    offset = 200000
+
+    params['g0_amplitude'].value = amplitude0
+    params['g0_center'].value = center0
+    params['g0_sigma'].value = sigma0
+    params['g1_amplitude'].value = amplitude1
+    params['g1_center'].value = center1
+    params['g1_sigma'].value = sigma1
+    params['offset'].value = offset
+
+
+    data_noisy=(mod.eval(x=x_axis,params=params)
+                            + 30000*np.random.normal(size=x_axis.shape))
+
+    result = qudi_fitting.make_twogaussdipoffset_fit(x_axis=x_axis,
+                                                      data=data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+    plt.plot(x_axis, result.init_fit, label='initial value double gauss')
+    plt.plot(x_axis, result.best_fit, label='fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
 
 def useful_object_variables():
     x = np.linspace(2800, 2900, 101)
@@ -4012,7 +4061,8 @@ if __name__ == "__main__":
 #    gaussianlinearoffset_testing2()
 #    gaussianlinearoffset_testing_data()
 #    two_gaussian_peak_testing()
-    two_gaussian_peak_testing2()
+#    two_gaussian_peak_testing2()
+    two_gaussian_dip_testing2()
 #    double_gaussian_odmr_testing()
 #    twoD_testing()
 #    lorentziandip_testing()
