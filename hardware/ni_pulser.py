@@ -78,6 +78,7 @@ class NIPulser(Base, PulserInterface):
     def init_constraints(self):
         device = self.device
         constraints = {}
+        chmap = OrderedDict()
 
         n = 2048
         ao_max_freq = daq.float64()
@@ -127,6 +128,12 @@ class NIPulser(Base, PulserInterface):
         daq.DAQmxGetDevProductCategory(device, daq.byref(product_cat))
         self.log.debug(product_cat.value)
 
+        for n, ch in enumerate(analog_channels):
+            chmap['a_ch{0:d}'.format(n)] = ch
+
+        for n, ch in enumerate(digital_channels):
+            chmap['d_ch{0:d}'.format(n)] = ch
+
         constraints['sample_rate'] = {
             'min': ao_min_freq.value,
             'max': ao_max_freq.value,
@@ -162,12 +169,12 @@ class NIPulser(Base, PulserInterface):
             'unit': 'V'}
         constraints['sampled_file_length'] = {
             'min': 0,
-            'max': 0,
+            'max': 1e12,
             'step': 0,
             'unit': 'Samples'}
         constraints['digital_bin_num'] = {
             'min': 1,
-            'max': 0,
+            'max': 1e12,
             'step': 0,
             'unit': '#'}
         constraints['waveform_num'] = {
@@ -195,6 +202,7 @@ class NIPulser(Base, PulserInterface):
         activation_config['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         constraints['activation_config'] = activation_config
 
+        self.channel_map = chmap
         self.constraints = constraints
 
     def get_constraints(self):
@@ -209,14 +217,14 @@ class NIPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        daq.DAQmxStartTask(self.pulser_task)
 
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        daq.DAQmxStopTask(self.pulser_task)
 
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device mass memory.
