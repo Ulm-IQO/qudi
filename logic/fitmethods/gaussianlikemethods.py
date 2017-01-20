@@ -619,26 +619,243 @@ def make_twogaussdipoffset_fit(self, x_axis, data, add_params=None,
 #               OLD STUFF FROM HERE
 
 
-
 ############################################################################
 #                                                                          #
 #                            2D gaussian model                             #
 #                                                                          #
 ############################################################################
 
+def make_twoDgaussian_model(self, prefix=None):
+    """ Creates a model of the 2D gaussian function.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gauss_model.
+
+    """
+
+    def twoDgaussian_function(x, amplitude, center_x, center_y, sigma_x, sigma_y,
+                              theta, offset):
+        """ Provide a two dimensional gaussian function.
+
+        @param float amplitude: Amplitude of gaussian
+        @param float center_x: x value of maximum
+        @param float center_y: y value of maximum
+        @param float sigma_x: standard deviation in x direction
+        @param float sigma_y: standard deviation in y direction
+        @param float theta: angle for eliptical gaussians
+        @param float offset: offset
+
+        @return callable function: returns the reference to the function
+
+        Function taken from:
+        http://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m/21566831
+
+        Question from: http://stackoverflow.com/users/2097737/bland
+                       http://stackoverflow.com/users/3273102/kokomoking
+                       http://stackoverflow.com/users/2767207/jojodmo
+        Answer: http://stackoverflow.com/users/1461210/ali-m
+                http://stackoverflow.com/users/5234/mrjrdnthms
+        """
+
+        #FIXME: x_data_tuple: dimension of arrays
+        # @param np.arra[k][M] x_data_tuple: array which is (k,M)-shaped,
+        #                                   x and y values
+
+        (u, v) = x
+        center_x = float(center_x)
+        center_y = float(center_y)
+
+        a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
+        b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) \
+            + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
+        c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
+        g = offset + amplitude * np.exp(- (a * ((u - center_x) ** 2) \
+                                           + 2 * b * (u - center_x) * (v - center_y) \
+                                           + c * ((v - center_y) ** 2)))
+        return g.ravel()
+
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x')
+    else:
+        gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x',
+                               prefix=prefix)
+
+    params = gaussian_2d_model.make_params()
+
+    return gaussian_2d_model, params
+
+
+def estimate_twoDgaussian(self, x_axis, y_axis, data, params):
+    """ Provide a simple two dimensional gaussian function.
+
+    @param numpy.array x_axis: 1D x axis values
+    @param numpy.array y_axis: 1D y axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+        Explanation of the return parameter:
+            int error: error code (0:OK, -1:error)
+            Parameters object params: set parameters of initial values
+    """
+
+    # TODO:Make clever estimator
+    # FIXME: 1D array x_axis, y_axis, 2D data???
+
+    #            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
+    #            len_x=np.where(x_axis[0]==x_axis)[0][1]
+    #            len_y=len(data)/len_x
+
+    amplitude = float(data.max() - data.min())
+
+    center_x = x_axis[data.argmax()]
+    center_y = y_axis[data.argmax()]
+
+    sigma_x = (x_axis.max() - x_axis.min()) / 3.
+    sigma_y = (y_axis.max() - y_axis.min()) / 3.
+    theta = 0.0
+    offset = float(data.min())
+
+
+
+    # check for sensible values
+    parameters = [x_axis, y_axis, data]
+
+    error = 0
+    for var in parameters:
+        # FIXME: Why don't you check earlier?
+        # FIXME: Check for 1D array, 2D
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is not an array.')
+            amplitude = 0.
+            center_x = 0.
+            center_y = 0.
+            sigma_x = 0.
+            sigma_y = 0.
+            theta = 0.0
+            offset = 0.
+            error = -1
+
+    # auxiliary variables:
+    stepsize_x = x_axis[1]-x_axis[0]
+    stepsize_y = y_axis[1]-y_axis[0]
+    n_steps_x = len(x_axis)
+    n_steps_y = len(y_axis)
+
+    # populate the parameter container:
+    params['amplitude'].set(value=amplitude, min=100, max=1e7)
+    params['sigma_x'].set(value=sigma_x, min=1*stepsize_x,
+                          max=3*(x_axis[-1]-x_axis[0]))
+    params['sigma_y'].set(value=sigma_y, min=1*stepsize_y,
+                          max=3*(y_axis[-1]-y_axis[0]))
+    params['center_x'].set(value=center_x, min=(x_axis[0])-n_steps_x*stepsize_x,
+                           max=x_axis[-1]+n_steps_x*stepsize_x)
+    params['center_y'].set(value=center_y, min=(y_axis[0])-n_steps_y*stepsize_y,
+                           max=y_axis[-1]+n_steps_y*stepsize_y)
+    params['theta'].set(value=theta, min=0, max=np.pi)
+    params['offset'].set(value=offset, min=0, max=1e7)
+
+    return error, params
+
+
+def estimate_twoDgaussian_MLE(self, x_axis, y_axis, data, params):
+    """ Provide an estimator for 2D gaussian based on maximum likelihood estimation.
+
+    @param numpy.array x_axis: 1D x axis values
+    @param numpy.array y_axis: 1D y axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+        Explanation of the return parameter:
+            int error: error code (0:OK, -1:error)
+            Parameters object params: set parameters of initial values
+
+    For the parameters characterizing of the two dimensional gaussian a maximum
+    likelihood estimation is used (at the moment only for the center_x and
+    center_y values).
+    """
+
+    # TODO: Make good estimates for sigma_x, sigma_y and theta
+
+    amplitude = float(data.max() - data.min())
+
+    # By calculating the log likelihood of the 2D gaussian pdf, one obtain for
+    # the minimization of the center_x or center_y values the following formula
+    # (which are in fact just the expectation/mean value formula):
+    center_x = np.sum(x_axis * data) / np.sum(data)
+    center_y = np.sum(y_axis * data) / np.sum(data)
+
+    sigma_x = (x_axis.max() - x_axis.min()) / 3.
+    sigma_y = (y_axis.max() - y_axis.min()) / 3.
+    theta = 0.0
+    offset = float(data.min())
+    error = 0
+    # check for sensible values
+    parameters = [x_axis, y_axis, data]
+    for var in parameters:
+        # FIXME: Why don't you check earlier?
+        # FIXME: Check for 1D array, 2D
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            logger.error('Given parameter is not an array.')
+            amplitude = 0.
+            center_x = 0.
+            center_y = 0.
+            sigma_x = 0.
+            sigma_y = 0.
+            theta = 0.0
+            offset = 0.
+            error = -1
+
+    # auxiliary variables:
+    stepsize_x = x_axis[1]-x_axis[0]
+    stepsize_y = y_axis[1]-y_axis[0]
+    n_steps_x = len(x_axis)
+    n_steps_y = len(y_axis)
+
+    # populate the parameter container:
+    params['amplitude'].set(value=amplitude, min=100, max=1e7)
+    params['sigma_x'].set(value=sigma_x, min=1*stepsize_x,
+                          max=3*(x_axis[-1]-x_axis[0]))
+    params['sigma_y'].set(value=sigma_y, min=1*stepsize_y,
+                          max=3*(y_axis[-1]-y_axis[0]))
+    params['center_x'].set(value=center_x, min=(x_axis[0])-n_steps_x*stepsize_x,
+                           max=x_axis[-1]+n_steps_x*stepsize_x)
+    params['center_y'].set(value=center_y, min=(y_axis[0])-n_steps_y*stepsize_y,
+                           max=y_axis[-1]+n_steps_y*stepsize_y)
+    params['theta'].set(value=theta, min=0, max=np.pi)
+    params['offset'].set(value=offset, min=0, max=1e7)
+
+    return error, params
+
+
 def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
                           estimator="estimate_twoDgaussian_MLE"):
     """ This method performes a 2D gaussian fit on the provided data.
 
     @param numpy.array xy_axes: 2D axes values. xy_axes[0] contains x_axis and
-                                xy_axes[1] constains y_axis
+                                xy_axes[1] contains y_axis
     @param numpy.array data: 2D matrix data, should have the dimension as
                              len(xy_axes[0]) x len(xy_axes[1]).
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
-    @param str estimator: the string should contain the name of the function you want to use to estimate
-                             the parameters. The default estimator is estimate_twoDgaussian_MLE.
+    @param str estimator: the string should contain the name of the function you
+                           want to use to estimate the parameters. The default
+                           estimator is estimate_twoDgaussian_MLE.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -648,257 +865,31 @@ def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
 
     x_axis, y_axis = xy_axes
 
+    gauss_2d_model, params = self.make_twoDgaussian_model()
+
+    error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis, y_axis=y_axis,
+                                                   data=data, params=params)
+
     if estimator is "estimate_twoDgaussian_MLE":
-        error,      \
-        amplitude,  \
-        x_zero,     \
-        y_zero,     \
-        sigma_x,    \
-        sigma_y,    \
-        theta,      \
-        offset = self.estimate_twoDgaussian_MLE(x_axis=x_axis,
-                                                y_axis=y_axis, data=data)
+        error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis,
+                                                       y_axis=y_axis,
+                                                       data=data,
+                                                       params=params)
     else:
-        error,     \
-        amplitude,  \
-        x_zero,    \
-        y_zero,    \
-        sigma_x,   \
-        sigma_y,   \
-        theta,     \
-        offset = globals()[estimator](0, x_axis=x_axis,
-                                      y_axis=y_axis, data=data)
-
-    mod, params = self.make_twoDgaussian_model()
-
-    #auxiliary variables
-    stepsize_x=x_axis[1]-x_axis[0]
-    stepsize_y=y_axis[1]-y_axis[0]
-    n_steps_x=len(x_axis)
-    n_steps_y=len(y_axis)
-
-    #When I was sitting in the train coding and my girlfiend was sitting next to me she said: "Look it looks like an animal!" - is it a fox or a rabbit???
-
-    #Defining standard parameters
-    #                  (Name,       Value,      Vary,           Min,                             Max,                       Expr)
-    params.add_many(('amplitude',   amplitude,  True,        100,                               1e7,                           None),
-                   (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(x_axis[-1]-x_axis[0]),          None),
-                   (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(y_axis[-1]-y_axis[0]) ,   None),
-                   (  'x_zero',    x_zero,      True,     (x_axis[0])-n_steps_x*stepsize_x ,         x_axis[-1]+n_steps_x*stepsize_x,               None),
-                   (  'y_zero',     y_zero,     True,    (y_axis[0])-n_steps_y*stepsize_y ,         (y_axis[-1])+n_steps_y*stepsize_y,         None),
-                   (  'theta',       0.,        True,           0. ,                             np.pi,               None),
-                   (  'offset',      offset,    True,           0,                              1e7,                       None))
+        error, params = globals()[estimator](0, x_axis=x_axis, y_axis=y_axis,
+                                             data=data, params=params)
 
 
-#           redefine values of additional parameters
-    params=self._substitute_params(initial_params=params,
-                                   update_params=add_params)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result=mod.fit(data, x=xy_axes, params=params)
+        result = gauss_2d_model.fit(data, x=xy_axes, params=params)
     except:
-        result=mod.fit(data, x=xy_axes, params=params)
+        result = gauss_2d_model.fit(data, x=xy_axes, params=params)
         logger.warning('The 2D gaussian fit did not work: {0}'.format(
-            result.message))
+                       result.message))
 
     return result
-
-
-def make_twoDgaussian_model(self):
-    """ This method creates a model of the 2D gaussian function.
-
-    The parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
-    'c'. For function see:
-
-    @return lmfit.model.CompositeModel model: Returns an object of the
-                                              class CompositeModel
-    @return lmfit.parameter.Parameters params: Returns an object of the
-                                               class Parameters with all
-                                               parameters for the
-                                               gaussian model.
-
-    """
-
-    def twoDgaussian_function(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
-                              theta, offset):
-        # FIXME: x_data_tuple: dimension of arrays
-
-        """ This method provides a two dimensional gaussian function.
-
-        Function taken from:
-        http://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m/21566831
-
-        Question from: http://stackoverflow.com/users/2097737/bland & http://stackoverflow.com/users/3273102/kokomoking
-                       & http://stackoverflow.com/users/2767207/jojodmo
-        Answer: http://stackoverflow.com/users/1461210/ali-m & http://stackoverflow.com/users/5234/mrjrdnthms
-
-        @param array[k][M] x_data_tuple: array which is (k,M)-shaped, x and y
-                                         values
-        @param float or int amplitude: Amplitude of gaussian
-        @param float or int x_zero: x value of maximum
-        @param float or int y_zero: y value of maximum
-        @param float or int sigma_x: standard deviation in x direction
-        @param float or int sigma_y: standard deviation in y direction
-        @param float or int theta: angle for eliptical gaussians
-        @param float or int offset: offset
-
-        @return callable function: returns the function
-        """
-
-        (u, v) = x
-        x_zero = float(x_zero)
-        y_zero = float(y_zero)
-
-        a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) \
-            + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
-        b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) \
-            + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
-        c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
-            + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
-        g = offset + amplitude * np.exp(- (a * ((u - x_zero) ** 2) \
-                                           + 2 * b * (u - x_zero) * (v - y_zero) \
-                                           + c * ((v - y_zero) ** 2)))
-        return g.ravel()
-
-    model = Model(twoDgaussian_function)
-    params = model.make_params()
-
-    return model, params
-
-
-def estimate_twoDgaussian(self, x_axis=None, y_axis=None, data=None):
-    # TODO:Make clever estimator
-    # FIXME: 1D array x_axis, y_axis, 2D data???
-    """ This method provides a two dimensional gaussian function.
-
-    @param array x_axis: x values
-    @param array y_axis: y values
-    @param array data: value of each data point corresponding to
-                        x and y values
-
-    @return float amplitude: estimated amplitude
-    @return float x_zero: estimated x value of maximum
-    @return float y_zero: estimated y value of maximum
-    @return float sigma_x: estimated standard deviation in x direction
-    @return float sigma_y: estimated  standard deviation in y direction
-    @return float theta: estimated angle for eliptical gaussians
-    @return float offset: estimated offset
-    @return int error: error code (0:OK, -1:error)
-    """
-
-    #            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
-    #            len_x=np.where(x_axis[0]==x_axis)[0][1]
-    #            len_y=len(data)/len_x
-
-
-    amplitude = float(data.max() - data.min())
-
-    x_zero = x_axis[data.argmax()]
-    y_zero = y_axis[data.argmax()]
-
-    sigma_x = (x_axis.max() - x_axis.min()) / 3.
-    sigma_y = (y_axis.max() - y_axis.min()) / 3.
-    theta = 0.0
-    offset = float(data.min())
-    error = 0
-    # check for sensible values
-    parameters = [x_axis, y_axis, data]
-    for var in parameters:
-        # FIXME: Why don't you check earlier?
-        # FIXME: Check for 1D array, 2D
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is not an array.')
-            amplitude = 0.
-            x_zero = 0.
-            y_zero = 0.
-            sigma_x = 0.
-            sigma_y = 0.
-            theta = 0.0
-            offset = 0.
-            error = -1
-
-    return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
-
-def estimate_twoDgaussian_MLE(self, x_axis=None, y_axis=None, data=None):
-    # TODO: Make good estimates for sigma_x, sigma_y and theta
-    """ This method provides an estimate for the parameters characterizing a
-        two dimensional gaussian. It is based on the maximum likelihood estimation
-        (at the moment only for the x_zero and y_zero values).
-
-    @param array x_axis: x values
-    @param array y_axis: y values
-    @param array data: value of each data point corresponding to
-                        x and y values
-    @return tuple parameters: estimated value of parameters based on the data
-    """
-
-    amplitude = float(data.max() - data.min())
-
-    x_zero = np.sum(x_axis * data) / np.sum(data)
-    y_zero = np.sum(y_axis * data) / np.sum(data)
-
-    sigma_x = (x_axis.max() - x_axis.min()) / 3.
-    sigma_y = (y_axis.max() - y_axis.min()) / 3.
-    theta = 0.0
-    offset = float(data.min())
-    error = 0
-    # check for sensible values
-    parameters = [x_axis, y_axis, data]
-    for var in parameters:
-        # FIXME: Why don't you check earlier?
-        # FIXME: Check for 1D array, 2D
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is not an array.')
-            amplitude = 0.
-            x_zero = 0.
-            y_zero = 0.
-            sigma_x = 0.
-            sigma_y = 0.
-            theta = 0.0
-            offset = 0.
-            error = -1
-
-    return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
-
-def estimate_twoDgaussian_MLE(self, x_axis=None, y_axis=None, data=None):
-    # TODO: Make good estimates for sigma_x, sigma_y and theta
-    """ This method provides an estimate for the parameters characterizing a
-        two dimensional gaussian. It is based on the maximum likelihood estimation
-        (at the moment only for the x_zero and y_zero values).
-
-    @param array x_axis: x values
-    @param array y_axis: y values
-    @param array data: value of each data point corresponding to
-                        x and y values
-    @return tuple parameters: estimated value of parameters based on the data
-    """
-
-    amplitude = float(data.max() - data.min())
-
-    x_zero = np.sum(x_axis * data) / np.sum(data)
-    y_zero = np.sum(y_axis * data) / np.sum(data)
-
-    sigma_x = (x_axis.max() - x_axis.min()) / 3.
-    sigma_y = (y_axis.max() - y_axis.min()) / 3.
-    theta = 0.0
-    offset = float(data.min())
-    error = 0
-    # check for sensible values
-    parameters = [x_axis, y_axis, data]
-    for var in parameters:
-        # FIXME: Why don't you check earlier?
-        # FIXME: Check for 1D array, 2D
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is not an array.')
-            amplitude = 0.
-            x_zero = 0.
-            y_zero = 0.
-            sigma_x = 0.
-            sigma_y = 0.
-            theta = 0.0
-            offset = 0.
-            error = -1
-
-    return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
 
 
