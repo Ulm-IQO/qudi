@@ -784,31 +784,111 @@ def twoD_testing():
 
 
 def gaussian_testing():
-    x = np.linspace(0, 5, 11)
-    x_nice = np.linspace(0, 5, 101)
+    """ Test the Gaussian peak or dip estimator. """
 
-    mod_final,params = qudi_fitting.make_gaussian_model()
-#            print('Parameters of the model',mod_final.param_names)
+    x_axis = np.linspace(0, 5, 50)
+
+    ampl = 10000
+    center = 3
+    sigma = 1
+    offset = 10000
+
+    mod_final, params = qudi_fitting.make_gaussoffset_model()
+    data_noisy = mod_final.eval(x=x_axis, amplitude=ampl, center=center,
+                                sigma=sigma, offset=offset) + \
+                                4000*abs(np.random.normal(size=x_axis.shape))
+
+    stepsize = abs(x_axis[1] - x_axis[0])
+    n_steps = len(x_axis)
 
 
-#            p.add('center',max=+3)
+    # Smooth the provided data, so that noise fluctuations will
+    # not disturb the parameter estimation.
+    std_dev = 2
+    data_smoothed = filters.gaussian_filter1d(data_noisy, std_dev)
 
-    data_noisy=mod_final.eval(x=x, amplitude=100000, center=2, sigma=1.0, c=10000) + 8000*abs(np.random.normal(size=x.shape))
-##            print(qudi_fitting.data_noisy)
-    result=qudi_fitting.make_gaussian_fit(x_axis=x, data=data_noisy)
-#
-#
-#    gaus=gaussian(3,5)
-#    qudi_fitting.data_smooth = filters.convolve1d(qudi_fitting.data_noisy, gaus/gaus.sum(),mode='mirror')
-
-    plt.plot(x,data_noisy)
-#    plt.plot(qudi_fitting.x,qudi_fitting.data_smooth,'-k')
-#    plt.plot(qudi_fitting.x,result.init_fit,'-g',label='init')
-    plt.plot(x,result.best_fit,'-r',label='fit')
-#    plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r',label='fit')
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label='data')
+    plt.plot(x_axis, data_smoothed, label='smoothed data')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-#    print(result.init_params)
-#            print(result.fit_report(show_correl=False))
+
+    # Define constraints
+    # maximal and minimal the length of the given array to the right and to the
+    # left:
+    center_min = (x_axis[0]) - n_steps * stepsize
+    center_max = (x_axis[-1]) + n_steps * stepsize
+    ampl_min = 0
+    sigma_min = stepsize
+    sigma_max = 3 * (x_axis[-1] - x_axis[0])
+
+#    params['amplitude'].min = 100  # that is already noise from APD
+#    params['amplitude'].max = data_noisy.max()
+#    params['sigma'].min = stepsize
+#    params['sigma'].max = 3 * (x_axis[-1] - x_axis[0])
+
+    # not very general to set a such a constaint on offset:
+#    params['offset'].min = 0.  # that is already noise from APD
+#    params['offset'].max = data_noisy.max() #* params['sigma'].value * np.sqrt(2 * np.pi)*2.
+
+
+    # set parameters
+    offset = data_smoothed.min()
+    params['offset'].set(value=offset)
+
+    # it is more reliable to obtain select the maximal value rather then
+    # calculating the first moment of the gaussian distribution (which is the
+    # mean value), since it is unreliable if the distribution begins or ends at
+    # the edges of the data:
+    mean_val_calc =  np.sum(x_axis*(data_smoothed)) / np.sum(data_smoothed)
+    center_val = x_axis[np.argmax(data_smoothed)]
+    params['center'].set(value=center_val,
+                         min=center_min, max=center_max)
+
+    # params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
+
+    # calculate the second moment of the gaussian distribution: int (x^2 * f(x) dx)
+    mom2 = np.sum((x_axis)**2 * (data_smoothed)) / np.sum(data_smoothed)
+
+    # and use the standard formula to obtain the standard deviation:
+    #   sigma^2 = int( (x-mean)^2 f(x) dx ) = int (x^2 * f(x) dx) - mean^2
+
+    print("mom2", mom2)
+    print("std: ", np.sqrt(abs(mom2 - mean_val_calc**2)))
+
+    # if the mean is situated at the edges of the distribution then this
+    # procedure performs better then setting the initial value for sigma to
+    # 1/3 of the length of the distibution since the calculated value for the
+    # mean is then higher, which will decrease eventually the initial value for
+    # sigma. But if the peak values is within the distribution the standard
+    # deviation formula performs even better:
+    params['sigma'].set(value=np.sqrt(abs(mom2 - mean_val_calc**2)),
+                        min=sigma_min, max=sigma_max)
+
+    # do not set the maximal amplitude value based on the distribution, since
+    # the fit will fail if the peak is at the edges or beyond the range of the
+    # x values.
+    params['amplitude'].set(value=data_smoothed.max()-data_smoothed.min(),
+                            min=ampl_min)
+
+
+
+    result = mod_final.fit(data_noisy, x=x_axis, params=params)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy,'-b', label='data')
+    plt.plot(x_axis,result.best_fit,'-r', label='best fit result')
+    plt.plot(x_axis,result.init_fit,'-g',label='initial fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(result.fit_report())
+
 
 
 def useful_object_variables():
@@ -2188,98 +2268,6 @@ def double_poissonian_testing_data():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-def gaussian_testing2():
-    start=0
-    stop=300
-    mu=100
-    num_points=1000
-    x = np.array(np.linspace(start, stop, num_points))
-#            x = np.array(x,dtype=np.int64)
-    mod,params = qudi_fitting.make_poissonian_model()
-#            print('Parameters of the model',mod.param_names)
-
-    p=Parameters()
-    p.add('poissonian_mu',value=mu)
-    p.add('poissonian_amplitude',value=200.)
-
-    data_noisy=(mod.eval(x=x,params=p) *
-                np.array((1+0.00*np.random.normal(size=x.shape) *
-                p['poissonian_amplitude'].value ) ) )
-
-    #make the filter an extra function shared and usable for other functions
-    gaus=gaussian(10,10)
-    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
-
-    axis=x
-    data=data_noisy
-    add_parameters=None
-
-    mod_final, params = qudi_fitting.make_gaussian_model()
-
-    error, params = qudi_fitting.estimate_gaussian_confocalpeak(axis, data, params)
-
-    # auxiliary variables
-    stepsize = abs(axis[1] - axis[0])
-    n_steps = len(axis)
-
-    # Define constraints
-    params['center'].min = (axis[0]) - n_steps * stepsize
-    params['center'].max = (axis[-1]) + n_steps * stepsize
-    params['amplitude'].min = 100  # that is already noise from APD
-    params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
-    params['sigma'].min = stepsize
-    params['sigma'].max = 3 * (axis[-1] - axis[0])
-    params['c'].min = 100  # that is already noise from APD
-    params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
-
-    update_dict=dict()
-
-    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-    function = InterpolatedUnivariateSpline(axis, data_smooth, k=1)
-    Integral = function.integral(axis[0], axis[-1])
-    amp = data_smooth.max()
-    sigma = Integral / (amp) / np.sqrt(2 * np.pi)
-    amplitude = amp * sigma * np.sqrt(2 * np.pi)
-
-    update_dict['c']={'min':-np.inf,'max':np.inf,'value':0.1}
-    update_dict['center']={'min':-np.inf,'max':np.inf,'value':axis[np.argmax(data_noisy)]}
-    update_dict['sigma']={'min':-np.inf,'max':np.inf,'value':sigma}
-    update_dict['amplitude']={'min':-np.inf,'max':np.inf,'value':amplitude}
-    print('params',params['c'])
-    print('dict',update_dict['c'])
-    params = qudi_fitting._substitute_params(initial_params=params, update_params=update_dict)
-    print('params',params['c'])
-
-    # overwrite values of additional parameters
-#            if add_parameters is not None:
-#                params = qudi_fitting._substitute_parames(initial_params=params,
-#                                                          update_params=add_parameters)
-    try:
-        result = mod_final.fit(data, x=axis, params=params)
-    except:
-        logger.warning('The 1D gaussian fit did not work.')
-        result = mod_final.fit(data, x=axis, params=params)
-        print(result.message)
-
-#            print(params['center'])
-#            print(params['c'])
-#            print(params['sigma'])
-    print(len(params))
-#
-    print(result.init_params)
-    try:
-        plt.plot(x, data_noisy, '-b')
-        plt.plot(x, data_smooth, '-g')
-        plt.plot(x,result.init_fit,'-y')
-        plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
-        plt.show()
-
-
-    except:
-        print('exception')
-
-    units={'center': 'counts/s','sigma': 'counts','amplitude': 'counts/s','c': 'N'}
-    print(qudi_fitting.create_fit_string(result,mod_final,units=units))
 
 def gaussianwithslope_testing():
     x = np.linspace(0, 5, 30)
@@ -3735,7 +3723,8 @@ plt.rcParams['figure.figsize'] = (10,5)
 
 if __name__ == "__main__":
 #    gaussianwithslope_testing()
-#    gaussian_testing()
+    gaussian_testing()
+    gaussian_testing2()
 #    gaussian_testing2()
 #    twoD_testing()
 #    lorentziandip_testing()
@@ -3747,7 +3736,7 @@ if __name__ == "__main__":
 #    double_lorentzdip_testing2()
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
-    N14_testing()
+#    N14_testing()
 #    N14_testing2()
 #    N14_testing_data()
 #    N14_testing_data2()
