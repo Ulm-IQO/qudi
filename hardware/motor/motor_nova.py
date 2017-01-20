@@ -127,6 +127,12 @@ class NOVAMotor:
         self.log = logging.getLogger(__name__)
         #self.log.info('test')
 
+    def twos_comp(self, val, bits):
+        """compute the 2's compliment of int value val"""
+        if (val & (1 << (bits - 1))) != 0:  # if sign bit is set e.g., 8bit: 128-255
+            val = val - (1 << bits)  # compute negative value
+        return val  # return positive value as i
+
     def write_to_server(self):
         self.novadll.write(self.eepromid, self.deviceid, self.eeid, self.command, byref(self.rx_tx_no), self.nbytes,
                            self.b0, self.b1, self.b2,
@@ -160,7 +166,7 @@ class NOVAMotor:
 
         self.read_from_server()
 
-        self.velocity = (self.b1.value << 8) | self.b0.value
+        self.velocity = self.twos_comp((self.b1.value << 8) | self.b0.value,16)
 
         return self.velocity
 
@@ -169,9 +175,9 @@ class NOVAMotor:
 
         @param float vel: velocity of the stage in m/s.
         """
-        if self.verbose:
-            print('set_velocity', vel)
-        self.velocity = c_int16(vel)
+        i16StepVelSoll = int(vel)
+        self.b0 = (i16StepVelSoll & 0xff);
+        self.b1 = ((i16StepVelSoll >> 8) & 0xff);
 
     def get_home_parameter(self):
         """ Get the home parameter"""
@@ -227,7 +233,7 @@ class NOVAMotor:
         #     self.log.error(self.error_code[self.error.value])
         #position = 4
         # read the position off the stack
-        position = (self.b5.value << 24) | (self.b4.value << 16) | (self.b4.value << 8) | self.b2.value
+        position = self.twos_comp(self.b5.value << 24) | (self.b4.value << 16) | (self.b3.value << 8) | self.b2.value,32)
 
         # self.log.info(position)
 
@@ -254,22 +260,21 @@ class NOVAMotor:
         if self.verbose:
             print('move_rel SUCESS')
 
-    def twos_comp(self, val, bits):
-        """compute the 2's compliment of int value val"""
-        if (val & (1 << (bits - 1))) != 0:  # if sign bit is set e.g., 8bit: 128-255
-            val -= (1 << bits)  # compute negative value
-        return val  # return positive value as is
 
-    def move_abs(self, absPosition):
+    def move_abs(self, i32PosSoll):
         """ Moves the motor to the Absolute position specified using servo mode
 
         @param float absPosition: absolute Position desired, in m or degree.
         """
-
-        bits = twos_comp(absPosition*10**9, 32)
+        i32PosSoll = int(i32PosSoll*100000000)
+        self.b2.value = (i32PosSoll & 0xff)
+        self.b3.value = ((i32PosSoll >> 8) & 0xff)
+        self.b4.value = ((i32PosSoll >> 16) & 0xff)
+        self.b5.value = ((i32PosSoll >> 24) & 0xff)
+        #position = self.twos_comp(((self.b5.value << 24) | (self.b4.value << 16) | (self.b3.value << 8) | self.b2.value), 32)
         self.command = self.command_dict.get('SERVOMODE')
-        self.log.info(bits)
-        #self.write_to_server()
+        self.log.info(position)
+        self.write_to_server()
 
         return True
 
@@ -580,7 +585,7 @@ class NOVAStage(Base, MotorInterface):
 
                     self.log.warning('Cannot make absolute movement of the '
                                      'axis "{0}" to position {1}, since it exceeds '
-                                     'the limts [{2},{3}]. Movement is ignored!'
+                                     'the limits [{2},{3}]. Movement is ignored!'
                                      ''.format(label_axis, desired_pos, constr['pos_min'], constr['pos_max']))
                 else:
                     self._save_pos({label_axis: desired_pos})
