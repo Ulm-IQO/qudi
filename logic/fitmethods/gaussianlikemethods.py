@@ -255,6 +255,75 @@ def make_gaussoffsetpeak_fit(self, x_axis, data, add_params=None):
 
 ################################################################################
 #                                                                              #
+#                    1D Gaussian Dip with offset fitting                       #
+#                                                                              #
+################################################################################
+
+
+def estimate_gaussoffsetdip(self, x_axis, data, params):
+    """ Provides a gauss offset dip estimator.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+        Explanation of the return parameter:
+            int error: error code (0:OK, -1:error)
+            Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # the peak and dip gaussian have the same parameters:
+    params_peak = params
+    data_negative = data * (-1)
+
+    error, params_ret = self.estimate_gaussoffsetpeak(x_axis, data_negative,
+                                                       params_peak)
+
+    params['sigma'] = params_ret['sigma']
+    params['offset'].set(value=-params_ret['offset'])
+    # set the maximum to infinity, since that is the default value.
+    params['amplitude'].set(value=-params_ret['amplitude'].value, min=-np.inf,
+                            max=1e-12)
+    params['center'] = params_ret['center']
+
+    return error, params
+
+def make_gaussoffsetdip_fit(self, x_axis, data, add_params=None):
+    """ Perform a 1D gaussian dip fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    mod_final, params = self.make_gaussoffset_model()
+
+    error, params = self.estimate_gaussoffsetdip(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = mod_final.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The 1D gaussian dip fit did not work. Error '
+                       'message: {0}\n'.format(result.message))
+
+    return result
+
+################################################################################
+#                                                                              #
 #                   Multiple Gaussian Model with offset                        #
 #                                                                              #
 ################################################################################
