@@ -1083,6 +1083,201 @@ def gaussianlinearoffset_testing_data():
 
 
 
+def two_gaussian_peak_testing():
+    """ Test the implemented estimator for two gaussian peaks with offset """
+
+    start=100000
+    stop= 500000
+    num_points=int((stop-start)/2000)
+    x_axis = np.linspace(start, stop, num_points)
+
+    mod, params = qudi_fitting.make_multiplegaussoffset_model(no_of_functions=2)
+
+
+    amplitude0 = 75000+np.random.random(1)*50000
+    amplitude1 = amplitude0*1.5
+#    splitting = 100000  # abs(np.random.random(1)*100000)
+    splitting = abs(np.random.random(1)*200000)
+    center0 = 160000
+#    center1 = 300000
+    center1 = center0 + splitting
+    sigma0 = 25000+np.random.random(1)*20000
+    sigma1 = 25000+np.random.random(1)*20000
+    splitting = 100000  # abs(np.random.random(1)*300000)
+
+    params['g0_amplitude'].value = amplitude0
+    params['g0_center'].value = center0
+    params['g0_sigma'].value = sigma0
+    params['g1_amplitude'].value = amplitude1
+    params['g1_center'].value = center1
+    params['g1_sigma'].value = sigma1
+    params['offset'].value = 0
+
+
+    data_noisy=(mod.eval(x=x_axis,params=params)
+                            + 20000*np.random.normal(size=x_axis.shape))
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+#    plt.plot(x_axis, result.init_fit,'-g', label='init')
+#    plt.plot(x_axis, result.best_fit,'-r', label='fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    threshold_fraction=0.4
+    minimal_threshold=0.2
+    sigma_threshold_fraction=0.3
+
+
+    mod_lor, params_lor = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+
+    error, params_lor = qudi_fitting.estimate_doublelorentzdipoffset(x_axis=x_axis,
+                                                     data=-data_noisy,
+                                                     params=params_lor,
+                                                     threshold_fraction=threshold_fraction,
+                                                     minimal_threshold=minimal_threshold,
+                                                     sigma_threshold_fraction=sigma_threshold_fraction)
+
+    result_lor = mod_lor.fit(-data_noisy, x=x_axis, params=params_lor)
+
+    plt.figure()
+    plt.plot(x_axis, -data_noisy, label="data")
+    plt.plot(x_axis, result_lor.init_fit, label='init lorentz fit')
+    plt.plot(x_axis, result_lor.best_fit, label='actual lorentz fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    mod, params = qudi_fitting.make_multiplegaussoffset_model(no_of_functions=2)
+
+
+
+    params['g0_amplitude'].value = -params_lor['l0_amplitude'].value
+    params['g0_center'].value = params_lor['l0_center'].value
+    params['g0_sigma'].value = params_lor['l0_sigma'].value/(np.sqrt(2*np.log(2)))
+    params['g1_amplitude'].value = -params_lor['l1_amplitude'].value
+    params['g1_center'].value = params_lor['l1_center'].value
+    params['g1_sigma'].value = params_lor['l1_sigma'].value/(np.sqrt(2*np.log(2)))
+    params['offset'].value = -params_lor['offset'].value
+
+
+    result = mod.fit(data_noisy, x=x_axis, params=params)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+    plt.plot(x_axis, result.init_fit, label='initial value double gauss')
+    plt.plot(x_axis, result.best_fit, label='fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+
+    print(result.fit_report())
+
+
+    return
+
+
+#                np.savetxt('data',data_noisy)
+
+#                data_noisy=np.loadtxt('data')
+#                para=Parameters()
+#                result=qudi_fitting.make_doublegaussian_fit(axis=x,data=data_noisy,add_parameters=para)
+#
+    #make the filter an extra function shared and usable for other functions
+    gaus=gaussian(10,10)
+    data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+
+#                set optimal thresholds
+    threshold_fraction=0.4
+    minimal_threshold=0.2
+    sigma_threshold_fraction=0.3
+
+
+    qudi_fitting.estimate_doublelorentzdipoffset()
+
+    error, \
+    sigma0_argleft, dip0_arg, sigma0_argright, \
+    sigma1_argleft, dip1_arg , sigma1_argright = \
+    qudi_fitting._search_double_dip(x, data_smooth*-1,
+                            threshold_fraction=threshold_fraction,
+                            minimal_threshold=minimal_threshold,
+                            sigma_threshold_fraction=sigma_threshold_fraction,
+                            make_prints=False)
+
+    print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
+    print(x[dip0_arg], x[dip1_arg])
+
+    plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_noisy.min() ,data_noisy.max()), 'b-')
+    plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_noisy.min() ,data_noisy.max()), 'b-')
+
+    plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+    plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+
+    paramdict = dict()
+    paramdict['gaussian0_amplitude'] = {'gaussian0_amplitude':amplitude}
+    paramdict['gaussian0_center'] = {'gaussian0_center':160000}
+    paramdict['gaussian0_sigma'] = {'gaussian0_sigma':sigma0}
+    paramdict['gaussian1_amplitude'] = {'gaussian1_amplitude':amplitude*1.5}
+    paramdict['gaussian1_center'] = {'gaussian1_center':300000}
+    paramdict['gaussian1_sigma'] = {'gaussian1_sigma':sigma1}
+    paramdict['c'] = {'c':0}
+
+    result=qudi_fitting.make_doublegaussian_fit(x,data_noisy,add_parameters = paramdict,estimator='gated_counter',
+                            threshold_fraction=threshold_fraction,
+                            minimal_threshold=minimal_threshold,
+                            sigma_threshold_fraction=sigma_threshold_fraction)
+
+    plt.plot((result.init_values['gaussian0_center'], result.init_values['gaussian0_center']), ( data_noisy.min() ,data_noisy.max()), 'r-')
+    plt.plot((result.init_values['gaussian1_center'], result.init_values['gaussian1_center']), ( data_noisy.min() ,data_noisy.max()), 'r-')
+    print(result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
+#                gaus=gaussian(20,10)
+#                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+#                data_der=np.gradient(data_smooth)
+    print(result.fit_report())
+    print(result.message)
+    print(result.success)
+#                print(result.params)
+    print(result.errorbars)
+
+######################################################
+
+    #TODO: check if adding  #,fit_kws={"ftol": 1e-4, "xtol": 1e-4, "gtol": 1e-4} to model.fit can help to get errorbars
+
+#####################################################
+    try:
+        plt.plot(x, data_noisy, '-b')
+        plt.plot(x, data_smooth, '-g')
+#                    plt.plot(x, data_der*10, '-r')
+#                    print(result.best_values['gaussian0_center']/1000,result.best_values['gaussian1_center']/1000)
+        plt.plot(x,result.init_fit,'-y')
+        plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+        plt.show()
+
+
+    except:
+        print('exception')
+
+
+#
+#                plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
+#                plt.show()
+#
+#                print('Peaks:',p['gaussian0_center'].value,p['gaussian1_center'].value)
+#                print('Estimator:',result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
+#
+#                data=-1*data_smooth+data_smooth.max()
+#                 print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
+#                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
+#                print('Peakutils',x[indices])
+#                pplot(x,data,indices)
+
 def useful_object_variables():
     x = np.linspace(2800, 2900, 101)
 
@@ -1639,124 +1834,7 @@ def compute_inv_dft(x_val, y_val, zeropad_num=0):
     return fft_x[:middle], fft_y[:middle]
 #    return fft_x, fft_y
 
-def double_gaussian_testing():
-    for ii in range(1):
-#                time.sleep(0.51)
-        start=000000
-        stop=500000
-        num_points=int((stop-start)/2000)
-        x = np.linspace(start, stop, num_points)
 
-        mod,params = qudi_fitting.make_multiplegaussian_model(no_of_gauss=2)
-#            print('Parameters of the model',mod.param_names)
-
-        amplitude=75000+np.random.random(1)*50000
-        sigma0=25000+np.random.random(1)*20000
-        sigma1=25000+np.random.random(1)*20000
-        splitting=100000  # abs(np.random.random(1)*300000)
-
-        p=Parameters()
-        p.add('gaussian0_amplitude',value=amplitude)
-        p.add('gaussian0_center',value=160000)
-        p.add('gaussian0_sigma',value=sigma0)
-        p.add('gaussian1_amplitude',value=amplitude*1.5)
-        p.add('gaussian1_center',value=300000)
-        p.add('gaussian1_sigma',value=sigma1)
-        p.add('c',value=0.)
-
-        data_noisy=(mod.eval(x=x,params=p)
-                                + 0.0*np.random.normal(size=x.shape))
-
-#                np.savetxt('data',data_noisy)
-
-#                data_noisy=np.loadtxt('data')
-#                para=Parameters()
-#                result=qudi_fitting.make_doublegaussian_fit(axis=x,data=data_noisy,add_parameters=para)
-#
-        #make the filter an extra function shared and usable for other functions
-        gaus=gaussian(10,10)
-        data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
-
-#                set optimal thresholds
-        threshold_fraction=0.4
-        minimal_threshold=0.2
-        sigma_threshold_fraction=0.3
-
-        error, \
-        sigma0_argleft, dip0_arg, sigma0_argright, \
-        sigma1_argleft, dip1_arg , sigma1_argright = \
-        qudi_fitting._search_double_dip(x, data_smooth*-1,
-                                threshold_fraction=threshold_fraction,
-                                minimal_threshold=minimal_threshold,
-                                sigma_threshold_fraction=sigma_threshold_fraction,
-                                make_prints=False)
-
-        print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
-        print(x[dip0_arg], x[dip1_arg])
-
-        plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_noisy.min() ,data_noisy.max()), 'b-')
-        plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_noisy.min() ,data_noisy.max()), 'b-')
-
-        plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
-        plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
-
-        paramdict = dict()
-        paramdict['gaussian0_amplitude'] = {'gaussian0_amplitude':amplitude}
-        paramdict['gaussian0_center'] = {'gaussian0_center':160000}
-        paramdict['gaussian0_sigma'] = {'gaussian0_sigma':sigma0}
-        paramdict['gaussian1_amplitude'] = {'gaussian1_amplitude':amplitude*1.5}
-        paramdict['gaussian1_center'] = {'gaussian1_center':300000}
-        paramdict['gaussian1_sigma'] = {'gaussian1_sigma':sigma1}
-        paramdict['c'] = {'c':0}
-
-        result=qudi_fitting.make_doublegaussian_fit(x,data_noisy,add_parameters = paramdict,estimator='gated_counter',
-                                threshold_fraction=threshold_fraction,
-                                minimal_threshold=minimal_threshold,
-                                sigma_threshold_fraction=sigma_threshold_fraction)
-
-        plt.plot((result.init_values['gaussian0_center'], result.init_values['gaussian0_center']), ( data_noisy.min() ,data_noisy.max()), 'r-')
-        plt.plot((result.init_values['gaussian1_center'], result.init_values['gaussian1_center']), ( data_noisy.min() ,data_noisy.max()), 'r-')
-        print(result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
-#                gaus=gaussian(20,10)
-#                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
-#                data_der=np.gradient(data_smooth)
-        print(result.fit_report())
-        print(result.message)
-        print(result.success)
-#                print(result.params)
-        print(result.errorbars)
-
-######################################################
-
-        #TODO: check if adding  #,fit_kws={"ftol": 1e-4, "xtol": 1e-4, "gtol": 1e-4} to model.fit can help to get errorbars
-
-#####################################################
-        try:
-            plt.plot(x, data_noisy, '-b')
-            plt.plot(x, data_smooth, '-g')
-#                    plt.plot(x, data_der*10, '-r')
-#                    print(result.best_values['gaussian0_center']/1000,result.best_values['gaussian1_center']/1000)
-            plt.plot(x,result.init_fit,'-y')
-            plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
-            plt.show()
-
-
-        except:
-            print('exception')
-
-
-#
-#                plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
-#                plt.show()
-#
-#                print('Peaks:',p['gaussian0_center'].value,p['gaussian1_center'].value)
-#                print('Estimator:',result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
-#
-#                data=-1*data_smooth+data_smooth.max()
-#                 print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
-#                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
-#                print('Peakutils',x[indices])
-#                pplot(x,data,indices)
 
 def powerfluorescence_testing():
     x = np.linspace(1, 1000, 101)
@@ -3879,15 +3957,16 @@ if __name__ == "__main__":
 #    gaussianpeak_testing()
 #    gaussianpeak_testing2()
 #    gaussiandip_testing2()
-    gaussianlinearoffset_testing()
+#    gaussianlinearoffset_testing()
 #    gaussianlinearoffset_testing2()
 #    gaussianlinearoffset_testing_data()
+    two_gaussian_peak_testing()
+#    double_gaussian_odmr_testing()
 #    twoD_testing()
 #    lorentziandip_testing()
 #    lorentziandip_testing2()
 #    lorentzianpeak_testing2()
-#    double_gaussian_testing()
-#    double_gaussian_odmr_testing()
+
 #    double_lorentzdip_testing()
 #    double_lorentzdip_testing2()
 #    double_lorentzpeak_testing2()
