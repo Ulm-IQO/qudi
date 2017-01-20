@@ -29,7 +29,7 @@ from lmfit.models import Model, GaussianModel, ConstantModel
 from lmfit import Parameters
 
 from scipy.interpolate import InterpolatedUnivariateSpline
-
+from scipy.ndimage import filters
 
 ############################################################################
 #                                                                          #
@@ -137,10 +137,121 @@ def make_gausslinearoffset_model(self, prefix=None):
     linear_model, params = self.make_linear_model(prefix)
     gauss_model, params = self.make_gauss_model(prefix)
 
-    gauss_linear_offset =  gauss_model + linear_model
+    gauss_linear_offset = gauss_model + linear_model
     params = gauss_linear_offset.make_params()
 
     return gauss_linear_offset, params
+
+################################################################################
+#                                                                              #
+#                    1D Gaussian Peak with offset fitting                      #
+#                                                                              #
+################################################################################
+
+def estimate_gaussoffsetpeak(self, x_axis, data, params):
+    """ Provides a gauss offset peak estimator.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+        Explanation of the return parameter:
+            int error: error code (0:OK, -1:error)
+            Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # If the estimator is not good enough one can start improvement with
+    # a convolution
+
+    # auxiliary variables
+    stepsize = abs(x_axis[1] - x_axis[0])
+    n_steps = len(x_axis)
+
+    # Smooth the provided data, so that noise fluctuations will not disturb the
+    # parameter estimation. This value performs the best in many scenarios:
+    std_dev = 2
+    data_smoothed = filters.gaussian_filter1d(data, std_dev)
+
+    # Define constraints:
+    # maximal and minimal the length of the given array to the right and to the
+    # left:
+    center_min = (x_axis[0]) - n_steps * stepsize
+    center_max = (x_axis[-1]) + n_steps * stepsize
+    ampl_min = 0
+    sigma_min = stepsize
+    sigma_max = 3 * (x_axis[-1] - x_axis[0])
+
+    # set parameters:
+    offset = data_smoothed.min()
+    params['offset'].set(value=offset)
+
+    # it is more reliable to select the maximal value rather then
+    # calculating the first moment of the gaussian distribution (which is the
+    # mean value), since it is unreliable if the distribution begins or ends at
+    # the edges of the data (but it helps a lot for standard deviation):
+    mean_val_calc = np.sum(x_axis*data_smoothed) / np.sum(data_smoothed)
+    params['center'].set(value=x_axis[np.argmax(data_smoothed)],
+                         min=center_min, max=center_max)
+
+    # calculate the second moment of the gaussian distribution:
+    #   int (x^2 * f(x) dx) :
+    mom2 = np.sum((x_axis)**2 * data_smoothed) / np.sum(data_smoothed)
+
+    # and use the standard formula to obtain the standard deviation:
+    #   sigma^2 = int( (x - mean)^2 f(x) dx ) = int (x^2 * f(x) dx) - mean^2
+
+    # If the mean is situated at the edges of the distribution then this
+    # procedure performs better then setting the initial value for sigma to
+    # 1/3 of the length of the distribution since the calculated value for the
+    # mean is then higher, which will decrease eventually the initial value for
+    # sigma. But if the peak values is within the distribution the standard
+    # deviation formula performs even better:
+    params['sigma'].set(value=np.sqrt(abs(mom2 - mean_val_calc**2)),
+                        min=sigma_min, max=sigma_max)
+    # params['sigma'].set(value=(x_axis.max() - x_axis.min()) / 3.)
+
+    # Do not set the maximal amplitude value based on the distribution, since
+    # the fit will fail if the peak is at the edges or beyond the range of the
+    # x values.
+    params['amplitude'].set(value=data_smoothed.max()-data_smoothed.min(),
+                            min=ampl_min)
+
+    return error, params
+
+def make_gaussoffsetpeak_fit(self, x_axis, data, add_params=None):
+    """ Perform a 1D gaussian peak fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    mod_final, params = self.make_gaussoffset_model()
+
+    error, params = self.estimate_gaussoffsetpeak(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = mod_final.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The 1D gaussian peak fit did not work. Error '
+                       'message: {0}\n'.format(result.message))
+
+    return result
+
 
 ################################################################################
 #                                                                              #
@@ -173,6 +284,12 @@ def make_multiplegaussoffset_model(self, no_of_functions=1):
     params = multi_gauss_model.make_params()
 
     return multi_gauss_model, params
+
+################################################################################
+################################################################################
+#               OLD STUFF FROM HERE
+
+
 
 
 def make_gaussian_fit(self, x_axis, data, add_params=None, estimator="confocalpeak"):
