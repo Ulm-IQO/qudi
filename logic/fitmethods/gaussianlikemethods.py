@@ -134,6 +134,8 @@ def make_gausslinearoffset_model(self, prefix=None):
                    the method make_gauss_model.
     """
 
+    # Note that the offset parameter comes here from the linear model and not
+    # from the gauss model.
     linear_model, params = self.make_linear_model(prefix)
     gauss_model, params = self.make_gauss_model(prefix)
 
@@ -141,6 +143,74 @@ def make_gausslinearoffset_model(self, prefix=None):
     params = gauss_linear_offset.make_params()
 
     return gauss_linear_offset, params
+
+def estimate_gausspeaklinearoffset(self, x_axis, data, params):
+    """ Provides a gauss peak estimator with a linear changing offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+        Explanation of the return parameter:
+            int error: error code (0:OK, -1:error)
+            Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # try at first a fit with the ordinary gauss function
+    res_ordinary_gauss = self.make_gaussoffsetpeak_fit(x_axis=x_axis, data=data)
+
+    # subtract the result and perform again a linear fit:
+    data_subtracted = data - res_ordinary_gauss.best_fit
+
+    res_linear = self.make_linear_fit(x_axis=x_axis, data=data_subtracted)
+
+    # this way works much better than performing at first a linear fit,
+    # subtracting the fit and make an ordinary gaussian fit. Especially for a
+    # peak at the borders, this method is much more beneficial.
+
+    # assign the obtained values for the initial fit:
+    params['offset'] = res_ordinary_gauss.params['offset']
+    params['center'] = res_ordinary_gauss.params['center']
+    params['amplitude'] = res_ordinary_gauss.params['amplitude']
+    params['sigma'] = res_ordinary_gauss.params['sigma']
+    params['slope'] = res_linear.params['slope']
+
+    return error, params
+
+
+def make_gausspeaklinearoffset_fit(self, x_axis, data, add_params=None):
+    """ Perform a 1D gaussian peak fit with linear offset on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    mod_final, params = self.make_gausslinearoffset_model()
+
+    error, params = self.estimate_gausspeaklinearoffset(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = mod_final.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The 1D gaussian peak fit did not work. Error '
+                       'message: {0}\n'.format(result.message))
+
+    return result
 
 ################################################################################
 #                                                                              #

@@ -1018,6 +1018,35 @@ def gaussianlinearoffset_testing():
     plt.show()
 #    print(result.fit_report())
 
+def gaussianlinearoffset_testing2():
+    """ Test the implemented Gaussian peak with linear offset fit. """
+
+    x_axis = np.linspace(0, 5, 30)
+
+    mod_final,params = qudi_fitting.make_gaussianwithslope_model()
+
+    slope = -10000
+    amplitude = 100000
+    center = 6
+    sigma = 0.62863
+    offset = 100
+
+    data_noisy=mod_final.eval(x=x_axis, slope=slope, amplitude=amplitude,
+                              center=center, sigma=sigma, offset=offset) + \
+                              10000 * abs(np.random.normal(size=x_axis.shape))
+
+    result=qudi_fitting.make_gausspeaklinearoffset_fit(x_axis=x_axis, data=data_noisy)
+
+    plt.figure()
+    plt.plot(x_axis, data_noisy, label="data")
+    plt.plot(x_axis, result.init_fit,'-g', label='init')
+    plt.plot(x_axis, result.best_fit,'-r', label='fit')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Counts (#)')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    print(result.fit_report())
 
 def gaussianlinearoffset_testing_data():
 
