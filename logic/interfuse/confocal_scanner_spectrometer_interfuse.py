@@ -121,9 +121,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
             myrange = [-10.,10.]
 
         self._scanner_hw.set_voltage_range(myrange=myrange)
-
         return 0
-
 
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -150,11 +148,12 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
-
         return 0
 
+    def get_scanner_axes(self):
+        """ Pass through scanner axes. """
+        return self._scanner_hw.get_scanner_axes()
 
     def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
@@ -169,7 +168,6 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """
 
         self._scanner_hw.scanner_set_position(x=x, y=y, z=z, a=a)
-
         return 0
 
     def get_scanner_position(self):
