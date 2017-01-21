@@ -75,6 +75,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigSettingsUpdated = QtCore.Signal(list, str, float, dict, str)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
+    sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -737,6 +738,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
         ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+        dig_chnl_names = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
         if self.digital_channels != dig_channels or self.analog_channels != ana_channels:
             self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in number of '
                            'analog and digital channels between logic ({1}, {2}) and '
@@ -825,6 +827,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             if not sequence_sampling_in_progress:
                 self.unlock()
                 self.sigSampleEnsembleComplete.emit(ensemble_name)
+            self.sigDirectWriteEnsemble.emit(ensemble_name, analog_samples, digital_samples)
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble

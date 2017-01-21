@@ -257,6 +257,8 @@ class PulsedMasterLogic(GenericLogic):
             self.predefined_sequences_updated, QtCore.Qt.QueuedConnection)
         self._generator_logic.sigPredefinedSequenceGenerated.connect(
             self.predefined_sequence_generated, QtCore.Qt.QueuedConnection)
+        self._generator_logic.sigDirectWriteEnsemble.connect(self.direct_write_ensemble,
+                                                             QtCore.Qt.QueuedConnection)
 
         self.status_dict = OrderedDict()
         self.status_dict['sauplo_busy'] = False
@@ -342,6 +344,7 @@ class PulsedMasterLogic(GenericLogic):
         self._generator_logic.sigSettingsUpdated.disconnect()
         self._generator_logic.sigPredefinedSequencesUpdated.disconnect()
         self._generator_logic.sigPredefinedSequenceGenerated.disconnect()
+        self._generator_logic.sigDirectWriteEnsemble.disconnect()
         return
 
     #######################################################################
@@ -1025,6 +1028,17 @@ class PulsedMasterLogic(GenericLogic):
                 self.invoke_settings = invoke_settings
         self.status_dict['sampling_busy'] = True
         self.sigSampleBlockEnsemble.emit(ensemble_name, write_to_file, write_chunkwise)
+        return
+
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
+        @return:
+        """
+
         return
 
     def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
