@@ -1733,7 +1733,7 @@ def lorentziandip_testing():
     """ Test the lorentzian estimator. """
     x_axis = np.linspace(800, 1000, 101)
 
-    mod, params = qudi_fitting.make_lorentzianoffset_model()
+    mod, params = qudi_fitting.make_lorentzoffset_model()
     print('Parameters of the model',mod.param_names)
     params = Parameters()
 
@@ -1813,7 +1813,7 @@ def lorentziandip_testing():
     stepsize = x_axis[1]-x_axis[0]
     n_steps = len(x_axis)
 
-    mod, params = qudi_fitting.make_lorentzianoffset_model()
+    mod, params = qudi_fitting.make_lorentzoffset_model()
 
     params['amplitude'].set(value=amplitude, max=-1e-12)
     params['sigma'].set(value=sigma, min=stepsize/2,
@@ -1852,19 +1852,19 @@ def lorentziandip_testing2():
     """ Test the lorentzian fit directy with simulated data. """
     x_axis = np.linspace(800, 1000, 101)
 
-    mod, params = qudi_fitting.make_lorentzianoffset_model()
+    mod, params = qudi_fitting.make_lorentzoffset_model()
     print('Parameters of the model',mod.param_names)
     params = Parameters()
 
     params.add('amplitude',value=-10.)
     params.add('center',value=920.)
     params.add('sigma',value=5)
-    params.add('offset', value=10.)
+    params.add('offset', value=20.)
 
     data_nice = mod.eval(x=x_axis,params=params)
-    data_noisy = data_nice + 6.0*np.random.normal(size=x_axis.shape)
+    data_noisy = data_nice + 2.0*np.random.normal(size=x_axis.shape)
 
-    result = qudi_fitting.make_lorentzianoffsetdip_fit(x_axis=x_axis, data=data_noisy)
+    result = qudi_fitting.make_lorentzoffsetdip_fit(x_axis=x_axis, data=data_noisy)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -1874,11 +1874,13 @@ def lorentziandip_testing2():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
+    print(result.fit_report())
+
 def lorentzianpeak_testing2():
     """ Test the lorentzian fit directy with simulated data. """
     x_axis = np.linspace(800, 1000, 101)
 
-    mod, params = qudi_fitting.make_lorentzianoffset_model()
+    mod, params = qudi_fitting.make_lorentzoffset_model()
     print('Parameters of the model',mod.param_names)
     params = Parameters()
 
@@ -1890,7 +1892,7 @@ def lorentzianpeak_testing2():
     data_nice = mod.eval(x=x_axis,params=params)
     data_noisy = data_nice + 5.0*np.random.normal(size=x_axis.shape)
 
-    result = qudi_fitting.make_lorentzianoffsetpeak_fit(x_axis=x_axis, data=data_noisy)
+    result = qudi_fitting.make_lorentzoffsetpeak_fit(x_axis=x_axis, data=data_noisy)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -2002,7 +2004,7 @@ def double_gaussian_odmr_testing():
         num_points=int((stop-start)/2)
         x = np.linspace(start, stop, num_points)
 
-        mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_lor=2)
+        mod,params = qudi_fitting.make_multiplelorentz_model(no_of_lor=2)
 #            print('Parameters of the model',mod.param_names)
 
         p=Parameters()
@@ -4081,11 +4083,11 @@ if __name__ == "__main__":
 #    two_gaussian_peak_testing()
 #    two_gaussian_peak_testing2()
 #    two_gaussian_dip_testing2()
-    gaussian_twoD_testing()
+#    gaussian_twoD_testing()
 #    double_gaussian_odmr_testing()
 
 #    lorentziandip_testing()
-#    lorentziandip_testing2()
+    lorentziandip_testing2()
 #    lorentzianpeak_testing2()
 
 #    double_lorentzdip_testing()

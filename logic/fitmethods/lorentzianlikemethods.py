@@ -154,6 +154,14 @@ def make_lorentz_model(self, prefix=None):
     full_lorentz_model = amplitude_model * lorentz_model
     params = full_lorentz_model.make_params()
 
+    # introduces a new parameter, which is solely depending on others and which
+    # will be not optimized:
+    full_lorentz_model.set_param_hint('fwhm',
+                                      expr="2*{0}sigma".format(full_lorentz_model.prefix))
+    full_lorentz_model.set_param_hint('contrast',
+                                      expr="({0}amplitude/offset)*100".format(full_lorentz_model.prefix))
+
+
     return full_lorentz_model, params
 
 
