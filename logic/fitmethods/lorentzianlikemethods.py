@@ -156,11 +156,14 @@ def make_lorentz_model(self, prefix=None):
 
     # introduces a new parameter, which is solely depending on others and which
     # will be not optimized:
-    full_lorentz_model.set_param_hint('fwhm',
-                                      expr="2*{0}sigma".format(full_lorentz_model.prefix))
-    full_lorentz_model.set_param_hint('contrast',
-                                      expr="({0}amplitude/offset)*100".format(full_lorentz_model.prefix))
-
+    if prefix is None:
+        prefix = ''
+    full_lorentz_model.set_param_hint('{0!s}fwhm'.format(prefix),
+                                      expr="2*{0!s}sigma".format(prefix))
+    # full_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
+    #                                   expr='(-100.0)')
+                                      # expr='({0!s}amplitude/offset)*100'.format(prefix))
+    # params.add('{0}contrast'.format(prefix), expr='({0!s}amplitude/offset)*100'.format(prefix))
 
     return full_lorentz_model, params
 
@@ -187,6 +190,13 @@ def make_lorentzoffset_model(self, prefix=None):
     constant_model, params = self.make_constant_model(prefix=prefix)
 
     lorentz_offset_model = lorentz_model + constant_model
+
+    if prefix is None:
+        prefix = ''
+
+    lorentz_offset_model.set_param_hint('{0}contrast'.format(prefix),
+                                      expr='({0}amplitude/offset)*100'.format(prefix))
+
     params = lorentz_offset_model.make_params()
 
     return lorentz_offset_model, params
@@ -212,13 +222,23 @@ def make_multiplelorentzoffset_model(self, no_of_functions=1):
     if no_of_functions == 1:
         multi_lorentz_model, params = self.make_lorentzoffset_model()
     else:
-        multi_lorentz_model, params = self.make_lorentz_model(prefix='l0_')
-
-        for ii in range(1, no_of_functions):
-            multi_lorentz_model += self.make_lorentz_model(prefix='l{0:d}_'.format(ii))[0]
+        prefix = 'l0_'
+        multi_lorentz_model, params = self.make_lorentz_model(prefix=prefix)
 
         constant_model, params = self.make_constant_model()
         multi_lorentz_model = multi_lorentz_model + constant_model
+
+        multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
+                                      expr='({0}amplitude/offset)*100'.format(prefix))
+
+
+        for ii in range(1, no_of_functions):
+            prefix = 'l{0:d}_'.format(ii)
+            multi_lorentz_model += self.make_lorentz_model(prefix=prefix)[0]
+            multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
+                                               expr='({0}amplitude/offset)*100'.format(prefix))
+
+
 
     params = multi_lorentz_model.make_params()
 
