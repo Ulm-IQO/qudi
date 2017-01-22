@@ -1621,7 +1621,7 @@ def double_lorentzdip_testing2():
            ncol=2, mode="expand", borderaxespad=0.)
 
     plt.show()
-#    print(result.fit_report()
+    print(result.fit_report())
 
 
 def double_lorentzpeak_testing2():
@@ -4087,11 +4087,11 @@ if __name__ == "__main__":
 #    double_gaussian_odmr_testing()
 
 #    lorentziandip_testing()
-    lorentziandip_testing2()
+#    lorentziandip_testing2()
 #    lorentzianpeak_testing2()
 
 #    double_lorentzdip_testing()
-#    double_lorentzdip_testing2()
+    double_lorentzdip_testing2()
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    N14_testing()
