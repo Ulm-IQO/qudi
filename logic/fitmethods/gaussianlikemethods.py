@@ -84,6 +84,12 @@ def make_gauss_model(self, prefix=None):
 
     full_gaussian_model = amplitude_model * gaussian_model
 
+
+    if prefix is None:
+        prefix = ''
+    full_gaussian_model.set_param_hint('{0!s}fwhm'.format(prefix),
+                                       expr="2.3548200450309493*{0}sigma".format(prefix))
+
     params = full_gaussian_model.make_params()
 
     return full_gaussian_model, params
@@ -111,6 +117,13 @@ def make_gaussoffset_model(self, prefix=None):
     constant_model, params = self.make_constant_model(prefix=prefix)
 
     gauss_offset_model = gauss_model + constant_model
+
+    if prefix is None:
+        prefix = ''
+
+    gauss_offset_model.set_param_hint('{0}contrast'.format(prefix),
+                                      expr='({0}amplitude/offset)*100'.format(prefix))
+
     params = gauss_offset_model.make_params()
 
     return gauss_offset_model, params
@@ -134,12 +147,12 @@ def make_gausslinearoffset_model(self, prefix=None):
                    the method make_gauss_model.
     """
 
-    # Note that the offset parameter comes here from the linear model and not
-    # from the gauss model.
-    linear_model, params = self.make_linear_model(prefix)
-    gauss_model, params = self.make_gauss_model(prefix)
+    # Note that the offset parameter comes here from the gauss model and not
+    # from the slope model.
+    slope_model, params = self.make_slope_model(prefix)
+    gauss_model, params = self.make_gaussoffset_model(prefix)
 
-    gauss_linear_offset = gauss_model + linear_model
+    gauss_linear_offset = gauss_model + slope_model
     params = gauss_linear_offset.make_params()
 
     return gauss_linear_offset, params
@@ -412,13 +425,23 @@ def make_multiplegaussoffset_model(self, no_of_functions=1):
     if no_of_functions == 1:
         multi_gauss_model, params = self.make_gaussoffset_model()
     else:
-        multi_gauss_model, params = self.make_gauss_model(prefix='g0_')
 
-        for ii in range(1, no_of_functions):
-            multi_gauss_model += self.make_gauss_model(prefix='g{0:d}_'.format(ii))[0]
+        prefix = 'g0_'
+        multi_gauss_model, params = self.make_gauss_model(prefix=prefix)
 
         constant_model, params = self.make_constant_model()
         multi_gauss_model = multi_gauss_model + constant_model
+
+        multi_gauss_model.set_param_hint('{0}contrast'.format(prefix),
+                                         expr='({0}amplitude/offset)*100'.format(prefix))
+
+        for ii in range(1, no_of_functions):
+
+            prefix = 'g{0:d}_'.format(ii)
+            multi_gauss_model += self.make_gauss_model(prefix=prefix)[0]
+            multi_gauss_model.set_param_hint('{0}contrast'.format(prefix),
+                                             expr='({0}amplitude/offset)*100'.format(prefix))
+
 
     params = multi_gauss_model.make_params()
 
