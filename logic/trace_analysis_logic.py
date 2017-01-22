@@ -360,8 +360,8 @@ class TraceAnalysisLogic(GenericLogic):
             update_dict['amplitude'] = {'min': 0,          'max': np.inf,     'value': amplitude}
 
             result = self._fit_logic.make_gaussoffsetpeak_fit(x_axis=axis,
-                                                              data=data,
-                                                              add_params=update_dict)
+                                                              data=data)
+                                                              #add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
