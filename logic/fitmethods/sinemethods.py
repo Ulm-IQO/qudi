@@ -244,7 +244,7 @@ def estimate_sine(self, x_axis, data, params):
     # if at least two identical values are in the array, then the difference is of course zero,
     # catch that case.
     for tries in range(len(diff_array)):
-        if np.isclose(min_x_diff, 0.0):
+        if np.isclose(min_x_diff, 0.0, atol=1e-12):
             index = np.argmin(diff_array)
             diff_array = np.delete(diff_array, index)
             min_x_diff = diff_array.min()
@@ -310,9 +310,9 @@ def make_sine_fit(self, x_axis, data, add_params=None):
     try:
         result = sine.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sine fit did not work.')
         result = sine.fit(data, x=x_axis, params=params)
-        print(result.message)
+        logger.error('The sine fit did not work.\n'
+                     'Error message: {0}\n'.format(result.message))
 
     return result
 
