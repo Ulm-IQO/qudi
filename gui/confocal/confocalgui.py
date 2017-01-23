@@ -262,12 +262,17 @@ class ConfocalGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        # always use first channel on startup, can be changed afterwards
+        self.xy_channel = 0
+        self.depth_channel = 0
+        self.opt_channel = 0
+
         # Get the image for the display from the logic. Transpose the received
         # matrix to get the proper scan. The graphig widget displays vector-
         # wise the lines and the lines are normally columns, but in our
         # measurement we scan rows per row. That's why it has to be transposed.
-        arr01 = self._scanning_logic.xy_image[:, :, 3].transpose()
-        arr02 = self._scanning_logic.depth_image[:, :, 3].transpose()
+        arr01 = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
+        arr02 = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
@@ -301,7 +306,8 @@ class ConfocalGui(GUIBase):
         #               Configuration of the optimizer tab                #
         ###################################################################
         # Load the image for the optimizer tab
-        self.xy_refocus_image = pg.ImageItem(self._optimizer_logic.xy_refocus_image[:, :, 3].transpose())
+        self.xy_refocus_image = pg.ImageItem(
+            self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel].transpose())
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
                 self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
@@ -312,7 +318,7 @@ class ConfocalGui(GUIBase):
         )
         self.depth_refocus_image = pg.PlotDataItem(
             x=self._optimizer_logic._zimage_Z_values,
-            y=self._optimizer_logic.z_refocus_line,
+            y=self._optimizer_logic.z_refocus_line[:, self._optimizer_logic.opt_channel],
             pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
             symbol='o',
             symbolPen=palette.c1,
@@ -384,7 +390,7 @@ class ConfocalGui(GUIBase):
                 ini_pos_y_crosshair - self._optimizer_logic.refocus_XY_size / 2
             ],
             # [len(arr01) / 20, len(arr01) / 20],
-            [self._optimizer_logic.refocus_XY_size,self._optimizer_logic.refocus_XY_size],
+            [self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size],
             pen={'color': "F0F", 'width': 1},
             removable=True
         )
@@ -404,10 +410,16 @@ class ConfocalGui(GUIBase):
         self.roi_xy.sigUserRegionUpdate.connect(self.update_from_roi_xy)
         self.roi_xy.sigRegionChangeFinished.connect(self.roi_xy_bounds_check)
 
-
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
         self._mw.xy_ViewWidget.addItem(self.vline_xy)
+
+        # Set up and connect xy channel combobox
+        scan_channels = self._scanning_logic.get_scanner_count_channels()
+        for n, ch in enumerate(scan_channels):
+            self._mw.xy_channel_ComboBox.addItem(str(ch), n)
+
+        self._mw.xy_channel_ComboBox.activated.connect(self.update_xy_channel)
 
         # Create Region of Interest for depth image and add to xy Image Widget:
         self.roi_depth = CrossROI(
@@ -444,6 +456,13 @@ class ConfocalGui(GUIBase):
         # add the configured crosshair to the depth Widget:
         self._mw.depth_ViewWidget.addItem(self.hline_depth)
         self._mw.depth_ViewWidget.addItem(self.vline_depth)
+
+        # Set up and connect depth channel combobox
+        scan_channels = self._scanning_logic.get_scanner_count_channels()
+        for n, ch in enumerate(scan_channels):
+            self._mw.depth_channel_ComboBox.addItem(str(ch), n)
+
+        self._mw.depth_channel_ComboBox.activated.connect(self.update_depth_channel)
 
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming
@@ -636,16 +655,28 @@ class ConfocalGui(GUIBase):
         ###################################################################
 
         self._scan_xy_single_icon = QtGui.QIcon()
-        self._scan_xy_single_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-start.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_xy_single_icon.addPixmap(
+            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-start.png"),
+            QtGui.QIcon.Normal,
+            QtGui.QIcon.Off)
 
         self._scan_depth_single_icon = QtGui.QIcon()
-        self._scan_depth_single_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-start.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_depth_single_icon.addPixmap(
+            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-start.png"),
+            QtGui.QIcon.Normal,
+            QtGui.QIcon.Off)
 
         self._scan_xy_loop_icon = QtGui.QIcon()
-        self._scan_xy_loop_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-loop.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_xy_loop_icon.addPixmap(
+            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-loop.png"),
+            QtGui.QIcon.Normal,
+            QtGui.QIcon.Off)
 
         self._scan_depth_loop_icon = QtGui.QIcon()
-        self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-loop.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_depth_loop_icon.addPixmap(
+            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-loop.png"),
+            QtGui.QIcon.Normal,
+            QtGui.QIcon.Off)
 
         #################################################################
         #           Connect the colorbar and their actions              #
@@ -1443,6 +1474,14 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
+    def update_xy_channel(self, index):
+        self.xy_channel = int(self._mw.xy_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
+        self.refresh_xy_image()
+
+    def update_depth_channel(self, index):
+        self.depth_channel = int(self._mw.depth_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
+        self.refresh_depth_image()
+
     def shortcut_to_xy_cb_manual(self):
         """Someone edited the absolute counts range for the xy colour bar, better update."""
         self._mw.xy_cb_manual_RadioButton.setChecked(True)
@@ -1524,7 +1563,9 @@ class ConfocalGui(GUIBase):
         self.xy_image.getViewBox().updateAutoRange()
         self.adjust_aspect_roi_xy()
 
-        xy_image_data = np.rot90(self._scanning_logic.xy_image[:, :, 3].transpose(), self.xy_image_orientation[0])
+        xy_image_data = np.rot90(
+            self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose(),
+            self.xy_image_orientation[0])
 
         cb_range = self.get_xy_cb_range()
 
@@ -1546,7 +1587,9 @@ class ConfocalGui(GUIBase):
         self.depth_image.getViewBox().enableAutoRange()
         self.adjust_aspect_roi_depth()
 
-        depth_image_data = np.rot90(self._scanning_logic.depth_image[:, :, 3].transpose(), self.depth_image_orientation[0])
+        depth_image_data = np.rot90(
+            self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose(),
+            self.depth_image_orientation[0])
         cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -1561,7 +1604,7 @@ class ConfocalGui(GUIBase):
         """Refreshes the xy image, the crosshair and the colorbar. """
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
-        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3].transpose()
+        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel].transpose()
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
         if np.max(xy_optimizer_image) != 0:
@@ -1586,8 +1629,14 @@ class ConfocalGui(GUIBase):
         self.hLine.setValue(self._optimizer_logic.optim_pos_y)
         ##########
         # The depth optimization
-        self.depth_refocus_image.setData(self._optimizer_logic._zimage_Z_values, self._optimizer_logic.z_refocus_line)
-        self.depth_refocus_fit_image.setData(self._optimizer_logic._fit_zimage_Z_values, self._optimizer_logic.z_fit_data)
+        # data from chosen channel
+        self.depth_refocus_image.setData(
+            self._optimizer_logic._zimage_Z_values,
+            self._optimizer_logic.z_refocus_line[:, self._optimizer_logic.opt_channel])
+        # fit made from the data
+        self.depth_refocus_fit_image.setData(
+            self._optimizer_logic._fit_zimage_Z_values,
+            self._optimizer_logic.z_fit_data)
         ##########
         # Set the optimized position label
         self._mw.refocus_position_label.setText(
