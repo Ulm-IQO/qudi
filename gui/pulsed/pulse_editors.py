@@ -10,12 +10,43 @@ from logic.pulse_objects import PulseSequence
 from logic.sampling_functions import SamplingFunctions
 
 from .spinbox_delegate import SpinBoxDelegate
-from .doublespinbox_delegate import DoubleSpinBoxDelegate
+# from .doublespinbox_delegate import DoubleSpinBoxDelegate
+from .scientificspinbox_delegate import ScienDSpinBoxDelegate
 from .combobox_delegate import ComboBoxDelegate
 from .checkbox_delegate import CheckBoxDelegate
 
 
 class BlockEditor:
+    """
+    The QTableWidget has already an underlying model, where the data are saved.
+    The view widgets are handeled by the delegates.
+
+    Access to the view object:
+
+    Each element (in the table) of a QTableWidget is called a QTableItemWidget,
+    where the reference to each item can be obtained via
+
+        item = be_widget.item(row, column)
+
+    This is in general the view object, which will be seen on the editor. The
+    kind of object can be changed by modifying the createEditor method of the
+    delegate.
+    To get the reference to the delegated (parent) object use
+        c = be_widget.itemDelegate(index)
+
+    Access to the model object:
+    To access the model object, i.e. the object where the actual data is stored,
+    a reference to the model needs to be obtained:
+
+        model = be_widget.model()
+
+    and the index object to the data, which holds the reference to get the data,
+    will be obtained by selecting the proper row and column number (starting
+    from 0):
+
+        index = model.index(row, column)
+
+    """
     def __init__(self, block_editor_widget):
         self.be_widget = block_editor_widget
         self.parameter_dict = OrderedDict()
@@ -29,7 +60,10 @@ class BlockEditor:
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
 
-        self.be_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+        # this behaviour should be customized for the combobox, since you need
+        # 3 clicks in the default settings to open it.
+        # self.be_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+
         return
 
     def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
@@ -117,7 +151,7 @@ class BlockEditor:
                     self.be_widget.setColumnWidth(column_count, 100)
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self.be_widget, item_dict)
+                    delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
                     self.be_widget.setItemDelegateForColumn(column_count, delegate)
                     column_count += 1
 
@@ -149,7 +183,7 @@ class BlockEditor:
             if item_dict['type'] is bool:
                 delegate = CheckBoxDelegate(self.be_widget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self.be_widget, item_dict)
+                delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
             self.be_widget.setItemDelegateForColumn(num_of_columns + column, delegate)
 
             # initialize the whole row with default values:
@@ -484,7 +518,7 @@ class BlockOrganizer:
             elif item_dict['type'] is int:
                 delegate = SpinBoxDelegate(self.bo_widget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self.bo_widget, item_dict)
+                delegate = ScienDSpinBoxDelegate(self.bo_widget, item_dict)
             self.bo_widget.setItemDelegateForColumn(1+column, delegate)
 
         self.initialize_cells(start_row=0, stop_row=self.bo_widget.rowCount())
@@ -725,7 +759,7 @@ class SequenceEditor:
             elif item_dict['type'] is int:
                 delegate = SpinBoxDelegate(self.se_widget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self.se_widget, item_dict)
+                delegate = ScienDSpinBoxDelegate(self.se_widget, item_dict)
             self.se_widget.setItemDelegateForColumn(1+column, delegate)
 
         self.initialize_cells(start_row=0, stop_row=self.se_widget.rowCount())
