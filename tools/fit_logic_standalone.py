@@ -2239,7 +2239,7 @@ def sine_testing2():
 
     mod, params = qudi_fitting.make_sineoffset_model()
 
-    params['phase'].value =  np.random.uniform()*2*np.pi
+    params['phase'].value = np.pi/2 # np.random.uniform()*2*np.pi
     params['frequency'].value = 0.01
     params['amplitude'].value = 1.5
     params['offset'].value = 0.4
@@ -2261,15 +2261,22 @@ def sine_testing2():
 #        diff_array = np.delete(diff_array, index)
 #        print('diff_array',diff_array)
 
+    update_dict = {}
+    update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
 
-    result = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy)
-
+    result = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy,
+                                              add_params=update_dict)
 
 
     plt.figure()
-    plt.plot(x_axis, data)
-    plt.plot(x_axis, data_noisy)
-    plt.plot(x_axis, result.best_fit)
+#    plt.plot(x_axis, data, 'simulate data')
+    plt.plot(x_axis, data_noisy, label='noisy data')
+    plt.plot(x_axis, result.init_fit, label='initial data')
+    plt.plot(x_axis, result.best_fit, label='fit data')
+    plt.xlabel('time')
+    plt.ylabel('signal')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
 
@@ -4091,7 +4098,7 @@ if __name__ == "__main__":
 #    lorentzianpeak_testing2()
 
 #    double_lorentzdip_testing()
-    double_lorentzdip_testing2()
+#    double_lorentzdip_testing2()
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    N14_testing()
@@ -4102,7 +4109,7 @@ if __name__ == "__main__":
 #    N15_testing2()
 #    powerfluorescence_testing()
 #    sine_testing()
-#    sine_testing2()
+    sine_testing2()
 #    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
 #    poissonian_testing()
