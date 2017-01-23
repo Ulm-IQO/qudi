@@ -710,21 +710,6 @@ class PulsedMasterLogic(GenericLogic):
             self.sigUploadAsset.emit(ensemble_name)
         return
 
-    def upload_ensemble_finished(self, ensemble_name):
-        """
-
-        @param ensemble_name:
-        @return:
-        """
-        if self.status_dict['sauplo_ensemble_busy']:
-            self.load_asset_into_channels(ensemble_name)
-        self.log.debug('Ensemble "{0}" uploaded to pulse generator device!'.format(ensemble_name))
-        self.status_dict['upload_busy'] = False
-        if self.status_dict['saup_ensemble_busy']:
-            self.status_dict['saup_ensemble_busy'] = False
-            self.sigSaUpEnsembleComplete.emit(ensemble_name)
-        return
-
     def upload_sequence(self, sequence_name, sequence_params=None):
         """
 
@@ -743,19 +728,28 @@ class PulsedMasterLogic(GenericLogic):
             self.sigUploadAsset.emit(sequence_name)
         return
 
-    def upload_sequence_finished(self, sequence_name):
+    def upload_asset_finished(self, asset_name):
         """
 
-        @param sequence_name:
+        @param asset_name:
         @return:
         """
-        if self.status_dict['sauplo_sequence_busy']:
-            self.load_asset_into_channels(sequence_name)
-        self.log.debug('Sequence "{0}" uploaded to pulse generator device!'.format(sequence_name))
-        self.status_dict['upload_busy'] = False
-        if self.status_dict['saup_sequence_busy']:
-            self.status_dict['saup_sequence_busy'] = False
-            self.sigSaUpSequenceComplete.emit(sequence_name)
+        if asset_name in self._generator_logic.saved_pulse_sequences:
+            if self.status_dict['sauplo_sequence_busy']:
+                self.load_asset_into_channels(asset_name)
+            self.log.debug('Sequence "{0}" uploaded to pulse generator device!'.format(asset_name))
+            self.status_dict['upload_busy'] = False
+            if self.status_dict['saup_sequence_busy']:
+                self.status_dict['saup_sequence_busy'] = False
+                self.sigSaUpSequenceComplete.emit(asset_name)
+        elif asset_name in self._generator_logic.saved_pulse_block_ensembles:
+            if self.status_dict['sauplo_ensemble_busy']:
+                self.load_asset_into_channels(asset_name)
+            self.log.debug('Ensemble "{0}" uploaded to pulse generator device!'.format(asset_name))
+            self.status_dict['upload_busy'] = False
+            if self.status_dict['saup_ensemble_busy']:
+                self.status_dict['saup_ensemble_busy'] = False
+                self.sigSaUpEnsembleComplete.emit(asset_name)
         return
 
     def uploaded_assets_updated(self, asset_names_list):
@@ -1106,7 +1100,7 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        self.upload_asset(ensemble_name)
+        self.upload_ensemble(ensemble_name)
         self.log.debug('Sampling of ensemble "{0}" finished!'.format(ensemble_name))
         if self.status_dict['saup_ensemble_busy'] or self.status_dict['sauplo_ensemble_busy']:
             self.status_dict['sampling_busy'] = False
@@ -1117,7 +1111,7 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        self.upload_asset(sequence_name)
+        self.upload_sequence(sequence_name)
         self.log.debug('Sampling of sequence "{0}" finished!'.format(sequence_name))
         self.status_dict['sampling_busy'] = False
         return
