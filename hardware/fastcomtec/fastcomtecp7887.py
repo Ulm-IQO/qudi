@@ -236,7 +236,7 @@ class FastComtec(Base, FastCounterInterface):
         return constraints
 
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0,SSR=None, preset=None, cycles=None):
         """ Configuration of the fast counter.
 
         @param float bin_width_s: Length of a single time bin in the time trace
@@ -253,9 +253,9 @@ class FastComtec(Base, FastCounterInterface):
         """
 
         binwidth_s = self.set_binwidth(bin_width_s)
-
+        self.length_ns = record_length_s
         no_of_bins = record_length_s / binwidth_s
-        self.set_length(no_of_bins)
+        self.set_length(no_of_bins,SSR=SSR, preset=preset, cycles=cycles)
         return (self.get_binwidth(), record_length_s, number_of_gates)
 
     def get_binwidth(self):
@@ -314,7 +314,7 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.Continue(0)
         return 0
 
-    def get_data_trace(self):
+    def get_data_trace(self, SSR=None):
         """
         Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
         The binning specified by calling configure() must be taken care of in this hardware class.
@@ -328,7 +328,23 @@ class FastComtec(Base, FastCounterInterface):
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         N = setting.range
-        data = np.empty((N,), dtype=np.uint32)
+
+        """ SSR is an optional variable to setup the fastcomtec and allow single-shot readout.
+        If this variable is selected, the data is an array of size 'range'.'cycles'. I.e. each
+        measurement of length 'range' is repeated 'cycles' number of times.
+        """
+        if SSR:
+            H = setting.cycles
+            data = np.empty((H, N / H), dtype=np.uint32)
+            #fname = str(time.localtime().tm_year) + str(time.localtime().tm_mon) + str(
+            #    time.localtime().tm_mday) + '_' + str(
+            #    time.localtime().tm_hour) + 'h' + str(time.localtime().tm_min) + 'm' + str(
+            #    time.localtime().tm_sec) + 's'
+            #np.savetxt(r'C://Users/Admin/Desktop/Programme/qudi-master/Data_SSR/SSR_' + fname, np.int64(data))
+
+        else:
+            data = np.empty((N,), dtype=np.uint32)
+
         self.dll.LVGetDat(data.ctypes.data, 0)
         #np.savetxt(np.int64(data))
         return np.int64(data)
@@ -390,17 +406,38 @@ class FastComtec(Base, FastCounterInterface):
         return self.MINIMAL_BINWIDTH*(2**new_bitshift)
 
     #TODO: Check such that only possible lengths are set.
-    def set_length(self, N):
+    def set_length(self, N, SSR=None, preset=None, cycles=None):
         """ Sets the length of the length of the actual measurement.
 
         @param int N: Length of the measurement
 
         @return float: Red out length of measurement
         """
-        cmd = 'RANGE={0}'.format(int(N))
+
+        width=self.get_binwidth()*1e9
+        cmd = 'RANGE={0}'.format(int(width*N))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd = 'roimax={0}'.format(int(N))
+        cmd = 'roimax={0}'.format(int(width*N))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
+        """ SSR is an optional variable to setup the fastcomtec and allow single-shot readout.
+        With this variable selected the range is set as usual, but sweep-preset and cycles
+        are also selected in the fastcomtec. A single measurement is repeated 'swpreset' number
+        of times and all photons summed together before a new measurement is started on a new
+        row of fastcomtec data. In total 'cycles' number of rows are measured.
+        """
+        if SSR:
+            cmd = 'swpreset={0}'.format(preset)
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            cmd = 'cycles={0}'.format(cycles)
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        else:
+            cmd = 'swpreset={0}'.format(10000000)
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            cmd = 'cycles={0}'.format(1)
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
+
         return self.get_length()
 
     def get_length(self):
@@ -481,7 +518,8 @@ class FastComtec(Base, FastCounterInterface):
         data = self.get_data()
         fil = open(filename + '.asc', 'w')
         for i in laser_index:
-            for n in data[i:i+int(round(3000/(0.25*2**self.GetBitshift())))+int(round(1000/(0.25*2**self.GetBitshift())))]:
+            for n in data[i:i+int(round(3000/(self.MINIMAL_BINWIDTH*2**self.GetBitshift())))
+                    +int(round(1000/(self.MINIMAL_BINWIDTH*2**self.GetBitshift())))]:
                 fil.write('{0!s}\n'.format(n))
         fil.close()
 
