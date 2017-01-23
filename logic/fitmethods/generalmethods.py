@@ -130,7 +130,7 @@ def _substitute_params(self, initial_params, update_params=None):
                      'OrderedDict or dict! Correct that, the initial_params'
                      'will be returned.'.format(type(update_params)))
 
-        return initial_params
+    return initial_params
 
 def create_fit_string(self, result, model, units=None, decimal_digits_value_given=None,
                       decimal_digits_err_given=None):

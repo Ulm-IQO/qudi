@@ -249,7 +249,7 @@ class GatedCounterGui(GUIBase):
 
         if self._counter_logic.getState() == 'locked':
             self._trace1.setData(x=np.arange(0, self._counter_logic.get_count_length()),
-                                 y=self._counter_logic.countdata )
+                                 y=self._counter_logic.countdata[0] )
 
     def update_histogram(self):
         """ Update procedure for the histogram to display the new data. """

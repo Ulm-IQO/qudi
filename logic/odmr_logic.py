@@ -665,7 +665,6 @@ class ODMRLogic(GenericLogic):
             splitting_from_gui_config = 5.0  # in MHz
 
             params = self.fit_models['Double Lorentzian with fixed splitting'][1]
-            self.log.info(params)
 
             error, params = self._fit_logic.estimate_doublelorentzdipoffset(self._mw_frequency_list,
                                                                             self.ODMR_plot_y,

@@ -110,7 +110,7 @@ class TraceAnalysisLogic(GenericLogic):
         @return:
         """
 
-        self.hist_data = self.calculate_histogram(self._counter_logic.countdata,
+        self.hist_data = self.calculate_histogram(self._counter_logic.countdata[0],
                                                   self._hist_num_bins)
         self.sigHistogramUpdated.emit()
 
@@ -360,8 +360,8 @@ class TraceAnalysisLogic(GenericLogic):
             update_dict['amplitude'] = {'min': 0,          'max': np.inf,     'value': amplitude}
 
             result = self._fit_logic.make_gaussoffsetpeak_fit(x_axis=axis,
-                                                              data=data)
-                                                              #add_params=update_dict)
+                                                              data=data,
+                                                              add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
