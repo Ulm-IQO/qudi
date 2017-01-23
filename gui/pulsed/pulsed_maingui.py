@@ -666,8 +666,8 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.curr_sequence_del_PushButton.clicked.disconnect()
         self._sg.curr_sequence_load_PushButton.clicked.disconnect()
         # disconnect update signals from pulsed_master_logic
-        self._pulsed_master_logic.sigBlockEnsembleSampled.disconnect()
-        self._pulsed_master_logic.sigSequenceSampled.disconnect()
+        self._pulsed_master_logic.sigEnsembleSaUpComplete.disconnect()
+        self._pulsed_master_logic.sigSequenceSaUpComplete.disconnect()
         self._pulsed_master_logic.sigSavedPulseBlocksUpdated.disconnect()
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.disconnect()
         self._pulsed_master_logic.sigSavedSequencesUpdated.disconnect()
@@ -1079,7 +1079,7 @@ class PulsedMeasurementGui(GUIBase):
         sequence_name = self._sg.gen_sequence_ComboBox.currentText()
         # disable buttons
         self._sg.saup_sequence_PushButton.setEnabled(False)
-        self._pg.sauplo_sequence_PushButton.setEnabled(False)
+        self._sg.sauplo_sequence_PushButton.setEnabled(False)
         # Sample the sequence via logic module
         self._pulsed_master_logic.sample_sequence(sequence_name, False)
         return
@@ -1089,8 +1089,8 @@ class PulsedMeasurementGui(GUIBase):
         This method
         """
         # enable buttons
-        self._pg.saup_sequence_PushButton.setEnabled(True)
-        self._pg.sauplo_sequence_PushButton.setEnabled(True)
+        self._sg.saup_sequence_PushButton.setEnabled(True)
+        self._sg.sauplo_sequence_PushButton.setEnabled(True)
         return
 
     def sauplo_sequence_clicked(self):
@@ -1101,8 +1101,8 @@ class PulsedMeasurementGui(GUIBase):
         sequence_name = self._sg.gen_sequence_ComboBox.currentText()
         # disable buttons
         self._sg.saup_sequence_PushButton.setEnabled(False)
-        self._pg.sauplo_sequence_PushButton.setEnabled(False)
-        self._pg.load_sequence_PushButton.setEnabled(False)
+        self._sg.sauplo_sequence_PushButton.setEnabled(False)
+        self._sg.load_sequence_PushButton.setEnabled(False)
         # Sample the sequence via logic module
         self._pulsed_master_logic.sample_sequence(sequence_name, True)
         return
@@ -1391,7 +1391,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect button click signals
         self._pg.load_ensemble_PushButton.clicked.connect(self.load_ensemble_clicked)
-        self._pg.load_sequence_PushButton.clicked.connect(self.load_sequence_clicked)
+        self._sg.load_sequence_PushButton.clicked.connect(self.load_sequence_clicked)
         self._mw.pulser_on_off_PushButton.clicked.connect(self.pulser_on_off_clicked)
         self._mw.clear_device_PushButton.clicked.connect(self.clear_pulser_clicked)
         self._pa.fit_param_PushButton.clicked.connect(self.fit_clicked)
@@ -1482,7 +1482,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigAnalysisWindowsUpdated.disconnect()
         self._pulsed_master_logic.sigAnalysisMethodUpdated.disconnect()
         self._pg.load_ensemble_PushButton.clicked.disconnect()
-        self._pg.load_sequence_PushButton.clicked.disconnect()
+        self._sg.load_sequence_PushButton.clicked.disconnect()
         self._mw.pulser_on_off_PushButton.clicked.disconnect()
         self._mw.clear_device_PushButton.clicked.disconnect()
         self._pa.fit_param_PushButton.clicked.disconnect()
@@ -1600,7 +1600,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(False)
             self._pa.pulser_use_interleave_CheckBox.setEnabled(False)
             self._pg.load_ensemble_PushButton.setEnabled(False)
-            self._pg.load_sequence_PushButton.setEnabled(False)
+            self._sg.load_sequence_PushButton.setEnabled(False)
             self._mw.pulser_on_off_PushButton.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(True)
             self._mw.action_pull_data.setEnabled(True)
@@ -1625,7 +1625,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
                 self._pa.ana_param_record_length_SpinBox.setEnabled(True)
             self._pg.load_ensemble_PushButton.setEnabled(True)
-            self._pg.load_sequence_PushButton.setEnabled(True)
+            self._sg.load_sequence_PushButton.setEnabled(True)
             self._mw.pulser_on_off_PushButton.setEnabled(True)
             self._mw.action_continue_pause.setEnabled(False)
             self._mw.action_pull_data.setEnabled(False)
@@ -2336,9 +2336,9 @@ class PulsedMeasurementGui(GUIBase):
         This method
         """
         # disable button
-        self._pg.load_sequence_PushButton.setEnabled(False)
+        self._sg.load_sequence_PushButton.setEnabled(False)
         # Get the asset name to be uploaded from the ComboBox
-        asset_name = self._pg.gen_sequence_ComboBox.currentText()
+        asset_name = self._sg.gen_sequence_ComboBox.currentText()
         # Load asset into channles via logic module
         self._pulsed_master_logic.load_asset_into_channels(asset_name, {})
         return
@@ -2357,8 +2357,8 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.load_ensemble_PushButton.setEnabled(True)
             self._pg.sauplo_ensemble_PushButton.setEnabled(True)
         elif asset_type == 'PulseSequence':
-            self._pg.load_sequence_PushButton.setEnabled(True)
-            self._pg.sauplo_sequence_PushButton.setEnabled(True)
+            self._sg.load_sequence_PushButton.setEnabled(True)
+            self._sg.sauplo_sequence_PushButton.setEnabled(True)
         return
 
 
