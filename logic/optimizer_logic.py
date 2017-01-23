@@ -50,7 +50,7 @@ class OptimizerLogic(GenericLogic):
 
     # public signals
     sigImageUpdated = QtCore.Signal()
-    sigRefocusStarted = QtCore.Signal()
+    sigRefocusStarted = QtCore.Signal(str)
     sigRefocusXySizeChanged = QtCore.Signal()
     sigRefocusZSizeChanged = QtCore.Signal()
     sigRefocusFinished = QtCore.Signal(str, list)
@@ -233,7 +233,7 @@ class OptimizerLogic(GenericLogic):
         self.refocus_Z_size = size
         self.sigRefocusZSizeChanged.emit()
 
-    def start_refocus(self, initial_pos=None, caller_tag='unknown'):
+    def start_refocus(self, initial_pos=None, caller_tag='unknown',tag='logic'):
         """Starts the optimization scan around initial_pos
 
         @param initial_pos
@@ -269,7 +269,7 @@ class OptimizerLogic(GenericLogic):
                 self._caller_tag,
                 [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
             return
-        self.sigRefocusStarted.emit()
+        self.sigRefocusStarted.emit(tag)
         self._sigDoNextOptimizationStep.emit()
 
     def stop_refocus(self):
