@@ -636,6 +636,25 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         return err
 
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
+        @return:
+        """
+        pass
+
+    def direct_write_sequence(self, sequence_name, sequence_params):
+        """
+
+        @param sequence_name:
+        @param sequence_params:
+        @return:
+        """
+        pass
+
     ############################################################################
 
     ############################################################################

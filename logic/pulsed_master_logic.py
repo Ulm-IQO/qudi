@@ -151,8 +151,10 @@ class PulsedMasterLogic(GenericLogic):
         # Recall status variables
         if 'invoke_settings' in self._statusVariables:
             self.invoke_settings = self._statusVariables['invoke_settings']
+        else:
+            self.invoke_settings = False
 
-        # Signals controlling the pulsed_measurement_logic
+            # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
                                                      QtCore.Qt.QueuedConnection)
         self.sigMeasurementSequenceSettingsChanged.connect(
@@ -189,7 +191,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadAsset.connect(self._measurement_logic.upload_asset,
                                     QtCore.Qt.QueuedConnection)
         self.sigLoadAsset.connect(self._measurement_logic.load_asset, QtCore.Qt.QueuedConnection)
-        self.sigDirectWriteWaveform.connect(self._measurement_logic.direct_write_waveform,
+        self.sigDirectWriteEnsemble.connect(self._measurement_logic.direct_write_ensemble,
                                             QtCore.Qt.QueuedConnection)
         self.sigDirectWriteSequence.connect(self._measurement_logic.direct_write_sequence,
                                             QtCore.Qt.QueuedConnection)
@@ -300,8 +302,6 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['measurement_running'] = False
         self.status_dict['microwave_running'] = False
 
-        self.invoke_settings = False
-
     def on_deactivate(self, e):
         """
 
@@ -332,7 +332,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigClearPulseGenerator.disconnect()
         self.sigUploadAsset.disconnect()
         self.sigLoadAsset.disconnect()
-        self.sigDirectWriteWaveform.disconnect()
+        self.sigDirectWriteEnsemble.disconnect()
         self.sigDirectWriteSequence.disconnect()
         self.sigLaserToShowChanged.disconnect()
         self.sigAnalysisMethodChanged.disconnect()
