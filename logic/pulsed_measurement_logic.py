@@ -107,7 +107,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # timer for data analysis
         self.analysis_timer = None
-        self.timer_interval = 5 # in seconds
+        self.timer_interval = 5  # in seconds. A value <= 0 means no timer.
 
         #timer for time
         self.start_time = 0
@@ -148,6 +148,12 @@ class PulsedMeasurementLogic(GenericLogic):
         self._fit_param = {}
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
+
+        # for ssr fastcomtech
+
+        self.ssr_fastcomtec = False
+        self.fastcomtec_preset = 10000000
+        self.fastcomtec_cycles = 1
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -327,9 +333,10 @@ class PulsedMeasurementLogic(GenericLogic):
             number_of_gates = self.number_of_lasers
         else:
             number_of_gates = 0
-
-        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
-
+        if self.ssr_fastcomtec:
+            actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates, self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles)
+        else:
+            actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
         # use the actual parameters returned by the hardware
         self.fast_counter_binwidth = actual_binwidth_s
         self.fast_counter_record_length = actual_recordlength_s
@@ -434,6 +441,28 @@ class PulsedMeasurementLogic(GenericLogic):
         error_code = self._fast_counter_device.continue_measure()
         self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
+
+    def set_ssr_fastcomtec(self,ssr_fastcomtec,preset,cycles):
+        """
+        Adjust fast counter settings
+
+        @param ssr_fastcomtec: boolean, which sets the mode of the fastcomtec ( normal counting /
+         single shot measurement )
+        @param preset: set the number of time you want to add up one row in the fastcomtec
+        in normal pulsed measurements this is set to 1000000, as one isn't interested
+        in the pulsed data at different points in time
+        @param cycles: In normal gated counting set to 1, otherwise decide how many
+        data points you want to have in your single shot measurement
+        @return:
+        """
+        self.ssr_fastcomtec=ssr_fastcomtec
+        self.fastcomtec_preset=preset
+        self.fastcomtec_cycles=cycles
+        self.configure_fast_counter()
+        return
+
+    def get_ssr_fastcomtec(self):
+        return self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles
     ############################################################################
 
 
@@ -692,14 +721,17 @@ class PulsedMeasurementLogic(GenericLogic):
                 # start pulse generator
                 self.pulse_generator_on()
 
-                # set analysis_timer
-                self.analysis_timer = QtCore.QTimer()
-                self.analysis_timer.setSingleShot(False)
-                self.analysis_timer.setInterval(int(1000. * self.timer_interval))
-                self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
-
                 self.start_time = time.time()
-                self.analysis_timer.start()
+
+                # set analysis_timer
+                if self.timer_interval > 0:
+                    self.analysis_timer = QtCore.QTimer()
+                    self.analysis_timer.setSingleShot(False)
+                    self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+                    self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
+                    self.analysis_timer.start()
+                else:
+                    self.analysis_timer = None
         return
 
     def _pulsed_analysis_loop(self):
@@ -814,9 +846,10 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 #stopping and disconnecting the timer
-                self.analysis_timer.stop()
-                self.analysis_timer.timeout.disconnect()
-                self.analysis_timer = None
+                if self.analysis_timer is not None:
+                    self.analysis_timer.stop()
+                    self.analysis_timer.timeout.disconnect()
+                    self.analysis_timer = None
 
                 self.fast_counter_off()
                 self.pulse_generator_off()
@@ -841,7 +874,8 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 #pausing the timer
-                self.analysis_timer.stop()
+                if self.analysis_timer is not None:
+                    self.analysis_timer.stop()
 
                 self.fast_counter_pause()
                 self.pulse_generator_off()
@@ -863,7 +897,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_on()
 
                 #unpausing the timer
-                self.analysis_timer.start()
+                if self.analysis_timer is not None:
+                    self.analysis_timer.start()
 
                 self.sigMeasurementRunningUpdated.emit(True, False)
         return 0
@@ -877,7 +912,10 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             self.timer_interval = interval
             if self.analysis_timer is not None:
-                self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+                if self.timer_interval > 0:
+                    self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+                else:
+                    self.analysis_timer = None
             self.sigTimerIntervalUpdated.emit(self.timer_interval)
         return
 
@@ -973,12 +1011,12 @@ class PulsedMeasurementLogic(GenericLogic):
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
             data_array[2, :] = self.signal_plot_y2
-            data['Tau (ns), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
+            data['Tau (s), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
         else:
             data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
-            data['Tau (ns), Signal (norm.)'] = data_array.transpose()
+            data['Tau (s), Signal (norm.)'] = data_array.transpose()
 
         # write the parameters:
         parameters = OrderedDict()

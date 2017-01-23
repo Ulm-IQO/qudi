@@ -28,7 +28,6 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
-import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -59,6 +58,9 @@ class ODMRLogic(GenericLogic):
     sigODMRMatrixAxesChanged = QtCore.Signal()
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
+    sigParameterChanged = QtCore.Signal(dict)   # Here all parameter changes
+                                                # will be emitted. Look in the
+                                                # code for an example.
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -201,14 +203,21 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self._clock_frequency = int(clock_frequency)
+
         # checks if scanner is still running
         if self.getState() == 'locked':
             return -1
         else:
+            dict_param = {'_clock_frequency': self._clock_frequency}
+            self.sigParameterChanged.emit(dict_param)
             return 0
 
     def start_odmr(self):
-        """ Starting the ODMR counter. """
+        """ Starting the ODMR counter.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
         self.lock()
         clock_status = self._odmr_counter.set_up_odmr_clock(clock_frequency=self._clock_frequency)
         if clock_status < 0:
@@ -232,7 +241,10 @@ class ODMRLogic(GenericLogic):
         return 0
 
     def start_odmr_scan(self):
-        """ Starting an ODMR scan. """
+        """ Starting an ODMR scan.
+
+        @return int: error code (0:OK, -1:error)
+        """
         self._clear_odmr_plots = False
         self._odmrscan_counter = 0
         self._startTime = time.time()
@@ -291,6 +303,10 @@ class ODMRLogic(GenericLogic):
         if return_val != 0:
             self.stopRequested = True
         else:
+            param_dict = {'mw_power': self.mw_power,
+                          '_mw_frequency_list': self._mw_frequency_list}
+            self.sigParameterChanged.emit(param_dict)
+
             if self.scanmode == MicrowaveMode.SWEEP:
                 self._mw_device.sweep_on()
             elif self.scanmode == MicrowaveMode.LIST:
@@ -303,7 +319,10 @@ class ODMRLogic(GenericLogic):
         return return_val
 
     def continue_odmr_scan(self):
-        """ """
+        """ Continue ODMR scan.
+
+        @return int: error code (0:OK, -1:error)
+        """
         self._startTime = time.time() - self.elapsed_time
 
         odmr_status = self.start_odmr()
@@ -345,6 +364,7 @@ class ODMRLogic(GenericLogic):
         self.ODMR_plot_x = self._mw_frequency_list
         self.ODMR_plot_y = np.zeros(self._mw_frequency_list.shape)
         self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
+        self.sigOdmrPlotUpdated.emit()
 
     def _initialize_ODMR_matrix(self):
         """ Initializing the ODMR matrix plot. """
@@ -450,11 +470,15 @@ class ODMRLogic(GenericLogic):
             self.mw_power = self.limits.power_in_range(power)
         else:
             return -1
+
         if self.getState() == 'locked':
             return -1
         else:
             error_code = self._mw_device.set_power(
                 self.limits.power_in_range(power))
+            if error_code == 0:
+                param_dict = {'mw_power': self.mw_power}
+                self.sigParameterChanged.emit(param_dict)
             return error_code
 
     def get_power(self):
@@ -481,6 +505,9 @@ class ODMRLogic(GenericLogic):
         else:
             error_code = self._mw_device.set_frequency(
                 self.limits.frequency_in_range(frequency))
+            if error_code == 0:
+                param_dict = {'mw_frequency': self.mw_frequency}
+                self.sigParameterChanged.emit(param_dict)
             return error_code
 
     def get_frequency(self):

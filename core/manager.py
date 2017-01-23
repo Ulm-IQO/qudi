@@ -886,9 +886,11 @@ class Manager(QtCore.QObject):
                 logger.error('{0} module {1} not active (idle or running).'.format(base, name))
                 return
         except:
-            logger.exception('Error while getting status of {0}, removing reference without deactivation.'.format(name))
+            logger.exception(
+                'Error while getting status of {0}, removing reference without deactivation.'
+                ''.format(name))
             with self.lock:
-                 self.tree['loaded'][base].pop(name)
+                self.tree['loaded'][base].pop(name)
             return
         try:
             if base == 'logic':
@@ -1056,6 +1058,7 @@ class Manager(QtCore.QObject):
                         deact = True
                     if deact:
                         logger.info('Deactivating module {0}.{1}'.format(mbase, mkey))
+                        self.deactivateModule(mbase, mkey)
 
     @QtCore.Slot(str, str)
     def restartModuleSimple(self, base, key):
@@ -1223,7 +1226,11 @@ class Manager(QtCore.QObject):
         """Nicely request that all modules shut down."""
         for mbase,bdict in self.tree['loaded'].items():
             for module in bdict:
-                self.stopModule(mbase, module)
+                try:
+                    self.stopModule(mbase, module)
+                except:
+                    logger.exception(
+                        'Module {0} failed to stop, continuing anyway.'.format(module))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
 
@@ -1232,8 +1239,12 @@ class Manager(QtCore.QObject):
         """Nicely request that all modules shut down for application restart."""
         for mbase,bdict in self.tree['loaded'].items():
             for module in bdict:
-                if self.isModuleActive(mbase, module):
-                    self.deactivateModule(mbase, module)
+                try:
+                    if self.isModuleActive(mbase, module):
+                        self.deactivateModule(mbase, module)
+                except:
+                    logger.exception(
+                        'Module {0} failed to stop, continuing anyway.'.format(module))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 

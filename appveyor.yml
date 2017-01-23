@@ -16,21 +16,21 @@ environment:
   matrix:
     # Qt4
     - PYTHON_VERSION: "3.4"
-      CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyqtgraph pyzmq scipy sip six traitlets qt=4.8.7 pyqt=4.10.4"
-      PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
+      CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyzmq scipy sip six traitlets qt=4.8.7 pyqt=4.10.4"
+      PIP_DEPENDENCIES: "pyqtgraph fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
       QT_API: "pyqt4"
     - PYTHON_VERSION: "3.5"
-      CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyqtgraph pyzmq scipy sip six traitlets qt=4.* pyqt=4.*"
-      PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
+      CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyzmq scipy sip six traitlets qt=4.* pyqt=4.*"
+      PIP_DEPENDENCIES: "pyqtgraph fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
       QT_API: "pyqt4"
     # Qt5
     - PYTHON_VERSION: "3.4"
       CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyopengl pyzmq scipy sip six traitlets qt=5.* pyqt=5.*"
-      PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
+      PIP_DEPENDENCIES: "pyqtgraph fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
       QT_API: "pyqt5"
     - PYTHON_VERSION: "3.5"
       CONDA_DEPENDENCIES: "jedi jupyter lxml matplotlib numpy openssl pip pygments pyopengl pyzmq scipy sip six traitlets qt=5.* pyqt=5.*"
-      PIP_DEPENDENCIES: "fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
+      PIP_DEPENDENCIES: "pyqtgraph fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy rpyc ruamel.yaml smmap"
       QT_API: "pyqt5"
 
 platform:
@@ -42,14 +42,14 @@ install:
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
     - "python tools\\qudikernel.py install"
-    - ps: |
-        if ($env:QT_API -eq "pyqt5") {
-            push-location
-            cmd /c 'git clone https://github.com/pyqtgraph/pyqtgraph.git pyqtgraph-github 2>&1'
-            cd pyqtgraph-github
-            cmd /c 'python setup.py install 2>&1'
-            pop-location
-        }
+#    - ps: |
+#        if ($env:QT_API -eq "pyqt5") {
+#            push-location
+#            cmd /c 'git clone https://github.com/pyqtgraph/pyqtgraph.git pyqtgraph-github 2>&1'
+#            cd pyqtgraph-github
+#            cmd /c 'python setup.py install 2>&1'
+#            pop-location
+#        }
 
 # Not a .NET project, we build in the install step instead
 build: false

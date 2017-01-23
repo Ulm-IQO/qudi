@@ -1,4 +1,4 @@
-# Welcome to the Quantum Diamond Documentation  {#mainpage}
+# Welcome to the Qudi Documentation  {#mainpage}
 
 
 * [License](@ref license)
