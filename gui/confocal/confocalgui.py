@@ -755,6 +755,11 @@ class ConfocalGui(GUIBase):
         self._osd.rejected.connect(self.keep_former_optimizer_settings)
         self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
 
+        # Set up and connect xy channel combobox
+        scan_channels = self._optimizer_logic.get_scanner_count_channels()
+        for n, ch in enumerate(scan_channels):
+            self._osd.opt_channel_ComboBox.addItem(str(ch), n)
+
         # Generation of the fit params tab ##################
         self._osd.fit_tab = FitSettingsWidget(self._optimizer_logic.z_params)
         self._osd.settings_tabWidget.addTab(self._osd.fit_tab, "Fit Params")
@@ -1041,9 +1046,11 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.return_slowness = self._osd.return_slow_SpinBox.value()
         self._optimizer_logic.hw_settle_time = self._osd.hw_settle_time_SpinBox.value() / 1000
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
+        index = self._osd.opt_channel_ComboBox.currentIndex()
+        self._optimizer_logic.opt_channel = int(self._osd.opt_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
+
 
         self._optimizer_logic.optimization_sequence = str(self._osd.optimization_sequence_lineEdit.text()).upper().replace(" ", "").split(',')
-
         self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitSettings(self._optimizer_logic.z_params)
@@ -1060,6 +1067,10 @@ class ConfocalGui(GUIBase):
         self._osd.return_slow_SpinBox.setValue(self._optimizer_logic.return_slowness)
         self._osd.hw_settle_time_SpinBox.setValue(self._optimizer_logic.hw_settle_time * 1000)
         self._osd.do_surface_subtraction_CheckBox.setChecked(self._optimizer_logic.do_surface_subtraction)
+
+        old_ch = self._optimizer_logic.opt_channel
+        index = self._osd.opt_channel_ComboBox.findData(old_ch, QtCore.Qt.UserRole)
+        self._osd.opt_channel_ComboBox.setCurrentIndex(index)
 
         self._osd.optimization_sequence_lineEdit.setText(', '.join(self._optimizer_logic.optimization_sequence))
 
@@ -1475,10 +1486,12 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
     def update_xy_channel(self, index):
+        """ """
         self.xy_channel = int(self._mw.xy_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
         self.refresh_xy_image()
 
     def update_depth_channel(self, index):
+        """ """
         self.depth_channel = int(self._mw.depth_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
         self.refresh_depth_image()
 

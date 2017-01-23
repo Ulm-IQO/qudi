@@ -215,6 +215,12 @@ class OptimizerLogic(GenericLogic):
                            'The default [\'XY\', \'Z\'] will be used.')
             self.optimization_sequence = ['XY', 'Z']
 
+    def get_scanner_count_channels(self):
+        """ Get lis of counting channels from scanning device.
+          @return list(str): names of counter channels
+        """
+        return self._scanning_device.get_scanner_count_channels()
+
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
 
@@ -307,7 +313,7 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image = np.zeros((
             len(self._Y_values),
             len(self._X_values),
-            3 + len(self._scanning_device.get_scanner_count_channels())))
+            3 + len(self.get_scanner_count_channels())))
         self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
@@ -329,7 +335,7 @@ class OptimizerLogic(GenericLogic):
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         self.z_refocus_line = np.zeros((
             len(self._zimage_Z_values),
-            len(self._scanning_device.get_scanner_count_channels())))
+            len(self.get_scanner_count_channels())))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
 
     def _move_to_start_pos(self, start_pos):
@@ -414,7 +420,7 @@ class OptimizerLogic(GenericLogic):
             self._sigScanNextXyLine.emit()
             return
 
-        s_ch = len(self._scanning_device.get_scanner_count_channels())
+        s_ch = len(self.get_scanner_count_channels())
         self.xy_refocus_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
         self.sigImageUpdated.emit()
 
