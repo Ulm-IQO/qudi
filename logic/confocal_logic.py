@@ -299,8 +299,6 @@ class ConfocalLogic(GenericLogic):
         @param e: error code
         """
         self._scanning_device = self.get_in_connector('confocalscanner1')
-#        print("Scanning device is", self._scanning_device)
-
         self._save_logic = self.get_in_connector('savelogic')
 
         #default values for clock frequency and slowness
@@ -507,7 +505,10 @@ class ConfocalLogic(GenericLogic):
             if self.depth_scan_dir_is_xz:
                 self._image_vert_axis = self._Z
                 # creates an image where each pixel will be [x,y,z,counts]
-                self.depth_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
+                self.depth_image = np.zeros(
+                    (len(self._image_vert_axis),
+                    len(self._X),
+                    3 +  len(self.get_scanner_count_channels())))
                 self.depth_image[:, : ,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
                 self.depth_image[:, :, 1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
                 z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
@@ -515,7 +516,10 @@ class ConfocalLogic(GenericLogic):
             else: # depth scan is yz instead of xz
                 self._image_vert_axis = self._Z
                 # creats an image where each pixel will be [x,y,z,counts]
-                self.depth_image = np.zeros((len(self._image_vert_axis), len(self._Y), 4))
+                self.depth_image = np.zeros(
+                    (len(self._image_vert_axis),
+                    len(self._Y),
+                    3 +  len(self.get_scanner_count_channels())))
                 self.depth_image[:, :, 0] = self._current_x * np.ones((len(self._image_vert_axis), len(self._Y)))
                 self.depth_image[:, :, 1] = np.full((len(self._image_vert_axis), len(self._Y)), self._YL)
                 z_value_matrix = np.full((len(self._Y), len(self._image_vert_axis)), self._Z)
@@ -527,7 +531,10 @@ class ConfocalLogic(GenericLogic):
         else:
             self._image_vert_axis = self._Y
             # creats an image where each pixel will be [x,y,z,counts]
-            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
+            self.xy_image = np.zeros(
+                (len(self._image_vert_axis),
+                len(self._X),
+                3 + len(self.get_scanner_count_channels())))
             self.xy_image[:, :, 0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
             self.xy_image[:, :, 1] = y_value_matrix.transpose()
@@ -630,7 +637,6 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        # print(tag, x, y, z)
         # Changes the respective value
         if x is not None:
             self._current_x = x
@@ -658,20 +664,31 @@ class ConfocalLogic(GenericLogic):
         pos_array = [self._current_x, self._current_y, self._current_z, self._current_a]
         pos_dict = {}
 
-        for i, ch in enumerate(self._scanning_device.get_scanner_axes()):
+        for i, ch in enumerate(self.get_scanner_axes()):
             pos_dict[ch_array[i]] = pos_array[i]
  
         self._scanning_device.scanner_set_position(**pos_dict)
         return 0
 
     def get_position(self):
-        """Forwarding the desired new position from the GUI to the scanning device.
+        """ Get position from scanning device.
 
         @return list: with three entries x, y and z denoting the current
                       position in microns
         """
-        #FIXME: change that to SI units!
         return self._scanning_device.get_scanner_position()
+
+    def get_scanner_axes(self):
+        """ Get axes from scanning device.
+          @return list(str): names of scanner axes
+        """
+        return self._scanning_device.get_scanner_axes()
+
+    def get_scanner_count_channels(self):
+        """ Get lis of counting channels from scanning device.
+          @return list(str): names of counter channels
+        """
+        return self._scanning_device.get_scanner_count_channels()
 
     def _scan_line(self):
         """scanning an image in either depth or xy
@@ -700,7 +717,8 @@ class ConfocalLogic(GenericLogic):
                 return
 
         image = self.depth_image if self._zscan else self.xy_image
-        n_ch = len(self._scanning_device.get_scanner_axes())
+        n_ch = len(self.get_scanner_axes())
+        s_ch = len(self.get_scanner_count_channels())
 
         try:
             if self._scan_counter == 0:
@@ -716,8 +734,8 @@ class ConfocalLogic(GenericLogic):
                     start_line = np.vstack(
                         [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
                 # move to the start position of the scan, counts are thrown away
-                start_line_counts = self._scanning_device.scan_line(start_line)[0]
-                if np.any(start_line_counts[0] == -1):
+                start_line_counts = self._scanning_device.scan_line(start_line)
+                if np.any(start_line_counts == -1):
                     self.stopRequested = True
                     self.signal_scan_lines_next.emit()
                     return
@@ -738,8 +756,8 @@ class ConfocalLogic(GenericLogic):
                     [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
 
             # scan the line in the scan
-            line_counts = self._scanning_device.scan_line(line)[0]
-            if np.any(line_counts[0] == -1):
+            line_counts = self._scanning_device.scan_line(line)
+            if np.any(line_counts == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
@@ -775,8 +793,8 @@ class ConfocalLogic(GenericLogic):
                         ])
  
             # return the scanner to the start of next line, counts are thrown away
-            return_line_counts = self._scanning_device.scan_line(return_line)[0]
-            if np.any(return_line_counts[0] == -1):
+            return_line_counts = self._scanning_device.scan_line(return_line)
+            if np.any(return_line_counts == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
@@ -784,12 +802,12 @@ class ConfocalLogic(GenericLogic):
             # update image with counts from the line we just scanned
             if self._zscan:
                 if self.depth_scan_dir_is_xz:
-                    self.depth_image[self._scan_counter, :, 3] = line_counts
+                    self.depth_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
                 else:
-                    self.depth_image[self._scan_counter, :, 3] = line_counts
+                    self.depth_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
                 self.signal_depth_image_updated.emit()
             else:
-                self.xy_image[self._scan_counter, :, 3] = line_counts
+                self.xy_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
                 self.signal_xy_image_updated.emit()
 
             # next line in scan
@@ -853,7 +871,7 @@ class ConfocalLogic(GenericLogic):
                    '# The upper left entry represents the signal at the upper '
                    'left pixel position.\n'
                    '# A pixel-line in the image corresponds to a row '
-                   'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
+                   'of entries where the Signal is in counts/s:'] = self.xy_image[:, :, 3]
 
         # Prepare a figure to be saved
         figure_data = self.xy_image[:, :, 3]

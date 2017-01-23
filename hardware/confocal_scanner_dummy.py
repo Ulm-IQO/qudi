@@ -231,8 +231,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         return ['x', 'y', 'z']
 
     def get_scanner_count_channels(self):
-        """ Only one counting channel in dummy confocal."""
-        return ['Ctr1'] 
+        """ 3 counting channels in dummy confocal: normal, negative and a ramp."""
+        return ['Norm', 'Neg', 'Ramp'] 
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -357,7 +357,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # update the scanner position instance variable
         self._current_position = list(line_path[:, -1])
 
-        return [count_data]
+        return np.array([count_data, 5e5-count_data, np.ones(count_data.shape) * line_path[1, 0]]).transpose()
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
@@ -407,13 +407,12 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         # check if parameters make sense
         #FIXME: Check for 2D matrix
-        if not isinstance( x_data_tuple,(frozenset, list, set, tuple,
-                            np.ndarray)):
+        if not isinstance( x_data_tuple,(frozenset, list, set, tuple, np.ndarray)):
             self.log.error('Given range of axes is no array type.')
 
-        parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
+        parameters = [amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset]
         for var in parameters:
-            if not isinstance(var,(float,int)):
+            if not isinstance(var, (float, int)):
                 self.log.error('Given range of parameter is no float or int.')
 
         (x, y) = x_data_tuple
