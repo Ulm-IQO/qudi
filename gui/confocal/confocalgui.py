@@ -589,6 +589,13 @@ class ConfocalGui(GUIBase):
         # Connect the signal from the logic with an update of the cursor position
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position_from_logic)
 
+        # Connect other signals from the logic with an update of the gui
+
+        self._scanning_logic.signal_start_scanning.connect(self.logic_started_scanning)
+        self._scanning_logic.signal_continue_scanning.connect(self.logic_continued_scanning)
+        self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
+        # self._scanning_logic.signal_stop_scanning.connect()
+
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
         self._optimizer_logic.sigRefocusFinished.connect(self._refocus_finished_wrapper)
@@ -1040,19 +1047,19 @@ class ConfocalGui(GUIBase):
     def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started. """
         self.disable_scan_actions()
-        self._scanning_logic.start_scanning()
+        self._scanning_logic.start_scanning(zscan=False,tag='gui')
 
     def continue_xy_scan_clicked(self):
         """ Continue xy scan. """
         self.disable_scan_actions()
-        self._scanning_logic.continue_scanning(zscan=False)
+        self._scanning_logic.continue_scanning(zscan=False,tag='gui')
 
     def continue_depth_scan_clicked(self):
         """ Continue depth scan. """
         self.disable_scan_actions()
-        self._scanning_logic.continue_scanning(zscan=True)
+        self._scanning_logic.continue_scanning(zscan=True,tag='gui')
 
-    def depth_scan_clicked(self):
+    def depth_scan_clicked(self,tag='gui'):
         """ Start depth scan. """
         self.disable_scan_actions()
         self._scanning_logic.start_scanning(zscan=True)
@@ -2137,3 +2144,19 @@ class ConfocalGui(GUIBase):
         else:
             self._mw.action_scan_xy_start.setIcon(self._scan_xy_single_icon)
             self._mw.action_scan_depth_start.setIcon(self._scan_depth_single_icon)
+
+    def logic_started_scanning(self,tag):
+        if tag == 'logic':
+            self.disable_scan_actions()
+
+    def logic_continued_scanning(self,tag):
+        if tag == 'logic':
+            self.disable_scan_actions()
+
+    def logic_started_refocus(self,tag):
+        if tag == 'logic':
+            self.disable_scan_actions()
+
+
+    # def logic_stopped_scanning(self,tag):
+    #     if tag == 'logic':
