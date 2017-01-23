@@ -67,7 +67,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
     sigSequenceDictUpdated = QtCore.Signal(dict)
-    sigSampleEnsembleComplete = QtCore.Signal(str)
+    sigSampleEnsembleComplete = QtCore.Signal(str, np.ndarray, np.ndarray)
     sigSampleSequenceComplete = QtCore.Signal(str)
     sigCurrentBlockUpdated = QtCore.Signal(object)
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
@@ -75,7 +75,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigSettingsUpdated = QtCore.Signal(list, str, float, dict, str)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
-    sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -129,6 +128,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sequence_dir = self._get_dir_for_name('sequence_objects')
         self.waveform_dir = self._get_dir_for_name('sampled_hardware_files')
         self.temp_dir = self._get_dir_for_name('temporary_files')
+
+        # Byte size of the max. memory usage during sampling/write-to-file process
+        self.sampling_overhead_bytes = None
 
         # Information on used channel configuration for sequence generation
         # IMPORTANT: THIS CONFIG DOES NOT REPRESENT THE ACTUAL SETTINGS ON THE HARDWARE
@@ -246,7 +248,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
         self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
         self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-        self.sigSampleEnsembleComplete.emit('')
+        self.sigSampleEnsembleComplete.emit('', np.array([]), np.array([]))
         self.sigSampleSequenceComplete.emit('')
         self.sigCurrentBlockUpdated.emit(self.current_block)
         self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
@@ -663,8 +665,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         number_of_states = len(state_length_bins_arr)
         return number_of_samples, number_of_elements, number_of_states, state_length_bins_arr
 
-    def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True,
-                                    offset_bin=0, name_tag=''):
+    def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
@@ -826,8 +827,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # return the sample arrays for write_to_file was set to FALSE
             if not sequence_sampling_in_progress:
                 self.unlock()
-                self.sigSampleEnsembleComplete.emit(ensemble_name)
-            self.sigDirectWriteEnsemble.emit(ensemble_name, analog_samples, digital_samples)
+            self.sigSampleEnsembleComplete.emit(ensemble_name, analog_samples, digital_samples)
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
@@ -836,7 +836,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                           ''.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
                 self.unlock()
-                self.sigSampleEnsembleComplete.emit(ensemble_name)
+            self.sigSampleEnsembleComplete.emit(ensemble_name, np.array([]), np.array([]))
             return [], [], created_files, offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
@@ -854,10 +854,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                           'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
                 self.unlock()
-                self.sigSampleEnsembleComplete.emit(ensemble_name)
+            self.sigSampleEnsembleComplete.emit(ensemble_name, np.array([]), np.array([]))
             return [], [], created_files, offset_bin
 
-    def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):
+    def sample_pulse_sequence(self, sequence_name, write_to_file=True):
         """ Samples the PulseSequence object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
