@@ -113,12 +113,32 @@ class PulsedMasterLogic(GenericLogic):
            }
     _out = {'pulsedmasterlogic': 'PulsedMasterLogic'}
 
-    def __init__(self, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
 
           @param dict kwargs: optional parameters
         """
-        super().__init__(**kwargs)
+        super().__init__(config=config, **kwargs)
+
+        self.log.info('The following configuration was found.')
+
+        # checking for the right configuration
+        for key in config.keys():
+            self.log.info('{0}: {1}'.format(key, config[key]))
+
+        if 'direct_write' in config.keys():
+            if isinstance(config['direct_write'], bool):
+                self.direct_write = config['direct_write']
+            else:
+                self.log.warning('The "direct_write" parameter in config is non-bool type\n'
+                                 'Using "False" as default.')
+                self.direct_write = False
+        else:
+            self.log.warning('The "direct_write" parameter in config is not defined.\n'
+                             'If you want to use direct write, set this parameter to "True".\n'
+                             'Default is "False".')
+            self.direct_write = False
+
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -127,6 +147,10 @@ class PulsedMasterLogic(GenericLogic):
         """
         self._measurement_logic = self.get_in_connector('pulsedmeasurementlogic')
         self._generator_logic = self.get_in_connector('sequencegeneratorlogic')
+
+        # Recall status variables
+        if 'invoke_settings' in self._statusVariables:
+            self.invoke_settings = self._statusVariables['invoke_settings']
 
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
@@ -277,7 +301,6 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['microwave_running'] = False
 
         self.invoke_settings = False
-        self.direct_write = False
 
     def on_deactivate(self, e):
         """
@@ -285,6 +308,9 @@ class PulsedMasterLogic(GenericLogic):
         @param e:
         @return:
         """
+        # Save status variables
+        self._statusVariables['invoke_settings'] = self.invoke_settings
+
         # Disconnect all signals
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.disconnect()
@@ -749,7 +775,7 @@ class PulsedMasterLogic(GenericLogic):
             self.status_dict['upload_busy'] = False
             if self.status_dict['saup_ensemble_busy']:
                 self.status_dict['saup_ensemble_busy'] = False
-                self.sigSaUpEnsembleComplete.emit(asset_name)
+                self.sigEnsembleSaUpComplete.emit(asset_name)
         return
 
     def uploaded_assets_updated(self, asset_names_list):

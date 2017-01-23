@@ -122,15 +122,21 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     'The default home directory\n{0}\n will be taken '
                     'instead.'.format(self.pulsed_file_dir))
 
+        # Byte size of the max. memory usage during sampling/write-to-file process
+        if 'overhead_bytes' in config.keys():
+            self.sampling_overhead_bytes = config['overhead_bytes']
+        else:
+            self.sampling_overhead_bytes = None
+            self.log.warning('No max. memory overhead specified in config.\nIn order to avoid '
+                             'memory overflow during sampling/writing of Pulse objects you must '
+                             'set "overhead_bytes".')
+
 
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
         self.sequence_dir = self._get_dir_for_name('sequence_objects')
         self.waveform_dir = self._get_dir_for_name('sampled_hardware_files')
         self.temp_dir = self._get_dir_for_name('temporary_files')
-
-        # Byte size of the max. memory usage during sampling/write-to-file process
-        self.sampling_overhead_bytes = None
 
         # Information on used channel configuration for sequence generation
         # IMPORTANT: THIS CONFIG DOES NOT REPRESENT THE ACTUAL SETTINGS ON THE HARDWARE
@@ -146,7 +152,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # a dictionary with all predefined generator methods and measurement sequence names
         self.generate_methods = None
-
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
