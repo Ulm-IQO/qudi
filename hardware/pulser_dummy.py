@@ -732,7 +732,7 @@ class PulserDummy(Base, PulserInterface):
             self.uploaded_files_list.remove(filename)
         return 0
 
-    def get_asset_dir_on_device(self, dir_path):
+    def set_asset_dir_on_device(self, dir_path):
         """ Change the directory where the assets are stored on the device.
 
         @param string dir_path: The target directory
