@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>468</width>
-    <height>350</height>
+    <height>388</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -231,14 +231,14 @@
         </widget>
        </item>
        <item row="2" column="0">
-        <widget class="QLabel" name="op_channel_label">
+        <widget class="QLabel" name="opt_channel_label">
          <property name="text">
           <string>Channel to optimize</string>
          </property>
         </widget>
        </item>
        <item row="2" column="2">
-        <widget class="QComboBox" name="op_channel_ComboBox"/>
+        <widget class="QComboBox" name="opt_channel_ComboBox"/>
        </item>
       </layout>
      </widget>

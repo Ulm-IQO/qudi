@@ -674,7 +674,7 @@ class ConfocalLogic(GenericLogic):
         """ Get position from scanning device.
 
         @return list: with three entries x, y and z denoting the current
-                      position in microns
+                      position in meters
         """
         return self._scanning_device.get_scanner_position()
 
