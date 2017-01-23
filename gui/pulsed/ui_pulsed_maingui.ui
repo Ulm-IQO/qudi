@@ -42,7 +42,7 @@
      <x>0</x>
      <y>0</y>
      <width>931</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -60,6 +60,7 @@
     <addaction name="action_Settings_Block_Generation"/>
     <addaction name="action_Settings_Sequence_Editor"/>
     <addaction name="action_Predefined_Methods_Config"/>
+    <addaction name="action_ssr_fastcomtec"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -219,6 +220,11 @@
    </property>
    <property name="text">
     <string>Predefined Methods</string>
+   </property>
+  </action>
+  <action name="action_ssr_fastcomtec">
+   <property name="text">
+    <string>SSR FastComTec</string>
    </property>
   </action>
  </widget>
