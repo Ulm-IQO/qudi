@@ -20,127 +20,237 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
+import ctypes
+import os
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+import PyDAQmx as daq
 
+from core.base import Base
+from interface.pulser_interface import PulserInterface
+from collections import OrderedDict
 
-class PulserInterface(metaclass=InterfaceMetaclass):
-    """ Interface class to define the abstract controls and
-    communication with all pulsing devices.
+class NIPulser(Base, PulserInterface):
+    """ Pulse generator using NI-DAQmx
     """
 
     _modtype = 'PulserInterface'
-    _modclass = 'interface'
+    _modclass = 'hardware'
 
-    @abc.abstractmethod
-    def get_constraints(self):
-        """ Retrieve the hardware constrains from the Pulsing device.
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
 
-        @return dict: dict with constraints for the sequence generation and GUI
+    def on_activate(self, e):
+        config = self.getConfiguration()
+        if 'pulsed_file_dir' in config.keys():
+            self.pulsed_file_dir = config['pulsed_file_dir']
 
-        Provides all the constraints (e.g. sample_rate, amplitude,
-        total_length_bins, channel_config, ...) related to the pulse generator
-        hardware to the caller.
-        The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method).
+            if not os.path.exists(self.pulsed_file_dir):
+                homedir = self.get_home_dir()
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+                self.log.warning(
+                    'The directory defined in parameter "pulsed_file_dir" in the config for '
+                    'SequenceGeneratorLogic class does not exist!\nThe default home directory\n'
+                    '{0}\n will be taken instead.'.format(self.pulsed_file_dir))
+        else:
+            homedir = self.get_home_dir()
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+            self.log.warning(
+                'No parameter "pulsed_file_dir" was specified in the config for NIPulser '
+                'as directory for the pulsed files!\nThe default home directory\n{0}\n'
+                'will be taken instead.'.format(self.pulsed_file_dir))
 
-                    NO OTHER KEYS SHOULD BE INVENTED!
+        if 'device' in config.keys():
+            self.device = config['device']
+        else:
+            self.device = 'Dev0'
 
-        If you are not sure about the meaning, look in other hardware files to
-        get an impression. If still additional constraints are needed, then they
-        have to be added to all files containing this interface.
+        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
+        self.pulser_task = daq.TaskHandle()
+        daq.DAQmxCreateTask('NI Pulser', daq.byref(self.pulser_task))
 
-        Only the keys 'activation_config' and differs, since it contain the
-        channel configuration/activation information.
+        self.current_status = -1
+        self.current_loaded_asset = None
+        self.init_constraints()
+        #self.sample_rate = self.get_sample_rate()
 
-        If the constraints cannot be set in the pulsing hardware (because it
-        might e.g. has no sequence mode) then write just zero to each generic
-        dict. Note that there is a difference between float input (0.0) and
-        integer input (0).
+    def on_deactivate(self, e):
+        self.close_pulser_task()
 
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
-
-        # Example for configuration with default values:
+    def init_constraints(self):
+        device = self.device
         constraints = {}
+        ch_map = OrderedDict()
 
-        # if interleave option is available, then sample rate constraints must
-        # be assigned to the output of a function called
-        # _get_sample_rate_constraints()
-        # which outputs the shown dictionary with the correct values depending
-        # on the present mode. The the GUI will have to check again the
-        # limitations if interleave was selected.
-        constraints['sample_rate'] = {'min': 0.0, 'max': 0.0,
-                                      'step': 0.0, 'unit': 'Samples/s'}
+        n = 2048
+        ao_max_freq = daq.float64()
+        ao_min_freq = daq.float64()
+        ao_physical_chans = ctypes.create_string_buffer(n)
+        ao_voltage_ranges = np.zeros(16, dtype=np.float64)
+        ao_clock_support = daq.bool32()
+        do_max_freq = daq.float64()
+        do_lines = ctypes.create_string_buffer(n)
+        do_ports = ctypes.create_string_buffer(n)
+        product_dev_type = ctypes.create_string_buffer(n)
+        product_cat = daq.int32()
+        serial_num = daq.uInt32()
+        product_num = daq.uInt32()
+
+        daq.DAQmxGetDevAOMinRate(device, daq.byref(ao_min_freq))
+        self.log.debug('Analog min freq: {0}'.format(ao_min_freq.value))
+        daq.DAQmxGetDevAOMaxRate(device, daq.byref(ao_max_freq))
+        self.log.debug('Analog max freq: {0}'.format(ao_max_freq.value))
+        daq.DAQmxGetDevAOSampClkSupported(device, daq.byref(ao_clock_support))
+        self.log.debug('Analog supports clock: {0}'.format(ao_clock_support.value))
+        daq.DAQmxGetDevAOPhysicalChans(device, ao_physical_chans, n)
+        analog_channels = str(ao_physical_chans.value, encoding='utf-8').split(', ')
+        self.log.debug('Analog channels: {0}'.format(analog_channels))
+        daq.DAQmxGetDevAOVoltageRngs(
+            device,
+            ao_voltage_ranges.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            len(ao_voltage_ranges))
+        self.log.debug('Analog voltage range: {0}'.format(ao_voltage_ranges[0:2]))
+
+        daq.DAQmxGetDevDOMaxRate(self.device, daq.byref(do_max_freq))
+        self.log.debug('Digital max freq: {0}'.format(do_max_freq.value))
+        daq.DAQmxGetDevDOLines(device, do_lines, n)
+        digital_channels = str(do_lines.value, encoding='utf-8').split(', ')
+        self.log.debug('Digital channels: {0}'.format(digital_channels))
+        daq.DAQmxGetDevDOPorts(device, do_ports, n)
+        digital_bundles = str(do_ports.value, encoding='utf-8').split(', ')
+        self.log.debug('Digital ports: {0}'.format(digital_bundles))
+
+        daq.DAQmxGetDevSerialNum(device, daq.byref(serial_num))
+        self.log.debug('Card serial number: {0}'.format(serial_num.value))
+        daq.DAQmxGetDevProductNum(device, daq.byref(product_num))
+        self.log.debug('Product number: {0}'.format(product_num.value))
+        daq.DAQmxGetDevProductType(device, product_dev_type, n)
+        product = str(product_dev_type.value, encoding='utf-8')
+        self.log.debug('Product name: {0}'.format(product))
+        daq.DAQmxGetDevProductCategory(device, daq.byref(product_cat))
+        self.log.debug(product_cat.value)
+
+        for n, ch in enumerate(analog_channels):
+            ch_map['a_ch{0:d}'.format(n+1)] = ch
+
+        for n, ch in enumerate(digital_channels):
+            ch_map['d_ch{0:d}'.format(n+1)] = ch
+
+        constraints['sample_rate'] = {
+            'min': ao_min_freq.value,
+            'max': ao_max_freq.value,
+            'step': 0.0,
+            'unit': 'Samples/s'}
 
         # The file formats are hardware specific. The sequence_generator_logic will need this
         # information to choose the proper output format for waveform and sequence files.
-        constraints['waveform_format'] = 'wfm'
-        constraints['sequence_format'] = 'seq'
+        constraints['waveform_format'] = 'ndarray'
+        constraints['sequence_format'] = None
 
         # the stepsize will be determined by the DAC in combination with the
         # maximal output amplitude (in Vpp):
-        constraints['a_ch_amplitude'] = {'min': 0.0, 'max': 0.0,
-                                         'step': 0.0, 'unit': 'Vpp'}
-        constraints['a_ch_offset'] = {'min': 0.0, 'max': 0.0,
-                                      'step': 0.0, 'unit': 'V'}
-        constraints['d_ch_low'] = {'min': 0.0, 'max': 0.0,
-                                   'step': 0.0, 'unit': 'V'}
-        constraints['d_ch_high'] = {'min': 0.0, 'max': 0.0,
-                                    'step': 0.0, 'unit': 'V'}
-        constraints['sampled_file_length'] = {'min': 0, 'max': 0,
-                                              'step': 0, 'unit': 'Samples'}
-        constraints['digital_bin_num'] = {'min': 0, 'max': 0,
-                                          'step': 0, 'unit': '#'}
-        constraints['waveform_num'] = {'min': 0, 'max': 0,
-                                       'step': 0, 'unit': '#'}
-        constraints['sequence_num'] = {'min': 0, 'max': 0,
-                                       'step': 0, 'unit': '#'}
-        constraints['subsequence_num'] = {'min': 0, 'max': 0,
-                                          'step': 0, 'unit': '#'}
+        constraints['a_ch_amplitude'] = {
+            'min': 0,
+            'max': ao_voltage_ranges[1],
+            'step': 0.0,
+            'unit': 'Vpp'}
+        constraints['a_ch_offset'] = {
+            'min': ao_voltage_ranges[0],
+            'max': ao_voltage_ranges[1],
+            'step': 0.0,
+            'unit': 'V'}
+        constraints['d_ch_low'] = {
+            'min': 0.0,
+            'max': 0.0,
+            'step': 0.0,
+            'unit': 'V'}
+        constraints['d_ch_high'] = {
+            'min': 5.0,
+            'max': 5.0,
+            'step': 0.0,
+            'unit': 'V'}
+        constraints['sampled_file_length'] = {
+            'min': 2,
+            'max': 1e12,
+            'step': 0,
+            'unit': 'Samples'}
+        constraints['digital_bin_num'] = {
+            'min': 2,
+            'max': 1e12,
+            'step': 0,
+            'unit': '#'}
+        constraints['waveform_num'] = {
+            'min': 1,
+            'max': 1,
+            'step': 0,
+            'unit': '#'}
+        constraints['sequence_num'] = {
+            'min': 0,
+            'max': 0,
+            'step': 0,
+            'unit': '#'}
+        constraints['subsequence_num'] = {
+            'min': 0,
+            'max': 0,
+            'step': 0,
+            'unit': '#'}
 
         # If sequencer mode is enable than sequence_param should be not just an
         # empty dictionary.
         sequence_param = OrderedDict()
         constraints['sequence_param'] = sequence_param
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe
-        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used. The names
-        # for the different configurations can be customary chosen.
-
+        
         activation_config = OrderedDict()
-        activation_config['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_config['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_config['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        activation_config['analog_only'] = [k for k in ch_map.keys() if k.startswith('a')]
+        activation_config['digital_only'] = [k for k in ch_map.keys() if k.startswith('d')]
+        activation_config['stuff'] = ['a_ch4', 'd_ch1', 'd_ch2', 'd_ch3', 'd_ch4']
         constraints['activation_config'] = activation_config
-        """
-        pass
 
-    @abc.abstractmethod
+        self.channel_map = ch_map
+        self.constraints = constraints
+
+    def close_pulser_task(self):
+        """ Clear tasks.
+        @return int: error code (0:OK, -1:error)
+        """
+        retval = 0
+        try:
+            # stop the task
+            daq.DAQmxStopTask(self.pulser_task)
+        except:
+            self.log.exception('Error while closing NI pulser.')
+            retval = -1
+        try:
+            # clear the task
+            daq.DAQmxClearTask(self.pulser_task)
+            self._gated_counter_daq_task = None
+        except:
+            self.log.exception('Error while clearing NI pulser.')
+            retval = -1
+        return retval
+
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the Pulsing device.
+
+        @return dict: dict with constraints for the sequence generation and GUI
+        """
+        return self.constraints
+
     def pulser_on(self):
         """ Switches the pulsing device on.
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        daq.DAQmxStartTask(self.pulser_task)
 
-    @abc.abstractmethod
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        daq.DAQmxStopTask(self.pulser_task)
 
-    @abc.abstractmethod
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device mass memory.
             Also loads these files into the device workspace if present.
@@ -155,9 +265,9 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         This method has no effect when using pulser hardware without own mass memory
         (i.e. PulseBlaster, FPGA)
         """
-        pass
+        self.log.debug('NI pulser has no own storage capability.\n"upload_asset" call ignored.')
+        return 0
 
-    @abc.abstractmethod
     def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
         For devices that have a workspace (i.e. AWG) this will load the asset from the device
@@ -180,7 +290,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
 
@@ -188,7 +297,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def clear_all(self):
         """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
@@ -196,7 +304,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
@@ -206,7 +313,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
 
@@ -215,9 +321,10 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         Do not return a saved sample rate from an attribute, but instead retrieve the current
         sample rate directly from the device.
         """
-        pass
+        rate = daq.float64()
+        daq.DAQmxGetSampClkRate(self.pulser_task, daq.byref(rate))
+        return rate.value
 
-    @abc.abstractmethod
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
 
@@ -228,9 +335,15 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
-        pass
+        task = self.pulser_task
+        source = daq.OnboardClock
+        rate = sample_rate
+        edge = daq.DAQmx_Val_Rising
+        mode = daq.DAQmx_Val_ContSamps
+        samples = 10000
+        daq.DAQmxCfgSampClkTiming(task, source, rate, edge, mode, samples)
+        return self.get_sample_rate()
 
-    @abc.abstractmethod
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
@@ -265,7 +378,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel(s).
 
@@ -296,7 +408,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided/all channels.
 
@@ -329,7 +440,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
@@ -359,7 +469,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
@@ -376,9 +485,16 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         If no parameter (or None) is passed to this method all channel states will be returned.
         """
-        pass
+        bufsize = 2048
+        buf = ctypes.create_string_buffer(bufsize)
+        daq.DAQmxGetTaskChannels(self.pulser_task, buf, bufsize)
+        ni_ch = str(buf.value, encoding='utf-8').split()
 
-    @abc.abstractmethod
+        if ch is None:
+            return {k: v in ni_ch for k, v in self.channel_map.items()}
+        else:
+            return {k: self.channel_map[k] in ni_ch for k in ch}
+
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
 
@@ -400,9 +516,30 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         The hardware itself has to handle, whether separate channel activation is possible.
         """
-        pass
 
-    @abc.abstractmethod
+        a_names = [k for k in ch.keys() if k.startswith('a')]
+        a_names.sort()
+        a_channels = [self.channel_map[k] for k in a_names]
+
+        d_names = [k for k in ch.keys() if k.startswith('d')]
+        d_names.sort()
+        d_channels = [self.channel_map[k] for k in d_names]
+
+        daq.DAQmxCreateAOVoltageChan(
+            self.pulser_task,
+            ', '.join(a_channels),
+            ', '.join(a_names),
+            min_volts,
+            max_volts,
+            daq.DAQmx_Val_Volts,
+            '')
+
+        daq.DAQmxCreateDOChan(
+            self.pulser_task,
+            d_channels,
+            d_names,
+            daq.DAQmx_Val_ChanForAllLines)
+
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
 
@@ -411,9 +548,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
         """
-        pass
+        return []
 
-    @abc.abstractmethod
     def get_saved_asset_names(self):
         """ Retrieve the names of all sampled and saved assets on the host PC. This is no list of
             the file names.
@@ -421,9 +557,15 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         @return list: List of all saved asset name strings in the current
                       directory of the host PC.
         """
-        pass
+        file_list = self._get_filenames_on_host()
+        saved_assets = []
+        for filename in file_list:
+            if filename.endswith('.npz'):
+                asset_name = filename.rsplit('.', 1)[0]
+                if asset_name not in saved_assets:
+                    saved_assets.append(asset_name)
+        return saved_assets
 
-    @abc.abstractmethod
     def delete_asset(self, asset_name):
         """ Delete all files associated with an asset with the passed asset_name from the device
             memory (mass storage as well as i.e. awg workspace/channels).
@@ -435,9 +577,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
         """
-        pass
+        return 0
 
-    @abc.abstractmethod
     def set_asset_dir_on_device(self, dir_path):
         """ Change the directory where the assets are stored on the device.
 
@@ -447,9 +588,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Unused for pulse generators without changeable file structure (PulseBlaster, FPGA).
         """
-        pass
+        return 0
 
-    @abc.abstractmethod
     def get_asset_dir_on_device(self):
         """ Ask for the directory where the hardware conform files are stored on the device.
 
@@ -457,9 +597,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Unused for pulse generators without changeable file structure (i.e. PulseBlaster, FPGA).
         """
-        pass
+        return ''
 
-    @abc.abstractmethod
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
@@ -467,9 +606,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Will always return False for pulse generator hardware without interleave.
         """
-        pass
+        return False
 
-    @abc.abstractmethod
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
 
@@ -483,9 +621,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Unused for pulse generator hardware other than an AWG.
         """
-        pass
+        return False
 
-    @abc.abstractmethod
     def tell(self, command):
         """ Sends a command string to the device.
 
@@ -493,19 +630,16 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        return 0
 
-    @abc.abstractmethod
     def ask(self, question):
         """ Asks the device a 'question' and receive and return an answer from it.
-a
         @param string question: string containing the command
 
         @return string: the answer of the device to the 'question' in a string
         """
-        pass
+        return ''
 
-    @abc.abstractmethod
     def reset(self):
         """ Reset the device.
 
@@ -513,11 +647,29 @@ a
         """
         pass
 
-    @abc.abstractmethod
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
         @return: bool, True for yes, False for no.
         """
-        pass
+        return False
+
+    def _get_dir_for_name(self, name):
+        """ Get the path to the pulsed sub-directory 'name'.
+
+        @param name: string, name of the folder
+        @return: string, absolute path to the directory with folder 'name'.
+        """
+        path = os.path.join(self.pulsed_file_dir, name)
+        if not os.path.exists(path):
+            os.makedirs(os.path.abspath(path))
+        return os.path.abspath(path)
+
+    def _get_filenames_on_host(self):
+        """ Get the full filenames of all assets saved on the host PC.
+
+        @return: list, The full filenames of all assets saved on the host PC.
+        """
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.npz')]
+        return filename_list
 
