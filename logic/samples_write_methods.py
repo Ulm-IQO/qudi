@@ -426,8 +426,7 @@ class SamplesWriteMethods():
             seq_file.write(footer.encode('UTF-8'))
 
     # TODO: Implement this method.
-    def _write_seqx(self, name, analog_samples, digital_samples, total_number_of_samples,
-                   is_first_chunk, is_last_chunk):
+    def _write_seqx(self, name, sequence_param):
         """
         Write a sequence to a seqx-file.
 
