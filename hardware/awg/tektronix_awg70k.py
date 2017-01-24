@@ -343,7 +343,6 @@ class AWG70K(Base, PulserInterface):
         # Transfer files
         for filename in upload_names:
             self._send_file(filename)
-
         return 0
 
     def load_asset(self, asset_name, load_dict=None):

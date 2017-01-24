@@ -683,7 +683,7 @@ class PulserDummy(Base, PulserInterface):
         """
         return self.uploaded_assets_list
 
-    def get_saved_assets_names(self):
+    def get_saved_asset_names(self):
         """ Retrieve the names of all sampled and saved assets on the host PC.
         This is no list of the file names.
 
@@ -732,7 +732,7 @@ class PulserDummy(Base, PulserInterface):
             self.uploaded_files_list.remove(filename)
         return 0
 
-    def set_sequence_directory(self, dir_path):
+    def set_asset_dir_on_device(self, dir_path):
         """ Change the directory where the assets are stored on the device.
 
         @param string dir_path: The target directory
