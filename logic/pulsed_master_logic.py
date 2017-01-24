@@ -46,7 +46,7 @@ class PulsedMasterLogic(GenericLogic):
     sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
     sigUploadAsset = QtCore.Signal(str)
     sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
-    sigDirectWriteSequence = QtCore.Signal(str, dict)
+    sigDirectWriteSequence = QtCore.Signal(str, list)
     sigLoadAsset = QtCore.Signal(str, dict)
     sigClearPulseGenerator = QtCore.Signal()
     sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
@@ -67,8 +67,8 @@ class PulsedMasterLogic(GenericLogic):
     sigLoadPulseBlock = QtCore.Signal(str)
     sigLoadBlockEnsemble = QtCore.Signal(str)
     sigLoadSequence = QtCore.Signal(str)
-    sigSampleBlockEnsemble = QtCore.Signal(str, bool, bool)
-    sigSampleSequence = QtCore.Signal(str, bool, bool)
+    sigSampleBlockEnsemble = QtCore.Signal(str, bool)
+    sigSampleSequence = QtCore.Signal(str, bool)
     sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
     sigRequestGeneratorInitValues = QtCore.Signal()
     sigGeneratePredefinedSequence = QtCore.Signal(str, list)
@@ -767,7 +767,7 @@ class PulsedMasterLogic(GenericLogic):
             self.status_dict['upload_busy'] = False
             if self.status_dict['saup_sequence_busy']:
                 self.status_dict['saup_sequence_busy'] = False
-                self.sigSaUpSequenceComplete.emit(asset_name)
+                self.sigSequenceSaUpComplete.emit(asset_name)
         elif asset_name in self._generator_logic.saved_pulse_block_ensembles:
             if self.status_dict['sauplo_ensemble_busy']:
                 self.load_asset_into_channels(asset_name)
@@ -930,6 +930,8 @@ class PulsedMasterLogic(GenericLogic):
         @return:
         """
         self.sigRequestGeneratorInitValues.emit()
+        self.sigEnsembleSaUpComplete.emit('')
+        self.sigSequenceSaUpComplete.emit('')
         return
 
     def save_pulse_block(self, block_name, block_object):
@@ -1126,18 +1128,18 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        self.upload_ensemble(ensemble_name)
+        self.upload_ensemble(ensemble_name, analog_samples, digital_samples)
         self.log.debug('Sampling of ensemble "{0}" finished!'.format(ensemble_name))
         if self.status_dict['saup_ensemble_busy'] or self.status_dict['sauplo_ensemble_busy']:
             self.status_dict['sampling_busy'] = False
         return
 
-    def sample_sequence_finished(self, sequence_name):
+    def sample_sequence_finished(self, sequence_name, sequence_params):
         """
 
         @return:
         """
-        self.upload_sequence(sequence_name)
+        self.upload_sequence(sequence_name, sequence_params)
         self.log.debug('Sampling of sequence "{0}" finished!'.format(sequence_name))
         self.status_dict['sampling_busy'] = False
         return

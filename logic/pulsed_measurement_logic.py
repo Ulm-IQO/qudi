@@ -644,7 +644,12 @@ class PulsedMeasurementLogic(GenericLogic):
         @param digital_samples:
         @return:
         """
-        pass
+        err = self._pulse_generator_device.direct_write_ensemble(ensemble_name,
+                                                                 analog_samples, digital_samples)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(ensemble_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
+        return err
 
     def direct_write_sequence(self, sequence_name, sequence_params):
         """
@@ -653,7 +658,11 @@ class PulsedMeasurementLogic(GenericLogic):
         @param sequence_params:
         @return:
         """
-        pass
+        err = self._pulse_generator_device.direct_write_sequence(sequence_name, sequence_params)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(sequence_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
+        return err
 
     ############################################################################
 

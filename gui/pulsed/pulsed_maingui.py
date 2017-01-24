@@ -2356,9 +2356,11 @@ class PulsedMeasurementGui(GUIBase):
         if asset_type == 'PulseBlockEnsemble':
             self._pg.load_ensemble_PushButton.setEnabled(True)
             self._pg.sauplo_ensemble_PushButton.setEnabled(True)
+            self._pg.saup_ensemble_PushButton.setEnabled(True)
         elif asset_type == 'PulseSequence':
             self._sg.load_sequence_PushButton.setEnabled(True)
             self._sg.sauplo_sequence_PushButton.setEnabled(True)
+            self._sg.saup_sequence_PushButton.setEnabled(True)
         return
 
 
