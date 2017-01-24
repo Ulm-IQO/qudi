@@ -1513,7 +1513,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.exception('Error while scanning line.')
             return np.array([[-1.]])
         # return values is a rate of counts/s
-        return self._real_data * self._scanner_clock_frequency
+        return (self._real_data * self._scanner_clock_frequency).transpose()
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.

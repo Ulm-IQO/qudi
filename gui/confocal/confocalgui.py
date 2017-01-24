@@ -1069,7 +1069,7 @@ class ConfocalGui(GUIBase):
         self._osd.do_surface_subtraction_CheckBox.setChecked(self._optimizer_logic.do_surface_subtraction)
 
         old_ch = self._optimizer_logic.opt_channel
-        index = self._osd.opt_channel_ComboBox.findData(old_ch, QtCore.Qt.UserRole)
+        index = self._osd.opt_channel_ComboBox.findData(old_ch)
         self._osd.opt_channel_ComboBox.setCurrentIndex(index)
 
         self._osd.optimization_sequence_lineEdit.setText(', '.join(self._optimizer_logic.optimization_sequence))
