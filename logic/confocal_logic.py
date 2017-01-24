@@ -870,13 +870,6 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
-        # data for the text-array "image":
-        image_data = OrderedDict()
-        image_data['Confocal pure XY scan image data without axis.\n'
-                   '# The upper left entry represents the signal at the upper '
-                   'left pixel position.\n'
-                   '# A pixel-line in the image corresponds to a row '
-                   'of entries where the Signal is in counts/s:'] = self.xy_image[:, :, 3]
 
         # Prepare a figure to be saved
         figure_data = self.xy_image[:, :, 3]
@@ -889,47 +882,48 @@ class ConfocalLogic(GenericLogic):
         axes = ['X', 'Y']
         crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
-        fig = self.draw_figure(
-            data=figure_data,
-            image_extent=image_extent,
-            scan_axis=axes,
-            cbar_range=colorscale_range,
-            percentile_range=percentile_range,
-            crosshair_pos=crosshair_pos
-            )
+        figs = {
+            ch: self.draw_figure(
+                    data=self.xy_image[:, :, 3 + n],
+                    image_extent=image_extent,
+                    scan_axis=axes,
+                    cbar_range=colorscale_range,
+                    percentile_range=percentile_range,
+                    crosshair_pos=crosshair_pos
+                )
+            for n, ch in enumerate(self.get_scanner_count_channels())
+            }
 
         # Save the image data and figure
-        filelabel = 'confocal_xy_image'
-        self._save_logic.save_data(
-            image_data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True,
-            timestamp=save_time,
-            precision=':.3e',
-            plotfig=fig
-            )
-        plt.close(fig)
+        for n, ch in enumerate(self.get_scanner_count_channels()):
+            # data for the text-array "image":
+            image_data = OrderedDict()
+            image_data['Confocal pure XY scan image data without axis.\n'
+                '# The upper left entry represents the signal at the upper left pixel position.\n'
+                '# A pixel-line in the image corresponds to a row '
+                'of entries where the Signal is in counts/s:'] = self.xy_image[:, :, 3 + n]
+
+            filelabel = 'confocal_xy_image_{0}'.format(ch)
+            self._save_logic.save_data(
+                image_data,
+                filepath,
+                parameters=parameters,
+                filelabel=filelabel,
+                as_text=True,
+                timestamp=save_time,
+                precision=':.3e',
+                plotfig=figs[ch]
+                )
+            plt.close(figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
-        x_data = []
-        y_data = []
-        z_data = []
-        counts_data = []
+        data['x position (m)'] = self.xy_image[:, :, 0]
+        data['y position (m)'] = self.xy_image[:, :, 1]
+        data['z position (m)'] = self.xy_image[:, :, 2]
 
-        for row in self.xy_image:
-            for entry in row:
-                x_data.append(entry[0])
-                y_data.append(entry[1])
-                z_data.append(entry[2])
-                counts_data.append(entry[3])
-
-        data['x values (m)'] = x_data
-        data['y values (m)'] = y_data
-        data['z values (m)'] = z_data
-        data['count values (c/s)'] = counts_data
+        for n, ch in enumerate(self.get_scanner_count_channels()):
+            data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 3 + n]
 
         # Save the raw data to file
         filelabel = 'confocal_xy_data'
@@ -977,17 +971,6 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
-        # data for the text-array "image":
-        image_data = OrderedDict()
-        image_data['Confocal pure depth scan image data without axis.\n'
-                   '# The upper left entry represents the signal at the upper '
-                   'left pixel position.\n'
-                   '# A pixel-line in the image corresponds to a row in '
-                   'of entries where the Signal is in counts/s:'] = self.depth_image[:,:,3]
-
-        # Prepare a figure to be saved
-        figure_data = self.depth_image[:,:,3]
-
         if self.depth_scan_dir_is_xz:
             horizontal_range = [self.image_x_range[0], self.image_x_range[1]]
             axes = ['X', 'Z']
@@ -1004,47 +987,48 @@ class ConfocalLogic(GenericLogic):
             self.image_z_range[1]
             ]
 
-        fig = self.draw_figure(
-            data=figure_data,
-            image_extent=image_extent,
-            scan_axis=axes,
-            cbar_range=colorscale_range,
-            percentile_range=percentile_range,
-            crosshair_pos=crosshair_pos
-            )
+        figs = {
+            ch: self.draw_figure(
+                    data=self.depth_image[:, :, 3 + n],
+                    image_extent=image_extent,
+                    scan_axis=axes,
+                    cbar_range=colorscale_range,
+                    percentile_range=percentile_range,
+                    crosshair_pos=crosshair_pos
+                )
+            for n, ch in enumerate(self.get_scanner_count_channels())
+            }
 
         # Save the image data and figure
-        filelabel = 'confocal_xy_image'
-        self._save_logic.save_data(
-            image_data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True,
-            timestamp=save_time,
-            precision=':.3e',
-            plotfig=fig
-            )
-        plt.close(fig)
+        for n, ch in enumerate(self.get_scanner_count_channels()):
+            # data for the text-array "image":
+            image_data = OrderedDict()
+            image_data['Confocal pure depth scan image data without axis.\n'
+                '# The upper left entry represents the signal at the upper left pixel position.\n'
+                '# A pixel-line in the image corresponds to a row in '
+                'of entries where the Signal is in counts/s:'] = self.depth_image[:, :, 3 + n]
+
+            filelabel = 'confocal_depth_image_{0}'.format(ch)
+            self._save_logic.save_data(
+                image_data,
+                filepath,
+                parameters=parameters,
+                filelabel=filelabel,
+                as_text=True,
+                timestamp=save_time,
+                precision=':.3e',
+                plotfig=figs[ch]
+                )
+            plt.close(figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
-        x_data = []
-        y_data = []
-        z_data = []
-        counts_data = []
+        data['x position (m)'] = self.depth_image[:, :, 0]
+        data['y position (m)'] = self.depth_image[:, :, 1]
+        data['z position (m)'] = self.depth_image[:, :, 2]
 
-        for row in self.depth_image:
-            for entry in row:
-                x_data.append(entry[0])
-                y_data.append(entry[1])
-                z_data.append(entry[2])
-                counts_data.append(entry[3])
-
-        data['x values (micros)'] = x_data
-        data['y values (micros)'] = y_data
-        data['z values (micros)'] = z_data
-        data['count values (micros)'] = counts_data
+        for n, ch in enumerate(self.get_scanner_count_channels()):
+            data['count rate {0} (Hz)'.format(ch)] = self.depth_image[:, :, 3 + n]
 
         # Save the raw data to file
         filelabel = 'confocal_depth_data'
@@ -1116,8 +1100,8 @@ class ConfocalLogic(GenericLogic):
                             )
 
         ax.set_aspect(1)
-        ax.set_xlabel(scan_axis[0] + ' position (um)')
-        ax.set_ylabel(scan_axis[1] + ' position (um)')
+        ax.set_xlabel(scan_axis[0] + ' position (m)')
+        ax.set_ylabel(scan_axis[1] + ' position (m)')
         ax.spines['bottom'].set_position(('outward', 10))
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
