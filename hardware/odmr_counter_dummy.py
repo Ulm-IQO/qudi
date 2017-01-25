@@ -87,7 +87,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
-        self.log.warning('ODMRCounterDummy>set_up_odmr_clock')
+        self.log.info('ODMRCounterDummy>set_up_odmr_clock')
 
         time.sleep(0.2)
 
@@ -106,7 +106,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('ODMRCounterDummy>set_up_odmr')
+        self.log.info('ODMRCounterDummy>set_up_odmr')
 
         if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
             self.log.error('Another odmr is already running, close this one '
@@ -142,15 +142,13 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         if self.getState() == 'locked':
             self.log.error('A scan_line is already running, close this one '
-                    'first.')
+                           'first.')
             return -1
 
         self.lock()
 
 
         self._odmr_length = length
-
-        count_data = np.empty((self._odmr_length,), dtype=np.uint32)
 
         count_data = np.random.uniform(0, 5e4, length)
 
@@ -181,7 +179,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('ODMRCounterDummy>close_odmr')
+        self.log.info('ODMRCounterDummy>close_odmr')
 
         self._scanner_counter_daq_task = None
 
@@ -193,6 +191,6 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('ODMRCounterDummy>close_odmr_clock')
+        self.log.info('ODMRCounterDummy>close_odmr_clock')
 
         return 0
