@@ -163,7 +163,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gaussianwithslope_model()
+        model, params = self._fit_logic.make_gausslinearoffset_model()
         self.z_params = params
         self.use_custom_params = False
 
@@ -437,22 +437,23 @@ class OptimizerLogic(GenericLogic):
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(axis=axes, data=xy_fit_data)
+        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(xy_axes=axes,
+                                                               data=xy_fit_data)
         # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
-            self.log.error('error in 2D Gaussian Fit.')
+            self.log.error('Error: 2D Gaussian Fit was not successfull!.')
             print('2D gaussian fit not successfull')
             self.optim_pos_x = self._initial_pos_x
             self.optim_pos_y = self._initial_pos_y
             # hier abbrechen
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
-            if abs(self._initial_pos_x - result_2D_gaus.best_values['x_zero']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['x_zero']) < self._max_offset:
-                if result_2D_gaus.best_values['x_zero'] >= self.x_range[0] and result_2D_gaus.best_values['x_zero'] <= self.x_range[1]:
-                    if result_2D_gaus.best_values['y_zero'] >= self.y_range[0] and result_2D_gaus.best_values['y_zero'] <= self.y_range[1]:
-                        self.optim_pos_x = result_2D_gaus.best_values['x_zero']
-                        self.optim_pos_y = result_2D_gaus.best_values['y_zero']
+            if abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset:
+                if result_2D_gaus.best_values['center_x'] >= self.x_range[0] and result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
+                    if result_2D_gaus.best_values['center_y'] >= self.y_range[0] and result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
+                        self.optim_pos_x = result_2D_gaus.best_values['center_x']
+                        self.optim_pos_y = result_2D_gaus.best_values['center_y']
             else:
                 self.optim_pos_x = self._initial_pos_x
                 self.optim_pos_y = self._initial_pos_y
@@ -477,20 +478,20 @@ class OptimizerLogic(GenericLogic):
                 'min': -self.z_refocus_line[:, self.opt_channel].max(),
                 'max': self.z_refocus_line[:, self.opt_channel].max()
             }
-            result = self._fit_logic.make_gaussianwithslope_fit(
-                axis=self._zimage_Z_values,
+            result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line[:, self.opt_channel],
-                add_parameters=adjusted_param)
+                add_params=adjusted_param)
         else:
             if self.use_custom_params:
-                result = self._fit_logic.make_gaussianwithslope_fit(
-                    axis=self._zimage_Z_values,
+                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                    x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line[:, self.opt_channel],
-                    # Todo: It is required that the changed parameters are given as a dictionary
-                    add_parameters={})
+                    # Todo: It is required that the changed parameters are given as a dictionary or parameter object
+                    add_params=None)
             else:
-                result = self._fit_logic.make_gaussianwithslope_fit(
-                    axis=self._zimage_Z_values,
+                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                    x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line[:, self.opt_channel])
         self.z_params = result.params
 
@@ -505,7 +506,7 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gaussianwithslope_model()
+                    gauss, params = self._fit_logic.make_gausslinearoffset_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away

@@ -2118,6 +2118,20 @@ class SlowGatedNICard(NICard):
                 ''.format(self._samples_number_default))
             self._samples_number = self._samples_number_default
 
+    def get_constraints(self):
+        """ Get hardware limits of NI device.
+
+        @return SlowCounterConstraints: constraints class for slow counter
+
+        FIXME: ask hardware for limits when module is loaded
+        """
+        constraints = SlowCounterConstraints()
+        constraints.max_detectors = 4
+        constraints.min_count_frequency = 1e-3
+        constraints.max_count_frequency = 10e9
+        constraints.counting_mode = [CountingMode.FINITE_GATED]
+        return constraints
+
     #overwrite the SlowCounterInterface commands of the class NICard:
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
