@@ -51,7 +51,7 @@ class PoiMark(pg.CircleROI):
     color = "F0F"
     selectcolor = "FFF"
     selected = False
-    radius = 0.6
+    radius = 0.6e-6
 
     def __init__(self, pos, poi=None, click_action=None, viewwidget=None, **args):
         pg.CircleROI.__init__(
@@ -255,8 +255,8 @@ class PoiManagerGui(GUIBase):
         # Connectors
         self._poi_manager_logic = self.get_in_connector('poimanagerlogic1')
         self._confocal_logic = self.get_in_connector('confocallogic1')
-        print("POI Manager logic is", self._poi_manager_logic)
-        print("Confocal logic is", self._confocal_logic)
+        self.log.debug("POI Manager logic is {0}".format(self._poi_manager_logic))
+        self.log.debug("Confocal logic is {0}".format(self._confocal_logic))
 
         # Initializing the GUIs
         self.initMainUI(e)
@@ -300,13 +300,17 @@ class PoiManagerGui(GUIBase):
 
         # Load the image in the display:
         self.roi_map_image = pg.ImageItem(self.roi_xy_image_data)
-        self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[
-                                   1] - self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1] - self._confocal_logic.image_y_range[0]))
+        self.roi_map_image.setRect(
+            QtCore.QRectF(
+                self._confocal_logic.image_x_range[0],
+                self._confocal_logic.image_y_range[0],
+                self._confocal_logic.image_x_range[1] - self._confocal_logic.image_x_range[0],
+                self._confocal_logic.image_y_range[1] - self._confocal_logic.image_y_range[0]))
 
         # Add the display item to the roi map ViewWidget defined in the UI file
         self._mw.roi_map_ViewWidget.addItem(self.roi_map_image)
-        self._mw.roi_map_ViewWidget.setLabel('bottom', 'X position', units='µm')
-        self._mw.roi_map_ViewWidget.setLabel('left', 'Y position', units='µm')
+        self._mw.roi_map_ViewWidget.setLabel('bottom', 'X position', units='m')
+        self._mw.roi_map_ViewWidget.setLabel('left', 'Y position', units='m')
 
         # Set to fixed 1.0 aspect ratio, since the metaphor is a "map" of the sample
         self._mw.roi_map_ViewWidget.setAspectLocked(lock=True, ratio=1.0)
@@ -329,30 +333,36 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Load image in the display
-        self.x_shift_plot = pg.PlotDataItem([0], [0],
-                                            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                            symbol='o',
-                                            symbolPen=palette.c1,
-                                            symbolBrush=palette.c1,
-                                            symbolSize=5,
-                                            name='x'
-                                            )
-        self.y_shift_plot = pg.PlotDataItem([0], [0],
-                                            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
-                                            symbol='s',
-                                            symbolPen=palette.c2,
-                                            symbolBrush=palette.c2,
-                                            symbolSize=5,
-                                            name='y'
-                                            )
-        self.z_shift_plot = pg.PlotDataItem([0], [0],
-                                            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-                                            symbol='t',
-                                            symbolPen=palette.c3,
-                                            symbolBrush=palette.c3,
-                                            symbolSize=5,
-                                            name='z'
-                                            )
+        self.x_shift_plot = pg.PlotDataItem(
+            [0],
+            [0],
+            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c1,
+            symbolBrush=palette.c1,
+            symbolSize=5,
+            name='x'
+            )
+        self.y_shift_plot = pg.PlotDataItem(
+            [0],
+            [0],
+            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+            symbol='s',
+            symbolPen=palette.c2,
+            symbolBrush=palette.c2,
+            symbolSize=5,
+            name='y'
+            )
+        self.z_shift_plot = pg.PlotDataItem(
+            [0],
+            [0],
+            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+            symbol='t',
+            symbolPen=palette.c3,
+            symbolBrush=palette.c3,
+            symbolSize=5,
+            name='z'
+            )
 
         self._mw.sample_shift_ViewWidget.addLegend()
 
@@ -436,7 +446,6 @@ class PoiManagerGui(GUIBase):
         # Redraw the sample_shift axes if the range changes
         self._mw.sample_shift_ViewWidget.plotItem.sigRangeChanged.connect(self._redraw_sample_shift)
 
-#        print('Main POI Manager Window shown:')
         self._mw.show()
 
     def initReorientRoiDialogUI(self, e):
@@ -507,10 +516,12 @@ class PoiManagerGui(GUIBase):
         self.roi_map_ymax = np.max(self._poi_manager_logic.roi_map_data[:, :, 1])
 
         self.roi_map_image.getViewBox().enableAutoRange()
-        self.roi_map_image.setRect(QtCore.QRectF(self.roi_map_xmin,
-                                                 self.roi_map_ymin,
-                                                 self.roi_map_xmax - self.roi_map_xmin,
-                                                 self.roi_map_ymax - self.roi_map_ymin))
+        self.roi_map_image.setRect(
+            QtCore.QRectF(
+                self.roi_map_xmin,
+                self.roi_map_ymin,
+                self.roi_map_xmax - self.roi_map_xmin,
+                self.roi_map_ymax - self.roi_map_ymin))
         self.roi_map_image.setImage(image=self.roi_xy_image_data, autoLevels=True)
 
     def shortcut_to_roi_cb_manual(self):
@@ -603,14 +614,11 @@ class PoiManagerGui(GUIBase):
 
     def goto_poi(self, key):
         """ Go to the last known position of poi <key>."""
-
         self._poi_manager_logic.go_to_poi(poikey=self.selected_poi_key)
-
-#        print(self._poi_manager_logic.get_last_point(poikey=key))
 
     def populate_poi_list(self):
         """ Populate the dropdown box for selecting a poi. """
-        print('started populate_poi_list at ', time.time())
+        self.log.debug('started populate_poi_list at {0}'.format(time.time()))
         self._mw.active_poi_ComboBox.clear()
         self._mw.offset_anchor_ComboBox.clear()
         self._rrd.ref_a_poi_ComboBox.clear()
@@ -633,7 +641,7 @@ class PoiManagerGui(GUIBase):
         # Set the selected POI in the combobox
         self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(self.selected_poi_key))
 
-        print('finished populating at ', time.time())
+        self.log.debug('finished populating at '.format(time.time()))
 
     def change_refind_method(self):
         """ Make appropriate changes in the GUI to reflect the newly chosen refind method."""
@@ -644,7 +652,7 @@ class PoiManagerGui(GUIBase):
             self._mw.offset_anchor_ComboBox.setEnabled(True)
         else:
             # TODO: throw an error
-            print('error 123')
+            self.log.debug('error 123')
 
     def set_roi_name(self):
         """ Set the name of a ROI (useful when saving)."""
@@ -699,10 +707,6 @@ class PoiManagerGui(GUIBase):
             self._poi_manager_logic.go_to_crosshair_after_refocus = True
 
     def _update_timer(self):
-        # placeholder=QtGui.QLineEdit()
-        # placeholder.setText('{0:.1f}'.format(self._poi_manager_logic.time_left))
-
-        #        print(self._poi_manager_logic.time_left)
         self._mw.time_till_next_update_ProgressBar.setValue(self._poi_manager_logic.time_left)
 
     def change_track_period(self):
@@ -792,9 +796,9 @@ class PoiManagerGui(GUIBase):
             self._mw.sample_shift_ViewWidget.setLabel('bottom', 'Time', units='')
 
         # Subtract initial position to get shifts
-        x_shift_data = (poi_trace[:, 1] - poi_trace[0, 1]) / 1.0e6
-        y_shift_data = (poi_trace[:, 2] - poi_trace[0, 2]) / 1.0e6
-        z_shift_data = (poi_trace[:, 3] - poi_trace[0, 3]) / 1.0e6
+        x_shift_data = (poi_trace[:, 1] - poi_trace[0, 1])
+        y_shift_data = (poi_trace[:, 2] - poi_trace[0, 2])
+        z_shift_data = (poi_trace[:, 3] - poi_trace[0, 3])
 
         # Plot data
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
@@ -805,7 +809,7 @@ class PoiManagerGui(GUIBase):
 
     def _redraw_poi_markers(self):
 
-        print('starting redraw_poi_markers', time.time())
+        self.log.debug('starting redraw_poi_markers {0}'.format(time.time()))
 
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
@@ -817,12 +821,13 @@ class PoiManagerGui(GUIBase):
                     self._markers[key].deselect()
                 else:
                     # Create Region of Interest as marker:
-                    marker = PoiMark(position,
-                                     poi=self._poi_manager_logic.track_point_list[key],
-                                     click_action=self.select_poi_from_marker,
-                                     movable=False,
-                                     scaleSnap=False,
-                                     snapSize=1.0)
+                    marker = PoiMark(
+                        position,
+                        poi=self._poi_manager_logic.track_point_list[key],
+                        click_action=self.select_poi_from_marker,
+                        movable=False,
+                        scaleSnap=False,
+                        snapSize=1.0e-6)
 
                     # Add to the Map Widget
                     marker.add_to_viewwidget(self._mw.roi_map_ViewWidget)
@@ -832,8 +837,8 @@ class PoiManagerGui(GUIBase):
                     self._markers[key].select()
                     cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=self.selected_poi_key)
                     self._mw.poi_coords_label.setText(
-                        '({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
-        print('finished redraw at ', time.time())
+                        '({0:.2e}, {1:.2e}, {2:.2e})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
+        self.log.debug('finished redraw at {0}'.format(time.time()))
 
     def make_new_roi(self):
         """ Start new ROI by removing all POIs and resetting the sample history."""

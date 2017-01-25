@@ -792,7 +792,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
-
                         # write temporary sample array to file
                         created_files = self._write_to_file[self.waveform_format](
                             ensemble.name + name_tag, analog_samples, digital_samples,
