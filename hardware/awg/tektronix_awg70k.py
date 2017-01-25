@@ -1100,13 +1100,12 @@ class AWG70K(Base, PulserInterface):
         bytes_written, enum_status_code = self.awg.write(command)
         return int(enum_status_code)
 
-    def create_direct_waveform(self, name, ana_samples, digi_samples):
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
         """
-        @param name: Name for the waveform to be created.
-        @param ana_samples: 1-dimensional numpy.ndarray of type float32 containing the voltage
-                            samples.
-        @param digi_samples:    2-dimensional numpy.ndarray of type bool containing the marker states
-                                for each sample.
+        @param ensemble_name: Name for the waveform to be created.
+        @param analog_samples:  numpy.ndarray of type float32 containing the voltage samples.
+        @param digital_samples: numpy.ndarray of type bool containing the marker states for each
+                                sample.
                                 First dimension is marker index; second dimension is sample number
         @return:
         """
@@ -1150,13 +1149,11 @@ class AWG70K(Base, PulserInterface):
         self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(name), mrk_bytes)
         return 0
 
-    def create_direct_sequence(self, name, waveform_list, repeat_list, jumpto_list, trigger_list):
+    def direct_write_sequence(self, sequence_name, sequence_params):
         """
-        @param name:
-        @param waveform_list:
-        @param repeat_list:
-        @param jumpto_list:
-        @param trigger_list:
+        @param sequence_name:
+        @param sequence_params:
+
         @return:
         """
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
