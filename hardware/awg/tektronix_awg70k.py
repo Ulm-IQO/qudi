@@ -1182,43 +1182,45 @@ class AWG70K(Base, PulserInterface):
         @return:
         """
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
-
-        if type(waveform_list[0]) is list:
-            num_tracks = 2
-            num_steps = len(waveform_list[0])
-        else:
-            num_tracks = 1
-            num_steps = len(waveform_list)
+        active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
+        num_tracks = len(active_analog)
+        num_steps = len(sequence_params)
 
         # Check if sequence already exists and delete if necessary.
-        if name in self._get_sequence_names_memory():
-            self.awg.write('SLIS:SEQ:DEL "{0}"'.format(name))
+        if sequence_name in self._get_sequence_names_memory():
+            self.awg.write('SLIS:SEQ:DEL "{0}"'.format(sequence_name))
 
         # Create new sequence and set jump timing to immediate
-        self.awg.write('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(name, num_steps, num_tracks))
-        self.awg.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(name))
+        self.awg.write('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(sequence_name, num_steps, num_tracks))
+        self.awg.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(sequence_name))
 
         # Fill in sequence information
         for step in range(num_steps):
-            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, name, trig_dict[trigger_list[step]]))
-
-        if jumpto_list[step] < 0:
-            jumpto = 'NEXT'
-        else:
-            jumpto = str(jumpto_list[step])
-            self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1, name, jumpto))
-
-        if repeat_list[step] <= 0:
-            repeat = 'INF'
-        else:
-            repeat = str(repeat_list[step])
-            self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1, name, repeat))
-
-        if num_tracks == 1:
-            self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[step]))
-        elif num_tracks == 2:
-            self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[0][step]))
-            self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[1][step]))
+            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+                                                                     trig_dict[sequence_params[step]['trigger_wait']]))
+            if sequence_params[step]['event_jump_to'] <= 0:
+                jumpto = 'NEXT'
+            else:
+                jumpto = str(sequence_params[step]['event_jump_to'])
+                self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
+                                                                         sequence_name, jumpto))
+            if sequence_params[step]['repetitions'] <= 0:
+                repeat = 'INF'
+            else:
+                repeat = str(sequence_params[step]['repetitions'])
+                self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
+                                                                        sequence_name, repeat))
+            if num_tracks == 1:
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                sequence_params[step]['name'] + '_ch1'))
+            elif num_tracks == 2:
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                sequence_params[step]['name'] + '_ch1'))
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                sequence_params[step]['name'] + '_ch2'))
         return 0
 
     def _init_loaded_asset(self):
