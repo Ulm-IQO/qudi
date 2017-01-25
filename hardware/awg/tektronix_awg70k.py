@@ -1215,14 +1215,19 @@ class AWG70K(Base, PulserInterface):
                 jumpto = 'NEXT'
             else:
                 jumpto = str(sequence_params[step]['event_jump_to'])
-                self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
-                                                                         sequence_name, jumpto))
+            self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
+                                                                     sequence_name, jumpto))
             if sequence_params[step]['repetitions'] <= 0:
                 repeat = 'INF'
             else:
                 repeat = str(sequence_params[step]['repetitions'])
-                self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
-                                                                        sequence_name, repeat))
+            self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
+                                                                    sequence_name, repeat))
+            if sequence_params[step]['go_to'] <= 0:
+                goto = 'NEXT'
+            else:
+                goto = str(sequence_params[step]['go_to'])
+            self.awg.write('SLIS:SEQ:STEP{0}:GOTO "{1}", {2}'.format(step + 1, sequence_name, goto))
             if num_tracks == 1:
                 self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
                                                                                 sequence_name,
