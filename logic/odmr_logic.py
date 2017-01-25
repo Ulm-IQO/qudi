@@ -51,7 +51,8 @@ class ODMRLogic(GenericLogic):
     sigOdmrStarted = QtCore.Signal()
     sigOdmrStopped = QtCore.Signal()
     sigOdmrPlotUpdated = QtCore.Signal()
-    sigOdmrFitUpdated = QtCore.Signal()
+    sigOdmrFitUpdated = QtCore.Signal(str)   # an arbitrary object will be emitted
+    sigOdmrFitParameterUpdated = QtCore.Signal(dict)
     sigOdmrMatrixUpdated = QtCore.Signal()
     sigOdmrFinished = QtCore.Signal()
     sigOdmrElapsedTimeChanged = QtCore.Signal()
@@ -164,6 +165,9 @@ class ODMRLogic(GenericLogic):
             self.run_time = self._statusVariables['run_time']
         if 'saveRawData' in self._statusVariables:
             self.saveRawData = self._statusVariables['saveRawData']
+        if 'number_of_lines' in self._statusVariables:
+            self.number_of_lines = self._statusVariables['number_of_lines']
+
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -194,6 +198,7 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['mw_step'] = self.mw_step
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
+        self._statusVariables['number_of_lines'] = self.number_of_lines
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -202,18 +207,19 @@ class ODMRLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+
         self._clock_frequency = int(clock_frequency)
 
         # checks if scanner is still running
         if self.getState() == 'locked':
             return -1
         else:
-            dict_param = {'_clock_frequency': self._clock_frequency}
+            dict_param = {'clock_frequency': self._clock_frequency}
             self.sigParameterChanged.emit(dict_param)
             return 0
 
-    def start_odmr(self):
-        """ Starting the ODMR counter.
+    def _start_odmr_counter(self):
+        """ Starting the ODMR counter and set up the clock for it.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -234,11 +240,18 @@ class ODMRLogic(GenericLogic):
         self.sigMicrowaveListModeChanged.emit(True)
         return 0
 
-    def kill_odmr(self):
+    def _stop_odmr_counter(self):
         """ Stopping the ODMR counter. """
-        self._odmr_counter.close_odmr()
-        self._odmr_counter.close_odmr_clock()
-        return 0
+
+        ret_val1 = self._odmr_counter.close_odmr()
+        if ret_val1 != 0:
+            self.log.error('ODMR counter could not be stopped!')
+        ret_val2 = self._odmr_counter.close_odmr_clock()
+        if ret_val1 != 0:
+            self.log.error('ODMR clock could not be stopped!')
+
+        # Check with a bitwise or:
+        return ret_val1 | ret_val2
 
     def start_odmr_scan(self):
         """ Starting an ODMR scan.
@@ -257,6 +270,10 @@ class ODMRLogic(GenericLogic):
             self.mw_step = self.limits.sweep_step_in_range(self.mw_step)
         elif self.scanmode == MicrowaveMode.LIST:
             self.mw_step = self.limits.list_step_in_range(self.mw_step)
+
+        param_dict = {'mw_start': self.mw_start, 'mw_step':self.mw_step,
+                      'mw_stop': self.mw_stop}
+        self.sigParameterChanged.emit(param_dict)
 
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
 
@@ -278,7 +295,7 @@ class ODMRLogic(GenericLogic):
         else:
             self.log.info('Raw data NOT saved.')
 
-        odmr_status = self.start_odmr()
+        odmr_status = self._start_odmr_counter()
         if odmr_status < 0:
             self.sigMicrowaveCWModeChanged.emit(False)
             self.sigMicrowaveListModeChanged.emit(False)
@@ -325,7 +342,7 @@ class ODMRLogic(GenericLogic):
         """
         self._startTime = time.time() - self.elapsed_time
 
-        odmr_status = self.start_odmr()
+        odmr_status = self._start_odmr_counter()
         if odmr_status < 0:
             self.sigMicrowaveCWModeChanged.emit(False)
             self.sigMicrowaveListModeChanged.emit(False)
@@ -386,7 +403,9 @@ class ODMRLogic(GenericLogic):
         if self.stopRequested:
             with self.threadlock:
                 self.MW_off()
-                self.kill_odmr()
+                # no need to check the return value, since the logic will be
+                # anyway released after the this.
+                self._stop_odmr_counter()
                 self.stopRequested = False
                 self.unlock()
                 self.sigOdmrPlotUpdated.emit()
@@ -815,6 +834,8 @@ class ODMRLogic(GenericLogic):
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
+        elif self.fit_function == 'No Fit':
+            self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
         else:
             self.log.warning('The Fit Function "{0}" is not implemented to '
                     'be used in the ODMR Logic. Correct that! Fit Call will '
@@ -822,9 +843,7 @@ class ODMRLogic(GenericLogic):
                     '"No Fit".'.format(fit_function))
             self.fit_function = 'No Fit'
 
-        if self.fit_function == 'No Fit':
-            self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
-        else:
+        if self.fit_function != 'No Fit':
             # after the fit was performed, retrieve the fitting function and
             # evaluate the fitted parameters according to the function:
             fitted_function, params = self.fit_models[self.fit_function]
@@ -832,7 +851,8 @@ class ODMRLogic(GenericLogic):
 
         #FIXME: Check whether this signal is really necessary here.
         self.sigOdmrPlotUpdated.emit()
-        self.sigOdmrFitUpdated.emit()   # so that the gui can adjust to that
+        self.sigOdmrFitUpdated.emit(self.fit_function)   # so that the gui can adjust to that
+        self.sigOdmrFitParameterUpdated.emit(param_dict)
 
         self._fit_param = param_dict
         self._fit_result = result
