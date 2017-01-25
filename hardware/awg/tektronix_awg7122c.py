@@ -785,6 +785,43 @@ class AWG7122C(Base, PulserInterface):
 
         return self.get_analog_level()
 
+    def set_digital_level(self, low=None, high=None):
+        """ Set low and/or high value of the provided digital channel.
+
+        @param dict low: dictionary, with key being the channel and items being
+                         the low values (in volt) for the desired channel.
+        @param dict high: dictionary, with key being the channel and items being
+                         the high values (in volt) for the desired channel.
+
+        If nothing is passed then the command is being ignored.
+
+        Note, the major difference to analog signals is that digital signals are
+        either ON or OFF, whereas analog channels have a varying amplitude
+        range. In contrast to analog output levels, digital output levels are
+        defined by a voltage, which corresponds to the ON status and a voltage
+        which corresponds to the OFF status (both denoted in (absolute) voltage)
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
+        """
+        if low is None:
+            low = {}
+        if high is None:
+            high = {}
+
+        #If you want to check the input use the constraints:
+        constraints = self.get_constraints()
+
+        for d_ch in low:
+            #FIXME: Tell the device the proper digital voltage low value:
+            # self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
+            pass
+
+        for d_ch in high:
+            #FIXME: Tell the device the proper digital voltage high value:
+            # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
+            pass
+
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
 
