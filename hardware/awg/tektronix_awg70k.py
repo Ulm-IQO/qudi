@@ -140,11 +140,9 @@ class AWG70K(Base, PulserInterface):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in method activation.
         """
-        # Closes the connection to the AWG via ftp and the socket
-        try:
-            self.awg.close()
-        except:
-            self.log.warning('Unable to close connection to AWG using pyVISA.')
+        # Closes the connection to the AWG
+        self.awg.close()
+        self.log.info('Closed connection to AWG')
         self.connected = False
         return
 
