@@ -152,17 +152,17 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
+        lorentians,params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
 
         sigma = 3.
 
-        params.add('lorentz0_amplitude', value=-30000.*np.pi*sigma)
-        params.add('lorentz0_center', value=length/3)
-        params.add('lorentz0_sigma', value=sigma)
-        params.add('lorentz1_amplitude', value=-30000*np.pi*sigma)
-        params.add('lorentz1_center', value=2*length/3)
-        params.add('lorentz1_sigma', value=sigma)
-        params.add('c', value=50000.)
+        params.add('l0_amplitude', value=-30000)
+        params.add('l0_center', value=length/3)
+        params.add('l0_sigma', value=sigma)
+        params.add('l1_amplitude', value=-30000)
+        params.add('l1_center', value=2*length/3)
+        params.add('l1_sigma', value=sigma)
+        params.add('offset', value=50000.)
 
         count_data += lorentians.eval(x=np.arange(1, length+1, 1), params=params)
 

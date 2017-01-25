@@ -1155,9 +1155,9 @@ class PulsedMeasurementLogic(GenericLogic):
         result = None
 
         # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'axis': x_data,
+        kwargs = {'x_axis': x_data,
                   'data': y_data,
-                  'add_parameters': None}
+                  'add_params': None}
 
         param_dict = OrderedDict()
 
@@ -1170,13 +1170,13 @@ class PulsedMeasurementLogic(GenericLogic):
                 # set some custom defined constraints for this module and for
                 # this fit:
                 update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
-                update_dict['amplitude'] = {'min': 0.0}
+                # update_dict['amplitude'] = {'min': 0.0}
 
                 # add to the keywords dictionary
-                kwargs['add_parameters'] = update_dict
+                kwargs['add_params'] = update_dict
 
-            result = self._fit_logic.make_sine_fit(**kwargs)
-            sine, params = self._fit_logic.make_sine_model()
+            result = self._fit_logic.make_sineoffset_fit(**kwargs)
+            sine, params = self._fit_logic.make_sineoffset_model()
             pulsed_fit_y = sine.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Contrast'] = {'value': np.abs(2*result.params['amplitude'].value*100),
@@ -1202,8 +1202,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'Lorentian (neg)':
 
-            result = self._fit_logic.make_lorentzian_fit(**kwargs)
-            lorentzian, params = self._fit_logic.make_lorentzian_model()
+            result = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
+            lorentzian, params = self._fit_logic.make_lorentzoffset_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Minimum'] = {'value': result.params['center'].value,
@@ -1214,13 +1214,13 @@ class PulsedMeasurementLogic(GenericLogic):
                                        'unit' : 's'}
 
             cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont_err = np.sqrt(
                   (cont / result.params['amplitude'].value * result.params['amplitude'].stderr)**2
                 + (cont / result.params['sigma'].value * result.params['sigma'].stderr)**2
-                + (cont / result.params['c'].value * result.params['c'].stderr)**2)
+                + (cont / result.params['offset'].value * result.params['offset'].stderr)**2)
 
             param_dict['Contrast'] = {'value': cont*100,
                                       'error': cont_err*100,
@@ -1229,8 +1229,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'Lorentian (pos)':
 
-            result = self._fit_logic.make_lorentzianpeak_fit(**kwargs)
-            lorentzian, params = self._fit_logic.make_lorentzian_model()
+            result = self._fit_logic.make_lorentzoffsetpeak_fit(**kwargs)
+            lorentzian, params = self._fit_logic.make_lorentzoffset_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Maximum'] = {'value': result.params['center'].value,
@@ -1241,60 +1241,60 @@ class PulsedMeasurementLogic(GenericLogic):
                                        'unit' : 's'}
 
             cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['offset'].value)
             param_dict['Contrast'] = {'value': cont*100,
                                       'unit' : '%'}
 
         elif fit_function == 'N14':
 
             result = self._fit_logic.make_N14_fit(**kwargs)
-            fitted_function, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
+            fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
 
-            param_dict['Freq. 0'] = {'value': result.params['lorentz0_center'].value,
-                                     'error': result.params['lorentz0_center'].stderr,
+            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['0_center'].stderr,
                                      'unit' : 'Hz'}
-            param_dict['Freq. 1'] = {'value': result.params['lorentz1_center'].value,
-                                     'error': result.params['lorentz1_center'].stderr,
+            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
                                      'unit' : 'Hz'}
-            param_dict['Freq. 2'] = {'value': result.params['lorentz2_center'].value,
-                                     'error': result.params['lorentz2_center'].stderr,
+            param_dict['Freq. 2'] = {'value': result.params['l2_center'].value,
+                                     'error': result.params['l2_center'].stderr,
                                      'unit' : 'Hz'}
 
-            cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = result.params['l0_amplitude'].value
+            cont0 = cont0/(-1*np.pi*result.params['l0_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                  (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
-                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
-                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont0 / result.params['l0_amplitude'].value * result.params['l0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['l0_sigma'].value * result.params['l0_sigma'].stderr) ** 2
+                + (cont0 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 0'] = {'value': cont0*100,
                                         'error': cont0_err*100,
                                         'unit' : '%'}
 
-            cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = result.params['l1_amplitude'].value
+            cont1 = cont1/(-1*np.pi*result.params['l1_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                  (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
-                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
-                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont1 / result.params['l1_amplitude'].value * result.params['l1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['l1_sigma'].value * result.params['l1_sigma'].stderr) ** 2
+                + (cont1 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 1'] = {'value': cont1*100,
                                         'error': cont1_err*100,
                                         'unit' : '%'}
 
-            cont2 = result.params['lorentz2_amplitude'].value
-            cont2 = cont2/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)
+            cont2 = result.params['l2_amplitude'].value
+            cont2 = cont2/(-1*np.pi*result.params['l2_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont2_err = np.sqrt(
-                  (cont2 / result.params['lorentz2_amplitude'].value * result.params['lorentz2_amplitude'].stderr) ** 2
-                + (cont2 / result.params['lorentz2_sigma'].value * result.params['lorentz2_sigma'].stderr) ** 2
-                + (cont2 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont2 / result.params['l2_amplitude'].value * result.params['l2_amplitude'].stderr) ** 2
+                + (cont2 / result.params['l2_sigma'].value * result.params['l2_sigma'].stderr) ** 2
+                + (cont2 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 2'] = {'value': cont2*100,
                                         'error': cont2_err*100,
@@ -1303,63 +1303,63 @@ class PulsedMeasurementLogic(GenericLogic):
         elif fit_function =='N15':
 
             result = self._fit_logic.make_N15_fit(**kwargs)
-            fitted_function, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
+            fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
 
-            param_dict['Freq. 0'] = {'value': result.params['lorentz0_center'].value,
-                                     'error': result.params['lorentz0_center'].stderr,
+            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['l0_center'].stderr,
                                      'unit' : 'Hz'}
-            param_dict['Freq. 1'] = {'value': result.params['lorentz1_center'].value,
-                                     'error': result.params['lorentz1_center'].stderr,
+            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
                                      'unit' : 'Hz'}
 
-            cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = result.params['l0_amplitude'].value
+            cont0 = cont0/(-1*np.pi*result.params['l0_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                  (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
-                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
-                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont0 / result.params['l0_amplitude'].value * result.params['l0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['l0_sigma'].value * result.params['l0_sigma'].stderr) ** 2
+                + (cont0 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 0'] = {'value': cont0*100,
                                         'error': cont0_err*100,
                                         'unit' : '%'}
 
-            cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = result.params['l1_amplitude'].value
+            cont1 = cont1/(-1*np.pi*result.params['l1_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                  (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
-                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
-                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont1 / result.params['l1_amplitude'].value * result.params['l1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['l1_sigma'].value * result.params['l1_sigma'].stderr) ** 2
+                + (cont1 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 1'] = {'value': cont1*100,
                                         'error': cont1_err*100,
                                         'unit' : '%'}
 
-        elif fit_function =='Stretched Exponential':
+        elif fit_function == 'Stretched Exponential':
             self.log.warning('Stretched Exponential not yet implemented.')
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
 
-        elif fit_function =='Exponential':
+        elif fit_function == 'Exponential':
             self.log.warning('Exponential not yet implemented.')
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
 
-        elif fit_function =='XY8':
+        elif fit_function == 'XY8':
             self.log.warning('XY8 not yet implemented')
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
         else:
             self.log.warning('The Fit Function "{0}" is not implemented to '
                     'be used in the Pulsed Measurement Logic. Correct that! '
                     'Fit Call will be skipped and Fit Function will be set '
                     'to "No Fit".'.format(fit_function))
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
 
         self.signal_plot_x_fit = pulsed_fit_x
         self.signal_plot_y_fit = pulsed_fit_y

@@ -771,29 +771,29 @@ class ConfocalLogic(GenericLogic):
             if self.depth_scan_dir_is_xz:
                 if n_ch <= 3:
                     return_line = np.vstack([
-                        self._return_XL,
-                        image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                    self._return_XL,
+                    image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
                         image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
                         ][0:n_ch])
                 else:
                     return_line = np.vstack([
                         self._return_XL,
                         image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
+                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
                         np.ones(self._return_XL.shape) * self._current_a
                         ])
             else:
                 if n_ch <= 3:
                     return_line = np.vstack([
-                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                        self._return_YL,
+                    image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                    self._return_YL,
                         image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
                         ][0:n_ch])
                 else:
                     return_line = np.vstack([
                         image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
                         self._return_YL,
-                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
+                    image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
                         np.ones(self._return_YL.shape) * self._current_a
                         ])
  
@@ -1160,7 +1160,7 @@ class ConfocalLogic(GenericLogic):
         self.signal_draw_figure_completed.emit()
         return fig
 
-    # Tilt correction
+    ##################################### Tilt correction ########################################
 
     @QtCore.Slot()
     def set_tilt_point1(self):
