@@ -1110,43 +1110,68 @@ class AWG70K(Base, PulserInterface):
         @return:
         """
         # check input
-        if not name:
-            self.log.error('Please specify a waveform name for direct waveform creation.')
+        if not ensemble_name:
+            self.log.error('Please specify an ensemble name for direct waveform creation.')
             return -1
 
-        if type(ana_samples).__name__ != 'ndarray':
+        if type(analog_samples).__name__ != 'ndarray':
             self.log.warning('Analog samples for direct waveform creation have wrong data type.\n'
-                             'Converting to numpy.ndarray of float32.')
-            ana_samples = np.array(ana_samples, dtype='float32')
+                             'Converting to numpy.ndarray of type float32.')
+            analog_samples = np.array(analog_samples, dtype='float32')
 
-        if type(digi_samples).__name__ != 'ndarray':
+        if type(digital_samples).__name__ != 'ndarray':
             self.log.warning('Digital samples for direct waveform creation have wrong data type.\n'
-                             'Converting to numpy.ndarray of bool.')
-            digi_samples = np.array(digi_samples, dtype=bool)
+                             'Converting to numpy.ndarray of type bool.')
+            digital_samples = np.array(digital_samples, dtype=bool)
 
         min_samples = int(self.awg.query('WLIS:WAV:LMIN?'))
-        if ana_samples.size < min_samples or digi_samples.shape[1] < min_samples:
+        if analog_samples.shape[1] < min_samples or digital_samples.shape[1] < min_samples:
             self.log.error('Minimum waveform length for AWG70000A series is {0} samples.\n'
                            'Direct waveform creation failed.'.format(min_samples))
             return -1
 
-        if ana_samples.size != digi_samples.shape[1]:
+        if analog_samples.shape[1] != digital_samples.shape[1]:
             self.log.error('Number of analog and digital samples must be the same.\n'
                            'Direct waveform creation failed.')
             return -1
 
-        # Encode marker information in an array of bytes (uint8)
-        mrk_bytes = np.add(np.left_shift(digi_samples[1].astype('uint8'), 7),
-                           np.left_shift(digi_samples[0].astype('uint8'), 6))
+        # determine active channels
+        activation_dict = self.get_active_channels()
+        active_chnl = [chnl for chnl in activation_dict if activation_dict[chnl]]
+        active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl].sort()
+        active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl].sort()
 
-        # Check if waveform already exists and delete if necessary.
-        if name in self._get_waveform_names_memory():
-            self.awg.write('WLIS:WAV:DEL "{0}"'.format(name))
+        # Sanity check of channel numbers
+        if len(active_analog) != analog_samples.shape[0] or len(active_digital) != digital_samples.shape[0]:
+            self.log.error('Mismatch of channel activation and sample array dimensions for direct '
+                           'write.\nChannel activation is: {0} analog, {1} digital.\n'
+                           'Sample arrays have: {2} analog, {3} digital.'
+                           ''.format(len(active_analog), len(active_digital),
+                                     analog_samples.shape[0], digital_samples.shape[0]))
+            return -1
 
-        # Create waveform in AWG workspace and fill in sample data
-        self.awg.write('WLIS:WAV:NEW "{0}", {1}'.format(name, ana_samples.size))
-        self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(name), ana_samples)
-        self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(name), mrk_bytes)
+        for a_ch in active_analog:
+            a_ch_num = int(a_ch.split('ch')[-1])
+            mrk_ch_1 = 'd_ch{0}'.format(a_ch_num * 2 - 2)
+            mrk_ch_2 = 'd_ch{0}'.format(a_ch_num * 2 - 1)
+
+            # Encode marker information in an array of bytes (uint8)
+            if mrk_ch_1 in active_digital and mrk_ch_2 in active_digital:
+                mrk1_index = active_digital.index(mrk_ch_1)
+                mrk2_index = active_digital.index(mrk_ch_2)
+                mrk_bytes = np.add(np.left_shift(digital_samples[mrk2_index].astype('uint8'), 7),
+                                   np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6))
+
+            # Check if waveform already exists and delete if necessary.
+            if ensemble_name in self._get_waveform_names_memory():
+                self.awg.write('WLIS:WAV:DEL "{0}"'.format(ensemble_name))
+
+            # Create waveform in AWG workspace and fill in sample data
+            self.awg.write('WLIS:WAV:NEW "{0}", {1}'
+                           ''.format(ensemble_name, digital_samples.shape[1]))
+            self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(ensemble_name),
+                                  analog_samples[a_ch_num - 1])
+            self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(ensemble_name), mrk_bytes)
         return 0
 
     def direct_write_sequence(self, sequence_name, sequence_params):
