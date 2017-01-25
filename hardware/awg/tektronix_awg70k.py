@@ -1138,8 +1138,10 @@ class AWG70K(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_chnl = [chnl for chnl in activation_dict if activation_dict[chnl]]
-        active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl].sort()
-        active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl].sort()
+        active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl]
+        active_analog.sort()
+        active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl]
+        active_digital.sort()
 
         # Sanity check of channel numbers
         if len(active_analog) != analog_samples.shape[0] or len(active_digital) != digital_samples.shape[0]:
@@ -1154,6 +1156,7 @@ class AWG70K(Base, PulserInterface):
             a_ch_num = int(a_ch.split('ch')[-1])
             mrk_ch_1 = 'd_ch{0}'.format(a_ch_num * 2 - 2)
             mrk_ch_2 = 'd_ch{0}'.format(a_ch_num * 2 - 1)
+            wfm_name = ensemble_name + '_ch' + str(a_ch_num)
 
             # Encode marker information in an array of bytes (uint8)
             if mrk_ch_1 in active_digital and mrk_ch_2 in active_digital:
@@ -1161,17 +1164,26 @@ class AWG70K(Base, PulserInterface):
                 mrk2_index = active_digital.index(mrk_ch_2)
                 mrk_bytes = np.add(np.left_shift(digital_samples[mrk2_index].astype('uint8'), 7),
                                    np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6))
+            if mrk_ch_1 in active_digital and mrk_ch_2 not in active_digital:
+                mrk1_index = active_digital.index(mrk_ch_1)
+                mrk_bytes = np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6)
+            else:
+                mrk_bytes = None
 
             # Check if waveform already exists and delete if necessary.
-            if ensemble_name in self._get_waveform_names_memory():
-                self.awg.write('WLIS:WAV:DEL "{0}"'.format(ensemble_name))
+            if wfm_name in self._get_waveform_names_memory():
+                self.awg.write('WLIS:WAV:DEL "{0}"'.format(wfm_name))
 
             # Create waveform in AWG workspace and fill in sample data
-            self.awg.write('WLIS:WAV:NEW "{0}", {1}'
-                           ''.format(ensemble_name, digital_samples.shape[1]))
-            self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(ensemble_name),
+            self.awg.write('WLIS:WAV:NEW "{0}", {1}'.format(wfm_name, digital_samples.shape[1]))
+            self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(wfm_name),
                                   analog_samples[a_ch_num - 1])
-            self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(ensemble_name), mrk_bytes)
+            if mrk_bytes is not None:
+                self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(wfm_name), mrk_bytes)
+
+        # Wait for everything to complete
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def direct_write_sequence(self, sequence_name, sequence_params):
@@ -1181,6 +1193,7 @@ class AWG70K(Base, PulserInterface):
 
         @return:
         """
+        print(sequence_params)
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
         active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
         num_tracks = len(active_analog)
@@ -1221,6 +1234,9 @@ class AWG70K(Base, PulserInterface):
                 self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
                                                                                 sequence_name,
                                                                                 sequence_params[step]['name'] + '_ch2'))
+        # Wait for everything to complete
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def _init_loaded_asset(self):
