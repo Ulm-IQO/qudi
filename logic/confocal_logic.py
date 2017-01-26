@@ -123,8 +123,8 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal.point1 = np.copy(self.point1)
         confocal.point2 = np.copy(self.point2)
         confocal.point3 = np.copy(self.point3)
-        confocal._scanning_device._tilt_variable_ax = self.tilt_slope_x
-        confocal._scanning_device._tilt_variable_ay = self.tilt_slope_y
+        confocal._scanning_device.tilt_variable_ax = self.tilt_slope_x
+        confocal._scanning_device.tilt_variable_ay = self.tilt_slope_y
         confocal._scanning_device.tilt_reference_x = self.tilt_reference_x
         confocal._scanning_device.tilt_reference_y = self.tilt_reference_y
         confocal._scanning_device.tiltcorrection = self.tilt_correction
@@ -903,7 +903,7 @@ class ConfocalLogic(GenericLogic):
                 '# A pixel-line in the image corresponds to a row '
                 'of entries where the Signal is in counts/s:'] = self.xy_image[:, :, 3 + n]
 
-            filelabel = 'confocal_xy_image_{0}'.format(ch)
+            filelabel = 'confocal_xy_image_{0}'.format(ch.replace('/', ''))
             self._save_logic.save_data(
                 image_data,
                 filepath,
@@ -918,12 +918,12 @@ class ConfocalLogic(GenericLogic):
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
-        data['x position (m)'] = self.xy_image[:, :, 0]
-        data['y position (m)'] = self.xy_image[:, :, 1]
-        data['z position (m)'] = self.xy_image[:, :, 2]
+        data['x position (m)'] = self.xy_image[:, :, 0].flatten()
+        data['y position (m)'] = self.xy_image[:, :, 1].flatten()
+        data['z position (m)'] = self.xy_image[:, :, 2].flatten()
 
         for n, ch in enumerate(self.get_scanner_count_channels()):
-            data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 3 + n]
+            data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 3 + n].flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_xy_data'
@@ -1008,7 +1008,7 @@ class ConfocalLogic(GenericLogic):
                 '# A pixel-line in the image corresponds to a row in '
                 'of entries where the Signal is in counts/s:'] = self.depth_image[:, :, 3 + n]
 
-            filelabel = 'confocal_depth_image_{0}'.format(ch)
+            filelabel = 'confocal_depth_image_{0}'.format(ch.replace('/', ''))
             self._save_logic.save_data(
                 image_data,
                 filepath,
@@ -1023,12 +1023,12 @@ class ConfocalLogic(GenericLogic):
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
-        data['x position (m)'] = self.depth_image[:, :, 0]
-        data['y position (m)'] = self.depth_image[:, :, 1]
-        data['z position (m)'] = self.depth_image[:, :, 2]
+        data['x position (m)'] = self.depth_image[:, :, 0].flatten()
+        data['y position (m)'] = self.depth_image[:, :, 1].flatten()
+        data['z position (m)'] = self.depth_image[:, :, 2].flatten()
 
         for n, ch in enumerate(self.get_scanner_count_channels()):
-            data['count rate {0} (Hz)'.format(ch)] = self.depth_image[:, :, 3 + n]
+            data['count rate {0} (Hz)'.format(ch)] = self.depth_image[:, :, 3 + n].flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_depth_data'
