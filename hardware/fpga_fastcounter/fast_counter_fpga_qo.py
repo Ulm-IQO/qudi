@@ -260,6 +260,12 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                     gate_length_s: the actual set gate length in seconds
                     number_of_gates: the number of gated, which are accepted
         """
+        # Do nothing if fast counter is running
+        if self.statusvar >= 2:
+            binwidth_s = self._binwidth / self._internal_clock_hz
+            gate_length_s = self._gate_length_bins * binwidth_s
+            return binwidth_s, gate_length_s, self._number_of_gates
+
         # set class variables
         self._binwidth = int(np.rint(bin_width_s * self._internal_clock_hz))
 
