@@ -20,6 +20,30 @@ Somethings it is not possible to keep the interaction separate, because an
 establishment of interaction is actually desired. For Maintainability reasons,
 these interactions will be still kept to an minimum.
 
+## Pulse Block Editor usage
+
+The Pulse Block Editor has some comfortable features implemented, which should 
+facilitate the input of data. In the Pulse Block Editor you can use the arrow 
+keys to navigate in it. If you want to check/uncheck a checkbox or want to 
+open a Combobox press the space key. In a Combobox you can navigate with the 
+up/down arrow keys and by hitting enter key you can set the selected item for 
+the Combobox.
+
+For all the spinboxes, just start to type in the number on the selected entry. 
+By entering just the number, the box will retain the suffix and use it for 
+the input value. I.e. if '70 M' is written in the box and you write '140', 
+you will end up with the value '140 M'. That is also true for a scientific 
+input like '1e9' (which would result in '1 P' if '70 M' was type in before). 
+But if you add a suffix at the end of your entry, the box will respect that, 
+e.g. an input of '40 u' will result in '40 u' independent what the box 
+contained before. Just play a bit around and you will quickly understand the 
+functionality.
+
+Note that the following suffices exist: 
+
+    y z a f p n u m k M G T P E Z Y 
+
+(they are corresponding to the known SI suffices).
 
 ## Idea of Pulsed Main GUI interaction with PulsedMeasurementLogic and SequenceGeneratorLogic
 
