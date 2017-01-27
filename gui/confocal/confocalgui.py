@@ -35,7 +35,6 @@ from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsWidget
 
-
 class CrossROI(pg.ROI):
 
     """ Create a Region of interest, which is a zoomable rectangular.
@@ -517,7 +516,7 @@ class ConfocalGui(GUIBase):
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_from_input_y)
         self._mw.z_current_InputWidget.editingFinished.connect(self.update_from_input_z)
 
-        self._mw.xy_res_InputWidget.editingFinished.connect(self.change_xy_resolution, QtCore.Qt.QueuedConnection)
+        self._mw.xy_res_InputWidget.editingFinished.connect(self.change_xy_resolution)
         self._mw.z_res_InputWidget.editingFinished.connect(self.change_z_resolution)
 
         self._mw.x_min_InputWidget.editingFinished.connect(self.change_x_image_range)
@@ -538,13 +537,32 @@ class ConfocalGui(GUIBase):
         # also the adjustment of the displayed windows.
         self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
 
-        self._mw.action_scan_xy_start.triggered.connect(self.xy_scan_clicked, type=QtCore.Qt.QueuedConnection)
-        self._mw.action_scan_xy_resume.triggered.connect(self.continue_xy_scan_clicked)
-        self._mw.action_scan_depth_start.triggered.connect(self.depth_scan_clicked)
-        self._mw.action_scan_depth_resume.triggered.connect(self.continue_depth_scan_clicked)
+        self._scan_xy_start_proxy = pg.SignalProxy(
+            self._mw.action_scan_xy_start.triggered,
+            delay=0.1,
+            slot=self.xy_scan_clicked
+            )
+        self._scan_xy_resume_proxy =  pg.SignalProxy(
+            self._mw.action_scan_xy_resume.triggered,
+            delay=0.1,
+            slot=self.continue_xy_scan_clicked
+            )
+        self._scan_depth_start_proxy = pg.SignalProxy(
+            self._mw.action_scan_depth_start.triggered,
+            delay=0.1,
+            slot=self.depth_scan_clicked
+            )
+        self._scan_depth_resume_proxy = pg.SignalProxy(
+            self._mw.action_scan_depth_resume.triggered,
+            delay=0.1,
+            slot=self.continue_depth_scan_clicked
+            )
         #self._mw.actionRotated_depth_scan.triggered.connect(self.rotate_depth_scan_clicked)
-
-        self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
+        self._optimize_position_proxy = pg.SignalProxy(
+            self._mw.action_optimize_position.triggered,
+            delay=0.1,
+            slot=self.refocus_clicked
+            )
 
         # history actions
         self._mw.actionForward.triggered.connect(self._scanning_logic.history_forward)
