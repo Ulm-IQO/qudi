@@ -326,9 +326,13 @@ class PulsedMeasurementLogic(GenericLogic):
     # Fast counter control methods
     ############################################################################
     def configure_fast_counter(self):
-        """ Configure the fast counter and updates the actually set values in
-            the class variables.
         """
+        Configure the fast counter and updates the actually set values in the class variables.
+        """
+        # Check if fast counter is running and do nothing if that is the case
+        if self.fast_counter_status >= 2 or self.fast_counter_status < 0:
+            return self.fast_counter_binwidth, self.fast_counter_record_length, self.number_of_lasers
+
         if self.fast_counter_gated:
             number_of_gates = self.number_of_lasers
         else:
@@ -497,6 +501,11 @@ class PulsedMeasurementLogic(GenericLogic):
         @param use_interleave:
         @return:
         """
+        # Check if pulser is already running and do nothing if that is the case.
+        pg_status, status_dict = self._pulse_generator_device.get_status()
+        if pg_status > 0:
+            return self.sample_rate, self.current_channel_config_name, self.analogue_amplitude, self.interleave_on
+
         # get hardware constraints
         pulser_constraints = self.get_pulser_constraints()
 
