@@ -391,6 +391,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.alternating = is_alternating
         self.laser_trigger_delay_s = laser_trigger_delay_s
         if self.fast_counter_gated:
+            print('I should not be called here!!!!!!!!!!!!!!!1111elf')
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
@@ -467,6 +468,7 @@ class PulsedMeasurementLogic(GenericLogic):
         data points you want to have in your single shot measurement
         @return:
         """
+        print('BIG FOUL!!!')
         self.ssr_fastcomtec=ssr_fastcomtec
         self.fastcomtec_preset=preset
         self.fastcomtec_cycles=cycles
@@ -815,6 +817,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
 
             # emit signals
+            print('Emit signals in analzsis loop.')
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
