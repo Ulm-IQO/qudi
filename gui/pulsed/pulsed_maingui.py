@@ -1588,8 +1588,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_run_stop.blockSignals(True)
         self._mw.action_continue_pause.blockSignals(True)
 
-        print('measurement_status_updated')
-
         # Enable/Disable widgets
         if is_running:
             if self._pa.ext_control_use_mw_CheckBox.isChecked():
@@ -1908,7 +1906,6 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        print('measurement_sequence_settings_changed')
         if self._mw.action_run_stop.isChecked():
             return
         laser_ignore_list = []
@@ -1951,7 +1948,6 @@ class PulsedMeasurementGui(GUIBase):
         @param laser_trigger_delay:
         @return:
         """
-        print('measurement_sequence_settings_updated')
         # block signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(True)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(True)
@@ -2001,7 +1997,6 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def toggle_settings_editor(self):
-        print('toggle_settings_editor')
         """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
         if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)

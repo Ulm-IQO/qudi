@@ -237,7 +237,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Check and configure fast counter
         self.fast_counter_gated = self._fast_counter_device.is_gated()
-        print('Asking fast counter if it is gated (is_gated). Answer: ' + str(self.fast_counter_gated))
         binning_constraints = self.get_fastcounter_constraints()['hardware_binwidth_list']
         if self.fast_counter_binwidth not in binning_constraints:
             self.fast_counter_binwidth = binning_constraints[0]
@@ -338,13 +337,11 @@ class PulsedMeasurementLogic(GenericLogic):
             actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates, self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles)
         else:
             actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
-        print('Configuring fast counter (configure). Answer: ' + str(actual_binwidth_s) + ' ' + str(actual_recordlength_s) + ' ' + str(actual_numofgates))
         # use the actual parameters returned by the hardware
         self.fast_counter_binwidth = actual_binwidth_s
         self.fast_counter_record_length = actual_recordlength_s
         # update fast counter status variable
         self.fast_counter_status = self._fast_counter_device.get_status()
-        print('Asking fast counter for its status (get_status). Answer: ' + str(self.fast_counter_status))
         return actual_binwidth_s, actual_recordlength_s, actual_numofgates
 
     def set_fast_counter_settings(self, bin_width_s, record_length_s):
@@ -391,7 +388,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.alternating = is_alternating
         self.laser_trigger_delay_s = laser_trigger_delay_s
         if self.fast_counter_gated:
-            print('I should not be called here!!!!!!!!!!!!!!!1111elf')
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
@@ -408,7 +404,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @return: dict where the keys in it are predefined in the interface.
         """
-        print('Asking fast counter for constraints.')
         return self._fast_counter_device.get_constraints()
 
     def fast_counter_on(self):
@@ -417,9 +412,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.start_measure()
-        print('Starting fast counter (start_measure). Error code returned: ' + str(error_code))
         self.fast_counter_status = self._fast_counter_device.get_status()
-        print('Asking fast counter for its status (get_status). Answer: ' + str(self.fast_counter_status))
         return error_code
 
     def fast_counter_off(self):
@@ -428,9 +421,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.stop_measure()
-        print('Stopping fast counter (stop_measure). Error code returned: ' + str(error_code))
         self.fast_counter_status = self._fast_counter_device.get_status()
-        print('Asking fast counter for its status (get_status). Answer: ' + str(self.fast_counter_status))
         return error_code
 
     def fast_counter_pause(self):
@@ -439,9 +430,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.pause_measure()
-        print('Pausing fast counter (pause_measure). Error code returned: ' + str(error_code))
         self.fast_counter_status = self._fast_counter_device.get_status()
-        print('Asking fast counter for its status (get_status). Answer: ' + str(self.fast_counter_status))
         return error_code
 
     def fast_counter_continue(self):
@@ -450,9 +439,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         error_code = self._fast_counter_device.continue_measure()
-        print('Continue fast counter (continue_measure). Error code returned: ' + str(error_code))
         self.fast_counter_status = self._fast_counter_device.get_status()
-        print('Asking fast counter for its status (get_status). Answer: ' + str(self.fast_counter_status))
         return error_code
 
     def set_ssr_fastcomtec(self,ssr_fastcomtec,preset,cycles):
@@ -468,7 +455,6 @@ class PulsedMeasurementLogic(GenericLogic):
         data points you want to have in your single shot measurement
         @return:
         """
-        print('BIG FOUL!!!')
         self.ssr_fastcomtec=ssr_fastcomtec
         self.fastcomtec_preset=preset
         self.fastcomtec_cycles=cycles
@@ -762,7 +748,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
-                print('Get data trace from fast counter (get_data_trace). Sum of data: ' + str(np.sum(fc_data)))
                 if np.sum(fc_data) < 1.0:
                     self.log.warning('Only zeros received from fast counter!')
 
@@ -817,7 +802,6 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
 
             # emit signals
-            print('Emit signals in analzsis loop.')
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
