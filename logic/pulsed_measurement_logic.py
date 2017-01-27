@@ -330,6 +330,8 @@ class PulsedMeasurementLogic(GenericLogic):
         Configure the fast counter and updates the actually set values in the class variables.
         """
         # Check if fast counter is running and do nothing if that is the case
+        if self.fast_counter_status is None:
+            self.fast_counter_status = self._fast_counter_device.get_status()
         if self.fast_counter_status >= 2 or self.fast_counter_status < 0:
             return self.fast_counter_binwidth, self.fast_counter_record_length, self.number_of_lasers
 
