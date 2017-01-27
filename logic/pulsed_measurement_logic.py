@@ -759,16 +759,25 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
-                if np.sum(fc_data) < 1.0:
-                    self.log.warning('Only zeros received from fast counter!')
 
                 # add old raw data from previous measurements if necessary
                 if self.recalled_raw_data is not None:
                     self.log.info('Found old saved raw data. Sum of timebins: {0}'
                                   ''.format(np.sum(self.recalled_raw_data)))
-                    if self.recalled_raw_data.shape == fc_data.shape:
-                        self.log.info('Raw data has same shape as current data.')
+                    if np.sum(fc_data) < 1.0:
+                        self.log.warning('Only zeros received from fast counter!\n'
+                                         'Only using old raw data.')
+                        self.raw_data = self.recalled_raw_data
+                    elif self.recalled_raw_data.shape == fc_data.shape:
+                        self.log.debug('Saved raw data has same shape as current data.')
                         self.raw_data = self.recalled_raw_data + fc_data
+                    else:
+                        self.log.warning('Saved raw data has not the same shape as current data.\n'
+                                         'Did NOT add old raw data to current timetrace.')
+                        self.raw_data = fc_data
+                elif np.sum(fc_data) < 1.0:
+                    self.log.warning('Only zeros received from fast counter!')
+                    self.raw_data = np.zeros(fc_data.shape, dtype=int)
                 else:
                     self.raw_data = fc_data
 
@@ -780,10 +789,18 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
                                                                                       self.conv_std_dev,
                                                                                       self.number_of_lasers)
-                # analyze pulses and get data points for signal plot
-                tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
-                                                                                norm_start, norm_end,
-                                                                                sig_start, sig_end)
+
+                # analyze pulses and get data points for signal plot. Also check if extraction
+                # worked (non-zero array returned).
+                if np.sum(self.laser_data) < 1:
+                    tmp_signal = np.zeros(self.laser_data.shape[0])
+                    tmp_error = np.zeros(self.laser_data.shape[0])
+                else:
+                    tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
+                                                                                    norm_start,
+                                                                                    norm_end,
+                                                                                    sig_start,
+                                                                                    sig_end)
                 # exclude laser pulses to ignore
                 if len(self.laser_ignore_list) > 0:
                     ignore_indices = self.laser_ignore_list
