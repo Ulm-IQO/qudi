@@ -94,7 +94,16 @@ class PulseAnalysisLogic(GenericLogic):
             # calculate the mean of the data in the signal window
             signal_mean[ii] = (laser_data[ii][signal_start_bin:signal_end_bin] - reference_mean[ii]).mean()
             # update the signal plot y-data
-            signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
+            try:
+                signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
+            except ZeroDivisionError:
+                self.log.debug('ZeroDivisionError occured while normalizing signal of laser pulse '
+                               'with index {0}.'.format(ii))
+                signal_data[ii] = 0.
+            except RuntimeWarning:
+                self.log.debug('RuntimeWarning occured while normalizing signal of laser pulse '
+                               'with index {0}.'.format(ii))
+                signal_data[ii] = 0.
 
         # Compute the measuring error
         for jj in range(num_of_lasers):
