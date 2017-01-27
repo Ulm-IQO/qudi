@@ -1588,6 +1588,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_run_stop.blockSignals(True)
         self._mw.action_continue_pause.blockSignals(True)
 
+        print('measurement_status_updated')
+
         # Enable/Disable widgets
         if is_running:
             if self._pa.ext_control_use_mw_CheckBox.isChecked():
@@ -1751,6 +1753,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def ext_mw_params_changed(self):
         """ Shows or hides input widgets which are necessary if an external mw is turned on"""
+        if self._mw.action_run_stop.isChecked():
+            return
         use_ext_microwave = self._pa.ext_control_use_mw_CheckBox.isChecked()
         microwave_freq = self._pa.ext_control_mw_freq_DoubleSpinBox.value()
         microwave_power = self._pa.ext_control_mw_power_DoubleSpinBox.value()
@@ -1822,6 +1826,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+        if self._mw.action_run_stop.isChecked():
+            return
         # FIXME: Properly implement amplitude and interleave
         sample_rate_hz = self._pa.pulser_sample_freq_DSpinBox.value()
         activation_config_name = self._pa.pulser_activation_config_ComboBox.currentText()
@@ -1871,6 +1877,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+        if self._mw.action_run_stop.isChecked():
+            return
         record_length_s = self._pa.ana_param_record_length_SpinBox.value()
         bin_width_s = float(self._pa.ana_param_fc_bins_ComboBox.currentText())
         self._pulsed_master_logic.fast_counter_settings_changed(bin_width_s, record_length_s)
@@ -1900,6 +1908,9 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+        print('measurement_sequence_settings_changed')
+        if self._mw.action_run_stop.isChecked():
+            return
         laser_ignore_list = []
         if self._pa.ana_param_ignore_first_CheckBox.isChecked():
             laser_ignore_list.append(0)
@@ -1940,6 +1951,7 @@ class PulsedMeasurementGui(GUIBase):
         @param laser_trigger_delay:
         @return:
         """
+        print('measurement_sequence_settings_updated')
         # block signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(True)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(True)
@@ -1989,6 +2001,7 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def toggle_settings_editor(self):
+        print('toggle_settings_editor')
         """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
         if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
