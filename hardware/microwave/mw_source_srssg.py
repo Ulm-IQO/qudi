@@ -182,3 +182,71 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self._gpib_connection.write('FREQ {0:e}'.format(freq))
 
         return 0
+
+    def set_cw(self, freq=None, power=None, useinterleave=None):
+        """ Sets the MW mode to cw and additionally frequency and power
+
+        @param float freq: frequency to set in Hz
+        @param float power: power to set in dBm
+        @param bool useinterleave: If this mode exists you can choose it.
+
+        @return int: error code (0:OK, -1:error)
+
+        Interleave option is used for arbitrary waveform generator devices.
+        """
+        error = 0
+
+        # set the type
+        #FIXME: not sure here:
+        self._gpib_connection.write('MODL 5')
+        # and the subtype
+        self._gpib_connection.write('STYP 0')
+
+        if freq is not None:
+            error = self.set_frequency(freq)
+        else:
+            return -1
+        if power is not None:
+            error = self.set_power(power)
+        else:
+            return -1
+        return error
+
+    def set_list(self, freq=None, power=None):
+        """ Sets the MW mode to list mode
+
+        @param list freq: list of frequencies in Hz
+        @param float power: MW power of the frequency list in dBm
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        # delete a previously created list:
+        self._gpib_connection.write('LSTD')
+
+        #FIXME: catch the list number better:
+        num_freq = len(freq)
+
+        self._gpib_connection.write('LSTC {0:d}'.format(num_freq))
+
+
+        for index, entry in enumerate(freq):
+            self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,N,N,N,N,N,N,N,N'.format(index, entry, power))
+
+        # enable the created list:
+        self._gpib_connection.write('LSTE 1')
+
+    def reset_listpos(self):
+        """ Reset of MW List Mode position to start from first given frequency
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self._gpib_connection.write('LSTR')
+
+    def list_on(self):
+        """ Switches on the list mode.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return self.on()
