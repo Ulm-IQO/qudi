@@ -125,7 +125,7 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         limits.sweep_maxstep = limits.max_frequency
         return limits
 
-   def on(self):
+    def on(self):
         """ Switches on any preconfigured microwave output.
 
         @return int: error code (0:OK, -1:error)
@@ -266,7 +266,6 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         # and the subtype
         self._gpib_connection.write('STYP 0')
 
-        freq = start
         sweep_length = stop-start
         index = 0
 
@@ -276,7 +275,7 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         rate = (sweep_length/step) * time_per_freq
         mod_type = 5 # blank
         mod_func = 3 # blank
-        self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,{3},{4},{5:e},{6:e},N,N,N,N'.format(index, entry, power, mod_type, mod_func, rate, sweep_length))
+        self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,{3},{4},{5:e},{6:e},N,N,N,N'.format(index, start, power, mod_type, mod_func, rate, sweep_length))
 
     def reset_sweep(self):
         """ Reset of MW sweep position to start
