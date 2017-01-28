@@ -519,9 +519,9 @@ class PulsedMeasurementLogic(GenericLogic):
         # check and set sample rate
         samplerate_constr = pulser_constraints['sample_rate']
         if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
-            self.log.error('Desired sample rate of {0:.0e} Hz not within pulse generator '
-                           'constraints. Setting {1:.0e} Hz instead.'
-                           ''.format(sample_rate_Hz, samplerate_constr['max']))
+            self.log.warning('Desired sample rate of {0:.0e} Hz not within pulse generator '
+                             'constraints. Setting {1:.0e} Hz instead.'
+                             ''.format(sample_rate_Hz, samplerate_constr['max']))
             sample_rate_Hz = samplerate_constr['max']
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
 
@@ -529,17 +529,17 @@ class PulsedMeasurementLogic(GenericLogic):
         config_constr = pulser_constraints['activation_config']
         if activation_config_name not in config_constr:
             new_config_name = list(config_constr.keys())[0]
-            self.log.error('Desired activation config "{0}" is no part of the pulse generator '
-                           'constraints. Using "{1}" instead.'
-                           ''.format(activation_config_name, new_config_name))
+            self.log.warning('Desired activation config "{0}" is no part of the pulse generator '
+                             'constraints. Using "{1}" instead.'
+                             ''.format(activation_config_name, new_config_name))
             activation_config_name = new_config_name
         activation_config = config_constr[activation_config_name]
         if self.interleave_on:
             analog_channels_to_activate = [chnl for chnl in activation_config if 'a_ch' in chnl]
             if len(analog_channels_to_activate) != 1:
                 self.log.warning('When interleave mode is used only one analog channel can be '
-                                 'active in pulse generator. Falling back to an allowed activation '
-                                 'config.')
+                                 'active in pulse generator. Falling back to an allowed activation'
+                                 ' config.')
         channel_activation = self.get_active_channels()
         for chnl in channel_activation:
             if chnl in activation_config:
