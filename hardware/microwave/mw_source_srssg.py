@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware file to control SRS SG390 devices.
+This file contains the Qudi hardware file to control SRS SG devices.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -90,3 +90,37 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self._gpib_connection.close()
         self.rm.close()
 
+    def get_limits(self):
+        limits = MicrowaveLimits()
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
+
+        # SRS has two output connectors. The specifications
+        # are used for the Type N output.
+        limits.min_frequency = 950e3
+        limits.max_frequency = 6.4e9
+
+        limits.min_power = -110
+        limits.max_power = 16.5
+
+        # FIXME: Not quite sure about this:
+        limits.list_minstep = 1e-6
+        limits.list_maxstep = 2.025e9
+        limits.list_maxentries = 4000
+
+        # FIXME: Not quite sure about this:
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 6.4e9
+        limits.sweep_maxentries = 10001
+
+        if self.model == 'SG392':
+            limits.max_frequency = 2.025e9
+        elif self.model == 'SG394':
+            limits.max_frequency = 4.050e9
+        elif self.model == 'SG396':
+            limits.max_frequency = 6.075e9
+        else:
+            self.log.warning('Model string unknown, hardware limits may be wrong.')
+
+        limits.list_maxstep = limits.max_frequency
+        limits.sweep_maxstep = limits.max_frequency
+        return limits
