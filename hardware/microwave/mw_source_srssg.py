@@ -250,3 +250,50 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         return self.on()
+
+    def sweep_on(self):
+        """ Switches on the sweep mode.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return self.on()
+
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
+        """
+        # set the type
+        self._gpib_connection.write('MODL 3')
+        # and the subtype
+        self._gpib_connection.write('STYP 0')
+
+        freq = start
+        sweep_length = stop-start
+        index = 0
+
+        time_per_freq =  2e-3 # in Hz, 2ms per point assumed for the beginning
+        # time it takes for a whole sweep, which is the rate of the sweep,
+        # i.e. rate = 1/ time_for_freq_range
+        rate = (sweep_length/step) * time_per_freq
+        mod_type = 5 # blank
+        mod_func = 3 # blank
+        self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,{3},{4},{5:e},{6:e},N,N,N,N'.format(index, entry, power, mod_type, mod_func, rate, sweep_length))
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return self.reset_listpos()
+
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+        """ Set the external trigger for this device with proper polarization.
+
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
+                        falling edge)
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        #FIXME: that method is not used propertly. For now this
+        # serves as a software trigger
+        self._gpib_connection.write('*TRG')
