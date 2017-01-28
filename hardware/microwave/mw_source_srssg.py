@@ -124,3 +124,61 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         limits.list_maxstep = limits.max_frequency
         limits.sweep_maxstep = limits.max_frequency
         return limits
+
+   def on(self):
+        """ Switches on any preconfigured microwave output.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connection.write('ENBR 1')
+        self._gpib_connection.write('*WAI')
+
+        return 0
+
+    def off(self):
+        """ Switches off any microwave output.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self._gpib_connection.write('ENBR 0')
+        self._gpib_connection.write('*WAI')
+
+        return 0
+
+    def get_power(self):
+        """ Gets the microwave output power.
+
+        @return float: the power set at the device in dBm
+        """
+        return float(self._gpib_connection.query('AMPR?'))
+
+    def set_power(self, power=0.):
+        """ Sets the microwave output power.
+
+        @param float power: the power (in dBm) set for this device
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connection.write('AMPR {0:f}'.format(power))
+
+        return 0
+
+    def get_frequency(self):
+        """ Gets the frequency of the microwave output.
+
+        @return float: frequency (in Hz), which is currently set for this device
+        """
+        return float(self._gpib_connection.query('FREQ ?'))
+
+    def set_frequency(self, freq=0.):
+        """ Sets the frequency of the microwave output.
+
+        @param float freq: the frequency (in Hz) set for this device
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self._gpib_connection.write('FREQ {0:e}'.format(freq))
+
+        return 0
