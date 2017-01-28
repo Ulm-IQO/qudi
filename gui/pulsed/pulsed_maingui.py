@@ -1751,6 +1751,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def ext_mw_params_changed(self):
         """ Shows or hides input widgets which are necessary if an external mw is turned on"""
+        if self._mw.action_run_stop.isChecked():
+            return
         use_ext_microwave = self._pa.ext_control_use_mw_CheckBox.isChecked()
         microwave_freq = self._pa.ext_control_mw_freq_DoubleSpinBox.value()
         microwave_power = self._pa.ext_control_mw_power_DoubleSpinBox.value()
@@ -1822,6 +1824,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+        if self._mw.action_run_stop.isChecked():
+            return
         # FIXME: Properly implement amplitude and interleave
         sample_rate_hz = self._pa.pulser_sample_freq_DSpinBox.value()
         activation_config_name = self._pa.pulser_activation_config_ComboBox.currentText()
@@ -1871,6 +1875,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+        if self._mw.action_run_stop.isChecked():
+            return
         record_length_s = self._pa.ana_param_record_length_SpinBox.value()
         bin_width_s = float(self._pa.ana_param_fc_bins_ComboBox.currentText())
         self._pulsed_master_logic.fast_counter_settings_changed(bin_width_s, record_length_s)
@@ -1900,6 +1906,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+        if self._mw.action_run_stop.isChecked():
+            return
         laser_ignore_list = []
         if self._pa.ana_param_ignore_first_CheckBox.isChecked():
             laser_ignore_list.append(0)
