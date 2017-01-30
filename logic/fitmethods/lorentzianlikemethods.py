@@ -531,7 +531,7 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
     model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
     error, params = self.estimate_doublelorentzdipoffset(x_axis, data, params)
 
-    #redefine values of additional parameters
+    # redefine values of additional parameters
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
@@ -541,7 +541,25 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
         logger.error('The double lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
-    return result
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Frequency'] = {'value': result.params['center'].value,
+                               'error': result.params['center'].stderr,
+                               'unit': 'Hz'}
+
+    param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+                              'error': result.params['contrast'].stderr,
+                              'unit': '%'}
+
+    param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
+                               'error': result.params['fwhm'].stderr,
+                               'unit': 'Hz'}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+
+    return result, param_dict
 
 
 
