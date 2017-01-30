@@ -10,6 +10,7 @@
 # Settings
 REPO_PATH=github.com/Ulm-IQO/qudi.git
 GENERATED_REPO_PATH=github.com/Ulm-IQO/qudi-generated-docs.git
+IMAGE_REPO_PATH=github.com/Ulm-IQO/qudi-docs-images.git
 HTML_PATH=${HOME}/docs/html
 COMMIT_USER="Qudi Documentation Builder"
 COMMIT_EMAIL="qudi@uni-ulm.de"
@@ -32,6 +33,8 @@ if [[ ${TRAVIS_PULL_REQUEST} != "false" ]]; then
     echo "Documentation is not built for pull requests."
     exit 0;
 fi;
+#get images
+git clone "https://${IMAGE_REPO_PATH}" ${MY_BUILD_DIR}/documentation/images
 
 # get doxygen
 cd $HOME
@@ -69,7 +72,13 @@ if [[ $? -ne 0 ]]; then
     exit 1;
 fi;
 
-find documentation -path documentation/generated -prune -o -name '*.png' -exec cp {} ${HTML_PATH}/html-docs/ \;
+mkdir -p  ${HTML_PATH}/html-docs/images
+cp -r ${MY_BUILD_DIR}/documentation/images/* ${HTML_PATH}/html-docs/images/
+
+if [[ $? -ne 0 ]]; then
+    echo "Could not copy image folder,  somethign went wrong" >&2
+    exit 1;
+fi;
 
 # Create and commit the documentation repo.
 cd ${HTML_PATH}
