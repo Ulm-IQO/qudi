@@ -629,21 +629,7 @@ class ODMRLogic(GenericLogic):
 
         if self.fit_function == 'Lorentzian':
 
-            result = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
-
-            param_dict['Frequency'] = {'value': result.params['center'].value,
-                                       'error': result.params['center'].stderr,
-                                       'unit': 'Hz'}
-
-            param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
-                                      'error': result.params['contrast'].stderr,
-                                      'unit': '%'}
-
-            param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-                                       'error': result.params['fwhm'].stderr,
-                                       'unit': 'Hz'}
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+            result, param_dict = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
 
         elif self.fit_function == 'Double Lorentzian':
 
