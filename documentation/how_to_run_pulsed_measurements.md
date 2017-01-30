@@ -1,6 +1,6 @@
 # How to run a pulsed measurement  {#pulsedmeasurement-explanation}
 
-![Structural overview of pulsed measurement modules](pulsed_structure.png "Pulsed structure")
+![Structural overview of pulsed measurement modules](images/pulsed_structure.png "Pulsed structure")
 
 To understand the logic modules (mainly sequence_generator_logic and pulsed_measurement_logic),
 this documentation will provide a step-by-step manual for scripting a pulsed measurement.
