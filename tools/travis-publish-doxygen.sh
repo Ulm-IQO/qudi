@@ -9,6 +9,7 @@
 
 # Settings
 REPO_PATH=github.com/Ulm-IQO/qudi.git
+GENERATED_REPO_PATH=github.com/Ulm-IQO/qudi-generated-docs.git
 HTML_PATH=${HOME}/docs/html
 COMMIT_USER="Qudi Documentation Builder"
 COMMIT_EMAIL="qudi@uni-ulm.de"
@@ -46,10 +47,10 @@ fi;
 # Get a clean version of the HTML documentation repo.
 rm -rf ${HTML_PATH} > /dev/null
 mkdir -p ${HTML_PATH}
-git clone -b gh-pages "https://${REPO_PATH}" --single-branch ${HTML_PATH}
+git clone "https://${GENERATED_REPO_PATH}" ${HTML_PATH}
 
 if [[ $? -ne 0 ]]; then
-    echo "gh-pages branch clone failed!" >&2
+    echo "generated docs clone failed!" >&2
     exit 1;
 fi;
 
@@ -78,6 +79,6 @@ git config --global user.email "\"${COMMIT_EMAIL}\""
 git config --global push.default simple
 git commit -m "Automated documentation build for changeset ${CHANGESET}."
 # Redirect output to /dev/null here so the GH_TOKEN does not get leaked.
-git push "https://${GH_TOKEN}@${REPO_PATH}" gh-pages > /dev/null 2>&1
+git push "https://${GH_TOKEN}@${GENERATED_REPO_PATH}" master > /dev/null 2>&1
 cd "${MY_BUILD_DIR}"
 
