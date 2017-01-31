@@ -20,7 +20,7 @@ If you are publishing scientific results, mentioning Qudi in your methods decscr
 Until we have a proper peer-reviewed paper published, you should cite  the preprint [arXiv:1611.09146](https://arxiv.org/abs/1611.09146) \[quant-ph\] for this purpose.
 
 ## Documentation
-User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi/html-docs/ .
+User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi-generated-docs/html-docs/ .
 
 ## Continuous integration 
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
