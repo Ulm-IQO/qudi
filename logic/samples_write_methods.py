@@ -265,22 +265,20 @@ class SamplesWriteMethods():
                 # both markers active for this channel
                 digi_index = digi_chnl_numbers.index(channel_number * 2)
                 write_array['f1'] = np.add(
-                    np.left_shift(digital_samples[digi_index][:].astype('uint8'), 7),
-                    np.left_shift(digital_samples[digi_index - 1][:].astype('uint8'), 6))
+                    np.left_shift(digital_samples[digi_index][:].astype('uint8'), 1),
+                    digital_samples[digi_index - 1][:].astype('uint8'))
             elif (channel_number * 2) - 1 in digi_chnl_numbers and (channel_number * 2) not in digi_chnl_numbers:
                 # only marker 1 active for this channel
                 digi_index = digi_chnl_numbers.index((channel_number * 2) - 1)
-                write_array['f1'] = np.left_shift(
-                    digital_samples[digi_index][:].astype('uint8'), 6)
+                write_array['f1'] = digital_samples[digi_index][:].astype('uint8')
             elif (channel_number * 2) - 1 not in digi_chnl_numbers and (channel_number * 2) in digi_chnl_numbers:
                 # only marker 2 active for this channel
                 digi_index = digi_chnl_numbers.index(channel_number * 2)
                 write_array['f1'] = np.left_shift(
-                    digital_samples[digi_index][:].astype('uint8'), 7)
+                    digital_samples[digi_index][:].astype('uint8'), 1)
             else:
                 # no markers active for this channel
                 write_array['f1'] = np.zeros(digital_samples.shape[1], dtype='uint8')
-
             # Write analog samples into the write_array
             write_array['f0'] = analog_samples[channel_index][:]
 

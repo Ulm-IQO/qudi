@@ -127,6 +127,9 @@ class ODMRGui(GUIBase):
         self._mw.power_DoubleSpinBox.setMaximum(self._odmr_logic.limits.max_power)
         self._mw.power_DoubleSpinBox.setMinimum(self._odmr_logic.limits.min_power)
 
+        # connect the parameter update events:
+        self._odmr_logic.sigParameterChanged.connect(self.update_parameter)
+
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
@@ -292,6 +295,7 @@ class ODMRGui(GUIBase):
 
         self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
         self._odmr_logic.sigOdmrFitUpdated.connect(self.refresh_plot_fit)
+        self._odmr_logic.sigOdmrFitParameterUpdated.connect(self.refresh_fit_parameter)
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
         self._odmr_logic.sigOdmrElapsedTimeChanged.connect(self.refresh_elapsedtime)
         # connect settings signals
@@ -407,7 +411,16 @@ class ODMRGui(GUIBase):
     def odmr_started(self):
         """ Switch the run/stop button to stop after receiving an odmsStarted
                     signal """
+        if not self._mw.action_run_stop.isChecked():
+            self._mw.action_run_stop.blockSignals(True)
+            self._mw.action_run_stop.setChecked(True)
+            self._mw.action_run_stop.blockSignals(False)
         self._mw.action_run_stop.setEnabled(True)
+
+        if not self._mw.action_resume_odmr.isChecked():
+            self._mw.action_resume_odmr.blockSignals(True)
+            self._mw.action_resume_odmr.setChecked(True)
+            self._mw.action_resume_odmr.blockSignals(False)
         self._mw.action_resume_odmr.setEnabled(False)
 
     def odmr_stopped(self):
@@ -431,15 +444,34 @@ class ODMRGui(GUIBase):
         self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,
                                 self._odmr_logic.ODMR_plot_y)
 
-    def refresh_plot_fit(self):
+    def refresh_plot_fit(self, fit_function=None):
         """ Refresh the xy fit plot image. """
 
+        if fit_function is not None:
+            # if a specific fit function is passed from the logic use that:
+            index = self._mw.fit_methods_ComboBox.findText(fit_function, QtCore.Qt.MatchFixedString)
+            if index >= 0:
+                self._mw.fit_methods_ComboBox.setCurrentIndex(index)
+
+        # check which Fit method is used and remove or add again the
+        # odmr_fit_image, check also whether a odmr_fit_image already exists.
         if not self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
             self.odmr_fit_image.setData(x=self._odmr_logic.ODMR_fit_x,
                                         y=self._odmr_logic.ODMR_fit_y)
+            if self.odmr_fit_image not in self._mw.odmr_PlotWidget.listDataItems():
+                self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
         else:
             if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
+
+
+        self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
+
+    def refresh_fit_parameter(self, fit_param=None):
+
+        self._mw.odmr_fit_results_DisplayWidget.clear()
+        formated_results = units.create_formatted_output(fit_param)
+        self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
@@ -528,26 +560,14 @@ class ODMRGui(GUIBase):
 
     def update_fit(self):
         """ Do the configured fit and show it in the sum plot """
-        x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
-        self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params,0)
+        fit_function = self._odmr_logic.current_fit_function
+        x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=fit_function)
+        if fit_result is not None:
+            self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params, 0)
         # The fit signal was already emitted in the logic, so there is no need
         # to set the fit data
 
-        # check which Fit method is used and remove or add again the
-        # odmr_fit_image, check also whether a odmr_fit_image already exists.
-        if self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
-            if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
-                self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-        else:
-            if self.odmr_fit_image not in self._mw.odmr_PlotWidget.listDataItems():
-                self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
-
-        self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
-        self._mw.odmr_fit_results_DisplayWidget.clear()
-
-        formated_results = units.create_formatted_output(fit_param)
-
-        self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
+        self.refresh_plot_fit(fit_function)
 
     def _format_param_dict(self, param_dict):
         """ Create from the passed param_dict a proper display of the parameters.
@@ -558,6 +578,76 @@ class ODMRGui(GUIBase):
         @return:
         """
         pass
+
+
+    def update_parameter(self, param_dict=None):
+        """ Update the parameter display in the GUI.
+
+        @param param_dict:
+        @return:
+
+        Any change event from the logic should call this update function.
+        The update will block the GUI signals from emiting a change back to the
+        logic.
+        """
+
+        if param_dict is None:
+            return
+
+        param = param_dict.get('mw_power')
+        if param is not None:
+            self._mw.power_DoubleSpinBox.blockSignals(True)
+            self._mw.power_DoubleSpinBox.setValue(param)
+            self._mw.power_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('mw_frequency')
+        if param is not None:
+            self._mw.frequency_DoubleSpinBox.blockSignals(True)
+            self._mw.frequency_DoubleSpinBox.setValue(param)
+            self._mw.frequency_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('mw_start')
+        if param is not None:
+            self._mw.start_freq_DoubleSpinBox.blockSignals(True)
+            self._mw.start_freq_DoubleSpinBox.setValue(param)
+            self._mw.start_freq_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('mw_step')
+        if param is not None:
+            self._mw.step_freq_DoubleSpinBox.blockSignals(True)
+            self._mw.step_freq_DoubleSpinBox.setValue(param)
+            self._mw.step_freq_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('mw_stop')
+        if param is not None:
+            self._mw.stop_freq_DoubleSpinBox.blockSignals(True)
+            self._mw.stop_freq_DoubleSpinBox.setValue(param)
+            self._mw.stop_freq_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('run_time')
+        if param is not None:
+            self._mw.runtime_DoubleSpinBox.blockSignals(True)
+            self._mw.runtime_DoubleSpinBox.setValue(param)
+            self._mw.runtime_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('number_of_lines')
+        if param is not None:
+            self._sd.matrix_lines_SpinBox.blockSignals(True)
+            self._sd.matrix_lines_SpinBox.setValue(param)
+            self._sd.matrix_lines_SpinBox.blockSignals(False)
+
+        param = param_dict.get('clock_frequency')
+        if param is not None:
+            self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
+            self._sd.clock_frequency_DoubleSpinBox.setValue(param)
+            self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('clock_frequency')
+        if param is not None:
+            self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
+            self._sd.clock_frequency_DoubleSpinBox.setValue(param)
+            self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
+
 
     def mw_stop(self, txt):
         """ Stop frequency sweep and change to CW of off"""
