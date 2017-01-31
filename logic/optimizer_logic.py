@@ -165,7 +165,7 @@ class OptimizerLogic(GenericLogic):
         # Fit Params and Settings #
         model, params = self._fit_logic.make_gausslinearoffset_model()
         self.z_params = params
-        self.use_custom_params = False
+        self.use_custom_params = {name: False for name, param in params.items()}
 
         # Initialization of internal counter for scanning
         self._xy_scan_line_count = 0
@@ -483,7 +483,7 @@ class OptimizerLogic(GenericLogic):
                 data=self.z_refocus_line[:, self.opt_channel],
                 add_params=adjusted_param)
         else:
-            if self.use_custom_params:
+            if any(self.use_custom_params.values()):
                 result = self._fit_logic.make_gausspeaklinearoffset_fit(
                     x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line[:, self.opt_channel],
