@@ -135,7 +135,7 @@ class PulsedMasterLogic(GenericLogic):
                 self.direct_write = False
         else:
             self.log.warning('The "direct_write" parameter in config is not defined.\n'
-                             'If you want to use direct write, set this parameter to "True".\n'
+                             'If you want to use direct write, set this parameter to "True". '
                              'Default is "False".')
             self.direct_write = False
 
