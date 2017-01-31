@@ -99,7 +99,7 @@ class OptimizerLogic(GenericLogic):
         if 'xy_size' in self._statusVariables:
             self.refocus_XY_size = self._statusVariables['xy_size']
         else:
-            self.refocus_XY_size = 0.6  # micron
+            self.refocus_XY_size = 0.6e-6  # meters
 
         if 'xy_resolution' in self._statusVariables:
             self.optimizer_XY_res = self._statusVariables['xy_resolution']
@@ -109,17 +109,17 @@ class OptimizerLogic(GenericLogic):
         if 'z_size' in self._statusVariables:
             self.refocus_Z_size = self._statusVariables['z_size']
         else:
-            self.refocus_Z_size = 2  # micron
+            self.refocus_Z_size = 2e-6  # meters
 
         if 'z_resolution' in self._statusVariables:
             self.optimizer_Z_res = self._statusVariables['z_resolution']
         else:
-            self.optimizer_Z_res = 30 
+            self.optimizer_Z_res = 30
 
         if 'settle_time' in self._statusVariables:
             self.hw_settle_time = self._statusVariables['settle_time']
         else:
-            self.hw_settle_time = 0.1  # s 
+            self.hw_settle_time = 0.1  # seconds
 
         if 'optimization_sequence' in self._statusVariables:
             self.optimization_sequence = self._statusVariables['optimization_sequence']
@@ -136,6 +136,10 @@ class OptimizerLogic(GenericLogic):
         else:
             self.surface_subtr_scan_offset = 1  # micron
 
+        if 'optimization_channel' in self._statusVariables:
+            self.opt_channel = self._statusVariables['optimization_channel']
+        else:
+            self.opt_channel = 0
 
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
@@ -159,7 +163,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gaussianwithslope_model()
+        model, params = self._fit_logic.make_gausslinearoffset_model()
         self.z_params = params
         self.use_custom_params = False
 
@@ -187,6 +191,7 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        self._statusVariables['optimization_channel'] = self.opt_channel
         self._statusVariables['clock_frequency'] = self._clock_frequency
         self._statusVariables['return_slowness'] = self.return_slowness
         self._statusVariables['xy_size'] = self.refocus_XY_size
@@ -209,6 +214,12 @@ class OptimizerLogic(GenericLogic):
                            'a sequence containing only \'XY\' and \'Z\' strings. '
                            'The default [\'XY\', \'Z\'] will be used.')
             self.optimization_sequence = ['XY', 'Z']
+
+    def get_scanner_count_channels(self):
+        """ Get lis of counting channels from scanning device.
+          @return list(str): names of counter channels
+        """
+        return self._scanning_device.get_scanner_count_channels()
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -299,7 +310,10 @@ class OptimizerLogic(GenericLogic):
         self._return_X_values = np.linspace(xmax, xmin, num=self.optimizer_XY_res)
         self._return_A_values = np.zeros(self._return_X_values.shape)
 
-        self.xy_refocus_image = np.zeros((len(self._Y_values), len(self._X_values), 4))
+        self.xy_refocus_image = np.zeros((
+            len(self._Y_values),
+            len(self._X_values),
+            3 + len(self.get_scanner_count_channels())))
         self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
@@ -319,7 +333,9 @@ class OptimizerLogic(GenericLogic):
         self._zimage_Z_values = np.linspace(zmin, zmax, num=self.optimizer_Z_res)
         self._fit_zimage_Z_values = np.linspace(zmin, zmax, num=self.optimizer_Z_res)
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
-        self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
+        self.z_refocus_line = np.zeros((
+            len(self._zimage_Z_values),
+            len(self.get_scanner_count_channels())))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
 
     def _move_to_start_pos(self, start_pos):
@@ -337,8 +353,8 @@ class OptimizerLogic(GenericLogic):
         else:
             move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
 
-        counts = self._scanning_device.scan_line(move_to_start_line)[0]
-        if np.any(counts[0] == -1):
+        counts = self._scanning_device.scan_line(move_to_start_line)
+        if np.any(counts == -1):
             return -1
 
         time.sleep(self.hw_settle_time)
@@ -382,8 +398,8 @@ class OptimizerLogic(GenericLogic):
         else:
             line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
-        line_counts = self._scanning_device.scan_line(line)[0]
-        if np.any(line_counts[0] == -1):
+        line_counts = self._scanning_device.scan_line(line)
+        if np.any(line_counts == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._sigScanNextXyLine.emit()
@@ -397,14 +413,15 @@ class OptimizerLogic(GenericLogic):
         else:
             return_line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
-        return_line_counts = self._scanning_device.scan_line(return_line)[0]
-        if np.any(return_line_counts[0] == -1):
+        return_line_counts = self._scanning_device.scan_line(return_line)
+        if np.any(return_line_counts == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
             self._sigScanNextXyLine.emit()
             return
 
-        self.xy_refocus_image[self._xy_scan_line_count, :, 3] = line_counts
+        s_ch = len(self.get_scanner_count_channels())
+        self.xy_refocus_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
         self.sigImageUpdated.emit()
 
         self._xy_scan_line_count += 1
@@ -420,22 +437,23 @@ class OptimizerLogic(GenericLogic):
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(axis=axes, data=xy_fit_data)
+        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(xy_axes=axes,
+                                                               data=xy_fit_data)
         # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
-            self.log.error('error in 2D Gaussian Fit.')
+            self.log.error('Error: 2D Gaussian Fit was not successfull!.')
             print('2D gaussian fit not successfull')
             self.optim_pos_x = self._initial_pos_x
             self.optim_pos_y = self._initial_pos_y
             # hier abbrechen
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
-            if abs(self._initial_pos_x - result_2D_gaus.best_values['x_zero']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['x_zero']) < self._max_offset:
-                if result_2D_gaus.best_values['x_zero'] >= self.x_range[0] and result_2D_gaus.best_values['x_zero'] <= self.x_range[1]:
-                    if result_2D_gaus.best_values['y_zero'] >= self.y_range[0] and result_2D_gaus.best_values['y_zero'] <= self.y_range[1]:
-                        self.optim_pos_x = result_2D_gaus.best_values['x_zero']
-                        self.optim_pos_y = result_2D_gaus.best_values['y_zero']
+            if abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset:
+                if result_2D_gaus.best_values['center_x'] >= self.x_range[0] and result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
+                    if result_2D_gaus.best_values['center_y'] >= self.y_range[0] and result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
+                        self.optim_pos_x = result_2D_gaus.best_values['center_x']
+                        self.optim_pos_y = result_2D_gaus.best_values['center_y']
             else:
                 self.optim_pos_x = self._initial_pos_x
                 self.optim_pos_y = self._initial_pos_y
@@ -457,24 +475,24 @@ class OptimizerLogic(GenericLogic):
             adjusted_param = {}
             adjusted_param['offset'] = {
                 'value': 1e-12,
-                'min': -self.z_refocus_line.max(),
-                'max': self.z_refocus_line.max()
+                'min': -self.z_refocus_line[:, self.opt_channel].max(),
+                'max': self.z_refocus_line[:, self.opt_channel].max()
             }
-            result = self._fit_logic.make_gaussianwithslope_fit(
-                axis=self._zimage_Z_values,
-                data=self.z_refocus_line,
-                add_parameters=adjusted_param)
+            result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                x_axis=self._zimage_Z_values,
+                data=self.z_refocus_line[:, self.opt_channel],
+                add_params=adjusted_param)
         else:
             if self.use_custom_params:
-                result = self._fit_logic.make_gaussianwithslope_fit(
-                    axis=self._zimage_Z_values,
-                    data=self.z_refocus_line,
-                    # Todo: It is required that the changed parameters are given as a dictionary
-                    add_parameters={})
+                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                    x_axis=self._zimage_Z_values,
+                    data=self.z_refocus_line[:, self.opt_channel],
+                    # Todo: It is required that the changed parameters are given as a dictionary or parameter object
+                    add_params=None)
             else:
-                result = self._fit_logic.make_gaussianwithslope_fit(
-                    axis=self._zimage_Z_values,
-                    data=self.z_refocus_line)
+                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                    x_axis=self._zimage_Z_values,
+                    data=self.z_refocus_line[:, self.opt_channel])
         self.z_params = result.params
 
         if result.success is False:
@@ -488,7 +506,7 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gaussianwithslope_model()
+                    gauss, params = self._fit_logic.make_gausslinearoffset_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
@@ -512,8 +530,9 @@ class OptimizerLogic(GenericLogic):
         """ Finishes up and releases hardware after the optimizer scans."""
         self.kill_scanner()
 
-        self.log.info('Optimised from ({0:.3f},{1:.3f},{2:.3f}) to local '
-                'maximum at ({3:.3f},{4:.3f},{5:.3f}).'.format(
+        self.log.info(
+                'Optimised from ({0:.3e},{1:.3e},{2:.3e}) to local '
+                'maximum at ({3:.3e},{4:.3e},{5:.3e}).'.format(
                     self._initial_pos_x,
                     self._initial_pos_y,
                     self._initial_pos_z,
@@ -523,8 +542,9 @@ class OptimizerLogic(GenericLogic):
 
         # Signal that the optimization has finished, and "return" the optimal position along with
         # caller_tag
-        self.sigRefocusFinished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y,
-                                                        self.optim_pos_z, 0])
+        self.sigRefocusFinished.emit(
+            self._caller_tag,
+            [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
 
     def _scan_z_line(self):
         """Scans the z line for refocus."""
@@ -540,18 +560,18 @@ class OptimizerLogic(GenericLogic):
         n_ch = len(self._scanning_device.get_scanner_axes())
 
         # defining trace of positions for z-refocus
-        Z_line = self._zimage_Z_values
-        X_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
-        Y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
+        scan_z_line = self._zimage_Z_values
+        scan_x_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
+        scan_y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
 
         if n_ch <= 3:
-            line = np.vstack((X_line, Y_line, Z_line)[0:n_ch])
+            line = np.vstack((scan_x_line, scan_y_line, scan_z_line)[0:n_ch])
         else:
-            line = np.vstack((X_line, Y_line, Z_line, np.zeros(X_line.shape)))
+            line = np.vstack((scan_x_line, scan_y_line, scan_z_line, np.zeros(scan_x_line.shape)))
 
         # Perform scan
-        line_counts = self._scanning_device.scan_line(line)[0]
-        if np.any(line_counts[0] == -1):
+        line_counts = self._scanning_device.scan_line(line)
+        if np.any(line_counts == -1):
             self.log.error('Z scan went wrong, killing the scanner.')
             self.stop_refocus()
             return
@@ -574,15 +594,15 @@ class OptimizerLogic(GenericLogic):
             # define an offset line to measure "background"
             if n_ch <= 3:
                 line_bg = np.vstack(
-                    (X_line + self.surface_subtr_scan_offset, Y_line, Z_line)[0:n_ch])
+                    (scan_x_line + self.surface_subtr_scan_offset, scan_y_line, scan_z_line)[0:n_ch])
             else:
                 line_bg = np.vstack(
-                    (X_line + self.surface_subtr_scan_offset,
-                     Y_line,
-                     Z_line,
-                     np.zeros(X_line.shape)))
+                    (scan_x_line + self.surface_subtr_scan_offset,
+                     scan_y_line,
+                     scan_z_line,
+                     np.zeros(scan_x_line.shape)))
 
-            line_bg_counts = self._scanning_device.scan_line(line_bg)[0]
+            line_bg_counts = self._scanning_device.scan_line(line_bg)
             if np.any(line_bg_counts[0] == -1):
                 self.log.error('The scan went wrong, killing the scanner.')
                 self.stop_refocus()
@@ -661,3 +681,4 @@ class OptimizerLogic(GenericLogic):
         if z is not None:
             self._current_z = z
         self.sigPositionChanged.emit(self._current_x, self._current_y, self._current_z)
+

@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtWidgets
 from pyqtgraph import SpinBox
 import numpy as np
-
+import math
 
 class FitSettingsWidget(QtWidgets.QWidget):
 
@@ -68,7 +68,7 @@ class FitSettingsWidget(QtWidgets.QWidget):
             maximumSpinbox.setSingleStep(0.01)
             maximumSpinbox.setMaximum(np.inf)
             maximumSpinbox.setMinimum(-np.inf)
-            if param.value is not None:
+            if param.value is not None and not math.isnan(param.value):
                 valueSpinbox.setValue(param.value)
                 minimumSpinbox.setValue(param.min)
                 minimumSpinbox.setValue(param.max)
@@ -98,7 +98,7 @@ class FitSettingsWidget(QtWidgets.QWidget):
         """ Keeps the old fit settings
         """
         for name, param in parameters.items():
-            if parameters[name].value is not None:
+            if parameters[name].value is not None and not math.isnan(param.value):
                 self.widgets[name+'_value'].setValue(param.value)
                 self.widgets[name+'_min'].setValue(param.min)
                 self.widgets[name+'_max'].setValue(param.max)

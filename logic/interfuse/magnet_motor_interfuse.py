@@ -20,22 +20,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-"""
-An interfuse file is indented to fuse/combine a logic with a hardware, which
-was not indented to be used with the logic. The interfuse file extend the
-ability of a hardware file by converting the logic calls (from a different
-interface) to the interface commands, which suits the hardware.
-In order to be addressed by the (magnet) logic it should inherit the (magnet)
-interface, and given the fact that it will convert a magnet logic call to a
-motor hardware call, that 'interfuse' file has to stick to the interfaces
-methods of the motor interface.
-
-Reimplement each call from the magnet interface and use only the motor interface
-command to talk to the motor hardware.
-"""
-
-
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 

@@ -243,7 +243,7 @@ class SaveLogic(GenericLogic):
 
     def save_data(self, data, filepath, parameters=None, filename=None,
                   filelabel=None, timestamp=None, as_text=True, as_xml=False,
-                  precision=':.3f', delimiter='\t', plotfig=None):
+                  precision=':.3e', delimiter='\t', plotfig=None):
         """ General save routine for data.
 
         @param dict or OrderedDict data:
@@ -403,9 +403,9 @@ class SaveLogic(GenericLogic):
         textfile = open(os.path.join(filepath, filename), 'w')
 
         # write the paramters if specified:
-        textfile.write('# Saved Data from the class ' + module_name + ' on '
-                       + time.strftime('%d.%m.%Y at %Hh%Mm%Ss.\n')
-                       )
+        textfile.write(
+            '# Saved Data from the class {0} on {1}.\n'
+            ''.format(module_name, time.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
         textfile.write('#\n')
         textfile.write('# Parameters:\n')
         textfile.write('# ===========\n')
@@ -413,22 +413,25 @@ class SaveLogic(GenericLogic):
 
         # Include the active POI name (if not empty) as a parameter in the header
         if self.active_poi_name != '':
-            textfile.write('# Measured at POI: ' + self.active_poi_name + '\n')
+            textfile.write('# Measured at POI: {0}\n'.format(self.active_poi_name))
 
         if parameters is not None:
 
             # check whether the format for the parameters have a dict type:
             if type(parameters) is dict or OrderedDict:
-                for entry in parameters:
-                    textfile.write('# ' + str(entry) + ':' + delimiter + str(parameters[entry]) + '\n')
+                for entry, param in parameters.items():
+                    if isinstance(param, float):
+                        textfile.write(('# {0}:{1}{2' + precision + '}\n').format(entry, delimiter, param))
+                    else:
+                        textfile.write('# {0}:{1}{2}\n'.format(entry, delimiter, param))
 
             # make a hardcore string convertion and try to save the
             # parameters directly:
             else:
-                self.log.error('The parameters are not passed as a dictionary! '
-                        'The SaveLogic will try to save the parameters '
-                        'directly.')
-                textfile.write('# not specified parameters: ' + str(parameters) + '\n')
+                self.log.error(
+                    'The parameters are not passed as a dictionary! '
+                    'The SaveLogic will try to save the parameters directly.')
+                textfile.write('# not specified parameters: {0}\n'.format(parameters))
 
         textfile.write('#\n')
         textfile.write('# Data:\n')
