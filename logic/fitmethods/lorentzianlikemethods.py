@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit import Parameters
 from lmfit.models import Model
+from collections import OrderedDict
 
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -302,7 +303,7 @@ def estimate_lorentzoffsetdip(self, x_axis, data, params):
 
     return error, params
 
-def make_lorentzoffsetdip_fit(self, x_axis, data, add_params=None):
+def make_lorentzoffsetdip_fit(self, x_axis, data, units, add_params=None):
     """ Perform a 1D lorentzian dip fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -328,7 +329,26 @@ def make_lorentzoffsetdip_fit(self, x_axis, data, add_params=None):
         result = model.fit(data, x=x_axis, params=params)
         logger.warning('The 1D lorentzian dip fit did not work. Error '
                        'message: {0}\n'.format(result.message))
-    return result
+
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Frequency'] = {'value': result.params['center'].value,
+                               'error': result.params['center'].stderr,
+                               'unit': units[0]}
+
+    param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+                              'error': result.params['contrast'].stderr,
+                              'unit': '%'}
+
+    param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
+                               'error': result.params['fwhm'].stderr,
+                               'unit': units[0]}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+
+    return result, param_dict
 
 
 ################################################################################
@@ -541,25 +561,7 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
         logger.error('The double lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
-    # Write the parameters to allow human-readable output to be generated
-    param_dict = OrderedDict()
-
-    param_dict['Frequency'] = {'value': result.params['center'].value,
-                               'error': result.params['center'].stderr,
-                               'unit': 'Hz'}
-
-    param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
-                              'error': result.params['contrast'].stderr,
-                              'unit': '%'}
-
-    param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-                               'error': result.params['fwhm'].stderr,
-                               'unit': 'Hz'}
-
-    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-
-    return result, param_dict
+    return result
 
 
 

@@ -625,6 +625,7 @@ class ODMRLogic(GenericLogic):
         # set the keyword arguments, which will be passed to the fit.
         kwargs = {'x_axis': x_data,
                   'data': y_data,
+                  'units': ['Hz', 'c/s'],
                   'add_params': None}
 
         if self.fit_function == 'Lorentzian':
