@@ -118,22 +118,25 @@ class ODMRLogic(GenericLogic):
         self._fit_result = None
 
         self.fit_models = OrderedDict([
-            ('Lorentzian', self._fit_logic.make_lorentzoffset_model()),
-            ('Double Lorentzian', self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('Double Lorentzian with fixed splitting', self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('N14', self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)),
-            ('N15', self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('Double Gaussian', self._fit_logic.make_multiplegaussoffset_model(no_of_functions=2))
+            ('Lorentzian',
+                self._fit_logic.make_lorentzoffset_model()),
+            ('Double Lorentzian',
+                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
+            ('Double Lorentzian with fixed splitting',
+                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
+            ('N14',
+                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)),
+            ('N15',
+                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
+            ('Double Gaussian',
+                self._fit_logic.make_multiplegaussoffset_model(no_of_functions=2))
         ])
 
         self.use_custom_params = {
-            'Lorentzian': False,
-            'Double Lorentzian': False,
-            'Double Lorentzian with fixed splitting': False,
-            'N14': False,
-            'N15': False,
-            'Double Gaussian': False
-        }
+            name: {
+                n: False for n, p in fit[1].items()
+                } for name, fit in self.fit_models.items()
+            }
 
         self.mw_frequency = self.limits.frequency_in_range(2870e6)
 
