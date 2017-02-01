@@ -898,6 +898,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                  'sampling: {1}'.format(sequence_name, filename_list))
 
         start_time = time.time()
+
+        ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+        ana_chnl_num = [int(chnl.split('ch')[-1]) for chnl in ana_chnl_names]
+
         # get ensemble
         sequence_obj = self.saved_pulse_sequences[sequence_name]
         sequence_param_dict_list = []
@@ -922,7 +926,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
                 # the temp_dict is a format how the sequence parameter will be saved
                 temp_dict = dict()
-                temp_dict['name'] = name_tag
+                name_list = []
+                for ch_num in ana_chnl_num:
+                    name_list.append(name_tag + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                temp_dict['name'] = name_list
 
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
@@ -945,7 +952,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # sampled ensemble file:
             for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
                 temp_dict = dict()
-                temp_dict['name'] = ensemble_obj.name
+                name_list = []
+                for ch_num in ana_chnl_num:
+                    name_list.append(ensemble_obj.name + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                temp_dict['name'] = name_list
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
 

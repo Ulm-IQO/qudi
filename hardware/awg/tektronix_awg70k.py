@@ -141,7 +141,10 @@ class AWG70K(Base, PulserInterface):
                          explanation can be found in method activation.
         """
         # Closes the connection to the AWG
-        self.awg.close()
+        try:
+            self.awg.close()
+        except:
+            self.log.debug('Closing AWG connection using pyvisa failed.')
         self.log.info('Closed connection to AWG')
         self.connected = False
         return
@@ -307,6 +310,7 @@ class AWG70K(Base, PulserInterface):
 
         If nothing is passed, method will be skipped.
         """
+        print('AWG: uploading asset "{0}"'.format(asset_name))
         # check input
         if asset_name is None:
             self.log.warning('No asset name provided for upload!\nCorrect that!\n'
@@ -333,6 +337,7 @@ class AWG70K(Base, PulserInterface):
             elif filename == asset_name + '.mat':
                 upload_names.append(filename)
                 break
+        print(upload_names)
         # Transfer files and load into AWG workspace
         for filename in upload_names:
             self._send_file(filename)
@@ -1226,17 +1231,18 @@ class AWG70K(Base, PulserInterface):
             else:
                 goto = str(sequence_params[step]['go_to'])
             self.awg.write('SLIS:SEQ:STEP{0}:GOTO "{1}", {2}'.format(step + 1, sequence_name, goto))
+            waveform_name = sequence_params[step]['name'][0].rsplit('_ch', 1)[0]
             if num_tracks == 1:
                 self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
                                                                                 sequence_name,
-                                                                                sequence_params[step]['name'] + '_ch1'))
+                                                                                waveform_name + '_ch1'))
             elif num_tracks == 2:
                 self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
                                                                                 sequence_name,
-                                                                                sequence_params[step]['name'] + '_ch1'))
+                                                                                waveform_name + '_ch1'))
                 self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
                                                                                 sequence_name,
-                                                                                sequence_params[step]['name'] + '_ch2'))
+                                                                                waveform_name + '_ch2'))
         # Wait for everything to complete
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.2)
@@ -1336,7 +1342,9 @@ class AWG70K(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if
+                         f.endswith('.wfmx') or f.endswith('.wfm') or f.endswith(
+                             '.seq') or f.endswith('.mat')]
         return filename_list
 
     def _get_model_ID(self):
