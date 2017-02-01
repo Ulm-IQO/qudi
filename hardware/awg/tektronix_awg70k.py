@@ -310,7 +310,6 @@ class AWG70K(Base, PulserInterface):
 
         If nothing is passed, method will be skipped.
         """
-        print('AWG: uploading asset "{0}"'.format(asset_name))
         # check input
         if asset_name is None:
             self.log.warning('No asset name provided for upload!\nCorrect that!\n'
@@ -337,7 +336,6 @@ class AWG70K(Base, PulserInterface):
             elif filename == asset_name + '.mat':
                 upload_names.append(filename)
                 break
-        print(upload_names)
         # Transfer files and load into AWG workspace
         for filename in upload_names:
             self._send_file(filename)
@@ -380,9 +378,6 @@ class AWG70K(Base, PulserInterface):
         seq_list = self._get_sequence_names_memory()
         wfm_list = self._get_waveform_names_memory()
 
-        print(seq_list)
-        print(wfm_list)
-        print(asset_name)
         # Check if load_dict is None or an empty dict
         if not load_dict:
             # check if the desired asset is in workspace. Load to channels if that is the case.
@@ -392,7 +387,6 @@ class AWG70K(Base, PulserInterface):
                     self.awg.write('SOUR{0}:CASS:SEQ "{1}", {2}'.format(chnl, asset_name, chnl))
             # check if the desired asset is in workspace. Load to channels if that is the case.
             elif asset_name + '_ch1' in wfm_list:
-                print('SOUR1:CASS:WAV "{0}"'.format(asset_name + '_ch1'))
                 self.awg.write('SOUR1:CASS:WAV "{0}"'.format(asset_name + '_ch1'))
                 if self._get_max_a_channel_number() > 1 and asset_name + '_ch2' in wfm_list:
                     self.awg.write('SOUR2:CASS:WAV "{0}"'.format(asset_name + '_ch2'))
@@ -404,7 +398,6 @@ class AWG70K(Base, PulserInterface):
 
         # Wait for the loading to completed
         while int(self.awg.query('*OPC?')) != 1:
-            print('Derp!!!')
             time.sleep(0.2)
         return 0
 
@@ -1201,7 +1194,6 @@ class AWG70K(Base, PulserInterface):
 
         @return:
         """
-        print(sequence_params)
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
         active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
         num_tracks = len(active_analog)
