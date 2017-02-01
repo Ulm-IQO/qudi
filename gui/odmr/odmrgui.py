@@ -563,7 +563,7 @@ class ODMRGui(GUIBase):
         fit_function = self._odmr_logic.current_fit_function
         x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=fit_function)
         if fit_result is not None:
-            self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params, 0)
+            self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params, self._odmr_logic.use_custom_params[fit_function])
         # The fit signal was already emitted in the logic, so there is no need
         # to set the fit data
 
