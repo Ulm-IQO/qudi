@@ -392,7 +392,7 @@ def estimate_lorentzoffsetpeak (self, x_axis, data, params):
     return error, params
 
 
-def make_lorentzoffsetpeak_fit(self, x_axis, data, add_params=None):
+def make_lorentzoffsetpeak_fit(self, x_axis, data, units, add_params=None):
     """ Perform a 1D Lorentzian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -419,7 +419,25 @@ def make_lorentzoffsetpeak_fit(self, x_axis, data, add_params=None):
         logger.warning('The Lorentzian peak fit did not work. Error '
                        'message:' + result.message)
 
-    return result
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Frequency'] = {'value': result.params['center'].value,
+                               'error': result.params['center'].stderr,
+                               'unit': units[0]}
+
+    param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+                              'error': result.params['contrast'].stderr,
+                              'unit': '%'}
+
+    param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
+                               'error': result.params['fwhm'].stderr,
+                               'unit': units[0]}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+
+    return result, param_dict
 
 
 ################################################################################
@@ -532,7 +550,7 @@ def estimate_doublelorentzdipoffset(self, x_axis, data, params,
 
 
 
-def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
+def make_doublelorentzdipoffset_fit(self, x_axis, data, units, add_params=None):
     """ Perform a 1D double lorentzian dip fit with offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -561,6 +579,41 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
         logger.error('The double lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Position 0'] = {'value': result.params['l0_center'].value,
+                             'error': result.params['l0_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Position 1'] = {'value': result.params['l1_center'].value,
+                             'error': result.params['l1_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Splitting'] = {'value': (result.params['l1_center'].value -
+                                         result.params['l0_center'].value),
+                               'error': (result.params['l0_center'].stderr +
+                                         result.params['l1_center'].stderr),
+                               'unit': units[0]}
+
+    param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                'error': result.params['l0_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                'error': result.params['l1_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Linewidth 0'] = {'value': result.params['l0_fwhm'].value,
+                                 'error': result.params['l0_fwhm'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['Linewidth 1'] = {'value': result.params['l1_fwhm'].value,
+                                 'error': result.params['l1_fwhm'].stderr,
+                                 'unit': units[0]}
+
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
     return result
 
 
@@ -779,7 +832,7 @@ def estimate_N14(self, x_axis, data, params):
     return error, params
 
 
-def make_N14_fit(self, x_axis, data, add_params=None):
+def make_N14_fit(self, x_axis, data, units, add_params=None):
     """ Perform a N14 fit by taking the hyperfine interaction of 2.15 MHz into
         account.
 
@@ -808,7 +861,48 @@ def make_N14_fit(self, x_axis, data, add_params=None):
         logger.error('The N14 fit did not '
                      'work: {0}'.format(result.message))
 
-    return result
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+                             'error': result.params['l0_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+                             'error': result.params['l1_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Freq. 2'] = {'value': result.params['l2_center'].value,
+                             'error': result.params['l2_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                'error': result.params['l0_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                'error': result.params['l1_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
+                                'error': result.params['l2_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
+                                 'error': result.params['l0_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
+                                 'error': result.params['l1_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['Linewidth 2'] = {'value': result.params['l2_sigma'].value,
+                                 'error': result.params['l2_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    return result, param_dict
 
 
 ############################################################################
@@ -908,7 +1002,7 @@ def estimate_N15(self, x_axis, data, params):
     return error, params
 
 
-def make_N15_fit(self, x_axis, data, add_params=None):
+def make_N15_fit(self, x_axis, data, units, add_params=None):
     """ Performes a fit where a N15 hyperfine interaction of 3.03 MHz is taken
         into account.
 
@@ -937,4 +1031,33 @@ def make_N15_fit(self, x_axis, data, add_params=None):
         logger.error('The N15 fit did not '
                      'work: {0}'.format(result.message))
 
-    return result
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+                             'error': result.params['l0_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+                             'error': result.params['l1_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                'error': result.params['l0_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                'error': result.params['l1_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
+                                 'error': result.params['l0_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
+                                 'error': result.params['l1_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    return result, param_dict
