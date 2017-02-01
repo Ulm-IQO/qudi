@@ -777,7 +777,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self.block_editor.delete_row(self._pg.block_editor_TableWidget.rowCount())
+        self.block_editor.delete_row(self._pg.block_editor_TableWidget.rowCount() - 1)
         return
 
     def block_add_sel_clicked(self):
