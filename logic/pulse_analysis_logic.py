@@ -107,7 +107,6 @@ class PulseAnalysisLogic(GenericLogic):
             else:
                 signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
 
-
         # Compute the measuring error
         for jj in range(num_of_lasers):
             signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
