@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model, GaussianModel, ConstantModel
 from lmfit import Parameters
+from collections import OrderedDict
 
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.ndimage import filters
@@ -306,7 +307,7 @@ def estimate_gaussoffsetpeak(self, x_axis, data, params):
 
     return error, params
 
-def make_gaussoffsetpeak_fit(self, x_axis, data, add_params=None):
+def make_gaussoffsetpeak_fit(self, x_axis, data, units, add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -503,7 +504,7 @@ def estimate_twogausspeakoffset(self, x_axis, data, params,
 
 
 
-def make_twogausspeakoffset_fit(self, x_axis, data, add_params=None,
+def make_twogausspeakoffset_fit(self, x_axis, data, units, add_params=None,
                                 threshold_fraction=0.4,
                                 minimal_threshold=0.2,
                                 sigma_threshold_fraction=0.3):
@@ -596,7 +597,7 @@ def estimate_twogaussdipoffset(self, x_axis, data, params,
     return error, params
 
 
-def make_twogaussdipoffset_fit(self, x_axis, data, add_params=None,
+def make_twogaussdipoffset_fit(self, x_axis, data, units, add_params=None,
                                 threshold_fraction=0.4,
                                 minimal_threshold=0.2,
                                 sigma_threshold_fraction=0.3):
@@ -635,7 +636,36 @@ def make_twogaussdipoffset_fit(self, x_axis, data, add_params=None,
         logger.warning('The double gaussian dip fit did not work: {0}'.format(
             result.message))
 
-    return result
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Freq. 0'] = {'value': result.params['g0_center'].value,
+                             'error': result.params['g0_center'].stderr,
+                             'unit': 'Hz'}
+
+    param_dict['Freq. 1'] = {'value': result.params['g1_center'].value,
+                             'error': result.params['g1_center'].stderr,
+                             'unit': 'Hz'}
+
+    param_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
+                                'error': result.params['g0_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Contrast 1'] = {'value': abs(result.params['g1_contrast'].value),
+                                'error': result.params['g1_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
+                                 'error': result.params['g0_sigma'].stderr,
+                                 'unit': 'Hz'}
+
+    param_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
+                                 'error': result.params['g1_sigma'].stderr,
+                                 'unit': 'Hz'}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    return result, param_dict
 
 
 ############################################################################

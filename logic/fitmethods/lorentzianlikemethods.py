@@ -614,7 +614,8 @@ def make_doublelorentzdipoffset_fit(self, x_axis, data, units, add_params=None):
 
 
     param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-    return result
+
+    return result, param_dict
 
 
 
