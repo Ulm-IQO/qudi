@@ -1016,7 +1016,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def save_measurement_data(self, tag=None):
+    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -1053,12 +1053,12 @@ class PulsedMeasurementLogic(GenericLogic):
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
             data_array[2, :] = self.signal_plot_y2
-            data['Tau (s), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
+            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
         else:
             data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
-            data['Tau (s), Signal (norm.)'] = data_array.transpose()
+            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.)'] = data_array.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1075,7 +1075,7 @@ class PulsedMeasurementLogic(GenericLogic):
         ax1.plot(self.signal_plot_x, self.signal_plot_y)
         if self.alternating:
             ax1.plot(self.signal_plot_x, self.signal_plot_y2)
-        ax1.set_xlabel('x-axis')
+        ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
         # ax1.set_xlim(self.plot_domain)
         # ax1.set_ylim(self.plot_range)
