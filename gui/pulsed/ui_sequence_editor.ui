@@ -16,6 +16,12 @@
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="3">
     <widget class="QGroupBox" name="groupBox_7">
+     <property name="maximumSize">
+      <size>
+       <width>200</width>
+       <height>16777215</height>
+      </size>
+     </property>
      <property name="title">
       <string>Current Pulse Sequence Info</string>
      </property>
