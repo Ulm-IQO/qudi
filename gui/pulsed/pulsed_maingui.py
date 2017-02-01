@@ -707,15 +707,15 @@ class PulsedMeasurementGui(GUIBase):
         laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
         activation_config_name = self._pg.gen_activation_config_ComboBox.currentText()
         amplitude_dict = self._pulsed_master_logic._generator_logic.amplitude_dict
-        sampling_format = self._gs.sampled_file_format_comboBox.currentText()
+        waveform_format = self._gs.sampled_file_format_comboBox.currentText()
 
         self._pulsed_master_logic.generator_settings_changed(activation_config_name, laser_channel,
                                                              sample_rate, amplitude_dict,
-                                                             sampling_format)
+                                                             waveform_format)
         return
 
     def update_generator_settings(self, activation_config_name, activation_config, sample_rate,
-                                   amplitude_dict, laser_channel, sampling_format):
+                                   amplitude_dict, laser_channel, waveform_format):
         """
 
         @param activation_config_name:
@@ -723,7 +723,7 @@ class PulsedMeasurementGui(GUIBase):
         @param sample_rate:
         @param amplitude_dict:
         @param laser_channel:
-        @param sampling_format:
+        @param waveform_format:
         @return:
         """
         # block signals
@@ -732,7 +732,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_activation_config_ComboBox.blockSignals(True)
         self._gs.sampled_file_format_comboBox.blockSignals(True)
         # sampling format
-        index = self._gs.sampled_file_format_comboBox.findText(sampling_format)
+        index = self._gs.sampled_file_format_comboBox.findText(waveform_format)
         self._gs.sampled_file_format_comboBox.setCurrentIndex(index)
         # activation config
         index = self._pg.gen_activation_config_ComboBox.findText(activation_config_name)

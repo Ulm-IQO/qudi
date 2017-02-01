@@ -1117,7 +1117,7 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     def generator_settings_updated(self, activation_config, laser_channel, sample_rate,
-                                   amplitude_dict, sampling_format):
+                                   amplitude_dict, waveform_format):
         """
 
         @param activation_config:
@@ -1142,11 +1142,11 @@ class PulsedMasterLogic(GenericLogic):
                              'Taking first valid config "{1}" '
                              'instead.'.format(activation_config, activation_config_name))
             self.generator_settings_changed(activation_config_name, laser_channel, sample_rate,
-                                            amplitude_dict, sampling_format)
+                                            amplitude_dict, waveform_format)
         else:
             self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
                                                   sample_rate, amplitude_dict, laser_channel,
-                                                  sampling_format)
+                                                  waveform_format)
         return
 
     def generate_predefined_sequence(self, generator_method_name, arg_list):
