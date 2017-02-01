@@ -614,20 +614,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
-    def upload_sequence(self, seq_name):
-        """ Upload a sequence and all its related files
-
-        @param str seq_name: name of the sequence to be uploaded
-        """
-        current_sequence = self.get_pulse_sequence(seq_name)
-
-        for ensemble_name in current_sequence.get_sampled_ensembles():
-            self._pulse_generator_device.upload_asset(ensemble_name)
-        err = self._pulse_generator_device.upload_asset(seq_name)
-        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
-        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
-        return err
-
     def has_sequence_mode(self):
         """ Retrieve from the hardware, whether sequence mode is present or not.
 
@@ -659,6 +645,34 @@ class PulsedMeasurementLogic(GenericLogic):
         # set the loaded_asset_name variable.
         self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
+        return err
+
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
+        @return:
+        """
+        err = self._pulse_generator_device.direct_write_ensemble(ensemble_name,
+                                                                 analog_samples, digital_samples)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(ensemble_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
+        return err
+
+    def direct_write_sequence(self, sequence_name, sequence_params):
+        """
+
+        @param sequence_name:
+        @param sequence_params:
+        @return:
+        """
+        err = self._pulse_generator_device.direct_write_sequence(sequence_name, sequence_params)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(sequence_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
     ############################################################################

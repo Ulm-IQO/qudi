@@ -180,9 +180,6 @@ class PulsedMeasurementGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-        # that variable is for testing issues and can be deleted if not needed:
-        self._write_chunkwise = False
-
     def on_activate(self, e=None):
         """ Initialize, connect and configure the pulsed measurement GUI.
 
@@ -575,8 +572,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_laserchannel_ComboBox.currentIndexChanged.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
         self._pg.gen_activation_config_ComboBox.currentIndexChanged.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
         # connect signals of buttons
-        self._pg.sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
-        self._sg.sample_sequence_PushButton.clicked.connect(self.sample_sequence_clicked)
+        self._pg.saup_ensemble_PushButton.clicked.connect(self.saup_ensemble_clicked)
+        self._sg.saup_sequence_PushButton.clicked.connect(self.saup_sequence_clicked)
         self._pg.sauplo_ensemble_PushButton.clicked.connect(self.sauplo_ensemble_clicked)
         self._sg.sauplo_sequence_PushButton.clicked.connect(self.sauplo_sequence_clicked)
 
@@ -607,8 +604,8 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.curr_sequence_load_PushButton.clicked.connect(self.editor_load_sequence_clicked)
 
         # connect update signals from pulsed_master_logic
-        self._pulsed_master_logic.sigBlockEnsembleSampled.connect(self.sample_ensemble_finished)
-        self._pulsed_master_logic.sigSequenceSampled.connect(self.sample_sequence_finished)
+        self._pulsed_master_logic.sigEnsembleSaUpComplete.connect(self.saup_ensemble_finished)
+        self._pulsed_master_logic.sigSequenceSaUpComplete.connect(self.saup_sequence_finished)
         self._pulsed_master_logic.sigSavedPulseBlocksUpdated.connect(self.update_block_dict)
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.connect(self.update_ensemble_dict)
         self._pulsed_master_logic.sigSavedSequencesUpdated.connect(self.update_sequence_dict)
@@ -640,8 +637,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_laserchannel_ComboBox.currentIndexChanged.disconnect()
         self._pg.gen_activation_config_ComboBox.currentIndexChanged.disconnect()
         # disconnect signals of buttons
-        self._pg.sample_ensemble_PushButton.clicked.disconnect()
-        self._sg.sample_sequence_PushButton.clicked.disconnect()
+        self._pg.saup_ensemble_PushButton.clicked.disconnect()
+        self._sg.saup_sequence_PushButton.clicked.disconnect()
         self._pg.sauplo_ensemble_PushButton.clicked.disconnect()
         self._sg.sauplo_sequence_PushButton.clicked.disconnect()
         self._pg.block_add_last_PushButton.clicked.disconnect()
@@ -669,8 +666,8 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.curr_sequence_del_PushButton.clicked.disconnect()
         self._sg.curr_sequence_load_PushButton.clicked.disconnect()
         # disconnect update signals from pulsed_master_logic
-        self._pulsed_master_logic.sigBlockEnsembleSampled.disconnect()
-        self._pulsed_master_logic.sigSequenceSampled.disconnect()
+        self._pulsed_master_logic.sigEnsembleSaUpComplete.disconnect()
+        self._pulsed_master_logic.sigSequenceSaUpComplete.disconnect()
         self._pulsed_master_logic.sigSavedPulseBlocksUpdated.disconnect()
         self._pulsed_master_logic.sigSavedBlockEnsemblesUpdated.disconnect()
         self._pulsed_master_logic.sigSavedSequencesUpdated.disconnect()
@@ -1038,82 +1035,76 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.saved_sequences_ComboBox.blockSignals(False)
         return
 
-    def sample_ensemble_clicked(self):
+    def saup_ensemble_clicked(self):
         """
-        This method is called when the user clicks on "sample"
+        This method is called when the user clicks on "Sample + Upload Ensemble"
         """
         # Get the ensemble name from the ComboBox
         ensemble_name = self._pg.gen_ensemble_ComboBox.currentText()
-        # disable button
-        self._pg.sample_ensemble_PushButton.setEnabled(False)
-        # Sample the ensemble via logic module
-        self._pulsed_master_logic.sample_block_ensemble(ensemble_name, True, self._write_chunkwise)
+        # disable buttons
+        self._pg.saup_ensemble_PushButton.setEnabled(False)
+        self._pg.sauplo_ensemble_PushButton.setEnabled(False)
+        # Sample and upload the ensemble via logic module
+        self._pulsed_master_logic.sample_block_ensemble(ensemble_name, False)
         return
 
-    def sample_ensemble_finished(self, ensemble_name):
+    def saup_ensemble_finished(self, ensemble_name):
         """
-
-        @return:
+        This method
         """
-        # enable button
-        self._pg.sample_ensemble_PushButton.setEnabled(True)
+        # enable buttons
+        self._pg.saup_ensemble_PushButton.setEnabled(True)
+        self._pg.sauplo_ensemble_PushButton.setEnabled(True)
         return
 
     def sauplo_ensemble_clicked(self):
         """
-
-        @return:
+        This method is called when the user clicks on "Sample + Upload + Load Ensemble"
         """
         # Get the ensemble name from the ComboBox
         ensemble_name = self._pg.gen_ensemble_ComboBox.currentText()
-        # Get invoke settings CheckBox status
-        invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
-        # disable button
-        self._pg.sample_ensemble_PushButton.setEnabled(False)
-        self._pg.upload_ensemble_PushButton.setEnabled(False)
+        # disable buttons
+        self._pg.saup_ensemble_PushButton.setEnabled(False)
+        self._pg.sauplo_ensemble_PushButton.setEnabled(False)
         self._pg.load_ensemble_PushButton.setEnabled(False)
-        # Sample the ensemble via logic module
-        self._pulsed_master_logic.sample_block_ensemble(ensemble_name, True, self._write_chunkwise,
-                                                        True, invoke_settings)
+        # Sample, upload and load the ensemble via logic module
+        self._pulsed_master_logic.sample_block_ensemble(ensemble_name, True)
         return
 
-    def sample_sequence_clicked(self):
+    def saup_sequence_clicked(self):
         """
-        This method is called when the user clicks on "sample"
+        This method is called when the user clicks on "Sample + Upload Sequence"
         """
         # Get the sequence name from the ComboBox
         sequence_name = self._sg.gen_sequence_ComboBox.currentText()
-        # disable button
-        self._sg.sample_sequence_PushButton.setEnabled(False)
+        # disable buttons
+        self._sg.saup_sequence_PushButton.setEnabled(False)
+        self._sg.sauplo_sequence_PushButton.setEnabled(False)
         # Sample the sequence via logic module
-        self._pulsed_master_logic.sample_sequence(sequence_name, True, self._write_chunkwise)
+        self._pulsed_master_logic.sample_sequence(sequence_name, False)
         return
 
-    def sample_sequence_finished(self, sequence_name):
+    def saup_sequence_finished(self, sequence_name):
         """
-
-        @return:
+        This method
         """
-        # enable button
-        self._sg.sample_sequence_PushButton.setEnabled(True)
+        # enable buttons
+        self._sg.saup_sequence_PushButton.setEnabled(True)
+        self._sg.sauplo_sequence_PushButton.setEnabled(True)
         return
 
     def sauplo_sequence_clicked(self):
         """
-
-        @return:
+        This method is called when the user clicks on "Sample + Upload + Load Sequence"
         """
         # Get the sequence name from the ComboBox
         sequence_name = self._sg.gen_sequence_ComboBox.currentText()
-        # Get invoke settings CheckBox status
-        invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
-        # disable button
-        self._sg.sample_sequence_PushButton.setEnabled(False)
-        self._sg.upload_sequence_PushButton.setEnabled(False)
+        # disable buttons
+        self._sg.saup_sequence_PushButton.setEnabled(False)
+        self._sg.sauplo_sequence_PushButton.setEnabled(False)
         self._sg.load_sequence_PushButton.setEnabled(False)
         # Sample the sequence via logic module
-        self._pulsed_master_logic.sample_sequence(sequence_name, True, self._write_chunkwise, True,
-                                                  invoke_settings)
+        self._pulsed_master_logic.sample_sequence(sequence_name, True)
         return
 
     def generate_predefined_clicked(self, button_obj=None):
@@ -1168,7 +1159,13 @@ class PulsedMeasurementGui(GUIBase):
                            'the asset to be generated.')
             return
         name = input_obj.text()
-        self._pulsed_master_logic.sample_block_ensemble(name, True, False, True)
+
+        # disable buttons
+        self._pg.saup_ensemble_PushButton.setEnabled(False)
+        self._pg.sauplo_ensemble_PushButton.setEnabled(False)
+        self._pg.load_ensemble_PushButton.setEnabled(False)
+
+        self._pulsed_master_logic.sample_block_ensemble(name, True)
         return
 
     ###########################################################################
@@ -1300,12 +1297,13 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
-        if 'ana_param_invoke_settings_CheckBox' in self._statusVariables:
-            self._pa.ana_param_invoke_settings_CheckBox.setChecked(self._statusVariables['ana_param_invoke_settings_CheckBox'])
         if 'ana_param_errorbars_CheckBox' in self._statusVariables:
             self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
         # if 'second_plot_ComboBox_text' in self._statusVariables:
         #     self._pa.second_plot_ComboBox.setText(self._statusVariables['second_plot_ComboBox_text'])
+
+        self._pa.ana_param_invoke_settings_CheckBox.setChecked(
+            self._pulsed_master_logic.invoke_settings)
 
         # FIXME: Implement second plot
         self._pa.second_plot_GroupBox.setVisible(False)
@@ -1392,10 +1390,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigAnalysisMethodUpdated.connect(self.analysis_method_updated)
 
         # connect button click signals
-        self._pg.upload_ensemble_PushButton.clicked.connect(self.upload_ensemble_clicked)
         self._pg.load_ensemble_PushButton.clicked.connect(self.load_ensemble_clicked)
-        # self._pg.upload_sequence_PushButton.clicked.connect(self.upload_sequence_clicked)
-        # self._pg.load_sequence_PushButton.clicked.connect(self.load_sequence_clicked)
+        self._sg.load_sequence_PushButton.clicked.connect(self.load_sequence_clicked)
         self._mw.pulser_on_off_PushButton.clicked.connect(self.pulser_on_off_clicked)
         self._mw.clear_device_PushButton.clicked.connect(self.clear_pulser_clicked)
         self._pa.fit_param_PushButton.clicked.connect(self.fit_clicked)
@@ -1448,7 +1444,6 @@ class PulsedMeasurementGui(GUIBase):
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
 
-        self._pulsed_master_logic.invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
         self.toggle_settings_editor()
         self.toggle_error_bars()
         #self.change_second_plot()
@@ -1465,7 +1460,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         self.measurement_run_stop_clicked(False)
 
-        self._statusVariables['ana_param_invoke_settings_CheckBox'] = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
         self._statusVariables['ana_param_errorbars_CheckBox'] = self._pa.ana_param_errorbars_CheckBox.isChecked()
         self._statusVariables['second_plot_ComboBox_text'] = self._pa.second_plot_ComboBox.currentText()
 
@@ -1487,10 +1481,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigTimerIntervalUpdated.disconnect()
         self._pulsed_master_logic.sigAnalysisWindowsUpdated.disconnect()
         self._pulsed_master_logic.sigAnalysisMethodUpdated.disconnect()
-        self._pg.upload_ensemble_PushButton.clicked.disconnect()
         self._pg.load_ensemble_PushButton.clicked.disconnect()
-        # self._pg.upload_sequence_PushButton.clicked.disconnect()
-        # self._pg.load_sequence_PushButton.clicked.disconnect()
+        self._sg.load_sequence_PushButton.clicked.disconnect()
         self._mw.pulser_on_off_PushButton.clicked.disconnect()
         self._mw.clear_device_PushButton.clicked.disconnect()
         self._pa.fit_param_PushButton.clicked.disconnect()
@@ -1608,7 +1600,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(False)
             self._pa.pulser_use_interleave_CheckBox.setEnabled(False)
             self._pg.load_ensemble_PushButton.setEnabled(False)
-            # self._pg.load_sequence_PushButton.setEnabled(False)
+            self._sg.load_sequence_PushButton.setEnabled(False)
             self._mw.pulser_on_off_PushButton.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(True)
             self._mw.action_pull_data.setEnabled(True)
@@ -1633,7 +1625,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
                 self._pa.ana_param_record_length_SpinBox.setEnabled(True)
             self._pg.load_ensemble_PushButton.setEnabled(True)
-            # self._pg.load_sequence_PushButton.setEnabled(True)
+            self._sg.load_sequence_PushButton.setEnabled(True)
             self._mw.pulser_on_off_PushButton.setEnabled(True)
             self._mw.action_continue_pause.setEnabled(False)
             self._mw.action_pull_data.setEnabled(False)
@@ -1997,8 +1989,11 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def toggle_settings_editor(self):
-        """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
-        if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
+        """
+        Shows or hides input widgets which are necessary if the x axis id defined or not.
+        """
+        invoke_checked = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
+        if not invoke_checked:
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
@@ -2008,6 +2003,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(False)
             self._pa.ana_param_record_length_SpinBox.setEnabled(False)
+        self._pulsed_master_logic.invoke_settings = invoke_checked
         return
 
     def toggle_error_bars(self):
@@ -2323,74 +2319,37 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.clear_pulse_generator()
         return
 
-    def upload_ensemble_clicked(self):
-        """
-
-        @return:
-        """
-        # Get the ensemble name from the ComboBox
-        ensemble_name = self._pg.gen_ensemble_ComboBox.currentText()
-        # Upload the ensemble via logic module
-        self._pulsed_master_logic.upload_asset(ensemble_name)
-        # disable button
-        self._pg.upload_ensemble_PushButton.setEnabled(False)
-        self._pg.load_ensemble_PushButton.setEnabled(False)
-        return
-
-    # def upload_sequence_clicked(self):
-    #     """
-    #
-    #     @return:
-    #     """
-    #     # Get the sequence name from the ComboBox
-    #     seq_name = self._pg.gen_sequence_ComboBox.currentText()
-    #     # Upload the asset via logic module
-    #     self._pulsed_master_logic.upload_asset(seq_name)
-    #     # disable button
-    #     self._pg.upload_sequence_PushButton.setEnabled(False)
-    #     self._pg.load_sequence_PushButton.setEnabled(False)
-    #     return
-
     def update_uploaded_assets(self, asset_names_list):
         """
 
         @param asset_names_list:
         @return:
         """
-        # enable buttons
-        # self._pg.upload_sequence_PushButton.setEnabled(True)
-        self._pg.upload_ensemble_PushButton.setEnabled(True)
-        self._pg.load_ensemble_PushButton.setEnabled(True)
-        # self._pg.load_sequence_PushButton.setEnabled(True)
-        return
+        pass
 
     def load_ensemble_clicked(self):
         """
-
-        @return:
+        This method
         """
         # disable button
         self._pg.load_ensemble_PushButton.setEnabled(False)
         # Get the asset name to be uploaded from the ComboBox
         asset_name = self._pg.gen_ensemble_ComboBox.currentText()
-        # Get invoke settings CheckBox status
-        invoke_settings = self._pa.ana_param_invoke_settings_CheckBox.isChecked()
         # Load asset into channles via logic module
-        self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, invoke_settings)
+        self._pulsed_master_logic.load_asset_into_channels(asset_name, {})
         return
 
-    # def load_sequence_clicked(self):
-    #     """
-    #
-    #     @return:
-    #     """
-    #     # disable button
-    #     self._pg.load_sequence_PushButton.setEnabled(False)
-    #     # Get the asset name to be uploaded from the ComboBox
-    #     asset_name = self._pg.gen_sequence_ComboBox.currentText()
-    #     # Load asset into channles via logic module
-    #     self._pulsed_master_logic.load_asset_into_channels(asset_name, {}, False)
-    #     return
+    def load_sequence_clicked(self):
+        """
+        This method
+        """
+        # disable button
+        self._sg.load_sequence_PushButton.setEnabled(False)
+        # Get the asset name to be uploaded from the ComboBox
+        asset_name = self._sg.gen_sequence_ComboBox.currentText()
+        # Load asset into channles via logic module
+        self._pulsed_master_logic.load_asset_into_channels(asset_name, {})
+        return
 
     def update_loaded_asset(self, asset_name, asset_type):
         """ Check the current loaded asset from the logic and update the display. """
@@ -2404,8 +2363,12 @@ class PulsedMeasurementGui(GUIBase):
         # enable buttons
         if asset_type == 'PulseBlockEnsemble':
             self._pg.load_ensemble_PushButton.setEnabled(True)
+            self._pg.sauplo_ensemble_PushButton.setEnabled(True)
+            self._pg.saup_ensemble_PushButton.setEnabled(True)
         elif asset_type == 'PulseSequence':
-            self._pg.load_sequence_PushButton.setEnabled(True)
+            self._sg.load_sequence_PushButton.setEnabled(True)
+            self._sg.sauplo_sequence_PushButton.setEnabled(True)
+            self._sg.saup_sequence_PushButton.setEnabled(True)
         return
 
 

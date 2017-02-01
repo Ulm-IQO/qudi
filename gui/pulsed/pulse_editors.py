@@ -665,9 +665,9 @@ class SequenceEditor:
         self.parameter_dict['trigger_wait'] = {'unit': '', 'init_val': False, 'min': 0,
                                                'max': 1, 'view_stepsize': 1, 'dec': 0,
                                                'unit_prefix': '', 'type': bool}
-        self.parameter_dict['go_to'] = {'unit': '', 'init_val': False, 'min': 0,
-                                        'max': 1, 'view_stepsize': 1, 'dec': 0,
-                                        'unit_prefix': '', 'type': bool}
+        self.parameter_dict['go_to'] = {'unit': '', 'init_val': 0, 'min': -1,
+                                        'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
+                                        'unit_prefix': '', 'type': int}
         self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': -1,
                                                 'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                                 'unit_prefix': '', 'type': int}
@@ -877,7 +877,7 @@ class SequenceEditor:
             column = self._cfg_param_ps['trigger_wait']
             self.set_element(row_index, column, bool(seq_param['trigger_wait']))
             column = self._cfg_param_ps['go_to']
-            self.set_element(row_index, column, bool(seq_param['go_to']))
+            self.set_element(row_index, column, int(seq_param['go_to']))
             column = self._cfg_param_ps['event_jump_to']
             self.set_element(row_index, column, int(seq_param['event_jump_to']))
         return
@@ -891,23 +891,24 @@ class SequenceEditor:
                                     throughout the sequence.
         """
         # list of all the pulse block ensemble objects
-        pbe_obj_list = [None] * self.se_widget.rowCount()
-        # parameter dictionary for pulse sequences
-        seq_param = dict()
+        pbe_obj_list = []
 
         for row_index in range(self.se_widget.rowCount()):
+            # Fetch previously saved ensemble object
             block_ensemble_name = self.get_element(row_index, self._cfg_param_ps['block_ensemble'])
+            ensemble = self.ensemble_dict[block_ensemble_name]
+
+            # parameter dictionary for pulse sequences
+            seq_param = dict()
             seq_param['repetitions'] = self.get_element(row_index,
                                                         self._cfg_param_ps['repetitions'])
             seq_param['trigger_wait'] = int(self.get_element(row_index,
                                                              self._cfg_param_ps['trigger_wait']))
-            seq_param['go_to'] = int(self.get_element(row_index, self._cfg_param_ps['go_to']))
+            seq_param['go_to'] = self.get_element(row_index, self._cfg_param_ps['go_to'])
             seq_param['event_jump_to'] = self.get_element(row_index,
                                                           self._cfg_param_ps['event_jump_to'])
-            # Fetch previously saved ensemble object
-            ensemble = self.ensemble_dict[block_ensemble_name]
             # Append ensemble object along with repetitions to the ensemble list
-            pbe_obj_list[row_index] = (ensemble, seq_param)
+            pbe_obj_list.append((ensemble, seq_param))
 
         # Create the PulseSequence object
         pulse_sequence = PulseSequence(name=sequence_name, ensemble_param_list=pbe_obj_list,
