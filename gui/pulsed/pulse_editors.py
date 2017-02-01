@@ -251,6 +251,8 @@ class BlockEditor:
 
     def delete_row(self, index):
         """ Delete row number 'index' """
+        if self.be_widget.rowCount() == 1 and index == 0:
+            return
         self.be_widget.blockSignals(True)
         self.be_widget.removeRow(index)
         self.be_widget.blockSignals(False)
@@ -555,7 +557,11 @@ class BlockOrganizer:
 
     def delete_row(self, index):
         """ Delete row number 'index' """
+        if self.bo_widget.rowCount() == 1 and index == 0:
+            return
+        self.bo_widget.blockSignals(True)
         self.bo_widget.removeRow(index)
+        self.bo_widget.blockSignals(False)
         # FIXME: Implement a proper way to update the current block ensemble parameters
         return
 
@@ -802,7 +808,11 @@ class SequenceEditor:
 
     def delete_row(self, index):
         """ Delete row number 'index' """
+        if self.se_widget.rowCount() == 1 and index == 0:
+            return
+        self.se_widget.blockSignals(True)
         self.se_widget.removeRow(index)
+        self.se_widget.blockSignals(False)
         # FIXME: Implement a proper way to update the current block ensemble parameters
         return
 
