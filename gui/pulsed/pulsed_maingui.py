@@ -690,6 +690,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_activation_config_ComboBox.addItems(list(pulser_constr['activation_config']))
         self._pg.gen_sample_freq_DSpinBox.setMinimum(pulser_constr['sample_rate']['min'])
         self._pg.gen_sample_freq_DSpinBox.setMaximum(pulser_constr['sample_rate']['max'])
+        self._pg.gen_sample_freq_DSpinBox.setSingleStep(pulser_constr['sample_rate']['step'])
         # unblock signals
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
@@ -777,7 +778,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self.block_editor.delete_row(self._pg.block_editor_TableWidget.rowCount())
+        self.block_editor.delete_row(self._pg.block_editor_TableWidget.rowCount() - 1)
         return
 
     def block_add_sel_clicked(self):
@@ -1686,7 +1687,8 @@ class PulsedMeasurementGui(GUIBase):
         """Saves the current data"""
         self._mw.action_save.setEnabled(False)
         save_tag = self._mw.save_tag_LineEdit.text()
-        self._pulsed_master_logic.save_measurement_data(save_tag)
+        controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
+        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag)
         self._mw.action_save.setEnabled(True)
         return
 
@@ -2201,6 +2203,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+
+        self.analysis_windows_changed()
         return
 
     def analysis_windows_updated(self, sig_start, sig_length, ref_start, ref_length):
@@ -2217,6 +2221,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
+        self.sig_start_line.blockSignals(True)
+        self.sig_end_line.blockSignals(True)
+        self.ref_start_line.blockSignals(True)
+        self.ref_end_line.blockSignals(True)
         # set widgets
         self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
         self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_length)
@@ -2232,6 +2240,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+        self.sig_start_line.blockSignals(False)
+        self.sig_end_line.blockSignals(False)
+        self.ref_start_line.blockSignals(False)
+        self.ref_end_line.blockSignals(False)
         return
 
     def laser_to_show_changed(self):
