@@ -275,7 +275,7 @@ class AWG70K(Base, PulserInterface):
                                  class variable status_dic.)
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         self.awg.write('AWGC:RUN')
         # wait until the AWG is actually running
@@ -315,7 +315,7 @@ class AWG70K(Base, PulserInterface):
             self.log.warning('No asset name provided for upload!\nCorrect that!\n'
                              'Command will be ignored.')
             return -1
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
         # at first delete all the name, which might lead to confusions in the upload procedure:
         self.delete_asset(asset_name)
         # determine which files to transfer
@@ -372,7 +372,7 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # Get all sequence and waveform names currently loaded into AWG workspace
         seq_list = self._get_sequence_names_memory()
@@ -439,7 +439,7 @@ class AWG70K(Base, PulserInterface):
         storage capability (PulseBlaster, FPGA).
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         self.awg.write('WLIS:WAV:DEL ALL')
         self.awg.write('SLIS:SEQ:DEL ALL')
@@ -477,13 +477,13 @@ class AWG70K(Base, PulserInterface):
         @return foat: the sample rate returned from the device (-1:error)
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         self.awg.write('CLOCK:SRATE %.4G' % sample_rate)
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.25)
-        return_rate = float(self.awg.query('CLOCK:SRATE?'))
-        self.sample_rate = return_rate
+        time.sleep(1)
+        self.get_sample_rate()
         return return_rate
 
     def get_sample_rate(self):
@@ -492,7 +492,7 @@ class AWG70K(Base, PulserInterface):
         @return float: The current sample rate of the device (in Hz)
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         return_rate = float(self.awg.query('CLOCK:SRATE?'))
         self.sample_rate = return_rate
@@ -530,7 +530,7 @@ class AWG70K(Base, PulserInterface):
         off = {}
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         chnl_list = ['a_ch' + str(ch_num) for ch_num in
                      range(1, self._get_max_a_channel_number() + 1)]
@@ -593,7 +593,7 @@ class AWG70K(Base, PulserInterface):
         num_of_channels = self._get_max_a_channel_number()
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # amplitude sanity check
         pattern = re.compile('[0-9]+')
@@ -688,7 +688,7 @@ class AWG70K(Base, PulserInterface):
         high_val = {}
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         digital_channels = list(range(1, 2 * self._get_max_a_channel_number() + 1))
         analog_channels = [chnl // 2 + chnl % 2 for chnl in digital_channels]
@@ -746,7 +746,7 @@ class AWG70K(Base, PulserInterface):
             high = {}
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
@@ -783,7 +783,7 @@ class AWG70K(Base, PulserInterface):
         max_analog_channels = self._get_max_a_channel_number()
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         active_ch = {}
         for a_ch in range(max_analog_channels):
@@ -848,7 +848,7 @@ class AWG70K(Base, PulserInterface):
         constraints = self.get_constraints()
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         new_channels_state = self.active_channel.copy()
         for chnl in ch:
@@ -968,7 +968,7 @@ class AWG70K(Base, PulserInterface):
         """
         if not isinstance(asset_name, list):
             asset_name = [asset_name]
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # get all uploaded files and asset names in workspace
         uploaded_files = self._get_filenames_on_device()
@@ -1250,7 +1250,7 @@ class AWG70K(Base, PulserInterface):
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # first get all the channel assets
         a_ch_asset = [self.awg.query('SOUR{0}:CASS?'.format(count))[1:-2]
@@ -1369,7 +1369,7 @@ class AWG70K(Base, PulserInterface):
         @return: list of names
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         number_of_wfm = int(self.awg.query('WLIS:SIZE?'))
         waveform_list = [None] * number_of_wfm
@@ -1387,12 +1387,12 @@ class AWG70K(Base, PulserInterface):
         run_state = bool(int(self.awg.query('AWGC:RST?')))
         return run_state
 
-    def _activate_awg_mode(self):
-        """
-        Helper method to activate AWG mode if the device is currently in function generator mode.
-        """
-        # Check if AWG is still in MW mode (function generator mode)
-        if self.awg.query('INST:MODE?').replace('\n', '') != 'AWG':
-            self.awg.write('INST:MODE AWG')
-            self.awg.write('*WAI')
-        return
+    # def _activate_awg_mode(self):
+    #     """
+    #     Helper method to activate AWG mode if the device is currently in function generator mode.
+    #     """
+    #     # Check if AWG is still in MW mode (function generator mode)
+    #     if self.awg.query('INST:MODE?').replace('\n', '') != 'AWG':
+    #         self.awg.write('INST:MODE AWG')
+    #         self.awg.write('*WAI')
+    #     return
