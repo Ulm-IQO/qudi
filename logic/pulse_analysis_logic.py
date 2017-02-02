@@ -95,7 +95,7 @@ class PulseAnalysisLogic(GenericLogic):
         pass
 
     def analyze_data(self, laser_data, norm_start_bin, norm_end_bin, signal_start_bin,
-                     signal_end_bin):
+                     signal_end_bin, method):
         """ Analysis the laser pulses and computes the measuring error given by photon shot noise
 
         @param numpy.ndarray (int) laser_data: 2D array containing the extracted laser countdata
@@ -103,66 +103,13 @@ class PulseAnalysisLogic(GenericLogic):
         @param int norm_end_bin: Bin where the data for reference ends
         @param int signal_start_bin: Bin where the signal starts
         @param int signal_end_bin: Bin where the signal stops
+        @param str method: The desired analysis method name
 
         @return: float array signal_data: Array with the computed signal
         @return: float array laser_data: Array with the laser data
         @return: float array raw_data: Array with the raw data
         """
-        num_of_lasers = laser_data.shape[0]
-
-        # Initialize the signal and normalization mean data arrays
-        reference_mean = np.zeros(num_of_lasers, dtype=float)
-        signal_mean = np.zeros(num_of_lasers, dtype=float)
-        signal_area = np.zeros(num_of_lasers, dtype=float)
-        reference_area = np.zeros(num_of_lasers, dtype=float)
-        measuring_error = np.zeros(num_of_lasers, dtype=float)
-        # initialize data arrays
-        signal_data = np.empty(num_of_lasers, dtype=float)
-
-        # loop over all laser pulses and analyze them
-        for ii in range(num_of_lasers):
-            # calculate the mean of the data in the normalization window
-            norm_tmp_data = laser_data[ii][norm_start_bin:norm_end_bin]
-            if np.sum(norm_tmp_data) < 1:
-                reference_mean[ii] = 0.0
-            else:
-                reference_mean[ii] = norm_tmp_data.mean()
-            # calculate the mean of the data in the signal window
-            signal_tmp_data = laser_data[ii][signal_start_bin:signal_end_bin]
-            if np.sum(signal_tmp_data) < 1:
-                signal_mean[ii] = 0.0
-            else:
-                signal_mean[ii] = signal_tmp_data.mean() - reference_mean[ii]
-            # update the signal plot y-data
-            if reference_mean[ii] == 0.0:
-                signal_data[ii] = 0.0
-            else:
-                signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
-
-
-        # Compute the measuring error
-        for jj in range(num_of_lasers):
-            signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
-            reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
-
-            measuring_error[jj] = self.calculate_measuring_error(signal_area[jj],
-                                                                 reference_area[jj],
-                                                                 signal_data[jj])
+        signal_data, measuring_error = self.analysis_methods[method](laser_data, norm_start_bin,
+                                                                     norm_end_bin, signal_start_bin,
+                                                                     signal_end_bin)
         return signal_data, measuring_error
-
-    def calculate_measuring_error(self, signal_area, reference_area, signal_data):
-        """ Computes the measuring error given by photon shot noise.
-
-        @param float signal_area: Numerical integral over the photon count in the signal area
-        @param float reference_area: Numerical integral over the photon count in the reference area
-
-        @return: float measuring_error: Computed error
-        """
-        if reference_area == 0.:
-            measuring_error = 0.
-        elif signal_area == 0.:
-            measuring_error = 0.
-        else:
-            # with respect to gaußian error 'evolution'
-            measuring_error = signal_data * np.sqrt(1 / signal_area + 1 / reference_area)
-        return measuring_error

@@ -814,7 +814,8 @@ class PulsedMeasurementLogic(GenericLogic):
                                                                                     norm_start,
                                                                                     norm_end,
                                                                                     sig_start,
-                                                                                    sig_end)
+                                                                                    sig_end,
+                                                                                    'mean_norm')
                 # exclude laser pulses to ignore
                 if len(self.laser_ignore_list) > 0:
                     ignore_indices = self.laser_ignore_list
