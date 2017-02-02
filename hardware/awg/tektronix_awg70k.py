@@ -484,7 +484,7 @@ class AWG70K(Base, PulserInterface):
             time.sleep(0.25)
         time.sleep(1)
         self.get_sample_rate()
-        return return_rate
+        return self.sample_rate
 
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
