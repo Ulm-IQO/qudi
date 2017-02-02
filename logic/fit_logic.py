@@ -73,14 +73,18 @@ class FitLogic(GenericLogic):
                         # add method to dictionary and define what
                         # estimators they have
 
-                        # check if it is a make_<own fuction>_fit method
-                        if (str(method).startswith('make_') and
-                                str(method).endswith('_fit')):
+                        # check if it is a make_<fit name>_fit method
+                        if (str(method).startswith('make_') and str(method).endswith('_fit')):
+
+                            fit_name = str(method).split('_')[1]
+
                             # only add to dictionary if it is not already there
-                            if 'twoD' in str(method) and str(method).split('_')[1] not in self.twoD_fit_methods:
-                                self.twoD_fit_methods[str(method).split('_')[1]] = []
-                            elif str(method).split('_')[1] not in self.oneD_fit_methods:
-                                self.oneD_fit_methods[str(method)[5:-4]] = []
+                            if 'twoD' in fit_name and fit_name not in self.twoD_fit_methods:
+                                self.twoD_fit_methods[fit_name] = []
+
+                            elif fit_name not in self.oneD_fit_methods:
+                                self.oneD_fit_methods[fit_name] = []
+
                         # if there is an estimator add it to the dictionary
                         if 'estimate' in str(method):
                             if 'twoD' in str(method):

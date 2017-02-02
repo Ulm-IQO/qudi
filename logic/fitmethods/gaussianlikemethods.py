@@ -232,7 +232,7 @@ def make_gausspeaklinearoffset_fit(self, x_axis, data, add_params=None):
 #                                                                              #
 ################################################################################
 
-def estimate_gaussoffsetpeak(self, x_axis, data, params):
+def estimate_gaussoffset_peak(self, x_axis, data, params):
     """ Provides a gauss offset peak estimator.
 
     @param numpy.array x_axis: 1D axis values
@@ -307,7 +307,7 @@ def estimate_gaussoffsetpeak(self, x_axis, data, params):
 
     return error, params
 
-def make_gaussoffsetpeak_fit(self, x_axis, data, units, add_params=None):
+def make_gaussoffset_fit(self, x_axis, data, units, add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -324,7 +324,7 @@ def make_gaussoffsetpeak_fit(self, x_axis, data, units, add_params=None):
 
     mod_final, params = self.make_gaussoffset_model()
 
-    error, params = self.estimate_gaussoffsetpeak(x_axis, data, params)
+    error, params = self.estimate_gaussoffset_peak(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -344,7 +344,7 @@ def make_gaussoffsetpeak_fit(self, x_axis, data, units, add_params=None):
 ################################################################################
 
 
-def estimate_gaussoffsetdip(self, x_axis, data, params):
+def estimate_gaussoffset_dip(self, x_axis, data, params):
     """ Provides a gauss offset dip estimator.
 
     @param numpy.array x_axis: 1D axis values
@@ -394,7 +394,7 @@ def make_gaussoffsetdip_fit(self, x_axis, data, add_params=None):
 
     mod_final, params = self.make_gaussoffset_model()
 
-    error, params = self.estimate_gaussoffsetdip(x_axis, data, params)
+    error, params = self.estimate_gaussoffset_dip(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -639,13 +639,13 @@ def make_twogaussdipoffset_fit(self, x_axis, data, units, add_params=None,
     # Write the parameters to allow human-readable output to be generated
     param_dict = OrderedDict()
 
-    param_dict['Freq. 0'] = {'value': result.params['g0_center'].value,
+    param_dict['Position 0'] = {'value': result.params['g0_center'].value,
                              'error': result.params['g0_center'].stderr,
-                             'unit': 'Hz'}
+                             'unit': units[0]}
 
-    param_dict['Freq. 1'] = {'value': result.params['g1_center'].value,
+    param_dict['Position 1'] = {'value': result.params['g1_center'].value,
                              'error': result.params['g1_center'].stderr,
-                             'unit': 'Hz'}
+                             'unit': units[0]}
 
     param_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
                                 'error': result.params['g0_contrast'].stderr,
@@ -657,11 +657,11 @@ def make_twogaussdipoffset_fit(self, x_axis, data, units, add_params=None,
 
     param_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
                                  'error': result.params['g0_sigma'].stderr,
-                                 'unit': 'Hz'}
+                                 'unit': units[0]}
 
     param_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
                                  'error': result.params['g1_sigma'].stderr,
-                                 'unit': 'Hz'}
+                                 'unit': units[0]}
 
     param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
