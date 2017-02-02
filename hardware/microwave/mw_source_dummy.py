@@ -48,12 +48,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         for key in config.keys():
             self.log.info("{0}: {1}".format(key,config[key]))
 
-        # trying to load the visa connection
-        try:
-            import visa
-        except:
-            self.log.error('No visa connection installed. Please install pyvisa.')
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -65,6 +59,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
                          of the state which should be reached after the event
                          had happened.
         """
+        self.mw_power = -120
         pass
 
     def on_deactivate(self, e):
@@ -100,7 +95,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>on')
+        self.log.info('MicrowaveDummy>on')
         return 0
 
     def off(self):
@@ -108,7 +103,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>off')
+        self.log.info('MicrowaveDummy>off')
         return 0
 
     def get_power(self):
@@ -116,17 +111,18 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        self.log.warning('MicrowaveDummy>get_power')
-        return random.uniform(-10, 10)
+        self.log.info('MicrowaveDummy>get_power')
+        return self.mw_power
 
-    def set_power(self,power=None):
+    def set_power(self, power=None):
         """ Sets the microwave output power.
 
         @param float power: the power (in dBm) set for this device
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(power))
+        self.mw_power = power
+        self.log.info('MicrowaveDummy>set_power, power: {0:f}'.format(power))
         return 0
 
     def get_frequency(self):
@@ -134,7 +130,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        self.log.warning('MicrowaveDummy>get_frequency')
+        self.log.info('MicrowaveDummy>get_frequency')
         return random.uniform(0, 1e6)
 
     def set_frequency(self, freq=None):
@@ -144,7 +140,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>set_frequency, frequency: {0:f}'.format(freq))
+        self.log.info('MicrowaveDummy>set_frequency, frequency: {0:f}'.format(freq))
         return 0
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
@@ -158,7 +154,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        self.log.warning(
+        self.log.info(
             'MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(freq, power))
         return 0
 
@@ -171,7 +167,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning(
+        self.log.info(
             'MicrowaveDummy>set_list,\nfrequency: {0}Hz\npower : {1}dBm'.format(freq, power))
         return 0
 
@@ -188,7 +184,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>list_on')
+        self.log.info('MicrowaveDummy>list_on')
         return 0
 
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
@@ -199,7 +195,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>ext_trigger')
+        self.log.info('MicrowaveDummy>ext_trigger')
         return 0
 
     def sweep_on(self):
@@ -207,13 +203,13 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>sweep_on')
+        self.log.info('MicrowaveDummy>sweep_on')
         return 0
 
     def set_sweep(self, start, stop, step, power):
         """ Sweep from frequency start to frequency sto pin steps of width stop with power.
         """
-        self.log.warning(
+        self.log.info(
             'MicrowaveDummy>set_sweep {0} {1} {2} {3}'.format(start, stop, step, power))
         return 0
 
