@@ -110,7 +110,7 @@ class TraceAnalysisLogic(GenericLogic):
         @return:
         """
 
-        self.hist_data = self.calculate_histogram(self._counter_logic.countdata,
+        self.hist_data = self.calculate_histogram(self._counter_logic.countdata[0],
                                                   self._hist_num_bins)
         self.sigHistogramUpdated.emit()
 
@@ -330,7 +330,7 @@ class TraceAnalysisLogic(GenericLogic):
         @return:
         """
 
-        model, params = self._fit_logic.make_gaussian_model()
+        model, params = self._fit_logic.make_gaussoffset_model()
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points.')
@@ -354,14 +354,14 @@ class TraceAnalysisLogic(GenericLogic):
             sigma = Integral / amp / np.sqrt(2 * np.pi)
             amplitude = amp * sigma * np.sqrt(2 * np.pi)
 
-            update_dict['c']         = {'min': 0,          'max': data.max(), 'value': 0, 'vary': False}
+            update_dict['offset']    = {'min': 0,          'max': data.max(), 'value': 0, 'vary': False}
             update_dict['center']    = {'min': axis.min(), 'max': axis.max(), 'value': axis[np.argmax(data)]}
             update_dict['sigma']     = {'min': -np.inf,    'max': np.inf,     'value': sigma}
             update_dict['amplitude'] = {'min': 0,          'max': np.inf,     'value': amplitude}
 
-            result = self._fit_logic.make_gaussian_fit(axis=axis,
-                                                       data=data,
-                                                       add_parameters=update_dict)
+            result = self._fit_logic.make_gaussoffsetpeak_fit(x_axis=axis,
+                                                              data=data,
+                                                              add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
@@ -369,9 +369,9 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['sigma_0'] = {'value': result.params['amplitude'].value,
-                                      'error': result.params['amplitude'].stderr,
-                                      'unit' : 'Occurrences'}
+            param_dict['sigma_0'] = {'value': result.params['sigma'].value,
+                                     'error': result.params['sigma'].stderr,
+                                     'unit' : 'Occurrences'}
 
             param_dict['FWHM'] = {'value': result.params['fwhm'].value,
                                   'error': result.params['fwhm'].stderr,
@@ -391,7 +391,7 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublegaussian_fit(self, axis, data):
-        model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
+        model, params = self._fit_logic.make_multiplegaussoffset_model(no_of_functions=2)
 
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '
@@ -399,9 +399,8 @@ class TraceAnalysisLogic(GenericLogic):
             return self.do_no_fit()
 
         else:
-            result = self._fit_logic.make_doublegaussian_fit(axis=axis,
-                                                             data=data, estimator='gated_counter',
-                                                             add_parameters=None)
+            result = self._fit_logic.make_twogausspeakoffset_fit(x_axis=axis,
+                                                                 data=data)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -411,36 +410,36 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['sigma_0'] = {'value': result.params['gaussian0_sigma'].value,
-                                     'error': result.params['gaussian0_sigma'].stderr,
+            param_dict['sigma_0'] = {'value': result.params['g0_sigma'].value,
+                                     'error': result.params['g0_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
-            param_dict['FWHM_0'] = {'value': result.params['gaussian0_fwhm'].value,
-                                    'error': result.params['gaussian0_fwhm'].stderr,
+            param_dict['FWHM_0'] = {'value': result.params['g0_fwhm'].value,
+                                    'error': result.params['g0_fwhm'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Center_0'] = {'value': result.params['gaussian0_center'].value,
-                                      'error': result.params['gaussian0_center'].stderr,
+            param_dict['Center_0'] = {'value': result.params['g0_center'].value,
+                                      'error': result.params['g0_center'].stderr,
                                       'unit' : 'Counts/s'}
 
-            param_dict['Amplitude_0'] = {'value': result.params['gaussian0_amplitude'].value,
-                                         'error': result.params['gaussian0_amplitude'].stderr,
+            param_dict['Amplitude_0'] = {'value': result.params['g0_amplitude'].value,
+                                         'error': result.params['g0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            param_dict['sigma_1'] = {'value': result.params['gaussian1_sigma'].value,
-                                     'error': result.params['gaussian1_sigma'].stderr,
+            param_dict['sigma_1'] = {'value': result.params['g1_sigma'].value,
+                                     'error': result.params['g1_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
-            param_dict['FWHM_1'] = {'value': result.params['gaussian1_fwhm'].value,
-                                    'error': result.params['gaussian1_fwhm'].stderr,
+            param_dict['FWHM_1'] = {'value': result.params['g1_fwhm'].value,
+                                    'error': result.params['g1_fwhm'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Center_1'] = {'value': result.params['gaussian1_center'].value,
-                                      'error': result.params['gaussian1_center'].stderr,
+            param_dict['Center_1'] = {'value': result.params['g1_center'].value,
+                                      'error': result.params['g1_center'].stderr,
                                       'unit' : 'Counts/s'}
 
-            param_dict['Amplitude_1'] = {'value': result.params['gaussian1_amplitude'].value,
-                                         'error': result.params['gaussian1_amplitude'].stderr,
+            param_dict['Amplitude_1'] = {'value': result.params['g1_amplitude'].value,
+                                         'error': result.params['g1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
@@ -448,16 +447,16 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublepossonian_fit(self, axis, data):
-        model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
+        model, params = self._fit_logic.make_multiplepoissonian_model(no_of_functions=2)
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points')
             return self.do_no_fit()
 
         else:
-            result = self._fit_logic.make_doublepoissonian_fit(axis=axis,
+            result = self._fit_logic.make_doublepoissonian_fit(x_axis=axis,
                                                                data=data,
-                                                               add_parameters=None)
+                                                               add_params=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -467,17 +466,17 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['lambda_0'] = {'value': result.params['poissonian0_mu'].value,
-                                     'error': result.params['poissonian0_mu'].stderr,
+            param_dict['lambda_0'] = {'value': result.params['p0_mu'].value,
+                                     'error': result.params['p0_mu'].stderr,
                                      'unit' : 'Counts/s'}
-            param_dict['Amplitude_0'] = {'value': result.params['poissonian0_amplitude'].value,
-                                         'error': result.params['poissonian0_amplitude'].stderr,
+            param_dict['Amplitude_0'] = {'value': result.params['p0_amplitude'].value,
+                                         'error': result.params['p0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
-            param_dict['lambda_1'] = {'value': result.params['poissonian1_mu'].value,
-                                     'error': result.params['poissonian1_mu'].stderr,
+            param_dict['lambda_1'] = {'value': result.params['p1_mu'].value,
+                                     'error': result.params['p1_mu'].stderr,
                                      'unit' : 'Counts/s'}
-            param_dict['Amplitude_1'] = {'value': result.params['poissonian1_amplitude'].value,
-                                         'error': result.params['poissonian1_amplitude'].stderr,
+            param_dict['Amplitude_1'] = {'value': result.params['p1_amplitude'].value,
+                                         'error': result.params['p1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
@@ -491,9 +490,9 @@ class TraceAnalysisLogic(GenericLogic):
                     'parameters is smaller than data points')
             return self.do_no_fit()
         else:
-            result = self._fit_logic.make_poissonian_fit(axis=axis,
+            result = self._fit_logic.make_poissonian_fit(x_axis=axis,
                                                          data=data,
-                                                         add_parameters=None)
+                                                         add_params=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -503,8 +502,8 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['lambda'] = {'value': result.params['poissonian_mu'].value,
-                                    'error': result.params['poissonian_mu'].stderr,
+            param_dict['lambda'] = {'value': result.params['mu'].value,
+                                    'error': result.params['mu'].stderr,
                                     'unit' : 'Counts/s'}
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}

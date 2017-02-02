@@ -107,7 +107,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # timer for data analysis
         self.analysis_timer = None
-        self.timer_interval = 5 # in seconds
+        self.timer_interval = 5  # in seconds. A value <= 0 means no timer.
 
         #timer for time
         self.start_time = 0
@@ -148,6 +148,12 @@ class PulsedMeasurementLogic(GenericLogic):
         self._fit_param = {}
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
+
+        # for ssr fastcomtech
+
+        self.ssr_fastcomtec = False
+        self.fastcomtec_preset = 10000000
+        self.fastcomtec_cycles = 1
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -320,16 +326,23 @@ class PulsedMeasurementLogic(GenericLogic):
     # Fast counter control methods
     ############################################################################
     def configure_fast_counter(self):
-        """ Configure the fast counter and updates the actually set values in
-            the class variables.
         """
+        Configure the fast counter and updates the actually set values in the class variables.
+        """
+        # Check if fast counter is running and do nothing if that is the case
+        if self.fast_counter_status is None:
+            self.fast_counter_status = self._fast_counter_device.get_status()
+        if self.fast_counter_status >= 2 or self.fast_counter_status < 0:
+            return self.fast_counter_binwidth, self.fast_counter_record_length, self.number_of_lasers
+
         if self.fast_counter_gated:
             number_of_gates = self.number_of_lasers
         else:
             number_of_gates = 0
-
-        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
-
+        if self.ssr_fastcomtec:
+            actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates, self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles)
+        else:
+            actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
         # use the actual parameters returned by the hardware
         self.fast_counter_binwidth = actual_binwidth_s
         self.fast_counter_record_length = actual_recordlength_s
@@ -434,6 +447,28 @@ class PulsedMeasurementLogic(GenericLogic):
         error_code = self._fast_counter_device.continue_measure()
         self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
+
+    def set_ssr_fastcomtec(self,ssr_fastcomtec,preset,cycles):
+        """
+        Adjust fast counter settings
+
+        @param ssr_fastcomtec: boolean, which sets the mode of the fastcomtec ( normal counting /
+         single shot measurement )
+        @param preset: set the number of time you want to add up one row in the fastcomtec
+        in normal pulsed measurements this is set to 1000000, as one isn't interested
+        in the pulsed data at different points in time
+        @param cycles: In normal gated counting set to 1, otherwise decide how many
+        data points you want to have in your single shot measurement
+        @return:
+        """
+        self.ssr_fastcomtec=ssr_fastcomtec
+        self.fastcomtec_preset=preset
+        self.fastcomtec_cycles=cycles
+        self.configure_fast_counter()
+        return
+
+    def get_ssr_fastcomtec(self):
+        return self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles
     ############################################################################
 
 
@@ -468,6 +503,11 @@ class PulsedMeasurementLogic(GenericLogic):
         @param use_interleave:
         @return:
         """
+        # Check if pulser is already running and do nothing if that is the case.
+        pg_status, status_dict = self._pulse_generator_device.get_status()
+        if pg_status > 0:
+            return self.sample_rate, self.current_channel_config_name, self.analogue_amplitude, self.interleave_on
+
         # get hardware constraints
         pulser_constraints = self.get_pulser_constraints()
 
@@ -479,9 +519,9 @@ class PulsedMeasurementLogic(GenericLogic):
         # check and set sample rate
         samplerate_constr = pulser_constraints['sample_rate']
         if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
-            self.log.error('Desired sample rate of {0:.0e} Hz not within pulse generator '
-                           'constraints. Setting {1:.0e} Hz instead.'
-                           ''.format(sample_rate_Hz, samplerate_constr['max']))
+            self.log.warning('Desired sample rate of {0:.0e} Hz not within pulse generator '
+                             'constraints. Setting {1:.0e} Hz instead.'
+                             ''.format(sample_rate_Hz, samplerate_constr['max']))
             sample_rate_Hz = samplerate_constr['max']
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
 
@@ -489,17 +529,17 @@ class PulsedMeasurementLogic(GenericLogic):
         config_constr = pulser_constraints['activation_config']
         if activation_config_name not in config_constr:
             new_config_name = list(config_constr.keys())[0]
-            self.log.error('Desired activation config "{0}" is no part of the pulse generator '
-                           'constraints. Using "{1}" instead.'
-                           ''.format(activation_config_name, new_config_name))
+            self.log.warning('Desired activation config "{0}" is no part of the pulse generator '
+                             'constraints. Using "{1}" instead.'
+                             ''.format(activation_config_name, new_config_name))
             activation_config_name = new_config_name
         activation_config = config_constr[activation_config_name]
         if self.interleave_on:
             analog_channels_to_activate = [chnl for chnl in activation_config if 'a_ch' in chnl]
             if len(analog_channels_to_activate) != 1:
                 self.log.warning('When interleave mode is used only one analog channel can be '
-                                 'active in pulse generator. Falling back to an allowed activation '
-                                 'config.')
+                                 'active in pulse generator. Falling back to an allowed activation'
+                                 ' config.')
         channel_activation = self.get_active_channels()
         for chnl in channel_activation:
             if chnl in activation_config:
@@ -574,20 +614,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
-    def upload_sequence(self, seq_name):
-        """ Upload a sequence and all its related files
-
-        @param str seq_name: name of the sequence to be uploaded
-        """
-        current_sequence = self.get_pulse_sequence(seq_name)
-
-        for ensemble_name in current_sequence.get_sampled_ensembles():
-            self._pulse_generator_device.upload_asset(ensemble_name)
-        err = self._pulse_generator_device.upload_asset(seq_name)
-        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
-        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
-        return err
-
     def has_sequence_mode(self):
         """ Retrieve from the hardware, whether sequence mode is present or not.
 
@@ -619,6 +645,34 @@ class PulsedMeasurementLogic(GenericLogic):
         # set the loaded_asset_name variable.
         self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
+        return err
+
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
+        @return:
+        """
+        err = self._pulse_generator_device.direct_write_ensemble(ensemble_name,
+                                                                 analog_samples, digital_samples)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(ensemble_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
+        return err
+
+    def direct_write_sequence(self, sequence_name, sequence_params):
+        """
+
+        @param sequence_name:
+        @param sequence_params:
+        @return:
+        """
+        err = self._pulse_generator_device.direct_write_sequence(sequence_name, sequence_params)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(sequence_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
     ############################################################################
@@ -692,14 +746,17 @@ class PulsedMeasurementLogic(GenericLogic):
                 # start pulse generator
                 self.pulse_generator_on()
 
-                # set analysis_timer
-                self.analysis_timer = QtCore.QTimer()
-                self.analysis_timer.setSingleShot(False)
-                self.analysis_timer.setInterval(int(1000. * self.timer_interval))
-                self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
-
                 self.start_time = time.time()
-                self.analysis_timer.start()
+
+                # set analysis_timer
+                if self.timer_interval > 0:
+                    self.analysis_timer = QtCore.QTimer()
+                    self.analysis_timer.setSingleShot(False)
+                    self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+                    self.analysis_timer.timeout.connect(self._pulsed_analysis_loop, QtCore.Qt.QueuedConnection)
+                    self.analysis_timer.start()
+                else:
+                    self.analysis_timer = None
         return
 
     def _pulsed_analysis_loop(self):
@@ -716,16 +773,25 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
-                if np.sum(fc_data) < 1.0:
-                    self.log.warning('Only zeros received from fast counter!')
 
                 # add old raw data from previous measurements if necessary
                 if self.recalled_raw_data is not None:
                     self.log.info('Found old saved raw data. Sum of timebins: {0}'
                                   ''.format(np.sum(self.recalled_raw_data)))
-                    if self.recalled_raw_data.shape == fc_data.shape:
-                        self.log.info('Raw data has same shape as current data.')
+                    if np.sum(fc_data) < 1.0:
+                        self.log.warning('Only zeros received from fast counter!\n'
+                                         'Only using old raw data.')
+                        self.raw_data = self.recalled_raw_data
+                    elif self.recalled_raw_data.shape == fc_data.shape:
+                        self.log.debug('Saved raw data has same shape as current data.')
                         self.raw_data = self.recalled_raw_data + fc_data
+                    else:
+                        self.log.warning('Saved raw data has not the same shape as current data.\n'
+                                         'Did NOT add old raw data to current timetrace.')
+                        self.raw_data = fc_data
+                elif np.sum(fc_data) < 1.0:
+                    self.log.warning('Only zeros received from fast counter!')
+                    self.raw_data = np.zeros(fc_data.shape, dtype=int)
                 else:
                     self.raw_data = fc_data
 
@@ -737,10 +803,18 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
                                                                                       self.conv_std_dev,
                                                                                       self.number_of_lasers)
-                # analyze pulses and get data points for signal plot
-                tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
-                                                                                norm_start, norm_end,
-                                                                                sig_start, sig_end)
+
+                # analyze pulses and get data points for signal plot. Also check if extraction
+                # worked (non-zero array returned).
+                if np.sum(self.laser_data) < 1:
+                    tmp_signal = np.zeros(self.laser_data.shape[0])
+                    tmp_error = np.zeros(self.laser_data.shape[0])
+                else:
+                    tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
+                                                                                    norm_start,
+                                                                                    norm_end,
+                                                                                    sig_start,
+                                                                                    sig_end)
                 # exclude laser pulses to ignore
                 if len(self.laser_ignore_list) > 0:
                     ignore_indices = self.laser_ignore_list
@@ -814,9 +888,10 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 #stopping and disconnecting the timer
-                self.analysis_timer.stop()
-                self.analysis_timer.timeout.disconnect()
-                self.analysis_timer = None
+                if self.analysis_timer is not None:
+                    self.analysis_timer.stop()
+                    self.analysis_timer.timeout.disconnect()
+                    self.analysis_timer = None
 
                 self.fast_counter_off()
                 self.pulse_generator_off()
@@ -841,7 +916,8 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 #pausing the timer
-                self.analysis_timer.stop()
+                if self.analysis_timer is not None:
+                    self.analysis_timer.stop()
 
                 self.fast_counter_pause()
                 self.pulse_generator_off()
@@ -863,7 +939,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_on()
 
                 #unpausing the timer
-                self.analysis_timer.start()
+                if self.analysis_timer is not None:
+                    self.analysis_timer.start()
 
                 self.sigMeasurementRunningUpdated.emit(True, False)
         return 0
@@ -877,7 +954,10 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             self.timer_interval = interval
             if self.analysis_timer is not None:
-                self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+                if self.timer_interval > 0:
+                    self.analysis_timer.setInterval(int(1000. * self.timer_interval))
+                else:
+                    self.analysis_timer = None
             self.sigTimerIntervalUpdated.emit(self.timer_interval)
         return
 
@@ -936,7 +1016,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def save_measurement_data(self, tag=None):
+    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -973,12 +1053,12 @@ class PulsedMeasurementLogic(GenericLogic):
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
             data_array[2, :] = self.signal_plot_y2
-            data['Tau (s), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
+            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
         else:
             data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
-            data['Tau (s), Signal (norm.)'] = data_array.transpose()
+            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.)'] = data_array.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -995,7 +1075,7 @@ class PulsedMeasurementLogic(GenericLogic):
         ax1.plot(self.signal_plot_x, self.signal_plot_y)
         if self.alternating:
             ax1.plot(self.signal_plot_x, self.signal_plot_y2)
-        ax1.set_xlabel('x-axis')
+        ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
         # ax1.set_xlim(self.plot_domain)
         # ax1.set_ylim(self.plot_range)
@@ -1117,9 +1197,9 @@ class PulsedMeasurementLogic(GenericLogic):
         result = None
 
         # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'axis': x_data,
+        kwargs = {'x_axis': x_data,
                   'data': y_data,
-                  'add_parameters': None}
+                  'add_params': None}
 
         param_dict = OrderedDict()
 
@@ -1132,13 +1212,13 @@ class PulsedMeasurementLogic(GenericLogic):
                 # set some custom defined constraints for this module and for
                 # this fit:
                 update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
-                update_dict['amplitude'] = {'min': 0.0}
+                # update_dict['amplitude'] = {'min': 0.0}
 
                 # add to the keywords dictionary
-                kwargs['add_parameters'] = update_dict
+                kwargs['add_params'] = update_dict
 
-            result = self._fit_logic.make_sine_fit(**kwargs)
-            sine, params = self._fit_logic.make_sine_model()
+            result = self._fit_logic.make_sineoffset_fit(**kwargs)
+            sine, params = self._fit_logic.make_sineoffset_model()
             pulsed_fit_y = sine.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Contrast'] = {'value': np.abs(2*result.params['amplitude'].value*100),
@@ -1164,8 +1244,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'Lorentian (neg)':
 
-            result = self._fit_logic.make_lorentzian_fit(**kwargs)
-            lorentzian, params = self._fit_logic.make_lorentzian_model()
+            result = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
+            lorentzian, params = self._fit_logic.make_lorentzoffset_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Minimum'] = {'value': result.params['center'].value,
@@ -1176,13 +1256,13 @@ class PulsedMeasurementLogic(GenericLogic):
                                        'unit' : 's'}
 
             cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont_err = np.sqrt(
                   (cont / result.params['amplitude'].value * result.params['amplitude'].stderr)**2
                 + (cont / result.params['sigma'].value * result.params['sigma'].stderr)**2
-                + (cont / result.params['c'].value * result.params['c'].stderr)**2)
+                + (cont / result.params['offset'].value * result.params['offset'].stderr)**2)
 
             param_dict['Contrast'] = {'value': cont*100,
                                       'error': cont_err*100,
@@ -1191,8 +1271,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'Lorentian (pos)':
 
-            result = self._fit_logic.make_lorentzianpeak_fit(**kwargs)
-            lorentzian, params = self._fit_logic.make_lorentzian_model()
+            result = self._fit_logic.make_lorentzoffsetpeak_fit(**kwargs)
+            lorentzian, params = self._fit_logic.make_lorentzoffset_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Maximum'] = {'value': result.params['center'].value,
@@ -1203,60 +1283,60 @@ class PulsedMeasurementLogic(GenericLogic):
                                        'unit' : 's'}
 
             cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['offset'].value)
             param_dict['Contrast'] = {'value': cont*100,
                                       'unit' : '%'}
 
         elif fit_function == 'N14':
 
             result = self._fit_logic.make_N14_fit(**kwargs)
-            fitted_function, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
+            fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
 
-            param_dict['Freq. 0'] = {'value': result.params['lorentz0_center'].value,
-                                     'error': result.params['lorentz0_center'].stderr,
+            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['0_center'].stderr,
                                      'unit' : 'Hz'}
-            param_dict['Freq. 1'] = {'value': result.params['lorentz1_center'].value,
-                                     'error': result.params['lorentz1_center'].stderr,
+            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
                                      'unit' : 'Hz'}
-            param_dict['Freq. 2'] = {'value': result.params['lorentz2_center'].value,
-                                     'error': result.params['lorentz2_center'].stderr,
+            param_dict['Freq. 2'] = {'value': result.params['l2_center'].value,
+                                     'error': result.params['l2_center'].stderr,
                                      'unit' : 'Hz'}
 
-            cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = result.params['l0_amplitude'].value
+            cont0 = cont0/(-1*np.pi*result.params['l0_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                  (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
-                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
-                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont0 / result.params['l0_amplitude'].value * result.params['l0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['l0_sigma'].value * result.params['l0_sigma'].stderr) ** 2
+                + (cont0 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 0'] = {'value': cont0*100,
                                         'error': cont0_err*100,
                                         'unit' : '%'}
 
-            cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = result.params['l1_amplitude'].value
+            cont1 = cont1/(-1*np.pi*result.params['l1_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                  (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
-                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
-                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont1 / result.params['l1_amplitude'].value * result.params['l1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['l1_sigma'].value * result.params['l1_sigma'].stderr) ** 2
+                + (cont1 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 1'] = {'value': cont1*100,
                                         'error': cont1_err*100,
                                         'unit' : '%'}
 
-            cont2 = result.params['lorentz2_amplitude'].value
-            cont2 = cont2/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)
+            cont2 = result.params['l2_amplitude'].value
+            cont2 = cont2/(-1*np.pi*result.params['l2_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont2_err = np.sqrt(
-                  (cont2 / result.params['lorentz2_amplitude'].value * result.params['lorentz2_amplitude'].stderr) ** 2
-                + (cont2 / result.params['lorentz2_sigma'].value * result.params['lorentz2_sigma'].stderr) ** 2
-                + (cont2 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont2 / result.params['l2_amplitude'].value * result.params['l2_amplitude'].stderr) ** 2
+                + (cont2 / result.params['l2_sigma'].value * result.params['l2_sigma'].stderr) ** 2
+                + (cont2 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 2'] = {'value': cont2*100,
                                         'error': cont2_err*100,
@@ -1265,63 +1345,63 @@ class PulsedMeasurementLogic(GenericLogic):
         elif fit_function =='N15':
 
             result = self._fit_logic.make_N15_fit(**kwargs)
-            fitted_function, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
+            fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
 
-            param_dict['Freq. 0'] = {'value': result.params['lorentz0_center'].value,
-                                     'error': result.params['lorentz0_center'].stderr,
+            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['l0_center'].stderr,
                                      'unit' : 'Hz'}
-            param_dict['Freq. 1'] = {'value': result.params['lorentz1_center'].value,
-                                     'error': result.params['lorentz1_center'].stderr,
+            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
                                      'unit' : 'Hz'}
 
-            cont0 = result.params['lorentz0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            cont0 = result.params['l0_amplitude'].value
+            cont0 = cont0/(-1*np.pi*result.params['l0_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont0_err = np.sqrt(
-                  (cont0 / result.params['lorentz0_amplitude'].value * result.params['lorentz0_amplitude'].stderr) ** 2
-                + (cont0 / result.params['lorentz0_sigma'].value * result.params['lorentz0_sigma'].stderr) ** 2
-                + (cont0 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont0 / result.params['l0_amplitude'].value * result.params['l0_amplitude'].stderr) ** 2
+                + (cont0 / result.params['l0_sigma'].value * result.params['l0_sigma'].stderr) ** 2
+                + (cont0 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 0'] = {'value': cont0*100,
                                         'error': cont0_err*100,
                                         'unit' : '%'}
 
-            cont1 = result.params['lorentz1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            cont1 = result.params['l1_amplitude'].value
+            cont1 = cont1/(-1*np.pi*result.params['l1_sigma'].value*result.params['offset'].value)
 
             # use gaussian error propagation for error calculation:
             cont1_err = np.sqrt(
-                  (cont1 / result.params['lorentz1_amplitude'].value * result.params['lorentz1_amplitude'].stderr) ** 2
-                + (cont1 / result.params['lorentz1_sigma'].value * result.params['lorentz1_sigma'].stderr) ** 2
-                + (cont1 / result.params['c'].value * result.params['c'].stderr) ** 2)
+                  (cont1 / result.params['l1_amplitude'].value * result.params['l1_amplitude'].stderr) ** 2
+                + (cont1 / result.params['l1_sigma'].value * result.params['l1_sigma'].stderr) ** 2
+                + (cont1 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
 
             param_dict['Contrast 1'] = {'value': cont1*100,
                                         'error': cont1_err*100,
                                         'unit' : '%'}
 
-        elif fit_function =='Stretched Exponential':
+        elif fit_function == 'Stretched Exponential':
             self.log.warning('Stretched Exponential not yet implemented.')
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
 
-        elif fit_function =='Exponential':
+        elif fit_function == 'Exponential':
             self.log.warning('Exponential not yet implemented.')
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
 
-        elif fit_function =='XY8':
+        elif fit_function == 'XY8':
             self.log.warning('XY8 not yet implemented')
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
         else:
             self.log.warning('The Fit Function "{0}" is not implemented to '
                     'be used in the Pulsed Measurement Logic. Correct that! '
                     'Fit Call will be skipped and Fit Function will be set '
                     'to "No Fit".'.format(fit_function))
-            pulsed_fit_x = []
-            pulsed_fit_y = []
+            pulsed_fit_x = np.array([])
+            pulsed_fit_y = np.array([])
 
         self.signal_plot_x_fit = pulsed_fit_x
         self.signal_plot_y_fit = pulsed_fit_y
