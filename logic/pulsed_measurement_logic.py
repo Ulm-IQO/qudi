@@ -186,8 +186,10 @@ class PulsedMeasurementLogic(GenericLogic):
             self.norm_width_bin = self._statusVariables['norm_width_bin']
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
+            self._pulse_extraction_logic.number_of_lasers = self.number_of_lasers
         if 'conv_std_dev' in self._statusVariables:
             self.conv_std_dev = self._statusVariables['conv_std_dev']
+            self._pulse_extraction_logic.conv_std_dev = self.conv_std_dev
         if 'laser_trigger_delay_s' in self._statusVariables:
             self.laser_trigger_delay_s = self._statusVariables['laser_trigger_delay_s']
         if 'fast_counter_record_length' in self._statusVariables:
@@ -389,6 +391,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                        number_of_lasers - len(laser_ignore_list)))
         self.controlled_vals = controlled_vals
         self.number_of_lasers = number_of_lasers
+        self._pulse_extraction_logic.number_of_lasers = number_of_lasers
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
         self.alternating = is_alternating
@@ -796,13 +799,9 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.raw_data = fc_data
 
                 # extract laser pulses from raw data
-                if self.fast_counter_gated:
-                    self.laser_data = self._pulse_extraction_logic.gated_extraction(self.raw_data,
-                                                                                    self.conv_std_dev)
-                else:
-                    self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
-                                                                                      self.conv_std_dev,
-                                                                                      self.number_of_lasers)
+                self.laser_data = self._pulse_extraction_logic.extract_laser_pulses(self.raw_data,
+                                                                                    'conv_deriv',
+                                                                                    self.fast_counter_gated)
 
                 # analyze pulses and get data points for signal plot. Also check if extraction
                 # worked (non-zero array returned).
@@ -996,6 +995,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self.threadlock:
             self.conv_std_dev = gaussfilt_std_dev
+            self._pulse_extraction_logic.conv_std_dev = gaussfilt_std_dev
             self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
         return
 
