@@ -2202,6 +2202,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+
+        self.analysis_windows_changed()
         return
 
     def analysis_windows_updated(self, sig_start, sig_length, ref_start, ref_length):
@@ -2218,6 +2220,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
+        self.sig_start_line.blockSignals(True)
+        self.sig_end_line.blockSignals(True)
+        self.ref_start_line.blockSignals(True)
+        self.ref_end_line.blockSignals(True)
         # set widgets
         self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
         self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_length)
@@ -2233,6 +2239,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+        self.sig_start_line.blockSignals(False)
+        self.sig_end_line.blockSignals(False)
+        self.ref_start_line.blockSignals(False)
+        self.ref_end_line.blockSignals(False)
         return
 
     def laser_to_show_changed(self):
