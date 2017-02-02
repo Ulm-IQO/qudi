@@ -690,6 +690,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_activation_config_ComboBox.addItems(list(pulser_constr['activation_config']))
         self._pg.gen_sample_freq_DSpinBox.setMinimum(pulser_constr['sample_rate']['min'])
         self._pg.gen_sample_freq_DSpinBox.setMaximum(pulser_constr['sample_rate']['max'])
+        self._pg.gen_sample_freq_DSpinBox.setSingleStep(pulser_constr['sample_rate']['step'])
         # unblock signals
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
