@@ -191,13 +191,14 @@ class PulseExtractionLogic(GenericLogic):
 
             # set this position and the surrounding of the saved edge to 0 to
             # avoid a second detection
-            if rising_ind[i] < 2*conv_std_dev:                del_ind_start = 0
+            if rising_ind[i] < 2*conv_std_dev:
+                del_ind_start = 0
             else:
-                del_ind_start = rising_ind[i] - 2*conv_std_dev
+                del_ind_start = rising_ind[i] - int(2*conv_std_dev)
             if (conv_deriv.size - rising_ind[i]) < 2*conv_std_dev:
                 del_ind_stop = conv_deriv.size-1
             else:
-                del_ind_stop = rising_ind[i] + 2*conv_std_dev
+                del_ind_stop = rising_ind[i] + int(2*conv_std_dev)
                 conv_deriv[del_ind_start:del_ind_stop] = 0
 
             # save the index of the absolute minimum of the derived time trace
@@ -221,13 +222,14 @@ class PulseExtractionLogic(GenericLogic):
 
             # set this position and the sourrounding of the saved flank to 0 to
             #  avoid a second detection
-            if falling_ind[i] < 2*conv_std_dev:                del_ind_start = 0
+            if falling_ind[i] < 2*conv_std_dev:
+                del_ind_start = 0
             else:
-                del_ind_start = falling_ind[i] - 2*conv_std_dev
+                del_ind_start = falling_ind[i] - int(2*conv_std_dev)
             if (conv_deriv.size - falling_ind[i]) < 2*conv_std_dev:
                 del_ind_stop = conv_deriv.size-1
             else:
-                del_ind_stop = falling_ind[i] + 2*conv_std_dev
+                del_ind_stop = falling_ind[i] + int(2*conv_std_dev)
             conv_deriv[del_ind_start:del_ind_stop] = 0
 
         # sort all indices of rising and falling flanks
