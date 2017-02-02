@@ -29,11 +29,13 @@ from core.util.mutex import Mutex
 
 
 class FitLogic(GenericLogic):
+
     """
     UNSTABLE:Jochen Scheuer
 
     Documentation to add a new fit model/estimator/funciton can be found in
-    documentation/how_to_use_fitting.md or in the online documentation
+    documentation/how_to_use_fitting.md or in the online documentation at
+    http://qosvn.physik.uni-ulm.de/qudi-docs/fit_logic.html
 
     This is the fitting class where fit functions are defined and methods are
     implemented to process the data.
@@ -59,12 +61,14 @@ class FitLogic(GenericLogic):
                 if f[-3:] == '.py':
                     filenames.append(f[:-3])
 
-        self.oneD_fit_methods = dict()
-        self.twoD_fit_methods = dict()
+        # A dictionary contianing all fit methods and their estimators.
+        self.fit_list = dict()
 
+        # Go through the fitmethods files and import all methods.
         for files in filenames:
 
             mod = importlib.import_module('logic.fitmethods.{0}'.format(files))
+
             for method in dir(mod):
                 try:
                     if callable(getattr(mod, method)):
@@ -78,42 +82,50 @@ class FitLogic(GenericLogic):
 
                             fit_name = str(method).split('_')[1]
 
-                            # only add to dictionary if it is not already there
-                            if 'twoD' in fit_name and fit_name not in self.twoD_fit_methods:
-                                self.twoD_fit_methods[fit_name] = []
+                            # Add fit_name entry to self.fit_list if it is not already there
+                            if fit_name not in self.fit_list:
+                                self.fit_list[fit_name] = dict()
+                                
+                            # Give this fit_name its fit method in the sub-dictionary
+                            self.fit_list[fit_name]['make_fit'] = getattr(self, method)
 
-                            elif fit_name not in self.oneD_fit_methods:
-                                self.oneD_fit_methods[fit_name] = []
+                            # I think it is a good idea to warn if the method escapes these
+                            # conditions, but the following is fired for all methods!
+                            #else:
+                            #    self.log.warning('The method {} has been defined more than once,'
+                            #                     'only the first has been added to the list'
+                            #                     'in FitLogic.'.format(method)
+                            #                     )
 
                         # if there is an estimator add it to the dictionary
                         if 'estimate' in str(method):
-                            if 'twoD' in str(method):
-                                try:  # if there is a given estimator it will be set or added
-                                    if str(method).split('_')[1] in self.twoD_fit_methods:
-                                        self.twoD_fit_methods[str(method).split('_')[1]] = self.twoD_fit_methods[
-                                            str(method).split('_')[1]].append(str(method).split('_')[2])
-                                    else:
-                                        self.twoD_fit_methods[str(method).split('_')[1]] = [str(method).split('_')[2]]
-                                except:  # if there is no estimator but only a standard one the estimator is empty
-                                    if not str(method).split('_')[1] in self.twoD_fit_methods:
-                                        self.twoD_fit_methods[str(method).split('_')[1]] = []
-                            else:  # this is oneD case
-                                try:  # if there is a given estimator it will be set or added
-                                    if (str(method).split('_')[1] in self.oneD_fit_methods and str(method).split('_')[
-                                        2] is not None):
-                                        self.oneD_fit_methods[str(method).split('_')[1]].append(
-                                            str(method).split('_')[2])
-                                    elif str(method).split('_')[2] is not None:
-                                        self.oneD_fit_methods[str(method).split('_')[1]] = [str(method).split('_')[2]]
-                                except:  # if there is no estimator but only a standard one the estimator is empty
-                                    if not str(method).split('_')[1] in self.oneD_fit_methods:
-                                        self.oneD_fit_methods[str(method).split('_')[1]] = []
+
+                            fit_name = str(method).split('_')[1]
+                            
+                            # Add fit_name entry to self.fit_list if it is not already there.
+                            if fit_name not in self.fit_list:
+                                self.fit_list[fit_name] = dict()
+
+                            # If this is a custom estimator
+                            try:
+                                estimator_name = str(method).split('_')[2]
+
+                                # Give this fit_name another estimator in the sub-dictionary
+                                self.fit_list[fit_name][estimator_name] = getattr(self, method)
+
+                            # Otherwise this is a generic estimator for the fit_name
+                            except:
+
+                                self.fit_list[fit_name]['generic'] = method
+
                 except:
                     self.log.error('It was not possible to import element {} '
-                            'into FitLogic.'.format(method))
+                                   'into FitLogic.'.format(method)
+                                   )
         self.log.warning('Methods were included to FitLogic, but only if '
-                'naming is right: check the doxygen documentation '
-                'if you added a new method and it does not show.')
+                         'naming is right: check the doxygen documentation '
+                         'if you added a new method and it does not show.'
+                         )
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
