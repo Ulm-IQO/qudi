@@ -31,7 +31,7 @@
      <x>0</x>
      <y>0</y>
      <width>691</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -159,7 +159,7 @@
         </font>
        </property>
        <property name="text">
-        <string>(x,y,z):</string>
+        <string>Coordinates: (x,y,z)</string>
        </property>
       </widget>
      </item>
@@ -173,6 +173,20 @@
        </property>
        <property name="textInteractionFlags">
         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Distance: direct (x, y)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="poi_distance_label">
+       <property name="text">
+        <string>? (?, ?)</string>
        </property>
       </widget>
      </item>
