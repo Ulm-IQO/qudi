@@ -1387,8 +1387,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigExtMicrowaveSettingsUpdated.connect(self.microwave_settings_updated)
         self._pulsed_master_logic.sigExtMicrowaveRunningUpdated.connect(self.microwave_running_updated)
         self._pulsed_master_logic.sigTimerIntervalUpdated.connect(self.measurement_timer_updated)
-        self._pulsed_master_logic.sigAnalysisWindowsUpdated.connect(self.analysis_windows_updated)
-        self._pulsed_master_logic.sigAnalysisMethodUpdated.connect(self.analysis_method_updated)
+        self._pulsed_master_logic.sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated)
+        self._pulsed_master_logic.sigAnalysisMethodsUpdated.connect(self.analysis_methods_updated)
+        self._pulsed_master_logic.sigExtractionSettingsUpdated.connect(self.extraction_settings_updated)
+        self._pulsed_master_logic.sigExtractionMethodsUpdated.connect(self.extraction_methods_updated)
 
         # connect button click signals
         self._pg.load_ensemble_PushButton.clicked.connect(self.load_ensemble_clicked)
@@ -1423,11 +1425,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulser_sample_freq_DSpinBox.editingFinished.connect(self.pulse_generator_settings_changed)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.measurement_sequence_settings_changed)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.measurement_sequence_settings_changed)
-        self._pe.extract_param_ana_window_start_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.conv_std_dev.valueChanged.connect(self.conv_std_dev_changed)
+        self._pe.extract_param_ana_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.conv_std_dev.valueChanged.connect(self.analysis_settings_changed)
 
         # connect combobox changed signals
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
@@ -1436,11 +1438,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.laser_to_show_changed)
 
         # connect other widgets changed signals
-        self.sig_start_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self.sig_end_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self.ref_start_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self.ref_end_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self._pe.slider_conv_std_dev.sliderReleased.connect(self.slider_conv_std_dev_changed)
+        self.sig_start_line.sigPositionChanged.connect(self.analysis_settings_changed)
+        self.sig_end_line.sigPositionChanged.connect(self.analysis_settings_changed)
+        self.ref_start_line.sigPositionChanged.connect(self.analysis_settings_changed)
+        self.ref_end_line.sigPositionChanged.connect(self.analysis_settings_changed)
+        self._pe.slider_conv_std_dev.sliderReleased.connect(self.extraction_settings_changed)
 
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
@@ -1480,8 +1482,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigExtMicrowaveSettingsUpdated.disconnect()
         self._pulsed_master_logic.sigExtMicrowaveRunningUpdated.disconnect()
         self._pulsed_master_logic.sigTimerIntervalUpdated.disconnect()
-        self._pulsed_master_logic.sigAnalysisWindowsUpdated.disconnect()
-        self._pulsed_master_logic.sigAnalysisMethodUpdated.disconnect()
+        self._pulsed_master_logic.sigAnalysisSettingsUpdated.disconnect()
+        self._pulsed_master_logic.sigAnalysisMethodsUpdated.disconnect()
+        self._pulsed_master_logic.sigExtractionSettingsUpdated.disconnect()
+        self._pulsed_master_logic.sigExtractionMethodsUpdated.disconnect()
         self._pg.load_ensemble_PushButton.clicked.disconnect()
         self._sg.load_sequence_PushButton.clicked.disconnect()
         self._mw.pulser_on_off_PushButton.clicked.disconnect()
@@ -2100,55 +2104,58 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.time_param_ana_periode_DoubleSpinBox.blockSignals(False)
         return
 
-    def conv_std_dev_changed(self):
+    def extraction_settings_changed(self):
         """
         Uodate new value of standard deviation of gaussian filter
         """
         # block signals
         self._pe.slider_conv_std_dev.blockSignals(True)
-        # set widgets
-        std_dev = self._pe.conv_std_dev.value()
-        self._pe.slider_conv_std_dev.setValue(std_dev)
-        # unblock signals
-        self._pe.slider_conv_std_dev.blockSignals(False)
-
-        self._pulsed_master_logic.analysis_method_changed(std_dev)
-        return
-
-    def slider_conv_std_dev_changed(self):
-        """
-        Uodate new value of standard deviation of gaussian filter
-        from slider
-        """
-        # block signals
         self._pe.conv_std_dev.blockSignals(True)
         # set widgets
-        std_dev = self._pe.slider_conv_std_dev.value()
-        self._pe.conv_std_dev.setValue(std_dev)
+        conv_std_dev = self._pe.conv_std_dev.value()
+        self._pe.slider_conv_std_dev.setValue(conv_std_dev)
         # unblock signals
+        self._pe.slider_conv_std_dev.blockSignals(False)
         self._pe.conv_std_dev.blockSignals(False)
 
-        self._pulsed_master_logic.analysis_method_changed(std_dev)
+        self._pulsed_master_logic.extraction_settings_changed('conv_deriv', conv_std_dev,
+                                                              count_treshold,
+                                                              threshold_tolerance_bins,
+                                                              min_laser_length)
         return
 
-    def analysis_method_updated(self, gaussfilt_std_dev):
+    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
         # block signals
         self._pe.slider_conv_std_dev.blockSignals(True)
         self._pe.conv_std_dev.blockSignals(True)
         # set widgets
-        self._pe.slider_conv_std_dev.setValue(gaussfilt_std_dev)
-        self._pe.conv_std_dev.setValue(gaussfilt_std_dev)
+        conv_std_dev = self._pe.conv_std_dev.value()
+        self._pe.slider_conv_std_dev.setValue(conv_std_dev)
         # unblock signals
         self._pe.slider_conv_std_dev.blockSignals(False)
         self._pe.conv_std_dev.blockSignals(False)
         return
 
-    def analysis_windows_changed(self):
+    def extraction_methods_updated(self, gated_methods_dict, ungated_methods_dict):
+        """
+
+        @param gated_methods_dict:
+        @param ungated_methods_dict:
+        @return:
+        """
+        return
+
+    def analysis_settings_changed(self):
         """
 
         @return:
@@ -2158,6 +2165,10 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.blockSignals(True)
         self.ref_start_line.blockSignals(True)
         self.ref_end_line.blockSignals(True)
+        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
+        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
+        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
+        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
         # get data
         sig_start = self._pe.extract_param_ana_window_start_SpinBox.value()
         sig_length = self._pe.extract_param_ana_window_width_SpinBox.value()
@@ -2173,47 +2184,23 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.blockSignals(False)
         self.ref_start_line.blockSignals(False)
         self.ref_end_line.blockSignals(False)
-
-        self._pulsed_master_logic.analysis_windows_changed(sig_start, sig_length, ref_start,
-                                                           ref_length)
-        return
-
-    def analysis_windows_line_changed(self):
-        """
-
-        @return:
-        """
-        # block signals
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
-        # get data
-        sig_start = self.sig_start_line.value()
-        sig_length = self.sig_end_line.value() - sig_start
-        ref_start = self.ref_start_line.value()
-        ref_length = self.ref_end_line.value() - ref_start
-        # set widgets
-        self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_length)
-        self._pe.extract_param_ref_window_start_SpinBox.setValue(ref_start)
-        self._pe.extract_param_ref_window_width_SpinBox.setValue(ref_length)
-        # unblock signals
         self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
 
-        self.analysis_windows_changed()
+        self._pulsed_master_logic.analysis_settings_changed('mean_norm', sig_start, sig_length,
+                                                            ref_start, ref_length)
         return
 
-    def analysis_windows_updated(self, sig_start, sig_length, ref_start, ref_length):
+    def analysis_settings_updated(self, method, sig_start, sig_end, norm_start, norm_end):
         """
 
+        @param method:
         @param sig_start:
-        @param sig_length:
-        @param ref_start:
-        @param ref_length:
+        @param sig_end:
+        @param norm_start:
+        @param norm_end:
         @return:
         """
         # block signals
@@ -2227,14 +2214,14 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_end_line.blockSignals(True)
         # set widgets
         self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_length)
-        self._pe.extract_param_ref_window_start_SpinBox.setValue(ref_start)
-        self._pe.extract_param_ref_window_width_SpinBox.setValue(ref_length)
+        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_end - sig_start)
+        self._pe.extract_param_ref_window_start_SpinBox.setValue(norm_start)
+        self._pe.extract_param_ref_window_width_SpinBox.setValue(norm_end - norm_start)
         # update plots
         self.sig_start_line.setValue(sig_start)
-        self.sig_end_line.setValue(sig_start + sig_length)
-        self.ref_start_line.setValue(ref_start)
-        self.ref_end_line.setValue(ref_start + ref_length)
+        self.sig_end_line.setValue(sig_end)
+        self.ref_start_line.setValue(norm_start)
+        self.ref_end_line.setValue(norm_end)
         # unblock signals
         self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
@@ -2244,6 +2231,14 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.blockSignals(False)
         self.ref_start_line.blockSignals(False)
         self.ref_end_line.blockSignals(False)
+        return
+
+    def analysis_methods_updated(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
         return
 
     def laser_to_show_changed(self):

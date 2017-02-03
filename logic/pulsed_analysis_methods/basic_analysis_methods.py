@@ -1,14 +1,10 @@
 import numpy as np
 
 
-def analyse_mean_norm(self, laser_data, norm_start_bin, norm_end_bin, signal_start_bin, signal_end_bin):
+def analyse_mean_norm(self, laser_data):
     """
 
     @param laser_data:
-    @param norm_start_bin:
-    @param norm_end_bin:
-    @param signal_start_bin:
-    @param signal_end_bin:
     @return:
     """
     num_of_lasers = laser_data.shape[0]
@@ -25,13 +21,13 @@ def analyse_mean_norm(self, laser_data, norm_start_bin, norm_end_bin, signal_sta
     # loop over all laser pulses and analyze them
     for ii in range(num_of_lasers):
         # calculate the mean of the data in the normalization window
-        norm_tmp_data = laser_data[ii][norm_start_bin:norm_end_bin]
+        norm_tmp_data = laser_data[ii][self.norm_start_bin:self.norm_end_bin]
         if np.sum(norm_tmp_data) < 1:
             reference_mean[ii] = 0.0
         else:
             reference_mean[ii] = norm_tmp_data.mean()
         # calculate the mean of the data in the signal window
-        signal_tmp_data = laser_data[ii][signal_start_bin:signal_end_bin]
+        signal_tmp_data = laser_data[ii][self.signal_start_bin:self.signal_end_bin]
         if np.sum(signal_tmp_data) < 1:
             signal_mean[ii] = 0.0
         else:
@@ -44,8 +40,8 @@ def analyse_mean_norm(self, laser_data, norm_start_bin, norm_end_bin, signal_sta
 
     # Compute the measuring error
     for jj in range(num_of_lasers):
-        signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
-        reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
+        signal_area[jj] = laser_data[jj][self.signal_start_bin:self.signal_end_bin].sum()
+        reference_area[jj] = laser_data[jj][self.norm_start_bin:self.norm_end_bin].sum()
         if reference_area[jj] == 0.:
             measuring_error[jj] = 0.
         elif signal_area[jj] == 0.:

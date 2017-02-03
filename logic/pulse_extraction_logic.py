@@ -38,8 +38,6 @@ class PulseExtractionLogic(GenericLogic):
     # declare connectors
     _out = {'pulseextractionlogic': 'PulseExtractionLogic'}
 
-    sigExtractionMethodsUpdated = QtCore.Signal(dict, dict)
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -48,11 +46,12 @@ class PulseExtractionLogic(GenericLogic):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-        self.conv_std_dev = None
-        self.number_of_lasers = None
-        self.count_treshold = None
-        self.threshold_tolerance_bins = None
-        self.min_laser_length = None
+        self.conv_std_dev = 10.0
+        self.number_of_lasers = 50
+        self.count_treshold = 10
+        self.threshold_tolerance_bins = 20
+        self.min_laser_length = 200
+        self.current_method = 'conv_deriv'
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -65,6 +64,20 @@ class PulseExtractionLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
+        # recall saved variables from file
+        if 'conv_std_dev' in self._statusVariables:
+            self.conv_std_dev = self._statusVariables['conv_std_dev']
+        if 'count_treshold' in self._statusVariables:
+            self.count_treshold = self._statusVariables['count_treshold']
+        if 'threshold_tolerance_bins' in self._statusVariables:
+            self.threshold_tolerance_bins = self._statusVariables['threshold_tolerance_bins']
+        if 'min_laser_length' in self._statusVariables:
+            self.min_laser_length = self._statusVariables['min_laser_length']
+        #if 'number_of_lasers' in self._statusVariables:
+        #    self.number_of_lasers = self._statusVariables['number_of_lasers']
+        if 'current_method' in self._statusVariables:
+            self.current_method = self._statusVariables['current_method']
+
         self.gated_extraction_methods = OrderedDict()
         self.ungated_extraction_methods = OrderedDict()
         filename_list = []
@@ -92,8 +105,6 @@ class PulseExtractionLogic(GenericLogic):
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'PulseExtractionLogic.'.format(method, filename))
-        self.sigExtractionMethodsUpdated.emit(self.gated_extraction_methods,
-                                              self.ungated_extraction_methods)
         return
 
     def on_deactivate(self, e):
@@ -102,20 +113,26 @@ class PulseExtractionLogic(GenericLogic):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
-        pass
+        # Save variables to file
+        self._statusVariables['conv_std_dev'] = self.conv_std_dev
+        self._statusVariables['count_treshold'] = self.count_treshold
+        self._statusVariables['threshold_tolerance_bins'] = self.threshold_tolerance_bins
+        self._statusVariables['min_laser_length'] = self.min_laser_length
+        #self._statusVariables['number_of_lasers'] = self.number_of_lasers
+        self._statusVariables['current_method'] = self.current_method
+        return
 
-    def extract_laser_pulses(self, count_data, method, is_gated=False):
+    def extract_laser_pulses(self, count_data, is_gated=False):
         """
 
         @param count_data:
-        @param method:
         @param is_gated:
         @return:
         """
         if is_gated:
-            laser_arr = self.gated_extraction_methods[method](count_data)
+            laser_arr = self.gated_extraction_methods[self.current_method](count_data)
         else:
-            laser_arr = self.ungated_extraction_methods[method](count_data)
+            laser_arr = self.ungated_extraction_methods[self.current_method](count_data)
         return laser_arr
 
     # FIXME: What's that???
