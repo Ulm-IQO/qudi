@@ -104,7 +104,7 @@ class PulsedMasterLogic(GenericLogic):
     sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
-    sigExtractionMethodsUpdated = QtCore.Signal(dict, dict)
+    sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     _modclass = 'pulsedmasterlogic'
     _modtype = 'logic'
@@ -553,34 +553,34 @@ class PulsedMasterLogic(GenericLogic):
                                            activation_config, analogue_amplitude, interleave_on)
         return
 
-    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bins, norm_start_bin,
-                                  norm_end_bins):
+    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
         @param method:
         @param signal_start_bin:
-        @param signal_end_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_end_bins:
+        @param norm_end_bin:
         @return:
         """
-        self.sigAnalysisSettingsChanged.emit(method, signal_start_bin, signal_end_bins,
-                                             norm_start_bin, norm_end_bins)
+        self.sigAnalysisSettingsChanged.emit(method, signal_start_bin, signal_end_bin,
+                                             norm_start_bin, norm_end_bin)
         return
 
-    def analysis_settings_updated(self, method, signal_start_bin, signal_end_bins, norm_start_bin,
-                                  norm_end_bins):
+    def analysis_settings_updated(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
         @param method:
         @param signal_start_bin:
-        @param signal_end_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_end_bins:
+        @param norm_end_bin:
         @return:
         """
-        self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bins,
-                                             norm_start_bin, norm_end_bins)
+        self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
+                                             norm_start_bin, norm_end_bin)
         return
 
     def analysis_methods_updated(self, methods_dict):
@@ -954,14 +954,13 @@ class PulsedMasterLogic(GenericLogic):
                                                threshold_tolerance_bins, min_laser_length)
         return
 
-    def extraction_methods_updated(self, gated_methods_dict, ungated_methods_dict):
+    def extraction_methods_updated(self, methods_dict):
         """
 
-        @param gated_methods_dict:
-        @param ungated_methods_dict:
+        @param methods_dict:
         @return:
         """
-        self.sigExtractionMethodsUpdated.emit(gated_methods_dict, ungated_methods_dict)
+        self.sigExtractionMethodsUpdated.emit(methods_dict)
         return
 
 

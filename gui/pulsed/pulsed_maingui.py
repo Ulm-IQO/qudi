@@ -1365,8 +1365,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
         # set boundaries
-        self._pe.slider_conv_std_dev.setRange(1, 200)
-        self._pe.conv_std_dev.setRange(1, 200)
+        self._pe.extract_param_conv_std_dev_slider.setRange(1, 200)
+        self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -1429,20 +1429,25 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
         self._pe.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
         self._pe.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.conv_std_dev.valueChanged.connect(self.analysis_settings_changed)
+        self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.connect(self.extraction_settings_changed)
+        self._pe.extract_param_threshold_SpinBox.editingFinished.connect(self.extraction_settings_changed)
+        self._pe.extract_param_min_laser_length_SpinBox.editingFinished.connect(self.extraction_settings_changed)
+        self._pe.extract_param_tolerance_SpinBox.editingFinished.connect(self.extraction_settings_changed)
 
         # connect combobox changed signals
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
         #self._pa.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.connect(self.pulse_generator_settings_changed)
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.laser_to_show_changed)
+        self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.connect(self.analysis_settings_changed)
+        self._pe.extract_param_extraction_method_comboBox.currentIndexChanged.connect(self.extraction_settings_changed)
 
         # connect other widgets changed signals
-        self.sig_start_line.sigPositionChanged.connect(self.analysis_settings_changed)
-        self.sig_end_line.sigPositionChanged.connect(self.analysis_settings_changed)
-        self.ref_start_line.sigPositionChanged.connect(self.analysis_settings_changed)
-        self.ref_end_line.sigPositionChanged.connect(self.analysis_settings_changed)
-        self._pe.slider_conv_std_dev.sliderReleased.connect(self.extraction_settings_changed)
+        self.sig_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self.sig_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self.ref_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self.ref_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_conv_std_dev_slider.sliderReleased.connect(self.extraction_settings_changed)
 
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
@@ -1516,16 +1521,21 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.editingFinished.disconnect()
         self._pe.extract_param_ref_window_start_SpinBox.editingFinished.disconnect()
         self._pe.extract_param_ref_window_width_SpinBox.editingFinished.disconnect()
-        self._pe.conv_std_dev.valueChanged.disconnect()
+        self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.disconnect()
+        self._pe.extract_param_threshold_SpinBox.editingFinished.disconnect()
+        self._pe.extract_param_min_laser_length_SpinBox.editingFinished.disconnect()
+        self._pe.extract_param_tolerance_SpinBox.editingFinished.disconnect()
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.disconnect()
         #self._pa.second_plot_ComboBox.currentIndexChanged.disconnect()
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.disconnect()
         self._pe.laserpulses_ComboBox.currentIndexChanged.disconnect()
-        self.sig_start_line.sigPositionChanged.disconnect()
-        self.sig_end_line.sigPositionChanged.disconnect()
-        self.ref_start_line.sigPositionChanged.disconnect()
-        self.ref_end_line.sigPositionChanged.disconnect()
-        self._pe.slider_conv_std_dev.sliderReleased.disconnect()
+        self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.disconnect()
+        self._pe.extract_param_extraction_method_comboBox.currentIndexChanged.disconnect()
+        self.sig_start_line.sigPositionChangeFinished.disconnect()
+        self.sig_end_line.sigPositionChangeFinished.disconnect()
+        self.ref_start_line.sigPositionChangeFinished.disconnect()
+        self.ref_end_line.sigPositionChangeFinished.disconnect()
+        self._pe.extract_param_conv_std_dev_slider.sliderReleased.disconnect()
         return
 
     def _analysis_apply_hardware_constraints(self):
@@ -2108,18 +2118,18 @@ class PulsedMeasurementGui(GUIBase):
         """
         Uodate new value of standard deviation of gaussian filter
         """
-        # block signals
-        self._pe.slider_conv_std_dev.blockSignals(True)
-        self._pe.conv_std_dev.blockSignals(True)
-        # set widgets
-        conv_std_dev = self._pe.conv_std_dev.value()
-        self._pe.slider_conv_std_dev.setValue(conv_std_dev)
-        # unblock signals
-        self._pe.slider_conv_std_dev.blockSignals(False)
-        self._pe.conv_std_dev.blockSignals(False)
+        # determine if one of the conv_std_dev widgets (SpinBox or slider) has emitted the signal
+        if self.sender().objectName() == 'extract_param_conv_std_dev_slider':
+            conv_std_dev = self._pe.extract_param_conv_std_dev_slider.value()
+        else:
+            conv_std_dev = self._pe.extract_param_conv_std_dev_DSpinBox.value()
 
-        self._pulsed_master_logic.extraction_settings_changed('conv_deriv', conv_std_dev,
-                                                              count_treshold,
+        method = self._pe.extract_param_extraction_method_comboBox.currentText()
+        count_treshold = self._pe.extract_param_threshold_SpinBox.value()
+        threshold_tolerance_bins = self._pe.extract_param_tolerance_SpinBox.value()
+        min_laser_length = self._pe.extract_param_min_laser_length_SpinBox.value()
+
+        self._pulsed_master_logic.extraction_settings_changed(method, conv_std_dev, count_treshold,
                                                               threshold_tolerance_bins,
                                                               min_laser_length)
         return
@@ -2136,23 +2146,43 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         # block signals
-        self._pe.slider_conv_std_dev.blockSignals(True)
-        self._pe.conv_std_dev.blockSignals(True)
+        self._pe.extract_param_conv_std_dev_slider.blockSignals(True)
+        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(True)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+        self._pe.extract_param_threshold_SpinBox.blockSignals(True)
+        self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
+        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(True)
         # set widgets
-        conv_std_dev = self._pe.conv_std_dev.value()
-        self._pe.slider_conv_std_dev.setValue(conv_std_dev)
+        index = self._pe.extract_param_extraction_method_comboBox.findText(method)
+        self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
+        self._pe.extract_param_conv_std_dev_DSpinBox.setValue(conv_std_dev)
+        self._pe.extract_param_conv_std_dev_slider.setValue(conv_std_dev)
+        self._pe.extract_param_threshold_SpinBox.setValue(count_treshold)
+        self._pe.extract_param_tolerance_SpinBox.setValue(threshold_tolerance_bins)
+        self._pe.extract_param_min_laser_length_SpinBox.setValue(min_laser_length)
         # unblock signals
-        self._pe.slider_conv_std_dev.blockSignals(False)
-        self._pe.conv_std_dev.blockSignals(False)
+        self._pe.extract_param_conv_std_dev_slider.blockSignals(False)
+        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(False)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
+        self._pe.extract_param_threshold_SpinBox.blockSignals(False)
+        self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
+        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(False)
         return
 
-    def extraction_methods_updated(self, gated_methods_dict, ungated_methods_dict):
+    def extraction_methods_updated(self, methods_dict):
         """
 
-        @param gated_methods_dict:
-        @param ungated_methods_dict:
+        @param methods_dict:
         @return:
         """
+        method_names = list(methods_dict)
+        # block signals
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+        # set items
+        self._pe.extract_param_extraction_method_comboBox.clear()
+        self._pe.extract_param_extraction_method_comboBox.addItems(method_names)
+        # unblock signals
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
         return
 
     def analysis_settings_changed(self):
@@ -2160,37 +2190,24 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        # block signals
-        self.sig_start_line.blockSignals(True)
-        self.sig_end_line.blockSignals(True)
-        self.ref_start_line.blockSignals(True)
-        self.ref_end_line.blockSignals(True)
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
-        # get data
-        sig_start = self._pe.extract_param_ana_window_start_SpinBox.value()
-        sig_length = self._pe.extract_param_ana_window_width_SpinBox.value()
-        ref_start = self._pe.extract_param_ref_window_start_SpinBox.value()
-        ref_length = self._pe.extract_param_ref_window_width_SpinBox.value()
-        # update plots
-        self.sig_start_line.setValue(sig_start)
-        self.sig_end_line.setValue(sig_start + sig_length)
-        self.ref_start_line.setValue(ref_start)
-        self.ref_end_line.setValue(ref_start + ref_length)
-        # unblock signals
-        self.sig_start_line.blockSignals(False)
-        self.sig_end_line.blockSignals(False)
-        self.ref_start_line.blockSignals(False)
-        self.ref_end_line.blockSignals(False)
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+        # Check if the signal has been emitted by a dragged line in the laser plot
+        if self.sender().__class__.__name__ == 'InfiniteLine':
+            signal_start = self.sig_start_line.value()
+            signal_end = self.sig_end_line.value()
+            norm_start = self.ref_start_line.value()
+            norm_end = self.ref_end_line.value()
+        else:
+            signal_width = self._pe.extract_param_ana_window_width_SpinBox.value()
+            signal_start = self._pe.extract_param_ana_window_start_SpinBox.value()
+            signal_end = signal_start + signal_width
+            norm_width = self._pe.extract_param_ref_window_width_SpinBox.value()
+            norm_start = self._pe.extract_param_ref_window_start_SpinBox.value()
+            norm_end = norm_start + norm_width
 
-        self._pulsed_master_logic.analysis_settings_changed('mean_norm', sig_start, sig_length,
-                                                            ref_start, ref_length)
+        method = self._pe.extract_param_analysis_method_comboBox.currentText()
+
+        self._pulsed_master_logic.analysis_settings_changed(method, signal_start, signal_end,
+                                                            norm_start, norm_end)
         return
 
     def analysis_settings_updated(self, method, sig_start, sig_end, norm_start, norm_end):
@@ -2204,6 +2221,7 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         # block signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
         self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
@@ -2217,12 +2235,15 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_end - sig_start)
         self._pe.extract_param_ref_window_start_SpinBox.setValue(norm_start)
         self._pe.extract_param_ref_window_width_SpinBox.setValue(norm_end - norm_start)
+        index = self._pe.extract_param_analysis_method_comboBox.findText(method)
+        self._pe.extract_param_analysis_method_comboBox.setCurrentIndex(index)
         # update plots
         self.sig_start_line.setValue(sig_start)
         self.sig_end_line.setValue(sig_end)
         self.ref_start_line.setValue(norm_start)
         self.ref_end_line.setValue(norm_end)
         # unblock signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
         self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
@@ -2239,6 +2260,14 @@ class PulsedMeasurementGui(GUIBase):
         @param methods_dict:
         @return:
         """
+        method_names = list(methods_dict)
+        # block signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
+        # set items
+        self._pe.extract_param_analysis_method_comboBox.clear()
+        self._pe.extract_param_analysis_method_comboBox.addItems(method_names)
+        # unblock signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
         return
 
     def laser_to_show_changed(self):

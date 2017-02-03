@@ -25,7 +25,6 @@ import inspect
 import numpy as np
 from collections import OrderedDict
 from logic.generic_logic import GenericLogic
-from qtpy import QtCore
 
 
 class PulseExtractionLogic(GenericLogic):
@@ -80,6 +79,7 @@ class PulseExtractionLogic(GenericLogic):
 
         self.gated_extraction_methods = OrderedDict()
         self.ungated_extraction_methods = OrderedDict()
+        self.extraction_methods = OrderedDict()
         filename_list = []
         # The assumption is that in the directory pulse_extraction_methods, there are
         # *.py files, which contain only methods!
@@ -100,8 +100,10 @@ class PulseExtractionLogic(GenericLogic):
                         # Add method to dictionary if it is an extraction method
                         if method.startswith('gated_'):
                             self.gated_extraction_methods[method[6:]] = eval('self.' + method)
+                            self.extraction_methods[method[6:]] = eval('self.' + method)
                         elif method.startswith('ungated_'):
                             self.ungated_extraction_methods[method[8:]] = eval('self.' + method)
+                            self.extraction_methods[method[8:]] = eval('self.' + method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'PulseExtractionLogic.'.format(method, filename))
