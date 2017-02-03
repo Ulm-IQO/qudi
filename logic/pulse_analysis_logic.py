@@ -37,8 +37,6 @@ class PulseAnalysisLogic(GenericLogic):
     # declare connectors
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
-    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -47,6 +45,12 @@ class PulseAnalysisLogic(GenericLogic):
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
+
+        self.signal_start_bin = 0
+        self.signal_end_bin = 200
+        self.norm_start_bin = 400
+        self.norm_end_bin = 200
+        self.current_method = 'mean_norm'
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -59,6 +63,18 @@ class PulseAnalysisLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
+        # recall saved variables from file
+        if 'current_method' in self._statusVariables:
+            self.current_method = self._statusVariables['current_method']
+        if 'signal_start_bin' in self._statusVariables:
+            self.signal_start_bin = self._statusVariables['signal_start_bin']
+        if 'signal_end_bin' in self._statusVariables:
+            self.signal_end_bin = self._statusVariables['signal_end_bin']
+        if 'norm_start_bin' in self._statusVariables:
+            self.norm_start_bin = self._statusVariables['norm_start_bin']
+        if 'norm_end_bin' in self._statusVariables:
+            self.norm_end_bin = self._statusVariables['norm_end_bin']
+
         self.analysis_methods = OrderedDict()
         filename_list = []
         # The assumption is that in the directory pulsed_analysis_methods, there are
@@ -83,33 +99,29 @@ class PulseAnalysisLogic(GenericLogic):
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'PulseAnalysisLogic.'.format(method, filename))
-        self.sigAnalysisMethodsUpdated.emit(self.analysis_methods)
         return
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
+        @param object e:    Event class object from Fysom. A more detailed explanation can be found
+                            in method activation.
         """
-        pass
+        # Save variables to file
+        self._statusVariables['current_method'] = self.current_method
+        self._statusVariables['signal_start_bin'] = self.signal_start_bin
+        self._statusVariables['signal_end_bin'] = self.signal_end_bin
+        self._statusVariables['norm_start_bin'] = self.norm_start_bin
+        self._statusVariables['norm_end_bin'] = self.norm_end_bin
+        return
 
-    def analyze_data(self, laser_data, norm_start_bin, norm_end_bin, signal_start_bin,
-                     signal_end_bin, method):
+    def analyze_data(self, laser_data):
         """ Analysis the laser pulses and computes the measuring error given by photon shot noise
 
         @param numpy.ndarray (int) laser_data: 2D array containing the extracted laser countdata
-        @param int norm_start_bin: Bin where the data for reference starts
-        @param int norm_end_bin: Bin where the data for reference ends
-        @param int signal_start_bin: Bin where the signal starts
-        @param int signal_end_bin: Bin where the signal stops
-        @param str method: The desired analysis method name
 
         @return: float array signal_data: Array with the computed signal
-        @return: float array laser_data: Array with the laser data
-        @return: float array raw_data: Array with the raw data
+        @return: float array measuring_error: Array with the computed signal error
         """
-        signal_data, measuring_error = self.analysis_methods[method](laser_data, norm_start_bin,
-                                                                     norm_end_bin, signal_start_bin,
-                                                                     signal_end_bin)
+        signal_data, measuring_error = self.analysis_methods[self.current_method](laser_data)
         return signal_data, measuring_error
