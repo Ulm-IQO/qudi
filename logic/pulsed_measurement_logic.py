@@ -68,7 +68,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
-    sigExtractionMethodsUpdated = QtCore.Signal(dict, dict)
+    sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -292,19 +292,18 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserToShowUpdated.emit(self.show_laser_index, self.show_raw_data)
         self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
         self.sigTimerIntervalUpdated.emit(self.timer_interval)
+        self.sigAnalysisMethodsUpdated.emit(self._pulse_analysis_logic.analysis_methods)
+        self.sigExtractionMethodsUpdated.emit(self._pulse_extraction_logic.extraction_methods)
         self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.current_method,
                                              self._pulse_analysis_logic.signal_start_bin,
                                              self._pulse_analysis_logic.signal_end_bin,
                                              self._pulse_analysis_logic.norm_start_bin,
                                              self._pulse_analysis_logic.norm_end_bin)
-        self.sigAnalysisMethodsUpdated.emit(self._pulse_analysis_logic.analysis_methods)
         self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
                                                self._pulse_extraction_logic.conv_std_dev,
                                                self._pulse_extraction_logic.count_treshold,
                                                self._pulse_extraction_logic.threshold_tolerance_bins,
                                                self._pulse_extraction_logic.min_laser_length)
-        self.sigExtractionMethodsUpdated.emit(self._pulse_extraction_logic.gated_extraction_methods,
-                                              self._pulse_extraction_logic.ungated_extraction_methods)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2, self.measuring_error_plot_y, self.measuring_error_plot_y2)

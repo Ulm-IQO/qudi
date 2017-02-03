@@ -48,8 +48,8 @@ class PulseAnalysisLogic(GenericLogic):
 
         self.signal_start_bin = 0
         self.signal_end_bin = 200
-        self.norm_start_bin = 400
-        self.norm_end_bin = 200
+        self.norm_start_bin = 300
+        self.norm_end_bin = 400
         self.current_method = 'mean_norm'
 
     def on_activate(self, e):
