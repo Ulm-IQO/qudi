@@ -420,6 +420,24 @@ class FastComtec(Base, FastCounterInterface):
 
         return self.MINIMAL_BINWIDTH*(2**new_bitshift)
 
+    def get_settings(self):
+        """ get defined axis nanoseconds or bins
+        @return float: nanoseconds or bins
+
+        """
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        return setting
+
+    # def set_axisunit(self, unit):
+    #     """ get defined axis nanoseconds or bins
+    #     @return float: nanoseconds or bins
+    #
+    #     """
+    #     cmd = 'caluse={0}'.format(int(unit))
+    #     self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #     return unit
+
     #TODO: Check such that only possible lengths are set.
     def set_length(self, N, SSR=None, preset=None, cycles=None):
         """ Sets the length of the length of the actual measurement.
