@@ -62,7 +62,8 @@ class FitLogic(GenericLogic):
                     filenames.append(f[:-3])
 
         # A dictionary contianing all fit methods and their estimators.
-        self.fit_list = dict()
+        self.fit1D_list = dict()
+        self.fit2D_list = dict()
 
         # Go through the fitmethods files and import all methods.
         for files in filenames:

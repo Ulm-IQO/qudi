@@ -34,11 +34,15 @@ from scipy.ndimage import filters
 
 ############################################################################
 #                                                                          #
-#                          1D Gaussian model                               #
+#                          Defining models                                 #
 #                                                                          #
 ############################################################################
 
-def make_gauss_model(self, prefix=None):
+####################################
+# Gaussian model                   #
+####################################
+
+def make_gaussian_model(self, prefix=None):
     """ Create a model of a gaussian with specified amplitude.
 
     @return tuple: (object model, object params)
@@ -95,15 +99,11 @@ def make_gauss_model(self, prefix=None):
 
     return full_gaussian_model, params
 
+####################################
+# 1D Gaussian model with offset    #
+####################################
 
-################################################################################
-#                                                                              #
-#                       1D Gaussian Model with offset                          #
-#                                                                              #
-################################################################################
-
-
-def make_gaussoffset_model(self, prefix=None):
+def make_gaussianoffset_model(self, prefix=None):
     """ Create a gauss model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -111,33 +111,29 @@ def make_gaussoffset_model(self, prefix=None):
                        distinguished from each other to prevent name collisions.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gauss_model.
+                   the method make_gaussian_model.
     """
 
-    gauss_model, params = self.make_gauss_model(prefix=prefix)
+    gaussian_model, params = self.make_gaussian_model(prefix=prefix)
     constant_model, params = self.make_constant_model(prefix=prefix)
 
-    gauss_offset_model = gauss_model + constant_model
+    gaussian_offset_model = gaussian_model + constant_model
 
     if prefix is None:
         prefix = ''
 
-    gauss_offset_model.set_param_hint('{0}contrast'.format(prefix),
+    gaussian_offset_model.set_param_hint('{0}contrast'.format(prefix),
                                       expr='({0}amplitude/offset)*100'.format(prefix))
 
-    params = gauss_offset_model.make_params()
+    params = gaussian_offset_model.make_params()
 
-    return gauss_offset_model, params
+    return gaussian_offset_model, params
 
+######################################################
+# 1D Gaussian model with linear (inclined) offset    #
+######################################################
 
-################################################################################
-#                                                                              #
-#                 1D Gaussian Model with linear offset                         #
-#                                                                              #
-################################################################################
-
-
-def make_gausslinearoffset_model(self, prefix=None):
+def make_gaussianlinearoffset_model(self, prefix=None):
     """ Create a gauss with a linear offset (i.e. a slope).
 
     @param str prefix: optional, if multiple models should be used in a
@@ -145,20 +141,61 @@ def make_gausslinearoffset_model(self, prefix=None):
                        distinguished from each other to prevent name collisions.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gauss_model.
+                   the method make_gaussian_model.
     """
 
     # Note that the offset parameter comes here from the gauss model and not
     # from the slope model.
     slope_model, params = self.make_slope_model(prefix)
-    gauss_model, params = self.make_gaussoffset_model(prefix)
+    gaussian_model, params = self.make_gaussianoffset_model(prefix)
 
-    gauss_linear_offset = gauss_model + slope_model
-    params = gauss_linear_offset.make_params()
+    gaussian_linear_offset = gaussian_model + slope_model
+    params = gaussian_linear_offset.make_params()
 
-    return gauss_linear_offset, params
+    return gaussian_linear_offset, params
 
-def estimate_gausspeaklinearoffset(self, x_axis, data, params):
+################################################################################
+#                                                                              #
+#                    Fit functions and their estimators                        #
+#                                                                              #
+################################################################################
+
+##############################################
+# 1D Gaussian with linear inclined offset    #
+##############################################
+
+def make_gaussianlinearoffset_fit(self, x_axis, data, units, estimator, add_params=None):
+    """ Perform a 1D gaussian peak fit with linear offset on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param list units: two string elements containing x and y units.
+    @param ???? estimator: estimator method.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    mod_final, params = self.make_gausslinearoffset_model()
+
+    error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = mod_final.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The 1D gaussian peak fit did not work. Error '
+                       'message: {0}\n'.format(result.message))
+
+    return result
+
+def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
     """ Provides a gauss peak estimator with a linear changing offset.
 
     @param numpy.array x_axis: 1D axis values
@@ -196,12 +233,17 @@ def estimate_gausspeaklinearoffset(self, x_axis, data, params):
 
     return error, params
 
+###################################
+# 1D Gaussian with flat offset    #
+###################################
 
-def make_gausspeaklinearoffset_fit(self, x_axis, data, add_params=None):
-    """ Perform a 1D gaussian peak fit with linear offset on the provided data.
+def make_gaussoffset_fit(self, x_axis, data, units, estimator, add_params=None):
+    """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param list units: two string elements containing x and y units.
+    @param ???? estimator: estimator method.
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -212,9 +254,9 @@ def make_gausspeaklinearoffset_fit(self, x_axis, data, add_params=None):
                           with best fit with given axis,...
     """
 
-    mod_final, params = self.make_gausslinearoffset_model()
+    mod_final, params = self.make_gaussoffset_model()
 
-    error, params = self.estimate_gausspeaklinearoffset(x_axis, data, params)
+    error, params = self.estimate_gaussoffset_peak(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -225,12 +267,6 @@ def make_gausspeaklinearoffset_fit(self, x_axis, data, add_params=None):
                        'message: {0}\n'.format(result.message))
 
     return result
-
-################################################################################
-#                                                                              #
-#                    1D Gaussian Peak with offset fitting                      #
-#                                                                              #
-################################################################################
 
 def estimate_gaussoffset_peak(self, x_axis, data, params):
     """ Provides a gauss offset peak estimator.
@@ -307,43 +343,6 @@ def estimate_gaussoffset_peak(self, x_axis, data, params):
 
     return error, params
 
-def make_gaussoffset_fit(self, x_axis, data, units, add_params=None):
-    """ Perform a 1D gaussian peak fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    mod_final, params = self.make_gaussoffset_model()
-
-    error, params = self.estimate_gaussoffset_peak(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The 1D gaussian peak fit did not work. Error '
-                       'message: {0}\n'.format(result.message))
-
-    return result
-
-
-################################################################################
-#                                                                              #
-#                    1D Gaussian Dip with offset fitting                       #
-#                                                                              #
-################################################################################
-
-
 def estimate_gaussoffset_dip(self, x_axis, data, params):
     """ Provides a gauss offset dip estimator.
 
@@ -377,35 +376,6 @@ def estimate_gaussoffset_dip(self, x_axis, data, params):
 
     return error, params
 
-def make_gaussoffsetdip_fit(self, x_axis, data, add_params=None):
-    """ Perform a 1D gaussian dip fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    mod_final, params = self.make_gaussoffset_model()
-
-    error, params = self.estimate_gaussoffset_dip(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The 1D gaussian dip fit did not work. Error '
-                       'message: {0}\n'.format(result.message))
-
-    return result
-
 ################################################################################
 #                                                                              #
 #                   Multiple Gaussian Model with offset                        #
@@ -420,33 +390,33 @@ def make_multiplegaussoffset_model(self, no_of_functions=1):
                             more functions are added
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gauss_model.
+                   the method make_gaussian_model.
     """
 
     if no_of_functions == 1:
-        multi_gauss_model, params = self.make_gaussoffset_model()
+        multi_gaussian_model, params = self.make_gaussoffset_model()
     else:
 
         prefix = 'g0_'
-        multi_gauss_model, params = self.make_gauss_model(prefix=prefix)
+        multi_gaussian_model, params = self.make_gaussian_model(prefix=prefix)
 
         constant_model, params = self.make_constant_model()
-        multi_gauss_model = multi_gauss_model + constant_model
+        multi_gaussian_model = multi_gaussian_model + constant_model
 
-        multi_gauss_model.set_param_hint('{0}contrast'.format(prefix),
+        multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
                                          expr='({0}amplitude/offset)*100'.format(prefix))
 
         for ii in range(1, no_of_functions):
 
             prefix = 'g{0:d}_'.format(ii)
-            multi_gauss_model += self.make_gauss_model(prefix=prefix)[0]
-            multi_gauss_model.set_param_hint('{0}contrast'.format(prefix),
+            multi_gaussian_model += self.make_gaussian_model(prefix=prefix)[0]
+            multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
                                              expr='({0}amplitude/offset)*100'.format(prefix))
 
 
-    params = multi_gauss_model.make_params()
+    params = multi_gaussian_model.make_params()
 
-    return multi_gauss_model, params
+    return multi_gaussian_model, params
 
 
 ############################################################################
@@ -682,7 +652,7 @@ def make_twoDgaussian_model(self, prefix=None):
                        distinguished from each other to prevent name collisions.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gauss_model.
+                   the method make_gaussian_model.
 
     """
 
@@ -914,7 +884,7 @@ def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
 
     x_axis, y_axis = xy_axes
 
-    gauss_2d_model, params = self.make_twoDgaussian_model()
+    gaussian_2d_model, params = self.make_twoDgaussian_model()
 
     error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis, y_axis=y_axis,
                                                    data=data, params=params)
@@ -932,9 +902,9 @@ def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = gauss_2d_model.fit(data, x=xy_axes, params=params)
+        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
     except:
-        result = gauss_2d_model.fit(data, x=xy_axes, params=params)
+        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
         logger.warning('The 2D gaussian fit did not work: {0}'.format(
                        result.message))
 
