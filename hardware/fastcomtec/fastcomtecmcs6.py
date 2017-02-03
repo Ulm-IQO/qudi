@@ -153,7 +153,9 @@ class FastComtec(Base, FastCounterInterface):
 
         self.GATED = False
         self.MINIMAL_BINWIDTH = 0.2e-9    # in seconds per bin
-
+        #this variable has to be added because there is no difference
+        #in the fastcomtec it can be on "stopped" or "halt"
+        self.stopped_or_halt = "stopped"
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -247,49 +249,64 @@ class FastComtec(Base, FastCounterInterface):
         self.set_length(no_of_bins)
         return (self.get_binwidth(), record_length_FastComTech_s, None)
 
+    #card if running or halt or stopped ...
     def get_status(self):
-        """ Receives the current status of the Fast Counter and outputs it as
-                   return value.
-
-               0 = unconfigured // here not possible
-               1 = idle
-               2 = running
-               3 = paused
-               -1 = error state
-               """
+        """
+        Receives the current status of the Fast Counter and outputs it as return value.
+        0 = unconfigured
+        1 = idle
+        2 = running
+        3 = paused
+        -1 = error state
+        """
         status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
-        if status.started==1:
+        if status.started == 1:
             return 2
-        elif status.started==0:
-            if status.runtime==0.0:
+        elif status.started == 0:
+            if self.stopped_or_halt == "stopped":
                 return 1
-            else:
+            elif self.stopped_or_halt == "halt":
                 return 3
+            else:
+                self.log.error('There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+
+                return -1
         else:
             self.log.error(
                 'There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
             return -1
 
+
     def start_measure(self):
         """Start the measurement. """
-        self.dll.Start(0)
-        return 0
+        status = self.dll.Start(0)
+        while self.get_status() != 2:
+            time.sleep(0.05)
+        return status
 
     def pause_measure(self):
         """Make a pause in the measurement, which can be continued. """
-        self.dll.Halt(0)
-        return 0
+        self.stopped_or_halt = "halt"
+        status = self.dll.Halt(0)
+        while self.get_status() != 3:
+            time.sleep(0.05)
+        return status
 
     def stop_measure(self):
         """Stop the measurement. """
-        self.dll.Halt(0)
-        return 0
+        self.stopped_or_halt = "stopped"
+        status = self.dll.Halt(0)
+        while self.get_status() != 1:
+            time.sleep(0.05)
+        return status
 
     def continue_measure(self):
         """Continue a paused measurement. """
-        self.dll.Continue(0)
-        return 0
+        status = self.dll.Continue(0)
+        while self.get_status() != 2:
+            time.sleep(0.05)
+        return status
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.

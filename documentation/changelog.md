@@ -84,6 +84,16 @@ Change configuration settings for the ni_card module:
     \- 100e-6
 
 
+The hardware file for Tektronix AWG70k series has been changed to use the pyvisa package for more robust and easy communication with the device:
+
+ * The settings "awg_IP_address" and "awg_port" are not used anymore and have to be replaced with "awg_visa_address" and "awg_ip_address". For example:
+```
+   awg_visa_address: 'TCPIP0::AWG70K-38293801::inst0::INSTR'
+   awg_ip_address: '192.168.1.3'
+```
+
+The Visa address can be obtained for example by the "Agilent connection expert" application.
+
 ## Release 0.6
 
 Released on 25 Nov 2016.
