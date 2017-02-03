@@ -154,90 +154,128 @@ def make_gaussianlinearoffset_model(self, prefix=None):
 
     return gaussian_linear_offset, params
 
+##########################################
+# 1D Multiple Gaussian Model with offset #
+##########################################
+
+def make_multiplegaussianoffset_model(self, no_of_functions=1):
+    """ Create a model with multiple gaussian with offset.
+
+    @param no_of_functions: for default=1 there is one gaussian, else
+                            more functions are added
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gaussian_model.
+    """
+
+    if no_of_functions == 1:
+        multi_gaussian_model, params = self.make_gaussianoffset_model()
+    else:
+
+        prefix = 'g0_'
+        multi_gaussian_model, params = self.make_gaussian_model(prefix=prefix)
+
+        constant_model, params = self.make_constant_model()
+        multi_gaussian_model = multi_gaussian_model + constant_model
+
+        multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
+                                         expr='({0}amplitude/offset)*100'.format(prefix))
+
+        for ii in range(1, no_of_functions):
+
+            prefix = 'g{0:d}_'.format(ii)
+            multi_gaussian_model += self.make_gaussian_model(prefix=prefix)[0]
+            multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
+                                             expr='({0}amplitude/offset)*100'.format(prefix))
+
+
+    params = multi_gaussian_model.make_params()
+
+    return multi_gaussian_model, params
+
+#####################
+# 2D gaussian model #
+#####################
+
+def make_twoDgaussian_model(self, prefix=None):
+    """ Creates a model of the 2D gaussian function.
+
+    @param str prefix: optional, if multiple models should be used in a
+                       composite way and the parameters of each model should be
+                       distinguished from each other to prevent name collisions.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gaussian_model.
+
+    """
+
+    def twoDgaussian_function(x, amplitude, center_x, center_y, sigma_x, sigma_y,
+                              theta, offset):
+        """ Provide a two dimensional gaussian function.
+
+        @param float amplitude: Amplitude of gaussian
+        @param float center_x: x value of maximum
+        @param float center_y: y value of maximum
+        @param float sigma_x: standard deviation in x direction
+        @param float sigma_y: standard deviation in y direction
+        @param float theta: angle for eliptical gaussians
+        @param float offset: offset
+
+        @return callable function: returns the reference to the function
+
+        Function taken from:
+        http://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m/21566831
+
+        Question from: http://stackoverflow.com/users/2097737/bland
+                       http://stackoverflow.com/users/3273102/kokomoking
+                       http://stackoverflow.com/users/2767207/jojodmo
+        Answer: http://stackoverflow.com/users/1461210/ali-m
+                http://stackoverflow.com/users/5234/mrjrdnthms
+        """
+
+        #FIXME: x_data_tuple: dimension of arrays
+        # @param np.arra[k][M] x_data_tuple: array which is (k,M)-shaped,
+        #                                   x and y values
+
+        (u, v) = x
+        center_x = float(center_x)
+        center_y = float(center_y)
+
+        a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
+        b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) \
+            + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
+        c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
+        g = offset + amplitude * np.exp(- (a * ((u - center_x) ** 2) \
+                                           + 2 * b * (u - center_x) * (v - center_y) \
+                                           + c * ((v - center_y) ** 2)))
+        return g.ravel()
+
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x')
+    else:
+        gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x',
+                               prefix=prefix)
+
+    params = gaussian_2d_model.make_params()
+
+    return gaussian_2d_model, params
+
 ################################################################################
 #                                                                              #
 #                    Fit functions and their estimators                        #
 #                                                                              #
 ################################################################################
 
-##############################################
-# 1D Gaussian with linear inclined offset    #
-##############################################
-
-def make_gaussianlinearoffset_fit(self, x_axis, data, units, estimator, add_params=None):
-    """ Perform a 1D gaussian peak fit with linear offset on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param list units: two string elements containing x and y units.
-    @param ???? estimator: estimator method.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    mod_final, params = self.make_gausslinearoffset_model()
-
-    error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The 1D gaussian peak fit did not work. Error '
-                       'message: {0}\n'.format(result.message))
-
-    return result
-
-def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
-    """ Provides a gauss peak estimator with a linear changing offset.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param lmfit.Parameters params: object includes parameter dictionary which
-                                    can be set
-
-    @return tuple (error, params):
-
-        Explanation of the return parameter:
-            int error: error code (0:OK, -1:error)
-            Parameters object params: set parameters of initial values
-    """
-
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
-
-    # try at first a fit with the ordinary gauss function
-    res_ordinary_gauss = self.make_gaussoffsetpeak_fit(x_axis=x_axis, data=data)
-
-    # subtract the result and perform again a linear fit:
-    data_subtracted = data - res_ordinary_gauss.best_fit
-
-    res_linear = self.make_linear_fit(x_axis=x_axis, data=data_subtracted)
-
-    # this way works much better than performing at first a linear fit,
-    # subtracting the fit and make an ordinary gaussian fit. Especially for a
-    # peak at the borders, this method is much more beneficial.
-
-    # assign the obtained values for the initial fit:
-    params['offset'] = res_ordinary_gauss.params['offset']
-    params['center'] = res_ordinary_gauss.params['center']
-    params['amplitude'] = res_ordinary_gauss.params['amplitude']
-    params['sigma'] = res_ordinary_gauss.params['sigma']
-    params['slope'] = res_linear.params['slope']
-
-    return error, params
-
 ###################################
 # 1D Gaussian with flat offset    #
 ###################################
 
-def make_gaussoffset_fit(self, x_axis, data, units, estimator, add_params=None):
+def make_gaussianoffset_fit(self, x_axis, data, units, estimator, add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -254,9 +292,9 @@ def make_gaussoffset_fit(self, x_axis, data, units, estimator, add_params=None):
                           with best fit with given axis,...
     """
 
-    mod_final, params = self.make_gaussoffset_model()
+    mod_final, params = self.make_gaussianoffset_model()
 
-    error, params = self.estimate_gaussoffset_peak(x_axis, data, params)
+    error, params = self.estimate_gaussianoffset_peak(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -268,8 +306,8 @@ def make_gaussoffset_fit(self, x_axis, data, units, estimator, add_params=None):
 
     return result
 
-def estimate_gaussoffset_peak(self, x_axis, data, params):
-    """ Provides a gauss offset peak estimator.
+def estimate_gaussianoffset_peak(self, x_axis, data, params):
+    """ Provides a gaussian offset peak estimator.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -343,8 +381,8 @@ def estimate_gaussoffset_peak(self, x_axis, data, params):
 
     return error, params
 
-def estimate_gaussoffset_dip(self, x_axis, data, params):
-    """ Provides a gauss offset dip estimator.
+def estimate_gaussianoffset_dip(self, x_axis, data, params):
+    """ Provides a gaussian offset dip estimator.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -364,8 +402,10 @@ def estimate_gaussoffset_dip(self, x_axis, data, params):
     params_peak = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_gaussoffsetpeak(x_axis, data_negative,
-                                                       params_peak)
+    error, params_ret = self.estimate_gaussianoffsetpeak(x_axis,
+                                                         data_negative,
+                                                         params_peak
+                                                         )
 
     params['sigma'] = params_ret['sigma']
     params['offset'].set(value=-params_ret['offset'])
@@ -376,58 +416,157 @@ def estimate_gaussoffset_dip(self, x_axis, data, params):
 
     return error, params
 
-################################################################################
-#                                                                              #
-#                   Multiple Gaussian Model with offset                        #
-#                                                                              #
-################################################################################
+##############################################
+# 1D Gaussian with linear inclined offset    #
+##############################################
 
+def make_gaussianlinearoffset_fit(self, x_axis, data, units, estimator, add_params=None):
+    """ Perform a 1D gaussian peak fit with linear offset on the provided data.
 
-def make_multiplegaussoffset_model(self, no_of_functions=1):
-    """ Create a model with multiple gaussian with offset.
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param list units: two string elements containing x and y units.
+    @param ???? estimator: estimator method.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
-    @param no_of_functions: for default=1 there is one gaussian, else
-                            more functions are added
-
-    @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
     """
 
-    if no_of_functions == 1:
-        multi_gaussian_model, params = self.make_gaussoffset_model()
-    else:
+    mod_final, params = self.make_gausslinearoffset_model()
 
-        prefix = 'g0_'
-        multi_gaussian_model, params = self.make_gaussian_model(prefix=prefix)
+    error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
 
-        constant_model, params = self.make_constant_model()
-        multi_gaussian_model = multi_gaussian_model + constant_model
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = mod_final.fit(data, x=x_axis, params=params)
+    except:
+        logger.warning('The 1D gaussian peak fit did not work. Error '
+                       'message: {0}\n'.format(result.message))
 
-        multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
-                                         expr='({0}amplitude/offset)*100'.format(prefix))
+    return result
 
-        for ii in range(1, no_of_functions):
+def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
+    """ Provides a gauss peak estimator with a linear changing offset.
 
-            prefix = 'g{0:d}_'.format(ii)
-            multi_gaussian_model += self.make_gaussian_model(prefix=prefix)[0]
-            multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
-                                             expr='({0}amplitude/offset)*100'.format(prefix))
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
 
+    @return tuple (error, params):
 
-    params = multi_gaussian_model.make_params()
+        Explanation of the return parameter:
+            int error: error code (0:OK, -1:error)
+            Parameters object params: set parameters of initial values
+    """
 
-    return multi_gaussian_model, params
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
+    # try at first a fit with the ordinary gauss function
+    res_ordinary_gauss = self.make_gaussianoffsetpeak_fit(x_axis=x_axis, data=data)
 
-############################################################################
-#                                                                          #
-#                       Two Gaussian Peak Fitting                          #
-#                                                                          #
-############################################################################
+    # subtract the result and perform again a linear fit:
+    data_subtracted = data - res_ordinary_gauss.best_fit
 
+    res_linear = self.make_linear_fit(x_axis=x_axis, data=data_subtracted)
 
+    # this way works much better than performing at first a linear fit,
+    # subtracting the fit and make an ordinary gaussian fit. Especially for a
+    # peak at the borders, this method is much more beneficial.
 
-def estimate_twogausspeakoffset(self, x_axis, data, params,
+    # assign the obtained values for the initial fit:
+    params['offset'] = res_ordinary_gauss.params['offset']
+    params['center'] = res_ordinary_gauss.params['center']
+    params['amplitude'] = res_ordinary_gauss.params['amplitude']
+    params['sigma'] = res_ordinary_gauss.params['sigma']
+    params['slope'] = res_linear.params['slope']
+
+    return error, params
+
+#################################
+# Two Gaussian with flat offset #
+#################################
+
+def make_twogaussianoffset_fit(self, x_axis, data, units,
+                               estimator,
+                               add_params=None,
+                               threshold_fraction=0.4,
+                               minimal_threshold=0.2,
+                               sigma_threshold_fraction=0.3):
+    """ Perform a 1D two gaussian dip fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+    @param float threshold_fraction : Threshold to find second gaussian
+    @param float minimal_threshold: Threshold is lowerd to minimal this
+                                    value as a fraction
+    @param float sigma_threshold_fraction: Threshold for detecting
+                                           the end of the peak
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
+
+    error, params = estimator(x_axis, data, params,
+                              threshold_fraction,
+                              minimal_threshold,
+                              sigma_threshold_fraction
+                              )
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params)
+    except:
+        result = model.fit(data, x=x_axis, params=params)
+        logger.warning('The double gaussian dip fit did not work: {0}'.format(
+            result.message))
+
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Position 0'] = {'value': result.params['g0_center'].value,
+                             'error': result.params['g0_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Position 1'] = {'value': result.params['g1_center'].value,
+                             'error': result.params['g1_center'].stderr,
+                             'unit': units[0]}
+
+    param_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
+                                'error': result.params['g0_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Contrast 1'] = {'value': abs(result.params['g1_contrast'].value),
+                                'error': result.params['g1_contrast'].stderr,
+                                'unit': '%'}
+
+    param_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
+                                 'error': result.params['g0_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
+                                 'error': result.params['g1_sigma'].stderr,
+                                 'unit': units[0]}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    return result, param_dict
+
+def estimate_twogaussianoffset_peak(self, x_axis, data, params,
                                 threshold_fraction=0.4, minimal_threshold=0.1,
                                 sigma_threshold_fraction=0.2):
     """ Provide an estimator for a double gaussian peak fit with the parameters
@@ -472,57 +611,7 @@ def estimate_twogausspeakoffset(self, x_axis, data, params,
 
     return error, params
 
-
-
-def make_twogausspeakoffset_fit(self, x_axis, data, units, add_params=None,
-                                threshold_fraction=0.4,
-                                minimal_threshold=0.2,
-                                sigma_threshold_fraction=0.3):
-    """ Perform a 1D two gaussian peak fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-    @param float threshold_fraction : Threshold to find second gaussian
-    @param float minimal_threshold: Threshold is lowerd to minimal this
-                                    value as a fraction
-    @param float sigma_threshold_fraction: Threshold for detecting
-                                           the end of the peak
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    model, params = self.make_multiplegaussoffset_model(no_of_functions=2)
-
-    error, params = self.estimate_twogausspeakoffset(x_axis, data, params,
-                                                     threshold_fraction,
-                                                     minimal_threshold,
-                                                     sigma_threshold_fraction)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = model.fit(data, x=x_axis, params=params)
-    except:
-        result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The double gaussian peak fit did not work: {0}'.format(
-            result.message))
-
-    return result
-
-
-############################################################################
-#                                                                          #
-#                       Two Gaussian Dip Fitting                          #
-#                                                                          #
-############################################################################
-
-def estimate_twogaussdipoffset(self, x_axis, data, params,
+def estimate_twogaussianoffset_dip(self, x_axis, data, params,
                                threshold_fraction=0.4, minimal_threshold=0.1,
                                sigma_threshold_fraction=0.2):
     """ Provide an estimator for a double gaussian dip fit with the parameters
@@ -566,152 +655,61 @@ def estimate_twogaussdipoffset(self, x_axis, data, params,
 
     return error, params
 
+###################################
+# 2D Gaussian with flat offset    #
+###################################
 
-def make_twogaussdipoffset_fit(self, x_axis, data, units, add_params=None,
-                                threshold_fraction=0.4,
-                                minimal_threshold=0.2,
-                                sigma_threshold_fraction=0.3):
-    """ Perform a 1D two gaussian dip fit on the provided data.
+# TODO: I think this has an offset, and it should be named so to be consistent with
+#       the 1D functions.
 
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
+                          estimator="estimate_twoDgaussian_MLE"):
+    """ This method performes a 2D gaussian fit on the provided data.
+
+    @param numpy.array xy_axes: 2D axes values. xy_axes[0] contains x_axis and
+                                xy_axes[1] contains y_axis
+    @param numpy.array data: 2D matrix data, should have the dimension as
+                             len(xy_axes[0]) x len(xy_axes[1]).
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
-    @param float threshold_fraction : Threshold to find second gaussian
-    @param float minimal_threshold: Threshold is lowerd to minimal this
-                                    value as a fraction
-    @param float sigma_threshold_fraction: Threshold for detecting
-                                           the end of the peak
+    @param str estimator: the string should contain the name of the function you
+                           want to use to estimate the parameters. The default
+                           estimator is estimate_twoDgaussian_MLE.
 
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
     """
 
-    model, params = self.make_multiplegaussoffset_model(no_of_functions=2)
+    x_axis, y_axis = xy_axes
 
-    error, params = self.estimate_twogaussdipoffset(x_axis, data, params,
-                                                    threshold_fraction,
-                                                    minimal_threshold,
-                                                    sigma_threshold_fraction)
+    gaussian_2d_model, params = self.make_twoDgaussian_model()
+
+    error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis, y_axis=y_axis,
+                                                   data=data, params=params)
+
+    if estimator is "estimate_twoDgaussian_MLE":
+        error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis,
+                                                       y_axis=y_axis,
+                                                       data=data,
+                                                       params=params)
+    else:
+        error, params = globals()[estimator](0, x_axis=x_axis, y_axis=y_axis,
+                                             data=data, params=params)
+
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = model.fit(data, x=x_axis, params=params)
+        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
     except:
-        result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The double gaussian dip fit did not work: {0}'.format(
-            result.message))
+        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
+        logger.warning('The 2D gaussian fit did not work: {0}'.format(
+                       result.message))
 
-    # Write the parameters to allow human-readable output to be generated
-    param_dict = OrderedDict()
-
-    param_dict['Position 0'] = {'value': result.params['g0_center'].value,
-                             'error': result.params['g0_center'].stderr,
-                             'unit': units[0]}
-
-    param_dict['Position 1'] = {'value': result.params['g1_center'].value,
-                             'error': result.params['g1_center'].stderr,
-                             'unit': units[0]}
-
-    param_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
-                                'error': result.params['g0_contrast'].stderr,
-                                'unit': '%'}
-
-    param_dict['Contrast 1'] = {'value': abs(result.params['g1_contrast'].value),
-                                'error': result.params['g1_contrast'].stderr,
-                                'unit': '%'}
-
-    param_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
-                                 'error': result.params['g0_sigma'].stderr,
-                                 'unit': units[0]}
-
-    param_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
-                                 'error': result.params['g1_sigma'].stderr,
-                                 'unit': units[0]}
-
-    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-    return result, param_dict
-
-
-############################################################################
-#                                                                          #
-#                            2D gaussian model                             #
-#                                                                          #
-############################################################################
-
-def make_twoDgaussian_model(self, prefix=None):
-    """ Creates a model of the 2D gaussian function.
-
-    @param str prefix: optional, if multiple models should be used in a
-                       composite way and the parameters of each model should be
-                       distinguished from each other to prevent name collisions.
-
-    @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
-
-    """
-
-    def twoDgaussian_function(x, amplitude, center_x, center_y, sigma_x, sigma_y,
-                              theta, offset):
-        """ Provide a two dimensional gaussian function.
-
-        @param float amplitude: Amplitude of gaussian
-        @param float center_x: x value of maximum
-        @param float center_y: y value of maximum
-        @param float sigma_x: standard deviation in x direction
-        @param float sigma_y: standard deviation in y direction
-        @param float theta: angle for eliptical gaussians
-        @param float offset: offset
-
-        @return callable function: returns the reference to the function
-
-        Function taken from:
-        http://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m/21566831
-
-        Question from: http://stackoverflow.com/users/2097737/bland
-                       http://stackoverflow.com/users/3273102/kokomoking
-                       http://stackoverflow.com/users/2767207/jojodmo
-        Answer: http://stackoverflow.com/users/1461210/ali-m
-                http://stackoverflow.com/users/5234/mrjrdnthms
-        """
-
-        #FIXME: x_data_tuple: dimension of arrays
-        # @param np.arra[k][M] x_data_tuple: array which is (k,M)-shaped,
-        #                                   x and y values
-
-        (u, v) = x
-        center_x = float(center_x)
-        center_y = float(center_y)
-
-        a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) \
-            + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
-        b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) \
-            + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
-        c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
-            + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
-        g = offset + amplitude * np.exp(- (a * ((u - center_x) ** 2) \
-                                           + 2 * b * (u - center_x) * (v - center_y) \
-                                           + c * ((v - center_y) ** 2)))
-        return g.ravel()
-
-    if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
-        gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x')
-    else:
-        gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x',
-                               prefix=prefix)
-
-    params = gaussian_2d_model.make_params()
-
-    return gaussian_2d_model, params
-
+    return result
 
 def estimate_twoDgaussian(self, x_axis, y_axis, data, params):
     """ Provide a simple two dimensional gaussian function.
@@ -745,8 +743,6 @@ def estimate_twoDgaussian(self, x_axis, y_axis, data, params):
     sigma_y = (y_axis.max() - y_axis.min()) / 3.
     theta = 0.0
     offset = float(data.min())
-
-
 
     # check for sensible values
     parameters = [x_axis, y_axis, data]
@@ -786,7 +782,6 @@ def estimate_twoDgaussian(self, x_axis, y_axis, data, params):
     params['offset'].set(value=offset, min=0, max=1e7)
 
     return error, params
-
 
 def estimate_twoDgaussian_MLE(self, x_axis, y_axis, data, params):
     """ Provide an estimator for 2D gaussian based on maximum likelihood estimation.
@@ -859,56 +854,3 @@ def estimate_twoDgaussian_MLE(self, x_axis, y_axis, data, params):
     params['offset'].set(value=offset, min=0, max=1e7)
 
     return error, params
-
-
-def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
-                          estimator="estimate_twoDgaussian_MLE"):
-    """ This method performes a 2D gaussian fit on the provided data.
-
-    @param numpy.array xy_axes: 2D axes values. xy_axes[0] contains x_axis and
-                                xy_axes[1] contains y_axis
-    @param numpy.array data: 2D matrix data, should have the dimension as
-                             len(xy_axes[0]) x len(xy_axes[1]).
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-    @param str estimator: the string should contain the name of the function you
-                           want to use to estimate the parameters. The default
-                           estimator is estimate_twoDgaussian_MLE.
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-
-    x_axis, y_axis = xy_axes
-
-    gaussian_2d_model, params = self.make_twoDgaussian_model()
-
-    error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis, y_axis=y_axis,
-                                                   data=data, params=params)
-
-    if estimator is "estimate_twoDgaussian_MLE":
-        error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis,
-                                                       y_axis=y_axis,
-                                                       data=data,
-                                                       params=params)
-    else:
-        error, params = globals()[estimator](0, x_axis=x_axis, y_axis=y_axis,
-                                             data=data, params=params)
-
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
-    except:
-        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
-        logger.warning('The 2D gaussian fit did not work: {0}'.format(
-                       result.message))
-
-    return result
-
-
-
