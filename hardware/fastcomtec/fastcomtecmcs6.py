@@ -426,28 +426,6 @@ class FastComtec(Base, FastCounterInterface):
     #   internal methods/function, because they might be important one day.
     # =========================================================================
 
-#    def get_range(self):
-#        """Get the range of the current measurement.
-#
-#          @return list(length,bytelength): length is the current length of the
-#                                           measurement and bytelength is the
-#                                           length in byte.
-#        """
-#        return self.get_length(), self.MINIMAL_BINWIDTH * 2**self.get_bitshift()
-
-
-    def SetSoftwareStart(self,b):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        if b:
-            setting.sweepmode = setting.sweepmode |  int('10000',2)
-            setting.sweepmode = setting.sweepmode &~ int('10000000',2)
-        else:
-            setting.sweepmode = setting.sweepmode &~ int('10000',2)
-            setting.sweepmode = setting.sweepmode |  int('10000000',2)
-        self.dll.StoreSettingData(ctypes.byref(setting), 0)
-        self.dll.NewSetting(0)
-
     def SetDelay(self, t):
         #~ setting = AcqSettings()
         #~ self.dll.GetSettingData(ctypes.byref(setting), 0)
@@ -461,55 +439,6 @@ class FastComtec(Base, FastCounterInterface):
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return setting.fstchan * 6.4
-
-    # def Start(self):
-    #     self.dll.Start(0)
-    #     status = AcqStatus()
-    #     status.started = 0
-    #     while not status.started:
-    #         time.sleep(0.1)
-    #         self.dll.GetStatusData(ctypes.byref(status), 0)
-
-
-    def Erase(self):
-        self.dll.Erase(0)
-
-    def GetData2(self, bins, length):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        N = setting.range
-        data = np.empty((N,), dtype=np.uint32 )
-        self.dll.LVGetDat(data.ctypes.data, 0)
-        data2 = []
-        for bin in bins:
-            data2.append(data[bin:bin+length])
-        return np.array(data2)
-
-    def SaveData_fast(self, filename, laser_index):
-        # os.chdir(r'D:\data\FastComTec')
-        data = self.get_data()
-        fil = open(filename + '.asc', 'w')
-        for i in laser_index:
-            for n in data[i:i+int(round(3000/(0.1*2**self.GetBitshift())))+int(round(1000/(0.1*2**self.GetBitshift())))]:
-                fil.write('{0!s}\n'.format(n))
-        fil.close()
-
-    def SaveData(self, filename):
-        # os.chdir(r'D:\data\FastComTec')
-        data = self.get_data()
-        fil = open(filename + '.asc', 'w')
-        for n in data:
-            fil.write('{0!s}\n'.format(n))
-        fil.close()
-
-    def GetState(self):
-        status = AcqStatus()
-        self.dll.GetStatusData(ctypes.byref(status), 0)
-        return status.runtime, status.sweeps
-
-    def Running(self):
-        s = self.GetStatus()
-        return s.started
 
     def SetLevel(self, start, stop):
         setting = AcqSettings()
@@ -529,16 +458,3 @@ class FastComtec(Base, FastCounterInterface):
             return (word & int('ffff',16)) * 4.096 / int('ffff',16) - 2.048
         return WordToFloat(setting.dac0), WordToFloat(setting.dac1)
 
-    def ReadSetting(self):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        return setting
-
-    def WriteSetting(self, setting):
-        self.dll.StoreSettingData(ctypes.byref(setting), 0)
-        self.dll.NewSetting(0)
-
-    def GetStatus(self):
-        status = AcqStatus()
-        self.dll.GetStatusData(ctypes.byref(status), 0)
-        return status
