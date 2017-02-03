@@ -325,8 +325,8 @@ class SamplesWriteMethods():
         channel_number = digital_samples.shape[0]
         # FIXME: Also allow for single channel to be specified. Set all others to zero.
         if channel_number != 8:
-            self.log.error('FPGA pulse generator needs 8 digital channels. '
-                    '{0} is not allowed!'.format(channel_number))
+            self.log.error('FPGA pulse generator needs 8 digital channels. {0} is not allowed!'
+                           ''.format(channel_number))
             return -1
 
         # encode channels into FPGA samples (bytes)
@@ -335,9 +335,8 @@ class SamplesWriteMethods():
             # calculate number of zero timeslots to append
             number_of_zeros = 32 - (total_number_of_samples % 32)
             encoded_samples = np.zeros(chunk_length_bins + number_of_zeros, dtype='uint8')
-            self.log.warning('FPGA pulse sequence length is no integer '
-                    'multiple of 32 samples. Appending {0} zero-samples to '
-                    'the sequence.'.format(number_of_zeros))
+            self.log.warning('FPGA pulse sequence length is no integer multiple of 32 samples. '
+                             'Appending {0} zero-samples to the sequence.'.format(number_of_zeros))
         else:
             encoded_samples = np.zeros(chunk_length_bins, dtype='uint8')
 
@@ -395,6 +394,7 @@ class SamplesWriteMethods():
             # write main part:
             # in this order: 'waveform_name', repeat, wait, Goto, ejump
             for seq_param_dict in sequence_param:
+                print(seq_param_dict)
                 repeat = seq_param_dict['repetitions']
                 trigger_wait = seq_param_dict['trigger_wait']
                 go_to = seq_param_dict['go_to']
@@ -424,8 +424,7 @@ class SamplesWriteMethods():
             seq_file.write(footer.encode('UTF-8'))
 
     # TODO: Implement this method.
-    def _write_seqx(self, name, analog_samples, digital_samples, total_number_of_samples,
-                   is_first_chunk, is_last_chunk):
+    def _write_seqx(self, name, sequence_param):
         """
         Write a sequence to a seqx-file.
 

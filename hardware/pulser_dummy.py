@@ -283,6 +283,37 @@ class PulserDummy(Base, PulserInterface):
         self.log.info('PulserDummy: Switch off the Output.')
         return self.current_status
 
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
+        @return:
+        """
+        filename = ensemble_name + '.' + self.compatible_waveform_format
+        if filename not in self.uploaded_files_list:
+            self.uploaded_files_list.append(filename)
+        if ensemble_name not in self.uploaded_assets_list:
+            self.uploaded_assets_list.append(ensemble_name)
+        self.log.info('Ensemble "{0}" directly written on dummy pulser.'.format(ensemble_name))
+        return 0
+
+    def direct_write_sequence(self, sequence_name, sequence_params):
+        """
+
+        @param sequence_name:
+        @param sequence_params:
+        @return:
+        """
+        filename = sequence_name + '.' + self.compatible_sequence_format
+        if filename not in self.uploaded_files_list:
+            self.uploaded_files_list.append(filename)
+        if sequence_name not in self.uploaded_assets_list:
+            self.uploaded_assets_list.append(sequence_name)
+        self.log.info('Sequence "{0}" directly written on dummy pulser.'.format(sequence_name))
+        return 0
+
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device.
             Does NOT load it into channels.

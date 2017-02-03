@@ -614,20 +614,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
-    def upload_sequence(self, seq_name):
-        """ Upload a sequence and all its related files
-
-        @param str seq_name: name of the sequence to be uploaded
-        """
-        current_sequence = self.get_pulse_sequence(seq_name)
-
-        for ensemble_name in current_sequence.get_sampled_ensembles():
-            self._pulse_generator_device.upload_asset(ensemble_name)
-        err = self._pulse_generator_device.upload_asset(seq_name)
-        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
-        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
-        return err
-
     def has_sequence_mode(self):
         """ Retrieve from the hardware, whether sequence mode is present or not.
 
@@ -659,6 +645,34 @@ class PulsedMeasurementLogic(GenericLogic):
         # set the loaded_asset_name variable.
         self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
+        return err
+
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
+        @return:
+        """
+        err = self._pulse_generator_device.direct_write_ensemble(ensemble_name,
+                                                                 analog_samples, digital_samples)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(ensemble_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
+        return err
+
+    def direct_write_sequence(self, sequence_name, sequence_params):
+        """
+
+        @param sequence_name:
+        @param sequence_params:
+        @return:
+        """
+        err = self._pulse_generator_device.direct_write_sequence(sequence_name, sequence_params)
+        uploaded_assets = self._pulse_generator_device.get_uploaded_asset_names()
+        self.sigUploadAssetComplete.emit(sequence_name)
+        self.sigUploadedAssetsUpdated.emit(uploaded_assets)
         return err
 
     ############################################################################
@@ -1002,7 +1016,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def save_measurement_data(self, tag=None):
+    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -1039,12 +1053,12 @@ class PulsedMeasurementLogic(GenericLogic):
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
             data_array[2, :] = self.signal_plot_y2
-            data['Tau (s), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
+            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
         else:
             data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
-            data['Tau (s), Signal (norm.)'] = data_array.transpose()
+            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.)'] = data_array.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1061,7 +1075,7 @@ class PulsedMeasurementLogic(GenericLogic):
         ax1.plot(self.signal_plot_x, self.signal_plot_y)
         if self.alternating:
             ax1.plot(self.signal_plot_x, self.signal_plot_y2)
-        ax1.set_xlabel('x-axis')
+        ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
         # ax1.set_xlim(self.plot_domain)
         # ax1.set_ylim(self.plot_range)
