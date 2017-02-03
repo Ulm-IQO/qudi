@@ -24,9 +24,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-#Not written modules:
-#TODO: get_status
-
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
 import time
@@ -272,7 +269,6 @@ class FastComtec(Base, FastCounterInterface):
         """
         return self.MINIMAL_BINWIDTH*(2**int(self.get_bitshift()))
 
-    #card if running or halt or stopped ...
     def get_status(self):
         """
         Receives the current status of the Fast Counter and outputs it as return value.
