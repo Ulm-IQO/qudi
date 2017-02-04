@@ -90,11 +90,23 @@ class PulseAnalysisLogic(GenericLogic):
         # loop over all laser pulses and analyze them
         for ii in range(num_of_lasers):
             # calculate the mean of the data in the normalization window
-            reference_mean[ii] = laser_data[ii][norm_start_bin:norm_end_bin].mean()
+            norm_tmp_data = laser_data[ii][norm_start_bin:norm_end_bin]
+            if np.sum(norm_tmp_data) < 1:
+                reference_mean[ii] = 0.0
+            else:
+                reference_mean[ii] = norm_tmp_data.mean()
             # calculate the mean of the data in the signal window
-            signal_mean[ii] = (laser_data[ii][signal_start_bin:signal_end_bin] - reference_mean[ii]).mean()
+            signal_tmp_data = laser_data[ii][signal_start_bin:signal_end_bin]
+            if np.sum(signal_tmp_data) < 1:
+                signal_mean[ii] = 0.0
+            else:
+                signal_mean[ii] = signal_tmp_data.mean() - reference_mean[ii]
             # update the signal plot y-data
-            signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
+            if reference_mean[ii] == 0.0:
+                signal_data[ii] = 0.0
+            else:
+                signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
+
 
         # Compute the measuring error
         for jj in range(num_of_lasers):

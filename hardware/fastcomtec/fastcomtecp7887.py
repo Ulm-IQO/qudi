@@ -24,9 +24,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-#Not written modules:
-#TODO: get_status
-
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
 import time
@@ -167,7 +164,9 @@ class FastComtec(Base, FastCounterInterface):
 
         self.GATED = False
         self.MINIMAL_BINWIDTH = 0.25e-9    # in seconds per bin
-
+        #this variable has to be added because there is no difference
+        #in the fastcomtec it can be on "stopped" or "halt"
+        self.stopped_or_halt = "stopped"
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -235,8 +234,7 @@ class FastComtec(Base, FastCounterInterface):
 
         return constraints
 
-
-    def configure(self, bin_width_s, record_length_s, number_of_gates = 0,SSR=None, preset=None, cycles=None):
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0,sweep_reset=False, preset=None, cycles=None):
         """ Configuration of the fast counter.
 
         @param float bin_width_s: Length of a single time bin in the time trace
@@ -253,9 +251,11 @@ class FastComtec(Base, FastCounterInterface):
         """
 
         binwidth_s = self.set_binwidth(bin_width_s)
-        self.length_ns = record_length_s
         no_of_bins = record_length_s / binwidth_s
-        self.set_length(no_of_bins,SSR=SSR, preset=preset, cycles=cycles)
+        if sweep_reset:
+            self.set_length(no_of_bins, preset=preset, cycles=cycles)
+        else:
+            self.set_length(no_of_bins)
         return (self.get_binwidth(), record_length_s, number_of_gates)
 
     def get_binwidth(self):
@@ -269,52 +269,64 @@ class FastComtec(Base, FastCounterInterface):
         return self.MINIMAL_BINWIDTH*(2**int(self.get_bitshift()))
 
     def get_status(self):
-        """ Receives the current status of the Fast Counter and outputs it as return value."""
-        return 2
+        """
+        Receives the current status of the Fast Counter and outputs it as return value.
+        0 = unconfigured
+        1 = idle
+        2 = running
+        3 = paused
+        -1 = error state
+        """
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        if status.started == 1:
+            return 2
+        elif status.started == 0:
+            if self.stopped_or_halt == "stopped":
+                return 1
+            elif self.stopped_or_halt == "halt":
+                return 3
+            else:
+                self.log.error('There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
 
-#    TODO: What should the status be it asks for something with binwidth but in the interface there is only the status of
-    #card if running or halt or stopped ...
-    # def get_status(self):
-    #     #TODO: Find out if it is possible to get the status for other modes
-    #     """
-    #     Receives the current status of the Fast Counter and outputs it as return value.
-    #     0 = unconfigured
-    #     1 = idle
-    #     2 = running
-    #     3 = paused
-    #     -1 = error state
-    #     """
-    #     status = AcqStatus()
-    #     self.dll.GetStatusData(ctypes.byref(status), 0)
-    #     if status.started == 0:
-    #         return 0
-    #     if status.started == 1:
-    #         return 2
-    #     else:
-    #         self.log.error('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)))
-    #         return -1
+                return -1
+        else:
+            self.log.error(
+                'There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+            return -1
+
 
     def start_measure(self):
         """Start the measurement. """
-        self.dll.Start(0)
-        return 0
+        status = self.dll.Start(0)
+        while self.get_status() != 2:
+            time.sleep(0.05)
+        return status
 
     def pause_measure(self):
         """Make a pause in the measurement, which can be continued. """
-        self.dll.Halt(0)
-        return 0
+        self.stopped_or_halt = "halt"
+        status = self.dll.Halt(0)
+        while self.get_status() != 3:
+            time.sleep(0.05)
+        return status
 
     def stop_measure(self):
         """Stop the measurement. """
-        self.dll.Halt(0)
-        return 0
+        self.stopped_or_halt = "stopped"
+        status = self.dll.Halt(0)
+        while self.get_status() != 1:
+            time.sleep(0.05)
+        return status
 
     def continue_measure(self):
         """Continue a paused measurement. """
-        self.dll.Continue(0)
-        return 0
+        status = self.dll.Continue(0)
+        while self.get_status() != 2:
+            time.sleep(0.05)
+        return status
 
-    def get_data_trace(self, SSR=None):
+    def get_data_trace(self, sweep_reset=None):
         """
         Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
         The binning specified by calling configure() must be taken care of in this hardware class.
@@ -333,20 +345,13 @@ class FastComtec(Base, FastCounterInterface):
         If this variable is selected, the data is an array of size 'range'.'cycles'. I.e. each
         measurement of length 'range' is repeated 'cycles' number of times.
         """
-        if SSR:
+        if sweep_reset:
             H = setting.cycles
             data = np.empty((H, N / H), dtype=np.uint32)
-            #fname = str(time.localtime().tm_year) + str(time.localtime().tm_mon) + str(
-            #    time.localtime().tm_mday) + '_' + str(
-            #    time.localtime().tm_hour) + 'h' + str(time.localtime().tm_min) + 'm' + str(
-            #    time.localtime().tm_sec) + 's'
-            #np.savetxt(r'C://Users/Admin/Desktop/Programme/qudi-master/Data_SSR/SSR_' + fname, np.int64(data))
-
         else:
             data = np.empty((N,), dtype=np.uint32)
 
         self.dll.LVGetDat(data.ctypes.data, 0)
-        #np.savetxt(np.int64(data))
         return np.int64(data)
 
 
@@ -405,8 +410,17 @@ class FastComtec(Base, FastCounterInterface):
 
         return self.MINIMAL_BINWIDTH*(2**new_bitshift)
 
+    def get_settings(self):
+        """ get defined axis nanoseconds or bins
+        @return float: settings class object
+
+        """
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        return setting
+
     #TODO: Check such that only possible lengths are set.
-    def set_length(self, N, SSR=None, preset=None, cycles=None):
+    def set_length(self, N, preset=10000000, cycles=1):
         """ Sets the length of the length of the actual measurement.
 
         @param int N: Length of the measurement
@@ -414,10 +428,9 @@ class FastComtec(Base, FastCounterInterface):
         @return float: Red out length of measurement
         """
 
-        width=self.get_binwidth()*1e9
-        cmd = 'RANGE={0}'.format(int(width*N))
+        cmd = 'RANGE={0}'.format(int(N))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd = 'roimax={0}'.format(int(width*N))
+        cmd = 'roimax={0}'.format(int(N))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
         """ SSR is an optional variable to setup the fastcomtec and allow single-shot readout.
@@ -426,17 +439,10 @@ class FastComtec(Base, FastCounterInterface):
         of times and all photons summed together before a new measurement is started on a new
         row of fastcomtec data. In total 'cycles' number of rows are measured.
         """
-        if SSR:
-            cmd = 'swpreset={0}'.format(preset)
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'cycles={0}'.format(cycles)
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        else:
-            cmd = 'swpreset={0}'.format(10000000)
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'cycles={0}'.format(1)
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-
+        cmd = 'swpreset={0}'.format(preset)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        cmd = 'cycles={0}'.format(cycles)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
         return self.get_length()
 
@@ -454,28 +460,6 @@ class FastComtec(Base, FastCounterInterface):
     #   internal methods/function, because they might be important one day.
     # =========================================================================
 
-#    def get_range(self):
-#        """Get the range of the current measurement.
-#
-#          @return list(length,bytelength): length is the current length of the
-#                                           measurement and bytelength is the
-#                                           length in byte.
-#        """
-#        return self.get_length(), self.MINIMAL_BINWIDTH * 2**self.get_bitshift()
-
-
-    def SetSoftwareStart(self,b):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        if b:
-            setting.sweepmode = setting.sweepmode |  int('10000',2)
-            setting.sweepmode = setting.sweepmode &~ int('10000000',2)
-        else:
-            setting.sweepmode = setting.sweepmode &~ int('10000',2)
-            setting.sweepmode = setting.sweepmode |  int('10000000',2)
-        self.dll.StoreSettingData(ctypes.byref(setting), 0)
-        self.dll.NewSetting(0)
-
     def SetDelay(self, t):
         #~ setting = AcqSettings()
         #~ self.dll.GetSettingData(ctypes.byref(setting), 0)
@@ -490,30 +474,9 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return setting.fstchan * 6.4
 
-    # def Start(self):
-    #     self.dll.Start(0)
-    #     status = AcqStatus()
-    #     status.started = 0
-    #     while not status.started:
-    #         time.sleep(0.1)
-    #         self.dll.GetStatusData(ctypes.byref(status), 0)
 
-
-    def Erase(self):
-        self.dll.Erase(0)
-
-    def GetData2(self, bins, length):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        N = setting.range
-        data = np.empty((N,), dtype=np.uint32 )
-        self.dll.LVGetDat(data.ctypes.data, 0)
-        data2 = []
-        for bin in bins:
-            data2.append(data[bin:bin+length])
-        return np.array(data2)
-
-    def SaveData_fast(self, filename, laser_index):
+    #former SaveData_fast
+    def SaveData_locally(self, filename, laser_index):
         # os.chdir(r'D:\data\FastComTec')
         data = self.get_data()
         fil = open(filename + '.asc', 'w')
@@ -522,23 +485,6 @@ class FastComtec(Base, FastCounterInterface):
                     +int(round(1000/(self.MINIMAL_BINWIDTH*2**self.GetBitshift())))]:
                 fil.write('{0!s}\n'.format(n))
         fil.close()
-
-    def SaveData(self, filename):
-        # os.chdir(r'D:\data\FastComTec')
-        data = self.get_data()
-        fil = open(filename + '.asc', 'w')
-        for n in data:
-            fil.write('{0!s}\n'.format(n))
-        fil.close()
-
-    def GetState(self):
-        status = AcqStatus()
-        self.dll.GetStatusData(ctypes.byref(status), 0)
-        return status.runtime, status.sweeps
-
-    def Running(self):
-        s = self.GetStatus()
-        return s.started
 
     def SetLevel(self, start, stop):
         setting = AcqSettings()
@@ -558,14 +504,11 @@ class FastComtec(Base, FastCounterInterface):
             return (word & int('ffff',16)) * 4.096 / int('ffff',16) - 2.048
         return WordToFloat(setting.dac0), WordToFloat(setting.dac1)
 
-    def ReadSetting(self):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        return setting
-
-    def WriteSetting(self, setting):
-        self.dll.StoreSettingData(ctypes.byref(setting), 0)
-        self.dll.NewSetting(0)
+    #used in one script for SSR
+    #Todo: Remove
+    def Running(self):
+        s = self.GetStatus()
+        return s.started
 
     def GetStatus(self):
         status = AcqStatus()
