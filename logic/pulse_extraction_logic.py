@@ -145,6 +145,7 @@ class PulseExtractionLogic(GenericLogic):
             laser pulse (rule of thumb: conv_std_dev < laser_length/10).
         """
 
+        return_dict = {}
         # apply gaussian filter to remove noise and compute the gradient of the
         # timetrace
 
@@ -247,7 +248,15 @@ class PulseExtractionLogic(GenericLogic):
                 laser_arr[i, 0:lenarr] = count_data[rising_ind[i]:]
             else:
                 laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
-        return laser_arr.astype(int)
+
+            # give back rising and falling edge of laser pulses
+
+        laser_y = laser_arr
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 
     def _convolve_derive(self, data, std_dev):
         """ Smooth the input data by applying a gaussian filter.
@@ -304,6 +313,7 @@ class PulseExtractionLogic(GenericLogic):
         """
 
         # initialize
+        return_dict = {}
         x_data = []
         y_data = []
         laser_x = []
@@ -346,16 +356,22 @@ class PulseExtractionLogic(GenericLogic):
                 laser_x[jj]=np.append(laser_x[jj],laser_x[jj][-1]+1)
                 laser_y[jj]=np.append(laser_y[jj],laser_y[jj][-1])
 
-        #FIXME: It should be possible to return laser_x aswell but therefor
-        #FIXME: the functions above also would have to be changed
 
-        laser_arr=np.asarray(laser_y)
+        laser_y = np.asarray(laser_y)
+        laser_x = np.asarray(laser_x)
 
-        return laser_arr.astype(int)
+        rising_ind = np.array([i[0] for i in laser_x])
+        falling_ind = np.array([i[-1] for i in laser_y])
+
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 
     def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
 
-
+        return_dict = {}
         laser_x = []
         laser_y = []
 
@@ -379,9 +395,17 @@ class PulseExtractionLogic(GenericLogic):
 
 
 
-        laser_arr=np.asarray(laser_y)
+        laser_y = np.asarray(laser_y)
+        laser_x = np.asarray(laser_x)
 
         self.log.debug(laser_y)
 
-        return laser_arr.astype(int)
+        rising_ind = np.array([i[0] for i in laser_x])
+        falling_ind = np.array([i[-1] for i in laser_y])
+
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 
