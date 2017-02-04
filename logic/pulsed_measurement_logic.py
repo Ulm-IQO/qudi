@@ -149,12 +149,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
 
-        # for ssr fastcomtech
-
-        self.ssr_fastcomtec = False
-        self.fastcomtec_preset = 10000000
-        self.fastcomtec_cycles = 1
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -333,10 +327,8 @@ class PulsedMeasurementLogic(GenericLogic):
             number_of_gates = self.number_of_lasers
         else:
             number_of_gates = 0
-        if self.ssr_fastcomtec:
-            actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates, self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles)
-        else:
-            actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
+
+        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , self.fast_counter_record_length, number_of_gates)
         # use the actual parameters returned by the hardware
         self.fast_counter_binwidth = actual_binwidth_s
         self.fast_counter_record_length = actual_recordlength_s
@@ -442,27 +434,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_status = self._fast_counter_device.get_status()
         return error_code
 
-    def set_ssr_fastcomtec(self,ssr_fastcomtec,preset,cycles):
-        """
-        Adjust fast counter settings
-
-        @param ssr_fastcomtec: boolean, which sets the mode of the fastcomtec ( normal counting /
-         single shot measurement )
-        @param preset: set the number of time you want to add up one row in the fastcomtec
-        in normal pulsed measurements this is set to 1000000, as one isn't interested
-        in the pulsed data at different points in time
-        @param cycles: In normal gated counting set to 1, otherwise decide how many
-        data points you want to have in your single shot measurement
-        @return:
-        """
-        self.ssr_fastcomtec=ssr_fastcomtec
-        self.fastcomtec_preset=preset
-        self.fastcomtec_cycles=cycles
-        self.configure_fast_counter()
-        return
-
-    def get_ssr_fastcomtec(self):
-        return self.ssr_fastcomtec, self.fastcomtec_preset, self.fastcomtec_cycles
     ############################################################################
 
 
@@ -766,9 +737,11 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.laser_data = self._pulse_extraction_logic.gated_extraction(self.raw_data,
                                                                                     self.conv_std_dev)
                 else:
-                    self.laser_data = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
-                                                                                      self.conv_std_dev,
-                                                                                      self.number_of_lasers)
+                    return_dict = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
+                                                                                  self.conv_std_dev,
+                                                                                  self.number_of_lasers)
+                    self.laser_data = return_dict['laser_arr_y']
+
                 # analyze pulses and get data points for signal plot
                 tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
                                                                                 norm_start, norm_end,
