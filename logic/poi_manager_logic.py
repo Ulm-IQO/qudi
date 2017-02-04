@@ -52,10 +52,7 @@ class PoI:
 
         # To avoid duplication while algorithmically setting POIs, we need the key string to
         # go to sub-second. This requires the datetime module.
-
         self._creation_time = datetime.now()
-
-        print(key)
 
         if key is None:
             self._key = self._creation_time.strftime('poi_%Y%m%d_%H%M_%S_%f')
@@ -214,9 +211,7 @@ class PoiManagerLogic(GenericLogic):
         """
 
         self._optimizer_logic = self.get_in_connector('optimizer1')
-#        print("Optimizer Logic is", self._optimizer_logic)
         self._confocal_logic = self.get_in_connector('scannerlogic')
-#        print("Confocal Logic is", self._confocal_logic)
         self._save_logic = self.get_in_connector('savelogic')
 
         # initally add crosshair to the pois
@@ -322,7 +317,7 @@ class PoiManagerLogic(GenericLogic):
 
         else:
             # TODO: produce sensible error about unknown value of abc_sort.
-            print('fix TODO!')
+            self.log.debug('fix TODO!')
 
         # TODO: Find a way to return a list of POI keys sorted in order of the POI names.
 
@@ -362,11 +357,13 @@ class PoiManagerLogic(GenericLogic):
         if poikey is not None and poikey in self.track_point_list.keys():
             self.track_point_list['crosshair'].add_position_to_trace(position=self._confocal_logic.get_position())
             self._current_poi_key = poikey
-            self._optimizer_logic.start_refocus(initial_pos=self.get_poi_position(poikey=poikey), caller_tag='poimanager')
+            self._optimizer_logic.start_refocus(
+                initial_pos=self.get_poi_position(poikey=poikey),
+                caller_tag='poimanager')
             return 0
         else:
-            self.log.error('Z. The given POI ({0}) does not exist.'.format(
-                poikey))
+            self.log.error(
+                'Z. The given POI ({0}) does not exist.'.format(poikey))
             return -1
 
     def go_to_poi(self, poikey=None):
@@ -723,7 +720,12 @@ class PoiManagerLogic(GenericLogic):
         data['Y'] = y_coords
         data['Z'] = z_coords
 
-        self._save_logic.save_data(data, filepath, filelabel=self.roi_name, as_text=True)
+        self._save_logic.save_data(
+            data,
+            filepath,
+            filelabel=self.roi_name,
+            precision=':.3e',
+            as_text=True)
 
         self.log.debug('ROI saved to:\n{0}'.format(filepath))
 

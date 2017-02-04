@@ -67,17 +67,21 @@ class NIPulser(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
+        self.pulser_task = daq.TaskHandle()
+        daq.DAQmxCreateTask('NI Pulser', daq.byref(self.pulser_task))
+
         self.current_status = -1
         self.current_loaded_asset = None
-        self.sample_rate = self.get_sample_rate()
-
+        self.init_constraints()
+        #self.sample_rate = self.get_sample_rate()
 
     def on_deactivate(self, e):
-        pass
+        self.close_pulser_task()
 
     def init_constraints(self):
         device = self.device
         constraints = {}
+        ch_map = OrderedDict()
 
         n = 2048
         ao_max_freq = daq.float64()
@@ -127,6 +131,12 @@ class NIPulser(Base, PulserInterface):
         daq.DAQmxGetDevProductCategory(device, daq.byref(product_cat))
         self.log.debug(product_cat.value)
 
+        for n, ch in enumerate(analog_channels):
+            ch_map['a_ch{0:d}'.format(n+1)] = ch
+
+        for n, ch in enumerate(digital_channels):
+            ch_map['d_ch{0:d}'.format(n+1)] = ch
+
         constraints['sample_rate'] = {
             'min': ao_min_freq.value,
             'max': ao_max_freq.value,
@@ -161,13 +171,13 @@ class NIPulser(Base, PulserInterface):
             'step': 0.0,
             'unit': 'V'}
         constraints['sampled_file_length'] = {
-            'min': 0,
-            'max': 0,
+            'min': 2,
+            'max': 1e12,
             'step': 0,
             'unit': 'Samples'}
         constraints['digital_bin_num'] = {
-            'min': 1,
-            'max': 0,
+            'min': 2,
+            'max': 1e12,
             'step': 0,
             'unit': '#'}
         constraints['waveform_num'] = {
@@ -192,10 +202,33 @@ class NIPulser(Base, PulserInterface):
         constraints['sequence_param'] = sequence_param
         
         activation_config = OrderedDict()
-        activation_config['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
+        activation_config['analog_only'] = [k for k in ch_map.keys() if k.startswith('a')]
+        activation_config['digital_only'] = [k for k in ch_map.keys() if k.startswith('d')]
+        activation_config['stuff'] = ['a_ch4', 'd_ch1', 'd_ch2', 'd_ch3', 'd_ch4']
         constraints['activation_config'] = activation_config
 
+        self.channel_map = ch_map
         self.constraints = constraints
+
+    def close_pulser_task(self):
+        """ Clear tasks.
+        @return int: error code (0:OK, -1:error)
+        """
+        retval = 0
+        try:
+            # stop the task
+            daq.DAQmxStopTask(self.pulser_task)
+        except:
+            self.log.exception('Error while closing NI pulser.')
+            retval = -1
+        try:
+            # clear the task
+            daq.DAQmxClearTask(self.pulser_task)
+            self._gated_counter_daq_task = None
+        except:
+            self.log.exception('Error while clearing NI pulser.')
+            retval = -1
+        return retval
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Pulsing device.
@@ -209,14 +242,14 @@ class NIPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        daq.DAQmxStartTask(self.pulser_task)
 
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        daq.DAQmxStopTask(self.pulser_task)
 
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device mass memory.
@@ -454,8 +487,13 @@ class NIPulser(Base, PulserInterface):
         """
         bufsize = 2048
         buf = ctypes.create_string_buffer(bufsize)
-        daq.DAQmxGetTaskChannels(task, buf, bufsize)
-        return str(buf.value, encoding='utf-8').split()
+        daq.DAQmxGetTaskChannels(self.pulser_task, buf, bufsize)
+        ni_ch = str(buf.value, encoding='utf-8').split()
+
+        if ch is None:
+            return {k: v in ni_ch for k, v in self.channel_map.items()}
+        else:
+            return {k: self.channel_map[k] in ni_ch for k in ch}
 
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
@@ -478,7 +516,29 @@ class NIPulser(Base, PulserInterface):
 
         The hardware itself has to handle, whether separate channel activation is possible.
         """
-        pass
+
+        a_names = [k for k in ch.keys() if k.startswith('a')]
+        a_names.sort()
+        a_channels = [self.channel_map[k] for k in a_names]
+
+        d_names = [k for k in ch.keys() if k.startswith('d')]
+        d_names.sort()
+        d_channels = [self.channel_map[k] for k in d_names]
+
+        daq.DAQmxCreateAOVoltageChan(
+            self.pulser_task,
+            ', '.join(a_channels),
+            ', '.join(a_names),
+            min_volts,
+            max_volts,
+            daq.DAQmx_Val_Volts,
+            '')
+
+        daq.DAQmxCreateDOChan(
+            self.pulser_task,
+            d_channels,
+            d_names,
+            daq.DAQmx_Val_ChanForAllLines)
 
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.

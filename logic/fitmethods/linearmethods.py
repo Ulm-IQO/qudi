@@ -19,7 +19,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 
@@ -27,8 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 from lmfit.models import Model
 import numpy as np
-from lmfit import Parameters
-import math
+
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -36,8 +34,12 @@ import math
 ############################################################################
 
 def make_constant_model(self, prefix=None):
-    """ This method creates a model of a constant model.
-    @param string prefix: variable prefix
+    """ Create constant model.
+
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
     @return tuple: (object model, object params)
 
@@ -56,214 +58,197 @@ def make_constant_model(self, prefix=None):
     http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
     """
     def constant_function(x, offset):
+        """ Function of a constant value.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float offset: constant offset
+
+        @return: constant function, in order to use it as a model
         """
-        Function of a constant value.
-        @param x: variable variable
-        @param offset: independent variable - e.g. offset
 
-        @return: constant function: in order to use it as a model
-        """
+        return offset
 
-        return offset + 0.0 * x
+    if not isinstance(prefix, str) and prefix is not None:
 
-    if prefix is None:
-        model = Model(constant_function)
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        model = Model(constant_function, independent_vars='x')
+
     else:
-        if not isinstance(prefix,str):
-            logger.error('Given prefix in constant model is no string. '
-                    'Deleting prefix.')
-        try:
-            model = Model(constant_function, prefix=prefix)
-        except:
-            logger.error('Creating the constant model failed. '
-                    'The prefix might not be a valid string. '
-                    'The prefix was deleted.')
-            model = Model(constant_function)
+        model = Model(constant_function, independent_vars='x', prefix=prefix)
 
     params = model.make_params()
 
     return model, params
 
-def make_amplitude_model(self,prefix=None):
-    """ This method creates a model of a constant model.
-    @param string prefix: variable prefix
 
-    @return tuple: (object model, object params)
+def make_amplitude_model(self, prefix=None):
+    """ Create a constant model.
 
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Returns an object of the class
-            lmfit.model.CompositeModel.
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_constant_model.
     """
+
     def amplitude_function(x, amplitude):
+        """ Function of a constant value.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float amplitude: constant offset
+
+        @return: constant function, in order to use it as a model
         """
-        Function of a constant value.
-        @param x: variable variable
-        @param amplitude: independent variable - e.g. amplitude
 
-        @return: constant function: in order to use it as a model
-        """
+        return amplitude
 
-        return amplitude + 0.0 * x
+    if not isinstance(prefix, str) and prefix is not None:
 
-    if prefix is None:
-        model = Model(amplitude_function)
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        model = Model(amplitude_function, independent_vars='x')
+
     else:
-        if not isinstance(prefix,str):
-            logger.error('Given prefix in constant model is no string. '
-                    'Deleting prefix.')
-        try:
-            model = Model(amplitude_function, prefix=prefix)
-        except:
-            logger.error('Creating the constant model failed. '
-                    'The prefix might not be a valid string. '
-                    'The prefix was deleted.')
-            model = Model(amplitude_function)
+        model = Model(amplitude_function, independent_vars='x', prefix=prefix)
+
+
 
     params = model.make_params()
 
     return model, params
 
-def make_slope_model(self):
-    """ This method creates a model of a slope model.
+def make_slope_model(self, prefix=None):
+    """ Create a slope model.
 
-    @return tuple: (object model, object params)
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_constant_model.
     """
+
     def slope_function(x, slope):
+        """ Function of a constant value.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+        @param float slope: constant slope
+
+        @return: slope function, in order to use it as a model
         """
-        Function of a constant value.
-        @param x: variable variable
-        @param slope: independent variable - slope
 
-        @return: slope function: in order to use it as a model
-        """
+        return slope
 
-        return slope + 0.0 * x
+    if not isinstance(prefix, str) and prefix is not None:
 
-    model = Model(slope_function)
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+
+        model = Model(slope_function, independent_vars='x')
+    else:
+        model = Model(slope_function, independent_vars='x', prefix=prefix)
+
     params = model.make_params()
 
     return model, params
 
-def make_linear_model(self):
-    """ This method creates a model of a constant model.
 
-    @return tuple: (object model, object params)
+def make_linear_model(self, prefix=None):
+    """ Create linear model.
 
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Returns an object of the class
-            lmfit.model.CompositeModel.
+    @param str prefix: optional string, which serves as a prefix for all
+                       parameters used in this model. That will prevent
+                       name collisions if this model is used in a composite
+                       way.
 
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    @return tuple: (object model, object params), for more description see in
+                   the method make_constant_model.
     """
-    def linear_function(x):
-        """
-        Function of a linear.
-        @param x: variable variable
 
-        @return: constant function: in order to use it as a model
+    def linear_function(x):
+        """ Function of a linear model.
+
+        @param numpy.array x: 1D array as the independent variable - e.g. time
+
+        @return: linear function, in order to use it as a model
         """
 
         return x
 
-    slope, slope_param = self.make_slope_model()
-    constant, constant_param = self.make_constant_model()
+    if not isinstance(prefix, str) and prefix is not None:
+        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+                     'cannot be used as a prefix and will be ignored for now.'
+                     'Correct that!'.format(prefix, type(prefix)))
+        linear_mod = Model(linear_function, independent_vars='x')
+    else:
+        linear_mod = Model(linear_function, independent_vars='x', prefix=prefix)
 
-    model = slope * Model(linear_function) + constant
+    slope, slope_param = self.make_slope_model(prefix=prefix)
+    constant, constant_param = self.make_constant_model(prefix=prefix)
+
+    model = slope * linear_mod + constant
     params = model.make_params()
 
     return model, params
 
-def estimate_linear(self, x_axis=None, data=None, params=None):
-    """
-    This method provides a estimation of a initial values
-     for a linear function.
 
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to x values
-    @param Parameters object params: object includes parameter dictionary
-            which can be set
+def estimate_linear(self, x_axis, data, params):
+    """ Provide an estimation for the initial values of a linear function.
 
-    @return: tuple (error, params):
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
 
     Explanation of the return parameter:
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
 
-    error = 0
-    # check if parameters make sense
-    parameters = [x_axis, data]
-    for var in parameters:
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is no array.')
-            error = -1
-        elif len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
-            error = -1
-    if not isinstance(params, Parameters):
-        logger.error('Parameters object is not valid in estimate_gaussian.')
-        error = -1
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
     try:
-        """
-        #calculate the parameters using Least-squares estimation of linear
-        #regression
-        """
+
+        # calculate the parameters using Least-squares estimation of linear
+        # regression
+
         a_1 = 0
         a_2 = 0
         x_mean = x_axis.mean()
         data_mean = data.mean()
-        for i in range(0,len(x_axis)):
-            a_1+=(x_axis[i]-x_mean)*(data[i]-data_mean)
-            a_2+=np.power(x_axis[i]-x_mean,2)
+
+        for i in range(0, len(x_axis)):
+            a_1 += (x_axis[i]-x_mean)*(data[i]-data_mean)
+            a_2 += np.power(x_axis[i]-x_mean, 2)
         slope = a_1/a_2
         intercept = data_mean - slope*x_mean
         params['offset'].value = intercept
         params['slope'].value = slope
     except:
-        logger.warning('The linear fit did not work.')
+        logger.error('The linear fit did not work.')
         params['slope'].value = 0
         params['offset'].value = 0
 
     return error, params
 
-def make_linear_fit(self, axis=None, data=None, add_parameters=None):
-    """ This method performes a linear fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[] data: data
-    @param dict add_parameters: Additional parameters
+def make_linear_fit(self, x_axis, data, add_params=None):
+    """ Performe a linear fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -273,17 +258,15 @@ def make_linear_fit(self, axis=None, data=None, add_parameters=None):
 
     linear, params = self.make_linear_model()
 
-    error, params = self.estimate_linear(axis, data, params)
+    error, params = self.estimate_linear(x_axis, data, params)
 
-    # overwrite values of additional parameters
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
     try:
-        result = linear.fit(data, x=axis, params=params)
+        result = linear.fit(data, x=x_axis, params=params)
     except:
         logger.warning('The linear fit did not work.lmfit result '
-                'Message: {}'.format(str(result.message)))
-        result = linear.fit(data, x=axis, params=params)
+                       'Message: {}'.format(str(result.message)))
+        result = linear.fit(data, x=x_axis, params=params)
 
     return result
