@@ -437,7 +437,7 @@ def make_gaussianlinearoffset_fit(self, x_axis, data, units, estimator, add_para
                           with best fit with given axis,...
     """
 
-    mod_final, params = self.make_gausslinearoffset_model()
+    mod_final, params = self.make_gaussianlinearoffset_model()
 
     error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
 

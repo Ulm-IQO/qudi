@@ -129,7 +129,7 @@ class ODMRLogic(GenericLogic):
             ('N15',
                 self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
             ('Double Gaussian',
-                self._fit_logic.make_multiplegaussoffset_model(no_of_functions=2))
+                self._fit_logic.make_multiplegaussianoffset_model(no_of_functions=2))
         ])
 
         self.use_custom_params = {
