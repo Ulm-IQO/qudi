@@ -163,7 +163,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gausslinearoffset_model()
+        model, params = self._fit_logic.make_gaussianlinearoffset_model()
         self.z_params = params
         self.use_custom_params = {name: False for name, param in params.items()}
 
@@ -506,7 +506,7 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gausslinearoffset_model()
+                    gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
