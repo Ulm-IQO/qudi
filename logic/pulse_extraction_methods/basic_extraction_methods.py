@@ -9,8 +9,8 @@ def gated_conv_deriv(self, count_data):
     @param numpy.ndarray count_data:    2D array, the raw timetrace data from a gated fast counter,
                                         dimensions: 0: gate number, 1: time bin
 
-    @return numpy.ndarray:  The extracted laser pulses of the timetrace.
-                            dimensions: 0: laser number, 1: time bin
+    @return dict:   The extracted laser pulses of the timetrace as well as the indices for rising
+                    and falling flanks.
     """
     if self.conv_std_dev is None:
         self.log.error('Pulse extraction method "gated_conv_dev" will not work. No conv_std_dev '
@@ -33,7 +33,12 @@ def gated_conv_deriv(self, count_data):
     falling_ind = conv_deriv.argmin()
     # slice the data array to cut off anything but laser pulses
     laser_arr = count_data[:, rising_ind:falling_ind]
-    return laser_arr.astype(int)
+    # Create return dictionary
+    return_dict = dict()
+    return_dict['laser_counts_arr'] = laser_arr.astype(int)
+    return_dict['laser_indices_rising'] = rising_ind
+    return_dict['laser_indices_falling'] = falling_ind
+    return return_dict
 
 
 def ungated_conv_deriv(self, count_data):
@@ -190,7 +195,13 @@ def ungated_conv_deriv(self, count_data):
             laser_arr[i, 0:lenarr] = count_data[rising_ind[i]:]
         else:
             laser_arr[i] = count_data[rising_ind[i]:rising_ind[i] + laser_length]
-    return laser_arr.astype(int)
+
+    # Create return dictionary
+    return_dict = dict()
+    return_dict['laser_counts_arr'] = laser_arr.astype(int)
+    return_dict['laser_indices_rising'] = rising_ind
+    return_dict['laser_indices_falling'] = falling_ind
+    return return_dict
 
 
 def ungated_threshold(self, count_data):
@@ -268,9 +279,14 @@ def ungated_threshold(self, count_data):
             laser_y[jj] = np.append(laser_y[jj], laser_y[jj][-1])
 
     laser_arr = np.asarray(laser_y)
-    # FIXME: It should be possible to return laser_x aswell but therefor
-    # the functions above also would have to be changed
-    return laser_arr.astype(int)
+    rising_ind = np.array([i[0] for i in laser_x])
+    falling_ind = np.array([i[-1] for i in laser_y])
+    # Create return dictionary
+    return_dict = dict()
+    return_dict['laser_counts_arr'] = laser_arr.astype(int)
+    return_dict['laser_indices_rising'] = rising_ind
+    return_dict['laser_indices_falling'] = falling_ind
+    return return_dict
 
 
 def _convolve_derive(self, data, std_dev):

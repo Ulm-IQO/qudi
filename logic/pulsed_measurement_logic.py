@@ -754,7 +754,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 # extract laser pulses from raw data
                 return_dict = self._pulse_extraction_logic.extract_laser_pulses(self.raw_data,
                                                                                 self.fast_counter_gated)
-                self.laser_data = return_dict['laser_arr_y']
+                self.laser_data = return_dict['laser_counts_arr']
 
                 # analyze pulses and get data points for signal plot. Also check if extraction
                 # worked (non-zero array returned).
