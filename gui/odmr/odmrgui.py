@@ -243,7 +243,7 @@ class ODMRGui(GUIBase):
             try:
                 self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
             except:
-                self.log.warning('Could not load fitmodel {0}'.format(name))
+                self.log.warning('Could not load Settings Widget for fitmodel {0}'.format(name))
             else:
                 self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
 
