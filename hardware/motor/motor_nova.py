@@ -38,6 +38,9 @@ from interface.motor_interface import MotorInterface
 import os
 import platform
 import logging
+import time
+import datetime
+
 
 class NOVAMotor:
     """ Class to read/write to the NOVA controller. This class wraps the low level
@@ -68,14 +71,18 @@ class NOVAMotor:
 
     command_dict = {}
     command_dict['GETPOSITION'] = 51
-    command_dict['ABSMOVE'] = 7
+    command_dict['MOVEABS'] = 7
     command_dict['VELZERO'] = 13
     command_dict['SERVOMODE'] = 50
     command_dict['STOP'] = 16
+    command_dict['MOVEREL'] = 4
+    command_dict['LIMITS'] = 60
+    command_dict['ECHO'] = 17
+    command_dict['REFERENCE'] = 53
 
     eeid_dict = {}
-    eeid_dict['XAXIS'] = 1
-    eeid_dict['ZAXIS'] = 0
+    eeid_dict['x-axis'] = 1
+    eeid_dict['z-axis'] = 0
 
     def __init__(self, dll_object, hwtype, label=''):
         """
@@ -103,81 +110,87 @@ class NOVAMotor:
         except KeyError:
             self.log.error('Cannot find label in dictionary')
 
-        self.velocity = c_int16()
         self._wait_until_done = True
         self.count = c_ushort()
-        self.flags = c_ubyte()
+        self.flags = c_byte()
         self.error = c_uint()
         self.id = c_uint()
-        self.command = c_uint()
+        self.command = c_uint32()
         self.nreads = c_short()
         self.time = c_double()
-        self.nbytes = c_ubyte()
-        self.b0 = c_ubyte()
-        self.b1 = c_ubyte()
-        self.b2 = c_ubyte()
-        self.b3 = c_ubyte()
-        self.b4 = c_ubyte()
-        self.b5 = c_ubyte()
-        self.b6 = c_ubyte()
-        self.b7 = c_ubyte()
+        self.nbytes = c_byte(8)
+
+        self.byte_array = NOVABytes()
+        self.clear_bits()
         self.rx_tx_no = c_int()
         self.timeout = c_int()
-
         self.log = logging.getLogger(__name__)
-        #self.log.info('test')
+        # self.log.info('test')
 
-    def twos_comp(self, val, bits):
-        """compute the 2's compliment of int value val"""
-        if (val & (1 << (bits - 1))) != 0:  # if sign bit is set e.g., 8bit: 128-255
-            val = val - (1 << bits)  # compute negative value
-        return val  # return positive value as i
+    def time_stamp(self):
+        timestamp = (self.time.value % 1) * 1e11
+        milliseconds = (timestamp / 1000) % 1000
+        seconds = (((timestamp / 1000) - milliseconds) / 1000) % 60
+        minutes = (((((timestamp / 1000) - milliseconds) / 1000) - seconds) / 60) % 60
+        hours = ((((((timestamp / 1000) - milliseconds) / 1000) - seconds) / 60) - minutes) / 60
+        # hours - timestamp*24
+        return str(int(hours)) + ":" + str(int(minutes)) + ":" + str(int(seconds)) + ":" + str(int(milliseconds))
 
     def write_to_server(self):
         self.novadll.write(self.eepromid, self.deviceid, self.eeid, self.command, byref(self.rx_tx_no), self.nbytes,
-                           self.b0, self.b1, self.b2,
-                           self.b3, self.b4, self.b5, self.b6, self.b7, self.timeout, byref(self.error))
+                           self.byte_array.b0[0], self.byte_array.b1[0], self.byte_array.b2[0],
+                           self.byte_array.b3[0], self.byte_array.b4[0], self.byte_array.b5[0], self.byte_array.b6[0],
+                           self.byte_array.b7[0], self.timeout, byref(self.error))
+        self.log.info('Writing command {0} with position {1} and velocity {2}'.format(self.command.value,
+                                                                                      self.byte_array.position,
+                                                                                      self.byte_array.velocity))
+        if self.error.value != 0:
+            self.log.error(self.error_code[self.error.value])
+        time.sleep(0.02)
 
     def read_from_server(self):
         self.novadll.read(self.eepromid, self.deviceid, self.eeid, self.command, byref(self.count), byref(self.flags),
                           byref(self.id),
-                          byref(self.nbytes), byref(self.nreads), byref(self.time), byref(self.b0), byref(self.b1),
-                          byref(self.b2), byref(self.b3),
-                          byref(self.b4), byref(self.b5), byref(self.b6), byref(self.b7), self.timeout,
+                          byref(self.nbytes), byref(self.nreads), byref(self.time), byref(self.byte_array.b0),
+                          byref(self.byte_array.b1),
+                          byref(self.byte_array.b2), byref(self.byte_array.b3),
+                          byref(self.byte_array.b4), byref(self.byte_array.b5), byref(self.byte_array.b6),
+                          byref(self.byte_array.b7), self.timeout,
                           byref(self.error))
+        self.log.info('Reading command {0} with position {1} and velocity {2}'.format(self.command.value,
+                                                                                      self.byte_array.position,
+                                                                                      self.byte_array.velocity))
+        if self.error.value != 0:
+            self.log.error(self.error_code[self.error.value])
+
+        time.sleep(0.01)
 
     def clear_bits(self):
-        self.b0 = c_ubyte()
-        self.b1 = c_ubyte()
-        self.b2 = c_ubyte()
-        self.b3 = c_ubyte()
-        self.b4 = c_ubyte()
-        self.b5 = c_ubyte()
-        self.b6 = c_ubyte()
-        self.b7 = c_ubyte()
-
+        self.byte_array.longlong = 0
 
     def get_velocity(self):
         """ Get the current velocity by querying position using command 51 and only converting the velocity bits
         """
-        self.command = self.command_dict.get('GETPOSITION')
+        self.command.value = self.command_dict.get('GETPOSITION')
 
         self.write_to_server()
 
         self.read_from_server()
+        #        self.log.info(self.byte_array.b[1])
+        #       self.log.info(self.byte_array.b[0])
 
-        self.velocity = self.twos_comp((self.b1.value << 8) | self.b0.value,16)
-
-        return self.velocity
+        return self.byte_array.velocity
 
     def set_velocity(self, vel):
         """ Set the maximal velocity for the motor movement.
 
         @param float vel: velocity of the stage in m/s.
         """
-        i16StepVelSoll = int(vel)
-        self.b0 = (i16StepVelSoll & 0xff);
-        self.b1 = ((i16StepVelSoll >> 8) & 0xff);
+
+        self.byte_array.velocity = int(vel * 32767000)  # max range is 32767
+        # self.log.info(self.byte_array.velocity)
+        # self.log.info("b0 is {0}".format(self.byte_array.b1[0]))
+        # self.log.info("b1 is {0}".format(self.byte_array.b2[0]))
 
     def get_home_parameter(self):
         """ Get the home parameter"""
@@ -222,8 +235,15 @@ class NOVAMotor:
 
         @return float: the value of the axis either in m or in degree.
         """
-        self.command = self.command_dict.get('GETPOSITION')
+        self.command.value = self.command_dict.get('GETPOSITION')
         # self.log.info('hi there')
+
+        self.clear_bits()
+
+        # undocumented but test c code does this
+        self.byte_array.b0[0] = 1
+        self.byte_array.b3[0] = 1
+
         self.write_to_server()
         # if self.error.value != 0:
         #     self.log.error(self.error_code[self.error.value])
@@ -231,51 +251,48 @@ class NOVAMotor:
         self.read_from_server()
         # if self.error.value != 0:
         #     self.log.error(self.error_code[self.error.value])
-        #position = 4
+        # position = 4
         # read the position off the stack
-        position = self.twos_comp(self.b5.value << 24) | (self.b4.value << 16) | (self.b3.value << 8) | self.b2.value,32)
-
-        # self.log.info(position)
-
+        position = self.byte_array.position
+        self.log.info('Getting position at {0}'.format(self.time_stamp()))
+        self.log.info('Controller records {0} reads'.format(self.nreads.value))
         return position / 1000000000.0
 
-
-    def move_rel(self, relDistance):
+    def move_rel(self, delta_position):
         """ Moves the motor a relative distance specified
 
         @param float relDistance: Relative position desired, in m or in degree.
         """
-        if self.verbose:
-            print('move_rel ', relDistance, c_float(relDistance))
-        if not self.Connected:
-            # TODO: This should use our error message system
-            print('Please connect first! Use initializeHardwareDevice')
 
-        if self._unit == 'm':
-            relativeDistance = c_float(relDistance * 1000.0)
-        else:
-            relativeDistance = c_float(relDistance)
+        if self.byte_array.velocity is 0:
+            self.set_velocity(0.5e-3)
 
-        # self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, self._wait_until_done)
-        if self.verbose:
-            print('move_rel SUCESS')
+        self.byte_array.position = int(delta_position * 1000000000)
 
+        # self.log.info(self.byte_array.b2.value)
+        # self.log.info(self.byte_array.b3.value)
+        # self.log.info(self.byte_array.b4.value)
+        # self.log.info(self.byte_array.b5.value)
 
-    def move_abs(self, i32PosSoll):
+        self.command.value = self.command_dict.get('MOVEREL')
+        self.write_to_server()
+        return True
+
+    def move_abs(self, position):
         """ Moves the motor to the Absolute position specified using servo mode
 
         @param float absPosition: absolute Position desired, in m or degree.
         """
-        i32PosSoll = int(i32PosSoll*100000000)
-        self.b2.value = (i32PosSoll & 0xff)
-        self.b3.value = ((i32PosSoll >> 8) & 0xff)
-        self.b4.value = ((i32PosSoll >> 16) & 0xff)
-        self.b5.value = ((i32PosSoll >> 24) & 0xff)
-        #position = self.twos_comp(((self.b5.value << 24) | (self.b4.value << 16) | (self.b3.value << 8) | self.b2.value), 32)
-        self.command = self.command_dict.get('SERVOMODE')
-        self.log.info(position)
-        self.write_to_server()
 
+        if self.byte_array.velocity is 0:
+            self.set_velocity(0.5e-3)
+
+        self.byte_array.position = int(position * 1000000000)  # to nm
+
+        # position = self.twos_comp(((self.byte_array.b[5].value << 24) | (self.byte_array.b[4].value << 16) | (self.byte_array.b[3].value << 8) | self.byte_array.b[2].value), 32)
+        self.command.value = self.command_dict.get('SERVOMODE')
+        self.write_to_server()
+        # self.log.info(self.twos_comp((self.byte_array.b[5].value << 24) | (self.byte_array.b[4].value << 16) | (self.byte_array.b[3].value << 8) | self.byte_array.b[2].value,32))
         return True
 
     # --------------------------- Miscellaneous --------------------------------
@@ -299,7 +316,7 @@ class NOVAMotor:
         """
 
         status_bits = c_long()
-        #self.aptdll.MOT_GetStatusBits(self.SerialNum, pointer(status_bits))
+        # self.aptdll.MOT_GetStatusBits(self.SerialNum, pointer(status_bits))
 
         # Check at least whether magnet is moving:
 
@@ -312,9 +329,33 @@ class NOVAMotor:
 
     def abort(self):
         """ Abort the movement. """
-        self.command = self.command_dict.get('STOP')
+        self.command.value = self.command_dict.get('STOP')
         self.clear_bits()
-        self.b0 = c_ubyte(1)
+        self.byte_array.b0[0] = 1
+        self.write_to_server()
+
+    def echo(self, value):
+        self.command.value = self.command_dict.get('ECHO')
+        self.byte_array.longlong = value
+        self.write_to_server()
+        b7 = self.byte_array.b7[0]
+        self.clear_bits()
+        # self.log.info('currently cleared so {0}'.format(self.byte_array.longlong))
+        self.read_from_server()
+        self.byte_array.b7[0] = b7
+        return self.byte_array.longlong
+
+    def get_hard_limits(self):
+        self.command.value = self.command_dict.get('LIMITS')
+        self.clear_bits()
+        self.write_to_server()
+        self.read_from_server()
+        self.log.info('Number of limits {0}'.format(self.byte_array.velocity))
+
+    def search_reference(self):
+        # find reference position so that the device knows absolute position
+        self.command.value = self.command_dict.get('REFERENCE')
+        self.clear_bits()
         self.write_to_server()
 
     def go_home(self):
@@ -351,7 +392,7 @@ class NOVAMotor:
         else:
             c_backlash = c_float(backlash)
 
-        #self.aptdll.MOT_SetBLashDist(self.SerialNum, c_backlash)
+        # self.aptdll.MOT_SetBLashDist(self.SerialNum, c_backlash)
 
         self._backlash = backlash
         return backlash
@@ -362,7 +403,7 @@ class NOVAMotor:
         @return float: backlash in m or degree, depending on the axis config.
         """
         backlash = c_float()
-        #self.aptdll.MOT_GetBLashDist(self.SerialNum, pointer(backlash))
+        # self.aptdll.MOT_GetBLashDist(self.SerialNum, pointer(backlash))
 
         if self._unit == 'm':
             self._backlash = backlash.value / 1000
@@ -447,12 +488,9 @@ class NOVAStage(Base, MotorInterface):
             self.log.error(self.error_code[self.error.value])
             self.novadll.open(self.eepromid, byref(self.serverprocessid), byref(self.error))
         else:
-            self.log.error('Was unable to open connection')
-            self.log.error(self.error_code[self.error.value])
-
+            self.log.error('Unable to initialise. Server reports: {0}'.format(self.error_code[self.error.value]))
 
         if 'motor_type_label' in config.keys():
-            self.log.info(config['motor_type_label'])
             self._motor_type_label = config['motor_type_label']
         else:
             self.log.error('Motor Hardware-controller-type, serial-number '
@@ -482,14 +520,16 @@ class NOVAStage(Base, MotorInterface):
 
         for (hw_type, label) in self._motor_type_label:
             if limits_dict.get(label) is not None:
+                self.log.info('label {0}'.format(label))
+                self.log.info('hw_type {0}'.format(hw_type))
                 self._axis_dict[label] = NOVAMotor(self.novadll,
                                                    hw_type, label)
 
             else:
-                self.log.error('The following label "{0}" cannot be found in '
+                self.log.error('The following label {0} cannot be found in '
                                'the constraints method!\nCheck whether label '
-                               'coincide with the label given in the config!\n'
-                               'Restart the program!')
+                               'coincides with the label given in the config.'.format(label))
+                # self.log.error(limits_dict)
 
         self.custom_activation(e)
 
@@ -509,7 +549,7 @@ class NOVAStage(Base, MotorInterface):
         """
 
         for label_axis in self._axis_dict:
-            #set velocity to 0
+            # set velocity to 0
             self._axis_dict[label_axis].abort()
         self.novadll.close(self.eepromid, byref(self.error))
         self.custom_deactivation(e)
@@ -562,6 +602,7 @@ class NOVAStage(Base, MotorInterface):
                         constraints[label_axis]['pos_max']))
                 else:
                     self._save_pos({label_axis: curr_pos + move})
+                    #                    self.log.info(curr_pos+move)
                     self._axis_dict[label_axis].move_rel(move)
 
     def move_abs(self, param_dict):
@@ -614,13 +655,15 @@ class NOVAStage(Base, MotorInterface):
         pos = {}
 
         if param_list is not None:
-            self.log.info(param_list)
+            #            self.log.info(param_list)
             for label_axis in param_list:
                 if label_axis in self._axis_dict:
                     pos[label_axis] = self._axis_dict[label_axis].get_pos()
+                    self.log.info('Am i {0}'.format(label_axis))
         else:
             for label_axis in self._axis_dict:
                 pos[label_axis] = self._axis_dict[label_axis].get_pos()
+                self.log.info('or Am i {0}'.format(label_axis))
 
         return pos
 
@@ -749,10 +792,10 @@ class NOVAStage(Base, MotorInterface):
                 if not (constr['vel_min'] <= desired_vel <= constr['vel_max']):
                     self.log.warning('Cannot set velocity of the axis "{0}" '
                                      'to the desired velocity of "{1}", since it '
-                                     'exceeds the limits [{2},{3}] ! Command is ignored!'
+                                     'exceeds the limits [{2},{3}] m/s. Command is ignored!'
                                      ''.format(label_axis, desired_vel, constr['vel_min'], constr['vel_max']))
-            else:
-                self._axis_dict[label_axis].set_velocity(desired_vel)
+                else:
+                    self._axis_dict[label_axis].set_velocity(desired_vel)
 
 
 class NOVAOneAxisStage(NOVAStage):
@@ -852,7 +895,7 @@ class NOVAOneAxisStage(NOVAStage):
         # constraints for the axis of type CR1-Z7:
         # set the constraints for the phi axis:
         axis0 = {}
-        axis0['label'] = 'XAXIS'  # That name must coincide with the given
+        axis0['label'] = 'x-axis'  # That name must coincide with the given
         # name in the config. Otherwise there is no
         # way of identifying the used axes.
         axis0['unit'] = 'm'  # the SI units, only possible mm or degree
@@ -866,6 +909,9 @@ class NOVAOneAxisStage(NOVAStage):
         axis0['acc_min'] = 4.0  # in °/s^2
         axis0['acc_max'] = 5.0  # in °/s^2
         axis0['acc_step'] = 0.01  # in °/s^2 (a rather arbitrary number)
+        axis0['scan_min'] = -3e-3
+        axis0['scan_max'] = 3e-3
+
 
         constraints[axis0['label']] = axis0
 
@@ -963,40 +1009,72 @@ class NOVATwoAxisStage(NOVAStage):
 
         # set the constraints for the x axis:
         axis0 = {}
-        axis0['label'] = 'XAXIS'  # That name must coincide with the given
+        axis0['label'] = 'x-axis'  # That name must coincide with the given
         # name in the config. Otherwise there is no
         # way of identifying the used axes.
         axis0['unit'] = 'm'  # the SI units, only possible mm or degree
         axis0['ramp'] = ['Trapez']  # a possible list of ramps
-        axis0['pos_min'] = -65e-3  # in m
-        axis0['pos_max'] = 65e-3  # that is basically the traveling range
+        axis0['pos_min'] = -6.5e-3  # in m
+        axis0['pos_max'] = 6.5e-3  # that is basically the traveling range
         axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis0['vel_min'] = 0.1e-3  # in m/s
-        axis0['vel_max'] = 2.0e-3  # in m/s
+        axis0['vel_max'] = 1.0e-3  # in m/s
         axis0['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
         axis0['acc_min'] = 10e-6  # in m/s^2
         axis0['acc_max'] = 500e-6  # in m/s^2
         axis0['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
+        axis0['scan_min'] = -3.0e-3
+        axis0['scan_max'] = 3.0e-3
 
         # set the constraints for the y axis:
         axis1 = {}
-        axis1['label'] = 'ZAXIS'  # That name must coincide with the given
+        axis1['label'] = 'z-axis'  # That name must coincide with the given
         # name in the config. Otherwise there is no
         # way of identifying the used axes.
         axis1['unit'] = 'm'  # the SI units, only possible mm or degree
         axis1['ramp'] = ['Trapez']  # a possible list of ramps
-        axis1['pos_min'] = -65e-3  # in m
-        axis1['pos_max'] = 65e-3  # that is basically the traveling range
+        axis1['scan_min'] = -3.0e-3
+        axis1['scan_max'] = 3.0e-3
+        axis1['pos_min'] = -6.5e-3  # in m
+        axis1['pos_max'] = 6.5e-3  # that is basically the traveling range
         axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis1['vel_min'] = 0.1e-3  # in m/s
-        axis1['vel_max'] = 2.0e-3  # in m/s
+        axis1['vel_max'] = 1.0e-3  # in m/s
         axis1['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
         axis1['acc_min'] = 10e-6  # in m/s^2
         axis1['acc_max'] = 500e-6  # in m/s^2
         axis1['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
+
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1
 
         return constraints
+
+
+class NOVAByteFields(Structure):
+    _pack_ = 1
+    _fields_ = [("velocity", c_int16),
+                ("position", c_int32),
+                ("extra", c_int16)
+               ]
+
+
+class NOVAByteList(Structure):
+    _pack_ = 1
+    _fields_ = [("b0", c_byte * 1),
+                ("b1", c_byte * 1),
+                ("b2", c_byte * 1),
+                ("b3", c_byte * 1),
+                ("b4", c_byte * 1),
+                ("b5", c_byte * 1),
+                ("b6", c_byte * 1),
+                ("b7", c_byte * 1), ]
+
+
+class NOVABytes(Union):
+    _anonymous_ = ("st_field", "bytes")
+    _fields_ = [("st_field", NOVAByteFields),
+                ("bytes", NOVAByteList),
+                ("longlong", c_int64)]

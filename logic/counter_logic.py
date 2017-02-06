@@ -368,12 +368,11 @@ class CounterLogic(GenericLogic):
         @return str: counting mode
         """
         constraints = self.get_hardware_constraints()
-
         if mode in constraints.counting_mode:
             self._counting_mode = mode
             self.log.debug(self._counting_mode)
         else:
-            self.log.warning('Counting mode not supported from hardware. Command ignored!')
+            self.log.warning('Counting mode {0} not supported from hardware. Command ignored!'.format(mode))
         self.sigCountingModeChanged.emit(self._counting_mode)
         return self._counting_mode
 

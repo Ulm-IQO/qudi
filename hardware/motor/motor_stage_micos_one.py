@@ -69,6 +69,7 @@ class MotorStageMicosOne(Base, MotorInterface):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
+
     def on_activate(self, e):
 
 
@@ -115,6 +116,14 @@ class MotorStageMicosOne(Base, MotorInterface):
         self._micos.label = label     # attach a label attribute
         self._micos.write("1 setdim")
 
+        try:
+            pos_str = self._micos.query('pos')
+            self.pos = float(pos_str) / 1000 - 24e-3
+
+        except visa.VisaIOError:
+            self.log.error('Resource IO error, is it busy?')
+            self.pos = 0
+
     def on_deactivate(self, e):
         """ Disconnect from hardware and clean up """
         self._micos.close()
@@ -146,9 +155,11 @@ class MotorStageMicosOne(Base, MotorInterface):
         axis0['label'] = self._micos.label  # name is just as a sanity included
         axis0['unit'] = 'm'                 # the SI units
         axis0['ramp'] = ['Sinus','Linear']  # a possible list of ramps
-        axis0['pos_min'] = 0
-        axis0['pos_max'] = 95  # that is basically the traveling range
-        axis0['pos_step'] = 0.01
+        axis0['pos_min'] = -24e-3
+        axis0['pos_max'] = 5e-3  # that is basically the traveling range
+        axis0['scan_min'] = -3e-3
+        axis0['scan_max'] = 3e-3
+        axis0['pos_step'] = 1e-6
         axis0['vel_min'] = 0
         axis0['vel_max'] = 10
         axis0['vel_step'] = 0.01
@@ -196,6 +207,7 @@ class MotorStageMicosOne(Base, MotorInterface):
                             constraints[self._micos.label]['pos_min'],
                             constraints[self._micos.label]['pos_max']))
             else:
+                move_x = move_x *1000
                 self._micos.write('{0:f} r'.format(move_x))  # r is command to move relative
 
     def move_abs(self, param_dict):
@@ -226,11 +238,12 @@ class MotorStageMicosOne(Base, MotorInterface):
 
             if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
                 self.log.warning('Cannot make absolute movement of the axis '
-                    '"{0}" to possition {1}, since it exceeds the limts '
+                    '"{0}" to position {1}, since it exceeds the limits '
                     '[{2},{3}] ! Command is ignored!'
                     ''.format(self._micos.label, desired_pos,
                          constr['pos_min'], constr['pos_max']))
             else:
+                desired_pos = (desired_pos +24e-3)*1000
                 self._micos.write('{0:f} move'.format(desired_pos))
                 self._micos.write('0.0 r')    # This should block further commands until the movement is finished
             try:
@@ -286,8 +299,14 @@ class MotorStageMicosOne(Base, MotorInterface):
         """
 
         pos = {}
-        pos_str = self._micos.ask('pos')
-        pos[self._micos.label] = float(pos_str)
+        try:
+            pos_str = self._micos.query('pos')
+            self.pos = float(pos_str) / 1000 - 24e-3
+
+        except visa.VisaIOError:
+            self.log.error('Resource IO error, is it busy?')
+
+        pos[self._micos.label] = self.pos
 
         return pos
 
@@ -342,8 +361,7 @@ class MotorStageMicosOne(Base, MotorInterface):
         @return dict : with the axis label as key and the velocity as item.
         """
         vel = {}
-        vel[self._micos.label] = float(self._micos.ask('getvel'))
-
+        vel[self._micos.label] = float(self._micos.ask('getvel'))/1000
         return vel
 
     def set_velocity(self, param_dict):
@@ -368,6 +386,7 @@ class MotorStageMicosOne(Base, MotorInterface):
                         constr['vel_min'],
                         constr['vel_max']))
         else:
+            desired_vel = desired_vel *1000
             self.log.info('{0:f} sv'.format(desired_vel))
             self._micos.write('{0:f} sv'.format(desired_vel))
 

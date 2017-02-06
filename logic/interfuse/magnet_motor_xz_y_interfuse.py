@@ -32,7 +32,7 @@ motor hardware call, that 'interfuse' file has to stick to the interfaces
 methods of the motor interface.
 
 Reimplement each call from the magnet interface and use only the motor interface
-command to talk to a xyz motor hardware and a rotational motor hardware.
+command to talk to a xz motor hardware and a t motor hardware.
 """
 
 
@@ -40,16 +40,16 @@ from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 
 
-class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
+class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
 
-    _modclass = 'MagnetMotorXYZROTInterfuse'
+    _modclass = 'MagnetMotorXZYInterfuse'
     _modtype = 'interfuse'
 
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _in = {'motorstage_xyz': 'MotorInterface',
-           'motorstage_rot': 'MotorInterface'}
+    _in = {'motorstage_xz': 'MotorInterface',
+           'motorstage_y': 'MotorInterface'}
 
     # And as a result, you will have an out connector, which is compatible to a
     # magnet interface, and which can be plug in to an appropriated magnet logic
@@ -74,8 +74,8 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._motor_device_rot = self.get_in_connector('motorstage_rot')
-        self._motor_device_xyz = self.get_in_connector('motorstage_xyz')
+        self._motor_device_xz = self.get_in_connector('motorstage_xz')
+        self._motor_device_y = self.get_in_connector('motorstage_y')
 
 
 
@@ -95,10 +95,10 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
                       that proper display elements with boundary conditions
                       could be made.
         """
-        constraints_xyz = self._motor_device_xyz.get_constraints()
-        constraints_rot = self._motor_device_rot.get_constraints()
-        constraints_xyz.update(constraints_rot)
-        return constraints_xyz
+        constraints_xz = self._motor_device_xz.get_constraints()
+        constraints_y = self._motor_device_y.get_constraints()
+        constraints_xz.update(constraints_y)
+        return constraints_xz
 
 
     def move_rel(self, param_dict):
@@ -114,12 +114,12 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         @return dict pos: dictionary with changed axis and positions
         """
         # split dictionary
-        move_xyz, move_rot = self._split_dict(param_dict)
+        move_xz, move_y = self._split_dict(param_dict)
         if not self._magnet_idle:
-            if move_xyz != {}:
-                self._motor_device_xyz.move_rel(move_xyz)
-            if move_rot != {}:
-                self._motor_device_rot.move_rel(move_rot)
+            if move_xz != {}:
+                self._motor_device_xz.move_rel(move_xz)
+            if move_y != {}:
+                self._motor_device_y.move_rel(move_y)
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
                     'perform "move_rel" commands. Couple the Motor to '
@@ -138,12 +138,12 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
                                  to one of the axis.
         @return dict pos: dictionary with changed axis and positions
         """
-        move_xyz, move_rot = self._split_dict(param_dict)
+        move_xz, move_y = self._split_dict(param_dict)
         if not self._magnet_idle:
-            if move_xyz != {}:
-                self._motor_device_xyz.move_abs(move_xyz)
-            if move_rot != {}:
-                self._motor_device_rot.move_abs(move_rot)
+            if move_xz != {}:
+                self._motor_device_xz.move_abs(move_xz)
+            if move_y != {}:
+                self._motor_device_y.move_abs(move_y)
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
                     'perform "move_abs" commands. Couple the Motor to '
@@ -157,8 +157,8 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._motor_device_xyz.abort()
-        self._motor_device_rot.abort()
+        self._motor_device_xz.abort()
+        self._motor_device_y.abort()
 
 
     def get_pos(self, param_list=None):
@@ -173,22 +173,20 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         @return dict: with keys being the axis labels and item the current
                       position.
         """
+        pos_xz = {}
+        pos_y = {}
         # split dictionary
         if param_list==None:
-            pos_xyz = self._motor_device_xyz.get_pos()
-            pos_rot = self._motor_device_rot.get_pos()
+            pos_xz = self._motor_device_xz.get_pos()
+            pos_y = self._motor_device_y.get_pos()
         else:
-            list_xyz, list_rot = self._split_list(param_list)
-            if list_xyz != []:
-                pos_xyz = self._motor_device_xyz.get_pos(list_xyz)
-            else:
-                pos_xyz = {}
-            if list_rot != []:
-                pos_rot = self._motor_device_rot.get_pos(list_rot)
-            else:
-                pos_rot={}
-        pos_xyz.update(pos_rot)
-        return pos_xyz
+            list_xz, list_y = self._split_list(param_list)
+            if list_xz is not None:
+                pos_xz.update(self._motor_device_xz.get_pos(list_xz))
+            if list_y is not None:
+                pos_y.update(self._motor_device_y.get_pos(list_y))
+        pos_xz.update(pos_y)
+        return pos_xz
 
 
     def get_status(self, param_list=None):
@@ -202,22 +200,21 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
 
         @return dict: with the axis label as key and the status number as item.
         """
-        if param_list==None:
-            status_xyz = self._motor_device_xyz.get_status()
-            status_rot = self._motor_device_rot.get_status()
-            #self.log.debug(status_rot)
+        status_xz = {}
+        status_y = {}
+        # split dictionary
+        if param_list == None:
+            status_xz = self._motor_device_xz.get_status()
+            status_y = self._motor_device_y.get_status()
         else:
-            list_xyz, list_rot = self._split_list(param_list)
-            if list_xyz != []:
-                status_xyz = self._motor_device_xyz.get_status(list_xyz)
-            else:
-                status_xyz = {}
-            if list_rot != []:
-                status_rot = self._motor_device_rot.get_status(list_rot)
-            else:
-                status_rot = {}
-        status_xyz.update(status_rot)
-        return status_xyz
+            list_xz, list_y= self._split_list(param_list)
+            if list_xz is not None:
+                status_xz.update(self._motor_device_xz.get_status(list_xz))
+            if list_y is not None:
+                status_y.update(self._motor_device_y.get_status(list_y))
+
+        status_xz.update(status_y)
+        return status_xz
 
 
     def calibrate(self, param_list=None):
@@ -237,20 +234,20 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         """
         if not self._magnet_idle:
             if param_list==None:
-                pos_xyz = self._motor_device_xyz.calibrate()
-                pos_rot = self._motor_device_rot.calibrate()
+                pos_xz = self._motor_device_xz.calibrate()
+                pos_y = self._motor_device_y.calibrate()
             else:
-                list_xyz, list_rot = self._split_list(param_list)
-                if list_xyz != []:
-                    pos_xyz = self._motor_device_xyz.calibrate(list_xyz)
+                list_xz, list_y = self._split_list(param_list)
+                if list_xz != []:
+                    pos_y = self._motor_device_xz.calibrate(list_xz)
                 else:
-                    pos_xyz = {}
-                if list_rot != []:
-                    pos_rot = self._motor_device_rot.calibrate(list_rot)
+                    pos_xz = {}
+                if list_y != []:
+                    pos_y= self._motor_device_ycalibrate(list_y)
                 else:
-                    pos_rot = {}
-            pos_xyz.update(pos_rot)
-            return pos_xyz
+                    pos_y = {}
+            pos_xz.update(pos_y)
+            return pos_xz
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
                     'perform "calibrate" commands. Couple the Motor to '
@@ -270,24 +267,21 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         @return dict: with the axis label as key and the velocity as item.
         """
 
-        if param_list==None:
-            vel_xyz = self._motor_device_xyz.get_velocity()
-            vel_rot = self._motor_device_rot.get_velocity()
+        vel_xz = {}
+        vel_y = {}
+        # split dictionary
+        if param_list == None:
+            vel_xz = self._motor_device_xz.get_velocity()
+            vel_y = self._motor_device_y.get_velocity()
         else:
-            list_xyz, list_rot = self._split_list(param_list)
-            if list_xyz != []:
-                vel_xyz = self._motor_device_xyz.get_velocity(list_xyz)
-            else:
-                vel_xyz = {}
-            if list_rot != []:
-                vel_rot = self._motor_device_rot.get_velocity(list_rot)
-            else:
-                vel_rot = {}
+            list_xz, list_y, = self._split_list(param_list)
+            if list_xz is not None:
+                vel_xz.update(self._motor_device_xz.get_velocity(list_xz))
+            if list_y is not None:
+                vel_y.update(self._motor_device_y.get_velocity(list_y))
 
-        vel_xyz.update(vel_rot)
-        return vel_xyz
-
-
+        vel_xz.update(vel_y)
+        return vel_xz
 
 
     def set_velocity(self, param_dict=None):
@@ -302,12 +296,12 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         @return dict velocity: dictionary with axis and velocity
         """
 
-        vel_xyz, vel_rot = self._split_dict(param_dict)
+        vel_xz, vel_y= self._split_dict(param_dict)
         if not self._magnet_idle:
-            if vel_xyz != {}:
-                self._motor_device_xyz.set_velocity(vel_xyz)
-            if vel_rot != {}:
-                self._motor_device_rot.set_velocity(vel_rot)
+            if vel_xz != {}:
+                self._motor_device_xz.set_velocity(vel_xz)
+            if vel_y != {}:
+                self._motor_device_y.set_velocity(vel_y)
 
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
@@ -399,46 +393,45 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         return self._magnet_idle
 
     def _split_list(self,param_list):
-        """This function splits a param_list into one for the xyz motor and one for the rot motor
+        """This function splits a param_list into one for the xz motor and one for the y motor
 
         @param list param_list: List with parameters
 
-        @return list list_xyz: list with parameters for xyz motor
-        @return list list_rot: list with parameters for rotation motor"""
+        @return list list_xz: list with parameters for xz motor
+        @return list list_y: list with parameters for y motor"""
 
-        list_xyz = []
-        list_rot = []
-        keys_xyz = self._motor_device_xyz.get_constraints()
-        keys_rot = self._motor_device_rot.get_constraints()
+        list_xz = []
+        list_y = []
+        keys_xz = self._motor_device_xz.get_constraints()
+        keys_y = self._motor_device_y.get_constraints()
         for key in param_list:
-            if key in keys_xyz:
-                list_xyz.append(key)
-            if key in keys_rot:
-                list_rot.append(key)
+            if key in keys_xz:
+                list_xz.append(key)
+            if key in keys_y:
+                list_y.append(key)
 
-        return list_xyz, list_rot
+        return list_xz, list_y
 
 
     def _split_dict(self, param_dict):
-        """This function splits a param_dict into one for the xyz motor and one for the rot motor
+        """This function splits a param_dict into one for the xz motor and one for the y motor
 
         @param list param_dict: dict with parameters and corresponding values
 
-        @return dict dict_xyz: dict with parameters for xyz motor
-        @return dict dict_rot: dict with parameters for rotation motor"""
+        @return dict dict_xz: dict with parameters for xz motor
+        @return dict dict_y: dict with parameters for y motor"""
 
-        dict_xyz = {}
-        dict_rot = {}
-        keys_xyz = self._motor_device_xyz.get_constraints()
-        keys_rot = self._motor_device_rot.get_constraints()
+        dict_xz = {}
+        dict_y = {}
+        keys_xz = self._motor_device_xz.get_constraints()
+        keys_y = self._motor_device_y.get_constraints()
         for key in param_dict:
-            if key in keys_xyz:
-                dict_xyz[key]=param_dict[key]
-            if key in keys_rot:
-                dict_rot[key]=param_dict[key]
-        #self.log.debug(dict_xyz)
-        #self.log.debug(dict_rot)
-        return dict_xyz, dict_rot
+            if key in keys_xz:
+                dict_xz[key] = param_dict[key]
+            if key in keys_y:
+                dict_y[key] = param_dict[key]
+
+        return dict_xz, dict_y
 
 
 

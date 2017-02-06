@@ -212,7 +212,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         count_data = np.zeros(self._line_length)
 
-        for i in xrange(self._line_length):
+        for i in range(self._line_length):
             coords = line_path[:,i]
             self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2], a=coords[3])
             print(coords)
