@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1348</width>
-    <height>1364</height>
+    <height>1402</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -98,6 +98,9 @@
      </item>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QComboBox" name="depth_channel_ComboBox"/>
+       </item>
        <item>
         <widget class="ScienDSpinBox" name="depth_cb_max_DoubleSpinBox">
          <property name="sizePolicy">
@@ -571,12 +574,18 @@
       </widget>
      </item>
      <item row="1" column="3">
-      <widget class="QDoubleSpinBox" name="x_min_InputWidget">
+      <widget class="ScienDSpinBox" name="x_min_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -614,12 +623,18 @@
       </widget>
      </item>
      <item row="1" column="4">
-      <widget class="QDoubleSpinBox" name="x_max_InputWidget">
+      <widget class="ScienDSpinBox" name="x_max_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -673,12 +688,18 @@
       </widget>
      </item>
      <item row="1" column="6">
-      <widget class="QDoubleSpinBox" name="x_current_InputWidget">
+      <widget class="ScienDSpinBox" name="x_current_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -765,12 +786,18 @@
       </widget>
      </item>
      <item row="2" column="3">
-      <widget class="QDoubleSpinBox" name="y_min_InputWidget">
+      <widget class="ScienDSpinBox" name="y_min_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -808,12 +835,18 @@
       </widget>
      </item>
      <item row="2" column="4">
-      <widget class="QDoubleSpinBox" name="y_max_InputWidget">
+      <widget class="ScienDSpinBox" name="y_max_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -885,12 +918,18 @@
       </widget>
      </item>
      <item row="2" column="6">
-      <widget class="QDoubleSpinBox" name="y_current_InputWidget">
+      <widget class="ScienDSpinBox" name="y_current_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -1013,12 +1052,18 @@
       </widget>
      </item>
      <item row="3" column="3">
-      <widget class="QDoubleSpinBox" name="z_min_InputWidget">
+      <widget class="ScienDSpinBox" name="z_min_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -1056,12 +1101,18 @@
       </widget>
      </item>
      <item row="3" column="4">
-      <widget class="QDoubleSpinBox" name="z_max_InputWidget">
+      <widget class="ScienDSpinBox" name="z_max_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -1112,12 +1163,18 @@
       </widget>
      </item>
      <item row="3" column="6">
-      <widget class="QDoubleSpinBox" name="z_current_InputWidget">
+      <widget class="ScienDSpinBox" name="z_current_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
        </property>
        <property name="maximumSize">
         <size>
@@ -1195,7 +1252,10 @@
         </widget>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0,0,0,0">
+        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0,0">
+         <item>
+          <widget class="QComboBox" name="xy_channel_ComboBox"/>
+         </item>
          <item>
           <widget class="ScienDSpinBox" name="xy_cb_max_DoubleSpinBox">
            <property name="sizePolicy">
@@ -1509,9 +1569,15 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="tilt_01_x_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_01_x_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1554,9 +1620,15 @@
         </widget>
        </item>
        <item row="1" column="2">
-        <widget class="QDoubleSpinBox" name="tilt_01_y_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_01_y_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1586,9 +1658,15 @@
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="tilt_02_x_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_02_x_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1611,9 +1689,15 @@
         </widget>
        </item>
        <item row="3" column="3">
-        <widget class="QDoubleSpinBox" name="tilt_03_z_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_03_z_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1639,9 +1723,15 @@
         </widget>
        </item>
        <item row="1" column="3">
-        <widget class="QDoubleSpinBox" name="tilt_01_z_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_01_z_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1667,9 +1757,15 @@
         </widget>
        </item>
        <item row="3" column="1">
-        <widget class="QDoubleSpinBox" name="tilt_03_x_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_03_x_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1692,9 +1788,21 @@
         </widget>
        </item>
        <item row="3" column="2">
-        <widget class="QDoubleSpinBox" name="tilt_03_y_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_03_y_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1717,9 +1825,15 @@
         </widget>
        </item>
        <item row="2" column="3">
-        <widget class="QDoubleSpinBox" name="tilt_02_z_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_02_z_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>
@@ -1745,9 +1859,15 @@
         </widget>
        </item>
        <item row="2" column="2">
-        <widget class="QDoubleSpinBox" name="tilt_02_y_pos_doubleSpinBox">
+        <widget class="ScienDSpinBox" name="tilt_02_y_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>70</width>
+           <height>0</height>
+          </size>
          </property>
          <property name="maximumSize">
           <size>

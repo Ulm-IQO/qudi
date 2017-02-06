@@ -140,11 +140,12 @@ class AWG70K(Base, PulserInterface):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in method activation.
         """
-        # Closes the connection to the AWG via ftp and the socket
+        # Closes the connection to the AWG
         try:
             self.awg.close()
         except:
-            self.log.warning('Unable to close connection to AWG using pyVISA.')
+            self.log.debug('Closing AWG connection using pyvisa failed.')
+        self.log.info('Closed connection to AWG')
         self.connected = False
         return
 
@@ -274,7 +275,7 @@ class AWG70K(Base, PulserInterface):
                                  class variable status_dic.)
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         self.awg.write('AWGC:RUN')
         # wait until the AWG is actually running
@@ -314,7 +315,7 @@ class AWG70K(Base, PulserInterface):
             self.log.warning('No asset name provided for upload!\nCorrect that!\n'
                              'Command will be ignored.')
             return -1
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
         # at first delete all the name, which might lead to confusions in the upload procedure:
         self.delete_asset(asset_name)
         # determine which files to transfer
@@ -371,7 +372,7 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # Get all sequence and waveform names currently loaded into AWG workspace
         seq_list = self._get_sequence_names_memory()
@@ -386,9 +387,9 @@ class AWG70K(Base, PulserInterface):
                     self.awg.write('SOUR{0}:CASS:SEQ "{1}", {2}'.format(chnl, asset_name, chnl))
             # check if the desired asset is in workspace. Load to channels if that is the case.
             elif asset_name + '_ch1' in wfm_list:
-                self.awg.write('SOUR1:CASS:WFM "{0}"'.format(asset_name + '_ch1'))
+                self.awg.write('SOUR1:CASS:WAV "{0}"'.format(asset_name + '_ch1'))
                 if self._get_max_a_channel_number() > 1 and asset_name + '_ch2' in wfm_list:
-                    self.awg.write('SOUR2:CASS:WFM "{0}"'.format(asset_name + '_ch2'))
+                    self.awg.write('SOUR2:CASS:WAV "{0}"'.format(asset_name + '_ch2'))
             self.current_loaded_asset = asset_name
         else:
             self.log.error('Loading assets into user defined channels is not yet implemented.\n'
@@ -438,7 +439,7 @@ class AWG70K(Base, PulserInterface):
         storage capability (PulseBlaster, FPGA).
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         self.awg.write('WLIS:WAV:DEL ALL')
         self.awg.write('SLIS:SEQ:DEL ALL')
@@ -476,14 +477,14 @@ class AWG70K(Base, PulserInterface):
         @return foat: the sample rate returned from the device (-1:error)
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         self.awg.write('CLOCK:SRATE %.4G' % sample_rate)
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.25)
-        return_rate = float(self.awg.query('CLOCK:SRATE?'))
-        self.sample_rate = return_rate
-        return return_rate
+        time.sleep(1)
+        self.get_sample_rate()
+        return self.sample_rate
 
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
@@ -491,7 +492,7 @@ class AWG70K(Base, PulserInterface):
         @return float: The current sample rate of the device (in Hz)
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         return_rate = float(self.awg.query('CLOCK:SRATE?'))
         self.sample_rate = return_rate
@@ -529,7 +530,7 @@ class AWG70K(Base, PulserInterface):
         off = {}
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         chnl_list = ['a_ch' + str(ch_num) for ch_num in
                      range(1, self._get_max_a_channel_number() + 1)]
@@ -592,7 +593,7 @@ class AWG70K(Base, PulserInterface):
         num_of_channels = self._get_max_a_channel_number()
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # amplitude sanity check
         pattern = re.compile('[0-9]+')
@@ -687,7 +688,7 @@ class AWG70K(Base, PulserInterface):
         high_val = {}
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         digital_channels = list(range(1, 2 * self._get_max_a_channel_number() + 1))
         analog_channels = [chnl // 2 + chnl % 2 for chnl in digital_channels]
@@ -745,7 +746,7 @@ class AWG70K(Base, PulserInterface):
             high = {}
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
@@ -782,7 +783,7 @@ class AWG70K(Base, PulserInterface):
         max_analog_channels = self._get_max_a_channel_number()
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         active_ch = {}
         for a_ch in range(max_analog_channels):
@@ -847,7 +848,7 @@ class AWG70K(Base, PulserInterface):
         constraints = self.get_constraints()
 
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         new_channels_state = self.active_channel.copy()
         for chnl in ch:
@@ -967,7 +968,7 @@ class AWG70K(Base, PulserInterface):
         """
         if not isinstance(asset_name, list):
             asset_name = [asset_name]
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # get all uploaded files and asset names in workspace
         uploaded_files = self._get_filenames_on_device()
@@ -1100,103 +1101,148 @@ class AWG70K(Base, PulserInterface):
         bytes_written, enum_status_code = self.awg.write(command)
         return int(enum_status_code)
 
-    def create_direct_waveform(self, name, ana_samples, digi_samples):
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
         """
-        @param name: Name for the waveform to be created.
-        @param ana_samples: 1-dimensional numpy.ndarray of type float32 containing the voltage
-                            samples.
-        @param digi_samples:    2-dimensional numpy.ndarray of type bool containing the marker states
-                                for each sample.
+        @param ensemble_name: Name for the waveform to be created.
+        @param analog_samples:  numpy.ndarray of type float32 containing the voltage samples.
+        @param digital_samples: numpy.ndarray of type bool containing the marker states for each
+                                sample.
                                 First dimension is marker index; second dimension is sample number
         @return:
         """
         # check input
-        if not name:
-            self.log.error('Please specify a waveform name for direct waveform creation.')
+        if not ensemble_name:
+            self.log.error('Please specify an ensemble name for direct waveform creation.')
             return -1
 
-        if type(ana_samples).__name__ != 'ndarray':
+        if type(analog_samples).__name__ != 'ndarray':
             self.log.warning('Analog samples for direct waveform creation have wrong data type.\n'
-                             'Converting to numpy.ndarray of float32.')
-            ana_samples = np.array(ana_samples, dtype='float32')
+                             'Converting to numpy.ndarray of type float32.')
+            analog_samples = np.array(analog_samples, dtype='float32')
 
-        if type(digi_samples).__name__ != 'ndarray':
+        if type(digital_samples).__name__ != 'ndarray':
             self.log.warning('Digital samples for direct waveform creation have wrong data type.\n'
-                             'Converting to numpy.ndarray of bool.')
-            digi_samples = np.array(digi_samples, dtype=bool)
+                             'Converting to numpy.ndarray of type bool.')
+            digital_samples = np.array(digital_samples, dtype=bool)
 
         min_samples = int(self.awg.query('WLIS:WAV:LMIN?'))
-        if ana_samples.size < min_samples or digi_samples.shape[1] < min_samples:
+        if analog_samples.shape[1] < min_samples or digital_samples.shape[1] < min_samples:
             self.log.error('Minimum waveform length for AWG70000A series is {0} samples.\n'
                            'Direct waveform creation failed.'.format(min_samples))
             return -1
 
-        if ana_samples.size != digi_samples.shape[1]:
+        if analog_samples.shape[1] != digital_samples.shape[1]:
             self.log.error('Number of analog and digital samples must be the same.\n'
                            'Direct waveform creation failed.')
             return -1
 
-        # Encode marker information in an array of bytes (uint8)
-        mrk_bytes = np.add(np.left_shift(digi_samples[1].astype('uint8'), 7),
-                           np.left_shift(digi_samples[0].astype('uint8'), 6))
+        # determine active channels
+        activation_dict = self.get_active_channels()
+        active_chnl = [chnl for chnl in activation_dict if activation_dict[chnl]]
+        active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl]
+        active_analog.sort()
+        active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl]
+        active_digital.sort()
 
-        # Check if waveform already exists and delete if necessary.
-        if name in self._get_waveform_names_memory():
-            self.awg.write('WLIS:WAV:DEL "{0}"'.format(name))
+        # Sanity check of channel numbers
+        if len(active_analog) != analog_samples.shape[0] or len(active_digital) != digital_samples.shape[0]:
+            self.log.error('Mismatch of channel activation and sample array dimensions for direct '
+                           'write.\nChannel activation is: {0} analog, {1} digital.\n'
+                           'Sample arrays have: {2} analog, {3} digital.'
+                           ''.format(len(active_analog), len(active_digital),
+                                     analog_samples.shape[0], digital_samples.shape[0]))
+            return -1
 
-        # Create waveform in AWG workspace and fill in sample data
-        self.awg.write('WLIS:WAV:NEW "{0}", {1}'.format(name, ana_samples.size))
-        self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(name), ana_samples)
-        self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(name), mrk_bytes)
+        for a_ch in active_analog:
+            a_ch_num = int(a_ch.split('ch')[-1])
+            mrk_ch_1 = 'd_ch{0}'.format(a_ch_num * 2 - 2)
+            mrk_ch_2 = 'd_ch{0}'.format(a_ch_num * 2 - 1)
+            wfm_name = ensemble_name + '_ch' + str(a_ch_num)
+
+            # Encode marker information in an array of bytes (uint8)
+            if mrk_ch_1 in active_digital and mrk_ch_2 in active_digital:
+                mrk1_index = active_digital.index(mrk_ch_1)
+                mrk2_index = active_digital.index(mrk_ch_2)
+                mrk_bytes = np.add(np.left_shift(digital_samples[mrk2_index].astype('uint8'), 7),
+                                   np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6))
+            if mrk_ch_1 in active_digital and mrk_ch_2 not in active_digital:
+                mrk1_index = active_digital.index(mrk_ch_1)
+                mrk_bytes = np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6)
+            else:
+                mrk_bytes = None
+
+            # Check if waveform already exists and delete if necessary.
+            if wfm_name in self._get_waveform_names_memory():
+                self.awg.write('WLIS:WAV:DEL "{0}"'.format(wfm_name))
+
+            # Create waveform in AWG workspace and fill in sample data
+            self.awg.write('WLIS:WAV:NEW "{0}", {1}'.format(wfm_name, digital_samples.shape[1]))
+            self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(wfm_name),
+                                  analog_samples[a_ch_num - 1])
+            if mrk_bytes is not None:
+                self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(wfm_name), mrk_bytes)
+
+        # Wait for everything to complete
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
-    def create_direct_sequence(self, name, waveform_list, repeat_list, jumpto_list, trigger_list):
+    def direct_write_sequence(self, sequence_name, sequence_params):
         """
-        @param name:
-        @param waveform_list:
-        @param repeat_list:
-        @param jumpto_list:
-        @param trigger_list:
+        @param sequence_name:
+        @param sequence_params:
+
         @return:
         """
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
-
-        if type(waveform_list[0]) is list:
-            num_tracks = 2
-            num_steps = len(waveform_list[0])
-        else:
-            num_tracks = 1
-            num_steps = len(waveform_list)
+        active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
+        num_tracks = len(active_analog)
+        num_steps = len(sequence_params)
 
         # Check if sequence already exists and delete if necessary.
-        if name in self._get_sequence_names_memory():
-            self.awg.write('SLIS:SEQ:DEL "{0}"'.format(name))
+        if sequence_name in self._get_sequence_names_memory():
+            self.awg.write('SLIS:SEQ:DEL "{0}"'.format(sequence_name))
 
         # Create new sequence and set jump timing to immediate
-        self.awg.write('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(name, num_steps, num_tracks))
-        self.awg.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(name))
+        self.awg.write('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(sequence_name, num_steps, num_tracks))
+        self.awg.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(sequence_name))
 
         # Fill in sequence information
         for step in range(num_steps):
-            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, name, trig_dict[trigger_list[step]]))
-
-        if jumpto_list[step] < 0:
-            jumpto = 'NEXT'
-        else:
-            jumpto = str(jumpto_list[step])
-            self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1, name, jumpto))
-
-        if repeat_list[step] <= 0:
-            repeat = 'INF'
-        else:
-            repeat = str(repeat_list[step])
-            self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1, name, repeat))
-
-        if num_tracks == 1:
-            self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[step]))
-        elif num_tracks == 2:
-            self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[0][step]))
-            self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1, name, waveform_list[1][step]))
+            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+                                                                     trig_dict[sequence_params[step]['trigger_wait']]))
+            if sequence_params[step]['event_jump_to'] <= 0:
+                jumpto = 'NEXT'
+            else:
+                jumpto = str(sequence_params[step]['event_jump_to'])
+            self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
+                                                                     sequence_name, jumpto))
+            if sequence_params[step]['repetitions'] <= 0:
+                repeat = 'INF'
+            else:
+                repeat = str(sequence_params[step]['repetitions'])
+            self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
+                                                                    sequence_name, repeat))
+            if sequence_params[step]['go_to'] <= 0:
+                goto = 'NEXT'
+            else:
+                goto = str(sequence_params[step]['go_to'])
+            self.awg.write('SLIS:SEQ:STEP{0}:GOTO "{1}", {2}'.format(step + 1, sequence_name, goto))
+            waveform_name = sequence_params[step]['name'][0].rsplit('_ch', 1)[0]
+            if num_tracks == 1:
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                waveform_name + '_ch1'))
+            elif num_tracks == 2:
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                waveform_name + '_ch1'))
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                waveform_name + '_ch2'))
+        # Wait for everything to complete
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def _init_loaded_asset(self):
@@ -1204,7 +1250,7 @@ class AWG70K(Base, PulserInterface):
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         # first get all the channel assets
         a_ch_asset = [self.awg.query('SOUR{0}:CASS?'.format(count))[1:-2]
@@ -1293,7 +1339,9 @@ class AWG70K(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if
+                         f.endswith('.wfmx') or f.endswith('.wfm') or f.endswith(
+                             '.seq') or f.endswith('.mat')]
         return filename_list
 
     def _get_model_ID(self):
@@ -1321,7 +1369,7 @@ class AWG70K(Base, PulserInterface):
         @return: list of names
         """
         # Check if AWG is in function generator mode
-        self._activate_awg_mode()
+        # self._activate_awg_mode()
 
         number_of_wfm = int(self.awg.query('WLIS:SIZE?'))
         waveform_list = [None] * number_of_wfm
@@ -1339,12 +1387,12 @@ class AWG70K(Base, PulserInterface):
         run_state = bool(int(self.awg.query('AWGC:RST?')))
         return run_state
 
-    def _activate_awg_mode(self):
-        """
-        Helper method to activate AWG mode if the device is currently in function generator mode.
-        """
-        # Check if AWG is still in MW mode (function generator mode)
-        if self.awg.query('INST:MODE?').replace('\n', '') != 'AWG':
-            self.awg.write('INST:MODE AWG')
-            self.awg.write('*WAI')
-        return
+    # def _activate_awg_mode(self):
+    #     """
+    #     Helper method to activate AWG mode if the device is currently in function generator mode.
+    #     """
+    #     # Check if AWG is still in MW mode (function generator mode)
+    #     if self.awg.query('INST:MODE?').replace('\n', '') != 'AWG':
+    #         self.awg.write('INST:MODE AWG')
+    #         self.awg.write('*WAI')
+    #     return

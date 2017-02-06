@@ -91,20 +91,23 @@ class PulsedExtractionExternalLogic(GenericLogic):
         if method =='Niko':
             number_laser=param_dict['number_laser']
             conv=param_dict['conv']
-            laser_y = self._pe_logic.ungated_extraction(self.data,conv,number_laser)
+            return_dict = self._pe_logic.ungated_extraction(self.data,conv,number_laser)
+            laser_y = return_dict['laser_arr_y']
         elif method == 'treshold':
             count_treshold=param_dict['count_treshold']
             min_len_laser=param_dict['min_len_laser']
             exception=param_dict['exception']
-            laser_y = self._pe_logic.extract_laser_pulses(self.data,count_treshold,min_len_laser,exception)
+            return_dict = self._pe_logic.extract_laser_pulses(self.data,count_treshold,min_len_laser,exception)
+            laser_y = return_dict['laser_arr_y']
         elif method == 'old':
             number_laser=param_dict['number_laser']
             laser_length=param_dict['laser_length']
             initial_offset=param_dict['initial_offset']
             initial_length=param_dict['initial_length']
             increment_length=param_dict['increment_length']
-            laser_y = self._pe_logic.excise_laser_pulses(self.data,number_laser,laser_length,
-                                                         initial_offset,initial_length,increment_length)
+            return_dict = self._pe_logic.excise_laser_pulses(self.data,number_laser,laser_length,
+                                                             initial_offset,initial_length,increment_length)
+            laser_y = return_dict['laser_arr_y']
         else:
             self.log.warning('Not yet implemented')
         if ignore_first:

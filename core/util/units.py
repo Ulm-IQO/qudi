@@ -400,3 +400,52 @@ def in_range(value, lower_limit, upper_limit):
     if value < l_limit:
         return lower_limit
     return value
+
+
+def compute_dft(x_val, y_val, zeropad_num=0):
+    """ Compute the Discrete fourier Transform
+
+    @param numpy.array x_val: 1D array
+    @param numpy.array y_val: 1D array of same size as x_val
+    @param int zeropad_num: zeropadding (adding zeros to the end of the array).
+                            zeropad_num >= 0, the size of the array, which is
+                            add to the end of the y_val before performing the
+                            dft. The resulting array will have the length
+                                (len(y_val)/2)*(zeropad_num+1)
+                            Note that zeropadding will not change or add more
+                            information to the dft, it will solely interpolate
+                            between the dft_y values.
+
+    @return: tuple(dft_x, dft_y):
+                be aware that the return arrays' length depend on the zeropad
+                number like
+                    len(dft_x) = len(dft_y) = (len(y_val)/2)*(zeropad_num+1)
+
+
+    """
+
+    x_val = np.array(x_val)
+    y_val = np.array(y_val)
+
+    corrected_y = y_val - y_val.mean()
+    # The absolute values contain the fourier transformed y values
+
+    zeropad_arr = np.zeros(len(corrected_y)*(zeropad_num+1))
+    zeropad_arr[:len(corrected_y)] = corrected_y
+    fft_y = np.abs(np.fft.fft(zeropad_arr))
+
+    # Due to the sampling theorem you can only identify frequencies at half
+    # of the sample rate, therefore the FT contains an almost symmetric
+    # spectrum (the asymmetry results from aliasing effects). Therefore take
+    # the half of the values for the display.
+    middle = int((len(zeropad_arr)+1)//2)
+
+    # sample spacing of x_axis, if x is a time axis than it corresponds to a
+    # timestep:
+    x_spacing = np.round(x_val[-1] - x_val[-2], 12)
+
+    # use the helper function of numpy to calculate the x_values for the
+    # fourier space. That function will handle an occuring devision by 0:
+    fft_x = np.fft.fftfreq(len(zeropad_arr), d=x_spacing)
+
+    return abs(fft_x[:middle]), fft_y[:middle]

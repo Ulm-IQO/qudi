@@ -358,23 +358,17 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the small steps for the crosshair move.&lt;br/&gt;The keyboard configuration is the following:&lt;br/&gt;ArrowLeft = Move -x&lt;br/&gt;ArrowRight = Move +x&lt;br/&gt;ArrowUp = Move +y&lt;br/&gt;ArrowDown = Move -y&lt;br/&gt;PageUp = Move +z&lt;br/&gt;PageDown = Move -z&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Slider small step with Keys (nm):</string>
+        <string>Slider small step with Keys:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="slider_small_step_SpinBox">
+      <widget class="ScienDSpinBox" name="slider_small_step_DoubleSpinBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the small steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
-       <property name="maximum">
-        <number>10000</number>
-       </property>
-       <property name="singleStep">
-        <number>10</number>
-       </property>
-       <property name="value">
-        <number>10</number>
+       <property name="suffix">
+        <string>m</string>
        </property>
       </widget>
      </item>
@@ -393,23 +387,17 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the big steps for the crosshair move.&lt;br/&gt;The keyboard configuration is the following:&lt;br/&gt;Ctrl + ArrowLeft = Move -x&lt;br/&gt;Ctrl + ArrowRight = Move +x&lt;br/&gt;Ctrl + ArrowUp = Move +y&lt;br/&gt;Ctrl + ArrowDown = Move -y&lt;br/&gt;Ctrl + PageUp = Move +z&lt;br/&gt;Ctrl + PageDown = Move -z&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Slider big step with Keys (nm):</string>
+        <string>Slider big step with Keys:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="slider_big_step_SpinBox">
+      <widget class="ScienDSpinBox" name="slider_big_step_DoubleSpinBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the big steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
-       <property name="maximum">
-        <number>10000</number>
-       </property>
-       <property name="singleStep">
-        <number>10</number>
-       </property>
-       <property name="value">
-        <number>100</number>
+       <property name="suffix">
+        <string>m</string>
        </property>
       </widget>
      </item>
@@ -484,6 +472,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>clock_frequency_InputWidget</tabstop>
   <tabstop>return_slowness_InputWidget</tabstop>
