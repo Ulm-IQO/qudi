@@ -165,10 +165,9 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     def scan_line(self, line_path=None):
         """ Scans a line and returns the counts on that line.
 
-        @param float[][n] line_path: array of n-part tuples defining the
-                                     positions pixels
+        @param float[k][n] line_path: array k of n-part tuples defining the pixel positions
 
-        @return float[][]: the photon counts per second
+        @return float[k][m]: the photon counts per second for k pixels with m channels
         """
         pass
 

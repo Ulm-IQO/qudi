@@ -312,4 +312,4 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
     def  get_scanner_count_channels(self):
 
-        return 0
+        return ['Ctr1']
