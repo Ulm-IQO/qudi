@@ -38,7 +38,7 @@ command to talk to a xz motor hardware and a t motor hardware.
 
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
-
+from collections import OrderedDict
 
 class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
 
@@ -98,7 +98,9 @@ class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
         constraints_xz = self._motor_device_xz.get_constraints()
         constraints_y = self._motor_device_y.get_constraints()
         constraints_xz.update(constraints_y)
-        return constraints_xz
+
+        constraints = OrderedDict(sorted(constraints_xz.items(), key=lambda t: t[0]))
+        return constraints
 
 
     def move_rel(self, param_dict):

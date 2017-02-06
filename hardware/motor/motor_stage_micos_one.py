@@ -117,11 +117,11 @@ class MotorStageMicosOne(Base, MotorInterface):
         self._micos.write("1 setdim")
 
         try:
-            pos_str = self._micos.query('pos')
+            pos_str = self._micos.ask('pos')
             self.pos = float(pos_str) / 1000 - 24e-3
 
         except visa.VisaIOError:
-            self.log.error('Resource IO error, is it busy?')
+            self.log.error(visa.VisaIOERROR)
             self.pos = 0
 
     def on_deactivate(self, e):
@@ -304,7 +304,7 @@ class MotorStageMicosOne(Base, MotorInterface):
             self.pos = float(pos_str) / 1000 - 24e-3
 
         except visa.VisaIOError:
-            self.log.error('Resource IO error, is it busy?')
+            self.log.error(visa.VisaIOError)
 
         pos[self._micos.label] = self.pos
 

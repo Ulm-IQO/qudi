@@ -878,6 +878,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             match = re.match(
                 '^/(?P<dev>[0-9A-Za-z\- ]+[0-9A-Za-z\-_ ]*)/(?P<chan>[0-9A-Za-z]+)',
                 channel)
+            self.log.info(channel)
             if match:
                 devicelist.append(match.group('dev'))
             else:

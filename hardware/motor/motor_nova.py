@@ -141,9 +141,10 @@ class NOVAMotor:
                            self.byte_array.b0[0], self.byte_array.b1[0], self.byte_array.b2[0],
                            self.byte_array.b3[0], self.byte_array.b4[0], self.byte_array.b5[0], self.byte_array.b6[0],
                            self.byte_array.b7[0], self.timeout, byref(self.error))
-        self.log.info('Writing command {0} with position {1} and velocity {2}'.format(self.command.value,
-                                                                                      self.byte_array.position,
-                                                                                      self.byte_array.velocity))
+        #self.log.info('Writing command {0} with position {1} and velocity {2}'.format(self.command.value,
+        #                                                                             self.byte_array.position,
+        #                                                                             self.byte_array.velocity))
+
         if self.error.value != 0:
             self.log.error(self.error_code[self.error.value])
         time.sleep(0.02)
@@ -157,9 +158,9 @@ class NOVAMotor:
                           byref(self.byte_array.b4), byref(self.byte_array.b5), byref(self.byte_array.b6),
                           byref(self.byte_array.b7), self.timeout,
                           byref(self.error))
-        self.log.info('Reading command {0} with position {1} and velocity {2}'.format(self.command.value,
-                                                                                      self.byte_array.position,
-                                                                                      self.byte_array.velocity))
+        #self.log.info('Reading command {0} with position {1} and velocity {2}'.format(self.command.value,
+        #                                                                                      self.byte_array.position,
+        #                                                                               self.byte_array.velocity))
         if self.error.value != 0:
             self.log.error(self.error_code[self.error.value])
 
@@ -254,8 +255,8 @@ class NOVAMotor:
         # position = 4
         # read the position off the stack
         position = self.byte_array.position
-        self.log.info('Getting position at {0}'.format(self.time_stamp()))
-        self.log.info('Controller records {0} reads'.format(self.nreads.value))
+        #self.log.info('Getting position at {0}'.format(self.time_stamp()))
+       # self.log.info('Controller records {0} reads'.format(self.nreads.value))
         return position / 1000000000.0
 
     def move_rel(self, delta_position):
@@ -520,8 +521,8 @@ class NOVAStage(Base, MotorInterface):
 
         for (hw_type, label) in self._motor_type_label:
             if limits_dict.get(label) is not None:
-                self.log.info('label {0}'.format(label))
-                self.log.info('hw_type {0}'.format(hw_type))
+                #self.log.info('label {0}'.format(label))
+                #self.log.info('hw_type {0}'.format(hw_type))
                 self._axis_dict[label] = NOVAMotor(self.novadll,
                                                    hw_type, label)
 
@@ -659,11 +660,11 @@ class NOVAStage(Base, MotorInterface):
             for label_axis in param_list:
                 if label_axis in self._axis_dict:
                     pos[label_axis] = self._axis_dict[label_axis].get_pos()
-                    self.log.info('Am i {0}'.format(label_axis))
+                    #self.log.info('Am i {0}'.format(label_axis))
         else:
             for label_axis in self._axis_dict:
                 pos[label_axis] = self._axis_dict[label_axis].get_pos()
-                self.log.info('or Am i {0}'.format(label_axis))
+                #self.log.info('or Am i {0}'.format(label_axis))
 
         return pos
 

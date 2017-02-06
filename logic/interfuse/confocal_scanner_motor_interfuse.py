@@ -48,20 +48,21 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
-        else:
-            self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
+        # if 'clock_frequency' in config.keys():
+        #    self._clock_frequency = config['clock_frequency']
+        # else:
+        #    self._clock_frequency = 100
+        #    self.log.warning('No clock_frequency configured taking 100 Hz '
+        #            'instead.')
 
+        self._clock_frequency = 500
 
         # Internal parameters
         self._line_length = None
         self._scanner_counter_daq_task = None
-        self._voltage_range = [-10., 10.]
+        self._voltage_range = [-1., 1.]
 
-        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
+        self._position_range = [[0., 1.], [0., 1.], [0., 1.], [0., 0]]
         self._current_position = [0., 0., 0., 0.]
 
         self._num_points = 500
@@ -84,8 +85,17 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         self._count_frequency = 50
 
+        self._clock_frequency_default = 100             # in Hz
+
         #must set these bits, especially for Nova Stage
-        self._motor_hw.set_velocity({'x-axis':0.5e-3,'y-axis':0.5e-3,'z-axis':0.5e-3})
+        self._motor_hw.set_velocity({'x-axis':1e-3,'y-axis':1e-3,'z-axis':1e-3})
+
+        constraints = self._motor_hw.get_constraints()
+        self.position_range = []
+        for label_axis in constraints:
+            self.position_range.append([constraints[label_axis]['scan_min'],constraints[label_axis]['scan_max']])
+
+        self.position_range.append([0,0])
 
     def on_deactivate(self, e):
         self.reset_hardware()
@@ -101,21 +111,16 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
-        This is a direct pass-through to the scanner HW.
+        This is a direct pass-through to the scanner HW.l;;
 
         @return float [4][2]: array of 4 ranges with an array containing lower and upper limit
         """
 
-         #check if this needs micrometres!
+        #check if this needs micrometres!
 
-        constraints = self._motor_hw.get_constraints()
-        position_range = []
-        for label_axis in constraints:
-            position_range.append([constraints[label_axis]['scan_min'],constraints[label_axis]['scan_max']])
+        #self.log.info('Scan range is {0}'.format(position_range))
 
-        self.log.info('Scan range is {0}'.format(position_range))
-
-        return position_range
+        return self.position_range
 
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
@@ -126,6 +131,12 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.warning('Setting position range not currently implemented')
+
+
+
+
+
+
         return 0
 
     def set_voltage_range(self, myrange=None):
@@ -164,7 +175,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
+        #self.log.warning('set_up_scanner')
         return 0
 
     def get_scanner_axes(self):
@@ -211,7 +222,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         """
         position_dict = self._motor_hw.get_pos()
         position_vect = []
-        self.log.info('motor interfuse reports {0}'.format(position_dict))
+        #self.log.info('motor interfuse reports {0}'.format(position_dict))
 
         label_dict = {'x-axis','y-axis','z-axis'}
 
@@ -221,7 +232,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #y, z, x
         #Stupid random a channel
         position_vect.append(0)
-        self.log.info('Current position in (x,y,z,a) is {0}'.format(position_vect))
+        #self.log.info('Current position in (x,y,z,a) is {0}'.format(position_vect))
         return position_vect
 
     def set_up_line(self, length=100):
@@ -273,7 +284,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #       dtype=np.uint32)
 
         count_data = np.empty(
-                (1, self._line_length),
+                (self._line_length, 1),
         dtype = np.uint32)
 
         for i in range(self._line_length):
@@ -285,7 +296,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
             # record counts
             #self.log.info(self._confocal_hw.get_counter())
             count = self._confocal_hw.get_counter()
-            count_data[0,i] = np.mean(count) # could be say, 10 values
+            count_data[i,0] = np.mean(count) # could be say, 10 values
 
         self._confocal_hw.close_counter(scanner=False)
         self._confocal_hw.close_clock(scanner=False)
