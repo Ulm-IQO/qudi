@@ -1260,14 +1260,13 @@ class PulsedMeasurementGui(GUIBase):
         """
         if 'ana_param_errorbars_CheckBox' in self._statusVariables:
             self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
-        # if 'second_plot_ComboBox_text' in self._statusVariables:
-        #     self._pa.second_plot_ComboBox.setText(self._statusVariables['second_plot_ComboBox_text'])
+        if 'second_plot_ComboBox_text' in self._statusVariables:
+            index = self._pa.second_plot_ComboBox.findText(self._statusVariables['second_plot_ComboBox_text'])
+            self._pa.second_plot_ComboBox.setCurrentIndex(index)
 
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
 
-        # FIXME: Implement second plot
-        self._pa.second_plot_GroupBox.setVisible(False)
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image)
@@ -1282,22 +1281,16 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.fit_param_fit_func_ComboBox.addItems(self._pulsed_master_logic.get_fit_functions())
 
         # Configure the errorbars of the data in the main pulse analysis display:
-        self.signal_image_error_bars = pg.ErrorBarItem(
-            x=np.array(range(10)),
-            y=np.zeros(10),
-            top=0.,
-            bottom=0.,
-            pen=palette.c1)
-        self.signal_image_error_bars2 = pg.ErrorBarItem(
-            x=np.array(range(10)),
-            y=np.zeros(10),
-            top=0.,
-            bottom=0.,
-            pen=palette.c3)
+        self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
+                                                       top=0., bottom=0., pen=palette.c1)
+        self.signal_image_error_bars2 = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
+                                                        top=0., bottom=0., pen=palette.c3)
 
         # Configure the second pulse analysis display:
         self.second_plot_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
+        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c3)
+        self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the lasertrace plot display:
@@ -1325,8 +1318,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
         # set boundaries
-        self._pe.slider_conv_std_dev.setRange(1, 200)
-        self._pe.conv_std_dev.setRange(1, 200)
+        self._pe.extract_param_conv_std_dev_slider.setRange(1, 200)
+        self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -1347,8 +1340,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigExtMicrowaveSettingsUpdated.connect(self.microwave_settings_updated)
         self._pulsed_master_logic.sigExtMicrowaveRunningUpdated.connect(self.microwave_running_updated)
         self._pulsed_master_logic.sigTimerIntervalUpdated.connect(self.measurement_timer_updated)
-        self._pulsed_master_logic.sigAnalysisWindowsUpdated.connect(self.analysis_windows_updated)
-        self._pulsed_master_logic.sigAnalysisMethodUpdated.connect(self.analysis_method_updated)
+        self._pulsed_master_logic.sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated)
+        self._pulsed_master_logic.sigAnalysisMethodsUpdated.connect(self.analysis_methods_updated)
+        self._pulsed_master_logic.sigExtractionSettingsUpdated.connect(self.extraction_settings_updated)
+        self._pulsed_master_logic.sigExtractionMethodsUpdated.connect(self.extraction_methods_updated)
 
         # connect button click signals
         self._pg.load_ensemble_PushButton.clicked.connect(self.load_ensemble_clicked)
@@ -1383,31 +1378,36 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulser_sample_freq_DSpinBox.editingFinished.connect(self.pulse_generator_settings_changed)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.measurement_sequence_settings_changed)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.measurement_sequence_settings_changed)
-        self._pe.extract_param_ana_window_start_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_windows_changed)
-        self._pe.conv_std_dev.valueChanged.connect(self.conv_std_dev_changed)
+        self._pe.extract_param_ana_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.connect(self.extraction_settings_changed)
+        self._pe.extract_param_threshold_SpinBox.editingFinished.connect(self.extraction_settings_changed)
+        self._pe.extract_param_min_laser_length_SpinBox.editingFinished.connect(self.extraction_settings_changed)
+        self._pe.extract_param_tolerance_SpinBox.editingFinished.connect(self.extraction_settings_changed)
 
         # connect combobox changed signals
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
-        #self._pa.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
+        self._pa.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.connect(self.pulse_generator_settings_changed)
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.laser_to_show_changed)
+        self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.connect(self.analysis_settings_changed)
+        self._pe.extract_param_extraction_method_comboBox.currentIndexChanged.connect(self.extraction_settings_changed)
 
         # connect other widgets changed signals
-        self.sig_start_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self.sig_end_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self.ref_start_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self.ref_end_line.sigPositionChanged.connect(self.analysis_windows_line_changed)
-        self._pe.slider_conv_std_dev.sliderReleased.connect(self.slider_conv_std_dev_changed)
+        self.sig_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self.sig_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self.ref_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self.ref_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_conv_std_dev_slider.sliderReleased.connect(self.extraction_settings_changed)
 
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
 
         self.toggle_settings_editor()
         self.toggle_error_bars()
-        #self.change_second_plot()
+        self.change_second_plot()
 
         # initialize values
         self._pulsed_master_logic.request_measurement_init_values()
@@ -1440,8 +1440,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigExtMicrowaveSettingsUpdated.disconnect()
         self._pulsed_master_logic.sigExtMicrowaveRunningUpdated.disconnect()
         self._pulsed_master_logic.sigTimerIntervalUpdated.disconnect()
-        self._pulsed_master_logic.sigAnalysisWindowsUpdated.disconnect()
-        self._pulsed_master_logic.sigAnalysisMethodUpdated.disconnect()
+        self._pulsed_master_logic.sigAnalysisSettingsUpdated.disconnect()
+        self._pulsed_master_logic.sigAnalysisMethodsUpdated.disconnect()
+        self._pulsed_master_logic.sigExtractionSettingsUpdated.disconnect()
+        self._pulsed_master_logic.sigExtractionMethodsUpdated.disconnect()
         self._pg.load_ensemble_PushButton.clicked.disconnect()
         self._sg.load_sequence_PushButton.clicked.disconnect()
         self._mw.pulser_on_off_PushButton.clicked.disconnect()
@@ -1472,16 +1474,21 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_ana_window_width_SpinBox.editingFinished.disconnect()
         self._pe.extract_param_ref_window_start_SpinBox.editingFinished.disconnect()
         self._pe.extract_param_ref_window_width_SpinBox.editingFinished.disconnect()
-        self._pe.conv_std_dev.valueChanged.disconnect()
+        self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.disconnect()
+        self._pe.extract_param_threshold_SpinBox.editingFinished.disconnect()
+        self._pe.extract_param_min_laser_length_SpinBox.editingFinished.disconnect()
+        self._pe.extract_param_tolerance_SpinBox.editingFinished.disconnect()
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.disconnect()
-        #self._pa.second_plot_ComboBox.currentIndexChanged.disconnect()
+        self._pa.second_plot_ComboBox.currentIndexChanged.disconnect()
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.disconnect()
         self._pe.laserpulses_ComboBox.currentIndexChanged.disconnect()
-        self.sig_start_line.sigPositionChanged.disconnect()
-        self.sig_end_line.sigPositionChanged.disconnect()
-        self.ref_start_line.sigPositionChanged.disconnect()
-        self.ref_end_line.sigPositionChanged.disconnect()
-        self._pe.slider_conv_std_dev.sliderReleased.disconnect()
+        self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.disconnect()
+        self._pe.extract_param_extraction_method_comboBox.currentIndexChanged.disconnect()
+        self.sig_start_line.sigPositionChangeFinished.disconnect()
+        self.sig_end_line.sigPositionChangeFinished.disconnect()
+        self.ref_start_line.sigPositionChangeFinished.disconnect()
+        self.ref_end_line.sigPositionChangeFinished.disconnect()
+        self._pe.extract_param_conv_std_dev_slider.sliderReleased.disconnect()
         return
 
     def _analysis_apply_hardware_constraints(self):
@@ -1608,7 +1615,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.manually_pull_data()
         return
 
-    def signal_data_updated(self, x_data, y_signal_data, y2_signal_data, y_error_data, y2_error_data):
+    def signal_data_updated(self, x_data, y_signal_data, y2_signal_data, y_error_data,
+                            y2_error_data, fft_x_data, fft_y_data, fft_y2_data):
         """
 
         @param x_data:
@@ -1619,6 +1627,10 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
+        if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            is_fft = True
+        else:
+            is_fft = False
 
         # create ErrorBarItems
         beamwidth = np.inf
@@ -1632,10 +1644,21 @@ class PulsedMeasurementGui(GUIBase):
         if is_alternating:
             self.signal_image_error_bars2.setData(x=x_data, y=y2_signal_data, top=y2_error_data,
                                                   bottom=y2_error_data, beam=beamwidth)
-        # dealing with the actual signal
+        # dealing with the actual signal plot
         self.signal_image.setData(x=x_data, y=y_signal_data)
         if is_alternating:
             self.signal_image2.setData(x=x_data, y=y2_signal_data)
+
+        # dealing with the secondary plot
+        if is_fft:
+            self.second_plot_image.setData(x=fft_x_data, y=fft_y_data)
+        else:
+            self.second_plot_image.setData(x=x_data, y=y_signal_data)
+        if is_alternating:
+            if is_fft:
+                self.second_plot_image2.setData(x=fft_x_data, y=fft_y2_data)
+            else:
+                self.second_plot_image2.setData(x=x_data, y=y2_signal_data)
 
         # dealing with the error plot
         self.measuring_error_image.setData(x=x_data, y=y_error_data)
@@ -1932,6 +1955,8 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
             if self.measuring_error_image2 not in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
+            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         else:
             if self.signal_image2 in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
@@ -1939,6 +1964,8 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
             if self.measuring_error_image2 in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.removeItem(self.measuring_error_image2)
+            if self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_plot_image2)
         # unblock signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(False)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(False)
@@ -1987,58 +2014,22 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
         return
 
-    # def change_second_plot(self):
-    #     """ This method handles the second plot"""
-    #     if self._mw.second_plot_ComboBox.currentText()=='None':
-    #         self._mw.second_plot_GroupBox.setVisible(False)
-    #     else:
-    #         self._mw.second_plot_GroupBox.setVisible(True)
-    #
-    #         # Here FFT is seperated from the other option. The reason for that
-    #         # is preventing of code doubling
-    #         if self._mw.second_plot_ComboBox.currentText() == 'FFT':
-    #             fft_x, fft_y = self._pulsed_meas_logic.compute_fft()
-    #             self.second_plot_image.setData(fft_x, fft_y)
-    #             self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-    #
-    #             self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
-    #                                                                text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
-    #                                                                units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
-    #             self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
-    #                                                                text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
-    #                                                                units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
-    #
-    #         else:
-    #             #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
-    #             self.second_plot_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
-    #
-    #             if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()== '':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
-    #                                                                    text=self._as.ana_param_y_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_y_axis_unit_LineEdit.text())
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
-    #                                                                    text=self._as.ana_param_x_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_x_axis_unit_LineEdit.text())
-    #
-    #             else:
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
-    #                                                                    text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
-    #                                                                    text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
-    #
-    #             if self._mw.second_plot_ComboBox.currentText() == 'unchanged data':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-    #
-    #             elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
-    #
-    #             elif self._mw.second_plot_ComboBox.currentText() == 'Log(y)':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=True)
-    #
-    #             elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)&Log(y)':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
+    def change_second_plot(self):
+        """ This method handles the second plot"""
+        if self._pa.second_plot_ComboBox.currentText() == 'None':
+            self._pa.second_plot_GroupBox.setVisible(False)
+        else:
+            self._pa.second_plot_GroupBox.setVisible(True)
+
+            if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
+            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
+            elif self._pa.second_plot_ComboBox.currentText() == 'Log(y)':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=True)
+            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)Log(y)':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
+        return
 
     def measurement_timer_changed(self):
         """ This method handles the analysis timing"""
@@ -2060,123 +2051,114 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.time_param_ana_periode_DoubleSpinBox.blockSignals(False)
         return
 
-    def conv_std_dev_changed(self):
+    def extraction_settings_changed(self):
         """
         Uodate new value of standard deviation of gaussian filter
         """
-        # block signals
-        self._pe.slider_conv_std_dev.blockSignals(True)
-        # set widgets
-        std_dev = self._pe.conv_std_dev.value()
-        self._pe.slider_conv_std_dev.setValue(std_dev)
-        # unblock signals
-        self._pe.slider_conv_std_dev.blockSignals(False)
+        # determine if one of the conv_std_dev widgets (SpinBox or slider) has emitted the signal
+        if self.sender().objectName() == 'extract_param_conv_std_dev_slider':
+            conv_std_dev = self._pe.extract_param_conv_std_dev_slider.value()
+        else:
+            conv_std_dev = self._pe.extract_param_conv_std_dev_DSpinBox.value()
 
-        self._pulsed_master_logic.analysis_method_changed(std_dev)
+        method = self._pe.extract_param_extraction_method_comboBox.currentText()
+        count_treshold = self._pe.extract_param_threshold_SpinBox.value()
+        threshold_tolerance_bins = self._pe.extract_param_tolerance_SpinBox.value()
+        min_laser_length = self._pe.extract_param_min_laser_length_SpinBox.value()
+
+        self._pulsed_master_logic.extraction_settings_changed(method, conv_std_dev, count_treshold,
+                                                              threshold_tolerance_bins,
+                                                              min_laser_length)
         return
 
-    def slider_conv_std_dev_changed(self):
-        """
-        Uodate new value of standard deviation of gaussian filter
-        from slider
-        """
-        # block signals
-        self._pe.conv_std_dev.blockSignals(True)
-        # set widgets
-        std_dev = self._pe.slider_conv_std_dev.value()
-        self._pe.conv_std_dev.setValue(std_dev)
-        # unblock signals
-        self._pe.conv_std_dev.blockSignals(False)
-
-        self._pulsed_master_logic.analysis_method_changed(std_dev)
-        return
-
-    def analysis_method_updated(self, gaussfilt_std_dev):
+    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
         # block signals
-        self._pe.slider_conv_std_dev.blockSignals(True)
-        self._pe.conv_std_dev.blockSignals(True)
+        self._pe.extract_param_conv_std_dev_slider.blockSignals(True)
+        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(True)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+        self._pe.extract_param_threshold_SpinBox.blockSignals(True)
+        self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
+        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(True)
         # set widgets
-        self._pe.slider_conv_std_dev.setValue(gaussfilt_std_dev)
-        self._pe.conv_std_dev.setValue(gaussfilt_std_dev)
+        index = self._pe.extract_param_extraction_method_comboBox.findText(method)
+        self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
+        self._pe.extract_param_conv_std_dev_DSpinBox.setValue(conv_std_dev)
+        self._pe.extract_param_conv_std_dev_slider.setValue(conv_std_dev)
+        self._pe.extract_param_threshold_SpinBox.setValue(count_treshold)
+        self._pe.extract_param_tolerance_SpinBox.setValue(threshold_tolerance_bins)
+        self._pe.extract_param_min_laser_length_SpinBox.setValue(min_laser_length)
         # unblock signals
-        self._pe.slider_conv_std_dev.blockSignals(False)
-        self._pe.conv_std_dev.blockSignals(False)
+        self._pe.extract_param_conv_std_dev_slider.blockSignals(False)
+        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(False)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
+        self._pe.extract_param_threshold_SpinBox.blockSignals(False)
+        self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
+        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(False)
         return
 
-    def analysis_windows_changed(self):
+    def extraction_methods_updated(self, methods_dict):
         """
 
+        @param methods_dict:
         @return:
         """
+        method_names = list(methods_dict)
         # block signals
-        self.sig_start_line.blockSignals(True)
-        self.sig_end_line.blockSignals(True)
-        self.ref_start_line.blockSignals(True)
-        self.ref_end_line.blockSignals(True)
-        # get data
-        sig_start = self._pe.extract_param_ana_window_start_SpinBox.value()
-        sig_length = self._pe.extract_param_ana_window_width_SpinBox.value()
-        ref_start = self._pe.extract_param_ref_window_start_SpinBox.value()
-        ref_length = self._pe.extract_param_ref_window_width_SpinBox.value()
-        # update plots
-        self.sig_start_line.setValue(sig_start)
-        self.sig_end_line.setValue(sig_start + sig_length)
-        self.ref_start_line.setValue(ref_start)
-        self.ref_end_line.setValue(ref_start + ref_length)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+        # set items
+        self._pe.extract_param_extraction_method_comboBox.clear()
+        self._pe.extract_param_extraction_method_comboBox.addItems(method_names)
         # unblock signals
-        self.sig_start_line.blockSignals(False)
-        self.sig_end_line.blockSignals(False)
-        self.ref_start_line.blockSignals(False)
-        self.ref_end_line.blockSignals(False)
-
-        self._pulsed_master_logic.analysis_windows_changed(sig_start, sig_length, ref_start,
-                                                           ref_length)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
         return
 
-    def analysis_windows_line_changed(self):
+    def analysis_settings_changed(self):
         """
 
         @return:
         """
-        # block signals
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
-        # get data
-        sig_start = self.sig_start_line.value()
-        sig_length = self.sig_end_line.value() - sig_start
-        ref_start = self.ref_start_line.value()
-        ref_length = self.ref_end_line.value() - ref_start
-        # set widgets
-        self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_length)
-        self._pe.extract_param_ref_window_start_SpinBox.setValue(ref_start)
-        self._pe.extract_param_ref_window_width_SpinBox.setValue(ref_length)
-        # unblock signals
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+        # Check if the signal has been emitted by a dragged line in the laser plot
+        if self.sender().__class__.__name__ == 'InfiniteLine':
+            signal_start = self.sig_start_line.value()
+            signal_end = self.sig_end_line.value()
+            norm_start = self.ref_start_line.value()
+            norm_end = self.ref_end_line.value()
+        else:
+            signal_width = self._pe.extract_param_ana_window_width_SpinBox.value()
+            signal_start = self._pe.extract_param_ana_window_start_SpinBox.value()
+            signal_end = signal_start + signal_width
+            norm_width = self._pe.extract_param_ref_window_width_SpinBox.value()
+            norm_start = self._pe.extract_param_ref_window_start_SpinBox.value()
+            norm_end = norm_start + norm_width
 
-        self.analysis_windows_changed()
+        method = self._pe.extract_param_analysis_method_comboBox.currentText()
+
+        self._pulsed_master_logic.analysis_settings_changed(method, signal_start, signal_end,
+                                                            norm_start, norm_end)
         return
 
-    def analysis_windows_updated(self, sig_start, sig_length, ref_start, ref_length):
+    def analysis_settings_updated(self, method, sig_start, sig_end, norm_start, norm_end):
         """
 
+        @param method:
         @param sig_start:
-        @param sig_length:
-        @param ref_start:
-        @param ref_length:
+        @param sig_end:
+        @param norm_start:
+        @param norm_end:
         @return:
         """
         # block signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
         self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
@@ -2187,15 +2169,18 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_end_line.blockSignals(True)
         # set widgets
         self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_length)
-        self._pe.extract_param_ref_window_start_SpinBox.setValue(ref_start)
-        self._pe.extract_param_ref_window_width_SpinBox.setValue(ref_length)
+        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_end - sig_start)
+        self._pe.extract_param_ref_window_start_SpinBox.setValue(norm_start)
+        self._pe.extract_param_ref_window_width_SpinBox.setValue(norm_end - norm_start)
+        index = self._pe.extract_param_analysis_method_comboBox.findText(method)
+        self._pe.extract_param_analysis_method_comboBox.setCurrentIndex(index)
         # update plots
         self.sig_start_line.setValue(sig_start)
-        self.sig_end_line.setValue(sig_start + sig_length)
-        self.ref_start_line.setValue(ref_start)
-        self.ref_end_line.setValue(ref_start + ref_length)
+        self.sig_end_line.setValue(sig_end)
+        self.ref_start_line.setValue(norm_start)
+        self.ref_end_line.setValue(norm_end)
         # unblock signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
         self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
         self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
         self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
@@ -2204,6 +2189,22 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.blockSignals(False)
         self.ref_start_line.blockSignals(False)
         self.ref_end_line.blockSignals(False)
+        return
+
+    def analysis_methods_updated(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
+        method_names = list(methods_dict)
+        # block signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
+        # set items
+        self._pe.extract_param_analysis_method_comboBox.clear()
+        self._pe.extract_param_analysis_method_comboBox.addItems(method_names)
+        # unblock signals
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
         return
 
     def laser_to_show_changed(self):

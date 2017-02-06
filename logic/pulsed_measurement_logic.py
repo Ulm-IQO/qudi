@@ -49,7 +49,8 @@ class PulsedMeasurementLogic(GenericLogic):
            }
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
@@ -65,8 +66,10 @@ class PulsedMeasurementLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisWindowsUpdated = QtCore.Signal(int, int, int, int)
-    sigAnalysisMethodUpdated = QtCore.Signal(float)
+    sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
+    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -114,15 +117,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.elapsed_time = 0
         self.elapsed_time_str = '00:00:00:00'
 
-        # analyze windows for laser pulses
-        self.signal_start_bin = 5
-        self.signal_width_bin = 200
-        self.norm_start_bin = 300
-        self.norm_width_bin = 200
-
-        # pulse extraction parameters
-        self.conv_std_dev = 10
-
         # threading
         self.threadlock = Mutex()
 
@@ -130,6 +124,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x = None
         self.signal_plot_y = None
         self.signal_plot_y2 = None
+        self.signal_fft_x = None
+        self.signal_fft_y = None
+        self.signal_fft_y2 = None
         self.measuring_error_plot_x = None
         self.measuring_error_plot_y = None
         self.measuring_error_plot_y2 = None
@@ -170,18 +167,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self._mycrowave_source_device = self.get_in_connector('microwave')
 
         # Recall saved status variables
-        if 'signal_start_bin' in self._statusVariables:
-            self.signal_start_bin = self._statusVariables['signal_start_bin']
-        if 'signal_width_bin' in self._statusVariables:
-            self.signal_width_bin = self._statusVariables['signal_width_bin']
-        if 'norm_start_bin' in self._statusVariables:
-            self.norm_start_bin = self._statusVariables['norm_start_bin']
-        if 'norm_width_bin' in self._statusVariables:
-            self.norm_width_bin = self._statusVariables['norm_width_bin']
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
-        if 'conv_std_dev' in self._statusVariables:
-            self.conv_std_dev = self._statusVariables['conv_std_dev']
+            self._pulse_extraction_logic.number_of_lasers = self.number_of_lasers
         if 'laser_trigger_delay_s' in self._statusVariables:
             self.laser_trigger_delay_s = self._statusVariables['laser_trigger_delay_s']
         if 'fast_counter_record_length' in self._statusVariables:
@@ -262,12 +250,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if self.getState() != 'idle' and self.getState() != 'deactivated':
             self.stop_pulsed_measurement()
 
-        self._statusVariables['signal_start_bin'] = self.signal_start_bin
-        self._statusVariables['signal_width_bin'] = self.signal_width_bin
-        self._statusVariables['norm_start_bin'] = self.norm_start_bin
-        self._statusVariables['norm_width_bin'] = self.norm_width_bin
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        self._statusVariables['conv_std_dev'] = self.conv_std_dev
         self._statusVariables['laser_trigger_delay_s'] = self.laser_trigger_delay_s
         self._statusVariables['fast_counter_record_length'] = self.fast_counter_record_length
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
@@ -307,11 +290,23 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserToShowUpdated.emit(self.show_laser_index, self.show_raw_data)
         self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
         self.sigTimerIntervalUpdated.emit(self.timer_interval)
-        self.sigAnalysisWindowsUpdated.emit(self.signal_start_bin, self.signal_width_bin,
-                                            self.norm_start_bin, self.norm_width_bin)
+        self.sigAnalysisMethodsUpdated.emit(self._pulse_analysis_logic.analysis_methods)
+        self.sigExtractionMethodsUpdated.emit(self._pulse_extraction_logic.extraction_methods)
+        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.current_method,
+                                             self._pulse_analysis_logic.signal_start_bin,
+                                             self._pulse_analysis_logic.signal_end_bin,
+                                             self._pulse_analysis_logic.norm_start_bin,
+                                             self._pulse_analysis_logic.norm_end_bin)
+        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
+                                               self._pulse_extraction_logic.conv_std_dev,
+                                               self._pulse_extraction_logic.count_treshold,
+                                               self._pulse_extraction_logic.threshold_tolerance_bins,
+                                               self._pulse_extraction_logic.min_laser_length)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
-        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2, self.measuring_error_plot_y, self.measuring_error_plot_y2)
+        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
+                                       self.measuring_error_plot_y, self.measuring_error_plot_y2,
+                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
         self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit, {}, {})
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
@@ -381,6 +376,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                        number_of_lasers - len(laser_ignore_list)))
         self.controlled_vals = controlled_vals
         self.number_of_lasers = number_of_lasers
+        self._pulse_extraction_logic.number_of_lasers = number_of_lasers
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
         self.alternating = is_alternating
@@ -736,11 +732,6 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self.threadlock:
             if self.getState() == 'locked':
-                # calculate analysis windows
-                sig_start = self.signal_start_bin
-                sig_end = self.signal_start_bin + self.signal_width_bin
-                norm_start = self.norm_start_bin
-                norm_end = self.norm_start_bin + self.norm_width_bin
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
@@ -767,25 +758,17 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.raw_data = fc_data
 
                 # extract laser pulses from raw data
-                if self.fast_counter_gated:
-                    self.laser_data = self._pulse_extraction_logic.gated_extraction(self.raw_data,
-                                                                                    self.conv_std_dev)
-                else:
-                    return_dict = self._pulse_extraction_logic.ungated_extraction(self.raw_data,
-                                                                                      self.conv_std_dev,
-                                                                                      self.number_of_lasers)
-                    self.laser_data = return_dict['laser_arr_y']
+                return_dict = self._pulse_extraction_logic.extract_laser_pulses(self.raw_data,
+                                                                                self.fast_counter_gated)
+                self.laser_data = return_dict['laser_counts_arr']
+
                 # analyze pulses and get data points for signal plot. Also check if extraction
                 # worked (non-zero array returned).
                 if np.sum(self.laser_data) < 1:
                     tmp_signal = np.zeros(self.laser_data.shape[0])
                     tmp_error = np.zeros(self.laser_data.shape[0])
                 else:
-                    tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data,
-                                                                                    norm_start,
-                                                                                    norm_end,
-                                                                                    sig_start,
-                                                                                    sig_end)
+                    tmp_signal, tmp_error = self._pulse_analysis_logic.analyze_data(self.laser_data)
                 # exclude laser pulses to ignore
                 if len(self.laser_ignore_list) > 0:
                     ignore_indices = self.laser_ignore_list
@@ -806,6 +789,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 # set laser to show
                 self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
 
+                # Compute FFT of signal
+                self._compute_fft()
+
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
             self.elapsed_time_str = ''
@@ -818,7 +804,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
-                                           self.measuring_error_plot_y2)
+                                           self.measuring_error_plot_y2, self.signal_fft_x,
+                                           self.signal_fft_y, self.signal_fft_y2)
             return
 
     def set_laser_to_show(self, laser_index, show_raw_data):
@@ -939,35 +926,47 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
         return
 
-    def set_analysis_windows(self, signal_start_bin, signal_width_bins, norm_start_bin,
-                             norm_width_bins):
+    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
+        @param method:
         @param signal_start_bin:
-        @param signal_width_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_width_bins:
+        @param norm_end_bin:
         @return:
         """
         with self.threadlock:
-            self.signal_start_bin = signal_start_bin
-            self.signal_width_bin = signal_width_bins
-            self.norm_start_bin = norm_start_bin
-            self.norm_width_bin = norm_width_bins
-            self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                                norm_width_bins)
-        return signal_start_bin, signal_width_bins, norm_start_bin, norm_width_bins
+            self._pulse_analysis_logic.current_method = method
+            self._pulse_analysis_logic.signal_start_bin = signal_start_bin
+            self._pulse_analysis_logic.signal_end_bin = signal_end_bin
+            self._pulse_analysis_logic.norm_start_bin = norm_start_bin
+            self._pulse_analysis_logic.norm_end_bin = norm_end_bin
+            self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
+                                                 norm_start_bin, norm_end_bin)
+        return method, signal_start_bin, signal_end_bin, norm_start_bin, norm_end_bin
 
-    def analysis_method_changed(self, gaussfilt_std_dev):
+    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
         with self.threadlock:
-            self.conv_std_dev = gaussfilt_std_dev
-            self.sigAnalysisMethodUpdated.emit(self.conv_std_dev)
-        return
+            self._pulse_extraction_logic.current_method = method
+            self._pulse_extraction_logic.conv_std_dev = conv_std_dev
+            self._pulse_extraction_logic.count_treshold = count_treshold
+            self._pulse_extraction_logic.threshold_tolerance_bins = threshold_tolerance_bins
+            self._pulse_extraction_logic.min_laser_length = min_laser_length
+            self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
+                                                   threshold_tolerance_bins, min_laser_length)
+        return method, conv_std_dev, count_treshold, threshold_tolerance_bins, min_laser_length
 
     def _initialize_plots(self):
         """
@@ -981,9 +980,13 @@ class PulsedMeasurementLogic(GenericLogic):
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
         self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int)
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
+        self.signal_fft_x = self.controlled_vals
+        self.signal_fft_y = np.zeros(len(self.controlled_vals))
+        self.signal_fft_y2 = np.zeros(len(self.controlled_vals))
 
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
-                                       self.measuring_error_plot_y, self.measuring_error_plot_y2)
+                                       self.measuring_error_plot_y, self.measuring_error_plot_y2,
+                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
@@ -1035,11 +1038,11 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
-        parameters['Signal start (bin)'] = self.signal_start_bin
-        parameters['Signal width (bins)'] = self.signal_width_bin
-        parameters['Normalization start (bin)'] = self.norm_start_bin
-        parameters['Normalization width (bins)'] = self.norm_width_bin
-        parameters['Standard deviation of gaussian convolution'] = self.conv_std_dev
+        parameters['Signal start (bin)'] = self._pulse_analysis_logic.signal_start_bin
+        parameters['Signal end (bin)'] = self._pulse_analysis_logic.signal_end_bin
+        parameters['Normalization start (bin)'] = self._pulse_analysis_logic.norm_start_bin
+        parameters['Normalization end (bin)'] = self._pulse_analysis_logic.norm_end_bin
+        parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.conv_std_dev
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
         fig, ax1 = plt.subplots()
@@ -1084,7 +1087,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                    timestamp=timestamp, as_text=True, precision=':.6e')
         return
 
-    def compute_fft(self):
+    def _compute_fft(self):
         """ Computing the fourier transform of the data.
 
         @return tuple (fft_x, fft_y):
@@ -1110,29 +1113,31 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
         """
-        # Make a baseline correction to avoid a constant offset near zero
-        # frequencies:
-        mean_y = sum(self.signal_plot_y) / len(self.signal_plot_y)
-        corrected_y = self.signal_plot_y - mean_y
-
+        # Make a baseline correction to avoid a constant offset near zero frequencies:
+        corrected_y = self.signal_plot_y - np.mean(self.signal_plot_y)
+        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
+        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
+        # aliasing effects). Therefore take the half of the values for the display.
+        middle = int((len(corrected_y) + 1) // 2)
         # The absolute values contain the fourier transformed y values
-        fft_y = np.abs(np.fft.fft(corrected_y))
+        self.signal_fft_y = np.abs(np.fft.fft(corrected_y))[:middle]
+        # Do the same for second data array if measurement sequence is alternating
+        if self.alternating:
+            corrected_y2 = self.signal_plot_y2 - np.mean(self.signal_plot_y2)
+            self.signal_fft_y2 = np.abs(np.fft.fft(corrected_y2))[:middle]
 
-        # Due to the sampling theorem you can only identify frequencies at half
-        # of the sample rate, therefore the FT contains an almost symmetric
-        # spectrum (the asymmetry results from aliasing effects). Therefore take
-        # the half of the values for the display.
+        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
+        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
+        # aliasing effects). Therefore take the half of the values for the display.
         middle = int((len(corrected_y)+1)//2)
-
-        # sample spacing of x_axis, if x is a time axis than it corresponds to a
-        # timestep:
-        x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
-
-        # use the helper function of numpy to calculate the x_values for the
-        # fourier space. That function will handle an occuring devision by 0:
-        fft_x = np.fft.fftfreq(len(corrected_y), d=x_spacing)
-
-        return abs(fft_x[:middle]), fft_y[:middle]
+        # sample spacing of x_axis, if x is a time axis than it corresponds to a timestep:
+        #x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
+        # FIXME: Calculate the proper frequency values for non-uniform spacing of signal_plot_x
+        x_spacing = self.signal_plot_x[-1] - self.signal_plot_x[-2]
+        # use the helper function of numpy to calculate the x_values for the fourier space.
+        # That function will handle an occuring devision by 0:
+        self.signal_fft_x = np.abs(np.fft.fftfreq(len(corrected_y), d=x_spacing))[:middle]
+        return
 
     def get_fit_functions(self):
         """Giving the available fit functions
