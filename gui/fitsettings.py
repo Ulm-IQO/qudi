@@ -25,7 +25,6 @@ from pyqtgraph import SpinBox
 import numpy as np
 import math
 
-
 class FitSettingsWidget(QtWidgets.QWidget):
 
     def __init__(self, parameters):
@@ -34,26 +33,7 @@ class FitSettingsWidget(QtWidgets.QWidget):
         """
         super().__init__()
 
-        self.hlayout = QtWidgets.QHBoxLayout()
-
-        self.choosefitLabel = QtWidgets.QLabel('Choose fit: ')
-        self.chooseestimLabel = QtWidgets.QLabel('Choose estimator: ')
-
-        self.hlayout.addWidget(self.choosefitLabel)
-        self.hlayout.addWidget(self.chooseestimLabel)
-
-        self.fit_action_layout = QtWidgets.QVBoxLayout(self)
-
-        self.fit_function = QtWidgets.QComboBox()
-        self.estimator = QtWidgets.QComboBox()
-
-        self.fit_action_layout.addWidget(self.fit_function)
-        self.fit_action_layout.addWidget(self.estimator)
-
-        self.fit_action_layout.addLayout(self.hlayout)
-
-        self.param_grid_layout = QtWidgets.QGridLayout()  # Creation of the grid Layout
-
+        self._Layout = QtWidgets.QGridLayout(self)  # Creation of the grid Layout
         self.useLabel = QtWidgets.QLabel('Edit?')
         self.valueLabel = QtWidgets.QLabel('Value')
         self.minimumLabel = QtWidgets.QLabel('Minimum')
@@ -61,12 +41,12 @@ class FitSettingsWidget(QtWidgets.QWidget):
         self.exprLabel = QtWidgets.QLabel('Expression')
         self.varyLabel = QtWidgets.QLabel('Vary?')
 
-        self.param_grid_layout.addWidget(self.useLabel, 1, 0)
-        self.param_grid_layout.addWidget(self.valueLabel, 1, 2)
-        self.param_grid_layout.addWidget(self.minimumLabel, 1, 3)
-        self.param_grid_layout.addWidget(self.maximumLabel, 1, 4)
-        self.param_grid_layout.addWidget(self.exprLabel, 1, 5)
-        self.param_grid_layout.addWidget(self.varyLabel, 1, 6)
+        self._Layout.addWidget(self.useLabel, 0, 0)
+        self._Layout.addWidget(self.valueLabel, 0, 2)
+        self._Layout.addWidget(self.minimumLabel, 0, 3)
+        self._Layout.addWidget(self.maximumLabel, 0, 4)
+        self._Layout.addWidget(self.exprLabel, 0, 5)
+        self._Layout.addWidget(self.varyLabel, 0, 6)
 
         self.widgets = {}
         self.paramUseSettings = {}
@@ -75,7 +55,7 @@ class FitSettingsWidget(QtWidgets.QWidget):
             self.paramUseSettings[name] = False
             self.widgets[name + '_use'] = useCheckbox = QtWidgets.QCheckBox(parent=self)
             self.widgets[name + '_label'] = parameterNameLabel = QtWidgets.QLabel(str(name), parent=self)
-            self.widgets[name + '_value'] = valueSpinbox = SpinBox(parent=self)
+            self.widgets[name + '_value'] = valueSpinbox =  SpinBox(parent=self)
             self.widgets[name + '_min'] = minimumSpinbox = SpinBox(parent=self)
             self.widgets[name + '_max'] = maximumSpinbox = SpinBox(parent=self)
             self.widgets[name + '_expr'] = expressionLineEdit = QtWidgets.QLineEdit(parent=self)
@@ -100,23 +80,21 @@ class FitSettingsWidget(QtWidgets.QWidget):
                 expressionLineEdit.setText(param.expr)
                 varyCheckbox.setChecked(param.vary)
 
-            self.param_grid_layout.addWidget(useCheckbox, n, 0)
-            self.param_grid_layout.addWidget(parameterNameLabel, n, 1)
-            self.param_grid_layout.addWidget(valueSpinbox, n, 2)
-            self.param_grid_layout.addWidget(minimumSpinbox, n, 3)
-            self.param_grid_layout.addWidget(maximumSpinbox, n, 4)
-            self.param_grid_layout.addWidget(expressionLineEdit, n, 5)
-            self.param_grid_layout.addWidget(varyCheckbox, n, 6)
+            self._Layout.addWidget(useCheckbox, n, 0)
+            self._Layout.addWidget(parameterNameLabel, n, 1)
+            self._Layout.addWidget(valueSpinbox, n, 2)
+            self._Layout.addWidget(minimumSpinbox, n, 3)
+            self._Layout.addWidget(maximumSpinbox, n, 4)
+            self._Layout.addWidget(expressionLineEdit, n, 5)
+            self._Layout.addWidget(varyCheckbox, n, 6)
             n += 1
-
-        #self.fit_action_layout.addWidget(self.param_grid_layout)
 
     def updateFitSettings(self, parameters):
         """ Updates the fit parameters with the new values from the settings window
         """
         for name, param in parameters.items():
             self.paramUseSettings[name] = self.widgets[name + '_use'].checkState()
-            param.use = self.paramUseSettings[name]
+            param.use = self.paramUseSettings[name] 
             param.value = self.widgets[name + '_value'].value()
             param.min = self.widgets[name + '_min'].value()
             param.max = self.widgets[name + '_max'].value()
@@ -137,3 +115,4 @@ class FitSettingsWidget(QtWidgets.QWidget):
                 self.widgets[name + '_expr'].setText(param.expr)
                 self.widgets[name + '_vary'].setChecked(param.vary)
         return self.paramUseSettings
+
