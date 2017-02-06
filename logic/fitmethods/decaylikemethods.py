@@ -856,7 +856,7 @@ def estimate_stretchedexponentialdecayoffset(self, x_axis, data, params):
 
     return error, params
 
-def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
+def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
     """ Performes a stretched exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -872,7 +872,10 @@ def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=None
     """
     stret_exp_decay_offset, params = self.make_stretchedexponentialdecayoffset_model()
 
-    error, params = self.estimate_stretchedexponentialdecayoffset(x_axis, data, params)
+    if estimator is None:
+        error, params = self.estimate_stretchedexponentialdecayoffset(x_axis, data, params)
+    else:
+        error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
