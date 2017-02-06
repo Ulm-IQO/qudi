@@ -35,15 +35,22 @@ class FitSettingsDialog(QtWidgets.QDialog):
     def __init__(self, all_functions):
         """ """
         super().__init__()
+        self.setModal(False)
         self.all_functions = all_functions
         self.checkboxes = OrderedDict()
         self.tabs = {}
+        self.parameters = {}
+        self.parameter_use = {}
 
-        self._dialogLayout = QtWidgets.VerticalLayout()
+        self._dialogLayout = QtWidgets.QVBoxLayout()
         self._tabWidget = QtWidgets.QTabWidget()
         self._scrollArea = QtWidgets.QScrollArea()
         self._scrollWidget = QtWidgets.QWidget()
-        self._scrLayout = QtWidgets.QVerticalLayout()
+        self._scrLayout = QtWidgets.QVBoxLayout()
+        self._dbox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Apply | QtWidgets.QDialogButtonBox.Cancel,
+            QtCore.Qt.Horizontal
+        )
 
         for name, fit in self.all_functions.items():
             self.checkboxes[name] = QtWidgets.QCheckBox(name)
@@ -53,20 +60,32 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self._scrollArea.setWidget(self._scrollWidget)
         self._tabWidget.addTab(self._scrollArea, 'Fit functions')
         self._dialogLayout.addWidget(self._tabWidget)
+        self._dialogLayout.addWidget(self._dbox)
         self.setLayout(self._dialogLayout)
 
         self.fitSelection = {name: box.checkState() for name, box in self.checkboxes.items()}
+        self._dbox.accepted.connect(self.accept)
+        self._dbox.rejected.connect(self.reject)
+        self._dbox.clicked.connect(self.buttonClicked)
         self.accepted.connect(self.updateSettings)
         self.rejected.connect(self.restoreSettings)
 
+    @QtCore.Slot(QtWidgets.QAbstractButton)
+    def buttonClicked(self, button):
+        if self._dbox.buttonRole(button) ==  QtWidgets.QDialogButtonBox.ApplyRole:
+            self.updateSettings()
+
     def setFitSelection(self, selection):
         """ """
-        for name, state in selection:
+        for name, state in selection.items():
             if name in self.checkboxes:
                 self.checkboxes[name].setCheckState(state)
                 self.fitSelection[name] = state
 
-        for name, box in self.checkboxes:
+        self._tabWidget.clear()
+        self._tabWidget.addTab(self._scrollArea, 'Fit functions')
+
+        for name, box in self.checkboxes.items():
             if box.checkState():
                 self.tabs[name] = FitSettingsWidget(self.all_functions[name][1])
                 self._tabWidget.addTab(self.tabs[name], name)
@@ -79,19 +98,18 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
     def restoreSettings(self):
         """ """
-        for name, box in self.checkboxes:
-            box.setCheckState(self.fitSelection[name])
+        self.setFitSelection(self.fitSelection)
 
     def updateSettings(self):
         """ """
-        for name, box in self.checkboxes:
+        for name, box in self.checkboxes.items():
             self.fitSelection[name] = box.checkState()
 
-        self.sigSelectionUpdated.emit()
+        self.setFitSelection(self.fitSelection)
 
     def getParameters(self, fit_function):
         """ """
-        pass
+        return self.parameters[fit_function]
 
     def setParameters(self, fit_function, parameters):
         """ """
