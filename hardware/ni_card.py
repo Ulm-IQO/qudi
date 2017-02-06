@@ -2078,6 +2078,8 @@ class SlowGatedNICard(NICard):
         # count on rising edge mainly used for gated counter
         self._counting_edge_default = True
 
+        self._counter_channels = []
+
         self._counter_channel = '/NIDAQ/Ctr0'
 
         config = self.getConfiguration()
