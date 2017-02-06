@@ -122,8 +122,6 @@ class ODMRLogic(GenericLogic):
                 self._fit_logic.make_lorentzoffset_model()),
             ('Double Lorentzian',
                 self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('Double Lorentzian with fixed splitting',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
             ('N14',
                 self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)),
             ('N15',
@@ -633,48 +631,29 @@ class ODMRLogic(GenericLogic):
 
         if self.fit_function == 'Lorentzian':
 
-            result, param_dict = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
+            result = self._fit_logic.make_lorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_lorentzoffset_dip,
+                                **kwargs)
+            param_dict = result.result_str_dict
 
         elif self.fit_function == 'Double Lorentzian':
 
-            result, param_dict = self._fit_logic.make_doublelorentzdipoffset_fit(**kwargs)
-
-        elif self.fit_function == 'Double Lorentzian with fixed splitting':
-
-
-            additional_parameters = {}
-            # TODO: insert this in gui config of ODMR
-            splitting_from_gui_config = 5.0  # in MHz
-
-            params = self.fit_models['Double Lorentzian with fixed splitting'][1]
-
-            error, params = self._fit_logic.estimate_doublelorentzdipoffset(self._mw_frequency_list,
-                                                                            self.ODMR_plot_y,
-                                                                            params)
-            lorentz0_amplitude = params['l0_amplitude'].value
-            lorentz1_amplitude = params['l1_amplitude'].value
-            lorentz0_center = params['l1_amplitude'].value
-            lorentz1_center = params['l1_amplitude'].value
-            lorentz0_sigma = params['l0_sigma'].value
-            lorentz1_sigma = params['l1_sigma'].value
-            offset = params['offset'].value
-
-            if lorentz0_center < lorentz1_center:
-                params['l1_center'].set(expr='l0_center{0:+f}'.format(splitting_from_gui_config))
-            else:
-                splitting_from_gui_config *= -1
-                params['l1_center'].set(expr='l0_center{0:+f}'.format(splitting_from_gui_config))
-
-            kwargs['add_params'] = params
-
-            result, param_dict = self._fit_logic.make_doublelorentzdipoffset_fit(**kwargs)
+            result = self._fit_logic.make_doublelorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_doublelorentzoffset_dip,
+                                **kwargs)
+            param_dict = result.result_str_dict
 
         elif self.fit_function == 'N14':
-            result, param_dict = self._fit_logic.make_N14_fit(**kwargs)
+            result = self._fit_logic.make_triplelorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_triplelorentzoffset_N14,
+                                **kwargs)
+            param_dict = result.result_str_dict
 
         elif self.fit_function == 'N15':
-
-            result, param_dict = self._fit_logic.make_N15_fit(**kwargs)
+            result = self._fit_logic.make_doublelorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_doublelorentzoffset_N15,
+                                **kwargs)
+            param_dict = result.result_str_dict
 
         elif self.fit_function == 'Double Gaussian':
 

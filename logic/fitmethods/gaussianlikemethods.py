@@ -607,7 +607,7 @@ def estimate_twogaussianoffset_peak(self, x_axis, data, params,
 
     mod_lor, params_lor = self.make_multiplelorentzoffset_model(no_of_functions=2)
 
-    error, params_lor = self.estimate_doublelorentzdipoffset(x_axis=x_axis,
+    error, params_lor = self.estimate_doublelorentzoffset_dip(x_axis=x_axis,
                                                      data=-data,
                                                      params=params_lor,
                                                      threshold_fraction=threshold_fraction,
@@ -651,7 +651,7 @@ def estimate_twogaussianoffset_dip(self, x_axis, data, params,
 
     mod_lor, params_lor = self.make_multiplelorentzoffset_model(no_of_functions=2)
 
-    error, params_lor = self.estimate_doublelorentzdipoffset(x_axis=x_axis,
+    error, params_lor = self.estimate_doublelorentzoffset_dip(x_axis=x_axis,
                                                      data=data,
                                                      params=params_lor,
                                                      threshold_fraction=threshold_fraction,

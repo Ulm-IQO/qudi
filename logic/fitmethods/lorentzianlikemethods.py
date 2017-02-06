@@ -313,7 +313,6 @@ def make_lorentzoffset_fit(self, x_axis, data, units=None,
     result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
     result.result_str_dict = result_str_dict
-
     return result
 
 def estimate_lorentzoffset_dip(self, x_axis, data, params):
@@ -391,7 +390,7 @@ def estimate_lorentzoffset_peak (self, x_axis, data, params):
     params_dip = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_lorentzoffsetdip(x_axis, data_negative,
+    error, params_ret = self.estimate_lorentzoffset_dip(x_axis, data_negative,
                                                        params_dip)
 
     params['sigma'] = params_ret['sigma']
@@ -451,42 +450,45 @@ def make_doublelorentzoffset_fit(self, x_axis, data, units=None,estimator=None, 
                      'work: {0}'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
-    param_dict = OrderedDict()
+    result_str_dict = OrderedDict()
 
-    param_dict['Position 0'] = {'value': result.params['l0_center'].value,
-                             'error': result.params['l0_center'].stderr,
-                             'unit': units[0]}
+    if units is None:
+        units = ["arb. u."]
 
-    param_dict['Position 1'] = {'value': result.params['l1_center'].value,
-                             'error': result.params['l1_center'].stderr,
-                             'unit': units[0]}
+    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['l0_center'].stderr,
+                                     'unit': units[0]}
 
-    param_dict['Splitting'] = {'value': (result.params['l1_center'].value -
-                                         result.params['l0_center'].value),
-                               'error': (result.params['l0_center'].stderr +
-                                         result.params['l1_center'].stderr),
-                               'unit': units[0]}
+    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
+                                     'unit': units[0]}
 
-    param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                'error': result.params['l0_contrast'].stderr,
-                                'unit': '%'}
+    result_str_dict['Splitting'] = {'value': (result.params['l1_center'].value -
+                                              result.params['l0_center'].value),
+                                    'error': (result.params['l0_center'].stderr +
+                                              result.params['l1_center'].stderr),
+                                    'unit': units[0]}
 
-    param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                'error': result.params['l1_contrast'].stderr,
-                                'unit': '%'}
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                     'error': result.params['l0_contrast'].stderr,
+                                     'unit': '%'}
 
-    param_dict['FWHM 0'] = {'value': result.params['l0_fwhm'].value,
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                     'error': result.params['l1_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['FWHM 0'] = {'value': result.params['l0_fwhm'].value,
                                  'error': result.params['l0_fwhm'].stderr,
                                  'unit': units[0]}
 
-    param_dict['FWHM 1'] = {'value': result.params['l1_fwhm'].value,
+    result_str_dict['FWHM 1'] = {'value': result.params['l1_fwhm'].value,
                                  'error': result.params['l1_fwhm'].stderr,
                                  'unit': units[0]}
 
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
-    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-    return result, param_dict
+    result.result_str_dict = result_str_dict
+    return result
 
 
 
@@ -617,7 +619,7 @@ def estimate_doublelorentzoffset_peak(self, x_axis, data, params,
     params_dip = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_doublelorentzdipoffset(x_axis,
+    error, params_ret = self.estimate_doublelorentzoffset_dip(x_axis,
                                                              data_negative,
                                                              params_dip)
 
@@ -866,47 +868,52 @@ def make_triplelorentzoffset_fit(self, x_axis, data, units=None, estimator=None,
                      'work: {0}'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
-    param_dict = OrderedDict()
+    result_str_dict = OrderedDict()
 
-    param_dict['Position 0'] = {'value': result.params['l0_center'].value,
+    if units is None:
+        units = ["arb. units"]
+
+    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
                              'error': result.params['l0_center'].stderr,
                              'unit': units[0]}
 
-    param_dict['Position 1'] = {'value': result.params['l1_center'].value,
+    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
                              'error': result.params['l1_center'].stderr,
                              'unit': units[0]}
 
-    param_dict['Position 2'] = {'value': result.params['l2_center'].value,
+    result_str_dict['Position 2'] = {'value': result.params['l2_center'].value,
                              'error': result.params['l2_center'].stderr,
                              'unit': units[0]}
 
-    param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
                                 'error': result.params['l0_contrast'].stderr,
                                 'unit': '%'}
 
-    param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
                                 'error': result.params['l1_contrast'].stderr,
                                 'unit': '%'}
 
-    param_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
+    result_str_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
                                 'error': result.params['l2_contrast'].stderr,
                                 'unit': '%'}
 
-    param_dict['FWHM 0'] = {'value': result.params['l0_sigma'].value,
+    result_str_dict['FWHM 0'] = {'value': result.params['l0_sigma'].value,
                                  'error': result.params['l0_sigma'].stderr,
                                  'unit': units[0]}
 
-    param_dict['FWHM 1'] = {'value': result.params['l1_sigma'].value,
+    result_str_dict['FWHM 1'] = {'value': result.params['l1_sigma'].value,
                                  'error': result.params['l1_sigma'].stderr,
                                  'unit': units[0]}
 
-    param_dict['FWHM 2'] = {'value': result.params['l2_sigma'].value,
+    result_str_dict['FWHM 2'] = {'value': result.params['l2_sigma'].value,
                                  'error': result.params['l2_sigma'].stderr,
                                  'unit': units[0]}
 
-    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
-    return result, param_dict
+
+    result.result_str_dict = result_str_dict
+    return result
 
 def estimate_triplelorentzoffset_N14(self, x_axis, data, params):
     """ Estimation of a the hyperfine interaction of a N14 nuclear spin.
