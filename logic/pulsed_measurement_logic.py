@@ -49,7 +49,8 @@ class PulsedMeasurementLogic(GenericLogic):
            }
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
@@ -123,6 +124,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x = None
         self.signal_plot_y = None
         self.signal_plot_y2 = None
+        self.signal_fft_x = None
+        self.signal_fft_y = None
+        self.signal_fft_y2 = None
         self.measuring_error_plot_x = None
         self.measuring_error_plot_y = None
         self.measuring_error_plot_y2 = None
@@ -300,7 +304,9 @@ class PulsedMeasurementLogic(GenericLogic):
                                                self._pulse_extraction_logic.min_laser_length)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
-        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2, self.measuring_error_plot_y, self.measuring_error_plot_y2)
+        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
+                                       self.measuring_error_plot_y, self.measuring_error_plot_y2,
+                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
         self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit, {}, {})
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
@@ -783,6 +789,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 # set laser to show
                 self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
 
+                # Compute FFT of signal
+                self._compute_fft()
+
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
             self.elapsed_time_str = ''
@@ -795,7 +804,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
-                                           self.measuring_error_plot_y2)
+                                           self.measuring_error_plot_y2, self.signal_fft_x,
+                                           self.signal_fft_y, self.signal_fft_y2)
             return
 
     def set_laser_to_show(self, laser_index, show_raw_data):
@@ -970,9 +980,13 @@ class PulsedMeasurementLogic(GenericLogic):
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
         self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int)
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
+        self.signal_fft_x = self.controlled_vals
+        self.signal_fft_y = np.zeros(len(self.controlled_vals))
+        self.signal_fft_y2 = np.zeros(len(self.controlled_vals))
 
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
-                                       self.measuring_error_plot_y, self.measuring_error_plot_y2)
+                                       self.measuring_error_plot_y, self.measuring_error_plot_y2,
+                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
@@ -1073,7 +1087,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                    timestamp=timestamp, as_text=True, precision=':.6e')
         return
 
-    def compute_fft(self):
+    def _compute_fft(self):
         """ Computing the fourier transform of the data.
 
         @return tuple (fft_x, fft_y):
@@ -1099,29 +1113,31 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
         """
-        # Make a baseline correction to avoid a constant offset near zero
-        # frequencies:
-        mean_y = sum(self.signal_plot_y) / len(self.signal_plot_y)
-        corrected_y = self.signal_plot_y - mean_y
-
+        # Make a baseline correction to avoid a constant offset near zero frequencies:
+        corrected_y = self.signal_plot_y - np.mean(self.signal_plot_y)
+        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
+        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
+        # aliasing effects). Therefore take the half of the values for the display.
+        middle = int((len(corrected_y) + 1) // 2)
         # The absolute values contain the fourier transformed y values
-        fft_y = np.abs(np.fft.fft(corrected_y))
+        self.signal_fft_y = np.abs(np.fft.fft(corrected_y))[:middle]
+        # Do the same for second data array if measurement sequence is alternating
+        if self.alternating:
+            corrected_y2 = self.signal_plot_y2 - np.mean(self.signal_plot_y2)
+            self.signal_fft_y2 = np.abs(np.fft.fft(corrected_y2))[:middle]
 
-        # Due to the sampling theorem you can only identify frequencies at half
-        # of the sample rate, therefore the FT contains an almost symmetric
-        # spectrum (the asymmetry results from aliasing effects). Therefore take
-        # the half of the values for the display.
+        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
+        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
+        # aliasing effects). Therefore take the half of the values for the display.
         middle = int((len(corrected_y)+1)//2)
-
-        # sample spacing of x_axis, if x is a time axis than it corresponds to a
-        # timestep:
-        x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
-
-        # use the helper function of numpy to calculate the x_values for the
-        # fourier space. That function will handle an occuring devision by 0:
-        fft_x = np.fft.fftfreq(len(corrected_y), d=x_spacing)
-
-        return abs(fft_x[:middle]), fft_y[:middle]
+        # sample spacing of x_axis, if x is a time axis than it corresponds to a timestep:
+        #x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
+        # FIXME: Calculate the proper frequency values for non-uniform spacing of signal_plot_x
+        x_spacing = self.signal_plot_x[-1] - self.signal_plot_x[-2]
+        # use the helper function of numpy to calculate the x_values for the fourier space.
+        # That function will handle an occuring devision by 0:
+        self.signal_fft_x = np.abs(np.fft.fftfreq(len(corrected_y), d=x_spacing))[:middle]
+        return
 
     def get_fit_functions(self):
         """Giving the available fit functions
