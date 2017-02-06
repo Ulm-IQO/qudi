@@ -38,28 +38,7 @@
      <layout class="QGridLayout" name="gridLayout_34">
       <item row="0" column="1">
        <layout class="QGridLayout" name="gridLayout_33">
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_37">
-          <property name="text">
-           <string>Reference Window</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QSpinBox" name="extract_param_ref_window_width_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QSpinBox" name="extract_param_ana_window_start_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
+        <item row="1" column="3">
          <spacer name="horizontalSpacer_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -72,70 +51,15 @@
           </property>
          </spacer>
         </item>
-        <item row="0" column="1">
-         <widget class="QLabel" name="label_30">
+        <item row="8" column="0">
+         <widget class="QLabel" name="label">
           <property name="text">
-           <string>Start bin</string>
+           <string>Count Threshold</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
-         <spacer name="verticalSpacer_3">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_31">
-          <property name="text">
-           <string>Width bins</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QSpinBox" name="extract_param_ana_window_width_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QSpinBox" name="extract_param_ref_window_start_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_36">
-          <property name="text">
-           <string>Analysis Window</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_18">
-          <property name="text">
-           <string>Smoothing</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QDoubleSpinBox" name="conv_std_dev">
-          <property name="value">
-           <double>10.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="2" colspan="2">
-         <widget class="QSlider" name="slider_conv_std_dev">
+        <item row="6" column="2" colspan="2">
+         <widget class="QSlider" name="extract_param_conv_std_dev_slider">
           <property name="minimum">
            <number>1</number>
           </property>
@@ -155,6 +79,180 @@
            <number>10</number>
           </property>
          </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QDoubleSpinBox" name="extract_param_conv_std_dev_DSpinBox">
+          <property name="minimum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>200.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>10.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QSpinBox" name="extract_param_ana_window_width_SpinBox">
+          <property name="maximum">
+           <number>10000000</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="label_31">
+          <property name="text">
+           <string>Width bins</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="extract_param_ana_window_start_SpinBox">
+          <property name="maximum">
+           <number>10000000</number>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Min. Laser Length (bins)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QSpinBox" name="extract_param_ref_window_start_SpinBox">
+          <property name="maximum">
+           <number>10000000</number>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QSpinBox" name="extract_param_ref_window_width_SpinBox">
+          <property name="maximum">
+           <number>10000000</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_36">
+          <property name="text">
+           <string>Analysis Window</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="1">
+         <widget class="QSpinBox" name="extract_param_threshold_SpinBox">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999999999</number>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="2">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Tolerance (bins)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="label_18">
+          <property name="text">
+           <string>Smoothing</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="3">
+         <widget class="QSpinBox" name="extract_param_tolerance_SpinBox">
+          <property name="maximum">
+           <number>999999999</number>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0" colspan="4">
+         <widget class="Line" name="line">
+          <property name="lineWidth">
+           <number>4</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="0" colspan="4">
+         <widget class="Line" name="line_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Extraction Method</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QComboBox" name="extract_param_extraction_method_comboBox"/>
+        </item>
+        <item row="9" column="1">
+         <widget class="QSpinBox" name="extract_param_min_laser_length_SpinBox">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999999999</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_30">
+          <property name="text">
+           <string>Start bin</string>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="1">
+         <spacer name="verticalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_37">
+          <property name="text">
+           <string>Reference Window</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0" colspan="4">
+         <widget class="Line" name="line_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Analysis Method</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="extract_param_analysis_method_comboBox"/>
         </item>
        </layout>
       </item>
