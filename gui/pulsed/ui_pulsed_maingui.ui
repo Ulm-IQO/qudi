@@ -60,7 +60,6 @@
     <addaction name="action_Settings_Block_Generation"/>
     <addaction name="action_Settings_Sequence_Editor"/>
     <addaction name="action_Predefined_Methods_Config"/>
-    <addaction name="action_ssr_fastcomtec"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">

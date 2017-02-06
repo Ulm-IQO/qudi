@@ -140,7 +140,7 @@ class PulseExtractionLogic(GenericLogic):
     # FIXME: What's that???
     def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
 
-
+        return_dict = {}
         laser_x = []
         laser_y = []
 
@@ -164,9 +164,17 @@ class PulseExtractionLogic(GenericLogic):
 
 
 
-        laser_arr=np.asarray(laser_y)
+        laser_y = np.asarray(laser_y)
+        laser_x = np.asarray(laser_x)
 
         self.log.debug(laser_y)
 
-        return laser_arr.astype(int)
+        rising_ind = np.array([i[0] for i in laser_x])
+        falling_ind = np.array([i[-1] for i in laser_y])
+
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 
