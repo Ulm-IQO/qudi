@@ -275,7 +275,7 @@ def make_twoDgaussian_model(self, prefix=None):
 # 1D Gaussian with flat offset    #
 ###################################
 
-def make_gaussianoffset_fit(self, x_axis, data, units, estimator, add_params=None):
+def make_gaussianoffset_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -294,7 +294,10 @@ def make_gaussianoffset_fit(self, x_axis, data, units, estimator, add_params=Non
 
     mod_final, params = self.make_gaussianoffset_model()
 
-    error, params = self.estimate_gaussianoffset_peak(x_axis, data, params)
+    if estimator is None:
+        error, params = self.estimate_gaussianoffset_peak(x_axis, data, params)
+    else:
+        error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -420,7 +423,7 @@ def estimate_gaussianoffset_dip(self, x_axis, data, params):
 # 1D Gaussian with linear inclined offset    #
 ##############################################
 
-def make_gaussianlinearoffset_fit(self, x_axis, data, units, estimator, add_params=None):
+def make_gaussianlinearoffset_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
     """ Perform a 1D gaussian peak fit with linear offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -439,7 +442,10 @@ def make_gaussianlinearoffset_fit(self, x_axis, data, units, estimator, add_para
 
     mod_final, params = self.make_gaussianlinearoffset_model()
 
-    error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
+    if estimator is None:
+        error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
+    else:
+        error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -493,8 +499,8 @@ def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
 # Two Gaussian with flat offset #
 #################################
 
-def make_twogaussianoffset_fit(self, x_axis, data, units,
-                               estimator,
+def make_twogaussianoffset_fit(self, x_axis, data, units=None,
+                               estimator=None,
                                add_params=None,
                                threshold_fraction=0.4,
                                minimal_threshold=0.2,
@@ -520,11 +526,18 @@ def make_twogaussianoffset_fit(self, x_axis, data, units,
 
     model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
 
-    error, params = estimator(x_axis, data, params,
-                              threshold_fraction,
-                              minimal_threshold,
-                              sigma_threshold_fraction
-                              )
+    if estimator is None:
+        error, params = self.estimate_twogaussianoffset_peak(x_axis, data, params,
+                                                             threshold_fraction,
+                                                             minimal_threshold,
+                                                             sigma_threshold_fraction
+                                                             )
+    else:
+        error, params = estimator(x_axis, data, params,
+                                  threshold_fraction,
+                                  minimal_threshold,
+                                  sigma_threshold_fraction
+                                  )
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -662,7 +675,7 @@ def estimate_twogaussianoffset_dip(self, x_axis, data, params,
 # TODO: I think this has an offset, and it should be named so to be consistent with
 #       the 1D functions.
 
-def make_twoDgaussian_fit(self, xy_axes, data, add_params=None,
+def make_twoDgaussian_fit(self, xy_axes, data, units=None add_params=None,
                           estimator="estimate_twoDgaussian_MLE"):
     """ This method performes a 2D gaussian fit on the provided data.
 
