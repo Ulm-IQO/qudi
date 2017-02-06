@@ -63,6 +63,9 @@ class FitLogic(GenericLogic):
 
         # A dictionary contianing all fit methods and their estimators.
         self.fit_list = dict()
+        self.fit_list['1d'] = dict()
+        self.fit_list['2d'] = dict()
+        self.fit_list['3d'] = dict()
 
         # Go through the fitmethods files and import all methods.
         for files in filenames:
@@ -77,46 +80,44 @@ class FitLogic(GenericLogic):
                         # add method to dictionary and define what
                         # estimators they have
 
+                        fit_name = str(method).split('_')[1]
+                        
+                        if 'twoD' in fit_name:
+                            dimension = '2d'
+                        elif 'threeD' in fit_name:
+                            dimension = '3d'
+                        else:
+                            dimension = '1d'
+
                         # check if it is a make_<fit name>_fit method
                         if (str(method).startswith('make_') and str(method).endswith('_fit')):
 
-                            fit_name = str(method).split('_')[1]
-
                             # Add fit_name entry to self.fit_list if it is not already there
-                            if fit_name not in self.fit_list:
-                                self.fit_list[fit_name] = dict()
+                            if fit_name not in self.fit_list[dimension]:
+                                self.fit_list[dimension][fit_name] = dict()
                                 
                             # Give this fit_name its fit method in the sub-dictionary
-                            self.fit_list[fit_name]['make_fit'] = getattr(self, method)
-
-                            # I think it is a good idea to warn if the method escapes these
-                            # conditions, but the following is fired for all methods!
-                            #else:
-                            #    self.log.warning('The method {} has been defined more than once,'
-                            #                     'only the first has been added to the list'
-                            #                     'in FitLogic.'.format(method)
-                            #                     )
+                            self.fit_list[dimension][fit_name]['make_fit'] = getattr(self, method)
 
                         # if there is an estimator add it to the dictionary
                         if 'estimate' in str(method):
 
-                            fit_name = str(method).split('_')[1]
                             
                             # Add fit_name entry to self.fit_list if it is not already there.
-                            if fit_name not in self.fit_list:
-                                self.fit_list[fit_name] = dict()
+                            if fit_name not in self.fit_list[dimension]:
+                                self.fit_list[dimension][fit_name] = dict()
 
                             # If this is a custom estimator
                             try:
                                 estimator_name = str(method).split('_')[2]
 
                                 # Give this fit_name another estimator in the sub-dictionary
-                                self.fit_list[fit_name][estimator_name] = getattr(self, method)
+                                self.fit_list[dimension][fit_name][estimator_name] = getattr(self, method)
 
                             # Otherwise this is a generic estimator for the fit_name
                             except:
 
-                                self.fit_list[fit_name]['generic'] = method
+                                self.fit_list[dimension][fit_name]['generic'] = method
 
                 except:
                     self.log.error('It was not possible to import element {} '
