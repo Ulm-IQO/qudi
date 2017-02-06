@@ -675,7 +675,7 @@ def estimate_twogaussianoffset_dip(self, x_axis, data, params,
 # TODO: I think this has an offset, and it should be named so to be consistent with
 #       the 1D functions.
 
-def make_twoDgaussian_fit(self, xy_axes, data, units=None add_params=None,
+def make_twoDgaussian_fit(self, xy_axes, data, units=None, add_params=None,
                           estimator="estimate_twoDgaussian_MLE"):
     """ This method performes a 2D gaussian fit on the provided data.
 
