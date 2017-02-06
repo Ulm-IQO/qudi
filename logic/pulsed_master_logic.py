@@ -52,10 +52,10 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
     sigExtMicrowaveStartStop = QtCore.Signal(bool)
     sigTimerIntervalChanged = QtCore.Signal(float)
-    sigAnalysisWindowsChanged = QtCore.Signal(int, int, int, int)
+    sigAnalysisSettingsChanged = QtCore.Signal(str, int, int, int, int)
     sigManuallyPullData = QtCore.Signal()
     sigRequestMeasurementInitValues = QtCore.Signal()
-    sigAnalysisMethodChanged = QtCore.Signal(float)
+    sigExtractionSettingsChanged = QtCore.Signal(str, float, int, int, int)
 
     # sequence_generator_logic signals
     sigSavePulseBlock = QtCore.Signal(str, object)
@@ -101,8 +101,10 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisWindowsUpdated = QtCore.Signal(int, int, int, int)
-    sigAnalysisMethodUpdated = QtCore.Signal(float)
+    sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
+    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     _modclass = 'pulsedmasterlogic'
     _modtype = 'logic'
@@ -167,8 +169,8 @@ class PulsedMasterLogic(GenericLogic):
                                               QtCore.Qt.QueuedConnection)
         self.sigPulseGeneratorSettingsChanged.connect(
             self._measurement_logic.set_pulse_generator_settings, QtCore.Qt.QueuedConnection)
-        self.sigAnalysisWindowsChanged.connect(self._measurement_logic.set_analysis_windows,
-                                               QtCore.Qt.QueuedConnection)
+        self.sigAnalysisSettingsChanged.connect(self._measurement_logic.analysis_settings_changed,
+                                                QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(self._measurement_logic.do_fit, QtCore.Qt.QueuedConnection)
         self.sigTimerIntervalChanged.connect(self._measurement_logic.set_timer_interval,
                                              QtCore.Qt.QueuedConnection)
@@ -197,8 +199,8 @@ class PulsedMasterLogic(GenericLogic):
                                             QtCore.Qt.QueuedConnection)
         self.sigLaserToShowChanged.connect(self._measurement_logic.set_laser_to_show,
                                            QtCore.Qt.QueuedConnection)
-        self.sigAnalysisMethodChanged.connect(self._measurement_logic.analysis_method_changed,
-                                              QtCore.Qt.QueuedConnection)
+        self.sigExtractionSettingsChanged.connect(self._measurement_logic.extraction_settings_changed,
+                                                  QtCore.Qt.QueuedConnection)
 
         # Signals controlling the sequence_generator_logic
         self.sigRequestGeneratorInitValues.connect(self._generator_logic.request_init_values,
@@ -260,10 +262,14 @@ class PulsedMasterLogic(GenericLogic):
             self.ext_microwave_running_updated, QtCore.Qt.QueuedConnection)
         self._measurement_logic.sigTimerIntervalUpdated.connect(self.analysis_interval_updated,
                                                                 QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigAnalysisWindowsUpdated.connect(self.analysis_windows_updated,
+        self._measurement_logic.sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated,
+                                                                   QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigAnalysisMethodsUpdated.connect(self.analysis_methods_updated,
                                                                   QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigAnalysisMethodUpdated.connect(self.analysis_method_updated,
-                                                                 QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigExtractionSettingsUpdated.connect(self.extraction_settings_updated,
+                                                                     QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigExtractionMethodsUpdated.connect(self.extraction_methods_updated,
+                                                                    QtCore.Qt.QueuedConnection)
 
         # connect signals coming from the sequence_generator_logic
         self._generator_logic.sigBlockDictUpdated.connect(self.saved_pulse_blocks_updated,
@@ -319,7 +325,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigExtMicrowaveSettingsChanged.disconnect()
         self.sigExtMicrowaveStartStop.disconnect()
         self.sigPulseGeneratorSettingsChanged.disconnect()
-        self.sigAnalysisWindowsChanged.disconnect()
+        self.sigAnalysisSettingsChanged.disconnect()
         self.sigDoFit.disconnect()
         self.sigTimerIntervalChanged.disconnect()
         self.sigManuallyPullData.disconnect()
@@ -335,7 +341,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDirectWriteEnsemble.disconnect()
         self.sigDirectWriteSequence.disconnect()
         self.sigLaserToShowChanged.disconnect()
-        self.sigAnalysisMethodChanged.disconnect()
+        self.sigExtractionSettingsChanged.disconnect()
         # Signals controlling the sequence_generator_logic
         self.sigRequestGeneratorInitValues.disconnect()
         self.sigSavePulseBlock.disconnect()
@@ -368,8 +374,10 @@ class PulsedMasterLogic(GenericLogic):
         self._measurement_logic.sigExtMicrowaveSettingsUpdated.disconnect()
         self._measurement_logic.sigExtMicrowaveRunningUpdated.disconnect()
         self._measurement_logic.sigTimerIntervalUpdated.disconnect()
-        self._measurement_logic.sigAnalysisWindowsUpdated.disconnect()
-        self._measurement_logic.sigAnalysisMethodUpdated.disconnect()
+        self._measurement_logic.sigAnalysisSettingsUpdated.disconnect()
+        self._measurement_logic.sigAnalysisMethodsUpdated.disconnect()
+        self._measurement_logic.sigExtractionSettingsUpdated.disconnect()
+        self._measurement_logic.sigExtractionMethodsUpdated.disconnect()
         # Signals coming from the sequence_generator_logic
         self._generator_logic.sigBlockDictUpdated.disconnect()
         self._generator_logic.sigEnsembleDictUpdated.disconnect()
@@ -545,32 +553,43 @@ class PulsedMasterLogic(GenericLogic):
                                            activation_config, analogue_amplitude, interleave_on)
         return
 
-    def analysis_windows_changed(self, signal_start_bin, signal_width_bins, norm_start_bin,
-                                 norm_width_bins):
+    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
+        @param method:
         @param signal_start_bin:
-        @param signal_width_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_width_bins:
+        @param norm_end_bin:
         @return:
         """
-        self.sigAnalysisWindowsChanged.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                            norm_width_bins)
+        self.sigAnalysisSettingsChanged.emit(method, signal_start_bin, signal_end_bin,
+                                             norm_start_bin, norm_end_bin)
         return
 
-    def analysis_windows_updated(self, signal_start_bin, signal_width_bins, norm_start_bin,
-                                 norm_width_bins):
+    def analysis_settings_updated(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
+        @param method:
         @param signal_start_bin:
-        @param signal_width_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_width_bins:
+        @param norm_end_bin:
         @return:
         """
-        self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                            norm_width_bins)
+        self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
+                                             norm_start_bin, norm_end_bin)
+        return
+
+    def analysis_methods_updated(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
+        self.sigAnalysisMethodsUpdated.emit(methods_dict)
         return
 
     def do_fit(self, fit_function):
@@ -905,22 +924,43 @@ class PulsedMasterLogic(GenericLogic):
         self.sigSignalDataUpdated.emit(signal_data_x, signal_data_y, signal_data_y2, error_data_y, error_data_y2)
         return
 
-    def analysis_method_changed(self, gaussfilt_std_dev):
+    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
-        self.sigAnalysisMethodChanged.emit(gaussfilt_std_dev)
+        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_treshold,
+                                               threshold_tolerance_bins, min_laser_length)
         return
 
-    def analysis_method_updated(self, gaussfilt_std_dev):
+    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
-        self.sigAnalysisMethodUpdated.emit(gaussfilt_std_dev)
+        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
+                                               threshold_tolerance_bins, min_laser_length)
+        return
+
+    def extraction_methods_updated(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
+        self.sigExtractionMethodsUpdated.emit(methods_dict)
         return
 
 
