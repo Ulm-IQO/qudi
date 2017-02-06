@@ -229,7 +229,7 @@ def estimate_linear(self, x_axis, data, params):
     return error, params
 
 
-def make_linear_fit(self, x_axis, data, units, estimator=None, add_params=None):
+def make_linear_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
     """ Performe a linear fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
