@@ -254,7 +254,6 @@ def make_multiplelorentzoffset_model(self, no_of_functions=1):
 ################################################################################
 #Todo: check where code breaks
 # Old Method Names:
-# estimate_lorentzoffsetdip
 # make_lorentzoffsetdip_fit
 # estimate_lorentzoffsetpeak
 # make_lorentzoffsetpeak_fit
@@ -294,24 +293,28 @@ def make_lorentzoffset_fit(self, x_axis, data, units=None,
                        'message: {0}\n'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
-    param_dict = OrderedDict()
+    result_str_dict = OrderedDict()
 
-    param_dict['Position'] = {'value': result.params['center'].value,
+    if units is None:
+        units = ["arb. units"]
+
+    result_str_dict['Position'] = {'value': result.params['center'].value,
                                'error': result.params['center'].stderr,
                                'unit': units[0]}
 
-    param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+    result_str_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
                               'error': result.params['contrast'].stderr,
                               'unit': '%'}
 
-    param_dict['FWHM'] = {'value': result.params['fwhm'].value,
+    result_str_dict['FWHM'] = {'value': result.params['fwhm'].value,
                                'error': result.params['fwhm'].stderr,
                                'unit': units[0]}
 
-    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
+    result.result_str_dict = result_str_dict
 
-    return result, param_dict
+    return result
 
 def estimate_lorentzoffset_dip(self, x_axis, data, params):
     """ Provides an estimator to obtain initial values for lorentzian function.
@@ -399,55 +402,6 @@ def estimate_lorentzoffset_peak (self, x_axis, data, params):
     params['center'] = params_ret['center']
 
     return error, params
-
-
-# def make_lorentzoffsetpeak_fit(self, x_axis, data, units, add_params=None):
-#     """ Perform a 1D Lorentzian peak fit on the provided data.
-#
-#     @param numpy.array x_axis: 1D axis values
-#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-#     @param Parameters or dict add_params: optional, additional parameters of
-#                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-#                 which will be used instead of the values from the estimator.
-#
-#     @return object model: lmfit.model.ModelFit object, all parameters
-#                           provided about the fitting, like: success,
-#                           initial fitting values, best fitting values, data
-#                           with best fit with given axis,...
-#     """
-#
-#     model, params = self.make_lorentzoffset_model()
-#     error, params = self.estimate_lorentzoffsetpeak(x_axis, data, params)
-#
-#     params = self._substitute_params(initial_params=params,
-#                                      update_params=add_params)
-#     try:
-#         result = model.fit(data, x=x_axis, params=params)
-#     except:
-#         result = model.fit(data, x=x_axis, params=params)
-#         logger.warning('The Lorentzian peak fit did not work. Error '
-#                        'message:' + result.message)
-#
-#     # Write the parameters to allow human-readable output to be generated
-#     param_dict = OrderedDict()
-#
-#     param_dict['Frequency'] = {'value': result.params['center'].value,
-#                                'error': result.params['center'].stderr,
-#                                'unit': units[0]}
-#
-#     param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
-#                               'error': result.params['contrast'].stderr,
-#                               'unit': '%'}
-#
-#     param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-#                                'error': result.params['fwhm'].stderr,
-#                                'unit': units[0]}
-#
-#     param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-#
-#
-#     return result, param_dict
-
 
 ################################################################################
 #                   Double Lorentzian with offset fitting                      #

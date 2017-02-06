@@ -1864,7 +1864,7 @@ def lorentziandip_testing2():
     data_nice = mod.eval(x=x_axis,params=params)
     data_noisy = data_nice + 2.0*np.random.normal(size=x_axis.shape)
 
-    result = qudi_fitting.make_lorentzoffsetdip_fit(x_axis=x_axis, data=data_noisy)
+    result = qudi_fitting.make_lorentzoffset_fit(x_axis=x_axis, data=data_noisy)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -1875,6 +1875,7 @@ def lorentziandip_testing2():
     plt.show()
 
     print(result.fit_report())
+    print(result.param_dict)
 
 def lorentzianpeak_testing2():
     """ Test the lorentzian fit directy with simulated data. """
@@ -4094,7 +4095,7 @@ if __name__ == "__main__":
 #    double_gaussian_odmr_testing()
 
 #    lorentziandip_testing()
-#    lorentziandip_testing2()
+    lorentziandip_testing2()
 #    lorentzianpeak_testing2()
 
 #    double_lorentzdip_testing()
@@ -4109,7 +4110,7 @@ if __name__ == "__main__":
 #    N15_testing2()
 #    powerfluorescence_testing()
 #    sine_testing()
-    sine_testing2()
+#    sine_testing2()
 #    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
 #    poissonian_testing()
