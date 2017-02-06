@@ -1244,7 +1244,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'Lorentian (neg)':
 
-            result = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
+            result = self._fit_logic.make_lorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_lorentzoffset_dip,
+                                **kwargs)
             lorentzian, params = self._fit_logic.make_lorentzoffset_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
@@ -1268,10 +1270,11 @@ class PulsedMeasurementLogic(GenericLogic):
                                       'error': cont_err*100,
                                       'unit' : '%'}
 
-
         elif fit_function == 'Lorentian (pos)':
 
-            result = self._fit_logic.make_lorentzoffsetpeak_fit(**kwargs)
+            result = self._fit_logic.make_lorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_lorentzoffset_peak,
+                                **kwargs)
             lorentzian, params = self._fit_logic.make_lorentzoffset_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
@@ -1289,7 +1292,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'N14':
 
-            result = self._fit_logic.make_N14_fit(**kwargs)
+            result = self._fit_logic.make_triplelorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_triplelorentzoffset_N14,
+                                **kwargs)
             fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
 
@@ -1342,9 +1347,11 @@ class PulsedMeasurementLogic(GenericLogic):
                                         'error': cont2_err*100,
                                         'unit' : '%'}
 
-        elif fit_function =='N15':
+        elif fit_function == 'N15':
 
-            result = self._fit_logic.make_N15_fit(**kwargs)
+            result = self._fit_logic.make_doublelorentzoffset_fit(
+                                estimator=self._fit_logic.estimate_doublelorentzoffset_N15,
+                                **kwargs)
             fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
 
