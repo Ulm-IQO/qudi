@@ -89,6 +89,16 @@ class FitLogic(GenericLogic):
                         else:
                             dimension = '1d'
 
+                        # check if it is a make_<fit name>_model method
+                        if (str(method).startswith('make_') and str(method).endswith('_model')):
+
+                            # Add fit_name entry to self.fit_list if it is not already there
+                            if fit_name not in self.fit_list[dimension]:
+                                self.fit_list[dimension][fit_name] = dict()
+                                
+                            # Give this fit_name its fit method in the sub-dictionary
+                            self.fit_list[dimension][fit_name]['make_model'] = getattr(self, method)
+
                         # check if it is a make_<fit name>_fit method
                         if (str(method).startswith('make_') and str(method).endswith('_fit')):
 
