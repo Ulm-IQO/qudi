@@ -261,7 +261,7 @@ def make_multiplelorentzoffset_model(self, no_of_functions=1):
 
 def make_lorentzoffset_fit(self, x_axis, data, units=None,
                            estimator=None, add_params=None):
-    """ Perform a 1D lorentzian dip fit on the provided data.
+    """ Perform a 1D lorentzian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -293,22 +293,22 @@ def make_lorentzoffset_fit(self, x_axis, data, units=None,
         logger.warning('The 1D lorentzian fit did not work. Error '
                        'message: {0}\n'.format(result.message))
 
-    # # Write the parameters to allow human-readable output to be generated
-    # param_dict = OrderedDict()
-    #
-    # param_dict['Frequency'] = {'value': result.params['center'].value,
-    #                            'error': result.params['center'].stderr,
-    #                            'unit': units[0]}
-    #
-    # param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
-    #                           'error': result.params['contrast'].stderr,
-    #                           'unit': '%'}
-    #
-    # param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-    #                            'error': result.params['fwhm'].stderr,
-    #                            'unit': units[0]}
-    #
-    # param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+    # Write the parameters to allow human-readable output to be generated
+    param_dict = OrderedDict()
+
+    param_dict['Position'] = {'value': result.params['center'].value,
+                               'error': result.params['center'].stderr,
+                               'unit': units[0]}
+
+    param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+                              'error': result.params['contrast'].stderr,
+                              'unit': '%'}
+
+    param_dict['FWHM'] = {'value': result.params['fwhm'].value,
+                               'error': result.params['fwhm'].stderr,
+                               'unit': units[0]}
+
+    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
 
     return result, param_dict
@@ -521,11 +521,11 @@ def make_doublelorentzoffset_fit(self, x_axis, data, units=None,estimator=None, 
                                 'error': result.params['l1_contrast'].stderr,
                                 'unit': '%'}
 
-    param_dict['Linewidth 0'] = {'value': result.params['l0_fwhm'].value,
+    param_dict['FWHM 0'] = {'value': result.params['l0_fwhm'].value,
                                  'error': result.params['l0_fwhm'].stderr,
                                  'unit': units[0]}
 
-    param_dict['Linewidth 1'] = {'value': result.params['l1_fwhm'].value,
+    param_dict['FWHM 1'] = {'value': result.params['l1_fwhm'].value,
                                  'error': result.params['l1_fwhm'].stderr,
                                  'unit': units[0]}
 
@@ -908,21 +908,21 @@ def make_triplelorentzoffset_fit(self, x_axis, data, units=None, estimator=None,
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.error('The N14 fit did not '
+        logger.error('The triple lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
     param_dict = OrderedDict()
 
-    param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+    param_dict['Position 0'] = {'value': result.params['l0_center'].value,
                              'error': result.params['l0_center'].stderr,
                              'unit': units[0]}
 
-    param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+    param_dict['Position 1'] = {'value': result.params['l1_center'].value,
                              'error': result.params['l1_center'].stderr,
                              'unit': units[0]}
 
-    param_dict['Freq. 2'] = {'value': result.params['l2_center'].value,
+    param_dict['Position 2'] = {'value': result.params['l2_center'].value,
                              'error': result.params['l2_center'].stderr,
                              'unit': units[0]}
 
@@ -938,15 +938,15 @@ def make_triplelorentzoffset_fit(self, x_axis, data, units=None, estimator=None,
                                 'error': result.params['l2_contrast'].stderr,
                                 'unit': '%'}
 
-    param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
+    param_dict['FWHM 0'] = {'value': result.params['l0_sigma'].value,
                                  'error': result.params['l0_sigma'].stderr,
                                  'unit': units[0]}
 
-    param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
+    param_dict['FWHM 1'] = {'value': result.params['l1_sigma'].value,
                                  'error': result.params['l1_sigma'].stderr,
                                  'unit': units[0]}
 
-    param_dict['Linewidth 2'] = {'value': result.params['l2_sigma'].value,
+    param_dict['FWHM 2'] = {'value': result.params['l2_sigma'].value,
                                  'error': result.params['l2_sigma'].stderr,
                                  'unit': units[0]}
 
