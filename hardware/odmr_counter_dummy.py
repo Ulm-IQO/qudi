@@ -87,7 +87,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         if clock_frequency is not None:
             self._clock_frequency = float(clock_frequency)
 
-        self.log.warning('ODMRCounterDummy>set_up_odmr_clock')
+        self.log.info('ODMRCounterDummy>set_up_odmr_clock')
 
         time.sleep(0.2)
 
@@ -106,7 +106,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('ODMRCounterDummy>set_up_odmr')
+        self.log.info('ODMRCounterDummy>set_up_odmr')
 
         if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
             self.log.error('Another odmr is already running, close this one '
@@ -142,7 +142,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         if self.getState() == 'locked':
             self.log.error('A scan_line is already running, close this one '
-                    'first.')
+                           'first.')
             return -1
 
         self.lock()
@@ -150,21 +150,19 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self._odmr_length = length
 
-        count_data = np.empty((self._odmr_length,), dtype=np.uint32)
-
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
+        lorentians,params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
 
         sigma = 3.
 
-        params.add('lorentz0_amplitude', value=-30000.*np.pi*sigma)
-        params.add('lorentz0_center', value=length/3)
-        params.add('lorentz0_sigma', value=sigma)
-        params.add('lorentz1_amplitude', value=-30000*np.pi*sigma)
-        params.add('lorentz1_center', value=2*length/3)
-        params.add('lorentz1_sigma', value=sigma)
-        params.add('c', value=50000.)
+        params.add('l0_amplitude', value=-30000)
+        params.add('l0_center', value=length/3)
+        params.add('l0_sigma', value=sigma)
+        params.add('l1_amplitude', value=-30000)
+        params.add('l1_center', value=2*length/3)
+        params.add('l1_sigma', value=sigma)
+        params.add('offset', value=50000.)
 
         count_data += lorentians.eval(x=np.arange(1, length+1, 1), params=params)
 
@@ -181,7 +179,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('ODMRCounterDummy>close_odmr')
+        self.log.info('ODMRCounterDummy>close_odmr')
 
         self._scanner_counter_daq_task = None
 
@@ -193,6 +191,6 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('ODMRCounterDummy>close_odmr_clock')
+        self.log.info('ODMRCounterDummy>close_odmr_clock')
 
         return 0

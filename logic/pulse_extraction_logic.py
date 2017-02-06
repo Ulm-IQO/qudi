@@ -41,6 +41,8 @@ class PulseExtractionLogic(GenericLogic):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
+        self.extraction_method = None
+
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -52,6 +54,7 @@ class PulseExtractionLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
+        # FIXME: Implement alternative extraction methods
         self.extraction_method = None   # will later on be used to switch between different methods
         return
 
@@ -82,16 +85,16 @@ class PulseExtractionLogic(GenericLogic):
         # sum up all gated timetraces to ease flank detection
         timetrace_sum = np.sum(count_data, 0)
 
-        # apply gaussian filter to remove noise and compute the gradient of the
-        # timetrace sum
-        #FIXME: That option should be stated in the config, or should be
-        #       choosable by the GUI, since it is not always desired.
-        #       It should also be possible to display the bare laserpulse,
-        #       without cutting away something.
-
+        # apply gaussian filter to remove noise and compute the gradient of the timetrace sum
         conv_deriv = self._convolve_derive(timetrace_sum.astype(float), conv_std_dev)
-        # get indices of rising and falling flank
 
+        # if gaussian smoothing or derivative failed, the returned array only contains zeros.
+        # Check for that and return also only zeros to indicate a failed pulse extraction.
+        if len(conv_deriv.nonzero()[0]) == 0:
+            laser_arr = np.zeros(count_data.shape, dtype=int)
+            return laser_arr
+
+        # get indices of rising and falling flank
         rising_ind = conv_deriv.argmax()
         falling_ind = conv_deriv.argmin()
         # slice the data array to cut off anything but laser pulses
@@ -145,25 +148,32 @@ class PulseExtractionLogic(GenericLogic):
             laser pulse (rule of thumb: conv_std_dev < laser_length/10).
         """
 
+        return_dict = {}
         # apply gaussian filter to remove noise and compute the gradient of the
         # timetrace
 
+        # apply gaussian filter to remove noise and compute the gradient of the timetrace
         conv_deriv = self._convolve_derive(count_data.astype(float), conv_std_dev)
 
-        # use a reference for array, because the exact position of the peaks or
-        # dips (i.e. maxima or minima, which are the inflection points in the
-        # pulse) are distorted by a large conv_std_dev value.
+        # if gaussian smoothing or derivative failed, the returned array only contains zeros.
+        # Check for that and return also only zeros to indicate a failed pulse extraction.
+        if len(conv_deriv.nonzero()[0]) == 0:
+            laser_arr = np.zeros([num_of_lasers, 10], dtype=int)
+            return laser_arr
+
+        # use a reference for array, because the exact position of the peaks or dips
+        # (i.e. maxima or minima, which are the inflection points in the pulse) are distorted by
+        # a large conv_std_dev value.
         conv_deriv_ref = self._convolve_derive(count_data, 10)
 
         # initialize arrays to contain indices for all rising and falling
         # flanks, respectively
-        rising_ind = np.empty([num_of_lasers],int)
-        falling_ind = np.empty([num_of_lasers],int)
+        rising_ind = np.empty([num_of_lasers], int)
+        falling_ind = np.empty([num_of_lasers], int)
 
         # Find as many rising and falling flanks as there are laser pulses in
         # the trace:
         for i in range(num_of_lasers):
-
             # save the index of the absolute maximum of the derived time trace
             # as rising edge position
             rising_ind[i] = np.argmax(conv_deriv)
@@ -238,7 +248,7 @@ class PulseExtractionLogic(GenericLogic):
         #laser_length = int(self.histo[1][self.histo[0].argmax()])
 
         # initialize the empty output array
-        laser_arr = np.zeros([num_of_lasers, laser_length],int)
+        laser_arr = np.zeros([num_of_lasers, laser_length], dtype=int)
         # slice the detected laser pulses of the timetrace and save them in the
         # output array according to the found rising edge
         for i in range(num_of_lasers):
@@ -247,7 +257,15 @@ class PulseExtractionLogic(GenericLogic):
                 laser_arr[i, 0:lenarr] = count_data[rising_ind[i]:]
             else:
                 laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
-        return laser_arr.astype(int)
+
+            # give back rising and falling edge of laser pulses
+
+        laser_y = laser_arr
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 
     def _convolve_derive(self, data, std_dev):
         """ Smooth the input data by applying a gaussian filter.
@@ -265,8 +283,18 @@ class PulseExtractionLogic(GenericLogic):
         frequency noise, the output data will show sharp peaks corresponding to
         the rising and falling flanks of the input signal.
         """
-        conv = ndimage.filters.gaussian_filter1d(data, std_dev)
-        conv_deriv = np.gradient(conv)
+        try:
+            conv = ndimage.filters.gaussian_filter1d(data, std_dev)
+        except:
+            self.log.debug('Convolution of fast counter timetrace failed.\n'
+                           'Probably NaN encountered in data array.')
+            conv = np.zeros(data.size)
+        try:
+            conv_deriv = np.gradient(conv)
+        except:
+            self.log.debug('Derivative of convolution of fast counter timetrace failed.\n'
+                           'Probably NaN encountered in data array.')
+            conv_deriv = np.zeros(conv.size)
         return conv_deriv
 
 
@@ -304,6 +332,7 @@ class PulseExtractionLogic(GenericLogic):
         """
 
         # initialize
+        return_dict = {}
         x_data = []
         y_data = []
         laser_x = []
@@ -346,16 +375,22 @@ class PulseExtractionLogic(GenericLogic):
                 laser_x[jj]=np.append(laser_x[jj],laser_x[jj][-1]+1)
                 laser_y[jj]=np.append(laser_y[jj],laser_y[jj][-1])
 
-        #FIXME: It should be possible to return laser_x aswell but therefor
-        #FIXME: the functions above also would have to be changed
 
-        laser_arr=np.asarray(laser_y)
+        laser_y = np.asarray(laser_y)
+        laser_x = np.asarray(laser_x)
 
-        return laser_arr.astype(int)
+        rising_ind = np.array([i[0] for i in laser_x])
+        falling_ind = np.array([i[-1] for i in laser_y])
+
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 
     def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
 
-
+        return_dict = {}
         laser_x = []
         laser_y = []
 
@@ -379,9 +414,17 @@ class PulseExtractionLogic(GenericLogic):
 
 
 
-        laser_arr=np.asarray(laser_y)
+        laser_y = np.asarray(laser_y)
+        laser_x = np.asarray(laser_x)
 
         self.log.debug(laser_y)
 
-        return laser_arr.astype(int)
+        rising_ind = np.array([i[0] for i in laser_x])
+        falling_ind = np.array([i[-1] for i in laser_y])
+
+        return_dict['laser_rising'] = rising_ind
+        return_dict['laser_falling'] = falling_ind
+        return_dict['laser_arr_y'] = laser_y.astype(int)
+
+        return return_dict
 

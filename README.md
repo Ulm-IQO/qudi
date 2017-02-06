@@ -20,7 +20,7 @@ If you are publishing scientific results, mentioning Qudi in your methods decscr
 Until we have a proper peer-reviewed paper published, you should cite  the preprint [arXiv:1611.09146](https://arxiv.org/abs/1611.09146) \[quant-ph\] for this purpose.
 
 ## Documentation
-User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi/html-docs/ .
+User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi-generated-docs/html-docs/ .
 
 ## Continuous integration 
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
@@ -29,8 +29,7 @@ User and code documentation about Qudi is located at http://ulm-iqo.github.io/qu
 [![Code Issues](https://www.quantifiedcode.com/api/v1/project/d31724e4b9704732ac1f508c7de1999d/badge.svg)](https://www.quantifiedcode.com/app/project/d31724e4b9704732ac1f508c7de1999d)
 
 ## Collaboration
-Feel free to register and add issues to our trac at http://qosvn.physik.uni-ulm.de/trac/qudi .
-and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
+Feel free to add issues and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
 
 The code in pull requests should be clean, PEP8-compliant and commented, as with every academic institution in Germany,
 our resources in the area of software development are quite limited.

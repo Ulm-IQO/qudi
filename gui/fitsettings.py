@@ -99,7 +99,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
 
 class FitSettingsComboBox(QtWidgets.QComboBox):
-
+    
     def __init__(self, *args, **kwargs):
         """ """
         super().__init__(*args, **kwargs)
@@ -177,7 +177,7 @@ class FitSettingsWidget(QtWidgets.QWidget):
         """
         for name, param in parameters.items():
             self.paramUseSettings[name] = self.widgets[name + '_use'].checkState()
-            param.use = self.paramUseSettings[name]
+            param.use = self.paramUseSettings[name] 
             param.value = self.widgets[name + '_value'].value()
             param.min = self.widgets[name + '_min'].value()
             param.max = self.widgets[name + '_max'].value()

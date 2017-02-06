@@ -190,23 +190,23 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if 'scanner_x_ao' in config.keys():
             self._scanner_ao_channels.append(config['scanner_x_ao'])
             self._current_position.append(0)
-            self._position_range.append([0., 100.])
-            self._voltage_range.append([-10., 10.])
+            self._position_range.append([0, 100e-6])
+            self._voltage_range.append([-10, 10])
             if 'scanner_y_ao' in config.keys():
                 self._scanner_ao_channels.append(config['scanner_y_ao'])
                 self._current_position.append(0)
-                self._position_range.append([0., 100.])
-                self._voltage_range.append([-10., 10.])
+                self._position_range.append([0, 100e-6])
+                self._voltage_range.append([-10, 10])
                 if 'scanner_z_ao' in config.keys():
                     self._scanner_ao_channels.append(config['scanner_z_ao'])
                     self._current_position.append(0)
-                    self._position_range.append([0., 100.])
-                    self._voltage_range.append([-10., 10.])
+                    self._position_range.append([0, 100e-6])
+                    self._voltage_range.append([-10, 10])
                     if 'scanner_a_ao' in config.keys():
                         self._scanner_ao_channels.append(config['scanner_a_ao'])
                         self._current_position.append(0)
-                        self._position_range.append([0., 100.])
-                        self._voltage_range.append([-10., 10.])
+                        self._position_range.append([0, 100e-6])
+                        self._voltage_range.append([-10, 10])
 
         if len(self._scanner_ao_channels) < 1:
             self.log.error(
@@ -318,11 +318,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                            float(config['x_range'][1])]
             else:
                 self.log.warning(
-                    'Configuration ({}) of x_range incorrect, taking [0,100] instead.'
+                    'Configuration ({}) of x_range incorrect, taking [0,100e-6] instead.'
                     ''.format(config['x_range']))
         else:
             if len(self._position_range) > 0:
-                self.log.warning('No x_range configured taking [0,100] instead.')
+                self.log.warning('No x_range configured taking [0,100e-6] instead.')
 
         if 'y_range' in config.keys() and len(self._position_range) > 1:
             if float(config['y_range'][0]) < float(config['y_range'][1]):
@@ -330,11 +330,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                            float(config['y_range'][1])]
             else:
                 self.log.warning(
-                    'Configuration ({}) of y_range incorrect, taking [0,100] instead.'
+                    'Configuration ({}) of y_range incorrect, taking [0,100e-6] instead.'
                     ''.format(config['y_range']))
         else:
             if len(self._position_range) > 1:
-                self.log.warning('No y_range configured taking [0,100] instead.')
+                self.log.warning('No y_range configured taking [0,100e-6] instead.')
 
         if 'z_range' in config.keys() and len(self._position_range) > 2:
             if float(config['z_range'][0]) < float(config['z_range'][1]):
@@ -342,11 +342,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                            float(config['z_range'][1])]
             else:
                 self.log.warning(
-                    'Configuration ({}) of z_range incorrect, taking [0,100] instead.'
+                    'Configuration ({}) of z_range incorrect, taking [0,100e-6] instead.'
                     ''.format(config['z_range']))
         else:
             if len(self._position_range) > 2:
-                self.log.warning('No z_range configured taking [0,100] instead.')
+                self.log.warning('No z_range configured taking [0,100e-6] instead.')
 
         if 'a_range' in config.keys() and len(self._position_range) > 3:
             if float(config['a_range'][0]) < float(config['a_range'][1]):
@@ -354,11 +354,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                            float(config['a_range'][1])]
             else:
                 self.log.warning(
-                    'Configuration ({}) of a_range incorrect, taking [0,100] instead.'
+                    'Configuration ({}) of a_range incorrect, taking [0,100e-6] instead.'
                     ''.format(config['a_range']))
         else:
             if len(self._position_range) > 3:
-                self.log.warning('No a_range configured taking [0,100] instead.')
+                self.log.warning('No a_range configured taking [0,100e-6] instead.')
 
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
@@ -913,7 +913,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         @return float [4][2]: array of 4 ranges with an array containing lower
                               and upper limit. The unit of the scan range is
-                              micrometer.
+                              meters.
         """
         return self._position_range
 
@@ -922,12 +922,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         @param float [4][2] myrange: array of 4 ranges with an array containing
                                      lower and upper limit. The unit of the
-                                     scan range is micrometer.
+                                     scan range is meters.
 
         @return int: error code (0:OK, -1:error)
         """
         if myrange is None:
-            myrange = [[0, 1], [0, 1], [0, 1], [0, 1]]
+            myrange = [[0, 1e-6], [0, 1e-6], [0, 1e-6], [0, 1e-6]]
 
         if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.log.error('Given range is no array type.')
@@ -1513,7 +1513,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.exception('Error while scanning line.')
             return np.array([[-1.]])
         # return values is a rate of counts/s
-        return self._real_data * self._scanner_clock_frequency
+        return (self._real_data * self._scanner_clock_frequency).transpose()
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
@@ -2117,6 +2117,20 @@ class SlowGatedNICard(NICard):
                 'No parameter "samples_number" configured taking the default value "{0}" instead.'
                 ''.format(self._samples_number_default))
             self._samples_number = self._samples_number_default
+
+    def get_constraints(self):
+        """ Get hardware limits of NI device.
+
+        @return SlowCounterConstraints: constraints class for slow counter
+
+        FIXME: ask hardware for limits when module is loaded
+        """
+        constraints = SlowCounterConstraints()
+        constraints.max_detectors = 4
+        constraints.min_count_frequency = 1e-3
+        constraints.max_count_frequency = 10e9
+        constraints.counting_mode = [CountingMode.FINITE_GATED]
+        return constraints
 
     #overwrite the SlowCounterInterface commands of the class NICard:
     def set_up_clock(self, clock_frequency=None, clock_channel=None):

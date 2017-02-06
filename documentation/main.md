@@ -25,4 +25,6 @@
     * [Fitting](@ref fit_logic)
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
+* Interfuse documentation
+    * How to use interfuses(@ref how_to_interfuses)
 
