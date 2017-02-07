@@ -211,7 +211,7 @@ class FitConfigWidget(QtWidgets.QWidget):
         self.estComboBox.clear()
         for estimator in self.all_fits[name]:
             if not estimator.startswith('make_'):
-                self.estComboBox.addItem(name)
+                self.estComboBox.addItem(estimator)
         print(name)
 
     @QtCore.Slot(int)
