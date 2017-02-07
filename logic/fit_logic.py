@@ -69,6 +69,11 @@ class FitLogic(GenericLogic):
         self.fit_list['3d'] = dict()
 
         # Go through the fitmethods files and import all methods.
+        # Also determine which methods need to be added to the fit_list dictionary
+        estimators_for_dict = list()
+        models_for_dict = list()
+        fits_for_dict = list()
+
         for files in filenames:
 
             mod = importlib.import_module('logic.fitmethods.{0}'.format(files))
@@ -76,56 +81,62 @@ class FitLogic(GenericLogic):
             for method in dir(mod):
                 ref = getattr(mod, method)
                 if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
+                    method_str = str(method)
                     try:
                         # import methods in Fitlogic
                         setattr(FitLogic, method, ref)
-
-                        # add method to dictionary and define what estimators they have
-                        if str(method).startswith('make_') or str(method).startswith('estimate_'):
-                            # Determine dimension of fit method
-                            if 'twoD' in str(method):
-                                dimension = '2d'
-                            elif 'threeD' in str(method):
-                                dimension = '3d'
-                            else:
-                                dimension = '1d'
-
-                            # check if it is a make_<fit name>_model method
-                            if str(method).startswith('make_') and str(method).endswith('_model'):
-                                # Add fit_name entry to self.fit_list if it is not already there
-                                fit_name = str(method).split('_', 1)[1].rsplit('_', 1)[0]
-                                if fit_name not in self.fit_list[dimension]:
-                                    self.fit_list[dimension][fit_name] = dict()
-                                # Give this fit_name its fit method in the sub-dictionary
-                                self.fit_list[dimension][fit_name]['make_model'] = getattr(self, method)
-
-                            # check if it is a make_<fit name>_fit method
-                            elif str(method).startswith('make_') and str(method).endswith('_fit'):
-                                # Add fit_name entry to self.fit_list if it is not already there
-                                fit_name = str(method).split('_', 1)[1].rsplit('_', 1)[0]
-                                if fit_name not in self.fit_list[dimension]:
-                                    self.fit_list[dimension][fit_name] = dict()
-                                # Give this fit_name its fit method in the sub-dictionary
-                                self.fit_list[dimension][fit_name]['make_fit'] = getattr(self, method)
-
-                            # Check if it's an estimator
-                            elif 'estimate_' in str(method):
-                                # Add fit_name entry to self.fit_list if it is not already there.
-                                fit_name = str(method).split('_')[1]
-                                if fit_name not in self.fit_list[dimension]:
-                                    self.fit_list[dimension][fit_name] = dict()
-
-                                # If this is a custom estimator
-                                if len(str(method).split('_')) > 2:
-                                    estimator_name = str(method).rsplit('_', 1)[1]
-                                    # Give this fit_name another estimator in the sub-dictionary
-                                    self.fit_list[dimension][fit_name][estimator_name] = getattr(self, method)
-                                # Otherwise this is a generic estimator for the fit_name
-                                else:
-                                    self.fit_list[dimension][fit_name]['generic'] = getattr(self, method)
+                        # append method to a list of methods to include in the fit_list dictionary
+                        if method_str.startswith('make_') and method_str.endswith('_fit'):
+                            fits_for_dict.append(method_str.split('_', 1)[1].rsplit('_', 1)[0])
+                        elif method_str.startswith('make_') and method_str.endswith('_model'):
+                            models_for_dict.append(method_str.split('_', 1)[1].rsplit('_', 1)[0])
+                        elif method_str.startswith('estimate_'):
+                            estimators_for_dict.append(method_str.split('_', 1)[1])
                     except:
-                        self.log.error('It was not possible to import element {} into FitLogic.'
-                                       ''.format(method))
+                        self.log.error('Method "{0}" could not be imported to FitLogic.'
+                                       ''.format(str(method)))
+
+        print(fits_for_dict)
+        print(models_for_dict)
+        print(estimators_for_dict)
+        # Now attach the fit, model and estimator methods to the proper dictionary fields
+        for fit_name in fits_for_dict:
+            fit_method = 'make_' + fit_name + '_fit'
+            model_method = 'make_' + fit_name + '_model'
+
+            # Determine fit dimension
+            if 'twoD' in fit_name:
+                dimension = '2d'
+            elif 'threeD' in fit_name:
+                dimension = '3d'
+            else:
+                dimension = '1d'
+
+            # Attach make_*_fit method to fit_list
+            if fit_name not in self.fit_list[dimension]:
+                self.fit_list[dimension][fit_name] = dict()
+            self.fit_list[dimension][fit_name]['make_fit'] = getattr(self, fit_method)
+
+            # Attach make_*_model method to fit_list
+            if fit_name in models_for_dict:
+                self.fit_list[dimension][fit_name]['make_model'] = getattr(self, model_method)
+            else:
+                self.log.error('No make_*_model method for fit "{0}" found in FitLogic.'
+                               ''.format(fit_name))
+
+            # Attach all estimate_* methods to corresponding fit method in fit_list
+            found_generic_estimator = False
+            for estimator_name in estimators_for_dict:
+                estimator_method = 'estimate_' + estimator_name
+                if fit_name == estimator_name:
+                    self.fit_list[dimension][fit_name]['generic'] = getattr(self, estimator_method)
+                    found_generic_estimator = True
+                elif estimator_name.startswith(fit_name + '_'):
+                    custom_name = estimator_name.split('_', 1)[1]
+                    self.fit_list[dimension][fit_name][custom_name] = getattr(self, estimator_method)
+            if not found_generic_estimator:
+                self.log.error('No generic estimator method for fit "{0}" found in FitLogic.'
+                               ''.format(fit_name))
 
         self.log.info('Methods were included to FitLogic, but only if naming is right: check the'
                          ' doxygen documentation if you added a new method and it does not show.')
