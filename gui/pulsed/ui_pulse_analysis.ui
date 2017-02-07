@@ -189,7 +189,33 @@
          </widget>
         </item>
         <item row="6" column="1">
-         <widget class="QComboBox" name="second_plot_ComboBox"/>
+         <widget class="QComboBox" name="second_plot_ComboBox">
+          <item>
+           <property name="text">
+            <string>None</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>FFT</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Log(x)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Log(y)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Log(x)Log(y)</string>
+           </property>
+          </item>
+         </widget>
         </item>
         <item row="5" column="2">
          <widget class="QLabel" name="ana_param_num_laserpulses_Label">

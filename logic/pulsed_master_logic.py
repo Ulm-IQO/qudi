@@ -86,7 +86,8 @@ class PulsedMasterLogic(GenericLogic):
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
@@ -911,7 +912,8 @@ class PulsedMasterLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(laser_data_x, laser_data_y)
         return
 
-    def signal_data_updated(self, signal_data_x, signal_data_y, signal_data_y2, error_data_y, error_data_y2):
+    def signal_data_updated(self, signal_data_x, signal_data_y, signal_data_y2, error_data_y,
+                            error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2):
         """
 
         @param signal_data_x:
@@ -921,7 +923,8 @@ class PulsedMasterLogic(GenericLogic):
         @param error_data_y2:
         @return:
         """
-        self.sigSignalDataUpdated.emit(signal_data_x, signal_data_y, signal_data_y2, error_data_y, error_data_y2)
+        self.sigSignalDataUpdated.emit(signal_data_x, signal_data_y, signal_data_y2, error_data_y,
+                                       error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
         return
 
     def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
