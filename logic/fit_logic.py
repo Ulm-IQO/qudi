@@ -111,18 +111,18 @@ class FitLogic(GenericLogic):
                             # Check if it's an estimator
                             elif 'estimate_' in str(method):
                                 # Add fit_name entry to self.fit_list if it is not already there.
-                                fit_name = str(method).split('_', 1)[1]
+                                fit_name = str(method).split('_')[1]
                                 if fit_name not in self.fit_list[dimension]:
                                     self.fit_list[dimension][fit_name] = dict()
 
                                 # If this is a custom estimator
-                                if '_' in fit_name:
-                                    estimator_name = fit_name.split('_', 1)[1]
+                                if len(str(method).split('_')) > 2:
+                                    estimator_name = str(method).rsplit('_', 1)[1]
                                     # Give this fit_name another estimator in the sub-dictionary
                                     self.fit_list[dimension][fit_name][estimator_name] = getattr(self, method)
                                 # Otherwise this is a generic estimator for the fit_name
                                 else:
-                                    self.fit_list[dimension][fit_name]['generic'] = method
+                                    self.fit_list[dimension][fit_name]['generic'] = getattr(self, method)
                     except:
                         self.log.error('It was not possible to import element {} into FitLogic.'
                                        ''.format(method))
