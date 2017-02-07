@@ -490,9 +490,12 @@ class OptimizerLogic(GenericLogic):
                     # Todo: It is required that the changed parameters are given as a dictionary or parameter object
                     add_params=None)
             else:
-                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                result = self._fit_logic.make_gaussianlinearoffset_fit(
                     x_axis=self._zimage_Z_values,
-                    data=self.z_refocus_line[:, self.opt_channel])
+                    data=self.z_refocus_line[:, self.opt_channel],
+                    units='m',
+                    estimator=self._fit_logic.estimate_gaussianlinearoffset_peak
+                    )
         self.z_params = result.params
 
         if result.success is False:

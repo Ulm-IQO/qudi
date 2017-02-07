@@ -434,10 +434,10 @@ def estimate_gaussianoffset_dip(self, x_axis, data, params):
     params_peak = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_gaussianoffsetpeak(x_axis,
-                                                         data_negative,
-                                                         params_peak
-                                                         )
+    error, params_ret = self.estimate_gaussianoffset_peak(x_axis,
+                                                          data_negative,
+                                                          params_peak
+                                                          )
 
     params['sigma'] = params_ret['sigma']
     params['offset'].set(value=-params_ret['offset'])
@@ -504,7 +504,12 @@ def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     # try at first a fit with the ordinary gauss function
-    res_ordinary_gauss = self.make_gaussianoffsetpeak_fit(x_axis=x_axis, data=data)
+    res_ordinary_gauss = self.make_gaussianoffset_fit(
+        x_axis=x_axis,
+        data=data,
+        units=None,
+        estimator=self.estimate_gaussianoffset_peak
+    )
 
     # subtract the result and perform again a linear fit:
     data_subtracted = data - res_ordinary_gauss.best_fit
