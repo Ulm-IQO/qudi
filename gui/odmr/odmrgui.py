@@ -31,7 +31,7 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitSettingsWidget
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from core.util import units
 
 
@@ -197,10 +197,6 @@ class ODMRGui(GUIBase):
         self._mw.mode_ComboBox.addItem('Off')
         self._mw.mode_ComboBox.addItem('CW')
 
-        fit_functions = self._odmr_logic.get_fit_functions()
-        self._mw.fit_methods_ComboBox.clear()
-        self._mw.fit_methods_ComboBox.addItems(fit_functions)
-
         ########################################################################
         #                  Configuration of the Colorbar                       #
         ########################################################################
@@ -238,14 +234,17 @@ class ODMRGui(GUIBase):
 
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
-        self._sd.fit_tabs = {}
-        for name, model in self._odmr_logic.fit_models.items():
-            try:
-                self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
-            except:
-                self.log.warning('Could not load Settings Widget for fitmodel {0}'.format(name))
-            else:
-                self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
+
+        # fit settings
+        self._fsd = FitSettingsDialog(
+            self._odmr_logic.fit_list,
+            self._odmr_logic.user_fits,
+            title='ODMR fit settings')
+
+        fit_functions = self._odmr_logic.get_fit_functions()
+        self._mw.fit_methods_ComboBox.setFitFunctions(fit_functions)
+
+        self._mw.action_FitSettings.triggered.connect(self._fsd.show)
 
         # Update the inputed/displayed numbers if return key is hit:
 
@@ -540,19 +539,12 @@ class ODMRGui(GUIBase):
         self._odmr_logic.number_of_lines = self._sd.matrix_lines_SpinBox.value()
         self._odmr_logic.set_clock_frequency(self._sd.clock_frequency_DoubleSpinBox.value())
         self._odmr_logic.saveRawData = self._sd.save_raw_data_CheckBox.isChecked()
-        for name, tab in self._sd.fit_tabs.items():
-            self._odmr_logic.use_custom_params[name] = tab.updateFitSettings(
-                self._odmr_logic.fit_models[name][1])
 
     def reject_settings(self):
         """ Keep the old settings and restores the old settings in the gui. """
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
         self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.saveRawData)
-        for name, tab in self._sd.fit_tabs.items():
-            tab.keepFitSettings(
-                self._odmr_logic.fit_models[name][1],
-                self._odmr_logic.use_custom_params[name])
 
     def update_fit_variable(self, txt):
         """ Set current fit function """
@@ -563,7 +555,8 @@ class ODMRGui(GUIBase):
         fit_function = self._odmr_logic.current_fit_function
         x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=fit_function)
         if fit_result is not None:
-            self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params, self._odmr_logic.use_custom_params[fit_function])
+            #self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params, self._odmr_logic.use_custom_params[fit_function])
+            print('Implement update fit parameters')
         # The fit signal was already emitted in the logic, so there is no need
         # to set the fit data
 
