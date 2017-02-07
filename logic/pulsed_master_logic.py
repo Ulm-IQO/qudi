@@ -183,7 +183,7 @@ class PulsedMasterLogic(GenericLogic):
                                         QtCore.Qt.QueuedConnection)
         self.sigPauseMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
                                          QtCore.Qt.QueuedConnection)
-        self.sigContinueMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
+        self.sigContinueMeasurement.connect(self._measurement_logic.continue_pulsed_measurement,
                                             QtCore.Qt.QueuedConnection)
         self.sigStartPulser.connect(self._measurement_logic.pulse_generator_on,
                                     QtCore.Qt.QueuedConnection)
@@ -685,6 +685,7 @@ class PulsedMasterLogic(GenericLogic):
         @return:
         """
         self.status_dict['measurement_running'] = is_running
+        print(self.status_dict)
         self.sigMeasurementStatusUpdated.emit(is_running, is_paused)
         return
 
