@@ -19,31 +19,38 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-
 from qtpy import QtCore, QtWidgets
 from collections import OrderedDict
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 import numpy as np
 import math
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class FitSettingsDialog(QtWidgets.QDialog):
 
-    sigSelectionUpdated = QtCore.Signal()
+    sigFitsUpdated = QtCore.Signal(dict)
     sigParametersUpdated = QtCore.Signal()
 
-    def __init__(self, all_functions):
+    def __init__(self, all_functions, my_functions, title='Fit Settings'):
         """ """
         super().__init__()
         self.setModal(False)
+        self.setWindowTitle(title)
+        self.title = title
         self.all_functions = all_functions
-        self.checkboxes = OrderedDict()
         self.tabs = {}
         self.parameters = {}
         self.parameter_use = {}
+        self.user_fits = OrderedDict()
+        self.fitWidgets = OrderedDict()
 
         self._dialogLayout = QtWidgets.QVBoxLayout()
         self._tabWidget = QtWidgets.QTabWidget()
+        self._firstPage = QtWidgets.QWidget()
+        self._firstPageLayout = QtWidgets.QVBoxLayout()
         self._scrollArea = QtWidgets.QScrollArea()
         self._scrollWidget = QtWidgets.QWidget()
         self._scrLayout = QtWidgets.QVBoxLayout()
@@ -51,77 +58,180 @@ class FitSettingsDialog(QtWidgets.QDialog):
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Apply | QtWidgets.QDialogButtonBox.Cancel,
             QtCore.Qt.Horizontal
         )
-
-        for name, fit in self.all_functions.items():
-            self.checkboxes[name] = QtWidgets.QCheckBox(name)
-            self._scrLayout.addWidget(self.checkboxes[name])
+        self._addFitButton = QtWidgets.QPushButton('Add fit')
 
         self._scrollWidget.setLayout(self._scrLayout)
         self._scrollArea.setWidget(self._scrollWidget)
-        self._tabWidget.addTab(self._scrollArea, 'Fit functions')
+        self._scrollArea.setWidgetResizable(True)
+        self._firstPageLayout.addWidget(self._addFitButton)
+        self._firstPageLayout.addWidget(self._scrollArea)
+        self._firstPage.setLayout(self._firstPageLayout)
+        self._tabWidget.addTab(self._firstPage, 'Fit functions')
+        self._dialogLayout.addWidget(self._addFitButton)
         self._dialogLayout.addWidget(self._tabWidget)
         self._dialogLayout.addWidget(self._dbox)
         self.setLayout(self._dialogLayout)
 
-        self.fitSelection = {name: box.checkState() for name, box in self.checkboxes.items()}
         self._dbox.accepted.connect(self.accept)
         self._dbox.rejected.connect(self.reject)
         self._dbox.clicked.connect(self.buttonClicked)
         self.accepted.connect(self.updateSettings)
         self.rejected.connect(self.restoreSettings)
+        self._addFitButton.clicked.connect(self.addFitButtonClicked)
 
     @QtCore.Slot(QtWidgets.QAbstractButton)
     def buttonClicked(self, button):
         if self._dbox.buttonRole(button) ==  QtWidgets.QDialogButtonBox.ApplyRole:
             self.updateSettings()
 
-    def setFitSelection(self, selection):
+    @QtCore.Slot()
+    def addFitButtonClicked(self):
+        res = QtWidgets.QInputDialog.getText(
+            self,
+            'New fit',
+            'Enter a name for this fit:',
+            )
+        print(res)
+        if res[1]:
+            self.addFit(res[0])
+
+    def loadFits(self, user_fits):
         """ """
-        for name, state in selection.items():
-            if name in self.checkboxes:
-                self.checkboxes[name].setCheckState(state)
-                self.fitSelection[name] = state
+        for name, fit in self.all_functions.items():
+            self._scrLayout.addWidget(self.checkboxes[name])
 
-        self._tabWidget.clear()
-        self._tabWidget.addTab(self._scrollArea, 'Fit functions')
+    def addFit(self, name):
+        if len(name) < 1:
+            return
+        if name in self.fitWidgets:
+            logging.error('{0}: Fit {1} already exists.'.format(self.title, name))
+            return
 
-        for name, box in self.checkboxes.items():
-            if box.checkState():
-                self.tabs[name] = FitSettingsWidget(self.all_functions[name][1])
-                self._tabWidget.addTab(self.tabs[name], name)
+        fcw = FitConfigWidget(name, self.all_functions)
+        self.fitWidgets[name] = fcw
+        self._scrLayout.addWidget(fcw)
+        fcw.show()
 
-        self.sigSelectionUpdated.emit()
+    def removeFit(self, name):
+        pass
 
-    def getFitSelection(self):
+    def getFits(self):
         """ """
-        return self.fitSelection
-
+        return
+    
     def restoreSettings(self):
         """ """
-        self.setFitSelection(self.fitSelection)
+        pass
 
     def updateSettings(self):
         """ """
-        for name, box in self.checkboxes.items():
-            self.fitSelection[name] = box.checkState()
+        pass
 
-        self.setFitSelection(self.fitSelection)
-
-    def getParameters(self, fit_function):
+    def getParameters(self, fit_name):
         """ """
-        return self.parameters[fit_function]
+        return self.parameters[fit_]
 
-    def setParameters(self, fit_function, parameters):
+    def setParameters(self, fit_name, parameters):
         """ """
         self.sigParametersUpdated.emit()
 
 
 class FitSettingsComboBox(QtWidgets.QComboBox):
-    
+   
+    sigFitUpdated = QtCore.Signal()
+
     def __init__(self, *args, **kwargs):
         """ """
         super().__init__(*args, **kwargs)
+        self.fit_functions = OrderedDict()
+        self.fit_functions['No Fit'] = None
+        self.addItem('No Fit')
+        self.setCurrentIndex(self.findText('No Fit'))
 
+    def setFitFunctions(self, user_fits):
+        """ """
+        current = self.getCurrentFit()
+        self.clear()
+        self.fit_functions = OrderedDict()
+        self.fit_functions['No Fit'] = None
+        self.addItem('No Fit')
+
+        for name, fit in user_fits.items():
+            self.fit_functions[name] = fit
+            self.addItem(name)
+
+        if current[0] in self.fit_functions:
+            self.setCurrentIndex(self.findText(current[0]))
+        else:
+            self.setCurrentIndex(self.findText('No Fit'))
+        self.sigFitUpdated.emit()
+
+    def getFitFunctions(self):
+        return self.fit_functions
+
+    def getCurrentFit(self):
+        """ """
+        name = self.currentText()
+        return (name, self.fit_functions[name])
+
+class FitConfigWidget(QtWidgets.QWidget):
+
+    sigRemoveFit = QtCore.Signal(str)
+
+    def __init__(self, name, all_fits):
+        super().__init__()
+        self.name = name
+        self.all_fits = all_fits
+
+        self.nameLabel = QtWidgets.QLabel(name)
+        self.fitComboBox = QtWidgets.QComboBox()
+        self.estComboBox = QtWidgets.QComboBox()
+        self.delButton = QtWidgets.QToolButton()
+
+        self._layout = QtWidgets.QHBoxLayout()
+        self._layout.addWidget(self.nameLabel)
+        self._layout.addWidget(self.fitComboBox)
+        self._layout.addWidget(self.estComboBox)
+        self._layout.addWidget(self.delButton)
+
+        self.setLayout(self._layout)
+
+        for name, fit in self.all_fits.items():
+            if 'make_fit' in fit and 'make_model' in fit:
+                self.fitComboBox.addItem(name)
+
+        self.fitComboBox.activated.connect(self.fitChanged)
+        self.estComboBox.activated.connect(self.estimatorChanged)
+        self.delButton.clicked.connect(self.removeWidget)
+        print('Fit widget {0} online!'.format(self.name))
+
+    @QtCore.Slot(int)
+    def fitChanged(self, index):
+        name = self.fitComboBox.itemText(index)
+        self.estComboBox.clear()
+        for estimator in self.all_fits[name]:
+            if not estimator.startswith('make_'):
+                self.estComboBox.addItem(name)
+        print(name)
+
+    @QtCore.Slot(int)
+    def estimatorChanged(self, index):
+        name = self.estComboBox.itemText(index)
+        print(name)
+
+    def updateSettings(self):
+        self.fit = self.fitComboBox.currentText()
+        self.estimator = self.estComboBox.currentText()
+
+    def resetSettings(self):
+        self.fitComboBox.setIndex(self.fitComboBox.findText(self.fit))
+        self.fitChanged(self.fit)
+        self.estComboBox.setIndex(self.estComboBox.findText(self.estimator))
+        self.estimatorChanged(self.estimator)
+
+    def removeWidget(self):
+        self.hide()
+        self.sigRemoveFit.emit(self.name)
 
 class FitSettingsWidget(QtWidgets.QWidget):
 

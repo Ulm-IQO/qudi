@@ -117,24 +117,9 @@ class ODMRLogic(GenericLogic):
         self._fit_param = dict()
         self._fit_result = None
 
-        self.fit_models = OrderedDict([
-            ('Lorentzian',
-                self._fit_logic.make_lorentzoffset_model()),
-            ('Double Lorentzian',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('N14',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)),
-            ('N15',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('Double Gaussian',
-                self._fit_logic.make_multiplegaussianoffset_model(no_of_functions=2))
-        ])
-
-        self.use_custom_params = {
-            name: {
-                n: False for n, p in fit[1].items()
-                } for name, fit in self.fit_models.items()
-            }
+        self.fit_list = self._fit_logic.fit_list['1d']
+        self.user_fits = {}
+        self.current_fit = ''
 
         self.mw_frequency = self.limits.frequency_in_range(2870e6)
 
@@ -144,7 +129,6 @@ class ODMRLogic(GenericLogic):
         self.mw_step = self.limits.list_step_in_range(2e6)
         self.run_time = 10          # in s
         self.elapsed_time = 0       # in s
-        self.current_fit_function = 'No Fit'
 
         self.saveRawData = False  # flag for saving raw data
 
@@ -168,6 +152,8 @@ class ODMRLogic(GenericLogic):
             self.saveRawData = self._statusVariables['saveRawData']
         if 'number_of_lines' in self._statusVariables:
             self.number_of_lines = self._statusVariables['number_of_lines']
+        if 'user_fits' in self._statusVariables:
+            self.user_fits = self._statusVariables['user_fits']
 
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
@@ -200,6 +186,7 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
+        self._statusVariables['user_fits'] = self.user_fits
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -567,10 +554,7 @@ class ODMRLogic(GenericLogic):
 
         @return list: with string entries denoting the names of the fit.
         """
-
-        models = list(self.fit_models.keys())
-        models.insert(0, 'No Fit')
-        return models
+        return self.user_fits
 
     def do_fit(self, fit_function=None, x_data=None, y_data=None,
                fit_granularity_fact=10):
@@ -725,7 +709,7 @@ class ODMRLogic(GenericLogic):
         parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
-        parameters['Fit function'] = self.current_fit_function
+        parameters['Fit function'] = self.current_fit
 
 
         # add all fit parameter to the saved data:
