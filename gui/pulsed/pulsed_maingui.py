@@ -1260,14 +1260,13 @@ class PulsedMeasurementGui(GUIBase):
         """
         if 'ana_param_errorbars_CheckBox' in self._statusVariables:
             self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
-        # if 'second_plot_ComboBox_text' in self._statusVariables:
-        #     self._pa.second_plot_ComboBox.setText(self._statusVariables['second_plot_ComboBox_text'])
+        if 'second_plot_ComboBox_text' in self._statusVariables:
+            index = self._pa.second_plot_ComboBox.findText(self._statusVariables['second_plot_ComboBox_text'])
+            self._pa.second_plot_ComboBox.setCurrentIndex(index)
 
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
 
-        # FIXME: Implement second plot
-        self._pa.second_plot_GroupBox.setVisible(False)
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image)
@@ -1282,22 +1281,16 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.fit_param_fit_func_ComboBox.addItems(self._pulsed_master_logic.get_fit_functions())
 
         # Configure the errorbars of the data in the main pulse analysis display:
-        self.signal_image_error_bars = pg.ErrorBarItem(
-            x=np.array(range(10)),
-            y=np.zeros(10),
-            top=0.,
-            bottom=0.,
-            pen=palette.c1)
-        self.signal_image_error_bars2 = pg.ErrorBarItem(
-            x=np.array(range(10)),
-            y=np.zeros(10),
-            top=0.,
-            bottom=0.,
-            pen=palette.c3)
+        self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
+                                                       top=0., bottom=0., pen=palette.c1)
+        self.signal_image_error_bars2 = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
+                                                        top=0., bottom=0., pen=palette.c3)
 
         # Configure the second pulse analysis display:
         self.second_plot_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
+        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c3)
+        self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the lasertrace plot display:
@@ -1396,7 +1389,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect combobox changed signals
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
-        #self._pa.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
+        self._pa.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.connect(self.pulse_generator_settings_changed)
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.laser_to_show_changed)
         self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.connect(self.analysis_settings_changed)
@@ -1414,7 +1407,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.toggle_settings_editor()
         self.toggle_error_bars()
-        #self.change_second_plot()
+        self.change_second_plot()
 
         # initialize values
         self._pulsed_master_logic.request_measurement_init_values()
@@ -1486,7 +1479,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_min_laser_length_SpinBox.editingFinished.disconnect()
         self._pe.extract_param_tolerance_SpinBox.editingFinished.disconnect()
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.disconnect()
-        #self._pa.second_plot_ComboBox.currentIndexChanged.disconnect()
+        self._pa.second_plot_ComboBox.currentIndexChanged.disconnect()
         self._pa.pulser_activation_config_ComboBox.currentIndexChanged.disconnect()
         self._pe.laserpulses_ComboBox.currentIndexChanged.disconnect()
         self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.disconnect()
@@ -1622,7 +1615,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.manually_pull_data()
         return
 
-    def signal_data_updated(self, x_data, y_signal_data, y2_signal_data, y_error_data, y2_error_data):
+    def signal_data_updated(self, x_data, y_signal_data, y2_signal_data, y_error_data,
+                            y2_error_data, fft_x_data, fft_y_data, fft_y2_data):
         """
 
         @param x_data:
@@ -1633,6 +1627,10 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
+        if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            is_fft = True
+        else:
+            is_fft = False
 
         # create ErrorBarItems
         beamwidth = np.inf
@@ -1646,10 +1644,21 @@ class PulsedMeasurementGui(GUIBase):
         if is_alternating:
             self.signal_image_error_bars2.setData(x=x_data, y=y2_signal_data, top=y2_error_data,
                                                   bottom=y2_error_data, beam=beamwidth)
-        # dealing with the actual signal
+        # dealing with the actual signal plot
         self.signal_image.setData(x=x_data, y=y_signal_data)
         if is_alternating:
             self.signal_image2.setData(x=x_data, y=y2_signal_data)
+
+        # dealing with the secondary plot
+        if is_fft:
+            self.second_plot_image.setData(x=fft_x_data, y=fft_y_data)
+        else:
+            self.second_plot_image.setData(x=x_data, y=y_signal_data)
+        if is_alternating:
+            if is_fft:
+                self.second_plot_image2.setData(x=fft_x_data, y=fft_y2_data)
+            else:
+                self.second_plot_image2.setData(x=x_data, y=y2_signal_data)
 
         # dealing with the error plot
         self.measuring_error_image.setData(x=x_data, y=y_error_data)
@@ -1946,6 +1955,8 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
             if self.measuring_error_image2 not in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
+            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         else:
             if self.signal_image2 in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
@@ -1953,6 +1964,8 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
             if self.measuring_error_image2 in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.removeItem(self.measuring_error_image2)
+            if self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_plot_image2)
         # unblock signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(False)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(False)
@@ -2001,58 +2014,22 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
         return
 
-    # def change_second_plot(self):
-    #     """ This method handles the second plot"""
-    #     if self._mw.second_plot_ComboBox.currentText()=='None':
-    #         self._mw.second_plot_GroupBox.setVisible(False)
-    #     else:
-    #         self._mw.second_plot_GroupBox.setVisible(True)
-    #
-    #         # Here FFT is seperated from the other option. The reason for that
-    #         # is preventing of code doubling
-    #         if self._mw.second_plot_ComboBox.currentText() == 'FFT':
-    #             fft_x, fft_y = self._pulsed_meas_logic.compute_fft()
-    #             self.second_plot_image.setData(fft_x, fft_y)
-    #             self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-    #
-    #             self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
-    #                                                                text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
-    #                                                                units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
-    #             self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
-    #                                                                text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
-    #                                                                units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
-    #
-    #         else:
-    #             #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
-    #             self.second_plot_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
-    #
-    #             if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()== '':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
-    #                                                                    text=self._as.ana_param_y_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_y_axis_unit_LineEdit.text())
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
-    #                                                                    text=self._as.ana_param_x_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_x_axis_unit_LineEdit.text())
-    #
-    #             else:
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
-    #                                                                    text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
-    #                                                                    text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
-    #                                                                    units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
-    #
-    #             if self._mw.second_plot_ComboBox.currentText() == 'unchanged data':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-    #
-    #             elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
-    #
-    #             elif self._mw.second_plot_ComboBox.currentText() == 'Log(y)':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=True)
-    #
-    #             elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)&Log(y)':
-    #                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
+    def change_second_plot(self):
+        """ This method handles the second plot"""
+        if self._pa.second_plot_ComboBox.currentText() == 'None':
+            self._pa.second_plot_GroupBox.setVisible(False)
+        else:
+            self._pa.second_plot_GroupBox.setVisible(True)
+
+            if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
+            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
+            elif self._pa.second_plot_ComboBox.currentText() == 'Log(y)':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=True)
+            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)Log(y)':
+                self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
+        return
 
     def measurement_timer_changed(self):
         """ This method handles the analysis timing"""
