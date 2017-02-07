@@ -1528,7 +1528,6 @@ class PulsedMeasurementGui(GUIBase):
             self._pulsed_master_logic.stop_measurement()
         return
 
-    #ToDo: I think that is not really working yet. Yeap, true....
     def measurement_continue_pause_clicked(self, isChecked):
         """ Continues and pauses the measurement. """
         if isChecked:
