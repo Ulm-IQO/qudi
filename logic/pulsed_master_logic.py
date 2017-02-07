@@ -685,7 +685,6 @@ class PulsedMasterLogic(GenericLogic):
         @return:
         """
         self.status_dict['measurement_running'] = is_running
-        print(self.status_dict)
         self.sigMeasurementStatusUpdated.emit(is_running, is_paused)
         return
 
@@ -755,7 +754,6 @@ class PulsedMasterLogic(GenericLogic):
         if self.direct_write:
             self.sigDirectWriteEnsemble.emit(ensemble_name, analog_samples, digital_samples)
         else:
-            print('Pulsedmaster: Upload ensemble "{0}".'.format(ensemble_name))
             self.sigUploadAsset.emit(ensemble_name)
         return
 
@@ -774,7 +772,6 @@ class PulsedMasterLogic(GenericLogic):
         if self.direct_write:
             self.sigDirectWriteSequence.emit(sequence_name, sequence_params)
         else:
-            print('Pulsedmaster: Upload sequence "{0}".'.format(sequence_name))
             self.sigUploadAsset.emit(sequence_name)
         return
 
