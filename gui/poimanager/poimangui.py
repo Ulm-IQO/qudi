@@ -401,7 +401,11 @@ class PoiManagerGui(GUIBase):
         # Connect signals
         #####################
 
-        # Distance Measurement: connecting a signal to trace to mouse movement
+        # Distance Measurement:
+        # Introducing a SignalProxy will limit the rate of signals that get fired.
+        # Otherwise we will run into a heap of unhandled function calls.
+        proxy = pg.SignalProxy(self.roi_map_image.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+        # Connecting a Mouse Signal to trace to mouse movement function.
         self.roi_map_image.scene().sigMouseMoved.connect(self.mouseMoved)
 
         # Toolbar actions

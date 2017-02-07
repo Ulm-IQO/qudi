@@ -243,6 +243,32 @@ def make_multiplelorentzoffset_model(self, no_of_functions=1):
 
     return multi_lorentz_model, params
 
+#################################################
+#    Double Lorentzian model with offset        #
+#################################################
+
+def make_doublelorentzoffset_model(self):
+    """ Create a model with double lorentzian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    return self.make_multiplelorentzoffset_model(no_of_functions=2)
+
+#################################################
+#       Triple Lorentzian model with offset     #
+#################################################
+
+def make_triplelorentzoffset_model(self):
+    """ Create a model with triple lorentzian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    return self.make_multiplelorentzoffset_model(no_of_functions=3)
+
 ################################################################################
 #                                                                              #
 #                    Fit functions and their estimators                        #
@@ -910,7 +936,6 @@ def make_triplelorentzoffset_fit(self, x_axis, data, units=None, estimator=None,
                                  'unit': units[0]}
 
     result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
 
     result.result_str_dict = result_str_dict
     return result

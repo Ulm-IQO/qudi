@@ -158,6 +158,7 @@ def make_gaussianlinearoffset_model(self, prefix=None):
 # 1D Multiple Gaussian Model with offset #
 ##########################################
 
+
 def make_multiplegaussianoffset_model(self, no_of_functions=1):
     """ Create a model with multiple gaussian with offset.
 
@@ -192,6 +193,34 @@ def make_multiplegaussianoffset_model(self, no_of_functions=1):
     params = multi_gaussian_model.make_params()
 
     return multi_gaussian_model, params
+
+##########################################
+#   1D Double Gaussian Model with offset #
+##########################################
+
+
+def make_doublegaussianoffset_model(self):
+    """ Create a model with double gaussian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gaussian_model.
+    """
+
+    return self.make_multiplegaussianoffset_model(no_of_functions=2)
+
+##########################################
+#   1D Triple Gaussian Model with offset #
+##########################################
+
+
+def make_triplegaussianoffset_model(self):
+    """ Create a model with double gaussian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_gaussian_model.
+    """
+
+    return self.make_multiplegaussianoffset_model(no_of_functions=3)
 
 #####################
 # 2D gaussian model #
