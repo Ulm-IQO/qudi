@@ -360,19 +360,30 @@ class PulsedMeasurementLogic(GenericLogic):
     def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
                                       sequence_length_s, laser_ignore_list, is_alternating,
                                       laser_trigger_delay_s):
+        if len(controlled_vals) < 1:
+            self.log.error('Tried to set empty controlled variables array. This can not work.')
+            self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
+                                                      self.number_of_lasers, self.sequence_length_s,
+                                                      self.laser_ignore_list, self.alternating,
+                                                      self.laser_trigger_delay_s)
+            return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
+                   self.laser_ignore_list, self.alternating, self.laser_trigger_delay_s
 
-        if is_alternating and len(controlled_vals) != (
-            number_of_lasers - len(laser_ignore_list)) / 2:
+        if is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list))/2:
             self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
-                             'of laser pulses to analyze ({1}).'
+                             'of laser pulses to analyze ({1}).\nSetting number of lasers to {2}.'
                              ''.format(len(controlled_vals),
-                                       (number_of_lasers - len(laser_ignore_list))/2))
-        elif not is_alternating and len(controlled_vals) != (
-        number_of_lasers - len(laser_ignore_list)):
+                                       (number_of_lasers - len(laser_ignore_list))/2,
+                                       len(controlled_vals) * 2 + len(laser_ignore_list)))
+            number_of_lasers = len(controlled_vals) * 2 + len(laser_ignore_list)
+        elif not is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list)):
             self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
-                             'of laser pulses to analyze ({1}).'
+                             'of laser pulses to analyze ({1}).\nSetting number of lasers to {2}.'
                              ''.format(len(controlled_vals),
-                                       number_of_lasers - len(laser_ignore_list)))
+                                       number_of_lasers - len(laser_ignore_list),
+                                       len(controlled_vals) + len(laser_ignore_list)))
+            number_of_lasers = len(controlled_vals) + len(laser_ignore_list)
+
         self.controlled_vals = controlled_vals
         self.number_of_lasers = number_of_lasers
         self._pulse_extraction_logic.number_of_lasers = number_of_lasers

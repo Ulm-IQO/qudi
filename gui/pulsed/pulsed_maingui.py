@@ -1882,6 +1882,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+
         if self._mw.action_run_stop.isChecked():
             return
         laser_ignore_list = []
@@ -1897,6 +1898,7 @@ class PulsedMeasurementGui(GUIBase):
         # FIXME: properly implement sequence_length_s
         sequence_length_s = self._pulsed_master_logic._measurement_logic.sequence_length_s
         num_of_ticks = num_of_lasers - len(laser_ignore_list)
+        print('GUI changed: {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}'.format(laser_ignore_list, alternating, num_of_lasers, controlled_vals_start, controlled_vals_incr, laser_trigger_delay, sequence_length_s, num_of_ticks))
         if alternating:
             num_of_ticks //= 2
         controlled_vals = np.arange(controlled_vals_start,
@@ -1924,6 +1926,11 @@ class PulsedMeasurementGui(GUIBase):
         @param laser_trigger_delay:
         @return:
         """
+        print('GUI update: {0}, {1}, {2}, {3}, {4}, {5}'.format(laser_ignore_list, alternating,
+                                                                          number_of_lasers,
+                                                                          controlled_vals,
+                                                                   laser_trigger_delay,
+                                                                   sequence_length_s))
         # block signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(True)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(True)
@@ -1943,8 +1950,10 @@ class PulsedMeasurementGui(GUIBase):
         if len(controlled_vals) > 1:
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
                 (controlled_vals[-1] - controlled_vals[0]) / (len(controlled_vals)-1))
-        else:
+        elif controlled_vals[0] > 0.0:
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(controlled_vals[0])
+        else:
+            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(1.0)
         self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(number_of_lasers+1)])
         # change plots accordingly
         if alternating:
