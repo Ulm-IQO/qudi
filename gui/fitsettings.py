@@ -20,10 +20,108 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtWidgets
-from pyqtgraph import SpinBox
+from qtpy import QtCore, QtWidgets
+from collections import OrderedDict
+from qtwidgets.scientific_spinbox import ScienDSpinBox
 import numpy as np
 import math
+
+
+class FitSettingsDialog(QtWidgets.QDialog):
+
+    sigSelectionUpdated = QtCore.Signal()
+    sigParametersUpdated = QtCore.Signal()
+
+    def __init__(self, all_functions):
+        """ """
+        super().__init__()
+        self.setModal(False)
+        self.all_functions = all_functions
+        self.checkboxes = OrderedDict()
+        self.tabs = {}
+        self.parameters = {}
+        self.parameter_use = {}
+
+        self._dialogLayout = QtWidgets.QVBoxLayout()
+        self._tabWidget = QtWidgets.QTabWidget()
+        self._scrollArea = QtWidgets.QScrollArea()
+        self._scrollWidget = QtWidgets.QWidget()
+        self._scrLayout = QtWidgets.QVBoxLayout()
+        self._dbox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Apply | QtWidgets.QDialogButtonBox.Cancel,
+            QtCore.Qt.Horizontal
+        )
+
+        for name, fit in self.all_functions.items():
+            self.checkboxes[name] = QtWidgets.QCheckBox(name)
+            self._scrLayout.addWidget(self.checkboxes[name])
+
+        self._scrollWidget.setLayout(self._scrLayout)
+        self._scrollArea.setWidget(self._scrollWidget)
+        self._tabWidget.addTab(self._scrollArea, 'Fit functions')
+        self._dialogLayout.addWidget(self._tabWidget)
+        self._dialogLayout.addWidget(self._dbox)
+        self.setLayout(self._dialogLayout)
+
+        self.fitSelection = {name: box.checkState() for name, box in self.checkboxes.items()}
+        self._dbox.accepted.connect(self.accept)
+        self._dbox.rejected.connect(self.reject)
+        self._dbox.clicked.connect(self.buttonClicked)
+        self.accepted.connect(self.updateSettings)
+        self.rejected.connect(self.restoreSettings)
+
+    @QtCore.Slot(QtWidgets.QAbstractButton)
+    def buttonClicked(self, button):
+        if self._dbox.buttonRole(button) ==  QtWidgets.QDialogButtonBox.ApplyRole:
+            self.updateSettings()
+
+    def setFitSelection(self, selection):
+        """ """
+        for name, state in selection.items():
+            if name in self.checkboxes:
+                self.checkboxes[name].setCheckState(state)
+                self.fitSelection[name] = state
+
+        self._tabWidget.clear()
+        self._tabWidget.addTab(self._scrollArea, 'Fit functions')
+
+        for name, box in self.checkboxes.items():
+            if box.checkState():
+                self.tabs[name] = FitSettingsWidget(self.all_functions[name][1])
+                self._tabWidget.addTab(self.tabs[name], name)
+
+        self.sigSelectionUpdated.emit()
+
+    def getFitSelection(self):
+        """ """
+        return self.fitSelection
+
+    def restoreSettings(self):
+        """ """
+        self.setFitSelection(self.fitSelection)
+
+    def updateSettings(self):
+        """ """
+        for name, box in self.checkboxes.items():
+            self.fitSelection[name] = box.checkState()
+
+        self.setFitSelection(self.fitSelection)
+
+    def getParameters(self, fit_function):
+        """ """
+        return self.parameters[fit_function]
+
+    def setParameters(self, fit_function, parameters):
+        """ """
+        self.sigParametersUpdated.emit()
+
+
+class FitSettingsComboBox(QtWidgets.QComboBox):
+    
+    def __init__(self, *args, **kwargs):
+        """ """
+        super().__init__(*args, **kwargs)
+
 
 class FitSettingsWidget(QtWidgets.QWidget):
 
@@ -53,13 +151,13 @@ class FitSettingsWidget(QtWidgets.QWidget):
         n = 2
         for name, param in parameters.items():
             self.paramUseSettings[name] = False
-            self.widgets[name + '_use'] = useCheckbox = QtWidgets.QCheckBox(parent=self)
-            self.widgets[name + '_label'] = parameterNameLabel = QtWidgets.QLabel(str(name), parent=self)
-            self.widgets[name + '_value'] = valueSpinbox =  SpinBox(parent=self)
-            self.widgets[name + '_min'] = minimumSpinbox = SpinBox(parent=self)
-            self.widgets[name + '_max'] = maximumSpinbox = SpinBox(parent=self)
-            self.widgets[name + '_expr'] = expressionLineEdit = QtWidgets.QLineEdit(parent=self)
-            self.widgets[name + '_vary'] = varyCheckbox = QtWidgets.QCheckBox(parent=self)
+            self.widgets[name + '_use'] = useCheckbox = QtWidgets.QCheckBox()
+            self.widgets[name + '_label'] = parameterNameLabel = QtWidgets.QLabel(str(name))
+            self.widgets[name + '_value'] = valueSpinbox =  ScienDSpinBox()
+            self.widgets[name + '_min'] = minimumSpinbox = ScienDSpinBox()
+            self.widgets[name + '_max'] = maximumSpinbox = ScienDSpinBox()
+            self.widgets[name + '_expr'] = expressionLineEdit = QtWidgets.QLineEdit()
+            self.widgets[name + '_vary'] = varyCheckbox = QtWidgets.QCheckBox()
             valueSpinbox.setDecimals(3)
             valueSpinbox.setSingleStep(0.01)
             valueSpinbox.setMaximum(np.inf)
@@ -88,6 +186,9 @@ class FitSettingsWidget(QtWidgets.QWidget):
             self._Layout.addWidget(expressionLineEdit, n, 5)
             self._Layout.addWidget(varyCheckbox, n, 6)
             n += 1
+
+        # space at the bottom
+        self._Layout.setRowStretch(n, 1)
 
     def updateFitSettings(self, parameters):
         """ Updates the fit parameters with the new values from the settings window

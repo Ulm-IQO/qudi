@@ -768,16 +768,20 @@ last</string>
      </layout>
     </widget>
    </item>
-   <item row="4" column="6">
-    <widget class="QPushButton" name="sauplo_ensemble_PushButton">
-     <property name="text">
-      <string>Sample
-Upload
-Load</string>
+   <item row="4" column="0" colspan="4">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
-    </widget>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
    </item>
-   <item row="4" column="4" colspan="2">
+   <item row="4" column="4" colspan="3">
     <widget class="QGroupBox" name="ensemble_GroupBox">
      <property name="font">
       <font>
@@ -786,11 +790,11 @@ Load</string>
       </font>
      </property>
      <property name="title">
-      <string>Sample Upload and load Ensemble on the Device</string>
+      <string>Sample, upload and load Ensembles</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_38">
       <item row="1" column="1">
-       <widget class="QPushButton" name="upload_ensemble_PushButton">
+       <widget class="QPushButton" name="sauplo_ensemble_PushButton">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -804,14 +808,23 @@ Load</string>
          </size>
         </property>
         <property name="text">
-         <string>Upload to device</string>
+         <string>Sample + Upload + Load
+Ensemble</string>
         </property>
        </widget>
       </item>
       <item row="1" column="0">
-       <widget class="QPushButton" name="sample_ensemble_PushButton">
+       <widget class="QPushButton" name="saup_ensemble_PushButton">
         <property name="text">
-         <string>Sample Ensemble</string>
+         <string>Sample + Upload
+Ensemble</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0" colspan="3">
+       <widget class="QComboBox" name="gen_ensemble_ComboBox">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block Ensemble for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
@@ -828,28 +841,8 @@ Load</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0" colspan="3">
-       <widget class="QComboBox" name="gen_ensemble_ComboBox">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block Ensemble for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
-   </item>
-   <item row="4" column="0" colspan="4">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
   <zorder>horizontalSpacer_5</zorder>
@@ -864,7 +857,6 @@ Load</string>
   <zorder>gen_activation_config_LineEdit</zorder>
   <zorder>laser_chan_label</zorder>
   <zorder>gen_activation_config_ComboBox</zorder>
-  <zorder>sauplo_ensemble_PushButton</zorder>
   <zorder>ensemble_GroupBox</zorder>
   <zorder>horizontalSpacer</zorder>
  </widget>

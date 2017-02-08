@@ -267,6 +267,28 @@ class PoiManagerGui(GUIBase):
         self._redraw_sample_shift()
         self._redraw_poi_markers()
 
+    def mouseMoved(self, event):
+        """ Handles any mouse movements inside the image.
+
+        @param event:   Event that signals the new mouse movement.
+                        This should be of type QPointF.
+
+        Gets the mouse position, converts it to a position scaled to the image axis
+        and than calculates and updated the position to the current POI.
+        """
+
+        # converts the absolute mouse position to a position relative to the axis
+        mouse_point=self.roi_map_image.mapFromScene(event.toPoint())
+        #self.log.debug("Mouse at x = {0:0.2e}, y = {1:0.2e}".format(mouse_point.x(), mouse_point.y()))
+
+        # only calculate distance, if a POI is selected
+        if self.selected_poi_key != None:
+            cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=self.selected_poi_key)
+            self._mw.poi_distance_label.setText('{0:.2e} ({1:.2e}, {2:.2e})'.format(
+                np.sqrt((mouse_point.x() * 1e-6 - cur_poi_pos[0])**2+(mouse_point.y()* 1e-6 - cur_poi_pos[1])**2),
+                mouse_point.x()* 1e-6 - cur_poi_pos[0],
+                mouse_point.y()* 1e-6 - cur_poi_pos[1]))
+
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the POI Manager GUI.
 
@@ -378,6 +400,13 @@ class PoiManagerGui(GUIBase):
         #####################
         # Connect signals
         #####################
+
+        # Distance Measurement:
+        # Introducing a SignalProxy will limit the rate of signals that get fired.
+        # Otherwise we will run into a heap of unhandled function calls.
+        proxy = pg.SignalProxy(self.roi_map_image.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+        # Connecting a Mouse Signal to trace to mouse movement function.
+        self.roi_map_image.scene().sigMouseMoved.connect(self.mouseMoved)
 
         # Toolbar actions
         self._mw.new_roi_Action.triggered.connect(self.make_new_roi)
@@ -625,8 +654,10 @@ class PoiManagerGui(GUIBase):
         self._rrd.ref_b_poi_ComboBox.clear()
         self._rrd.ref_c_poi_ComboBox.clear()
 
+        poi_list_empty = True
         for key in self._poi_manager_logic.get_all_pois(abc_sort=True):
             if key is not 'crosshair' and key is not 'sample':
+                poi_list_empty = False
                 self._mw.active_poi_ComboBox.addItem(
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
                 self._mw.offset_anchor_ComboBox.addItem(
@@ -637,6 +668,10 @@ class PoiManagerGui(GUIBase):
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
                 self._rrd.ref_c_poi_ComboBox.addItem(
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
+
+        # If list is empty, reset selected POI pointer
+        if poi_list_empty:
+            self.selected_poi_key = None
 
         # Set the selected POI in the combobox
         self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(self.selected_poi_key))

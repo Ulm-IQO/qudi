@@ -23,6 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import time
 import re
+import visa
+import numpy as np
 from socket import socket, AF_INET, SOCK_STREAM
 from ftplib import FTP
 from collections import OrderedDict
@@ -30,6 +32,7 @@ from fnmatch import fnmatch
 
 from core.base import Base
 from interface.pulser_interface import PulserInterface
+
 
 class AWG70K(Base, PulserInterface):
     """
@@ -40,60 +43,6 @@ class AWG70K(Base, PulserInterface):
 
     # declare connectors
     _out = {'pulser': 'PulserInterface'}
-
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-
-        if 'awg_IP_address' in config.keys():
-            self.ip_address = config['awg_IP_address']
-        else:
-            self.log.error('This is AWG: Did not find >>awg_IP_address<< in '
-                         'configuration.')
-
-        if 'awg_port' in config.keys():
-            self.port = config['awg_port']
-        else:
-            self.log.error('This is AWG: Did not find >>awg_port<< in '
-                         'configuration.')
-
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
-
-            if not os.path.exists(self.pulsed_file_dir):
-
-                homedir = self.get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directory defined in parameter '
-                        '"pulsed_file_dir" in the config for '
-                        'SequenceGeneratorLogic class does not exist!\n'
-                        'The default home directory\n{0}\n will be taken '
-                        'instead.'.format(self.pulsed_file_dir))
-        else:
-            homedir = self.get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified in '
-                    'the config for SequenceGeneratorLogic as directory for '
-                    'the pulsed files!\nThe default home directory\n{0}\n'
-                    'will be taken instead.'.format(self.pulsed_file_dir))
-
-        if 'ftp_root_dir' in config.keys():
-            self.ftp_root_directory = config['ftp_root_dir']
-        else:
-            self.ftp_root_directory = 'C:\\inetpub\\ftproot'
-            self.log.warning('No parameter "ftp_root_dir" was specified in '
-                    'the config for tektronix_awg70k as directory for '
-                    'the FTP server root on the AWG!\nThe default root '
-                    'directory\n{0}\nwill be taken instead.'.format(
-                        self.ftp_root_directory))
-
-        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
-
-        self.user = 'anonymous'
-        self.passwd = 'anonymous@'
-        if 'ftp_login' in config.keys() and 'ftp_passwd' in config.keys():
-            self.user = config['ftp_login']
-            self.passwd = config['ftp_passwd']
-
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -106,20 +55,65 @@ class AWG70K(Base, PulserInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        # connect ethernet socket and FTP
-        self.soc = socket(AF_INET, SOCK_STREAM)
-        self.soc.settimeout(7)
-        try:
-            self.soc.connect((self.ip_address, self.port))
-        except socket.timeout:
-            self.log.error("couldn't establish a socket connection within 7 seconds.")
-        self.log.warning(self.ip_address)
+        config = self.getConfiguration()
 
-        # input buffer
-        self.input_buffer = int(2 * 1024)
+        if 'awg_visa_address' in config.keys():
+            self.visa_address = config['awg_visa_address']
+        else:
+            self.log.error('This is AWG: Did not find >>awg_visa_address<< in configuration.')
 
+        if 'awg_ip_address' in config.keys():
+            self.ip_address = config['awg_ip_address']
+        else:
+            self.log.error('This is AWG: Did not find >>awg_visa_address<< in configuration.')
+
+        if 'pulsed_file_dir' in config.keys():
+            self.pulsed_file_dir = config['pulsed_file_dir']
+            if not os.path.exists(self.pulsed_file_dir):
+                homedir = self.get_home_dir()
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+                self.log.warning('The directory defined in parameter "pulsed_file_dir" in the '
+                                 'config for SequenceGeneratorLogic class does not exist!\n'
+                                 'The default home directory\n{0}\n will be taken instead.'
+                                 ''.format(self.pulsed_file_dir))
+        else:
+            homedir = self.get_home_dir()
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+            self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
+                             'SequenceGeneratorLogic as directory for the pulsed files!\nThe '
+                             'default home directory\n{0}\nwill be taken instead.'
+                             ''.format(self.pulsed_file_dir))
+
+        if 'ftp_root_dir' in config.keys():
+            self.ftp_root_directory = config['ftp_root_dir']
+        else:
+            self.ftp_root_directory = 'C:\\inetpub\\ftproot'
+            self.log.warning('No parameter "ftp_root_dir" was specified in the config for '
+                             'tektronix_awg70k as directory for the FTP server root on the AWG!\n'
+                             'The default root directory\n{0}\nwill be taken instead.'
+                             ''.format(self.ftp_root_directory))
+
+        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
         self.asset_directory = 'waves'
 
+        self.user = 'anonymous'
+        self.passwd = 'anonymous@'
+        if 'ftp_login' in config.keys() and 'ftp_passwd' in config.keys():
+            self.user = config['ftp_login']
+            self.passwd = config['ftp_passwd']
+
+        # connect ethernet socket and FTP
+        self._rm = visa.ResourceManager()
+        if self.visa_address not in self._rm.list_resources():
+            self.log.error('VISA address "{0}" not found by the pyVISA resource manager.\nCheck '
+                           'the connection by using for example "Agilent Connection Expert".'
+                           ''.format(self.visa_address))
+        else:
+            self.awg = self._rm.open_resource(self.visa_address)
+            # Set data transfer format (datatype, is_big_endian, container)
+            self.awg.values_format.use_binary('f', False, np.array)
+            # set timeout by default to 15 sec
+            self.awg.timeout = 15000
         self.ftp = FTP(self.ip_address)
         self.ftp.login(user=self.user, passwd=self.passwd)
         self.ftp.cwd(self.asset_directory)
@@ -127,22 +121,17 @@ class AWG70K(Base, PulserInterface):
         self.connected = True
 
         self.awg_model = self._get_model_ID()[1]
-        self.log.info('Found the following model: %s', self.awg_model)
+        self.log.debug('Found the following model: {0}'.format(self.awg_model))
 
         self.sample_rate = self.get_sample_rate()
         self.amplitude_list, self.offset_list = self.get_analog_level()
         self.markers_low, self.markers_high = self.get_digital_level()
-
         self.is_output_enabled = self._is_output_on()
         self.use_sequencer = self.has_sequence_mode()
-
         self.active_channel = self.get_active_channels()
-
         self.interleave = self.get_interleave()
-
         self.current_loaded_asset = None
         self._init_loaded_asset()
-
         self.current_status = 0
 
     def on_deactivate(self, e):
@@ -151,14 +140,14 @@ class AWG70K(Base, PulserInterface):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in method activation.
         """
-
-        # Closes the connection to the AWG via ftp and the socket
-        self.tell('\n')
-        self.soc.close()
-        self.ftp.close()
-
+        # Closes the connection to the AWG
+        try:
+            self.awg.close()
+        except:
+            self.log.debug('Closing AWG connection using pyvisa failed.')
+        self.log.info('Closed connection to AWG')
         self.connected = False
-        pass
+        return
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Pulsing device.
@@ -285,14 +274,16 @@ class AWG70K(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
 
-        self.tell('AWGC:RUN\n')
+        self.awg.write('AWGC:RUN')
         # wait until the AWG is actually running
-        while int(self.ask('AWGC:RST?')) == 0:
-            time.sleep(1)
+        while not self._is_output_on():
+            time.sleep(0.25)
         self.current_status = 1
         self.is_output_enabled = True
-        return 0
+        return self.current_status
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -301,11 +292,10 @@ class AWG70K(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
-
-        self.tell('AWGC:STOP\n')
+        self.awg.write('AWGC:STOP')
         # wait until the AWG has actually stopped
-        while int(self.ask('AWGC:RST?')) != 0:
-            time.sleep(1)
+        while self._is_output_on():
+            time.sleep(0.25)
         self.current_status = 0
         self.is_output_enabled = False
         return 0
@@ -322,27 +312,42 @@ class AWG70K(Base, PulserInterface):
         """
         # check input
         if asset_name is None:
-            self.log.warning('No asset name provided for upload!\nCorrect '
-                    'that!\nCommand will be ignored.')
+            self.log.warning('No asset name provided for upload!\nCorrect that!\n'
+                             'Command will be ignored.')
             return -1
-
-        # at first delete all the name, which might lead to confusions in the
-        # upload procedure:
+        # self._activate_awg_mode()
+        # at first delete all the name, which might lead to confusions in the upload procedure:
         self.delete_asset(asset_name)
-
+        # determine which files to transfer
         filelist = self._get_filenames_on_host()
         upload_names = []
         for filename in filelist:
-            is_wfmx = filename.endswith('.wfmx')
-            is_mat = filename.endswith(asset_name+'.mat')
-            if is_wfmx and (asset_name + '_ch') in filename:
-                upload_names.append(filename)
-            elif is_mat:
+            if filename == asset_name + '.seq':
                 upload_names.append(filename)
                 break
-        # Transfer files
+            elif filename == asset_name + '.seqx':
+                upload_names.append(filename)
+                break
+            elif fnmatch(filename, asset_name + '_ch?.wfm*'):
+                upload_names.append(filename)
+            elif fnmatch(filename, asset_name + '.wfm*'):
+                upload_names.append(filename)
+                break
+            elif filename == asset_name + '.mat':
+                upload_names.append(filename)
+                break
+        # Transfer files and load into AWG workspace
         for filename in upload_names:
             self._send_file(filename)
+            file_path = os.path.join(self.ftp_root_directory, self.asset_directory, filename)
+            if filename.endswith('.mat'):
+                self.awg.write('MMEM:OPEN:SASS:WAV "{0}"'.format(file_path))
+            else:
+                self.awg.write('MMEM:OPEN "{0}"'.format(file_path))
+            self.awg.query('*OPC?')
+        # Wait for the loading to completed
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def load_asset(self, asset_name, load_dict=None):
@@ -367,82 +372,33 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        if load_dict is None:
-            load_dict = {}
+        # self._activate_awg_mode()
 
-        # Find all files associated with the specified asset name
-        file_list = self._get_filenames_on_device()
+        # Get all sequence and waveform names currently loaded into AWG workspace
+        seq_list = self._get_sequence_names_memory()
+        wfm_list = self._get_waveform_names_memory()
 
-        # find all assets with file type .mat and .WFMX and name "asset_name"
-        # FIXME: Also include .SEQX later on
-        active_analog = [chnl for chnl in list(self.active_channel) if 'a_ch' in chnl and self.active_channel[chnl]]
-        filename = []
-        for file in file_list:
-            if file == asset_name + '.mat':
-                filename.append(file)
-                break
-            else:
-                pattern = re.compile('[0-9]+')
-                for chnl in active_analog:
-                    ch_num = int(re.search(pattern, chnl).group(0))
-                    if file == asset_name + '_ch' + str(ch_num) + '.wfmx':
-                        filename.append(file)
-
-        # Check if something could be found
-        if len(filename) == 0:
-            self.log.error('No files associated with asset "{0}" were found on AWG70k. Load to '
-                           'channels failed!'.format(asset_name))
-            return -1
-
-        # Check if multiple file formats for a single asset_name are present and issue warning
-        tmp = filename[0].rsplit('.', 1)[1]
-        for name in filename:
-            if not name.endswith(tmp):
-                self.log.error('Multiple file formats associated with the asset "{0}" were found '
-                               'on AWG70k. Load to channels failed!'.format(asset_name))
-                return -1
-
-        # Check if the number of found files matches the number of active channels
-        if len(active_analog) != len(filename):
-            self.log.error('The number of found waveforms ({0}) does not match the number of '
-                           'active AWG channels ({1}).'.format(len(filename), len(active_analog)))
-            return -1
-
-        self.log.info('The following files associated with the asset "{0}" were found on AWG70k:\n'
-                      '{1}'.format(asset_name, filename))
-
-        # load files in AWG workspace
-        timeout = self.soc.gettimeout()
-        self.soc.settimeout(None)
-        for asset in filename:
-            file_path = os.path.join(self.ftp_root_directory, self.asset_directory, asset)
-            if asset.endswith('.mat'):
-                self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
-            else:
-                self.tell('MMEM:OPEN "%s"\n' % file_path)
-            self.ask('*OPC?\n')
-        self.soc.settimeout(timeout)
-
-        # simply use the channel association of the filenames if no load_dict is given
-        if load_dict == {}:
-            for asset in filename:
-                # load waveforms into channels.
-                # Get the channel to upload
-                pattern = re.compile('[0-9]+')
-                d_channel_num = int(re.search(pattern, asset).group(0))
-                # upload channel
-                name = asset_name + '_ch' + str(d_channel_num)
-                self.tell('SOUR' + str(d_channel_num) + ':CASS:WAV "%s"\n' % name)
+        # Check if load_dict is None or an empty dict
+        if not load_dict:
+            # check if the desired asset is in workspace. Load to channels if that is the case.
+            if asset_name in seq_list:
+                trac_num = int(self.awg.query('SLIS:SEQ:TRAC? "{0}"'.format(asset_name)))
+                for chnl in range(1, trac_num + 1):
+                    self.awg.write('SOUR{0}:CASS:SEQ "{1}", {2}'.format(chnl, asset_name, chnl))
+            # check if the desired asset is in workspace. Load to channels if that is the case.
+            elif asset_name + '_ch1' in wfm_list:
+                self.awg.write('SOUR1:CASS:WAV "{0}"'.format(asset_name + '_ch1'))
+                if self._get_max_a_channel_number() > 1 and asset_name + '_ch2' in wfm_list:
+                    self.awg.write('SOUR2:CASS:WAV "{0}"'.format(asset_name + '_ch2'))
+            self.current_loaded_asset = asset_name
         else:
-            for key in load_dict:
-                asset = load_dict[key]
-                if 'a_ch' + str(key) not in active_analog:
-                    self.log.error('Channel number {0} is not active in AWG.\n'
-                                   'Loading of asset "{1}" failed.'.format(key, asset))
-                self.tell('SOUR' + str(key) + ':CASS:WAV "%s"\n' % asset)
-        while int(self.ask('*OPC?\n')) != 1:
-            time.sleep(1)
-        self.current_loaded_asset = asset_name
+            self.log.error('Loading assets into user defined channels is not yet implemented.\n'
+                           'In other words: The "load_dict" parameter of the "load_asset" method '
+                           'is not handled yet.')
+
+        # Wait for the loading to completed
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def get_loaded_asset(self):
@@ -482,9 +438,13 @@ class AWG70K(Base, PulserInterface):
         visual display. Unused for digital pulse generators without sequence
         storage capability (PulseBlaster, FPGA).
         """
-        self.tell('WLIS:WAV:DEL ALL\n')
-        while int(self.ask('*OPC?\n')) != 1:
-            time.sleep(1)
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
+        self.awg.write('WLIS:WAV:DEL ALL')
+        self.awg.write('SLIS:SEQ:DEL ALL')
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.25)
         self.current_loaded_asset = None
         return 0
 
@@ -516,19 +476,25 @@ class AWG70K(Base, PulserInterface):
 
         @return foat: the sample rate returned from the device (-1:error)
         """
-        self.tell('CLOCK:SRATE %.4G\n' % sample_rate)
-        while int(self.ask('*OPC?\n')) != 1:
-            time.sleep(1)
-        return_rate = float(self.ask('CLOCK:SRATE?\n'))
-        self.sample_rate = return_rate
-        return return_rate
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
+        self.awg.write('CLOCK:SRATE %.4G' % sample_rate)
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.25)
+        time.sleep(1)
+        self.get_sample_rate()
+        return self.sample_rate
 
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
 
         @return float: The current sample rate of the device (in Hz)
         """
-        return_rate = float(self.ask('CLOCK:SRATE?\n'))
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
+        return_rate = float(self.awg.query('CLOCK:SRATE?'))
         self.sample_rate = return_rate
         return self.sample_rate
 
@@ -560,22 +526,25 @@ class AWG70K(Base, PulserInterface):
         levels are defined by an amplitude (here total signal span, denoted in
         Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
         """
-        # FIXME: Test with multiple channel AWG
         amp = {}
         off = {}
 
-        chnl_list = ['a_ch' + str(ch_num) for ch_num in range(1, self._get_max_a_channel_number() + 1)]
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
+        chnl_list = ['a_ch' + str(ch_num) for ch_num in
+                     range(1, self._get_max_a_channel_number() + 1)]
 
         pattern = re.compile('[0-9]+')
         # get pp amplitudes
         if amplitude is None:
             for ch_num, chnl in enumerate(chnl_list):
-                amp[chnl] = float(self.ask('SOURCE' + str(ch_num + 1) + ':VOLTAGE:AMPLITUDE?'))
+                amp[chnl] = float(self.awg.query('SOUR' + str(ch_num + 1) + ':VOLT:AMPL?'))
         else:
             for chnl in amplitude:
                 if chnl in chnl_list:
                     ch_num = int(re.search(pattern, chnl).group(0))
-                    amp[chnl] = float(self.ask('SOURCE' + str(ch_num) + ':VOLTAGE:AMPLITUDE?'))
+                    amp[chnl] = float(self.awg.query('SOUR' + str(ch_num) + ':VOLT:AMPL?'))
                 else:
                     self.log.warning('Get analog amplitude from AWG70k channel "{0}" failed. '
                                      'Channel non-existent.'.format(str(chnl)))
@@ -623,6 +592,9 @@ class AWG70K(Base, PulserInterface):
         # ...and the channel numbers
         num_of_channels = self._get_max_a_channel_number()
 
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
         # amplitude sanity check
         pattern = re.compile('[0-9]+')
         if amplitude is not None:
@@ -667,17 +639,17 @@ class AWG70K(Base, PulserInterface):
 
         if amplitude is not None:
             for a_ch in amplitude:
-                self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
+                self.awg.write('SOUR{0}:VOLT:AMPL {1}'.format(a_ch, amplitude[a_ch]))
                 self.amplitude_list[a_ch] = amplitude[a_ch]
-            while int(self.ask('*OPC?\n')) != 1:
-                time.sleep(1)
+            while int(self.awg.query('*OPC?')) != 1:
+                time.sleep(0.25)
 
         if offset is not None:
             for a_ch in offset:
-                self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
+                self.awg.write('SOUR{0}:VOLT:OFFSET {1}'.format(a_ch, offset[a_ch]))
                 self.offset_list[a_ch] = offset[a_ch]
-            while int(self.ask('*OPC?\n')) != 1:
-                time.sleep(1)
+            while int(self.awg.query('*OPC?')) != 1:
+                time.sleep(0.25)
 
         return self.amplitude_list, self.offset_list
 
@@ -715,6 +687,9 @@ class AWG70K(Base, PulserInterface):
         low_val = {}
         high_val = {}
 
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
         digital_channels = list(range(1, 2 * self._get_max_a_channel_number() + 1))
         analog_channels = [chnl // 2 + chnl % 2 for chnl in digital_channels]
         marker_indices = [((chnl - 1) % 2) + 1 for chnl in digital_channels]
@@ -722,23 +697,26 @@ class AWG70K(Base, PulserInterface):
         # get low marker levels
         if low is None:
             for chnl in digital_channels:
-                low_val[chnl] = float(self.ask('SOURCE' + str(analog_channels[chnl-1]) + ':MARKER'
-                                               + str(marker_indices[chnl-1]) + ':VOLTAGE:LOW?'))
+                low_val[chnl] = float(
+                    self.awg.query('SOUR' + str(analog_channels[chnl - 1]) + ':MARK'
+                                   + str(marker_indices[chnl - 1]) + ':VOLT:LOW?'))
         else:
             for chnl in low:
-                low_val[chnl] = float(self.ask('SOURCE' + str(analog_channels[chnl-1]) + ':MARKER'
-                                               + str(marker_indices[chnl-1]) + ':VOLTAGE:LOW?'))
+                low_val[chnl] = float(
+                    self.awg.query('SOUR' + str(analog_channels[chnl - 1]) + ':MARK'
+                                   + str(marker_indices[chnl - 1]) + ':VOLT:LOW?'))
 
         # get high marker levels
         if high is None:
             for chnl in digital_channels:
-                high_val[chnl] = float(self.ask('SOURCE' + str(analog_channels[chnl-1]) + ':MARKER'
-                                               + str(marker_indices[chnl-1]) + ':VOLTAGE:HIGH?'))
+                high_val[chnl] = float(self.awg.query('SOUR' + str(analog_channels[chnl - 1])
+                                                      + ':MARK' + str(marker_indices[chnl - 1])
+                                                      + ':VOLT:HIGH?'))
         else:
             for chnl in high:
-                high_val[chnl] = float(self.ask('SOURCE' + str(analog_channels[chnl-1]) + ':MARKER'
-                                               + str(marker_indices[chnl-1]) + ':VOLTAGE:HIGH?'))
-
+                high_val[chnl] = float(self.awg.query('SOUR' + str(analog_channels[chnl - 1])
+                                                      + ':MARK' + str(marker_indices[chnl - 1])
+                                                      + ':VOLT:HIGH?'))
         self.markers_high = high_val
         self.markers_low = low_val
         return low_val, high_val
@@ -766,6 +744,9 @@ class AWG70K(Base, PulserInterface):
             low = {}
         if high is None:
             high = {}
+
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
@@ -800,6 +781,10 @@ class AWG70K(Base, PulserInterface):
         # If you want to check the input use the constraints:
         constraints = self.get_constraints()
         max_analog_channels = self._get_max_a_channel_number()
+
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
         active_ch = {}
         for a_ch in range(max_analog_channels):
             active_ch['a_ch' + str(a_ch + 1)] = False
@@ -808,18 +793,18 @@ class AWG70K(Base, PulserInterface):
 
         # check what analog channels are active
         for a_ch in range(1, max_analog_channels + 1):
-            if bool(int(self.ask('OUTPUT' + str(a_ch) + ':STATE?\n'))):
+            if bool(int(self.awg.query('OUTPUT' + str(a_ch) + ':STATE?'))):
                 active_ch['a_ch' + str(a_ch)] = True
 
         # check how many markers are active on each channel, i.e. the DAC resolution
         max_res = constraints['dac_resolution']['max']
-        for a_ch in range(self._get_max_a_channel_number()):
+        for a_ch in range(max_analog_channels):
             if active_ch['a_ch' + str(a_ch + 1)]:
-                digital_mrk = max_res - int(self.ask('SOURCE' + str(a_ch + 1) + ':DAC:RESOLUTION?\n'))
-                if digital_mrk == 1:
+                digital_mrk = max_res - int(self.awg.query('SOUR' + str(a_ch + 1) + ':DAC:RES?'))
+                if digital_mrk > 0:
                     active_ch['d_ch' + str((2 * a_ch) + 1)] = True
-                elif digital_mrk == 2:
-                    active_ch['d_ch' + str((2 * a_ch) + 2)] = True
+                    if digital_mrk == 2:
+                        active_ch['d_ch' + str((2 * a_ch) + 2)] = True
 
         self.active_channel = active_ch
         # return either all channel information or just the one asked for.
@@ -862,6 +847,9 @@ class AWG70K(Base, PulserInterface):
 
         constraints = self.get_constraints()
 
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
         new_channels_state = self.active_channel.copy()
         for chnl in ch:
             if chnl in self.active_channel:
@@ -903,12 +891,12 @@ class AWG70K(Base, PulserInterface):
                 marker_num = 0
             # set DAC resolution for this channel
             dac_res = max_res - marker_num
-            self.tell('SOURCE' + str(ach_num) + ':DAC:RESOLUTION ' + str(dac_res) + '\n')
+            self.awg.write('SOUR' + str(ach_num) + ':DAC:RES ' + str(dac_res))
             # (de)activate the analog channel
             if new_channels_state[a_ch]:
-                self.tell('OUTPUT' + str(ach_num) + ':STATE ON\n')
+                self.awg.write('OUTPUT' + str(ach_num) + ':STATE ON')
             else:
-                self.tell('OUTPUT' + str(ach_num) + ':STATE OFF\n')
+                self.awg.write('OUTPUT' + str(ach_num) + ':STATE OFF')
 
         self.active_channel = new_channels_state
         return self.active_channel
@@ -925,14 +913,19 @@ class AWG70K(Base, PulserInterface):
         uploaded_files = self._get_filenames_on_device()
         name_list = []
         for filename in uploaded_files:
+            asset_name = None
             if fnmatch(filename, '*_ch?.wfmx'):
                 asset_name = filename.rsplit('_', 1)[0]
-                if asset_name not in name_list:
-                    name_list.append(asset_name)
-            elif fnmatch(filename, '*.mat'):
-                asset_name = filename.rsplit('.', 1)[0]
-                if asset_name not in name_list:
-                    name_list.append(asset_name)
+            elif fnmatch(filename, '*_ch?.wfm'):
+                asset_name = filename.rsplit('_', 1)[0]
+            elif filename.endswith('.seqx'):
+                asset_name = filename[:-5]
+            elif filename.endswith('.seq'):
+                asset_name = filename[:-4]
+            elif filename.endswith('.mat'):
+                asset_name = filename[:-4]
+            if asset_name is not None and asset_name not in name_list:
+                name_list.append(asset_name)
         return name_list
 
     def get_saved_asset_names(self):
@@ -945,17 +938,22 @@ class AWG70K(Base, PulserInterface):
         # list of all files in the waveform directory ending with .mat or .WFMX
         file_list = self._get_filenames_on_host()
         # exclude the channel specifier for multiple analog channels and create return list
-        saved_assets = []
+        name_list = []
         for filename in file_list:
+            asset_name = None
             if fnmatch(filename, '*_ch?.wfmx'):
                 asset_name = filename.rsplit('_', 1)[0]
-                if asset_name not in saved_assets:
-                    saved_assets.append(asset_name)
-            elif fnmatch(filename, '*.mat'):
-                asset_name = filename.rsplit('.', 1)[0]
-                if asset_name not in saved_assets:
-                    saved_assets.append(asset_name)
-        return saved_assets
+            elif fnmatch(filename, '*_ch?.wfm'):
+                asset_name = filename.rsplit('_', 1)[0]
+            elif filename.endswith('.seqx'):
+                asset_name = filename[:-5]
+            elif filename.endswith('.seq'):
+                asset_name = filename[:-4]
+            elif filename.endswith('.mat'):
+                asset_name = filename[:-4]
+            if asset_name is not None and asset_name not in name_list:
+                name_list.append(asset_name)
+        return name_list
 
     def delete_asset(self, asset_name):
         """ Delete all files associated with an asset with the passed asset_name from the device memory.
@@ -970,30 +968,40 @@ class AWG70K(Base, PulserInterface):
         """
         if not isinstance(asset_name, list):
             asset_name = [asset_name]
-        # get all uploaded files
-        uploaded_files = self._get_filenames_on_device()
+        # self._activate_awg_mode()
 
-        # list of uploaded files to be deleted
+        # get all uploaded files and asset names in workspace
+        uploaded_files = self._get_filenames_on_device()
+        wfm_list = self._get_waveform_names_memory()
+        seq_list = self._get_sequence_names_memory()
+
+        # Create list of uploaded files to be deleted
         files_to_delete = []
-        # determine files to delete
         for name in asset_name:
             for filename in uploaded_files:
-                if fnmatch(filename, name+'_ch?.wfmx') or fnmatch(filename, name+'.mat'):
+                if fnmatch(filename, name + '_ch?.wfm*') or \
+                        fnmatch(filename, name + '.wfm*') or \
+                        filename.endswith(('.mat', '.seq', '.seqx')):
                     files_to_delete.append(filename)
-
         # delete files
         with FTP(self.ip_address) as ftp:
-            ftp.login(user=self.user, passwd=self.passwd) # login as default user anonymous, passwd anonymous@
+            # login as default user anonymous, passwd anonymous@
+            ftp.login(user=self.user, passwd=self.passwd)
             ftp.cwd(self.asset_directory)
             for filename in files_to_delete:
                 ftp.delete(filename)
 
         # clear waveforms from AWG workspace
-        wfm_list = self._get_waveform_names_memory()
         for wfm in wfm_list:
             for name in asset_name:
-                if fnmatch(wfm, name + '_ch?'):
-                    self.tell('WLIS:WAV:DEL "{0}"'.format(wfm))
+                if fnmatch(wfm, name + '_ch?') or wfm == name:
+                    self.awg.write('WLIS:WAV:DEL "{0}"'.format(wfm))
+
+        # clear sequences from AWG workspace
+        for name in asset_name:
+            if name in seq_list:
+                self.awg.write('SLIS:SEQ:DEL "{0}"'.format(name))
+
         return files_to_delete
 
     def set_asset_dir_on_device(self, dir_path):
@@ -1034,7 +1042,9 @@ class AWG70K(Base, PulserInterface):
 
         @return: bool, True for yes, False for no.
         """
-        return False
+        options = self.awg.query('*OPT?')[1:-2].split(',')
+        has_seq_mode = '03' in options
+        return has_seq_mode
 
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
@@ -1047,8 +1057,9 @@ class AWG70K(Base, PulserInterface):
         Series does not have an interleave mode and this method exists only for
         compability reasons.
         """
-        self.log.warning('Interleave mode not available for the AWG 70000 Series!\n'
-                         'Method call will be ignored.')
+        if state:
+            self.log.warning('Interleave mode not available for the AWG 70000 Series!\n'
+                             'Method call will be ignored.')
         return False
 
     def get_interleave(self):
@@ -1061,51 +1072,188 @@ class AWG70K(Base, PulserInterface):
         """
         return False
 
-    def tell(self, command):
-        """Send a command string to the AWG.
-
-        @param command: string containing the command
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if not command.endswith('\n'):
-            command += '\n'
-        command = bytes(command, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
-        self.soc.send(command)
-        return 0
-
-    def ask(self, question):
-        """Asks the device a 'question' and receive and return an answer from device.
-
-        @param string question: string containing the command
-
-        @return string: the answer of the device to the 'question'
-        """
-        if not question.endswith('\n'):
-            question += '\n'
-        question = bytes(question, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
-        self.soc.send(question)
-        message = self.soc.recv(self.input_buffer)  # receive an answer
-        message = message.decode('UTF-8') # decode bytes into a python str
-        message = message.replace('\n','')      # cut away the characters\r and \n.
-        message = message.replace('\r','')
-        return message
-
     def reset(self):
         """Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """
-        self.tell('*RST\n')
+        self.awg.write('*RST')
+        self.awg.write('*WAI')
+        return 0
+
+    def ask(self, question):
+        """ Asks the device a 'question' and receive and return an answer from it.
+
+        @param string question: string containing the command
+
+        @return string: the answer of the device to the 'question' in a string
+        """
+        answer = self.awg.query(question).replace('\n', '')
+        return answer
+
+    def tell(self, command):
+        """ Sends a command string to the device.
+
+        @param string command: string containing the command
+
+        @return int: error code (0:OK, -1:error)
+        """
+        bytes_written, enum_status_code = self.awg.write(command)
+        return int(enum_status_code)
+
+    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
+        """
+        @param ensemble_name: Name for the waveform to be created.
+        @param analog_samples:  numpy.ndarray of type float32 containing the voltage samples.
+        @param digital_samples: numpy.ndarray of type bool containing the marker states for each
+                                sample.
+                                First dimension is marker index; second dimension is sample number
+        @return:
+        """
+        # check input
+        if not ensemble_name:
+            self.log.error('Please specify an ensemble name for direct waveform creation.')
+            return -1
+
+        if type(analog_samples).__name__ != 'ndarray':
+            self.log.warning('Analog samples for direct waveform creation have wrong data type.\n'
+                             'Converting to numpy.ndarray of type float32.')
+            analog_samples = np.array(analog_samples, dtype='float32')
+
+        if type(digital_samples).__name__ != 'ndarray':
+            self.log.warning('Digital samples for direct waveform creation have wrong data type.\n'
+                             'Converting to numpy.ndarray of type bool.')
+            digital_samples = np.array(digital_samples, dtype=bool)
+
+        min_samples = int(self.awg.query('WLIS:WAV:LMIN?'))
+        if analog_samples.shape[1] < min_samples or digital_samples.shape[1] < min_samples:
+            self.log.error('Minimum waveform length for AWG70000A series is {0} samples.\n'
+                           'Direct waveform creation failed.'.format(min_samples))
+            return -1
+
+        if analog_samples.shape[1] != digital_samples.shape[1]:
+            self.log.error('Number of analog and digital samples must be the same.\n'
+                           'Direct waveform creation failed.')
+            return -1
+
+        # determine active channels
+        activation_dict = self.get_active_channels()
+        active_chnl = [chnl for chnl in activation_dict if activation_dict[chnl]]
+        active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl]
+        active_analog.sort()
+        active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl]
+        active_digital.sort()
+
+        # Sanity check of channel numbers
+        if len(active_analog) != analog_samples.shape[0] or len(active_digital) != digital_samples.shape[0]:
+            self.log.error('Mismatch of channel activation and sample array dimensions for direct '
+                           'write.\nChannel activation is: {0} analog, {1} digital.\n'
+                           'Sample arrays have: {2} analog, {3} digital.'
+                           ''.format(len(active_analog), len(active_digital),
+                                     analog_samples.shape[0], digital_samples.shape[0]))
+            return -1
+
+        for a_ch in active_analog:
+            a_ch_num = int(a_ch.split('ch')[-1])
+            mrk_ch_1 = 'd_ch{0}'.format(a_ch_num * 2 - 2)
+            mrk_ch_2 = 'd_ch{0}'.format(a_ch_num * 2 - 1)
+            wfm_name = ensemble_name + '_ch' + str(a_ch_num)
+
+            # Encode marker information in an array of bytes (uint8)
+            if mrk_ch_1 in active_digital and mrk_ch_2 in active_digital:
+                mrk1_index = active_digital.index(mrk_ch_1)
+                mrk2_index = active_digital.index(mrk_ch_2)
+                mrk_bytes = np.add(np.left_shift(digital_samples[mrk2_index].astype('uint8'), 7),
+                                   np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6))
+            if mrk_ch_1 in active_digital and mrk_ch_2 not in active_digital:
+                mrk1_index = active_digital.index(mrk_ch_1)
+                mrk_bytes = np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6)
+            else:
+                mrk_bytes = None
+
+            # Check if waveform already exists and delete if necessary.
+            if wfm_name in self._get_waveform_names_memory():
+                self.awg.write('WLIS:WAV:DEL "{0}"'.format(wfm_name))
+
+            # Create waveform in AWG workspace and fill in sample data
+            self.awg.write('WLIS:WAV:NEW "{0}", {1}'.format(wfm_name, digital_samples.shape[1]))
+            self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(wfm_name),
+                                  analog_samples[a_ch_num - 1])
+            if mrk_bytes is not None:
+                self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(wfm_name), mrk_bytes)
+
+        # Wait for everything to complete
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
+        return 0
+
+    def direct_write_sequence(self, sequence_name, sequence_params):
+        """
+        @param sequence_name:
+        @param sequence_params:
+
+        @return:
+        """
+        trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
+        active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
+        num_tracks = len(active_analog)
+        num_steps = len(sequence_params)
+
+        # Check if sequence already exists and delete if necessary.
+        if sequence_name in self._get_sequence_names_memory():
+            self.awg.write('SLIS:SEQ:DEL "{0}"'.format(sequence_name))
+
+        # Create new sequence and set jump timing to immediate
+        self.awg.write('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(sequence_name, num_steps, num_tracks))
+        self.awg.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(sequence_name))
+
+        # Fill in sequence information
+        for step in range(num_steps):
+            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+                                                                     trig_dict[sequence_params[step]['trigger_wait']]))
+            if sequence_params[step]['event_jump_to'] <= 0:
+                jumpto = 'NEXT'
+            else:
+                jumpto = str(sequence_params[step]['event_jump_to'])
+            self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
+                                                                     sequence_name, jumpto))
+            if sequence_params[step]['repetitions'] <= 0:
+                repeat = 'INF'
+            else:
+                repeat = str(sequence_params[step]['repetitions'])
+            self.awg.write('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
+                                                                    sequence_name, repeat))
+            if sequence_params[step]['go_to'] <= 0:
+                goto = 'NEXT'
+            else:
+                goto = str(sequence_params[step]['go_to'])
+            self.awg.write('SLIS:SEQ:STEP{0}:GOTO "{1}", {2}'.format(step + 1, sequence_name, goto))
+            waveform_name = sequence_params[step]['name'][0].rsplit('_ch', 1)[0]
+            if num_tracks == 1:
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                waveform_name + '_ch1'))
+            elif num_tracks == 2:
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                waveform_name + '_ch1'))
+                self.awg.write('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
+                                                                                sequence_name,
+                                                                                waveform_name + '_ch2'))
+        # Wait for everything to complete
+        while int(self.awg.query('*OPC?')) != 1:
+            time.sleep(0.2)
         return 0
 
     def _init_loaded_asset(self):
         """
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
         """
-        # rework starts here
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
         # first get all the channel assets
-        a_ch_asset = [self.ask('SOUR' + str(count) + ":CASS?\n").replace('"', '')
+        a_ch_asset = [self.awg.query('SOUR{0}:CASS?'.format(count))[1:-2]
                       for count in range(1, self._get_max_a_channel_number() + 1)]
         tmp_list = [a_ch.split('_ch') for a_ch in a_ch_asset]
         a_ch_asset = [ele[0] for ele in filter(lambda x: len(x) == 2, tmp_list)]
@@ -1126,6 +1274,18 @@ class AWG70K(Base, PulserInterface):
         else:
             self.current_loaded_asset = None
         return self.current_loaded_asset
+
+    def _get_sequence_names_memory(self):
+        """
+        Gets all sequence names currently loaded into the AWG workspace
+        @return: list of names
+        """
+        number_of_seq = int(self.awg.query('SLIS:SIZE?'))
+        sequence_list = [None] * number_of_seq
+        for i in range(number_of_seq):
+            seq_name = self.awg.query('SLIS:NAME? {0}'.format(i + 1))[1:-2]
+            sequence_list[i] = seq_name
+        return sequence_list
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
@@ -1179,15 +1339,17 @@ class AWG70K(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if
+                         f.endswith('.wfmx') or f.endswith('.wfm') or f.endswith(
+                             '.seq') or f.endswith('.mat')]
         return filename_list
 
     def _get_model_ID(self):
         """
         @return: a string which represents the model id of the AWG.
         """
-        id = self.ask('*IDN?\n').split(',')
-        return id
+        model_id = self.awg.query('*IDN?').replace('\n', '').split(',')
+        return model_id
 
     def _get_max_a_channel_number(self):
         """
@@ -1206,10 +1368,13 @@ class AWG70K(Base, PulserInterface):
         Gets all waveform names currently loaded into the AWG workspace
         @return: list of names
         """
-        number_of_wfm = int(self.ask('WLIS:SIZE?'))
+        # Check if AWG is in function generator mode
+        # self._activate_awg_mode()
+
+        number_of_wfm = int(self.awg.query('WLIS:SIZE?'))
         waveform_list = [None] * number_of_wfm
         for i in range(number_of_wfm):
-            wfm_name = self.ask('WLIS:NAME? {0}'.format(i + 1))[1:-1]
+            wfm_name = self.awg.query('WLIS:NAME? {0}'.format(i + 1))[1:-2]
             waveform_list[i] = wfm_name
         return waveform_list
 
@@ -1219,5 +1384,15 @@ class AWG70K(Base, PulserInterface):
 
         @return: bool, (True: output on, False: output off)
         """
-        run_state = bool(int(self.ask('AWGC:RST?')))
+        run_state = bool(int(self.awg.query('AWGC:RST?')))
         return run_state
+
+    # def _activate_awg_mode(self):
+    #     """
+    #     Helper method to activate AWG mode if the device is currently in function generator mode.
+    #     """
+    #     # Check if AWG is still in MW mode (function generator mode)
+    #     if self.awg.query('INST:MODE?').replace('\n', '') != 'AWG':
+    #         self.awg.write('INST:MODE AWG')
+    #         self.awg.write('*WAI')
+    #     return
