@@ -51,7 +51,8 @@ class ODMRLogic(GenericLogic):
     sigOdmrStarted = QtCore.Signal()
     sigOdmrStopped = QtCore.Signal()
     sigOdmrPlotUpdated = QtCore.Signal()
-    sigOdmrFitUpdated = QtCore.Signal(str)   # an arbitrary object will be emitted
+    # an arbitrary object will be emitted
+    sigOdmrFitUpdated = QtCore.Signal(str)
     sigOdmrFitParameterUpdated = QtCore.Signal(dict)
     sigOdmrMatrixUpdated = QtCore.Signal()
     sigOdmrFinished = QtCore.Signal()
@@ -59,9 +60,8 @@ class ODMRLogic(GenericLogic):
     sigODMRMatrixAxesChanged = QtCore.Signal()
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
-    sigParameterChanged = QtCore.Signal(dict)   # Here all parameter changes
-                                                # will be emitted. Look in the
-                                                # code for an example.
+    # Here all parameter changes will be emitted. Look in the code for an example.
+    sigParameterChanged = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -107,19 +107,17 @@ class ODMRLogic(GenericLogic):
             self.log.warning('No scanmode defined in config for odmr_logic module.\n'
                              'Falling back to list mode.')
 
+        # variables for fitting
+        self.fit_list = {}
+        self.current_fit = 'No Fit'
+        self._fit_param = {}
+        self._fit_result = None
+
         # theoretically this can be changed, but the current counting scheme willnot support that
         self.MW_trigger_pol = TriggerEdge.RISING
 
         self._odmrscan_counter = 0
         self._clock_frequency = 200     # in Hz
-        self.fit_function = 'No Fit'
-
-        self._fit_param = dict()
-        self._fit_result = None
-
-        self.fit_list = self._fit_logic.fit_list['1d']
-        self.user_fits = {}
-        self.current_fit = ''
 
         self.mw_frequency = self.limits.frequency_in_range(2870e6)
 
@@ -549,6 +547,21 @@ class ODMRLogic(GenericLogic):
 
         return error_code
 
+    @QtCore.Slot(dict)
+    def update_fit_functions(self, fit_functions):
+        """ """
+        self.fit_list = fit_functions
+        self.update_current_fit(self.current_fit)
+
+    @QtCore.Slot(str)
+    def update_current_fit(self, current_fit):
+        """ """
+        if current_fit not in self.fit_list:
+            self.log.warning('{0} not in current fit list!'.format(current_fit))
+            self.current_fit = 'No Fit'
+            self._fit_param = {}
+            self._fit_result = None
+
     def get_fit_functions(self):
         """ Returns all fit methods, which are currently implemented for that module.
 
@@ -556,8 +569,7 @@ class ODMRLogic(GenericLogic):
         """
         return self.user_fits
 
-    def do_fit(self, fit_function=None, x_data=None, y_data=None,
-               fit_granularity_fact=10):
+    def do_fit(self, fit_function=None, x_data=None, y_data=None, fit_granularity_fact=10):
         """Performs the chosen fit on the measured data.
 
         @param str fit_function: name of the chosen fit function
@@ -592,7 +604,7 @@ class ODMRLogic(GenericLogic):
                             then result is set to None.
         """
 
-        self.fit_function = fit_function
+        self.update_current_fit(fit_function)
 
         # write all needed parameters (not rounded!) in this dict:
         param_dict = OrderedDict()
@@ -604,65 +616,45 @@ class ODMRLogic(GenericLogic):
         if y_data is None:
             y_data = self.ODMR_plot_y
 
-        self.ODMR_fit_x = np.linspace(start=x_data[0], stop=x_data[-1],
-                                      num=int(len(x_data)*fit_granularity_fact))
+        self.ODMR_fit_x = np.linspace(
+            start=x_data[0],
+            stop=x_data[-1],
+            num=int(len(x_data) * fit_granularity_fact))
 
         # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'x_axis': x_data,
-                  'data': y_data,
-                  'units': ['Hz', 'c/s'],
-                  'add_params': None}
+        kwargs = {
+            'x_axis': x_data,
+            'data': y_data,
+            'units': ['Hz', 'c/s'],
+            'add_params': None}
 
-        if self.fit_function == 'Lorentzian':
+        if fit_function in self.fit_list:
+            result = self.fit_list[fit_function]['make_fit'](
+                estimator=self.fit_list[fit_function]['estimator'],
+                **kwargs)
 
-            result = self._fit_logic.make_lorentzoffset_fit(
-                                estimator=self._fit_logic.estimate_lorentzoffset_dip,
-                                **kwargs)
             param_dict = result.result_str_dict
 
-        elif self.fit_function == 'Double Lorentzian':
-
-            result = self._fit_logic.make_doublelorentzoffset_fit(
-                                estimator=self._fit_logic.estimate_doublelorentzoffset_dip,
-                                **kwargs)
-            param_dict = result.result_str_dict
-
-        elif self.fit_function == 'N14':
-            result = self._fit_logic.make_triplelorentzoffset_fit(
-                                estimator=self._fit_logic.estimate_triplelorentzoffset_N14,
-                                **kwargs)
-            param_dict = result.result_str_dict
-
-        elif self.fit_function == 'N15':
-            result = self._fit_logic.make_doublelorentzoffset_fit(
-                                estimator=self._fit_logic.estimate_doublelorentzoffset_N15,
-                                **kwargs)
-            param_dict = result.result_str_dict
-
-        elif self.fit_function == 'Double Gaussian':
-
-            result, param_dict = self._fit_logic.make_twogaussdipoffset_fit(**kwargs)
-
-        elif self.fit_function == 'No Fit':
+        elif self.current_fit == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
 
         else:
-            self.log.warning('The Fit Function "{0}" is not implemented to be used in the'
-                             'ODMR Logic. Correct that! Fit Call will be skipped and Fit'
-                             'Function will be set to '
-                             '"No Fit".'.format(fit_function)
-                             )
-            self.fit_function = 'No Fit'
+            self.log.warning(
+                'The Fit Function "{0}" is not implemented to be used in the ODMR Logic. '
+                'Correct that! Fit Call will be skipped and Fit Function will be set to '
+                '"No Fit".'.format(fit_function))
 
-        if self.fit_function != 'No Fit':
+            self.current_fit = 'No Fit'
+
+        if self.current_fit != 'No Fit':
             # after the fit was performed, retrieve the fitting function and
             # evaluate the fitted parameters according to the function:
-            fitted_function, params = self.fit_models[self.fit_function]
+            fitted_function, params = self.fit_models[self.current_fit]
             self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
 
         # FIXME: Check whether this signal is really necessary here.
         self.sigOdmrPlotUpdated.emit()
-        self.sigOdmrFitUpdated.emit(self.fit_function)   # so that the gui can adjust to that
+        self.sigOdmrFitUpdated.emit(self.current_fit)   # so that the gui can adjust to that
         self.sigOdmrFitParameterUpdated.emit(param_dict)
 
         self._fit_param = param_dict
