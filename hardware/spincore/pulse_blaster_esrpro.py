@@ -383,7 +383,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
 
-    @property
+
     def get_status(self):
         """Read status from the board.
 
