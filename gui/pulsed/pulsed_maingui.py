@@ -2326,8 +2326,8 @@ class PulsedMeasurementGui(GUIBase):
     def update_loaded_asset(self, asset_name, asset_type):
         """ Check the current loaded asset from the logic and update the display. """
         label = self._mw.current_loaded_asset_Label
-        if asset_name is None:
-            label.setText(asset_type)
+        if asset_name is None or asset_name == '':
+            label.setText('  No asset loaded')
         elif asset_type == 'PulseBlockEnsemble' or asset_type == 'PulseSequence':
             label.setText('  {0} ({1})'.format(asset_name, asset_type))
         else:
