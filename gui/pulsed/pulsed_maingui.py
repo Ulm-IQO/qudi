@@ -1197,6 +1197,10 @@ class PulsedMeasurementGui(GUIBase):
             axis='left',
             text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
             units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
+        self._pe.measuring_error_PlotWidget.setLabel(
+            axis='bottom',
+            text=self._as.ana_param_x_axis_name_LineEdit.text(),
+            units=self._as.ana_param_x_axis_unit_LineEdit.text())
         return
 
     def keep_former_analysis_settings(self):
@@ -1303,18 +1307,14 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
         self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4))
         # Configure the measuring error display:
-        self.measuring_error_image = pg.PlotDataItem(
-            np.array(range(10)),
-            np.zeros(10),
-            pen=palette.c1)
-        self.measuring_error_image2 = pg.PlotDataItem(
-            np.array(range(10)),
-            np.zeros(10),
-            pen=palette.c3)
+        self.measuring_error_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10),
+                                                     pen=palette.c1)
+        self.measuring_error_image2 = pg.PlotDataItem(np.array(range(10)), np.zeros(10),
+                                                      pen=palette.c3)
         self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
         self._pe.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
-        self._pe.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='ns')
+        #self._pe.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='s')
 
 
         # set boundaries
