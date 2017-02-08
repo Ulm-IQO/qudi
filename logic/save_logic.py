@@ -31,6 +31,8 @@ import numpy as np
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.util import units
+# Use the PDF backend to attach metadata
+from matplotlib.backends.backend_pdf import PdfPages
 
 class DailyLogHandler(logging.FileHandler):
     """
@@ -509,10 +511,29 @@ class SaveLogic(GenericLogic):
 
         # Save thumbnail figure of plot
         if plotfig is not None:
+            # determine the PNG-Filename and save the plain PNG
             fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
-            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
             plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
-            plotfig.savefig(fig_fname_vector, bbox_inches='tight', pad_inches=0.05)
+
+            # determine the PDF-Filename
+            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+
+            # Create the PdfPages object to which we will save the pages:
+            # The with statement makes sure that the PdfPages object is closed properly at
+            # the end of the block, even if an Exception occurs.
+            with PdfPages(fig_fname_vector) as pdf:
+                pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
+
+                # We can also set the file's metadata via the PdfPages object:
+                d = pdf.infodict()
+                d['Title'] = 'Confocal Image'
+                d['Author'] = 'qudi - Software Suite'
+                d['Subject'] = 'Find more information on: https://github.com/Ulm-IQO/qudi'
+                d['Keywords'] = 'Python 3, Qt, experiment control, automation, measurement, software, framework, modular'
+                d['Producer'] = 'qudi - Software Suite'
+                if timestamp is not None:
+                    d['CreationDate'] = timestamp
+                    d['ModDate'] = timestamp
 
     def save_1d_trace_as_text(self, trace_data, trace_name, opened_file=None,
                               filepath=None, filename=None, precision=':.3f'):
