@@ -1112,6 +1112,13 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
         """
+        # Do sanity checks:
+        if len(self.signal_plot_x) < 2:
+            self.log.debug('FFT of measurement could not be calculated. Only one data point.')
+            self.signal_fft_x = np.zeros(1)
+            self.signal_fft_y = np.zeros(1)
+            self.signal_fft_y2 = np.zeros(1)
+            return
         # Make a baseline correction to avoid a constant offset near zero frequencies:
         corrected_y = self.signal_plot_y - np.mean(self.signal_plot_y)
         # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
