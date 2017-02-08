@@ -646,10 +646,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        #if self.manual_xaxis_def:
-
-        #if self.manual_laser_def:
-
         self.sigStartMeasurement.emit(stashed_raw_data_tag)
         return
 

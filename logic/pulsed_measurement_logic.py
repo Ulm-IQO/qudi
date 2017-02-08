@@ -139,7 +139,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.show_raw_data = False
         self.show_laser_index = 0
         self.saved_raw_data = OrderedDict()  # temporary saved raw data
-        self.recalled_raw_data = None # the currently recalled raw data to add
+        self.recalled_raw_data = None  # the currently recalled raw data to add
 
         # for fit:
         self._fit_param = {}
@@ -238,7 +238,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # recalled saved raw data
         self.recalled_raw_data = None
-
 
     def on_deactivate(self, e):
         """ Deactivate the module properly.
@@ -1145,12 +1144,10 @@ class PulsedMeasurementLogic(GenericLogic):
         @return list of strings with all available fit functions
 
         """
-        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
+        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)', 'Lorentian (pos)', 'N14',
                 'N15', 'Stretched Exponential', 'Exponential', 'XY8']
 
-
-    def do_fit(self, fit_function, x_data=None, y_data=None,
-               fit_granularity_fact=10):
+    def do_fit(self, fit_function, x_data=None, y_data=None, fit_granularity_fact=10):
         """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
