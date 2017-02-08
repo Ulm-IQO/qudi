@@ -24,6 +24,7 @@ import importlib
 import inspect
 from os import listdir
 from os.path import isfile, join
+from collections import OrderedDict
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -63,10 +64,10 @@ class FitLogic(GenericLogic):
                     filenames.append(f[:-3])
 
         # A dictionary contianing all fit methods and their estimators.
-        self.fit_list = dict()
-        self.fit_list['1d'] = dict()
-        self.fit_list['2d'] = dict()
-        self.fit_list['3d'] = dict()
+        self.fit_list = OrderedDict()
+        self.fit_list['1d'] = OrderedDict()
+        self.fit_list['2d'] = OrderedDict()
+        self.fit_list['3d'] = OrderedDict()
 
         # Go through the fitmethods files and import all methods.
         # Also determine which methods need to be added to the fit_list dictionary
@@ -96,9 +97,9 @@ class FitLogic(GenericLogic):
                         self.log.error('Method "{0}" could not be imported to FitLogic.'
                                        ''.format(str(method)))
 
-        print(fits_for_dict)
-        print(models_for_dict)
-        print(estimators_for_dict)
+        fits_for_dict.sort()
+        models_for_dict.sort()
+        estimators_for_dict.sort()
         # Now attach the fit, model and estimator methods to the proper dictionary fields
         for fit_name in fits_for_dict:
             fit_method = 'make_' + fit_name + '_fit'
@@ -114,7 +115,7 @@ class FitLogic(GenericLogic):
 
             # Attach make_*_fit method to fit_list
             if fit_name not in self.fit_list[dimension]:
-                self.fit_list[dimension][fit_name] = dict()
+                self.fit_list[dimension][fit_name] = OrderedDict()
             self.fit_list[dimension][fit_name]['make_fit'] = getattr(self, fit_method)
 
             # Attach make_*_model method to fit_list
