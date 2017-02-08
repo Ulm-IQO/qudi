@@ -23,8 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit import Parameters
 from lmfit.models import Model
@@ -147,7 +145,7 @@ def make_lorentz_model(self, prefix=None):
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
         lorentz_model = Model(physical_lorentzian, independent_vars='x')
@@ -315,7 +313,7 @@ def make_lorentzoffset_fit(self, x_axis, data, units=None,
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The 1D lorentzian fit did not work. Error '
+        self.log.warning('The 1D lorentzian fit did not work. Error '
                        'message: {0}\n'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
@@ -472,7 +470,7 @@ def make_doublelorentzoffset_fit(self, x_axis, data, units=None,estimator=None, 
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.error('The double lorentzian fit did not '
+        self.log.error('The double lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
@@ -689,7 +687,7 @@ def estimate_doublelorentzoffset_peak(self, x_axis, data, params,
 #         result = model.fit(data, x=x_axis, params=params)
 #     except:
 #         result = model.fit(data, x=x_axis, params=params)
-#         logger.error('The double lorentzian fit did not '
+#         self.log.error('The double lorentzian fit did not '
 #                      'work: {0}'.format(result.message))
 #
 #     return result
@@ -728,7 +726,7 @@ def estimate_doublelorentzoffset_N15(self, x_axis, data, params):
     length_x_scan = x_axis[-1] - x_axis[0]
 
     if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
-        logger.error('The N15 estimator expects an x_axis with a length in the '
+        self.log.error('The N15 estimator expects an x_axis with a length in the '
                      'range [{0},{1}]Hz, but the passed x_axis has a length of '
                      '{2}, which is not sensible for the N15 estimator. Correct '
                      'that!'.format(hf_splitting/2, 1e9, length_x_scan))
@@ -815,7 +813,7 @@ def estimate_doublelorentzoffset_N15(self, x_axis, data, params):
 #         result = model.fit(data, x=x_axis, params=params)
 #     except:
 #         result = model.fit(data, x=x_axis, params=params)
-#         logger.error('The N15 fit did not '
+#         self.log.error('The N15 fit did not '
 #                      'work: {0}'.format(result.message))
 #
 #     # Write the parameters to allow human-readable output to be generated
@@ -890,7 +888,7 @@ def make_triplelorentzoffset_fit(self, x_axis, data, units=None, estimator=None,
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.error('The triple lorentzian fit did not '
+        self.log.error('The triple lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
     # Write the parameters to allow human-readable output to be generated
@@ -976,7 +974,7 @@ def estimate_triplelorentzoffset_N14(self, x_axis, data, params):
     length_x_scan = x_axis[-1] - x_axis[0]
 
     if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
-        logger.error('The N14 estimator expects an x_axis with a length in the '
+        self.log.error('The N14 estimator expects an x_axis with a length in the '
                      'range [{0},{1}]Hz, but the passed x_axis has a length of '
                      '{2}, which is not sensible for the N14 estimator. Correct '
                      'that!'.format(hf_splitting/2, 1e9, length_x_scan))

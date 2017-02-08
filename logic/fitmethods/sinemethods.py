@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from core.util.units import compute_dft
@@ -73,7 +71,7 @@ def make_baresine_model(self, prefix=None):
         return np.sin(2*np.pi*frequency*x+phase)
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
         model = Model(bare_sine_function, independent_vars='x')
@@ -167,7 +165,7 @@ def make_baresine_fit(self, x_axis, data, add_params=None):
     try:
         result = baresine.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The sine fit did not work.')
+        self.log.warning('The sine fit did not work.')
         result = baresine.fit(data, x=x_axis, params=params)
         print(result.message)
 
@@ -251,7 +249,7 @@ def estimate_sine(self, x_axis, data, params):
 
         else:
             if len(diff_array) == 0:
-                logger.error('The passed x_axis for the sinus estimation contains the same values! Cannot do the fit!')
+                self.log.error('The passed x_axis for the sinus estimation contains the same values! Cannot do the fit!')
 
                 return -1, params
             else:
@@ -311,7 +309,7 @@ def make_sine_fit(self, x_axis, data, add_params=None):
         result = sine.fit(data, x=x_axis, params=params)
     except:
         result = sine.fit(data, x=x_axis, params=params)
-        logger.error('The sine fit did not work.\n'
+        self.log.error('The sine fit did not work.\n'
                      'Error message: {0}\n'.format(result.message))
 
     return result
@@ -398,7 +396,7 @@ def make_sineoffset_fit(self, x_axis, data, add_params=None):
         result = sine.fit(data, x=x_axis, params=params)
     except:
         result = sine.fit(data, x=x_axis, params=params)
-        logger.error('The sine fit did not work.\n'
+        self.log.error('The sine fit did not work.\n'
                      'Error message: {0}\n'.format(result.message))
 
     return result
@@ -569,7 +567,7 @@ def make_sineexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     except:
 
         result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
-        logger.error('The sineexponentialdecayoffset fit did not work.\n'
+        self.log.error('The sineexponentialdecayoffset fit did not work.\n'
                      'Error message: {0}'.format(result.message))
 
 
@@ -632,7 +630,7 @@ def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=Non
         result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
     except:
         result = sine_double_exp_decay.fit(data, x=x_axis, params=params)
-        logger.error('The sinedoubleexponentialdecayoffset fit did not work.\n'
+        self.log.error('The sinedoubleexponentialdecayoffset fit did not work.\n'
                      'Error message: {0}'.format(result.message))
 
     return result
@@ -711,7 +709,7 @@ def make_sinestretchedexponentialdecayoffset_fit(self, x_axis, data, add_params=
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
     except:
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
-        logger.error('The sineexponentialdecay fit did not work.\n'
+        self.log.error('The sineexponentialdecay fit did not work.\n'
                      'Error message: {0}'.format(result.message))
 
     return result
@@ -814,7 +812,7 @@ def make_twosineoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = two_sine_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The twosineexpdecayoffset fit did not work. '
+        self.log.warning('The twosineexpdecayoffset fit did not work. '
                        'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
@@ -922,7 +920,7 @@ def make_twosineexpdecayoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The twosineexpdecayoffset fit did not work. '
+        self.log.warning('The twosineexpdecayoffset fit did not work. '
                 'Error message: {}'.format(str(result.message)))
         result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
 
@@ -1032,7 +1030,7 @@ def make_twosinetwoexpdecayoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The twosinetwoexpdecayoffset fit did not work. '
+        self.log.warning('The twosinetwoexpdecayoffset fit did not work. '
                 'Error message: {}'.format(str(result.message)))
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
 
@@ -1143,7 +1141,7 @@ def make_threesineoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = two_sine_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The threesineexpdecayoffset fit did not work. '
+        self.log.warning('The threesineexpdecayoffset fit did not work. '
                        'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
@@ -1260,7 +1258,7 @@ def make_threesineexpdecayoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The threesineexpdecayoffset fit did not work. '
+        self.log.warning('The threesineexpdecayoffset fit did not work. '
                        'Error message: {}'.format(str(result.message)))
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
 
@@ -1380,7 +1378,7 @@ def make_threesinethreeexpdecayoffset_fit(self, x_axis, data, add_params=None):
     try:
         result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The twosinetwoexpdecayoffset fit did not work. '
+        self.log.warning('The twosinetwoexpdecayoffset fit did not work. '
                 'Error message: {}'.format(str(result.message)))
         result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
 

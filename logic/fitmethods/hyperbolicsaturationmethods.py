@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 from lmfit.models import Model
 
 
@@ -64,7 +62,7 @@ def make_hyperbolicsaturation_model(self, prefix=None):
         return I_sat * (x / (x + P_sat))
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
 
@@ -109,7 +107,7 @@ def make_hyperbolicsaturation_fit(self, x_axis, data, units=None, estimator=None
     try:
         result = mod_final.fit(data, x=x_axis, params=params)
     except:
-        logger.error('The Powerfluorescence fit did not work. Here the fit '
+        self.log.error('The Powerfluorescence fit did not work. Here the fit '
                      'result message:\n'
                      '{0}'.format(result.message))
         result = mod_final.fit(data, x=x_axis, params=params)

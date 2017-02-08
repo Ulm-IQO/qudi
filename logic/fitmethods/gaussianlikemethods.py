@@ -22,8 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model, GaussianModel, ConstantModel
 from lmfit import Parameters
@@ -79,7 +77,7 @@ def make_gaussian_model(self, prefix=None):
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
         gaussian_model = Model(physical_gauss, independent_vars='x')
@@ -282,7 +280,7 @@ def make_twoDgaussian_model(self, prefix=None):
         return g.ravel()
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
         gaussian_2d_model = Model(twoDgaussian_function, independent_vars='x')
@@ -333,7 +331,7 @@ def make_gaussianoffset_fit(self, x_axis, data, units=None, estimator=None, add_
     try:
         result = mod_final.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The 1D gaussian peak fit did not work. Error '
+        self.log.warning('The 1D gaussian peak fit did not work. Error '
                        'message: {0}\n'.format(result.message))
 
     return result
@@ -481,7 +479,7 @@ def make_gaussianlinearoffset_fit(self, x_axis, data, units=None, estimator=None
     try:
         result = mod_final.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The 1D gaussian peak fit did not work. Error '
+        self.log.warning('The 1D gaussian peak fit did not work. Error '
                        'message: {0}\n'.format(result.message))
 
     return result
@@ -579,7 +577,7 @@ def make_twogaussianoffset_fit(self, x_axis, data, units=None,
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The double gaussian dip fit did not work: {0}'.format(
+        self.log.warning('The double gaussian dip fit did not work: {0}'.format(
             result.message))
 
     # Write the parameters to allow human-readable output to be generated
@@ -753,7 +751,7 @@ def make_twoDgaussian_fit(self, xy_axes, data, units=None, add_params=None,
         result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
     except:
         result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
-        logger.warning('The 2D gaussian fit did not work: {0}'.format(
+        lself.log.warning('The 2D gaussian fit did not work: {0}'.format(
                        result.message))
 
     return result
@@ -799,7 +797,7 @@ def estimate_twoDgaussian(self, x_axis, y_axis, data, params):
         # FIXME: Why don't you check earlier?
         # FIXME: Check for 1D array, 2D
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is not an array.')
+            self.log.error('Given parameter is not an array.')
             amplitude = 0.
             center_x = 0.
             center_y = 0.
@@ -871,7 +869,7 @@ def estimate_twoDgaussian_MLE(self, x_axis, y_axis, data, params):
         # FIXME: Why don't you check earlier?
         # FIXME: Check for 1D array, 2D
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is not an array.')
+            self.log.error('Given parameter is not an array.')
             amplitude = 0.
             center_x = 0.
             center_y = 0.
