@@ -237,13 +237,13 @@ class ODMRGui(GUIBase):
 
         # fit settings
         self._fsd = FitSettingsDialog(
-            self._odmr_logic.fit_list,
-            self._odmr_logic.user_fits,
+            self._odmr_logic._fit_logic.fit_list['1d'],
             title='ODMR fit settings')
 
-        fit_functions = self._odmr_logic.get_fit_functions()
-        self._mw.fit_methods_ComboBox.setFitFunctions(fit_functions)
-
+        self._fsd.sigFitsUpdated.connect(self._odmr_logic.update_fit_functions)
+        self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
+        #self._odmr_logic.sigFitResult.connect(self)
+        #self._fsd.loadFitFunctions()
         self._mw.action_FitSettings.triggered.connect(self._fsd.show)
 
         # Update the inputed/displayed numbers if return key is hit:
@@ -308,7 +308,6 @@ class ODMRGui(GUIBase):
         self._odmr_logic.sigOdmrStopped.connect(self.odmr_stopped)
         # Combo Widget
         self._mw.mode_ComboBox.activated[str].connect(self.mw_stop)
-        self._mw.fit_methods_ComboBox.activated[str].connect(self.update_fit_variable)
         # Push Buttons
         self._mw.do_fit_PushButton.clicked.connect(self.update_fit)
 
@@ -440,8 +439,9 @@ class ODMRGui(GUIBase):
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,
-                                self._odmr_logic.ODMR_plot_y)
+        self.odmr_image.setData(
+            self._odmr_logic.ODMR_plot_x,
+            self._odmr_logic.ODMR_plot_y)
 
     def refresh_plot_fit(self, fit_function=None):
         """ Refresh the xy fit plot image. """
@@ -454,15 +454,15 @@ class ODMRGui(GUIBase):
 
         # check which Fit method is used and remove or add again the
         # odmr_fit_image, check also whether a odmr_fit_image already exists.
-        if not self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
-            self.odmr_fit_image.setData(x=self._odmr_logic.ODMR_fit_x,
-                                        y=self._odmr_logic.ODMR_fit_y)
+        if self._odmr_logic.current_fit != 'No Fit':
+            self.odmr_fit_image.setData(
+                x=self._odmr_logic.ODMR_fit_x,
+                y=self._odmr_logic.ODMR_fit_y)
             if self.odmr_fit_image not in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
         else:
             if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
 
@@ -546,21 +546,17 @@ class ODMRGui(GUIBase):
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
         self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.saveRawData)
 
-    def update_fit_variable(self, txt):
-        """ Set current fit function """
-        self._odmr_logic.current_fit_function = txt
-
     def update_fit(self):
         """ Do the configured fit and show it in the sum plot """
-        fit_function = self._odmr_logic.current_fit_function
-        x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=fit_function)
+        fit_name = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
+        x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=fit_name)
         if fit_result is not None:
-            #self._sd.fit_tabs[self._odmr_logic.current_fit_function].keepFitSettings(fit_result.params, self._odmr_logic.use_custom_params[fit_function])
+            self._fsd.setParameters(fit_name, fit_param)
             print('Implement update fit parameters')
         # The fit signal was already emitted in the logic, so there is no need
         # to set the fit data
 
-        self.refresh_plot_fit(fit_function)
+        self.refresh_plot_fit(fit_name)
 
     def _format_param_dict(self, param_dict):
         """ Create from the passed param_dict a proper display of the parameters.
