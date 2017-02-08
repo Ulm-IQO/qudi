@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from scipy.ndimage import filters
@@ -68,7 +66,7 @@ def make_barestretchedexponentialdecay_model(self, prefix=None):
 
     if not isinstance(prefix, str) and prefix is not None:
 
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
         model = Model(barestretchedexponentialdecay_function,
@@ -146,7 +144,7 @@ def estimate_bareexponentialdecay(self, x_axis, data, params):
 
     except:
         params['lifetime'].set(value=x_axis[i]-x_axis[0], min=minimum)
-        logger.error('Linear fit did not work in estimate_bareexponentialdecay.')
+        lself.log.error('Linear fit did not work in estimate_bareexponentialdecay.')
 
     return error, params
 
@@ -174,7 +172,7 @@ def make_bareexponentialdecay_fit(self, x_axis, data, add_params=None):
         result = bareexponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = bareexponentialdecay.fit(data, x=x_axis, params=params)
-        logger.warning('The bare exponential decay fit did not work. lmfit '
+        self.log.warning('The bare exponential decay fit did not work. lmfit '
                        'result message: {}'.format(str(result.message)))
     return result
 
@@ -246,7 +244,7 @@ def estimate_exponentialdecay(self, x_axis, data, params):
 
     except:
         params['lifetime'].set(value=x_axis[i]-x_axis[0], min=minimum)
-        logger.error('Linear fit did not work in estimate_exponentialdecay.')
+        self.log.error('Linear fit did not work in estimate_exponentialdecay.')
 
     return error, params
 
@@ -274,7 +272,7 @@ def make_exponentialdecay_fit(self, x_axis, data, add_params=None):
         result = exponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = exponentialdecay.fit(data, x=x_axis, params=params)
-        logger.warning('The exponential decay fit did not work. lmfit '
+        self.log.warning('The exponential decay fit did not work. lmfit '
                         'result message: {}'.format(str(result.message)))
     return result
 
@@ -367,7 +365,7 @@ def estimate_exponentialdecayoffset(self, x_axis, data, params):
             params['amplitude'].set(value=np.exp(linear_result.params['offset'].value),
                                     min=ampl)
     except:
-        logger.error('Lifetime too small in estimate_exponentialdecayoffset, '
+        self.log.error('Lifetime too small in estimate_exponentialdecayoffset, '
                      'beyond resolution!')
 
         params['lifetime'].set(value=x_axis[i]-x_axis[0],
@@ -403,7 +401,7 @@ def make_exponentialdecayoffset_fit(self, x_axis, data, add_params=None):
         result = exponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = exponentialdecay.fit(data, x=x_axis, params=params)
-        logger.warning('The exponentialdecay with offset fit did not work. '
+        self.log.warning('The exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
 
@@ -451,7 +449,7 @@ def estimate_baredoubleexponentialdecay(self, x_axis, data, params):
 
     if data.min() < 0.0:
         error = -1
-        logger.error('Data contains values which are below 0. \n'
+        self.log.error('Data contains values which are below 0. \n'
                      'Estimate_baredoubleexponentialdecay failed. Try to use '
                      'estimate_doubleexponentialdecayoffset.')
         return error, params
@@ -510,7 +508,7 @@ def make_baredoubleexponentialdecay_fit(self, x_axis, data, add_params=None):
         result = baredoubleexponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = baredoubleexponentialdecay.fit(data, x=x_axis, params=params)
-        logger.warning('The bare double exponentialdecay fit did not work. '
+        self.log.warning('The bare double exponentialdecay fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
 
@@ -591,7 +589,7 @@ def make_doubleexponentialdecay_fit(self, x_axis, data, add_params=None):
         result = doubleexponentialdecay.fit(data, x=x_axis, params=params)
     except:
         result = doubleexponentialdecay.fit(data, x=x_axis, params=params)
-        logger.warning('The double exponentialdecay fit did not work. '
+        self.log.warning('The double exponentialdecay fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
 
@@ -711,7 +709,7 @@ def make_doubleexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
         result = double_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
         result = double_exp_decay_offset.fit(data, x=x_axis, params=params)
-        logger.warning('The double exponentialdecay with offset fit did not work. '
+        self.log.warning('The double exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
 
@@ -797,7 +795,7 @@ def make_stretchedexponentialdecay_fit(self, x_axis, data, add_params=None):
         result = stret_exp_decay.fit(data, x=x_axis, params=params)
     except:
         result = stret_exp_decay.fit(data, x=x_axis, params=params)
-        logger.warning('The double exponentialdecay with offset fit did not work. '
+        self.log.warning('The double exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
 
@@ -883,7 +881,7 @@ def make_stretchedexponentialdecayoffset_fit(self, x_axis, data, units=None, est
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
-        logger.warning('The double exponentialdecay with offset fit did not work. '
+        self.log.warning('The double exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
     return result
 
