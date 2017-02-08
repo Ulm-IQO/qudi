@@ -126,17 +126,18 @@ class FitLogic(GenericLogic):
                                ''.format(fit_name))
 
             # Attach all estimate_* methods to corresponding fit method in fit_list
-            found_generic_estimator = False
+            found_estimator = False
             for estimator_name in estimators_for_dict:
                 estimator_method = 'estimate_' + estimator_name
                 if fit_name == estimator_name:
                     self.fit_list[dimension][fit_name]['generic'] = getattr(self, estimator_method)
-                    found_generic_estimator = True
+                    found_estimator = True
                 elif estimator_name.startswith(fit_name + '_'):
                     custom_name = estimator_name.split('_', 1)[1]
                     self.fit_list[dimension][fit_name][custom_name] = getattr(self, estimator_method)
-            if not found_generic_estimator:
-                self.log.error('No generic estimator method for fit "{0}" found in FitLogic.'
+                    found_estimator = True
+            if not found_estimator:
+                self.log.error('No estimator method for fit "{0}" found in FitLogic.'
                                ''.format(fit_name))
 
         self.log.info('Methods were included to FitLogic, but only if naming is right: check the'
