@@ -2056,7 +2056,7 @@ class ConfocalGui(GUIBase):
             event.ignore()
             return
 
-        pos = self.xy_image.getViewBox().mapSceneToView(event.posF())
+        pos = self.xy_image.getViewBox().mapSceneToView(event.localPos())
 
         # store the initial mouse position in a class variable
         self._current_xy_zoom_start = [pos.x(), pos.y()]
@@ -2078,7 +2078,7 @@ class ConfocalGui(GUIBase):
 
         # Map the mouse position in the whole ViewWidget to the coordinate
         # system of the ViewBox, which also includes the 2D graph:
-        pos = viewbox.mapSceneToView(event.posF())
+        pos = viewbox.mapSceneToView(event.localPos())
         endpos = [pos.x(), pos.y()]
         initpos = self._current_xy_zoom_start
 
@@ -2146,7 +2146,7 @@ class ConfocalGui(GUIBase):
             event.ignore()
             return
 
-        pos = self.depth_image.getViewBox().mapSceneToView(event.posF())
+        pos = self.depth_image.getViewBox().mapSceneToView(event.localPos())
 
         # store the initial mouse position in a class variable
         self._current_depth_zoom_start = [pos.x(), pos.y()]
@@ -2168,7 +2168,7 @@ class ConfocalGui(GUIBase):
 
         # Map the mouse position in the whole ViewWidget to the coordinate
         # system of the ViewBox, which also includes the 2D graph:
-        pos = viewbox.mapSceneToView(event.posF())
+        pos = viewbox.mapSceneToView(event.localPos())
         endpos = [pos.x(), pos.y()]
         initpos = self._current_depth_zoom_start
 

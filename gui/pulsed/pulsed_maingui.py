@@ -319,7 +319,6 @@ class PulsedMeasurementGui(GUIBase):
         # based on the list from the Logic. Right now, the GUI objects are inserted the 'hard' way,
         # like it is done in the Qt-Designer.
         # FIXME: Make a nicer way of displaying the available functions, maybe with a Table!
-        _encoding = QtWidgets.QApplication.UnicodeUTF8
         objectname = self._gs.objectName()
         for index, func_name in enumerate(list(SamplingFunctions().func_config)):
             name_label = 'func_' + str(index)
@@ -327,14 +326,14 @@ class PulsedMeasurementGui(GUIBase):
             label = getattr(self._gs, name_label)
             label.setObjectName(name_label)
             self._gs.gridLayout_3.addWidget(label, index, 0, 1, 1)
-            label.setText(QtWidgets.QApplication.translate(objectname, func_name, None, _encoding))
+            label.setText(QtWidgets.QApplication.translate(objectname, func_name, None))
 
             name_checkbox = 'checkbox_' + str(index)
             setattr(self._gs, name_checkbox, QtWidgets.QCheckBox(self._gs.groupBox))
             checkbox = getattr(self._gs, name_checkbox)
             checkbox.setObjectName(name_checkbox)
             self._gs.gridLayout_3.addWidget(checkbox, index, 1, 1, 1)
-            checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None, _encoding))
+            checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None))
         # Check all functions that are in the _functions_to_show list.
         # If no such list is present take the first 3 functions as default
         if len(self._functions_to_show) > 0:
