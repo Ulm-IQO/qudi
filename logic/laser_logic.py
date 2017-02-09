@@ -157,9 +157,9 @@ class LaserLogic(GenericLogic):
                 ctrl_mode = self._laser.set_control_mode(mode)
             self.log.info('Changed control mode to {0}'.format(ctrl_mode))
 
-    @QtCore.Slot(float)
+    @QtCore.Slot(bool)
     def set_laser_state(self, state):
-        """ Turn laser onor off. """
+        """ Turn laser on or off. """
         if state and self.laser_state == LaserState.OFF:
             self._laser.on()
         if not state and self.laser_state == LaserState.ON:

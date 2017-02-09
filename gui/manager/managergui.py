@@ -471,7 +471,7 @@ Go, play.
             self._mw,
             'Load Configration',
             defaultconfigpath,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if filename != '':
             reply = QtWidgets.QMessageBox.question(
                 self._mw,

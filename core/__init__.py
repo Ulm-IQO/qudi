@@ -26,7 +26,7 @@ import os
 
 if not 'QT_API' in os.environ:
     # use PyQt4 as default
-    os.environ['QT_API'] = 'pyqt'
+    os.environ['QT_API'] = 'pyqt5'
 else:
     print('Specified Qt API:', os.environ['QT_API'])
     # if pyqt4 check environment variable is 'pyqt' and not 'pyqt4' (ipython,
