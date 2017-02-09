@@ -78,6 +78,8 @@ class ODMRGui(GUIBase):
     sigMWOff = QtCore.Signal()
     sigMWPowerChanged = QtCore.Signal(float)
     sigMWFreqChanged = QtCore.Signal(float)
+    sigFitChanged = QtCore.Signal(str)
+    sigDoFit = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -193,7 +195,7 @@ class ODMRGui(GUIBase):
         my_colors = ColorScaleInferno()
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
-        # Configuration of the comboWidget
+        # Configuration of the microwave mode comboWidget
         self._mw.mode_ComboBox.addItem('Off')
         self._mw.mode_ComboBox.addItem('CW')
 
@@ -240,11 +242,14 @@ class ODMRGui(GUIBase):
             self._odmr_logic._fit_logic.fit_list['1d'],
             title='ODMR fit settings')
 
-        self._fsd.sigFitsUpdated.connect(self._odmr_logic.update_fit_functions)
+        self._fsd.sigFitsUpdated.connect(self._odmr_logic.set_fit_functions)
         self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
         #self._odmr_logic.sigFitResult.connect(self)
         #self._fsd.loadFitFunctions()
         self._mw.action_FitSettings.triggered.connect(self._fsd.show)
+        self.sigDoFit.connect(self._odmr_logic.do_fit)
+        self.sigFitChanged.connect(self._odmr_logic.set_current_fit)
+        self._odmr_logic.sigOdmrFitUpdated.connect(self.update_fit_display)
 
         # Update the inputed/displayed numbers if return key is hit:
 
@@ -293,8 +298,6 @@ class ODMRGui(GUIBase):
         self._mw.clear_odmr_PushButton.clicked.connect(self.clear_odmr_plots_clicked)
 
         self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
-        self._odmr_logic.sigOdmrFitUpdated.connect(self.refresh_plot_fit)
-        self._odmr_logic.sigOdmrFitParameterUpdated.connect(self.refresh_fit_parameter)
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
         self._odmr_logic.sigOdmrElapsedTimeChanged.connect(self.refresh_elapsedtime)
         # connect settings signals
@@ -309,7 +312,7 @@ class ODMRGui(GUIBase):
         # Combo Widget
         self._mw.mode_ComboBox.activated[str].connect(self.mw_stop)
         # Push Buttons
-        self._mw.do_fit_PushButton.clicked.connect(self.update_fit)
+        self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
 
         # let the gui react on the signals from the GUI
         self._odmr_logic.sigMicrowaveCWModeChanged.connect(self.update_cw_display)
@@ -443,35 +446,6 @@ class ODMRGui(GUIBase):
             self._odmr_logic.ODMR_plot_x,
             self._odmr_logic.ODMR_plot_y)
 
-    def refresh_plot_fit(self, fit_function=None):
-        """ Refresh the xy fit plot image. """
-
-        if fit_function is not None:
-            # if a specific fit function is passed from the logic use that:
-            index = self._mw.fit_methods_ComboBox.findText(fit_function, QtCore.Qt.MatchFixedString)
-            if index >= 0:
-                self._mw.fit_methods_ComboBox.setCurrentIndex(index)
-
-        # check which Fit method is used and remove or add again the
-        # odmr_fit_image, check also whether a odmr_fit_image already exists.
-        if self._odmr_logic.current_fit != 'No Fit':
-            self.odmr_fit_image.setData(
-                x=self._odmr_logic.ODMR_fit_x,
-                y=self._odmr_logic.ODMR_fit_y)
-            if self.odmr_fit_image not in self._mw.odmr_PlotWidget.listDataItems():
-                self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
-        else:
-            if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
-                self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-
-        self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
-
-    def refresh_fit_parameter(self, fit_param=None):
-
-        self._mw.odmr_fit_results_DisplayWidget.clear()
-        formated_results = units.create_formatted_output(fit_param)
-        self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
-
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
         odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
@@ -546,28 +520,42 @@ class ODMRGui(GUIBase):
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
         self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.saveRawData)
 
-    def update_fit(self):
+    def do_fit(self):
+        self.sigFitChanged.emit(self._mw.fit_methods_ComboBox.getCurrentFit()[0])
+        self.sigDoFit.emit()
+
+    def update_fit_display(self):
         """ Do the configured fit and show it in the sum plot """
-        fit_name = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
-        x_data_fit, y_data_fit, fit_param, fit_result = self._odmr_logic.do_fit(fit_function=fit_name)
+        fit_name = self._odmr_logic.current_fit
+        fit_result = self._odmr_logic.current_fit_result
+        fit_param = self._odmr_logic.current_fit_param
+
         if fit_result is not None:
-            self._fsd.setParameters(fit_name, fit_param)
-            print('Implement update fit parameters')
-        # The fit signal was already emitted in the logic, so there is no need
-        # to set the fit data
+            # display results as formatted text
+            self._mw.odmr_fit_results_DisplayWidget.clear()
+            formated_results = units.create_formatted_output(fit_result.result_str_dict)
+            self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
 
-        self.refresh_plot_fit(fit_name)
+        if fit_name is not None:
+            self._mw.fit_methods_ComboBox.setCurrentFit(fit_name)
 
-    def _format_param_dict(self, param_dict):
-        """ Create from the passed param_dict a proper display of the parameters.
+        # check which Fit method is used and remove or add again the
+        # odmr_fit_image, check also whether a odmr_fit_image already exists.
+        if fit_name != 'No Fit':
+            self.odmr_fit_image.setData(
+                x=self._odmr_logic.ODMR_fit_x,
+                y=self._odmr_logic.ODMR_fit_y)
+            if self.odmr_fit_image not in self._mw.odmr_PlotWidget.listDataItems():
+                self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
+        else:
+            if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
+                self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
-        @param dict param_dict: the dictionary with keys being the names of the
-                                parameter and items being values/parameters.
+        self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
 
-        @return:
-        """
-        pass
-
+        # update parameters in settings dialog
+        if fit_result is not None:
+            self._fsd.updateParameters(fit_name, fit_param)
 
     def update_parameter(self, param_dict=None):
         """ Update the parameter display in the GUI.
@@ -630,13 +618,6 @@ class ODMRGui(GUIBase):
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
             self._sd.clock_frequency_DoubleSpinBox.setValue(param)
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
-
-        param = param_dict.get('clock_frequency')
-        if param is not None:
-            self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
-            self._sd.clock_frequency_DoubleSpinBox.setValue(param)
-            self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
-
 
     def mw_stop(self, txt):
         """ Stop frequency sweep and change to CW of off"""

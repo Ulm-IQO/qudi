@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 class FitSettingsDialog(QtWidgets.QDialog):
 
     sigFitsUpdated = QtCore.Signal(dict)
-    sigParametersUpdated = QtCore.Signal()
 
     def __init__(self, all_functions, title='Fit Settings'):
         """ """
@@ -103,7 +102,6 @@ class FitSettingsDialog(QtWidgets.QDialog):
             'New fit',
             'Enter a name for this fit:',
             )
-        print(res)
         if res[1]:
             self.addFit(res[0])
 
@@ -196,7 +194,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self.parameterUse = {}
 
         for name, tab in self.tabs.items():
-            self.parameters[name], self.parameterUse[name] = tab.updateFitParameters()
+            self.parameters[name], self.parameterUse[name] = tab.applyFitParameters()
 
         self.buildCurrentFits()
         self.sigFitsUpdated.emit(self.currentFits)
@@ -235,10 +233,13 @@ class FitSettingsDialog(QtWidgets.QDialog):
         """ """
         return self.parameters[fit]
 
-    def setParameters(self, fit_name, parameters):
+    def updateParameters(self, fit_name, parameters):
         """ """
-        self.sigParametersUpdated.emit()
-
+        if fit_name in self.parameters:
+            for name, param in parameters.items():
+                if name in self.parameters[fit_name]:
+                    self.parameters[fit_name][name] = param
+            self.tabs[fit_name].updateFitParameters(parameters)
 
 class FitSettingsComboBox(QtWidgets.QComboBox):
    
@@ -265,15 +266,18 @@ class FitSettingsComboBox(QtWidgets.QComboBox):
             self.fit_functions[name] = fit
             self.addItem(name)
 
-        if current[0] in self.fit_functions:
-            self.setCurrentIndex(self.findText(current[0]))
-        else:
-            self.setCurrentIndex(self.findText('No Fit'))
+        self.setCurrentFit(current[0])
 
     def getCurrentFit(self):
         """ """
         name = self.currentText()
         return (name, self.fit_functions[name])
+
+    def setCurrentFit(self, name): 
+        if name in self.fit_functions:
+            self.setCurrentIndex(self.findText(name))
+        else:
+            self.setCurrentIndex(self.findText('No Fit'))
 
 
 class FitConfigWidget(QtWidgets.QWidget):
@@ -307,7 +311,6 @@ class FitConfigWidget(QtWidgets.QWidget):
         self.fitComboBox.activated.connect(self.fitChanged)
         self.estComboBox.activated.connect(self.estimatorChanged)
         self.delButton.clicked.connect(self.removeWidget)
-        print('Fit widget {0} online!'.format(self.name))
 
     @QtCore.Slot(int)
     def fitChanged(self, index):
@@ -316,12 +319,10 @@ class FitConfigWidget(QtWidgets.QWidget):
         for estimator in self.all_fits[name]:
             if not estimator.startswith('make_'):
                 self.estComboBox.addItem(estimator)
-        print(name)
 
     @QtCore.Slot(int)
     def estimatorChanged(self, index):
         name = self.estComboBox.itemText(index)
-        print(name)
 
     def applySettings(self):
         self.fit = self.fitComboBox.currentText()
@@ -410,7 +411,7 @@ class FitSettingsWidget(QtWidgets.QWidget):
         # space at the bottom of the list
         self._layout.setRowStretch(n, 1)
 
-    def updateFitParameters(self):
+    def applyFitParameters(self):
         """ Updates the fit parameters with the new values from the settings window
         """
         for name, param in self.parameters.items():
@@ -434,4 +435,15 @@ class FitSettingsWidget(QtWidgets.QWidget):
                 self.widgets[name + '_expr'].setText(param.expr)
                 self.widgets[name + '_vary'].setChecked(param.vary)
         return self.parameters, self.paramUseSettings
+
+    def updateFitParameters(self, parameters):
+        for name, param in parameters.items():
+            v = param.value
+            if name in self.parameters and v is not None and not math.isnan(v):
+                self.widgets[name + '_value'].setValue(v)
+                self.widgets[name + '_min'].setValue(param.min)
+                self.widgets[name + '_max'].setValue(param.max)
+                self.widgets[name + '_expr'].setText(param.expr)
+                self.widgets[name + '_vary'].setChecked(param.vary)
+                self.parameters[name] = param
 
