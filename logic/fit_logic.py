@@ -28,6 +28,7 @@ from collections import OrderedDict
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
+from core.config import load, save
 
 
 class FitLogic(GenericLogic):
@@ -158,3 +159,40 @@ class FitLogic(GenericLogic):
 
     def on_deactivate(self, e):
         pass
+
+    def save_fits(self, filename, fits):
+        """ Save a collection of configured fits. """
+        stripped_fits = OrderedDict()
+        save(filename, stripped_fits)
+
+    def load_fits(self, filename):
+        """ Fits. """
+        user_fits = OrderedDict()
+        fits = load(filename)
+        if '1d' in fits:
+            dim = '1d'
+        elif '2d' in fits:
+            dim = '2d'
+        elif '3d' in fits:
+            dim = '3d'
+        else:
+            raise Exception(
+                'Fit file {0} did not contain any fit of a supported dimenasionality.'
+                ''.format(filename)
+                )
+        user_fits[dim] = OrderedDict()
+        for name, fit in fits[dim].items():
+            if 'fit_function' not in fit:
+                continue
+            fname = fit['fit_function']
+            if fname in self.fit_list[dim] and fit['estimator'] in self.fit_list[dim][fname]:
+                user_fits[dim][name] = {}
+                user_fits[dim][name]['fit_name'] = fname
+                user_fits[dim][name]['est_name'] = fit['estimator']
+                user_fits[dim][name]['make_fit'] = self.fit_list[dim][fname]['make_fit']
+                user_fits[dim][name]['make_model'] = self.fit_list[dim][fname]['make_model']
+                user_fits[dim][name]['estimator'] = self.fit_list[dim][fname][fit['estimator']]
+                user_fits[dim][name]['parameters'] = fit['parameters']
+
+        return user_fits
+
