@@ -1948,7 +1948,9 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(controlled_vals[0])
         else:
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(1.0)
-        self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(number_of_lasers+1)])
+        self._pe.laserpulses_ComboBox.clear()
+        self._pe.laserpulses_ComboBox.addItem('sum')
+        self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(1, number_of_lasers+1)])
         # change plots accordingly
         if alternating:
             if self.signal_image2 not in self._pa.pulse_analysis_PlotWidget.items():
