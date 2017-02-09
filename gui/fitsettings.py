@@ -117,10 +117,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
             savedict[name] = {
                 'fit_function': widget.fit,
                 'fit_estimator': widget.estimator,
-                'custom_parameters': {
-                    pn: param
-                    for pn, param in self.parameters[name] if self.parameterUse[name][pn]
-                }
+                'parameters': self.parameters
             }
 
     def addFit(self, name):
