@@ -244,8 +244,8 @@ class ODMRGui(GUIBase):
 
         self._fsd.sigFitsUpdated.connect(self._odmr_logic.set_fit_functions)
         self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
-        #self._odmr_logic.sigFitResult.connect(self)
-        #self._fsd.loadFitFunctions()
+        self._fsd.loadFits(self._odmr_logic.fit_list)
+
         self._mw.action_FitSettings.triggered.connect(self._fsd.show)
         self.sigDoFit.connect(self._odmr_logic.do_fit)
         self.sigFitChanged.connect(self._odmr_logic.set_current_fit)

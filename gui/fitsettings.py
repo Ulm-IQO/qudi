@@ -107,27 +107,29 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
     def loadFits(self, user_fits):
         """ """
-        for name, fit in self.all_functions.items():
-            self._scrLayout.addWidget(self.checkboxes[name])
+        self.removeAllFits()
+        self.applySettings()
 
-    def saveFits(self):
-        """ """
-        savedict = OrderedDict()
-        for name, widget in self.fitWidgets.items():
-            savedict[name] = {
-                'fit_function': widget.fit,
-                'fit_estimator': widget.estimator,
-                'parameters': self.parameters
-            }
+        for name, fit in user_fits.items():
+            self.addFit(name, fit=fit['fit_name'], estimator=fit['est_name'])
 
-    def addFit(self, name):
+            # add new tab for new fit
+            model, params = self.all_functions[fit['fit_name']]['make_model']()
+            self.tabs[name] = FitSettingsWidget(params)
+            self._tabWidget.addTab(self.tabs[name], name)
+            self.updateParameters(name, fit['parameters'])
+
+        # build fit list and send update signals
+        self.applySettings()
+
+    def addFit(self, name, fit=None, estimator=None):
         """ """
         if len(name) < 1:
             return
         if name in self.fitWidgets:
             logging.error('{0}: Fit {1} already exists.'.format(self.title, name))
             return
-        fcw = FitConfigWidget(name, self.all_functions)
+        fcw = FitConfigWidget(name, self.all_functions, fit, estimator)
         self.currentFitWidgets[name] = fcw
         self._scrLayout.addWidget(fcw)
         fcw.sigRemoveFit.connect(self.removeFit)
@@ -141,6 +143,10 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self._scrLayout.removeWidget(widget)
         tab = self.tabs[name]
         tab.setEnabled(False)
+
+    def removeAllFits(self):
+        for name in self.currentFits.keys():
+            self.removeFit(name)
 
     def getFits(self):
         """ """
@@ -202,7 +208,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
         for name, widget in self.fitWidgets.items():
             self.currentFits[name] = {
                 'fit_name': widget.fit,
-                'estname': widget.estimator,
+                'est_name': widget.estimator,
                 'make_fit': self.all_functions[widget.fit]['make_fit'],
                 'make_model': self.all_functions[widget.fit]['make_model'],
                 'estimator': self.all_functions[widget.fit][widget.estimator],
@@ -281,7 +287,7 @@ class FitConfigWidget(QtWidgets.QWidget):
 
     sigRemoveFit = QtCore.Signal(str)
 
-    def __init__(self, name, all_fits):
+    def __init__(self, name, all_fits, fit=None, estimator=None):
         super().__init__()
         self.name = name
         self.fit = ''
@@ -301,9 +307,17 @@ class FitConfigWidget(QtWidgets.QWidget):
 
         self.setLayout(self._layout)
 
-        for name, fit in self.all_fits.items():
-            if 'make_fit' in fit and 'make_model' in fit:
+        for name, afit in self.all_fits.items():
+            if 'make_fit' in afit and 'make_model' in afit:
                 self.fitComboBox.addItem(name)
+
+        if fit is not None and fit in all_fits:
+            self.fitComboBox.setCurrentIndex(self.fitComboBox.findText(fit))
+            self.fitChanged(self.fitComboBox.findText(fit))
+            if estimator is not None and estimator in all_fits[fit]:
+                self.estComboBox.setCurrentIndex(self.estComboBox.findText(estimator))
+                self.estimatorChanged(self.estComboBox.findText(estimator))
+                self.applySettings()
 
         self.fitComboBox.activated.connect(self.fitChanged)
         self.estComboBox.activated.connect(self.estimatorChanged)

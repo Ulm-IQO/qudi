@@ -108,7 +108,6 @@ class ODMRLogic(GenericLogic):
 
         # variables for fitting
         self.fit_granularity_fact = 10
-        self.fit_list = {}
         self.current_fit = 'No Fit'
         self.current_fit_param = lmfit.parameter.Parameters()
         self.current_fit_result = None
@@ -133,26 +132,40 @@ class ODMRLogic(GenericLogic):
         # load parameters stored in app state store
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
+
         if 'mw_frequency' in self._statusVariables:
             self.mw_frequency = self.limits.frequency_in_range(
                 self._statusVariables['mw_frequency'])
+
         if 'mw_power' in self._statusVariables:
             self.mw_power = self.limits.power_in_range(self._statusVariables['mw_power'])
+
         if 'mw_start' in self._statusVariables:
             self.mw_start = self.limits.frequency_in_range(self._statusVariables['mw_start'])
+
         if 'mw_stop' in self._statusVariables:
             self.mw_stop = self.limits.frequency_in_range(self._statusVariables['mw_stop'])
+
         if 'mw_step' in self._statusVariables:
             self.mw_step = self.limits.list_step_in_range(self._statusVariables['mw_step'])
+
         if 'run_time' in self._statusVariables:
             self.run_time = self._statusVariables['run_time']
+
         if 'saveRawData' in self._statusVariables:
             self.saveRawData = self._statusVariables['saveRawData']
+
         if 'number_of_lines' in self._statusVariables:
             self.number_of_lines = self._statusVariables['number_of_lines']
-        if 'user_fits' in self._statusVariables:
-            self.user_fits = self._statusVariables['user_fits']
 
+        if 'fits' in self._statusVariables:
+            try:
+                self.fit_list = self._fit_logic.validate_load_fits(
+                    self._statusVariables['fits'])['1d']
+            except KeyError:
+                self.fit_list = OrderedDict()
+        else:
+            self.fit_list = OrderedDict()
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -184,7 +197,7 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
-        self._statusVariables['user_fits'] = self.user_fits
+        self._statusVariables['fits'] = self._fit_logic.prepare_save_fits({'1d': self.fit_list})
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
