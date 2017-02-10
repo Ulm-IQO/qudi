@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import importlib
 import inspect
+import lmfit
 from os import listdir
 from os.path import isfile, join
 from collections import OrderedDict
@@ -158,41 +159,61 @@ class FitLogic(GenericLogic):
         pass
 
     def on_deactivate(self, e):
+        """ """
         pass
 
-    def save_fits(self, filename, fits):
-        """ Save a collection of configured fits. """
-        stripped_fits = OrderedDict()
-        save(filename, stripped_fits)
+    def validate_load_fits(self, fits):
+        """ """
+        user_fits = OrderedDict()
+        for dim, dfits in fits.items():
+            if dim not in ('1d', '2d', '3d'):
+                continue
+            user_fits[dim] = OrderedDict()
+            for name, fit in dfits.items():
+                try:
+                    fname = fit['fit_function']
+                    new_fit = {}
+                    new_fit['fit_name'] = fname
+                    new_fit['est_name'] = fit['estimator']
+                    new_fit['make_fit'] = self.fit_list[dim][fname]['make_fit']
+                    new_fit['make_model'] = self.fit_list[dim][fname]['make_model']
+                    new_fit['estimator'] = self.fit_list[dim][fname][fit['estimator']]
+                    par = lmfit.parameter.Parameters()
+                    par.loads(fit['parameters'])
+                    new_fit['parameters'] = par
+                    user_fits[dim][name] = new_fit
+                except KeyError:
+                    self.log.exception('Failed to validate fit {0}'.format(name))
+                    continue
+        return user_fits
+
+    def prepare_save_fits(self, fits):
+        """ """
+        save_fits = OrderedDict()
+        for dim, dfits in fits.items():
+            if dim not in ('1d', '2d', '3d'):
+                continue
+            save_fits[dim] = OrderedDict()
+            for name, fit in dfits.items():
+                try:
+                    new_fit = {}
+                    new_fit['fit_function'] = fit['fit_name']
+                    new_fit['estimator'] = fit['est_name']
+                    new_fit['parameters'] = fit['parameters'].dumps()
+                    save_fits[dim][name] = new_fit
+                except KeyError:
+                    self.log.exception('Error while preparing fit {0} for saving.'.format(name))
+                    continue
+        return save_fits
 
     def load_fits(self, filename):
         """ Fits. """
         user_fits = OrderedDict()
         fits = load(filename)
-        if '1d' in fits:
-            dim = '1d'
-        elif '2d' in fits:
-            dim = '2d'
-        elif '3d' in fits:
-            dim = '3d'
-        else:
-            raise Exception(
-                'Fit file {0} did not contain any fit of a supported dimenasionality.'
-                ''.format(filename)
-                )
-        user_fits[dim] = OrderedDict()
-        for name, fit in fits[dim].items():
-            if 'fit_function' not in fit:
-                continue
-            fname = fit['fit_function']
-            if fname in self.fit_list[dim] and fit['estimator'] in self.fit_list[dim][fname]:
-                user_fits[dim][name] = {}
-                user_fits[dim][name]['fit_name'] = fname
-                user_fits[dim][name]['est_name'] = fit['estimator']
-                user_fits[dim][name]['make_fit'] = self.fit_list[dim][fname]['make_fit']
-                user_fits[dim][name]['make_model'] = self.fit_list[dim][fname]['make_model']
-                user_fits[dim][name]['estimator'] = self.fit_list[dim][fname][fit['estimator']]
-                user_fits[dim][name]['parameters'] = fit['parameters']
+        return self.validate_load_fits(fits)
 
-        return user_fits
+    def save_fits(self, filename, fits):
+        """ Save a collection of configured fits. """
+        stripped_fits = self.prepare_save_fits(fits)
+        save(filename, stripped_fits)
 
