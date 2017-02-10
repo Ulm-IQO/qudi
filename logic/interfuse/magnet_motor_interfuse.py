@@ -99,6 +99,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                     'perform "move_rel" commands. Couple the Motor to '
                     'control via the command "set_magnet_idle_state(False)" '
                     'to have control over its movement.')
+        return param_dict
 
 
     def move_abs(self, param_dict):
@@ -117,6 +118,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                     'perform "move_abs" commands. Couple the Motor to '
                     'control via the command "set_magnet_idle_state (False)" '
                     'to have control over its movement.')
+        return param_dict
 
 
     def abort(self):
@@ -125,6 +127,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         @return int: error code (0:OK, -1:error)
         """
         self._motor_device.abort()
+        return 0
 
 
     def get_pos(self, param_list=None):
@@ -193,7 +196,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         return self._motor_device.get_velocity(param_list)
 
 
-    def set_velocity(self, param_list=None):
+    def set_velocity(self, param_dict=None):
         """ Write new value for velocity.
 
         @param dict param_dict: dictionary, which passes all the relevant
@@ -211,6 +214,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                     'perform "set_velocity" commands. Couple the Motor to '
                     'control via the command "set_magnet_idle_state(False)" '
                     'to have control over its movement.')
+        return param_dict
 
 
     def tell(self, param_dict=None):
@@ -227,6 +231,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         self.log.info('You can tell the motor dummy as much as you want, it '
                 'has always an open ear for you. But do not expect an '
                 'answer, it is very shy!')
+        return param_dict
 
     def ask(self, param_dict=None):
         """ Ask the magnet a question.
@@ -263,6 +268,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         """
         self.log.info('Motor Hardware does not need initialization for '
                 'starting or ending a movement. Nothing will happen.')
+        return 0
 
 
     def set_magnet_idle_state(self, magnet_idle=True):
