@@ -600,14 +600,12 @@ class ODMRLogic(GenericLogic):
         parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
-        parameters['Fit function'] = self.fc.current_fit
+        parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
 
 
         # add all fit parameter to the saved data:
-        for param in self.fc.current_fit_param:
-            for entry in self.fc.current_fit_param[param]:
-                name = '{0}_{1}'.format(param, entry)
-                parameters[name] = self.current_fit_param[param][entry]
+        for name, param in self.fc.current_fit_param.items():
+            parameters[name] = str(param)
 
         fig = self.draw_figure(cbar_range=colorscale_range,
                                percentile_range=percentile_range
