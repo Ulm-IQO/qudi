@@ -33,17 +33,19 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
     sigFitsUpdated = QtCore.Signal(dict)
 
-    def __init__(self, all_functions, title='Fit Settings'):
+    def __init__(self, fit_container):
         """ """
         super().__init__()
 
+        self.fc = fit_container
+        self.title = '{0} fit settings'.format(self.fc.name)
+
         # set up window
         self.setModal(False)
-        self.setWindowTitle(title)
+        self.setWindowTitle(self.title)
 
         # variables
-        self.title = title
-        self.all_functions = all_functions
+        self.all_functions = self.fc.fit_logic.fit_list[self.fc.dimension]
         self.tabs = {}
         self.parameters = {}
         self.parameterUse = {}
@@ -53,6 +55,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
         # widgets and layouts
         self._dialogLayout = QtWidgets.QVBoxLayout()
+        self._btnLayout = QtWidgets.QHBoxLayout()
         self._tabWidget = QtWidgets.QTabWidget()
         self._firstPage = QtWidgets.QWidget()
         self._firstPageLayout = QtWidgets.QVBoxLayout()
@@ -66,16 +69,20 @@ class FitSettingsDialog(QtWidgets.QDialog):
             QtCore.Qt.Horizontal
         )
         self._addFitButton = QtWidgets.QPushButton('Add fit')
+        self._saveFitButton = QtWidgets.QPushButton('Save fits')
+        self._loadFitButton = QtWidgets.QPushButton('Load fits')
 
         # layout construction
         self._scrollWidget.setLayout(self._scrLayout)
         self._scrollArea.setWidget(self._scrollWidget)
         self._scrollArea.setWidgetResizable(True)
-        self._firstPageLayout.addWidget(self._addFitButton)
+        self._btnLayout.addWidget(self._addFitButton)
+        self._btnLayout.addWidget(self._saveFitButton)
+        self._btnLayout.addWidget(self._loadFitButton)
+        self._firstPageLayout.addLayout(self._btnLayout)
         self._firstPageLayout.addWidget(self._scrollArea)
         self._firstPage.setLayout(self._firstPageLayout)
         self._tabWidget.addTab(self._firstPage, 'Fit functions')
-        self._dialogLayout.addWidget(self._addFitButton)
         self._dialogLayout.addWidget(self._tabWidget)
         self._dialogLayout.addWidget(self._dbox)
         self.setLayout(self._dialogLayout)
@@ -87,6 +94,14 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self.accepted.connect(self.applySettings)
         self.rejected.connect(self.resetSettings)
         self._addFitButton.clicked.connect(self.addFitButtonClicked)
+        self._loadFitButton.clicked.connect(self.loadFitButtonClicked)
+        self._saveFitButton.clicked.connect(self.saveFitButtonClicked)
+        self.sigFitsUpdated.connect(self.fc.set_fit_functions)
+        self.fc.sigNewFitParameters.connect(self.updateParameters)
+
+        # load user defined fits from fit container
+        if len(self.fc.fit_list) > 0:
+            self.loadFits(self.fc.fit_list)
 
     @QtCore.Slot(QtWidgets.QAbstractButton)
     def buttonClicked(self, button):
@@ -105,6 +120,26 @@ class FitSettingsDialog(QtWidgets.QDialog):
         if res[1]:
             self.addFit(res[0])
 
+    @QtCore.Slot()
+    def saveFitButtonClicked(self):
+        res = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            'Save fit collection for {0}'.format(self.title),
+            '/path'
+            'Fit files (*.fit *.yml)'
+            )
+        print(res)
+
+    @QtCore.Slot()
+    def loadFitButtonClicked(self):
+        res = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            'Load fit collection for {0}'.format(self.title),
+            '/path'
+            'Fit files (*.fit *.yml)'
+            )
+        print(res)
+
     def loadFits(self, user_fits):
         """ """
         self.removeAllFits()
@@ -115,7 +150,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
             # add new tab for new fit
             model, params = self.all_functions[fit['fit_name']]['make_model']()
-            self.tabs[name] = FitSettingsWidget(params)
+            self.tabs[name] = FitParametersWidget(params)
             self._tabWidget.addTab(self.tabs[name], name)
             self.updateParameters(name, fit['parameters'])
 
@@ -177,7 +212,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
                 if index >= 0:
                     self._tabWidget.remove(index)
                 model, params = self.all_functions[widget.fit]['make_model']()
-                self.tabs[name] = FitSettingsWidget(params)
+                self.tabs[name] = FitParametersWidget(params)
                 if index >= 0:
                     self._tabWidget.insertTab(index, self.tabs[name], name)
                 else:
@@ -186,7 +221,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
             elif name not in self.tabs:
                 # add new tab for new fir
                 model, params = self.all_functions[widget.fit]['make_model']()
-                self.tabs[name] = FitSettingsWidget(params)
+                self.tabs[name] = FitParametersWidget(params)
                 self._tabWidget.addTab(self.tabs[name], name)
             
             # put all widgets here
@@ -206,14 +241,17 @@ class FitSettingsDialog(QtWidgets.QDialog):
         # arrange all of this information in a convenient form
         self.currentFits = OrderedDict()
         for name, widget in self.fitWidgets.items():
-            self.currentFits[name] = {
-                'fit_name': widget.fit,
-                'est_name': widget.estimator,
-                'make_fit': self.all_functions[widget.fit]['make_fit'],
-                'make_model': self.all_functions[widget.fit]['make_model'],
-                'estimator': self.all_functions[widget.fit][widget.estimator],
-                'parameters': self.parameters[name]
-            }
+            try:
+                self.currentFits[name] = {
+                    'fit_name': widget.fit,
+                    'est_name': widget.estimator,
+                    'make_fit': self.all_functions[widget.fit]['make_fit'],
+                    'make_model': self.all_functions[widget.fit]['make_model'],
+                    'estimator': self.all_functions[widget.fit][widget.estimator],
+                    'parameters': self.parameters[name]
+                }
+            except KeyError:
+                continue
 
     def resetSettings(self):
         """ """
@@ -243,6 +281,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
                 if name in self.parameters[fit_name]:
                     self.parameters[fit_name][name] = param
             self.tabs[fit_name].updateFitParameters(parameters)
+
 
 class FitSettingsComboBox(QtWidgets.QComboBox):
    
@@ -350,7 +389,9 @@ class FitConfigWidget(QtWidgets.QWidget):
         self.hide()
         self.sigRemoveFit.emit(self.name)
 
-class FitSettingsWidget(QtWidgets.QWidget):
+
+class FitParametersWidget(QtWidgets.QWidget):
+    """ A widget that manages the parameters for a fit. """
 
     def __init__(self, parameters):
         """ Definition, configuration and initialisation of the optimizer settings GUI. Adds a row

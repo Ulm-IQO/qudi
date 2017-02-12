@@ -238,17 +238,13 @@ class ODMRGui(GUIBase):
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
 
         # fit settings
-        self._fsd = FitSettingsDialog(
-            self._odmr_logic._fit_logic.fit_list['1d'],
-            title='ODMR fit settings')
-
-        self._fsd.sigFitsUpdated.connect(self._odmr_logic.set_fit_functions)
+        self._fsd = FitSettingsDialog(self._odmr_logic.fc)
         self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
-        self._fsd.loadFits(self._odmr_logic.fit_list)
+        self._fsd.applySettings()
 
         self._mw.action_FitSettings.triggered.connect(self._fsd.show)
         self.sigDoFit.connect(self._odmr_logic.do_fit)
-        self.sigFitChanged.connect(self._odmr_logic.set_current_fit)
+        self.sigFitChanged.connect(self._odmr_logic.fc.set_current_fit)
         self._odmr_logic.sigOdmrFitUpdated.connect(self.update_fit_display)
 
         # Update the inputed/displayed numbers if return key is hit:
@@ -526,9 +522,9 @@ class ODMRGui(GUIBase):
 
     def update_fit_display(self):
         """ Do the configured fit and show it in the sum plot """
-        fit_name = self._odmr_logic.current_fit
-        fit_result = self._odmr_logic.current_fit_result
-        fit_param = self._odmr_logic.current_fit_param
+        fit_name = self._odmr_logic.fc.current_fit
+        fit_result = self._odmr_logic.fc.current_fit_result
+        fit_param = self._odmr_logic.fc.current_fit_param
 
         if fit_result is not None:
             # display results as formatted text
@@ -555,10 +551,6 @@ class ODMRGui(GUIBase):
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
-
-        # update parameters in settings dialog
-        if fit_result is not None:
-            self._fsd.updateParameters(fit_name, fit_param)
 
     def update_parameter(self, param_dict=None):
         """ Update the parameter display in the GUI.
