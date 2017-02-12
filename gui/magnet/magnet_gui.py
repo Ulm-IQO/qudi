@@ -970,7 +970,7 @@ class MagnetGui(GUIBase):
         methods with the generic name move_rel_axis_{0}_p or
         move_rel_axis_{0}_m with the appropriate label).
         """
-        constraints = self._magnet_logic.get_hardware_constraints()
+        #constraints = self._magnet_logic.get_hardware_constraints()
         dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
 
         movement = dspinbox.value() * direction
@@ -1075,8 +1075,8 @@ class MagnetGui(GUIBase):
             dspinbox_pos_ref.setValue(curr_pos[axis_label])
 
             # update the values also of the absolute movement display:
-            # dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
-            # dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
+            dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
+            dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
 
     def run_stop_2d_alignment(self, is_checked):

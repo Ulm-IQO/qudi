@@ -183,7 +183,7 @@ class PulsedMasterLogic(GenericLogic):
                                         QtCore.Qt.QueuedConnection)
         self.sigPauseMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
                                          QtCore.Qt.QueuedConnection)
-        self.sigContinueMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
+        self.sigContinueMeasurement.connect(self._measurement_logic.continue_pulsed_measurement,
                                             QtCore.Qt.QueuedConnection)
         self.sigStartPulser.connect(self._measurement_logic.pulse_generator_on,
                                     QtCore.Qt.QueuedConnection)
@@ -646,10 +646,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        #if self.manual_xaxis_def:
-
-        #if self.manual_laser_def:
-
         self.sigStartMeasurement.emit(stashed_raw_data_tag)
         return
 
@@ -754,7 +750,6 @@ class PulsedMasterLogic(GenericLogic):
         if self.direct_write:
             self.sigDirectWriteEnsemble.emit(ensemble_name, analog_samples, digital_samples)
         else:
-            print('Pulsedmaster: Upload ensemble "{0}".'.format(ensemble_name))
             self.sigUploadAsset.emit(ensemble_name)
         return
 
@@ -773,7 +768,6 @@ class PulsedMasterLogic(GenericLogic):
         if self.direct_write:
             self.sigDirectWriteSequence.emit(sequence_name, sequence_params)
         else:
-            print('Pulsedmaster: Upload sequence "{0}".'.format(sequence_name))
             self.sigUploadAsset.emit(sequence_name)
         return
 

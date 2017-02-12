@@ -81,7 +81,7 @@ class MagnetLogic(GenericLogic):
     # General Signals, used everywhere:
     sigIdleStateChanged = QtCore.Signal(bool)
     sigPosChanged = QtCore.Signal(dict)
-    sigVelChanged = QtCore.Signal(dict)
+
 
     sigMeasurementStarted = QtCore.Signal()
     sigMeasurementContinued = QtCore.Signal()
@@ -92,6 +92,7 @@ class MagnetLogic(GenericLogic):
     sigMoveAbs = QtCore.Signal(dict)
     sigMoveRel = QtCore.Signal(dict)
     sigAbort = QtCore.Signal()
+    sigVelChanged = QtCore.Signal(dict)
 
     # Alignment Signals, remember do not touch or connect from outer logic or
     # GUI to the leading underscore signals!
@@ -160,6 +161,7 @@ class MagnetLogic(GenericLogic):
         self.sigMoveAbs.connect(self._magnet_device.move_abs)
         self.sigMoveRel.connect(self._magnet_device.move_rel)
         self.sigAbort.connect(self._magnet_device.abort)
+        self.sigVelChanged.connect(self._magnet_device.set_velocity)
 
         # signal connect for alignment:
 
@@ -442,7 +444,6 @@ class MagnetLogic(GenericLogic):
                       are the labels for the axis and the items are again dicts
                       which contain all the limiting parameters.
         """
-
         return self._magnet_device.get_constraints()
 
     def move_rel(self, param_dict):
@@ -454,24 +455,31 @@ class MagnetLogic(GenericLogic):
                                 labeled with 'x' by 23 the dict should have the
                                 form:
                                     param_dict = { 'x' : 23 }
-        """
+        @return error code (0:OK, -1:error)        """
 
-        # self._magnet_device.move_rel(param_dict)
-        # start_pos = self.get_pos(list(param_dict))
-        # end_pos = dict()
-        #
-        # for axis_name in param_dict:
-        #     end_pos[axis_name] = start_pos[axis_name] + param_dict[axis_name]
-
-        # if the magnet is moving, then the move_rel command will be neglected.
-        status_dict = self.get_status(list(param_dict))
-        for axis_name in status_dict:
-            if status_dict[axis_name][0] != 0:
-                return
 
         self.sigMoveRel.emit(param_dict)
         # self._check_position_reached_loop(start_pos, end_pos)
-        self.sigPosChanged.emit(param_dict)
+        # self.sigPosChanged.emit(param_dict)
+        return param_dict
+
+    def move_abs(self, param_dict):
+        """ Moves stage to absolute position (absolute movement)
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <a-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+        """
+        #self._magnet_device.move_abs(param_dict)
+        # start_pos = self.get_pos(list(param_dict))
+        self.sigMoveAbs.emit(param_dict)
+
+        # self._check_position_reached_loop(start_pos, param_dict)
+
+        #self.sigPosChanged.emit(param_dict)
+        return param_dict
 
 
     def get_pos(self, param_list=None):
@@ -505,31 +513,16 @@ class MagnetLogic(GenericLogic):
         status = self._magnet_device.get_status(param_list)
         return status
 
-    def move_abs(self, param_dict):
-        """ Moves stage to absolute position (absolute movement)
 
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed. Usage:
-                                 {'axis_label': <a-value>}.
-                                 'axis_label' must correspond to a label given
-                                 to one of the axis.
-        """
-        self._magnet_device.move_abs(param_dict)
-        # start_pos = self.get_pos(list(param_dict))
-        # self.sigMoveAbs.emit(param_dict)
-
-        # self._check_position_reached_loop(start_pos, param_dict)
-
-        self.sigPosChanged.emit(param_dict)
 
     def stop_movement(self):
         """ Stops movement of the stage. """
         self._stop_measure = True
         self.sigAbort.emit()
-        # self._magnet_device.abort()
+        return self._stop_measure
 
 
-    def set_velocity(self, param_dict=None):
+    def set_velocity(self, param_dict):
         """ Write new value for velocity.
 
         @param dict param_dict: dictionary, which passes all the relevant
@@ -538,7 +531,9 @@ class MagnetLogic(GenericLogic):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
         """
-        self._magnet_device.set_velocity(param_dict)
+        self.sigVelChanged.emit()
+        #self._magnet_device.set_velocity(param_dict)
+        return param_dict
 
 
 
@@ -1304,7 +1299,7 @@ class MagnetLogic(GenericLogic):
         #FIXME: that should be run through the TaskRunner! Implement the call
         #       by not using this connection!
 
-        if self._counter_logic.get_counting_mode != 'continuous':
+        if self._counter_logic.get_counting_mode() != 'continuous':
             self._counter_logic.set_counting_mode(mode='continuous')
 
         self._counter_logic.start_saving()
