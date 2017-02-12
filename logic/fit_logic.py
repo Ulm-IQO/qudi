@@ -23,6 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import importlib
 import inspect
 import lmfit
+from qtpy import QtCore
+import numpy as np
 from os import listdir
 from os.path import isfile, join
 from collections import OrderedDict
@@ -178,8 +180,11 @@ class FitLogic(GenericLogic):
                     new_fit['make_fit'] = self.fit_list[dim][fname]['make_fit']
                     new_fit['make_model'] = self.fit_list[dim][fname]['make_model']
                     new_fit['estimator'] = self.fit_list[dim][fname][fit['estimator']]
-                    par = lmfit.parameter.Parameters()
-                    par.loads(fit['parameters'])
+                    try:
+                        par = lmfit.parameter.Parameters()
+                        par.loads(fit['parameters'])
+                    except:
+                        model, par = self.fit_list[dim][fname]['make_model']()
                     new_fit['parameters'] = par
                     user_fits[dim][name] = new_fit
                 except KeyError:
@@ -217,3 +222,143 @@ class FitLogic(GenericLogic):
         stripped_fits = self.prepare_save_fits(fits)
         save(filename, stripped_fits)
 
+    def make_fit_container(self, container_name, dimension):
+        return FitContainer(self, container_name, dimension)
+
+
+class FitContainer(QtCore.QObject):
+    """ A class for managing a single flexible fit setting in a logic module.
+    """
+    sigFitUpdated = QtCore.Signal()
+    sigCurrentFit = QtCore.Signal(str)
+    sigNewFitResult = QtCore.Signal(str, lmfit.model.ModelResult)
+    sigNewFitParameters = QtCore.Signal(str, lmfit.parameter.Parameters)
+
+    def __init__(self, fit_logic, name, dimension):
+        super().__init__()
+
+        self.fit_logic = fit_logic
+        self.name = name
+        if dimension == '1d':
+            self.dim = 1
+        elif dimension == '2d':
+            self.dim = 2
+        elif dimension == '3d':
+            self.dim = 3
+        else:
+            raise Exception('Invalid dimension {0}'.format(dimension))
+        self.dimension = dimension
+        self.fit_list = OrderedDict()
+
+        # variables for fitting
+        self.fit_granularity_fact = 10
+        self.current_fit = 'No Fit'
+        self.current_fit_param = lmfit.parameter.Parameters()
+        self.current_fit_result = None
+        self.units = ['independent variable {0}'.format(i+1) for i in range(self.dim)]
+        self.units.append('dependent variable')
+
+    def set_units(self, units):
+        if len(units) == self.dim + 1:
+            self.units = units
+
+    def load_from_dict(self, fit_dict):
+        try:
+            self.fit_list = self.fit_logic.validate_load_fits(fit_dict)[self.dimension]
+        except KeyError:
+            self.fit_list = OrderedDict()
+    
+    def save_to_dict(self):
+        prep = self.fit_logic.prepare_save_fits({self.dimension: self.fit_list})
+        return prep
+    
+    def clear_result(self):
+        self.current_fit_param = lmfit.parameter.Parameters()
+        self.current_fit_result = None
+
+    @QtCore.Slot(dict)
+    def set_fit_functions(self, fit_functions):
+        self.fit_list = fit_functions
+        self.set_current_fit(self.current_fit)
+
+    @QtCore.Slot(str)
+    def set_current_fit(self, current_fit):
+        if current_fit not in self.fit_list and current_fit != 'No Fit':
+            self.fit_logic.log.warning('{0} not in {1} fit list!'.format(current_fit, self.name))
+            self.current_fit = 'No Fit'
+        else:
+            self.current_fit = current_fit
+        self.clear_result()
+        self.sigCurrentFit.emit(self.current_fit)
+
+    def do_fit(self, x_data, y_data):
+        """Performs the chosen fit on the measured data.
+        @param array x_data: optional, 1D np.array or 1D list with the x values.
+                             If None is passed then the module x values are
+                             taken.
+        @param array y_data: optional, 1D np.array or 1D list with the y values.
+                             If None is passed then the module y values are
+                             taken. If passed, then it should have the same size
+                             as x_data.
+
+        @return: tuple (fit_x, fit_y, str_dict, fit_result)
+            np.array fit_x: 1D array containing the x values of the fit
+            np.array fit_y: 1D array containing the y values of the fit
+            OrderedDict str_dict: a dictionary with the relevant fit
+                                    parameters, i.e. the result of the fit. Each
+                                    entry is again a dict with three entries,
+                                        {'value': ... , 'error': ...., 'unit': '...'}
+                                    The values and the errors are always saved
+                                    in SI units!
+
+            lmfit.model.ModelResult fit_result:
+                            the result object of lmfit. If additional
+                            information is needed from the fit, then they can be
+                            obtained from this object. If no fit is performed
+                            then result is set to None.
+        """
+        self.clear_result()
+
+        fit_x = np.linspace(
+            start=x_data[0],
+            stop=x_data[-1],
+            num=int(len(x_data) * self.fit_granularity_fact))
+
+        # set the keyword arguments, which will be passed to the fit.
+        kwargs = {
+            'x_axis': x_data,
+            'data': y_data,
+            'units': self.units,
+            'add_params': None}
+
+        if self.current_fit in self.fit_list:
+            result = self.fit_list[self.current_fit]['make_fit'](
+                estimator=self.fit_list[self.current_fit]['estimator'],
+                **kwargs)
+
+        elif self.current_fit == 'No Fit':
+            fit_y = np.zeros(fit_x.shape)
+
+        else:
+            self.fit_logic.log.warning(
+                'The Fit Function "{0}" is not implemented to be used in the ODMR Logic. '
+                'Correct that! Fit Call will be skipped and Fit Function will be set to '
+                '"No Fit".'.format(self.current_fit))
+
+            self.current_fit = 'No Fit'
+
+        if self.current_fit != 'No Fit':
+            # after the fit was performed, retrieve the fitting function and
+            # evaluate the fitted parameters according to the function:
+            model, params = self.fit_list[self.current_fit]['make_model']()
+            fit_y = model.eval(x=fit_x, params=result.params)
+
+        if result is not None:
+            self.current_fit_param = result.params
+            self.current_fit_result = result
+            self.sigNewFitParameters.emit(self.current_fit, result.params)
+            self.sigNewFitResult.emit(self.current_fit, result)
+
+        self.sigFitUpdated.emit()
+
+        return fit_x, fit_y, result

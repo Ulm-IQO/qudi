@@ -106,11 +106,8 @@ class ODMRLogic(GenericLogic):
             self.log.warning('No scanmode defined in config for odmr_logic module.\n'
                              'Falling back to list mode.')
 
-        # variables for fitting
-        self.fit_granularity_fact = 10
-        self.current_fit = 'No Fit'
-        self.current_fit_param = lmfit.parameter.Parameters()
-        self.current_fit_result = None
+        self.fc = self._fit_logic.make_fit_container('ODMR sum', '1d')
+        self.fc.set_units(['Hz', 'c/s'])
 
         # theoretically this can be changed, but the current counting scheme willnot support that
         self.MW_trigger_pol = TriggerEdge.RISING
@@ -158,14 +155,8 @@ class ODMRLogic(GenericLogic):
         if 'number_of_lines' in self._statusVariables:
             self.number_of_lines = self._statusVariables['number_of_lines']
 
-        if 'fits' in self._statusVariables:
-            try:
-                self.fit_list = self._fit_logic.validate_load_fits(
-                    self._statusVariables['fits'])['1d']
-            except KeyError:
-                self.fit_list = OrderedDict()
-        else:
-            self.fit_list = OrderedDict()
+        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
+            self.fc.load_from_dict(self._statusVariables['fits'])
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -197,7 +188,7 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
-        self._statusVariables['fits'] = self._fit_logic.prepare_save_fits({'1d': self.fit_list})
+        self._statusVariables['fits'] = self.fc.save_to_dict()
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -277,8 +268,7 @@ class ODMRLogic(GenericLogic):
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
 
         self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step / 10.)
-        self.current_fit_param = dict()
-        self.current_fit_result = None
+        self.fc.clear_result()
 
         if self.saveRawData:
             # All that is necesarry fo saving of raw data:
@@ -560,96 +550,15 @@ class ODMRLogic(GenericLogic):
 
         return error_code
 
-    @QtCore.Slot(dict)
-    def set_fit_functions(self, fit_functions):
-        """ """
-        self.fit_list = fit_functions
-        self.set_current_fit(self.current_fit)
-
-    @QtCore.Slot(str)
-    def set_current_fit(self, current_fit):
-        """ """
-        if current_fit not in self.fit_list:
-            self.log.warning('{0} not in current fit list!'.format(current_fit))
-            self.current_fit = 'No Fit'
-        else:
-            self.current_fit = current_fit
-        self.current_fit_param = lmfit.parameter.Parameters()
-        self.current_fit_result = None
-
-    def get_fit_functions(self):
-        """ Returns all fit methods, which are currently implemented for that module.
-
-        @return list: with string entries denoting the names of the fit.
-        """
-        return self.user_fits
 
     def do_fit(self):
-        """Performs the chosen fit on the measured data.
-
-        @return: tuple (fit_x, fit_y, str_dict, fit_result)
-            np.array fit_x: 1D array containing the x values of the fit
-            np.array fit_y: 1D array containing the y values of the fit
-            OrderedDict str_dict: a dictionary with the relevant fit
-                                    parameters, i.e. the result of the fit. Each
-                                    entry is again a dict with three entries,
-                                        {'value': ... , 'error': ...., 'unit': '...'}
-                                    The values and the errors are always saved
-                                    in SI units!
-
-            lmfit.model.ModelResult fit_result:
-                            the result object of lmfit. If additional
-                            information is needed from the fit, then they can be
-                            obtained from this object. If no fit is performed
-                            then result is set to None.
-        """
-
-        # write all needed parameters (not rounded!) in this dict:
-        result = None
 
         x_data = self._mw_frequency_list
         y_data = self.ODMR_plot_y
 
-        self.ODMR_fit_x = np.linspace(
-            start=x_data[0],
-            stop=x_data[-1],
-            num=int(len(x_data) * self.fit_granularity_fact))
+        self.ODMR_fit_x, self.ODMR_fit_y, result = self.fc.do_fit(x_data, y_data)
 
-        # set the keyword arguments, which will be passed to the fit.
-        kwargs = {
-            'x_axis': x_data,
-            'data': y_data,
-            'units': ['Hz', 'c/s'],
-            'add_params': None}
-
-        if self.current_fit in self.fit_list:
-            result = self.fit_list[self.current_fit]['make_fit'](
-                estimator=self.fit_list[self.current_fit]['estimator'],
-                **kwargs)
-
-        elif self.current_fit == 'No Fit':
-            self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
-
-        else:
-            self.log.warning(
-                'The Fit Function "{0}" is not implemented to be used in the ODMR Logic. '
-                'Correct that! Fit Call will be skipped and Fit Function will be set to '
-                '"No Fit".'.format(self.current_fit))
-
-            self.current_fit = 'No Fit'
-
-        if self.current_fit != 'No Fit':
-            # after the fit was performed, retrieve the fitting function and
-            # evaluate the fitted parameters according to the function:
-            fitted_function, params = self.fit_list[self.current_fit]['make_model']()
-            self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
-
-        if result is not None:
-            self.current_fit_param = result.params
-            self.current_fit_result = result
-
-        # FIXME: Check whether this signal is really necessary here.
-        self.sigOdmrFitUpdated.emit()   # so that the gui can adjust to that
+        self.sigOdmrFitUpdated.emit()
         self.sigOdmrPlotUpdated.emit()
 
     def save_ODMR_Data(self, tag=None, colorscale_range=None, percentile_range=None):
@@ -691,12 +600,12 @@ class ODMRLogic(GenericLogic):
         parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
-        parameters['Fit function'] = self.current_fit
+        parameters['Fit function'] = self.fc.current_fit
 
 
         # add all fit parameter to the saved data:
-        for param in self.current_fit_param:
-            for entry in self.current_fit_param[param]:
+        for param in self.fc.current_fit_param:
+            for entry in self.fc.current_fit_param[param]:
                 name = '{0}_{1}'.format(param, entry)
                 parameters[name] = self.current_fit_param[param][entry]
 
