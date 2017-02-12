@@ -139,7 +139,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.show_raw_data = False
         self.show_laser_index = 0
         self.saved_raw_data = OrderedDict()  # temporary saved raw data
-        self.recalled_raw_data = None # the currently recalled raw data to add
+        self.recalled_raw_data = None  # the currently recalled raw data to add
 
         # for fit:
         self._fit_param = {}
@@ -238,7 +238,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # recalled saved raw data
         self.recalled_raw_data = None
-
 
     def on_deactivate(self, e):
         """ Deactivate the module properly.
@@ -361,19 +360,30 @@ class PulsedMeasurementLogic(GenericLogic):
     def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
                                       sequence_length_s, laser_ignore_list, is_alternating,
                                       laser_trigger_delay_s):
+        if len(controlled_vals) < 1:
+            self.log.error('Tried to set empty controlled variables array. This can not work.')
+            self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
+                                                      self.number_of_lasers, self.sequence_length_s,
+                                                      self.laser_ignore_list, self.alternating,
+                                                      self.laser_trigger_delay_s)
+            return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
+                   self.laser_ignore_list, self.alternating, self.laser_trigger_delay_s
 
-        if is_alternating and len(controlled_vals) != (
-            number_of_lasers - len(laser_ignore_list)) / 2:
+        if is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list))/2:
             self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
-                             'of laser pulses to analyze ({1}).'
+                             'of laser pulses to analyze ({1}).\nSetting number of lasers to {2}.'
                              ''.format(len(controlled_vals),
-                                       (number_of_lasers - len(laser_ignore_list))/2))
-        elif not is_alternating and len(controlled_vals) != (
-        number_of_lasers - len(laser_ignore_list)):
+                                       (number_of_lasers - len(laser_ignore_list))/2,
+                                       len(controlled_vals) * 2 + len(laser_ignore_list)))
+            number_of_lasers = len(controlled_vals) * 2 + len(laser_ignore_list)
+        elif not is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list)):
             self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
-                             'of laser pulses to analyze ({1}).'
+                             'of laser pulses to analyze ({1}).\nSetting number of lasers to {2}.'
                              ''.format(len(controlled_vals),
-                                       number_of_lasers - len(laser_ignore_list)))
+                                       number_of_lasers - len(laser_ignore_list),
+                                       len(controlled_vals) + len(laser_ignore_list)))
+            number_of_lasers = len(controlled_vals) + len(laser_ignore_list)
+
         self.controlled_vals = controlled_vals
         self.number_of_lasers = number_of_lasers
         self._pulse_extraction_logic.number_of_lasers = number_of_lasers
@@ -1113,6 +1123,13 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
         """
+        # Do sanity checks:
+        if len(self.signal_plot_x) < 2:
+            self.log.debug('FFT of measurement could not be calculated. Only one data point.')
+            self.signal_fft_x = np.zeros(1)
+            self.signal_fft_y = np.zeros(1)
+            self.signal_fft_y2 = np.zeros(1)
+            return
         # Make a baseline correction to avoid a constant offset near zero frequencies:
         corrected_y = self.signal_plot_y - np.mean(self.signal_plot_y)
         # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
@@ -1145,12 +1162,10 @@ class PulsedMeasurementLogic(GenericLogic):
         @return list of strings with all available fit functions
 
         """
-        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
+        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)', 'Lorentian (pos)', 'N14',
                 'N15', 'Stretched Exponential', 'Exponential', 'XY8']
 
-
-    def do_fit(self, fit_function, x_data=None, y_data=None,
-               fit_granularity_fact=10):
+    def do_fit(self, fit_function, x_data=None, y_data=None, fit_granularity_fact=10):
         """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
