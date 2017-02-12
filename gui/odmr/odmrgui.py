@@ -533,7 +533,10 @@ class ODMRGui(GUIBase):
         if fit_result is not None:
             # display results as formatted text
             self._mw.odmr_fit_results_DisplayWidget.clear()
-            formated_results = units.create_formatted_output(fit_result.result_str_dict)
+            try:
+                formated_results = units.create_formatted_output(fit_result.result_str_dict)
+            except:
+                formated_results = 'this fit does not return formatted results'
             self._mw.odmr_fit_results_DisplayWidget.setPlainText(formated_results)
 
         if fit_name is not None:
