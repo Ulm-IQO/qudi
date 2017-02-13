@@ -52,7 +52,7 @@ class BlockEditor:
         self.parameter_dict = OrderedDict()
         self.parameter_dict['length'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
                                          'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
-        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
+        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -999999999.99, 'max': np.inf,
                                             'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
         self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1, 'view_stepsize': 1,
                                                'dec': 0, 'unit_prefix': '', 'type': bool}
