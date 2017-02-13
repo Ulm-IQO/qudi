@@ -63,6 +63,7 @@ dependencies:
 - pyzmq=16.0.2=py36_0
 - qt=5.6.2=3
 - qtconsole=4.2.1=py36_1
+- qtpy=1.2.1=py36_0
 - readline=6.2=2
 - scipy=0.18.1=np112py36_1
 - setuptools=27.2.0=py36_0
