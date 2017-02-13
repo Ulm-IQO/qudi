@@ -2034,7 +2034,7 @@ class MagnetLogic(GenericLogic):
 
         self._save_logic.save_data(save_dict, filepath,
                                    filelabel=filelabel3, timestamp=timestamp,
-                                   as_text=True)
+                                   as_text=True, precision=':.6e')
         keys = self._2d_intended_fields[0].keys()
         intended_fields = OrderedDict()
         for key in keys:
