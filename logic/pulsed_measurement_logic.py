@@ -1000,7 +1000,14 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None):
+    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None, with_error=True):
+        """
+
+        @param controlled_val_unit:
+        @param tag:
+        @param with_error:
+        @return:
+        """
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -1033,16 +1040,31 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         if self.alternating:
-            data_array = np.zeros([3,len(self.signal_plot_x)], dtype=float)
+            if with_error:
+                data_array = np.zeros([5, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.), Error (norm.), Error2(norm.)'
+            else:
+                data_array = np.zeros([3, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
             data_array[2, :] = self.signal_plot_y2
-            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
+            if with_error:
+                data_array[3, :] = self.measuring_error_plot_y
+                data_array[4, :] = self.measuring_error_plot_y2
         else:
-            data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
+            if with_error:
+                data_array = np.zeros([3, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Error (norm.)'
+            else:
+                data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.)'
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
-            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.)'] = data_array.transpose()
+            if with_error:
+                data_array[2, :] = self.measuring_error_plot_y
+
+        data[data_key] = data_array.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1056,9 +1078,14 @@ class PulsedMeasurementLogic(GenericLogic):
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
         fig, ax1 = plt.subplots()
-        ax1.plot(self.signal_plot_x, self.signal_plot_y)
-        if self.alternating:
-            ax1.plot(self.signal_plot_x, self.signal_plot_y2)
+        if with_error:
+            ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y, yerr=self.measuring_error_plot_y, fmt='-o')
+            if self.alternating:
+                ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y2, yerr=self.measuring_error_plot_y2, fmt='-s')
+        else:
+            ax1.plot(self.signal_plot_x, self.signal_plot_y)
+            if self.alternating:
+                ax1.plot(self.signal_plot_x, self.signal_plot_y2)
         ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
         # ax1.set_xlim(self.plot_domain)
@@ -1066,8 +1093,7 @@ class PulsedMeasurementLogic(GenericLogic):
         fig.tight_layout()
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, plotfig=fig,
-                                   precision=':.6e')
+                                   timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6e')
         plt.close(fig)
 
         #####################################################################
