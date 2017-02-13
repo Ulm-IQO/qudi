@@ -47,9 +47,9 @@ from os import listdir,getcwd
 from os.path import isfile, join
 import os
 
-from scipy import special
-from scipy.special import gammaln as gamln
-import statsmodels.api as sm
+#from scipy import special
+#from scipy.special import gammaln as gamln
+#import statsmodels.api as sm
 #import peakutils
 #from peakutils.plot import plot as pplot
 
@@ -73,6 +73,7 @@ class FitLogic():
         """
         def __init__(self,path_of_qudi=None):
 
+            self.log = logger
             filenames=[]
 
             if path_of_qudi is None:
@@ -139,16 +140,12 @@ class FitLogic():
                                         if not str(method).split('_')[1] in oneD_fit_methods:
                                             oneD_fit_methods[str(method).split('_')[1]]=[]
                     except:
-                        logger.error('It was not possible to import element '
-                                '{} into FitLogic.'.format(method))
-            try:
-                logger.info('Methods were included to FitLogic, but only if '
-                        'naming is right: make_<own method>_fit. If '
-                        'estimator should be added, the name has')
-            except:
-                pass
+                        self.log.error('It was not possible to import element {} into FitLogic.'
+                                       ''.format(method))
+            self.log.info('Methods were included to FitLogic, but only if naming is right: '
+                          'make_<own method>_fit. If estimator should be added, the name has')
 
-qudi_fitting=FitLogic()
+qudi_fitting = FitLogic()
 
 
 ##############################################################################
@@ -1794,9 +1791,8 @@ def lorentziandip_testing():
     numerical_integral = abs(function.integral(x_axis[0], x_axis[-1]))
 
     if data_max > abs(data_min):
-        logger.warning('The lorentzian estimator set the peak to the '
-                'minimal value, if you want to fit a peak instead '
-                'of a dip rewrite the estimator.')
+        qudi_fitting.log.warning('The lorentzian estimator set the peak to the minimal value, if '
+                                 'you want to fit a peak instead of a dip rewrite the estimator.')
 
     amplitude_median = data_min
     x_zero = x_axis[np.argmin(data_smooth)]
@@ -2177,7 +2173,7 @@ def sine_testing():
 
         else:
             if len(diff_array) == 0:
-                logger.error('The passed x_axis for the sinus estimation contains the same values! Cannot do the fit!')
+                qudi_fitting.log.error('The passed x_axis for the sinus estimation contains the same values! Cannot do the fit!')
 
                 return -1, params
             else:
