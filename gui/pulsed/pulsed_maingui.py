@@ -2347,29 +2347,3 @@ class PulsedMeasurementGui(GUIBase):
             self._sg.sauplo_sequence_PushButton.setEnabled(True)
             self._sg.saup_sequence_PushButton.setEnabled(True)
         return
-
-
-    # def save_plots(self):
-    #     """ Save plot from analysis graph as a picture. """
-    #     timestamp = datetime.datetime.now()
-    #     filetag = self._mw.save_tag_LineEdit.text()
-    #     filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
-    #     if len(filetag) > 0:
-    #         filename = os.path.join(filepath, '{}_{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
-    #     else:
-    #         filename = os.path.join(filepath, '{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
-    #
-    #     # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
-    #     # pulse plot
-    #     # exporter = pg.exporters.SVGExporter(self._pa.pulse_analysis_PlotWidget.plotItem.scene())
-    #     # exporter.export(filename+'.svg')
-    #     #
-    #     # # auxiliary plot
-    #     # if 'None' not in self._mw.second_plot_ComboBox.currentText():
-    #     #     exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
-    #     #     exporter_aux.export(filename + '_aux' + '.svg')
-    #
-    #     self._pulsed_meas_logic._save_data(filetag, timestamp)
-
-
-
