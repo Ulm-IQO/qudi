@@ -1669,8 +1669,9 @@ class PulsedMeasurementGui(GUIBase):
         """Saves the current data"""
         self._mw.action_save.setEnabled(False)
         save_tag = self._mw.save_tag_LineEdit.text()
+        with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
-        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag)
+        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
         self._mw.action_save.setEnabled(True)
         return
 
