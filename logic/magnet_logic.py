@@ -111,6 +111,10 @@ class MagnetLogic(GenericLogic):
     sig2DAxisChanged = QtCore.Signal()
     sig3DAxisChanged = QtCore.Signal()
 
+    # signals for fluorescence alignment
+    sigFluoIntTimeChanged = QtCore.Signal(float)
+    sigOptPosFreqChanged = QtCore.Signal(float)
+
     # signal for ODMR alignment
     sigODMRLowFreqChanged = QtCore.Signal()
     sigODMRHighFreqChanged = QtCore.Signal()
@@ -252,10 +256,11 @@ class MagnetLogic(GenericLogic):
         else:
             self._optimize_pos_freq = 1
 
-        if 'fluorescence_integration_time' in self._statusVariables:
-            self.fluorescence_integration_time = self._statusVariables['fluorescence_integration_time']
+
+        if '_fluorescence_integration_time' in self._statusVariables:
+            self._fluorescence_integration_time = self._statusVariables['_fluorescence_integration_time']
         else:
-            self.fluorescence_integration_time = 5  # integration time in s
+            self._fluorescence_integration_time = 5  # integration time in s
 
         # ODMR alignment settings (ALL IN SI!!!):
 
@@ -406,8 +411,8 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        self._statusVariables['optimize_pos_freq'] =  self._optimize_pos_freq
-        self._statusVariables['fluorescence_integration_time'] =  self.fluorescence_integration_time
+        self._statusVariables['_optimize_pos_freq'] =  self._optimize_pos_freq
+        self._statusVariables['_fluorescence_integration_time'] =  self._fluorescence_integration_time
 
         self._statusVariables['odmr_2d_low_center_freq'] =  self.odmr_2d_low_center_freq
         self._statusVariables['odmr_2d_low_step_freq'] =  self.odmr_2d_low_step_freq
@@ -1303,7 +1308,7 @@ class MagnetLogic(GenericLogic):
             self._counter_logic.set_counting_mode(mode='continuous')
 
         self._counter_logic.start_saving()
-        time.sleep(self.fluorescence_integration_time)
+        time.sleep(self._fluorescence_integration_time)
         data_array, parameters = self._counter_logic.save_data(to_file=False)
 
         data_array = np.array(data_array)[:, 1]
@@ -2098,6 +2103,14 @@ class MagnetLogic(GenericLogic):
     def set_optimize_pos_freq(self, freq):
         """ Set the optimization frequency """
         self._optimize_pos_freq = freq
+        self.sigOptPosFreqChanged.emit(self._optimize_pos_freq)
+        return freq
+
+    def get_optimize_pos_freq(self):
+        """ Get the optimization frequency
+
+        @return float: Optimization frequency in 1/steps"""
+        return self._optimize_pos_freq
 
     def get_optimize_pos(self):
         """ Retrieve whether the optimize position is set.
@@ -2105,3 +2118,17 @@ class MagnetLogic(GenericLogic):
         @return bool: whether the optimize_pos is set or not.
         """
         return self._optimize_pos
+
+    def set_fluorescence_integration_time(self,time):
+        """ Set the integration time """
+        self._fluorescence_integration_time = time
+        self.sigFluoIntTimeChanged.emit(self._fluorescence_integration_time)
+        return time
+
+    def get_fluorescence_integration_time(self):
+        """ Get the fluorescence integration time.
+
+        @return float: Integration time in seconds
+        """
+        return self._fluorescence_integration_time
+
