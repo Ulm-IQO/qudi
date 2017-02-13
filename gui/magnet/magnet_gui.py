@@ -344,12 +344,16 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_cb_GraphicsView.setLabel('right', textlabel, units=units)
 
         #FIXME: save that in the logic
+        if 'axis0_name_index' in self._statusVariables:
+            self._mw.align_2d_axes0_name_ComboBox.setCurrentIndex(self._statusVariables['axis0_name_index'])
         if 'align_2d_axes0_range_DSpinBox' in self._statusVariables:
             self._mw.align_2d_axes0_range_DSpinBox.setValue(self._statusVariables['align_2d_axes0_range_DSpinBox'])
         if 'align_2d_axes0_step_DSpinBox' in self._statusVariables:
             self._mw.align_2d_axes0_step_DSpinBox.setValue(self._statusVariables['align_2d_axes0_step_DSpinBox'])
         if 'align_2d_axes0_vel_DSpinBox' in self._statusVariables:
             self._mw.align_2d_axes0_vel_DSpinBox.setValue(self._statusVariables['align_2d_axes0_vel_DSpinBox'])
+        if 'axis1_name_index' in self._statusVariables:
+            self._mw.align_2d_axes1_name_ComboBox.setCurrentIndex(self._statusVariables['axis1_name_index'])
         if 'align_2d_axes1_range_DSpinBox' in self._statusVariables:
             self._mw.align_2d_axes1_range_DSpinBox.setValue(self._statusVariables['align_2d_axes1_range_DSpinBox'])
         if 'align_2d_axes1_step_DSpinBox' in self._statusVariables:
@@ -390,8 +394,10 @@ class MagnetGui(GUIBase):
         # --------------------
 
         # for fluorescence alignment:
+        self._mw.align_2d_fluorescence_optimize_freq_SpinBox.setValue(self._magnet_logic.get_optimize_pos_freq())
+        self._mw.align_2d_fluorescence_integrationtime_DSpinBox.setValue(self._magnet_logic.get_fluorescence_integration_time())
         self._mw.align_2d_fluorescence_optimize_freq_SpinBox.valueChanged.connect(self.optimize_pos_freq_changed)
-
+        self._mw.align_2d_fluorescence_integrationtime_DSpinBox.valueChanged.connect(self.fluorescence_integration_time_changed)
 
         # for odmr alignment:
         self._mw.meas_type_fluorescence_RadioButton.toggled.connect(self.set_measurement_type)
@@ -440,6 +446,12 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_reps_within_ssr)
         self._mw.align_2d_nuclear_num_of_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_num_ssr)
 
+        # process signals from magnet_logic
+        self._magnet_logic.sigOptPosFreqChanged.connect(self.update_optimize_pos_freq)
+        self._magnet_logic.sigFluoIntTimeChanged.connect(self.update_fluorescence_integration_time)
+        return 0
+
+
     def _activate_magnet_settings(self, e):
         """ Activate magnet settings.
 
@@ -485,9 +497,11 @@ class MagnetGui(GUIBase):
         self._statusVariables['alignment_2d_cb_GraphicsView_units'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
 
         #FIXME: save that in the logic
+        self._statusVariables['axis0_name_index'] = self._mw.align_2d_axes0_name_ComboBox.currentIndex()
         self._statusVariables['align_2d_axes0_range_DSpinBox'] = self._mw.align_2d_axes0_range_DSpinBox.value()
         self._statusVariables['align_2d_axes0_step_DSpinBox'] = self._mw.align_2d_axes0_step_DSpinBox.value()
         self._statusVariables['align_2d_axes0_vel_DSpinBox'] = self._mw.align_2d_axes0_vel_DSpinBox.value()
+        self._statusVariables['axis1_name_index'] = self._mw.align_2d_axes1_name_ComboBox.currentIndex()
         self._statusVariables['align_2d_axes1_range_DSpinBox'] = self._mw.align_2d_axes1_range_DSpinBox.value()
         self._statusVariables['align_2d_axes1_step_DSpinBox'] = self._mw.align_2d_axes1_step_DSpinBox.value()
         self._statusVariables['align_2d_axes1_vel_DSpinBox'] = self._mw.align_2d_axes1_vel_DSpinBox.value()
@@ -1036,6 +1050,13 @@ class MagnetGui(GUIBase):
         """ Set whether postition should be optimized at each point. """
         freq = self._mw.align_2d_fluorescence_optimize_freq_SpinBox.value()
         self._magnet_logic.set_optimize_pos_freq(freq)
+        return freq
+
+    def fluorescence_integration_time_changed(self):
+        """ Chamge the fluorescence integration time. """
+        time = self._mw.align_2d_fluorescence_integrationtime_DSpinBox.value()
+        self._magnet_logic.set_fluorescence_integration_time(time)
+        return time
 
     def stop_movement(self):
         """ Invokes an immediate stop of the hardware.
@@ -1475,6 +1496,20 @@ class MagnetGui(GUIBase):
         y_r = axis1_value - width_y / 2.0
         self.roi_magnet.setPos(x_r, y_r)
 
+    def update_optimize_pos_freq(self, freq):
+        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        self._mw.align_2d_fluorescence_optimize_freq_SpinBox.blockSignals(True)
+        self._mw.align_2d_fluorescence_optimize_freq_SpinBox.setValue(freq)
+        self._mw.align_2d_fluorescence_optimize_freq_SpinBox.blockSignals(False)
+        return freq
+
+    def update_fluorescence_integration_time(self, time):
+        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        self._mw.align_2d_fluorescence_integrationtime_DSpinBox.blockSignals(True)
+        self._mw.align_2d_fluorescence_integrationtime_DSpinBox.setValue(time)
+        self._mw.align_2d_fluorescence_integrationtime_DSpinBox.blockSignals(False)
+        return time
+
 def get_ref_curr_pos_ScienDSpinBox(self, label):
     """ Get the reference to the double spin box for the passed label. """
 
@@ -1489,3 +1524,4 @@ def get_ref_move_rel_ScienDSpinBox(self, label):
     dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
     dspinbox_ref = getattr(self._mw, dspinbox_name)
     return dspinbox_ref
+
