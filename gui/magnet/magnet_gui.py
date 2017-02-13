@@ -323,6 +323,8 @@ class MagnetGui(GUIBase):
         self.roi_magnet.sigRegionChanged.connect(self.hline_magnet.adjust)
         self.roi_magnet.sigRegionChanged.connect(self.vline_magnet.adjust)
         self.roi_magnet.sigUserRegionUpdate.connect(self.update_from_roi_magnet)
+        self._mw.align_2d_axes0_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
+        self._mw.align_2d_axes1_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
 
 
 
@@ -1450,7 +1452,7 @@ class MagnetGui(GUIBase):
             axis1_name = 'axis1'
 
         self._mw.pos_label.setText('({0}, {1})'.format(axis0_name, axis1_name))
-        self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(x_pos, y_pos))
+        self._mw.pos_show.setText('({0:.6f}, {1:.6f})'.format(x_pos, y_pos))
         # I only need to update my label here.
         # which I would like to create in the QtDesigner
 
@@ -1463,17 +1465,30 @@ class MagnetGui(GUIBase):
         axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
         self.log.debug('get the axis0_name: {0}'.format(axis0_name))
         self.log.debug('get the axis0_name: {0}'.format(axis1_name))
-        axis0_value = self.get_ref_curr_pos_ScienDSpinBox(axis0_name).value()
-        axis1_value = self.get_ref_curr_pos_ScienDSpinBox(axis1_name).value()
+        axis0_value = self.get_ref_move_abs_ScienDSpinBox(axis0_name).value()
+        axis1_value = self.get_ref_move_abs_ScienDSpinBox(axis1_name).value()
 
-        self.roi_magnet.setPos(axis0_value, axis1_value)
-        self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(axis0_value, axis1_value))
-        width_x = self.roi_magnet.size()[0]
-        width_y = self.roi_magnet.size()[1]
-        self.log.debug('x, y from boxes:{0},{1}'.format(axis0_value, axis1_value))
-        x_r = axis0_value - width_x / 2.0
-        y_r = axis1_value - width_y / 2.0
-        self.roi_magnet.setPos(x_r, y_r)
+        self.roi_magnet.setPos([axis0_value, axis1_value])
+        # not sure at the moment what I wanted to do with this, therefore testing without it.
+        # self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(axis0_value, axis1_value))
+        # width_x = self.roi_magnet.size()[0]
+        # width_y = self.roi_magnet.size()[1]
+        # x_r = axis0_value - width_x / 2.0
+        # y_r = axis1_value - width_y / 2.0
+        # self.roi_magnet.setPos(x_r, y_r)
+
+    def update_roi_from_range(self):
+        """
+        User changed scan range and therefore the rectangular should be adjusted
+        @return:
+        """
+        # first get the size of axis0 and axis1 range
+        x_range = self._mw.align_2d_axes0_range_DSpinBox.value()
+        y_range = self._mw.align_2d_axes0_range_DSpinBox.value()
+        self.roi_magnet.setSize([x_range/100, y_range/100])
+
+
+
 
 def get_ref_curr_pos_ScienDSpinBox(self, label):
     """ Get the reference to the double spin box for the passed label. """
