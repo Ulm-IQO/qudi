@@ -111,6 +111,20 @@ class MagnetLogic(GenericLogic):
     sig2DAxisChanged = QtCore.Signal()
     sig3DAxisChanged = QtCore.Signal()
 
+    # signals for 2d alignemnt general
+    sig2DAxis0NameChanged = QtCore.Signal(str)
+    sig2DAxis0RangeChanged = QtCore.Signal(float)
+    sig2DAxis0StepChanged = QtCore.Signal(float)
+    sig2DAxis0VelChanged = QtCore.Signal(float)
+
+    sig2DAxis1NameChanged = QtCore.Signal(str)
+    sig2DAxis1RangeChanged = QtCore.Signal(float)
+    sig2DAxis1StepChanged = QtCore.Signal(float)
+    sig2DAxis1VelChanged = QtCore.Signal(float)
+
+    sigMoveRelChanged = QtCore.Signal(dict)
+
+
     # signals for fluorescence alignment
     sigFluoIntTimeChanged = QtCore.Signal(float)
     sigOptPosFreqChanged = QtCore.Signal(float)
@@ -174,6 +188,54 @@ class MagnetLogic(GenericLogic):
                                                QtCore.Qt.QueuedConnection)
 
         self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
+
+        # relative movement settings
+
+        constraints = self._magnet_device.get_constraints()
+        self.move_rel={}
+
+        for axis_label in constraints:
+            if ('move_rel_' + axis_label) in self._statusVariables:
+                self.move_rel[axis_label] = self._statusVariables[('move_rel_' + axis_label)]
+            else:
+                self.move_rel[axis_label] = 1e-3
+
+        # 2D alignment settings
+
+        if 'align_2d_axis0_name' in self._statusVariables:
+            self.align_2d_axis0_name = self._statusVariables['align_2d_axis0_name']
+        else:
+            axes = list(self._magnet_device.get_constraints())
+            self.align_2d_axis0_name = axes[0]
+        if 'align_2d_axis0_range' in self._statusVariables:
+            self.align_2d_axis0_range = self._statusVariables['align_2d_axis0_range']
+        else:
+            self.align_2d_axis0_range = 10e-3
+        if 'align_2d_axis0_step' in self._statusVariables:
+            self.align_2d_axis0_step = self._statusVariables['align_2d_axis0_step']
+        else:
+            self.align_2d_axis0_step = 1e-3
+        if 'align_2d_axis0_vel' in self._statusVariables:
+            self.align_2d_axis0_vel = self._statusVariables['align_2d_axis0_vel']
+        else:
+            self.align_2d_axis0_vel = 10e-6
+        if 'align_2d_axis1_name' in self._statusVariables:
+            self.align_2d_axis1_name = self._statusVariables['align_2d_axis1_name']
+        else:
+            axes = list(self._magnet_device.get_constraints())
+            self.align_2d_axis1_name = axes[1]
+        if 'align_2d_axis1_range' in self._statusVariables:
+            self.align_2d_axis1_range = self._statusVariables['align_2d_axis1_range']
+        else:
+            self.align_2d_axis1_range = 10e-3
+        if 'align_2d_axis1_step' in self._statusVariables:
+            self.align_2d_axis1_step = self._statusVariables['align_2d_axis1_step']
+        else:
+            self.align_2d_axis1_step = 1e-3
+        if 'align_2d_axis1_vel' in self._statusVariables:
+            self.align_2d_axis1_vel = self._statusVariables['align_2d_axis1_vel']
+        else:
+            self.align_2d_axis1_vel = 10e-6
 
         if 'curr_2d_pathway_mode' in self._statusVariables:
             self.curr_2d_pathway_mode = self._statusVariables['curr_2d_pathway_mode']
@@ -411,6 +473,20 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
+
+        constraints=self.get_hardware_constraints()
+        for axis_label in constraints:
+            self._statusVariables[('move_rel_'+axis_label)] = self.move_rel[axis_label]
+
+        self._statusVariables['align_2d_axis0_name'] = self.align_2d_axis0_name
+        self._statusVariables['align_2d_axis0_range'] = self.align_2d_axis0_range
+        self._statusVariables['align_2d_axis0_step'] = self.align_2d_axis0_step
+        self._statusVariables['align_2d_axis0_vel'] = self.align_2d_axis0_vel
+        self._statusVariables['align_2d_axis1_name'] = self.align_2d_axis1_name
+        self._statusVariables['align_2d_axis1_range'] = self.align_2d_axis1_range
+        self._statusVariables['align_2d_axis1_step'] = self.align_2d_axis1_step
+        self._statusVariables['align_2d_axis1_vel'] = self.align_2d_axis1_vel
+
         self._statusVariables['_optimize_pos_freq'] =  self._optimize_pos_freq
         self._statusVariables['_fluorescence_integration_time'] =  self._fluorescence_integration_time
 
@@ -634,6 +710,9 @@ class MagnetLogic(GenericLogic):
         else:
 
             # create a snake-wise stepping procedure through the matrix:
+            self.log.debug(axis0_name)
+            self.log.debug(axis0_range)
+            self.log.debug(init_pos[axis0_name])
             axis0_pos = round(init_pos[axis0_name] - axis0_range/2, 7)
             axis1_pos = round(init_pos[axis1_name] - axis1_range/2, 7)
 
@@ -834,10 +913,7 @@ class MagnetLogic(GenericLogic):
 
 
 
-    def start_2d_alignment(self, axis0_name, axis0_range, axis0_step,
-                                 axis1_name, axis1_range, axis1_step,
-                                 axis0_vel=None, axis1_vel=None,
-                                 stepwise_meas=True, continue_meas=False):
+    def start_2d_alignment(self,stepwise_meas=True, continue_meas=False):
 
         # before starting the measurement you should convince yourself that the
         # passed traveling range is possible. Otherwise the measurement will be
@@ -854,14 +930,14 @@ class MagnetLogic(GenericLogic):
 
         self._stop_measure = False
 
-        self._axis0_name = axis0_name
-        self._axis1_name = axis1_name
+        # self._axis0_name = axis0_name
+        # self._axis1_name = axis1_name
 
         # get name of other axis to control their values
         self._control_dict = {}
         pos_dict = self.get_pos()
         key_set1 = set(pos_dict.keys())
-        key_set2 = set([self._axis1_name, self._axis0_name])
+        key_set2 = set([self.align_2d_axis1_name, self.align_2d_axis0_name])
         key_complement = key_set1 - key_set2
         self._control_dict = {key : pos_dict[key] for key in key_complement}
 
@@ -871,13 +947,13 @@ class MagnetLogic(GenericLogic):
         self._2d_intended_fields = []
 
 
-        self.log.debug("contro_dict {0}".format(self._control_dict))
+        #self.log.debug("contro_dict {0}".format(self._control_dict))
 
 
 
         # save only the position of the axis, which are going to be moved
         # during alignment, the return will be a dict!
-        self._saved_pos_before_align = self.get_pos([axis0_name, axis1_name])
+        self._saved_pos_before_align = self.get_pos([self.align_2d_axis0_name, self.align_2d_axis1_name])
 
 
         if not continue_meas:
@@ -888,21 +964,26 @@ class MagnetLogic(GenericLogic):
             # current measurement point
             self._pathway_index = 0
 
-            self._pathway, self._backmap = self._create_2d_pathway(axis0_name, axis0_range,
-                                                                   axis0_step, axis1_name, axis1_range,
-                                                                   axis1_step, self._saved_pos_before_align,
-                                                                   axis0_vel, axis1_vel)
+            self._pathway, self._backmap = self._create_2d_pathway(self.align_2d_axis0_name,
+                                                                   self.align_2d_axis0_range,
+                                                                   self.align_2d_axis0_step,
+                                                                   self.align_2d_axis1_name,
+                                                                   self.align_2d_axis1_range,
+                                                                   self.align_2d_axis1_step,
+                                                                   self._saved_pos_before_align,
+                                                                   self.align_2d_axis0_vel,
+                                                                   self.align_2d_axis1_vel)
 
             # determine the start point, either relative or absolute!
             # Now the absolute position will be used:
-            axis0_start = self._backmap[0][axis0_name]
-            axis1_start = self._backmap[0][axis1_name]
+            axis0_start = self._backmap[0][self.align_2d_axis0_name]
+            axis1_start = self._backmap[0][self.align_2d_axis1_name]
 
             self._2D_data_matrix, \
             self._2D_axis0_data,\
-            self._2D_axis1_data = self._prepare_2d_graph(axis0_start, axis0_range,
-                                                      axis0_step, axis1_start,
-                                                      axis1_range, axis1_step)
+            self._2D_axis1_data = self._prepare_2d_graph(axis0_start, self.align_2d_axis0_range,
+                                                      self.align_2d_axis0_step, axis1_start,
+                                                      self.align_2d_axis1_range, self.align_2d_axis1_step)
 
             self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
 
@@ -931,6 +1012,7 @@ class MagnetLogic(GenericLogic):
         # run at first the _move_to_curr_pathway_index method to go to the
         # index position:
         self._sigInitializeMeasPos.emit(stepwise_meas)
+        return 0
 
 
     def _move_to_curr_pathway_index(self, stepwise_meas):
@@ -2100,6 +2182,34 @@ class MagnetLogic(GenericLogic):
     def get_2d_axis_arrays(self):
         return self._2D_axis0_data, self._2D_axis1_data
 
+
+    def set_move_rel_para(self,dict):
+        """ Set the move relative parameters according to dict
+
+        @params dict: Dictionary with new values
+
+        @return dict: Dictionary with new values
+        """
+        for axis_label in dict:
+            self.move_rel[axis_label]=dict[axis_label]
+            self.sigMoveRelChanged.emit(dict)
+        return self.move_rel
+
+    def get_move_rel_para(self,param_list=None):
+        """ Get the move relative parameters
+
+        @params list: Optional list with axis names
+
+        @return dict: Dictionary with new values
+        """
+        if param_list==None:
+            return self.move_rel
+        else:
+            dict={}
+            for axis_label in param_list:
+                dict[axis_label] = self.move_rel[axis_label]
+            return dict
+
     def set_optimize_pos_freq(self, freq):
         """ Set the optimization frequency """
         self._optimize_pos_freq = freq
@@ -2131,4 +2241,90 @@ class MagnetLogic(GenericLogic):
         @return float: Integration time in seconds
         """
         return self._fluorescence_integration_time
+
+    ##### 2D alignment settings
+
+    #TODO: Check hardware constraints
+
+    def set_align_2d_axis0_name(self,axisname):
+        '''Set the specified value '''
+        self.align_2d_axis0_name=axisname
+        self.sig2DAxis0NameChanged.emit(axisname)
+        return axisname
+
+    def set_align_2d_axis0_range(self,range):
+        '''Set the specified value '''
+        self.align_2d_axis0_range=range
+        self.sig2DAxis0RangeChanged.emit(range)
+        return range
+
+    def set_align_2d_axis0_step(self,step):
+        '''Set the specified value '''
+        self.align_2d_axis0_step=step
+        self.sig2DAxis0StepChanged.emit(step)
+        return step
+
+    def set_align_2d_axis0_vel(self,vel):
+        '''Set the specified value '''
+        self.align_2d_axis0_vel=vel
+        self.sig2DAxis0VelChanged.emit(vel)
+        return vel
+
+    def set_align_2d_axis1_name(self, axisname):
+        '''Set the specified value '''
+        self.align_2d_axis1_name = axisname
+        self.sig2DAxis1NameChanged.emit(axisname)
+        return axisname
+
+    def set_align_2d_axis1_range(self, range):
+        '''Set the specified value '''
+        self.align_2d_axis1_range = range
+        self.sig2DAxis1RangeChanged.emit(range)
+        return range
+
+    def set_align_2d_axis1_step(self, step):
+        '''Set the specified value '''
+        self.align_2d_axis1_step = step
+        self.sig2DAxis1StepChanged.emit(step)
+        return step
+
+    def set_align_2d_axis1_vel(self, vel):
+        '''Set the specified value '''
+        self._2d_align_axis1_vel = vel
+        self.sig2DAxis1VelChanged.emit(vel)
+        return vel
+
+    def get_align_2d_axis0_name(self):
+        '''Return the current value'''
+        return self.align_2d_axis0_name
+
+    def get_align_2d_axis0_range(self):
+        '''Return the current value'''
+        return self.align_2d_axis0_range
+
+    def get_align_2d_axis0_step(self):
+        '''Return the current value'''
+        return self.align_2d_axis0_step
+
+    def get_align_2d_axis0_vel(self):
+        '''Return the current value'''
+        return self.align_2d_axis0_vel
+
+    def get_align_2d_axis1_name(self):
+        '''Return the current value'''
+        return self.align_2d_axis1_name
+
+    def get_align_2d_axis1_range(self):
+        '''Return the current value'''
+        return self.align_2d_axis1_range
+
+    def get_align_2d_axis1_step(self):
+        '''Return the current value'''
+        return self.align_2d_axis1_step
+
+    def get_align_2d_axis1_vel(self):
+        '''Return the current value'''
+        return self.align_2d_axis1_vel
+
+
 
