@@ -1148,7 +1148,6 @@ class ConfocalLogic(GenericLogic):
                         xytext=(-0.01, crosshair_pos[1]*np.power(1000,y_prefix_count)), xycoords=trans_ymark,
                         arrowprops=dict(facecolor='#17becf', shrink=0.05),
                         )
-            print(crosshair_pos, x_prefix_count, y_prefix_count)
 
         # Draw the colorbar
         cbar = plt.colorbar(cfimage, shrink=0.8)#, fraction=0.046, pad=0.08, shrink=0.75)

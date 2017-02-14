@@ -518,7 +518,7 @@ class SaveLogic(GenericLogic):
 
             # create Metadata
             metadata = dict()
-            metadata['Title'] = 'Confocal Image'
+            metadata['Title'] = 'Image produced by qudi: ' + module_name
             metadata['Author'] = 'qudi - Software Suite'
             metadata['Subject'] = 'Find more information on: https://github.com/Ulm-IQO/qudi'
             metadata['Keywords'] = 'Python 3, Qt, experiment control, automation, measurement, software, framework, modular'
