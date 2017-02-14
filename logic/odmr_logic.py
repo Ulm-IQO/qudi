@@ -157,6 +157,31 @@ class ODMRLogic(GenericLogic):
 
         if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
             self.fc.load_from_dict(self._statusVariables['fits'])
+        else:
+            d1 = OrderedDict()
+            d1['Lorentzian dip'] = {
+                'fit_function': 'lorentzoffset',
+                'estimator': 'dip'
+                }
+            d1['Two Lorentzian dips'] = {
+                'fit_function': 'doublelorentzoffset',
+                'estimator': 'dip'
+                }
+            d1['N14'] = {
+                'fit_function': 'triplelorentzoffset',
+                'estimator': 'N14'
+                }
+            d1['N15'] = {
+                'fit_function': 'doublelorentzoffset',
+                'estimator': 'N15'
+                }
+            d1['Two Gaussian dips'] = {
+                'fit_function': 'twogaussianoffset',
+                'estimator': 'dip'
+                }
+            default_fits = OrderedDict()
+            default_fits['1d'] = d1
+            self.fc.load_from_dict(default_fits)
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -188,7 +213,8 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
-        self._statusVariables['fits'] = self.fc.save_to_dict()
+        if len(self.fc.fit_list) > 0:
+            self._statusVariables['fits'] = self.fc.save_to_dict()
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
