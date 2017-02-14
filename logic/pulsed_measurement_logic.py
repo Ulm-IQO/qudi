@@ -1068,6 +1068,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # write the parameters:
         parameters = OrderedDict()
+        parameters['approx. measurement time (s)'] = self.elapsed_time
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['Signal start (bin)'] = self._pulse_analysis_logic.signal_start_bin
