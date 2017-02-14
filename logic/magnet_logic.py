@@ -122,6 +122,8 @@ class MagnetLogic(GenericLogic):
     sig2DAxis1StepChanged = QtCore.Signal(float)
     sig2DAxis1VelChanged = QtCore.Signal(float)
 
+    sigMoveRelChanged = QtCore.Signal(dict)
+
 
     # signals for fluorescence alignment
     sigFluoIntTimeChanged = QtCore.Signal(float)
@@ -186,6 +188,17 @@ class MagnetLogic(GenericLogic):
                                                QtCore.Qt.QueuedConnection)
 
         self.pathway_modes = ['spiral-in', 'spiral-out', 'snake-wise', 'diagonal-snake-wise']
+
+        # relative movement settings
+
+        constraints = self._magnet_device.get_constraints()
+        self.move_rel={}
+
+        for axis_label in constraints:
+            if ('move_rel_' + axis_label) in self._statusVariables:
+                self.move_rel[axis_label] = self._statusVariables[('move_rel_' + axis_label)]
+            else:
+                self.move_rel[axis_label] = 1e-3
 
         # 2D alignment settings
 
@@ -460,6 +473,10 @@ class MagnetLogic(GenericLogic):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
+
+        constraints=self.get_hardware_constraints()
+        for axis_label in constraints:
+            self._statusVariables[('move_rel_'+axis_label)] = self.move_rel[axis_label]
 
         self._statusVariables['align_2d_axis0_name'] = self.align_2d_axis0_name
         self._statusVariables['align_2d_axis0_range'] = self.align_2d_axis0_range
@@ -930,7 +947,7 @@ class MagnetLogic(GenericLogic):
         self._2d_intended_fields = []
 
 
-        self.log.debug("contro_dict {0}".format(self._control_dict))
+        #self.log.debug("contro_dict {0}".format(self._control_dict))
 
 
 
@@ -995,6 +1012,7 @@ class MagnetLogic(GenericLogic):
         # run at first the _move_to_curr_pathway_index method to go to the
         # index position:
         self._sigInitializeMeasPos.emit(stepwise_meas)
+        return 0
 
 
     def _move_to_curr_pathway_index(self, stepwise_meas):
@@ -2163,6 +2181,34 @@ class MagnetLogic(GenericLogic):
 
     def get_2d_axis_arrays(self):
         return self._2D_axis0_data, self._2D_axis1_data
+
+
+    def set_move_rel_para(self,dict):
+        """ Set the move relative parameters according to dict
+
+        @params dict: Dictionary with new values
+
+        @return dict: Dictionary with new values
+        """
+        for axis_label in dict:
+            self.move_rel[axis_label]=dict[axis_label]
+            self.sigMoveRelChanged.emit(dict)
+        return self.move_rel
+
+    def get_move_rel_para(self,param_list=None):
+        """ Get the move relative parameters
+
+        @params list: Optional list with axis names
+
+        @return dict: Dictionary with new values
+        """
+        if param_list==None:
+            return self.move_rel
+        else:
+            dict={}
+            for axis_label in param_list:
+                dict[axis_label] = self.move_rel[axis_label]
+            return dict
 
     def set_optimize_pos_freq(self, freq):
         """ Set the optimization frequency """
