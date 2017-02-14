@@ -376,6 +376,17 @@ class MagnetGui(GUIBase):
         # connect the signals:
         # --------------------
 
+        # relative movement:
+
+        constraints=self._magnet_logic.get_hardware_constraints()
+
+        for axis_label in list(constraints):
+            self.get_ref_move_rel_ScienDSpinBox(axis_label).setValue(self._magnet_logic.move_rel[axis_label])
+            self.get_ref_move_rel_ScienDSpinBox(axis_label).valueChanged.connect(self.move_rel_para_changed)
+            #print('self.get_ref_move_rel_ScienDSpinBox('+axis_label+').valueChanged.connect(lambda: self.move_rel_changed('+axis_label+'))')
+
+
+
         # General 2d alignment:
         index = self._mw.align_2d_axis0_name_ComboBox.findText(self._magnet_logic.align_2d_axis0_name)
         self._mw.align_2d_axis0_name_ComboBox.setCurrentIndex(index)
@@ -452,6 +463,9 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_nuclear_num_of_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_num_ssr)
 
         # process signals from magnet_logic
+
+        self._magnet_logic.sigMoveRelChanged.connect(self.update_move_rel_para)
+
         self._magnet_logic.sig2DAxis0NameChanged.connect(self.update_align_2d_axis0_name)
         self._magnet_logic.sig2DAxis0RangeChanged.connect(self.update_align_2d_axis0_range)
         self._magnet_logic.sig2DAxis0StepChanged.connect(self.update_align_2d_axis0_step)
@@ -1052,54 +1066,105 @@ class MagnetGui(GUIBase):
         slider_ref = getattr(self._mw, slider_name)
         return slider_ref
 
+    def move_rel_para_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return dict: Passed move relative parameter
+        """
+        dict={}
+        axes=list(self._magnet_logic.get_hardware_constraints())
+        for axis_label in axes:
+            dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
+            dict[axis_label]=dspinbox.value()
+        self._magnet_logic.set_move_rel_para(dict)
+        return dict
+
     def align_2d_axis0_name_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return str: Passed axis name
+        """
         axisname = self._mw.align_2d_axis0_name_ComboBox.currentText()
         self._magnet_logic.set_align_2d_axis0_name(axisname)
         return axisname
 
     def align_2d_axis0_range_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed range
+        """
         range = self._mw.align_2d_axis0_range_DSpinBox.value()
         self._magnet_logic.set_align_2d_axis0_range(range)
         return range
 
     def align_2d_axis0_step_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed step
+        """
         step = self._mw.align_2d_axis0_step_DSpinBox.value()
         self._magnet_logic.set_align_2d_axis0_step(step)
         return step
 
     def align_2d_axis0_vel_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed velocity
+        """
         vel = self._mw.align_2d_axis0_vel_DSpinBox.value()
         self._magnet_logic.set_align_2d_axis0_vel(vel)
         return vel
 
     def align_2d_axis1_name_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return str: Passed axis name
+        """
         axisname = self._mw.align_2d_axis1_name_ComboBox.currentText()
         self._magnet_logic.set_align_2d_axis1_name(axisname)
         return axisname
 
     def align_2d_axis1_range_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed range
+        """
         range = self._mw.align_2d_axis1_range_DSpinBox.value()
         self._magnet_logic.set_align_2d_axis1_range(range)
         return range
 
     def align_2d_axis1_step_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed step size
+        """
         step = self._mw.align_2d_axis1_step_DSpinBox.value()
         self._magnet_logic.set_align_2d_axis1_step(step)
         return step
 
     def align_2d_axis1_vel_changed(self):
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed velocity
+        """
         vel = self._mw.align_2d_axis1_vel_DSpinBox.value()
         self._magnet_logic.set_align_2d_axis1_vel(vel)
         return vel
 
     def optimize_pos_freq_changed(self):
-        """ Set whether postition should be optimized at each point. """
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed frequency
+         """
         freq = self._mw.align_2d_fluorescence_optimize_freq_SpinBox.value()
         self._magnet_logic.set_optimize_pos_freq(freq)
         return freq
 
     def fluorescence_integration_time_changed(self):
-        """ Chamge the fluorescence integration time. """
+        """ Pass the current GUI value to the logic
+
+        @return float: Passed integration time
+         """
         time = self._mw.align_2d_fluorescence_integrationtime_DSpinBox.value()
         self._magnet_logic.set_fluorescence_integration_time(time)
         return time
@@ -1537,9 +1602,30 @@ class MagnetGui(GUIBase):
         x_r = axis0_value - width_x / 2.0
         y_r = axis1_value - width_y / 2.0
         self.roi_magnet.setPos(x_r, y_r)
+        return 0
+
+
+    def update_move_rel_para(self,dict):
+        """ The GUT is updated taking dict into account. Thereby no signal is triggered!
+
+        @params dictionary: Dictionary containing the values to update
+
+        @return dictionary: Dictionary containing the values to update
+         """
+        for axis_label in dict:
+            dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
+            dspinbox.blockSignals(True)
+            dspinbox.setValue(dict[axis_label])
+            dspinbox.blockSignals(False)
+        return dict
 
     def update_align_2d_axis0_name(self,axisname):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking axisname into account. Thereby no signal is triggered!
+
+        @params str: Axis name to update
+
+        @return str: Axis name to update
+         """
         self._mw.align_2d_axis0_name_ComboBox.blockSignals(True)
         index = self._mw.align_2d_axis0_name_ComboBox.findText(axisname)
         self._mw.align_2d_axis0_name_ComboBox.setCurrentIndex(index)
@@ -1547,28 +1633,48 @@ class MagnetGui(GUIBase):
         return axisname
 
     def update_align_2d_axis0_range(self,range):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking range into account. Thereby no signal is triggered!
+
+        @params float: Range to update
+
+        @return float: Range to update
+         """
         self._mw.align_2d_axis0_range_DSpinBox.blockSignals(True)
         self._mw.align_2d_axis0_range_DSpinBox.setValue(range)
         self._mw.align_2d_axis0_range_DSpinBox.blockSignals(False)
         return range
 
     def update_align_2d_axis0_step(self,step):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking step into account. Thereby no signal is triggered!
+
+        @params float: Step to update in m
+
+        @return float: Step to update in m
+         """
         self._mw.align_2d_axis0_step_DSpinBox.blockSignals(True)
         self._mw.align_2d_axis0_step_DSpinBox.setValue(step)
         self._mw.align_2d_axis0_step_DSpinBox.blockSignals(False)
         return step
 
     def update_align_2d_axis0_vel(self,vel):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking vel into account. Thereby no signal is triggered!
+
+        @params float: Velocity to update
+
+        @return float: Velocity to update
+         """
         self._mw.align_2d_axis0_vel_DSpinBox.blockSignals(True)
         self._mw.align_2d_axis0_vel_DSpinBox.setValue(vel)
         self._mw.align_2d_axis0_vel_DSpinBox.blockSignals(False)
         return vel
 
     def update_align_2d_axis1_name(self, axisname):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking axisname into account. Thereby no signal is triggered!
+
+        @params str: Axis name to update
+
+        @return str: Axis name to update
+         """
         self._mw.align_2d_axis1_name_ComboBox.blockSignals(True)
         index = self._mw.align_2d_axis1_name_ComboBox.findText(axisname)
         self._mw.align_2d_axis1_name_ComboBox.setCurrentIndex(index)
@@ -1576,21 +1682,36 @@ class MagnetGui(GUIBase):
         return index
 
     def update_align_2d_axis1_range(self, range):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking range into account. Thereby no signal is triggered!
+
+        @params float: Range to update
+
+        @return float: Range to update
+         """
         self._mw.align_2d_axis1_range_DSpinBox.blockSignals(True)
         self._mw.align_2d_axis1_range_DSpinBox.setValue(range)
         self._mw.align_2d_axis1_range_DSpinBox.blockSignals(False)
         return range
 
     def update_align_2d_axis1_step(self, step):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking step into account. Thereby no signal is triggered!
+
+        @params float: Step to update in m
+
+        @return float: Step to update in m
+         """
         self._mw.align_2d_axis1_step_DSpinBox.blockSignals(True)
         self._mw.align_2d_axis1_step_DSpinBox.setValue(step)
         self._mw.align_2d_axis1_step_DSpinBox.blockSignals(False)
         return step
 
     def update_align_2d_axis1_vel(self,vel):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking vel into account. Thereby no signal is triggered!
+
+        @params float: Velocity to update
+
+        @return float: Velocity to update
+         """
         self._mw.align_2d_axis1_vel_DSpinBox.blockSignals(True)
         self._mw.align_2d_axis1_vel_DSpinBox.setValue(vel)
         self._mw.align_2d_axis1_vel_DSpinBox.blockSignals(False)
@@ -1598,14 +1719,24 @@ class MagnetGui(GUIBase):
 
 
     def update_optimize_pos_freq(self, freq):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking freq into account. Thereby no signal is triggered!
+
+        @params float: Frequency to update
+
+        @return float: Frequency to update
+         """
         self._mw.align_2d_fluorescence_optimize_freq_SpinBox.blockSignals(True)
         self._mw.align_2d_fluorescence_optimize_freq_SpinBox.setValue(freq)
         self._mw.align_2d_fluorescence_optimize_freq_SpinBox.blockSignals(False)
         return freq
 
     def update_fluorescence_integration_time(self, time):
-        """ Change the display value in the GUI. Do not trigger a changed signal"""
+        """ The GUT is updated taking time into account. Thereby no signal is triggered!
+
+        @params float: Integration time to update
+
+        @return float: Integration time to update
+         """
         self._mw.align_2d_fluorescence_integrationtime_DSpinBox.blockSignals(True)
         self._mw.align_2d_fluorescence_integrationtime_DSpinBox.setValue(time)
         self._mw.align_2d_fluorescence_integrationtime_DSpinBox.blockSignals(False)
