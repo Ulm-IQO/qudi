@@ -287,12 +287,12 @@ class FastComtec(Base, FastCounterInterface):
             elif self.stopped_or_halt == "halt":
                 return 3
             else:
-                self.log.error('There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+                self.log.error('FastComTec neither stopped nor halt')
 
                 return -1
         else:
             self.log.error(
-                'There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+                'There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
             return -1
 
 

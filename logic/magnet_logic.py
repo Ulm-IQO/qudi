@@ -169,7 +169,7 @@ class MagnetLogic(GenericLogic):
 
         self._gc_logic = self.get_in_connector('gatedcounterlogic')
         self._ta_logic = self.get_in_connector('traceanalysis')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
+        #self._odmr_logic = self.get_in_connector('odmrlogic')
 
         self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
 
@@ -517,6 +517,8 @@ class MagnetLogic(GenericLogic):
         self._statusVariables['nuclear_2d_idle_time'] =  self.nuclear_2d_idle_time
         self._statusVariables['nuclear_2d_reps_within_ssr'] =  self.nuclear_2d_reps_within_ssr
         self._statusVariables['nuclear_2d_num_ssr'] =  self.nuclear_2d_num_ssr
+
+        return 0
 
     def get_hardware_constraints(self):
         """ Retrieve the hardware constraints.
