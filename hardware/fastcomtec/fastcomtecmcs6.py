@@ -261,6 +261,10 @@ class FastComtec(Base, FastCounterInterface):
         """
         status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
+        # status.started = 3 measn that fct is about to stop
+        while status.started == 3:
+            time.sleep(0.1)
+            self.dll.GetStatusData(ctypes.byref(status), 0)
         if status.started == 1:
             return 2
         elif status.started == 0:
@@ -269,12 +273,12 @@ class FastComtec(Base, FastCounterInterface):
             elif self.stopped_or_halt == "halt":
                 return 3
             else:
-                self.log.error('There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+                self.log.error('There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
 
                 return -1
         else:
             self.log.error(
-                'There is an unknown status from FastComtec. The status message was %s' % (str(running.started)))
+                'There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
             return -1
 
 
