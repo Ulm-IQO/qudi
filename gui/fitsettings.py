@@ -125,20 +125,21 @@ class FitSettingsDialog(QtWidgets.QDialog):
         res = QtWidgets.QFileDialog.getSaveFileName(
             self,
             'Save fit collection for {0}'.format(self.title),
-            '/path'
+            '/path',
             'Fit files (*.fit *.yml)'
             )
-        print(res)
+        self.fc.fit_logic.save_fits(res[0], {self.fc.dimension: self.fc.fit_list})
 
     @QtCore.Slot()
     def loadFitButtonClicked(self):
         res = QtWidgets.QFileDialog.getOpenFileName(
             self,
             'Load fit collection for {0}'.format(self.title),
-            '/path'
+            '/path',
             'Fit files (*.fit *.yml)'
             )
-        print(res)
+        fits = self.fc.fit_logic.load_fits(res[0])
+        self.loadFits(fits[self.fc.dimension])
 
     def loadFits(self, user_fits):
         """ """
