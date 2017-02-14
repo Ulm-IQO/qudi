@@ -261,6 +261,7 @@ class FastComtec(Base, FastCounterInterface):
         """
         status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
+        # status.started = 3 measn that fct is about to stop
         while status.started == 3:
             time.sleep(0.1)
             self.dll.GetStatusData(ctypes.byref(status), 0)
