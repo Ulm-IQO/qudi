@@ -370,8 +370,6 @@ class CounterLogic(GenericLogic):
         """
         constraints = self.get_hardware_constraints()
 
-        print(constraints.counting_mode)
-
         if CountingMode[mode] in constraints.counting_mode:
             self._counting_mode = CountingMode[mode]
             self.log.debug(self._counting_mode)
