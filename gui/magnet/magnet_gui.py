@@ -247,7 +247,12 @@ class MagnetGui(GUIBase):
         self._mw.magnet_settings_Action.triggered.connect(self.open_magnet_settings)
         self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
 
-        self.update_pos()
+        curr_pos = self.update_pos()
+        # update the values also of the absolute movement display:
+        for axis_label in curr_pos:
+            dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
+            dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
+
         self._magnet_logic.sigPosChanged.connect(self.update_pos)
 
         # Connect alignment GUI elements:
@@ -1207,8 +1212,10 @@ class MagnetGui(GUIBase):
             dspinbox_pos_ref.setValue(curr_pos[axis_label])
 
             # update the values also of the absolute movement display:
-            dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
-            dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
+            #dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
+            #dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
+
+        return curr_pos
 
 
     def run_stop_2d_alignment(self, is_checked):
