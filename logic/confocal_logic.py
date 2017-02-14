@@ -1075,6 +1075,7 @@ class ConfocalLogic(GenericLogic):
         prefix_count = 0
         image_data = data
         draw_cb_range = np.array(cbar_range)
+        image_dimension = image_extent.copy()
 
         while draw_cb_range[1] > 1000:
             image_data = image_data/1000
@@ -1082,6 +1083,25 @@ class ConfocalLogic(GenericLogic):
             prefix_count = prefix_count + 1
 
         c_prefix = prefix[prefix_count]
+
+
+        # Scale axes values using SI prefix
+        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        x_prefix_count = 0
+        y_prefix_count = 0
+
+        while np.abs(image_dimension[1]-image_dimension[0]) < 1:
+            image_dimension[0] = image_dimension[0] * 1000.
+            image_dimension[1] = image_dimension[1] * 1000.
+            x_prefix_count = x_prefix_count + 1
+
+        while np.abs(image_dimension[3] - image_dimension[2]) < 1:
+            image_dimension[2] = image_dimension[2] * 1000.
+            image_dimension[3] = image_dimension[3] * 1000.
+            y_prefix_count = y_prefix_count + 1
+
+        x_prefix = axes_prefix[x_prefix_count]
+        y_prefix = axes_prefix[y_prefix_count]
 
         # Use qudi style
         plt.style.use(self._save_logic.mpl_qd_style)
@@ -1096,12 +1116,12 @@ class ConfocalLogic(GenericLogic):
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],
                             interpolation='none',
-                            extent=image_extent
+                            extent=image_dimension
                             )
 
         ax.set_aspect(1)
-        ax.set_xlabel(scan_axis[0] + ' position (m)')
-        ax.set_ylabel(scan_axis[1] + ' position (m)')
+        ax.set_xlabel(scan_axis[0] + ' position (' + x_prefix + 'm)')
+        ax.set_ylabel(scan_axis[1] + ' position (' + y_prefix + 'm)')
         ax.spines['bottom'].set_position(('outward', 10))
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
@@ -1119,13 +1139,16 @@ class ConfocalLogic(GenericLogic):
                 ax.transAxes,
                 ax.transData)
 
-            ax.annotate('', xy=(crosshair_pos[0], 0), xytext=(crosshair_pos[0], -0.01), xycoords=trans_xmark,
+            ax.annotate('', xy=(crosshair_pos[0]*np.power(1000,x_prefix_count), 0),
+                        xytext=(crosshair_pos[0]*np.power(1000,x_prefix_count), -0.01), xycoords=trans_xmark,
                         arrowprops=dict(facecolor='#17becf', shrink=0.05),
                         )
 
-            ax.annotate('', xy=(0, crosshair_pos[1]), xytext=(-0.01, crosshair_pos[1]), xycoords=trans_ymark,
+            ax.annotate('', xy=(0, crosshair_pos[1]*np.power(1000,y_prefix_count)),
+                        xytext=(-0.01, crosshair_pos[1]*np.power(1000,y_prefix_count)), xycoords=trans_ymark,
                         arrowprops=dict(facecolor='#17becf', shrink=0.05),
                         )
+            print(crosshair_pos, x_prefix_count, y_prefix_count)
 
         # Draw the colorbar
         cbar = plt.colorbar(cfimage, shrink=0.8)#, fraction=0.046, pad=0.08, shrink=0.75)

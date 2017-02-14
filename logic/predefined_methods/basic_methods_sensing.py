@@ -173,7 +173,7 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
     return block_ensemble
 
 
-def generate_cpmg_tau(self, name='CPMG_tau', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
+def generate_cpmg_tau(self, name='CPMG_tau', rabi_period=1.0e-8, mw_freq=2870.0e6, mw_amp=0.1,
                      start_tau=0.5e-6, incr_tau=0.01e-6, num_of_points=50, cpmg_order=4,
                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
                      wait_time=1.0e-6, seq_trig_channel='', gate_count_channel='',alternating=True):
@@ -286,7 +286,7 @@ def generate_cpmg_tau(self, name='CPMG_tau', rabi_period=1.0e-6, mw_freq=2870.0e
 
 
 def generate_cpmg_nsweep(self, name='CPMG_Nsweep', rabi_period=1.0e-8, mw_freq=2870.0e6, mw_amp=0.1,
-                     tau=0.5e-6,start_n=1, incr_n=1, num_of_points=50, cpmg_order=4,
+                     tau=0.5e-6,start_n=1, incr_n=1, num_of_points=50,
                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
                      wait_time=1.0e-6, seq_trig_channel='', gate_count_channel='',alternating=True):
     """
@@ -349,7 +349,7 @@ def generate_cpmg_nsweep(self, name='CPMG_Nsweep', rabi_period=1.0e-8, mw_freq=2
         elem_list.append(tauhalf_element)
         for n in range(n_array[nn]):
             elem_list.append(piy_element)
-            if n != cpmg_order-1:
+            if n != n_array[nn]-1:
                 elem_list.append(tau_element)
         elem_list.append(tauhalf_element)
         elem_list.append(pihalf_element)
@@ -361,7 +361,7 @@ def generate_cpmg_nsweep(self, name='CPMG_Nsweep', rabi_period=1.0e-8, mw_freq=2
             elem_list.append(tauhalf_element)
             for n in range(n_array[nn]):
                 elem_list.append(piy_element)
-                if n !=cpmg_order - 1:
+                if n != n_array[nn] - 1:
                     elem_list.append(tau_element)
             elem_list.append(tauhalf_element)
             elem_list.append(pi3half_element)

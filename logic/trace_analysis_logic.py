@@ -409,8 +409,12 @@ class TraceAnalysisLogic(GenericLogic):
             self.log.debug('time_array_high:{0}'.format(time_array_high))
             self.log.debug('time_hist_high:{0}'.format(time_hist_high))
             self.log.debug('indices: {0}'.format(indices))
-            result = self._fit_logic.make_exponentialdecay_fit(axis=time_hist_high[1][indices],
-                                                               data=time_hist_high[0][indices])
+            self.debug_lifetime_x = time_hist_high[1][indices]
+            self.debug_lifetime_y = time_hist_high[0][indices]
+            para = dict()
+            para['offset'] = {"value": 0.0, "vary": False}
+            result = self._fit_logic.make_exponentialdecayoffset_fit(time_hist_high[1][indices],
+                                                               time_hist_high[0][indices], add_params=para)
             bright_liftime = result.params['lifetime']
             # for debug purposes give also the results back of the fits for now
             lifetime_dict['result_bright'] = result
@@ -425,8 +429,8 @@ class TraceAnalysisLogic(GenericLogic):
             values = np.array([val[1] for val in vals])
             # positive axis
             mirror_axis = -time_hist_low[1][indices]
-            result = self._fit_logic.make_exponentialdecay_fit(axis=mirror_axis,
-                                                               data=values)
+            result = self._fit_logic.make_exponentialdecayoffset_fit(mirror_axis,
+                                                               values, add_params=para)
             dark_liftime = result.params['lifetime']
             lifetime_dict['result_dark'] = result
 
@@ -703,11 +707,12 @@ class TraceAnalysisLogic(GenericLogic):
         respect to the overlap area:
 
         """
-
+        # in any case calculate the hist data
+        x_axis = hist_data[0][:-1] + (hist_data[0][1] - hist_data[0][0]) / 2.
+        y_data = hist_data[1]
         if distr == 'poissonian':
             # perform the fit
-            x_axis = hist_data[0][:-1]+(hist_data[0][1]-hist_data[0][0])/2.
-            y_data = hist_data[1]
+
             hist_fit_x, hist_fit_y, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
 
             if param_dict.get('lambda_0') is None:
@@ -819,22 +824,18 @@ class TraceAnalysisLogic(GenericLogic):
             def gaussian(counts, amp, stdv, mean):
                 return amp * np.exp(-(counts - mean) ** 2 / (2 * stdv ** 2)) / (stdv * np.sqrt(2 * np.pi))
 
-            # now making fit to the provided data
-            x_axis = hist_data[0][:-1]+(hist_data[0][1]-hist_data[0][0])/2.
-            y_data = hist_data[1]
             try:
-                hist_fit_x, hist_fit_y, param_dict, result = self.do_doublegaussian_fit(axis=x_axis, data=y_data)
-
+                result = self._fit_logic.make_twogausspeakoffset_fit(x_axis, y_data)
                 # calculating the threshold
-                # NOTE the threshold is taken as the interesection of the two gaussians, while this should give
+                # NOTE the threshold is taken as the intersection of the two gaussians, while this should give
                 # a good approximation I doubt it is mathematical exact.
 
-                mu0 = result.params['gaussian0_center'].value
-                mu1 = result.params['gaussian1_center'].value
-                sigma0 = result.params['gaussian0_sigma'].value
-                sigma1 = result.params['gaussian1_sigma'].value
-                amp0 = result.params['gaussian0_amplitude'].value / (sigma0 * np.sqrt(2 * np.pi))
-                amp1 = result.params['gaussian1_amplitude'].value / (sigma1 * np.sqrt(2 * np.pi))
+                mu0 = result.params['g0_center'].value
+                mu1 = result.params['g1_center'].value
+                sigma0 = result.params['g0_sigma'].value
+                sigma1 = result.params['g1_sigma'].value
+                amp0 = result.params['g0_amplitude'].value / (sigma0 * np.sqrt(2 * np.pi))
+                amp1 = result.params['g1_amplitude'].value / (sigma1 * np.sqrt(2 * np.pi))
                 candidates = two_gaussian_intersect(mu0, mu1, sigma0, sigma1, amp0, amp1)
 
                 # we want to get the intersection that lies between the two peaks
@@ -863,6 +864,7 @@ class TraceAnalysisLogic(GenericLogic):
                     gc1 = integrate.quad(lambda counts: gaussian(counts, amp0, sigma0, mu0), -1, 1)
                     gp1 = integrate.quad(lambda counts: gaussian(counts, amp0, sigma0, mu0), threshold, 1)
 
+                param_dict = {}
                 fidelity = 1 - (gp0[0] / gc0[0] + gp1[0] / gc1[0])/2
                 fidelity1 = 1 - (gp0[0] / gc0[0])
                 fidelity2 = 1 - gp1[0] / gc1[0]
