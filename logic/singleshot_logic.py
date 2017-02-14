@@ -181,9 +181,12 @@ class SingleShotLogic(GenericLogic):
 
         summed_pulses = np.sum(data, axis)
 
-        return_dict = self._pe_logic.ungated_extraction(summed_pulses, smoothing, n_laserpulses)
-        rising_ind = return_dict['laser_rising']
-        falling_ind = return_dict['laser_falling']
+        # TODO make the type of pulsed extraction adjustable
+        self._pe_logic.number_of_lasers = n_laserpulses
+        self._pe_logic.conv_std_dev = smoothing
+        return_dict = self._pe_logic.ungated_extraction_methods['conv_deriv'](summed_pulses)
+        rising_ind = return_dict['laser_indices_rising']
+        falling_ind = return_dict['laser_indices_falling']
 
         start_stop_tupel_list = []
         for jj, rising in enumerate(rising_ind):

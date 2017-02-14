@@ -323,8 +323,7 @@ class MagnetGui(GUIBase):
         self.roi_magnet.sigRegionChanged.connect(self.hline_magnet.adjust)
         self.roi_magnet.sigRegionChanged.connect(self.vline_magnet.adjust)
         self.roi_magnet.sigUserRegionUpdate.connect(self.update_from_roi_magnet)
-        self._mw.align_2d_axes0_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
-        self._mw.align_2d_axes1_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
+
 
 
 
@@ -384,6 +383,7 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis0_name_ComboBox.currentIndexChanged.connect(self.align_2d_axis0_name_changed)
         self._mw.align_2d_axis0_range_DSpinBox.setValue(self._magnet_logic.align_2d_axis0_range)
         self._mw.align_2d_axis0_range_DSpinBox.valueChanged.connect(self.align_2d_axis0_range_changed)
+        self._mw.align_2d_axis0_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
         self._mw.align_2d_axis0_step_DSpinBox.setValue(self._magnet_logic.align_2d_axis0_step)
         self._mw.align_2d_axis0_step_DSpinBox.valueChanged.connect(self.align_2d_axis0_step_changed)
         self._mw.align_2d_axis0_vel_DSpinBox.setValue(self._magnet_logic.align_2d_axis0_vel)
@@ -394,6 +394,7 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis1_name_ComboBox.currentIndexChanged.connect(self.align_2d_axis1_name_changed)
         self._mw.align_2d_axis1_range_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_range)
         self._mw.align_2d_axis1_range_DSpinBox.valueChanged.connect(self.align_2d_axis1_range_changed)
+        self._mw.align_2d_axes1_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
         self._mw.align_2d_axis1_step_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_step)
         self._mw.align_2d_axis1_step_DSpinBox.valueChanged.connect(self.align_2d_axis1_step_changed)
         self._mw.align_2d_axis1_vel_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_vel)
@@ -466,6 +467,8 @@ class MagnetGui(GUIBase):
 
         self._magnet_logic.sigOptPosFreqChanged.connect(self.update_optimize_pos_freq)
         self._magnet_logic.sigFluoIntTimeChanged.connect(self.update_fluorescence_integration_time)
+
+
         return 0
 
 
@@ -490,6 +493,8 @@ class MagnetGui(GUIBase):
 
         self.keep_former_magnet_settings()
 
+
+
     def trig_wrapper_normal_mode(self):
         if not self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
             self._ms.z_mode_checkBox.toggle()
@@ -501,6 +506,8 @@ class MagnetGui(GUIBase):
             self._ms.normal_mode_checkBox.toggle()
         elif self._ms.normal_mode_checkBox.isChecked() and self._ms.z_mode_checkBox.isChecked():
             self._ms.normal_mode_checkBox.toggle()
+
+
 
 
     def on_deactivate(self, e=None):
@@ -1531,7 +1538,9 @@ class MagnetGui(GUIBase):
         axis0_value = self.get_ref_move_abs_ScienDSpinBox(axis0_name).value()
         axis1_value = self.get_ref_move_abs_ScienDSpinBox(axis1_name).value()
 
-        self.roi_magnet.setPos([axis0_value, axis1_value])
+        center_x = axis0_value + 0.5 * self.roi_magnet.size()[0]
+        center_y = axis1_value + 0.5 * self.roi_magnet.size()[1]
+        self.roi_magnet.setPos([center_x, center_y])
         # not sure at the moment what I wanted to do with this, therefore testing without it.
         # self._mw.pos_show.setText('({0:.3f}, {1:.3f})'.format(axis0_value, axis1_value))
         # width_x = self.roi_magnet.size()[0]
