@@ -413,14 +413,6 @@ class PulsedMasterLogic(GenericLogic):
         pulsegenerator_constraints = self._measurement_logic.get_pulser_constraints()
         return pulsegenerator_constraints, fastcounter_constraints
 
-    def get_fit_functions(self):
-        """
-
-        @param functions_list:
-        @return:
-        """
-        return self._measurement_logic.get_fit_functions()
-
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):

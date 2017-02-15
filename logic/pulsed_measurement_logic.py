@@ -1176,15 +1176,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_fft_x = np.abs(np.fft.fftfreq(len(corrected_y), d=x_spacing))[:middle]
         return
 
-    def get_fit_functions(self):
-        """Giving the available fit functions
-
-        @return list of strings with all available fit functions
-
-        """
-        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)', 'Lorentian (pos)', 'N14',
-                'N15', 'Stretched Exponential', 'Exponential', 'XY8']
-
     def do_fit(self, fit_method, x_data=None, y_data=None):
         """Performs the chosen fit on the measured data.
 
