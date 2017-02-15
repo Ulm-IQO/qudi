@@ -1192,8 +1192,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @return float array pulsed_fit_x: Array containing the x-values of the fit
         @return float array pulsed_fit_y: Array containing the y-values of the fit
-        @return str array pulsed_fit_result: String containing the fit parameters displayed in a nice form
-        @return dict param_dict: a dictionary containing the fit result
+        @return dict fit_result: a dictionary containing the fit result
         """
         # Set current fit
         self.fc.set_current_fit(fit_method)
