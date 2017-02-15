@@ -61,12 +61,10 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
 
     #trigger + 8*N tau + 2*pi/2 pulse + 2*tauhalf_excess + laser_length + aom_delay + wait_time
     sequence_length=20.0e-9 + 8*xy8_order*tau + rabi_period/2 + laser_length + delay_length + wait_time
-    print(sequence_length)
     if (sequence_length%period)==0:
         extra_time=0
     else:
         extra_time=period-(sequence_length%period)
-    print(extra_time)
     extra_time=self._adjust_to_samplingrate(extra_time,1)
 
 
@@ -95,15 +93,15 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
     laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
                                                            channel_amp, gate_count_channel)
     # get pihalf element
-    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+    pihalf_element = self._get_mw_element(rabi_period / 4.0, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
     # get -x pihalf (3pihalf) element
-    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+    pi3half_element = self._get_mw_element(rabi_period / 4.0, 0.0, mw_channel, False, mw_amp,
                                            mw_freq, 180.)
     # get pi elements
-    pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+    pix_element = self._get_mw_element(rabi_period / 2.0, 0.0, mw_channel, False, mw_amp, mw_freq,
                                        0.0)
-    piy_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+    piy_element = self._get_mw_element(rabi_period / 2.0, 0.0, mw_channel, False, mw_amp, mw_freq,
                                        90.0)
     # get tauhalf element
     tauhalf_element = self._get_idle_element(real_start_tauhalf, 0, False)
@@ -119,43 +117,43 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
         self.save_block('seq_trigger', seq_block)
 
     # create XY8-N_qdyne block element list
-    xy8_qdyne_elem_list = []
-    # actual XY8-N sequence
-    xy8_qdyne_elem_list.append(pihalf_element)
-    xy8_qdyne_elem_list.append(tauhalf_element)
+    elem_list = []
+    # actual Qdyne XY8 sequence
+    elem_list.append(pihalf_element)
+    elem_list.append(tauhalf_element)
 
     for n in range(xy8_order):
 
-        xy8_qdyne_elem_list.append(pix_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(piy_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(pix_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(piy_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(piy_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(pix_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(piy_element)
-        xy8_qdyne_elem_list.append(tau_element)
-        xy8_qdyne_elem_list.append(pix_element)
+        elem_list.append(pix_element)
+        elem_list.append(tau_element)
+        elem_list.append(piy_element)
+        elem_list.append(tau_element)
+        elem_list.append(pix_element)
+        elem_list.append(tau_element)
+        elem_list.append(piy_element)
+        elem_list.append(tau_element)
+        elem_list.append(piy_element)
+        elem_list.append(tau_element)
+        elem_list.append(pix_element)
+        elem_list.append(tau_element)
+        elem_list.append(piy_element)
+        elem_list.append(tau_element)
+        elem_list.append(pix_element)
         if n != xy8_order-1:
-            xy8_qdyne_elem_list.append(tau_element)
-    xy8_qdyne_elem_list.append(tauhalf_element)
-    xy8_qdyne_elem_list.append(pi3half_element)
-    xy8_qdyne_elem_list.append(laser_element)
-    xy8_qdyne_elem_list.append(delay_element)
-    xy8_qdyne_elem_list.append(waiting_element)
+            elem_list.append(tau_element)
+    elem_list.append(tauhalf_element)
+    elem_list.append(pi3half_element)
+    elem_list.append(laser_element)
+    elem_list.append(delay_element)
+    elem_list.append(waiting_element)
 
 
     # create XY8-N block object
-    xy8_qdyne_block = PulseBlock(name, xy8_qdyne_elem_list)
-    self.save_block(name, xy8_qdyne_block)
+    block = PulseBlock(name, elem_list)
+    self.save_block(name, block)
 
     # create block list and ensemble object
-    block_list = [(xy8_qdyne_block, 0)]
+    block_list = [(block, 0)]
     if seq_trig_channel is not None:
         block_list.append((seq_block, 0))
 
@@ -166,7 +164,7 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
     block_ensemble.activation_config = self.activation_config
     block_ensemble.amplitude_dict = self.amplitude_dict
     block_ensemble.laser_channel = self.laser_channel
-    block_ensemble.alternating = True
+    block_ensemble.alternating = False
     block_ensemble.laser_ignore_list = []
     # save ensemble
     self.save_ensemble(name, block_ensemble)
@@ -277,7 +275,7 @@ def generate_cpmg_tau(self, name='CPMG_tau', rabi_period=1.0e-8, mw_freq=2870.0e
     block_ensemble.activation_config = self.activation_config
     block_ensemble.amplitude_dict = self.amplitude_dict
     block_ensemble.laser_channel = self.laser_channel
-    block_ensemble.alternating = True
+    block_ensemble.alternating = alternating
     block_ensemble.laser_ignore_list = []
     block_ensemble.controlled_vals_array = tau_array
     # save ensemble
@@ -411,8 +409,7 @@ def _adjust_to_samplingrate(self,value,divisibility):
         value=value+resolution-mod
     # correct for computational errors
     value=np.around(value,13)
-    print(value)
-    return value
+    return float(value)
 
 
 
