@@ -284,7 +284,13 @@ class BlockEditor:
         model = self.be_widget.model()
         access = self.be_widget.itemDelegateForColumn(column).model_data_access
         data = model.index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -589,7 +595,13 @@ class BlockOrganizer:
         model = self.bo_widget.model()
         access = self.bo_widget.itemDelegateForColumn(column).model_data_access
         data = self.bo_widget.model().index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -840,7 +852,13 @@ class SequenceEditor:
         model = self.se_widget.model()
         access = self.se_widget.itemDelegateForColumn(column).model_data_access
         data = self.se_widget.model().index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
             model.setData(model.index(row, column), value, access)
             return value
         else:
