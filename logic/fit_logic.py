@@ -331,6 +331,8 @@ class FitContainer(QtCore.QObject):
             'units': self.units,
             'add_params': None}
 
+        result = None
+
         if self.current_fit in self.fit_list:
             result = self.fit_list[self.current_fit]['make_fit'](
                 estimator=self.fit_list[self.current_fit]['estimator'],
