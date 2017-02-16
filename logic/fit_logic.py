@@ -171,13 +171,23 @@ class FitLogic(GenericLogic):
 
             @return dict: checked dictionary with references to fit, model and estimator
 
-        Stored dictionary must have the following format.
+        The stored dictionary must have the following format.
         There can be a parameter settings string included at the deepest level.
         Example:
         '1d':
             'Two Lorentzian dips':
                 'fit_function': 'doublelorentzoffset'
                 'estimator': 'dip'
+
+        The returned dictionary has the following format (example):
+        '1d':
+            'Two Lorentzian dips':
+                'fit_name': 'doublelorentzoffset'
+                'est_name': 'dip'
+                'make_fit': function reference to fit function
+                'make_model': function reference to model function
+                'estimator': function reference to estimator function
+                'parameters': lmfit.parameter.Parameters object
         """
         user_fits = OrderedDict()
         for dim, dfits in fits.items():
@@ -231,17 +241,34 @@ class FitLogic(GenericLogic):
         return save_fits
 
     def load_fits(self, filename):
-        """ Fits. """
+        """ Load collection of fits from YAML file.
+            @param filename str: path of file containing fits in YAML format
+
+            @return dict: validated fit dictionary with function references and parameter objects
+        """
         user_fits = OrderedDict()
         fits = load(filename)
         return self.validate_load_fits(fits)
 
     def save_fits(self, filename, fits):
-        """ Save a collection of configured fits. """
+        """ Save a collection of configured fits to YAML file. 
+            @param fits dict: dictionay with fits, function references and parameter objects
+
+            @return dict: storable dictionary with fit description
+        """
         stripped_fits = self.prepare_save_fits(fits)
         save(filename, stripped_fits)
 
     def make_fit_container(self, container_name, dimension):
+        """ Creare a fit container object.
+            @param container_name str: user-fiendly name for configurable fit
+            @param dimension str: dimension of fit input data ('1d', '2d' od '3d')
+
+            @return FitContainer: fit container object
+
+        This is a convenience function so you do not have to mess with an extra import in modules
+        using FitLogic.
+        """
         return FitContainer(self, container_name, dimension)
 
 
@@ -294,7 +321,8 @@ class FitContainer(QtCore.QObject):
 
     def load_from_dict(self, fit_dict):
         """ Take a list of fits from a storable dictionary, load to self.fit_list and check.
-            @param fit_dict dict: dictionary containing fit descriptions
+            @param fit_dict dict: fit dictionary with function references etc
+
         """
         try:
             self.fit_list = self.fit_logic.validate_load_fits(fit_dict)[self.dimension]
@@ -302,20 +330,35 @@ class FitContainer(QtCore.QObject):
             self.fit_list = OrderedDict()
 
     def save_to_dict(self):
+        """ Convert self.fit_list to a storable dictionary.
+            
+            @return dict: storable configured fits dictionary
+        """
         prep = self.fit_logic.prepare_save_fits({self.dimension: self.fit_list})
         return prep
 
     def clear_result(self):
+        """ Reset fit result and fit parameters from result for this container.
+        """
         self.current_fit_param = lmfit.parameter.Parameters()
         self.current_fit_result = None
 
     @QtCore.Slot(dict)
     def set_fit_functions(self, fit_functions):
+        """ Set the configured fit functions for this container.
+            @param fit_functions dict: configured fit functions dictionary
+        """
         self.fit_list = fit_functions
         self.set_current_fit(self.current_fit)
 
     @QtCore.Slot(str)
     def set_current_fit(self, current_fit):
+        """ Check and set the current fit for this container by name.
+            @param current_fit str: name of configured fit to be used as current fit
+
+        If the name given is not in the list of fits, the current fit will be 'No Fit'.
+        This is a reserved name that will do nothing and should not display a fit line if set.
+        """
         if current_fit not in self.fit_list and current_fit != 'No Fit':
             self.fit_logic.log.warning('{0} not in {1} fit list!'.format(current_fit, self.name))
             self.current_fit = 'No Fit'
