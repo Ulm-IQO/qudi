@@ -425,6 +425,13 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return int(setting.range)
 
+    def change_filename(self,name):
+        """ Changed the name in FCT"""
+        cmd = 'mpaname=%s'%name
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return name
+
+
     # =========================================================================
     #   The following methods have to be carefully reviewed and integrated as
     #   internal methods/function, because they might be important one day.
@@ -461,4 +468,6 @@ class FastComtec(Base, FastCounterInterface):
         def WordToFloat(word):
             return (word & int('ffff',16)) * 4.096 / int('ffff',16) - 2.048
         return WordToFloat(setting.dac0), WordToFloat(setting.dac1)
+
+
 

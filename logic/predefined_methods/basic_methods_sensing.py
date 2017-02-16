@@ -46,7 +46,7 @@ General Pulse Creation Procedure:
 
 def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.0e6, mw_amp=0.5, tau=0.5e-6,
                        xy8_order=4, frequency=1.0e6, mw_channel='a_ch1', laser_length=3.0e-7, channel_amp=1.0,
-                       delay_length=0.7e-6, wait_time=1.0e-6, seq_trig_channel='d_ch2', gate_count_channel=''):
+                       delay_length=0.7e-6, wait_time=1.0e-6, seq_trig_channel='d_ch1', gate_count_channel=''):
     """
     """
 
@@ -118,6 +118,11 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
 
     # create XY8-N_qdyne block element list
     elem_list = []
+
+    elem_list.append(laser_element)
+    elem_list.append(delay_element)
+    elem_list.append(waiting_element)
+
     # actual Qdyne XY8 sequence
     elem_list.append(pihalf_element)
     elem_list.append(tauhalf_element)
@@ -143,9 +148,7 @@ def generate_xy8_qdyne(self, name='XY8_Qdyne', rabi_period=1.0e-8, mw_freq=2870.
             elem_list.append(tau_element)
     elem_list.append(tauhalf_element)
     elem_list.append(pi3half_element)
-    elem_list.append(laser_element)
-    elem_list.append(delay_element)
-    elem_list.append(waiting_element)
+
 
 
     # create XY8-N block object
