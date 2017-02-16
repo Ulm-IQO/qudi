@@ -225,7 +225,7 @@ class FastComtec(Base, FastCounterInterface):
         return constraints
 
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0,filename=None):
         """ Configuration of the fast counter.
 
         @param float bin_width_s: Length of a single time bin in the time trace
@@ -247,6 +247,9 @@ class FastComtec(Base, FastCounterInterface):
 
         no_of_bins = int(record_length_FastComTech_s / self.set_binwidth(bin_width_s))
         self.set_length(no_of_bins)
+
+        if filename!=None:
+            self._change_filename(filename)
         return (self.get_binwidth(), record_length_FastComTech_s, None)
 
     #card if running or halt or stopped ...
@@ -425,7 +428,7 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return int(setting.range)
 
-    def change_filename(self,name):
+    def _change_filename(self,name):
         """ Changed the name in FCT"""
         cmd = 'mpaname=%s'%name
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
