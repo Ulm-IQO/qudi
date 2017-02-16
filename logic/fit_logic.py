@@ -158,6 +158,7 @@ class FitLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
+        # FIXME: load all the fits here, otherwise reloading this module is really questionable
         pass
 
     def on_deactivate(self, e):
@@ -165,7 +166,19 @@ class FitLogic(GenericLogic):
         pass
 
     def validate_load_fits(self, fits):
-        """ """
+        """ Take fit names and estimators from a dict and check if they are valid.
+            @param fits dict: dictionary conatining fit and estimator description
+
+            @return dict: checked dictionary with references to fit, model and estimator
+
+        Stored dictionary must have the following format.
+        There can be a parameter settings string included at the deepest level.
+        Example:
+        '1d':
+            'Two Lorentzian dips':
+                'fit_function': 'doublelorentzoffset'
+                'estimator': 'dip'
+        """
         user_fits = OrderedDict()
         for dim, dfits in fits.items():
             if dim not in ('1d', '2d', '3d'):
@@ -193,7 +206,13 @@ class FitLogic(GenericLogic):
         return user_fits
 
     def prepare_save_fits(self, fits):
-        """ """
+        """ Convert fit dictionary into a storable form.
+            @param fits dict: fit dictionary with function references and parameter objects
+
+            @return dict: storable fits description dictionary
+
+        For the format of this dictionary, ess validate_load_fits.
+        """
         save_fits = OrderedDict()
         for dim, dfits in fits.items():
             if dim not in ('1d', '2d', '3d'):
@@ -235,6 +254,12 @@ class FitContainer(QtCore.QObject):
     sigNewFitParameters = QtCore.Signal(str, lmfit.parameter.Parameters)
 
     def __init__(self, fit_logic, name, dimension):
+        """ Create a fit container.
+
+            @param fit_logic FitLogic: reference to a FitLogic instance
+            @param name str: user-friendly name for this container
+            @param dimension str: dimension for fit input in this container, '1d', '2d' or '3d'
+        """
         super().__init__()
 
         self.fit_logic = fit_logic
@@ -259,19 +284,27 @@ class FitContainer(QtCore.QObject):
         self.units.append('dependent variable')
 
     def set_units(self, units):
+        """ Set units for this fit.
+            @param units list(str): list of units (for x axes and y axis)
+
+            Number of units must be = dimensions + 1
+        """
         if len(units) == self.dim + 1:
             self.units = units
 
     def load_from_dict(self, fit_dict):
+        """ Take a list of fits from a storable dictionary, load to self.fit_list and check.
+            @param fit_dict dict: dictionary containing fit descriptions
+        """
         try:
             self.fit_list = self.fit_logic.validate_load_fits(fit_dict)[self.dimension]
         except KeyError:
             self.fit_list = OrderedDict()
-    
+
     def save_to_dict(self):
         prep = self.fit_logic.prepare_save_fits({self.dimension: self.fit_list})
         return prep
-    
+
     def clear_result(self):
         self.current_fit_param = lmfit.parameter.Parameters()
         self.current_fit_result = None
