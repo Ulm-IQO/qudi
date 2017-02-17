@@ -270,6 +270,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'No parameter "scanner_clock_channel" configured.\n'
                 'Assign to that parameter an appropriate channel from your NI Card!')
 
+        if 'pixel_clock_channel' in config.keys():
+            self._pixel_clock_channel = config['pixel_clock_channel']
+        else:
+            self._pixel_clock_channel = None
+
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
         else:
@@ -1400,10 +1405,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
         return 0
 
-    def scan_line(self, line_path=None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and return the counts on that line.
 
         @param float[][n] line_path: array of n-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
 
@@ -1440,6 +1446,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 daq.DAQmxStopTask(task)
 
             daq.DAQmxStopTask(self._scanner_clock_daq_task)
+
+            if pixel_clock and self._pixel_clock_channel is not None:
+                daq.DAQmxConnectTerms(
+                    self._scanner_clock_channel + 'InternalOutput',
+                    self._pixel_clock_channel,
+                    daq.DAQmx_Val_DoNotInvertPolarity)
 
             # start the scanner counting task that acquires counts synchroneously
             for i, task in enumerate(self._scanner_counter_daq_tasks):
@@ -1495,6 +1507,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
             # stop the analog output task
             self._stop_analog_output()
+
+            if pixel_clock and self._pixel_clock_channel is not None:
+                daq.DAQmxDisconnectTerms(
+                    self._scanner_clock_channel + 'InternalOutput',
+                    self._pixel_clock_channel)
 
             # create a new array for the final data (this time of the length
             # number of samples):
