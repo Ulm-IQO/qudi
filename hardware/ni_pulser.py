@@ -30,12 +30,15 @@ from core.base import Base
 from interface.pulser_interface import PulserInterface
 from collections import OrderedDict
 
+
 class NIPulser(Base, PulserInterface):
     """ Pulse generator using NI-DAQmx
     """
 
     _modtype = 'PulserInterface'
     _modclass = 'hardware'
+
+    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -73,6 +76,9 @@ class NIPulser(Base, PulserInterface):
         self.current_status = -1
         self.current_loaded_asset = None
         self.init_constraints()
+
+        self.set_active_channels({
+            k: True for k in self.constraints['activation_config']['analog_only']})
         #self.sample_rate = self.get_sample_rate()
 
     def on_deactivate(self, e):
@@ -311,7 +317,18 @@ class NIPulser(Base, PulserInterface):
                              dictionary containing status description for all the possible status
                              variables of the pulse generator hardware.
         """
-        pass
+        status_dict = {
+            -1: 'Failed Request or Communication',
+            0: 'Device has stopped, but can receive commands.',
+            1: 'Device is active and running.'
+        }
+        task_done = daq.bool32
+        try:
+            daq.DAQmxIsTaskDone(self.pulser_task, daq.byref(task_done))
+            current_status = 0 if task_done.value else 1
+        except:
+            current_status = -1
+        return current_status, status_dict
 
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
@@ -336,7 +353,7 @@ class NIPulser(Base, PulserInterface):
               further processing.
         """
         task = self.pulser_task
-        source = daq.OnboardClock
+        source = 'OnboardClock'
         rate = sample_rate
         edge = daq.DAQmx_Val_Rising
         mode = daq.DAQmx_Val_ContSamps
@@ -376,7 +393,10 @@ class NIPulser(Base, PulserInterface):
         In general there is no bijective correspondence between (amplitude, offset) and
         (value high, value low)!
         """
-        pass
+        amp_dict = {}
+        off_dict = {}
+
+        return amp_dict, off_dict
 
     def set_analog_level(self, amplitude=None, offset=None):
         """ Set amplitude and/or offset value of the provided analog channel(s).
@@ -406,7 +426,7 @@ class NIPulser(Base, PulserInterface):
         In general there is no bijective correspondence between (amplitude, offset) and
         (value high, value low)!
         """
-        pass
+        return self.get_analog_level(amplitude, offset)
 
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided/all channels.
@@ -438,7 +458,7 @@ class NIPulser(Base, PulserInterface):
         In general there is no bijective correspondence between (amplitude, offset) and
         (value high, value low)!
         """
-        pass
+        return {}, {}
 
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
@@ -467,7 +487,7 @@ class NIPulser(Base, PulserInterface):
         In general there is no bijective correspondence between (amplitude, offset) and
         (value high, value low)!
         """
-        pass
+        return self.get_digital_level(low, high)
 
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
@@ -488,12 +508,12 @@ class NIPulser(Base, PulserInterface):
         bufsize = 2048
         buf = ctypes.create_string_buffer(bufsize)
         daq.DAQmxGetTaskChannels(self.pulser_task, buf, bufsize)
-        ni_ch = str(buf.value, encoding='utf-8').split()
+        ni_ch = str(buf.value, encoding='utf-8').split(', ')
 
         if ch is None:
-            return {k: v in ni_ch for k, v in self.channel_map.items()}
+            return {k: k in ni_ch for k, v in self.channel_map.items()}
         else:
-            return {k: self.channel_map[k] in ni_ch for k in ch}
+            return {k: k in ni_ch for k in ch}
 
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
@@ -525,20 +545,26 @@ class NIPulser(Base, PulserInterface):
         d_names.sort()
         d_channels = [self.channel_map[k] for k in d_names]
 
-        daq.DAQmxCreateAOVoltageChan(
-            self.pulser_task,
-            ', '.join(a_channels),
-            ', '.join(a_names),
-            min_volts,
-            max_volts,
-            daq.DAQmx_Val_Volts,
-            '')
+        min_volts = -10
+        max_volts = 10
 
-        daq.DAQmxCreateDOChan(
-            self.pulser_task,
-            d_channels,
-            d_names,
-            daq.DAQmx_Val_ChanForAllLines)
+        if len(a_channels) > 0:
+            #print(a_names, a_channels)
+            daq.DAQmxCreateAOVoltageChan(
+                self.pulser_task,
+                ', '.join(a_channels),
+                ', '.join(a_names),
+                min_volts,
+                max_volts,
+                daq.DAQmx_Val_Volts,
+                '')
+
+        if len(d_channels) > 0:
+            daq.DAQmxCreateDOChan(
+                self.pulser_task,
+                d_channels,
+                d_names,
+                daq.DAQmx_Val_ChanForAllLines)
 
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
