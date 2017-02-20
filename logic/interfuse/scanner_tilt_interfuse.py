@@ -16,7 +16,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-Copyright (C) 2016 Florian Frank alexander.stark@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
