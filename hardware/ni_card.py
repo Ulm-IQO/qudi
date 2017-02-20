@@ -1408,10 +1408,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and return the counts on that line.
 
-        @param float[][n] line_path: array of n-part tuples defining the voltage points
+        @param float[c][m] line_path: array of c-tuples defining the voltage points
+            (m = samples per line)
         @param bool pixel_clock: whether we need to output a pixel clock for this line
 
-        @return float[]: the photon counts per second
+        @return float[m][n]: m (samples per line) n-channel photon counts per second
 
         The input array looks for a xy scan of 5x5 points at the position z=-2
         like the following:
