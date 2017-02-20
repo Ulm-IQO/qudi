@@ -492,7 +492,7 @@ Go, play.
             self._mw,
             'Save Configration',
             defaultconfigpath,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if filename != '':
             self.sigSaveConfig.emit(filename)
 
