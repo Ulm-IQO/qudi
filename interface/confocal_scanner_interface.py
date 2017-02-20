@@ -152,16 +152,6 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_up_line(self, length=100):
-        """ Sets up the analoque output for scanning a line.
-
-        @param int length: length of the line in pixel
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
     def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
