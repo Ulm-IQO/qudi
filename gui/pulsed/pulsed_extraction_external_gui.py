@@ -149,7 +149,7 @@ class PulsedExtractionExternalGui(GUIBase):
 
 
     def load_data_clicked(self):
-        filename = QtGui.QFileDialog.getOpenFileName(None,"Load File","","All Files (*)")
+        filename = QtGui.QFileDialog.getOpenFileName(None,"Load File","","All Files (*)")[0]
         self._mw.data_filename_LineEdit.setText(filename)
         self.load_data()
         return
