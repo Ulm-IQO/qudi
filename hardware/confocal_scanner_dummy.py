@@ -232,7 +232,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
     def get_scanner_count_channels(self):
         """ 3 counting channels in dummy confocal: normal, negative and a ramp."""
-        return ['Norm', 'Neg', 'Ramp'] 
+        return ['Norm', 'Neg', 'Ramp']
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
