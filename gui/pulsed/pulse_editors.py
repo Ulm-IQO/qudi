@@ -293,6 +293,9 @@ class BlockEditor:
         elif isinstance(data, bool) and isinstance(value, bool):
             model.setData(model.index(row, column), value, access)
             return value
+        elif isinstance(data, str) and isinstance(value, str):
+            model.setData(model.index(row, column), value, access)
+            return value
         else:
             return data
 
@@ -604,6 +607,9 @@ class BlockOrganizer:
         elif isinstance(data, bool) and isinstance(value, bool):
             model.setData(model.index(row, column), value, access)
             return value
+        elif isinstance(data, str) and isinstance(value, str):
+            model.setData(model.index(row, column), value, access)
+            return value
         else:
             return data
 
@@ -644,6 +650,7 @@ class BlockOrganizer:
         for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
             column = self._cfg_param_pb['pulse_block']
             self.set_element(row_index, column, pulse_block.name)
+            print(pulse_block.name)
             column = self._cfg_param_pb['repetitions']
             self.set_element(row_index, column, int(repetitions))
         return
@@ -859,6 +866,9 @@ class SequenceEditor:
             model.setData(model.index(row, column), value, access)
             return value
         elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:
