@@ -232,6 +232,16 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return float[]: the photon counts per second
         """
+        if self.superres_scanmode:
+            new_path = np.zeros([line_path.shape[0], line_path.shape[1]*3])
+            new_path[:][0] = np.linspace(min(line_path[:][0]), max(line_path[:][0]),
+                                         new_path.shape[1])
+            new_path[:][1] = np.linspace(min(line_path[:][1]), max(line_path[:][1]),
+                                         new_path.shape[1])
+            new_path[:][2] = np.linspace(min(line_path[:][2]), max(line_path[:][2]),
+                                         new_path.shape[1])
+            line_path = new_path
+
         # apply tilt correction
         if self.tiltcorrection:
             line_path[:][2] += self._calc_dz(line_path[:][0], line_path[:][1])
@@ -241,7 +251,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             # Switch on pulse sequence
             self._pulsed_measurement.pulse_generator_on()
             # always sample 3 times the same position
-            line_path = np.repeat(line_path, 3, axis=1)
+            #line_path = np.repeat(line_path, 3, axis=1)
             tmp_return = self._scanning_device.scan_line(line_path, True)
             linescan_return = np.zeros([int(tmp_return.shape[0] / 3), 3])
             linescan_return[:, 0] = tmp_return[::3, 0]
