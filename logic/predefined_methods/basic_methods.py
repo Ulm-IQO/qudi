@@ -1294,6 +1294,69 @@ def _get_mw_element(self, length, increment, mw_channel, use_as_tick, amp=None, 
                                    parameters=mw_params, use_as_tick=use_as_tick)
     return mw_element
 
+def _get_multiple_mw_element(self, length, increment, mw_channel, use_as_tick, amps = None, freqs = None,
+                                                                          phases = None):
+    """
+    Creates at the mment double or triple mw element. Is easily extended when further methods are developed in the
+    module sampling_functions.
+
+    @param float length: MW pulse duration in seconds
+    @param float increment: MW pulse duration increment in seconds
+    @param string mw_channel: The pulser channel controlling the MW. If set to 'd_chX' this will be
+                              interpreted as trigger for an external microwave source. If set to
+                              'a_chX' the pulser (AWG) will act as microwave source.
+    @param bool use_as_tick: use as tick flag of the PulseBlockElement
+    @param amps: list containing the amplitudes
+    @param freqs: list containing the frequencies
+    @param phases: list containing the phases
+    @return: PulseBlockElement, the generated MW element
+    """
+
+    # some check if all the parameter lists have the same length
+    set1 = set([len(amps), len(freqs), len(phases)])
+    if len(set1) != 1:
+        self.log.warning('the lists amps, freqs and phases should have same length')
+    # get channel lists
+    digital_channels, analog_channels = self._get_channel_lists()
+    # supported sine methods at the moment
+    prefix = ['Double', 'Triple']
+
+    # check if the list lengths are in the supported range
+    # and find out the method needed in this specific case
+
+    list_len = [i for i in set1][0]
+    if (list_len - 2 < 0) | (list_len - 2 > 1):
+        self.log.warning('the length of your parameter lists is not supported')
+    cur_prefix = prefix[list_len - 2]
+
+    # input params for MW element generation
+    mw_params = [{}] * self.analog_channels
+    mw_digital = [False] * self.digital_channels
+    mw_function = ['Idle'] * self.analog_channels
+
+    param_bare = ['amplitude', 'frequency', 'phase']
+
+    pre_settings = {param_bare[0]: amps, param_bare[1]: freqs, param_bare[2]: phases}
+    settings= {}
+
+    for key in pre_settings:
+        for ii, val in enumerate(pre_settings[key]):
+            settings[key + str(ii+1)] = val
+
+
+    # Determine analogue or digital MW channel and set parameters accordingly.
+    if 'd_ch' in mw_channel:
+        self.log.warning('for multiple_mw_element only pulser can be used')
+    elif 'a_ch' in mw_channel:
+        mw_index = analog_channels.index(mw_channel)
+        mw_function[mw_index] = cur_prefix + 'Sin'
+        mw_params[mw_index] = settings
+
+    # Create MW element
+    multiple_mw_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                   pulse_function=mw_function, digital_high=mw_digital,
+                                   parameters=mw_params, use_as_tick=use_as_tick)
+    return multiple_mw_element
 
 def _get_mw_laser_element(self, length, increment, mw_channel, use_as_tick, delay_time=None,
                           laser_amp=None, mw_amp=None, mw_freq=None, mw_phase=None,

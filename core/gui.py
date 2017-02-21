@@ -43,7 +43,10 @@ class Gui(QObject):
                              QSize(256, 256))
         QApplication.instance().setWindowIcon(self.appIcon)
 
-    def setTheme(self):
+    def setTheme(self, theme, path):
+        """ Set icon theme for qudi app.
+            @param str path: search path for qudi icons
+        """
         # Make icons work on non-X11 platforms, set custom theme
         # if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
         #
@@ -51,9 +54,9 @@ class Gui(QObject):
         # removed and the QT theme is being set to our artwork/icons folder for
         # all OSs.
         themepaths = QIcon.themeSearchPaths()
-        themepaths.append('artwork/icons')
+        themepaths.append(path)
         QIcon.setThemeSearchPaths(themepaths)
-        QIcon.setThemeName('qudiTheme')
+        QIcon.setThemeName(theme)
 
     def setStyleSheet(self, stylesheetpath):
         with open(stylesheetpath, 'r') as stylesheetfile:

@@ -898,7 +898,10 @@ class PoiManagerGui(GUIBase):
         """ Load a saved ROI from file."""
 
         this_file = QtWidgets.QFileDialog.getOpenFileName(
-            self._mw, str("Open ROI"), None, str("Data files (*.dat)"))
+            self._mw,
+            str("Open ROI"),
+            None,
+            str("Data files (*.dat)"))[0]
 
         self._poi_manager_logic.load_roi_from_file(filename=this_file)
 

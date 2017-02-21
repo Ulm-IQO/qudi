@@ -144,7 +144,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             self,
             'Load Configration',
             defaultconfigpath ,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if len(filename) > 0:
             print('Open:', filename)
             self.loadConfigFile(filename)
@@ -173,7 +173,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             self,
             'Save Configration As',
             defaultconfigpath ,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if len(filename) > 0:
             print('Save:', filename)
             config = self.nodesToConfig()

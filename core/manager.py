@@ -118,7 +118,7 @@ class Manager(QtCore.QObject):
             if self.hasGui:
                 import core.gui
                 self.gui = core.gui.Gui()
-                self.gui.setTheme()
+                self.gui.setTheme('qudiTheme', os.path.join(self.getMainDir(), 'artwork', 'icons'))
                 self.gui.setAppIcon()
 
             # Read in configuration file
