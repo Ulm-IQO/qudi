@@ -26,6 +26,7 @@ import time
 import matplotlib.pyplot as plt
 
 from logic.generic_logic import GenericLogic
+from interface.slow_counter_interface import CountingMode
 from core.util.mutex import Mutex
 
 
@@ -52,7 +53,7 @@ class CounterLogic(GenericLogic):
     sigCountFrequencyChanged = QtCore.Signal(float)
     sigSavingStatusChanged = QtCore.Signal(bool)
     sigCountStatusChanged = QtCore.Signal(bool)
-    sigCountingModeChanged = QtCore.Signal(str)
+    sigCountingModeChanged = QtCore.Signal(CountingMode)
 
 
     _modclass = 'CounterLogic'
@@ -91,7 +92,7 @@ class CounterLogic(GenericLogic):
         self._smooth_window_length = 10
         self._binned_counting = True
 
-        self._counting_mode = 'continuous'
+        self._counting_mode = CountingMode['CONTINUOUS']
 
 
     def on_activate(self, e):
@@ -358,19 +359,19 @@ class CounterLogic(GenericLogic):
 
         return fig
 
-    def set_counting_mode(self, mode='continuous'):
+    def set_counting_mode(self, mode='CONTINUOUS'):
         """Set the counting mode, to change between continuous and gated counting.
         Possible options are:
-            'continuous'    = counts continuously
-            'gated'         = bins the counts according to a gate signal
-            'finite-gated'  = finite measurement with predefined number of samples
+            'CONTINUOUS'    = counts continuously
+            'GATED'         = bins the counts according to a gate signal
+            'FINITE_GATED'  = finite measurement with predefined number of samples
 
         @return str: counting mode
         """
         constraints = self.get_hardware_constraints()
 
-        if mode in constraints.counting_mode:
-            self._counting_mode = mode
+        if CountingMode[mode] in constraints.counting_mode:
+            self._counting_mode = CountingMode[mode]
             self.log.debug(self._counting_mode)
         else:
             self.log.warning('Counting mode not supported from hardware. Command ignored!')
@@ -381,9 +382,9 @@ class CounterLogic(GenericLogic):
         """ Retrieve the current counting mode.
 
         @return str: one of the possible counting options:
-                'continuous'    = counts continuously
-                'gated'         = bins the counts according to a gate signal
-                'finite-gated'  = finite measurement with predefined number of samples
+                'CONTINUOUS'    = counts continuously
+                'GATED'         = bins the counts according to a gate signal
+                'FINITE_GATED'  = finite measurement with predefined number of samples
         """
         return self._counting_mode
  
@@ -395,13 +396,13 @@ class CounterLogic(GenericLogic):
             @return error: 0 is OK, -1 is error
         """
 
-        if self._counting_mode == 'continuous':
+        if self._counting_mode == CountingMode['CONTINUOUS']:
             self.sigCountStatusChanged.emit(True)
             return self._startCount_continuous()
-        elif self._counting_mode == 'gated':
+        elif self._counting_mode == CountingMode['GATED']:
             self.sigCountStatusChanged.emit(True)
             return self._startCount_gated()
-        elif self._counting_mode == 'finite-gated':
+        elif self._counting_mode == CountingMode['FINITE_GATED']:
             self.sigCountStatusChanged.emit(True)
             return self._startCount_finite_gated()
         else:

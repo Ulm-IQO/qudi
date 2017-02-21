@@ -617,7 +617,8 @@ class PoiManagerLogic(GenericLogic):
 
         # If the refocus was on the crosshair, then only update crosshair POI and don't
         # do anything with sample position.
-        if caller_tag == 'confocalgui':
+        caller_tags = ['confocalgui', 'magnet_logic', 'singleshot_logic']
+        if caller_tag in caller_tags:
             self.track_point_list['crosshair'].add_position_to_trace(position=optimized_position)
 
         # If the refocus was initiated here by poimanager, then update POI and sample
