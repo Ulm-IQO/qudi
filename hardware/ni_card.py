@@ -1314,7 +1314,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         return self._current_position
 
-    def set_up_line(self, length=100):
+    def _set_up_line(self, length=100):
         """ Sets up the analog output for scanning a line.
 
         Connect the timing of the Analog scanning task with the timing of the
@@ -1408,10 +1408,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and return the counts on that line.
 
-        @param float[][n] line_path: array of n-part tuples defining the voltage points
+        @param float[c][m] line_path: array of c-tuples defining the voltage points
+            (m = samples per line)
         @param bool pixel_clock: whether we need to output a pixel clock for this line
 
-        @return float[]: the photon counts per second
+        @return float[m][n]: m (samples per line) n-channel photon counts per second
 
         The input array looks for a xy scan of 5x5 points at the position z=-2
         like the following:
@@ -1431,7 +1432,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # specify how the Data of the selected task is collected, i.e. set it
             # now to be sampled by a hardware (clock) signal.
             daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_SampClk)
-            self.set_up_line(np.shape(line_path)[1])
+            self._set_up_line(np.shape(line_path)[1])
             line_volts = self._scanner_position_to_volt(line_path)
             # write the positions to the analog output
             written_voltages = self._write_scanner_ao(
