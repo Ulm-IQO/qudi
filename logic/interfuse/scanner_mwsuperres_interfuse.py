@@ -244,7 +244,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             # always sample 3 times the same position
             line_path = np.repeat(line_path, 3, axis=1)
             tmp_return = self._scanning_device.scan_line(line_path, True)
-            linescan_return = np.zeros([tmp_return.shape[0] / 3, 3])
+            linescan_return = np.zeros([int(tmp_return.shape[0] / 3), 3])
             linescan_return[:, 0] = tmp_return[::3, 0]
             linescan_return[:, 1] = tmp_return[1::3, 0]
             linescan_return[:, 2] = tmp_return[2::3, 0]
