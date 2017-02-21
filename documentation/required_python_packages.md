@@ -20,6 +20,7 @@ These package have to be installed in order to run Qudi (easily installed with A
 | hdf5storage   | ???        | https://pypi.python.org/pypi/hdf5storage    | awg70k      |
 | comtypes      | 1.1        | https://pypi.python.org/pypi/comtypes       | winspec_spectrometer (hardware) |
 | pythonnet     | 2.1.0.dev1 | https://pypi.python.org/pypi/pythonnet      | lightfield_spectrometer |
+| pillow        | 4.0.0      | https://python-pillow.org/                  | Save-Logic for Metadata |
 
 # How to install additional packages
 

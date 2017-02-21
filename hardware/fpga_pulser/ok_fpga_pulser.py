@@ -78,9 +78,10 @@ class OkFpgaPulser(Base, PulserInterface):
             self._fpga_type = config['fpga_type']
         else:
             self._fpga_type = 'XEM6310_LX150'
-            self.log.warning('No parameter "fpga_type" specified in the config!\nPossible types are'
-                             ' "XEM6310_LX150" or "XEM6310_LX45".\nTaking the type "{0}" as '
-                             'default.'.format(self._fpga_type))
+            self.log.warning(
+                'No parameter "fpga_type" specified in the config!\n'
+                'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
+                'Taking the type "{0}" as default.'.format(self._fpga_type))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 

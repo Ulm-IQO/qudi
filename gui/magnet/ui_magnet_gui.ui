@@ -152,7 +152,7 @@
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QComboBox" name="align_2d_axes0_name_ComboBox"/>
+                  <widget class="QComboBox" name="align_2d_axis0_name_ComboBox"/>
                  </item>
                  <item row="3" column="0">
                   <widget class="QCheckBox" name="align_2d_axis0_set_vel_CheckBox">
@@ -162,21 +162,21 @@
                   </widget>
                  </item>
                  <item row="3" column="1">
-                  <widget class="ScienDSpinBox" name="align_2d_axes0_vel_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axis0_vel_DSpinBox">
                    <property name="decimals">
                     <number>5</number>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="ScienDSpinBox" name="align_2d_axes0_range_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axis0_range_DSpinBox">
                    <property name="decimals">
                     <number>5</number>
                    </property>
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="ScienDSpinBox" name="align_2d_axes0_step_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axis0_step_DSpinBox">
                    <property name="decimals">
                     <number>5</number>
                    </property>
@@ -198,7 +198,7 @@
                 </property>
                 <layout class="QGridLayout" name="gridLayout_14">
                  <item row="0" column="1">
-                  <widget class="QComboBox" name="align_2d_axes1_name_ComboBox"/>
+                  <widget class="QComboBox" name="align_2d_axis1_name_ComboBox"/>
                  </item>
                  <item row="2" column="0">
                   <widget class="QLabel" name="align_2d_axes1_step_Label">
@@ -208,7 +208,7 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="ScienDSpinBox" name="align_2d_axes1_range_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axis1_range_DSpinBox">
                    <property name="decimals">
                     <number>5</number>
                    </property>
@@ -222,7 +222,7 @@
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="ScienDSpinBox" name="align_2d_axes1_step_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axis1_step_DSpinBox">
                    <property name="decimals">
                     <number>5</number>
                    </property>
@@ -243,7 +243,7 @@
                   </widget>
                  </item>
                  <item row="3" column="1">
-                  <widget class="ScienDSpinBox" name="align_2d_axes1_vel_DSpinBox">
+                  <widget class="ScienDSpinBox" name="align_2d_axis1_vel_DSpinBox">
                    <property name="decimals">
                     <number>5</number>
                    </property>
@@ -273,7 +273,7 @@
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes1_shift_DSpinBox">
+                  <widget class="QDoubleSpinBox" name="align_2d_axis1_shift_DSpinBox">
                    <property name="decimals">
                     <number>4</number>
                    </property>
@@ -289,7 +289,7 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="align_2d_axes0_shift_DSpinBox">
+                  <widget class="QDoubleSpinBox" name="align_2d_axis0_shift_DSpinBox">
                    <property name="decimals">
                     <number>4</number>
                    </property>
