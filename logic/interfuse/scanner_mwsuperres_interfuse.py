@@ -126,7 +126,6 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             count_channels = ['no_mw', 'mw_pi1', 'mw_pi2']
         else:
             count_channels = self._scanning_device.get_scanner_count_channels()
-        print(count_channels)
         return count_channels
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
