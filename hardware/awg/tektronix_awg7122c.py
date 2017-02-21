@@ -929,8 +929,8 @@ class AWG7122C(Base, PulserInterface):
 
         if ch is None:
             # because 0 = False and 1 = True
-            active_ch['a_ch1'] = bool(int(self.ask('OUTPUT1:STATE?')))
-            active_ch['a_ch2'] = bool(int(self.ask('OUTPUT2:STATE?')))
+            active_ch['a_ch1'] = bool(int(float(self.ask('OUTPUT1:STATE?'))))
+            active_ch['a_ch2'] = bool(int(float(self.ask('OUTPUT2:STATE?'))))
 
             # For the AWG5000 series, the resolution of the DAC for the analog
             # channel is fixed to 14bit. Therefore the digital channels are
@@ -949,7 +949,7 @@ class AWG7122C(Base, PulserInterface):
                     ana_chan = int(channel[4:])
                     if 0 < ana_chan <= self._get_num_a_ch():
                         # because 0 = False and 1 = True
-                        active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
+                        active_ch[channel] = bool(int(float(self.ask('OUTPUT{0}:STATE?'.format(ana_chan)))))
                     else:
                         self.log.warning('The device does not support that '
                             'many analog channels! A channel number '
@@ -961,9 +961,9 @@ class AWG7122C(Base, PulserInterface):
                     digi_chan = int(channel[4:])
                     if 0 < digi_chan <= self._get_num_d_ch():
                         if digi_chan == 1 or digi_chan == 2:
-                            active_ch[channel] = bool(int(self.ask('OUTPUT1:STATE?')))
+                            active_ch[channel] = bool(int(float(self.ask('OUTPUT1:STATE?'))))
                         elif digi_chan == 3 or digi_chan == 4:
-                            active_ch[channel] = bool(int(self.ask('OUTPUT2:STATE?')))
+                            active_ch[channel] = bool(int(float(self.ask('OUTPUT2:STATE?'))))
                     else:
                         self.log.warning('The device does not support that '
                                 'many digital channels! A channel number '
