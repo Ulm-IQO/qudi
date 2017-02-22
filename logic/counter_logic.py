@@ -483,37 +483,31 @@ class CounterLogic(GenericLogic):
             with self.threadlock:
                 # check for aborts of the thread in break if necessary
                 if self.stopRequested:
-                    try:
-                        # close off the actual counter
-                        self._counting_device.close_counter()
-                        self._counting_device.close_clock()
-                    except Exception as e:
-                        self.log.exception('Could not even close the hardware, giving up.')
-                        raise e
-                    finally:
-                        # switch the state variable off again
-                        self.stopRequested = False
-                        self.unlock()
-                        self.sigCounterUpdated.emit()
-                        return
+                    # close off the actual counter
+                    cnt_err = self._counting_device.close_counter()
+                    clk_err = self._counting_device.close_clock()
+                    if cnt_err < 0 or clk_err < 0:
+                        self.log.error('Could not even close the hardware, giving up.')
+                    # switch the state variable off again
+                    self.stopRequested = False
+                    self.unlock()
+                    self.sigCounterUpdated.emit()
+                    return
 
-                try:
-                    # read the current counter value
-                    self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-                except Exception as e:
+                # read the current counter value
+                self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+                if self.rawdata[0, 0] < 0:
                     self.log.error('The counting went wrong, killing the counter.')
                     self.stopRequested = True
-                    self.sigCounterUpdated.emit()
-                    raise e
-
-                if self._counting_mode == 'continuous':
-                    self._process_data_continous()
-                elif self._counting_mode == 'gated':
-                    self._process_data_gated()
-                elif self._counting_mode == 'finite-gated':
-                    self._process_data_finite_gated()
                 else:
-                    self.log.error('No valid counting mode set! Can not process counter raw data.')
+                    if self._counting_mode == 'continuous':
+                        self._process_data_continous()
+                    elif self._counting_mode == 'gated':
+                        self._process_data_gated()
+                    elif self._counting_mode == 'finite-gated':
+                        self._process_data_finite_gated()
+                    else:
+                        self.log.error('No valid counting mode set! Can not process counter data.')
 
             # call this again from event loop
             self.sigCounterUpdated.emit()
