@@ -40,10 +40,11 @@ class CounterLogic(GenericLogic):
     @return error: 0 is OK, -1 is error
     """
     sigCounterUpdated = QtCore.Signal()
+
     sigCountContinuousNext = QtCore.Signal()
     sigCountGatedNext = QtCore.Signal()
-
     sigCountFiniteGatedNext = QtCore.Signal()
+
     sigGatedCounterFinished = QtCore.Signal()
     sigGatedCounterContinue = QtCore.Signal(bool)
 
@@ -59,9 +60,8 @@ class CounterLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'counter1': 'SlowCounterInterface',
-            'savelogic': 'SaveLogic'
-            }
+    _in = {'counter1': 'SlowCounterInterface',
+           'savelogic': 'SaveLogic'}
     _out = {'counterlogic': 'CounterLogic'}
 
     def __init__(self, config, **kwargs):
@@ -83,16 +83,16 @@ class CounterLogic(GenericLogic):
 
         # in bins
         self._count_length = 300
+        self._smooth_window_length = 10
+        self._counting_samples = 1      # oversampling
         # in hertz
         self._count_frequency = 50
-        # oversampling in bins
-        self._counting_samples = 1
-        # in bins
-        self._smooth_window_length = 10
-        self._binned_counting = True
 
+        # self._binned_counting = True  # UNUSED?
         self._counting_mode = 'continuous'
 
+        self._saving = False
+        return
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -109,20 +109,32 @@ class CounterLogic(GenericLogic):
         self._counting_device = self.get_in_connector('counter1')
         self._save_logic = self.get_in_connector('savelogic')
 
+        # Recall saved app-parameters
+        if 'count_length' in self._statusVariables:
+            self._count_length = self._statusVariables['count_length']
+        if 'smooth_window_length' in self._statusVariables:
+            self._smooth_window_length = self._statusVariables['smooth_window_length']
+        if 'counting_samples' in self._statusVariables:
+            self._counting_samples = self._statusVariables['counting_samples']
+        if 'count_frequency' in self._statusVariables:
+            self._count_frequency = self._statusVariables['count_frequency']
+        if 'counting_mode' in self._statusVariables:
+            self._counting_mode = self._statusVariables['counting_mode']
+        if 'saving' in self._statusVariables:
+            self._saving = self._statusVariables['saving']
+
         constraints = self.get_hardware_constraints()
         number_of_detectors = constraints.max_detectors
 
-        self.countdata = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        self.countdata_smoothed = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        self.rawdata = np.zeros(
-            (len(self.get_channels()), self._counting_samples))
- 
-        self.running = False
+        # initialize data arrays
+        self.countdata = np.zeros([len(self.get_channels()), self._count_length])
+        self.countdata_smoothed = np.zeros([len(self.get_channels()), self._count_length])
+        self.rawdata = np.zeros([len(self.get_channels()), self._counting_samples])
+        self._data_to_save = []
+
+        # Flag to stop the loop
         self.stopRequested = False
-        self._saving = False
-        self._data_to_save=[]
+
         self._saving_start_time = time.time()
 
         # connect signals
@@ -146,6 +158,14 @@ class CounterLogic(GenericLogic):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
+        # Save parameters to disk
+        self._statusVariables['count_length'] = self._count_length
+        self._statusVariables['smooth_window_length'] = self._smooth_window_length
+        self._statusVariables['counting_samples'] = self._counting_samples
+        self._statusVariables['count_frequency'] = self._count_frequency
+        self._statusVariables['counting_mode'] = self._counting_mode
+        self._statusVariables['saving'] = self._saving
+
         #print('{0} -> {1}'.format(e.src, e.dst))
         if e.src == 'idle':
             return
