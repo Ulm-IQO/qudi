@@ -120,7 +120,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method activation.
         """
-        pass
+        self.log.warning('slowcounterdummy>deactivation')
 
     def get_constraints(self):
         """ Return a constraints class for the slow counter."""
