@@ -394,7 +394,6 @@ class SamplesWriteMethods():
             # write main part:
             # in this order: 'waveform_name', repeat, wait, Goto, ejump
             for seq_param_dict in sequence_param:
-                print(seq_param_dict)
                 repeat = seq_param_dict['repetitions']
                 trigger_wait = seq_param_dict['trigger_wait']
                 go_to = seq_param_dict['go_to']
@@ -416,7 +415,7 @@ class SamplesWriteMethods():
             table_jump = 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'
             logic_jump = 'LOGIC_JUMP -1, -1, -1, -1,\r\n'
             jump_mode = 'JUMP_MODE TABLE\r\n'
-            jump_timing = 'JUMP_TIMING ASYNC\r\n'
+            jump_timing = 'JUMP_TIMING SYNC\r\n'
             strobe_option = 'STROBE 0\r\n'
 
             footer = table_jump + logic_jump + jump_mode + jump_timing + strobe_option
