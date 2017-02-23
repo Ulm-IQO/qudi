@@ -118,7 +118,7 @@ class CounterLogic(GenericLogic):
         if 'count_frequency' in self._statusVariables:
             self._count_frequency = self._statusVariables['count_frequency']
         if 'counting_mode' in self._statusVariables:
-            self._counting_mode = self._statusVariables['counting_mode']
+            self._counting_mode = CountingMode[self._statusVariables['counting_mode']]
         if 'saving' in self._statusVariables:
             self._saving = self._statusVariables['saving']
 
@@ -152,19 +152,16 @@ class CounterLogic(GenericLogic):
         self._statusVariables['smooth_window_length'] = self._smooth_window_length
         self._statusVariables['counting_samples'] = self._counting_samples
         self._statusVariables['count_frequency'] = self._count_frequency
-        self._statusVariables['counting_mode'] = self._counting_mode
+        self._statusVariables['counting_mode'] = self._counting_mode.name
         self._statusVariables['saving'] = self._saving
 
+        print('==================================================')
+        print('YEAH BABY!!! DEACTIVATION ROCKS!!!')
+        print('==================================================')
+
+        # Stop measurement
         if self.getState() == 'locked':
             self._stopCount_wait()
-            # FIXME:
-            # for attempt in range(20):
-            #     if not self.stopRequested:
-            #         break
-            #     QtCore.QCoreApplication.processEvents()
-            #     time.sleep(0.1)
-            # else:
-            #     self.log.error('Stopped deactivate counter after trying for 2 seconds!')
 
         self.sigCountDataNext.disconnect()
         return
