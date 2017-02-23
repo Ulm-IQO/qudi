@@ -883,8 +883,8 @@ class Manager(QtCore.QObject):
             return
         module = self.tree['loaded'][base][name]
         try:
-            if not module.getState() in ('idle', 'running'):
-                logger.error('{0} module {1} not active (idle or running).'.format(base, name))
+            if not self.isModuleActive(base, name):
+                logger.error('{0} module {1} not isModuleActive.'.format(base, name))
                 return
         except:
             logger.exception(
@@ -1054,7 +1054,7 @@ class Manager(QtCore.QObject):
             for mbase in ('hardware', 'logic', 'gui'):
                 if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     try:
-                        deact = self.tree['loaded'][mbase][mkey].getState() in ('idle', 'running')
+                        deact = self.tree['loaded'][mbase][mkey].can('deactivate')
                     except:
                         deact = True
                     if deact:
