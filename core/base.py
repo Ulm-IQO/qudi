@@ -85,17 +85,13 @@ class Base(QtCore.QObject, Fysom):
                 {'name': 'activate',    'src': 'deactivated',   'dst': 'idle'},
                 {'name': 'deactivate',  'src': 'idle',          'dst': 'deactivated'},
                 {'name': 'deactivate',  'src': 'running',       'dst': 'deactivated'},
+                {'name': 'deactivate',  'src': 'locked',       'dst': 'deactivated'},
                 {'name': 'run',         'src': 'idle',          'dst': 'running'},
                 {'name': 'stop',        'src': 'running',       'dst': 'idle'},
                 {'name': 'lock',        'src': 'idle',          'dst': 'locked'},
                 {'name': 'lock',        'src': 'running',       'dst': 'locked'},
-                {'name': 'block',       'src': 'idle',          'dst': 'blocked'},
-                {'name': 'block',       'src': 'running',       'dst': 'blocked'},
-                {'name': 'locktoblock', 'src': 'locked',        'dst': 'blocked'},
                 {'name': 'unlock',      'src': 'locked',        'dst': 'idle'},
-                {'name': 'unblock',     'src': 'blocked',       'dst': 'idle'},
                 {'name': 'runlock',     'src': 'locked',        'dst': 'running'},
-                {'name': 'runblock',    'src': 'blocked',       'dst': 'running'}
             ],
             'callbacks': default_callbacks
         }

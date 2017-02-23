@@ -7,3 +7,4 @@ pyvisa
 pyvisa-py
 pydaqmx
 hdf5storage
+pillow

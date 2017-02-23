@@ -108,7 +108,7 @@ class QdplotLogic(GenericLogic):
         return
 
     def set_domain(self, newdomain=None):
-        """Set the plot domain
+        """Set the plot domain, to match the data (default) or to a specified new domain.
 
         @param float newdomain: 2-element list containing min and max x-values
         """
@@ -116,13 +116,13 @@ class QdplotLogic(GenericLogic):
         if newdomain is not None:
             self.plot_domain = newdomain
         else:
-            return -1
+            self.plot_domain = [min(self.indep_vals), max(self.indep_vals)]
 
         self.sigPlotParamsUpdated.emit()
         return 0
 
     def set_range(self, newrange=None):
-        """Set the plot range
+        """Set the plot range, to match the data (default) or to a specified new range
 
         @param float newrange: 2-element list containing min and max y-values
         """
@@ -130,7 +130,7 @@ class QdplotLogic(GenericLogic):
         if newrange is not None:
             self.plot_range = newrange
         else:
-            return -1
+            self.plot_range = [min(self.depen_vals), max(self.depen_vals)]
 
         self.sigPlotParamsUpdated.emit()
         return 0
