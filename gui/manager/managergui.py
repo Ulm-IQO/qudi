@@ -220,7 +220,9 @@ class ManagerGui(GUIBase):
         result = QtWidgets.QMessageBox.question(
             self._mw,
             'Qudi: Really Quit?',
-            text
+            text,
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No
             )
         if result == QtWidgets.QMessageBox.Yes:
             self.sigRealQuit.emit()
