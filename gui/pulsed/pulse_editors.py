@@ -52,7 +52,7 @@ class BlockEditor:
         self.parameter_dict = OrderedDict()
         self.parameter_dict['length'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
                                          'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
-        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
+        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -999999999.99, 'max': np.inf,
                                             'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
         self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1, 'view_stepsize': 1,
                                                'dec': 0, 'unit_prefix': '', 'type': bool}
@@ -284,7 +284,16 @@ class BlockEditor:
         model = self.be_widget.model()
         access = self.be_widget.itemDelegateForColumn(column).model_data_access
         data = model.index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -589,7 +598,16 @@ class BlockOrganizer:
         model = self.bo_widget.model()
         access = self.bo_widget.itemDelegateForColumn(column).model_data_access
         data = self.bo_widget.model().index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -632,6 +650,7 @@ class BlockOrganizer:
         for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
             column = self._cfg_param_pb['pulse_block']
             self.set_element(row_index, column, pulse_block.name)
+            print(pulse_block.name)
             column = self._cfg_param_pb['repetitions']
             self.set_element(row_index, column, int(repetitions))
         return
@@ -840,7 +859,16 @@ class SequenceEditor:
         model = self.se_widget.model()
         access = self.se_widget.itemDelegateForColumn(column).model_data_access
         data = self.se_widget.model().index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:

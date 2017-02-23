@@ -66,6 +66,7 @@ class ManagerGui(GUIBase):
     sigStopModule = QtCore.Signal(str, str)
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
+    sigRealQuit = QtCore.Signal()
 
     def __init__(self, **kwargs):
         """Create an instance of the module.
@@ -136,6 +137,7 @@ class ManagerGui(GUIBase):
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
+        self._manager.sigShutdownAcknowledge.connect(self.promptForShutdown)
         # Log widget
         self._mw.logwidget.setManager(self._manager)
         for loghandler in logging.getLogger().handlers:
@@ -148,6 +150,7 @@ class ManagerGui(GUIBase):
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
+        self.sigRealQuit.connect(self._manager.realQuit)
         # Module state display
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
@@ -209,6 +212,18 @@ class ManagerGui(GUIBase):
         """Show a dialog with details about Qudi.
         """
         self._about.show()
+
+    @QtCore.Slot(bool, bool)
+    def promptForShutdown(self, locked, broken):
+        """ Display a dialog, asking the user to confirm shutdown. """
+        text = "Some modules are locked right now, really quit?"
+        result = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Qudi: Really Quit?',
+            text
+            )
+        if result == QtWidgets.QMessageBox.Yes:
+            self.sigRealQuit.emit()
 
     def resetToDefaultLayout(self):
         """ Return the dockwidget layout and visibility to its default state """

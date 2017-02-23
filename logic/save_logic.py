@@ -31,6 +31,11 @@ import numpy as np
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.util import units
+# Use the PDF backend to attach metadata
+from matplotlib.backends.backend_pdf import PdfPages
+# Use Pillow (active fork from PIL) to attach metadata to PNG files
+from PIL import Image
+from PIL import PngImagePlugin
 
 class DailyLogHandler(logging.FileHandler):
     """
@@ -507,12 +512,62 @@ class SaveLogic(GenericLogic):
 
         textfile.close()
 
+        #--------------------------------------------------------------------------------------------
         # Save thumbnail figure of plot
         if plotfig is not None:
-            fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
+
+            # create Metadata
+            metadata = dict()
+            metadata['Title'] = 'Image produced by qudi: ' + module_name
+            metadata['Author'] = 'qudi - Software Suite'
+            metadata['Subject'] = 'Find more information on: https://github.com/Ulm-IQO/qudi'
+            metadata['Keywords'] = 'Python 3, Qt, experiment control, automation, measurement, software, framework, modular'
+            metadata['Producer'] = 'qudi - Software Suite'
+            if timestamp is not None:
+                metadata['CreationDate'] = timestamp
+                metadata['ModDate'] = timestamp
+            else:
+                metadata['CreationDate'] = time
+                metadata['ModDate'] = time
+
+            # determine the PDF-Filename
             fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+
+            # Create the PdfPages object to which we will save the pages:
+            # The with statement makes sure that the PdfPages object is closed properly at
+            # the end of the block, even if an Exception occurs.
+            with PdfPages(fig_fname_vector) as pdf:
+                pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
+
+                # We can also set the file's metadata via the PdfPages object:
+                pdf_metadata= pdf.infodict()
+                for x in metadata:
+                    pdf_metadata[x] = metadata[x]
+
+            # determine the PNG-Filename and save the plain PNG
+            fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
             plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
-            plotfig.savefig(fig_fname_vector, bbox_inches='tight', pad_inches=0.05)
+
+            # Use Pillow (an fork for PIL) to attach metadata to the PNG
+            png_image = Image.open(fig_fname_image)
+            png_metadata = PngImagePlugin.PngInfo()
+
+            # PIL can only handle Strings, so let's convert our times
+            metadata['CreationDate'] = metadata['CreationDate'].strftime('%Y%m%d-%H%M-%S')
+            metadata['ModDate'] = metadata['ModDate'].strftime('%Y%m%d-%H%M-%S')
+
+            for x in metadata:
+                # make sure every value of the metadata is a string
+                if not isinstance(metadata[x], str):
+                    metadata[x] = str(metadata[x])
+
+                # add the metadata to the picture
+                png_metadata.add_text(x, metadata[x])
+
+            # save the picture again, this time including the metadata
+            png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
+            #----------------------------------------------------------------------------------
+
 
     def save_1d_trace_as_text(self, trace_data, trace_name, opened_file=None,
                               filepath=None, filename=None, precision=':.3f'):

@@ -646,10 +646,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        #if self.manual_xaxis_def:
-
-        #if self.manual_laser_def:
-
         self.sigStartMeasurement.emit(stashed_raw_data_tag)
         return
 
@@ -720,14 +716,15 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, controlled_val_unit, save_tag):
+    def save_measurement_data(self, controlled_val_unit, save_tag, with_error):
         """
 
         @param controlled_val_unit:
         @param save_tag:
+        @param with_error:
         @return:
         """
-        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag)
+        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
         return
 
     def clear_pulse_generator(self):
@@ -1433,51 +1430,3 @@ class PulsedMasterLogic(GenericLogic):
 
         # return all parameters
         return return_params
-
-    def _get_ensemble_laser_properties(self, ensemble_obj):
-        """
-
-        @param ensemble_obj:
-        @return:
-        """
-
-        return num_of_lasers, max_laser_length
-
-    def _get_block_laser_properties(self, block, reps, laser_index, laser_was_on):
-        """
-
-        @param block:
-        @param reps:
-        @param laser_index:
-        @param laser_was_on:
-        @param length_offset:
-        @return:
-        """
-        tmp_laser_on = laser_was_on
-        tmp_laser_length = 0.0
-        err_code = 0
-        num_of_lasers = 0
-        max_laser_length = 0.0
-        for element in block.element_list:
-            if laser_index < len(element.digital_high) and laser_index >= 0:
-                if not tmp_laser_on and element.digital_high[laser_index]:
-                    tmp_laser_on = True
-                    num_of_lasers += 1
-                elif not element.digital_high[laser_index]:
-                    tmp_laser_on = False
-                if tmp_laser_on:
-                    if element.increment_s > 1.0e-15:
-                        tmp_laser_length += (element.init_length_s + reps * element.increment_s)
-                    else:
-                        tmp_laser_length += element.init_length_s
-                    if tmp_laser_length > max_laser_length:
-                        max_laser_length = tmp_laser_length
-                else:
-                    tmp_laser_length = 0.0
-            else:
-                self.log.error('Laser index "{0}" out of range for number of digital channels '
-                               '({1}) in block "{2}".'
-                               ''.format(laser_index, len(element.digital_high), block_obj.name))
-                err_code = -1
-                break
-        return num_of_lasers, max_laser_length, err_code
