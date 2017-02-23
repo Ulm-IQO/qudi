@@ -68,6 +68,7 @@ class Manager(QtCore.QObject):
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object, bool)
+    sigShutdownAcknowledge = QtCore.Signal(bool, bool)
     sigShowManager = QtCore.Signal()
 
     def __init__(self, args, **kwargs):
@@ -825,7 +826,7 @@ class Manager(QtCore.QObject):
         if not self.isModuleLoaded(base, name):
             logger.error('{0} module {1} not loaded.'.format(base, name))
             return False
-        return self.tree['loaded'][base][name].getState() in ('idle', 'running')
+        return self.tree['loaded'][base][name].getState() in ('idle', 'running', 'locked')
 
     @QtCore.Slot(str, str)
     def activateModule(self, base, name):
@@ -882,8 +883,8 @@ class Manager(QtCore.QObject):
             return
         module = self.tree['loaded'][base][name]
         try:
-            if not module.getState() in ('idle', 'running'):
-                logger.error('{0} module {1} not active (idle or running).'.format(base, name))
+            if not self.isModuleActive(base, name):
+                logger.error('{0} module {1} not isModuleActive.'.format(base, name))
                 return
         except:
             logger.exception(
@@ -1053,7 +1054,7 @@ class Manager(QtCore.QObject):
             for mbase in ('hardware', 'logic', 'gui'):
                 if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     try:
-                        deact = self.tree['loaded'][mbase][mkey].getState() in ('idle', 'running')
+                        deact = self.tree['loaded'][mbase][mkey].can('deactivate')
                     except:
                         deact = True
                     if deact:
@@ -1224,7 +1225,29 @@ class Manager(QtCore.QObject):
     @QtCore.Slot()
     def quit(self):
         """Nicely request that all modules shut down."""
-        for mbase,bdict in self.tree['loaded'].items():
+        lockedmodules = False
+        brokenmodules = False
+        for base, mods in self.tree['loaded'].items():
+            for name, module in mods.items():
+                try:
+                    state = module.getState()
+                    if state == 'locked':
+                        lockedmodules = True
+                except:
+                    brokenmodules = True
+        if lockedmodules:
+            if self.hasGui:
+                self.sigShutdownAcknowledge.emit(lockedmodules, brokenmodules)
+            else:
+                # console prompt here
+                self.realQuit()
+        else:
+            self.realQuit()
+
+    @QtCore.Slot()
+    def realQuit(self):
+        """ Stop all modules, no questions asked. """
+        for mbase, bdict in self.tree['loaded'].items():
             for module in bdict:
                 try:
                     self.stopModule(mbase, module)
@@ -1233,6 +1256,7 @@ class Manager(QtCore.QObject):
                         'Module {0} failed to stop, continuing anyway.'.format(module))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
+
 
     @QtCore.Slot()
     def restart(self):
