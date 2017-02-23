@@ -155,10 +155,6 @@ class CounterLogic(GenericLogic):
         self._statusVariables['counting_mode'] = self._counting_mode.name
         self._statusVariables['saving'] = self._saving
 
-        print('==================================================')
-        print('YEAH BABY!!! DEACTIVATION ROCKS!!!')
-        print('==================================================')
-
         # Stop measurement
         if self.getState() == 'locked':
             self._stopCount_wait()
