@@ -14,7 +14,6 @@ The states are:
 * idle
 * running
 * locked
-* blocked
 
 ### State transition functions
 
@@ -26,6 +25,7 @@ unexpected behaviour!
 * deactivate:
   * idle -> deactivated
   * running -> deactivated
+  * locked -> deactivated (manager makes sure this only happens after prompting the user)
 * run:
   * idle -> running
 * stop:
@@ -33,19 +33,10 @@ unexpected behaviour!
 * lock:
   * idle -> locked
   * running -> locked
-* block:
-  * idle -> blocked
-  * running -> blocked
-* locktoblock:
-  * locked -> blocked
 * unlock:
   * locked -> idle
-* unblock:
-  * blocked -> idle
 * runlock:
   * locked -> running
-* runblock:
-  * blocked -> running
 
 ## Interruptable task state machine
 
