@@ -205,7 +205,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Check and configure pulse generator
         self.pulse_generator_off()
-        self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
+        self.loaded_asset_name = str(self._pulse_generator_device.get_loaded_asset())
         avail_activation_configs = self.get_pulser_constraints().activation_config
         if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
