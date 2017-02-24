@@ -100,7 +100,7 @@ class PulserDummy(Base, PulserInterface):
 
         self.uploaded_assets_list = []
         self.uploaded_files_list = []
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         self.is_output_enabled = True
 
         # settings for remote access on the AWG PC
@@ -392,7 +392,7 @@ class PulserDummy(Base, PulserInterface):
         Unused for digital pulse generators without storage capability
         (PulseBlaster, FPGA).
         """
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         return
 
     def get_status(self):
