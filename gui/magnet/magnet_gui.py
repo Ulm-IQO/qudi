@@ -190,8 +190,8 @@ class MagnetGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._magnet_logic = self.get_in_connector('magnetlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._magnet_logic = self.get_connector('magnetlogic1')
+        self._save_logic = self.get_connector('savelogic')
 
         self._mw = MagnetMainWindow()
 

@@ -58,7 +58,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                          had happened.
         """
 
-        self._motor_device = self.get_in_connector('motorstage')
+        self._motor_device = self.get_connector('motorstage')
 
 
     def on_deactivate(self, e):

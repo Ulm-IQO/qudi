@@ -77,9 +77,9 @@ class TraceAnalysisLogic(GenericLogic):
                          had happened.
         """
 
-        self._counter_logic = self.get_in_connector('counterlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._counter_logic = self.get_connector('counterlogic1')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         self._counter_logic.sigGatedCounterFinished.connect(self.do_calculate_histogram)
 

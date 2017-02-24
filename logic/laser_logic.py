@@ -42,7 +42,7 @@ class LaserLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        self._laser = self.get_in_connector('laser')
+        self._laser = self.get_connector('laser')
         self.stopRequest = False
         self.bufferLength = 100
         self.data = {}

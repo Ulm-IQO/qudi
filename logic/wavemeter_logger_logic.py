@@ -158,11 +158,11 @@ class WavemeterLoggerLogic(GenericLogic):
 
         self.stopRequested = False
 
-        self._wavemeter_device = self.get_in_connector('wavemeter1')
+        self._wavemeter_device = self.get_connector('wavemeter1')
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.get_in_connector('savelogic')
-        self._counter_logic = self.get_in_connector('counterlogic')
+        self._save_logic = self.get_connector('savelogic')
+        self._counter_logic = self.get_connector('counterlogic')
 
         # create a new x axis from xmin to xmax with bins points
         self.histogram_axis = np.arange(self._xmin,
