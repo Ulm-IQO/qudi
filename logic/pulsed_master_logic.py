@@ -864,7 +864,7 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
-        if asset_name is not None:
+        if asset_name is not None and asset_name != '' and asset_name != str(None):
             asset_object = self._generator_logic.get_saved_asset(asset_name)
             asset_type = type(asset_object).__name__
         else:
