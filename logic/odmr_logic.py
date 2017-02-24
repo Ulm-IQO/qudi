@@ -576,9 +576,15 @@ class ODMRLogic(GenericLogic):
 
         return error_code
 
+    def get_fit_functions(self):
+        """ Return the names of all ocnfigured fit functions.
+        @return list(str): list of fit function names
+        """
+        return self.fc.fit_list.keys()
 
     def do_fit(self):
-
+        """ Execute the currently configured fit
+        """
         x_data = self._mw_frequency_list
         y_data = self.ODMR_plot_y
 
@@ -798,7 +804,7 @@ class ODMRLogic(GenericLogic):
         return fig
 
     def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power,
-                                 runtime, fit_function='Lorentzian',
+                                 runtime, fit_function='No Fit',
                                  save_after_meas=True, name_tag=''):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
@@ -825,8 +831,9 @@ class ODMRLogic(GenericLogic):
         while self.getState() != 'idle' and not self.stopRequested:
             time.sleep(1)
 
+        old_fit = self.fc.current_fit
+        self.fc.set_current_fit(fit_function)
         self.do_fit()
-
         meas_param['ODMR frequency start (Hz)'] = self.mw_start
         meas_param['ODMR frequency step (Hz)'] = self.mw_step
         meas_param['ODMR frequency stop (Hz)'] = self.mw_stop
@@ -839,4 +846,5 @@ class ODMRLogic(GenericLogic):
             self.save_ODMR_Data(tag=name_tag)
             meas_param['ODMR measurement saved at time'] = timestamp
 
+        self.fc.set_current_fit(old_fit)
         return meas_param
