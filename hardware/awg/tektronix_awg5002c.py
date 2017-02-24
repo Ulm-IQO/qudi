@@ -51,7 +51,7 @@ class AWG5002C(Base, PulserInterface):
         self.sequence_mode = True
 
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -425,7 +425,7 @@ class AWG5002C(Base, PulserInterface):
         """
 
         self.tell('WLIST:WAVEFORM:DELETE ALL\n')
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         return
 
     def get_status(self):
