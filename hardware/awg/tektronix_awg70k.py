@@ -130,7 +130,7 @@ class AWG70K(Base, PulserInterface):
         self.use_sequencer = self.has_sequence_mode()
         self.active_channel = self.get_active_channels()
         self.interleave = self.get_interleave()
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         self._init_loaded_asset()
         self.current_status = 0
 
@@ -470,7 +470,7 @@ class AWG70K(Base, PulserInterface):
         self.awg.write('SLIS:SEQ:DEL ALL')
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.25)
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         return 0
 
     def get_status(self):
@@ -1294,9 +1294,9 @@ class AWG70K(Base, PulserInterface):
             else:
                 self.log.error("In _init_loaded_asset: The case of differing asset names is not "
                                "yet handled")
-                self.current_loaded_asset = None
+                self.current_loaded_asset = ''
         else:
-            self.current_loaded_asset = None
+            self.current_loaded_asset = ''
         return self.current_loaded_asset
 
     def _get_sequence_names_memory(self):

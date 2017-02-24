@@ -87,10 +87,10 @@ class OkFpgaPulser(Base, PulserInterface):
 
         self.current_status = -1
         self.sample_rate = 950e6
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
 
     def on_activate(self, e):
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
         self.sample_rate = self.get_sample_rate()
