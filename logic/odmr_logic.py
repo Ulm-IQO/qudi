@@ -28,10 +28,10 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
+import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-
 
 class ODMRLogic(GenericLogic):
 
@@ -51,17 +51,16 @@ class ODMRLogic(GenericLogic):
     sigOdmrStarted = QtCore.Signal()
     sigOdmrStopped = QtCore.Signal()
     sigOdmrPlotUpdated = QtCore.Signal()
-    sigOdmrFitUpdated = QtCore.Signal(str)   # an arbitrary object will be emitted
-    sigOdmrFitParameterUpdated = QtCore.Signal(dict)
+    # an arbitrary object will be emitted
+    sigOdmrFitUpdated = QtCore.Signal()
     sigOdmrMatrixUpdated = QtCore.Signal()
     sigOdmrFinished = QtCore.Signal()
     sigOdmrElapsedTimeChanged = QtCore.Signal()
     sigODMRMatrixAxesChanged = QtCore.Signal()
     sigMicrowaveCWModeChanged = QtCore.Signal(bool)
     sigMicrowaveListModeChanged = QtCore.Signal(bool)
-    sigParameterChanged = QtCore.Signal(dict)   # Here all parameter changes
-                                                # will be emitted. Look in the
-                                                # code for an example.
+    # Here all parameter changes will be emitted. Look in the code for an example.
+    sigParameterChanged = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -107,36 +106,14 @@ class ODMRLogic(GenericLogic):
             self.log.warning('No scanmode defined in config for odmr_logic module.\n'
                              'Falling back to list mode.')
 
+        self.fc = self._fit_logic.make_fit_container('ODMR sum', '1d')
+        self.fc.set_units(['Hz', 'c/s'])
+
         # theoretically this can be changed, but the current counting scheme willnot support that
         self.MW_trigger_pol = TriggerEdge.RISING
 
         self._odmrscan_counter = 0
         self._clock_frequency = 200     # in Hz
-        self.fit_function = 'No Fit'
-
-        self._fit_param = dict()
-        self._fit_result = None
-
-        self.fit_models = OrderedDict([
-            ('Lorentzian',
-                self._fit_logic.make_lorentzoffset_model()),
-            ('Double Lorentzian',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('Double Lorentzian with fixed splitting',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('N14',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)),
-            ('N15',
-                self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)),
-            ('Double Gaussian',
-                self._fit_logic.make_multiplegaussoffset_model(no_of_functions=2))
-        ])
-
-        self.use_custom_params = {
-            name: {
-                n: False for n, p in fit[1].items()
-                } for name, fit in self.fit_models.items()
-            }
 
         self.mw_frequency = self.limits.frequency_in_range(2870e6)
 
@@ -146,31 +123,65 @@ class ODMRLogic(GenericLogic):
         self.mw_step = self.limits.list_step_in_range(2e6)
         self.run_time = 10          # in s
         self.elapsed_time = 0       # in s
-        self.current_fit_function = 'No Fit'
 
         self.saveRawData = False  # flag for saving raw data
 
         # load parameters stored in app state store
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
+
         if 'mw_frequency' in self._statusVariables:
             self.mw_frequency = self.limits.frequency_in_range(
                 self._statusVariables['mw_frequency'])
+
         if 'mw_power' in self._statusVariables:
             self.mw_power = self.limits.power_in_range(self._statusVariables['mw_power'])
+
         if 'mw_start' in self._statusVariables:
             self.mw_start = self.limits.frequency_in_range(self._statusVariables['mw_start'])
+
         if 'mw_stop' in self._statusVariables:
             self.mw_stop = self.limits.frequency_in_range(self._statusVariables['mw_stop'])
+
         if 'mw_step' in self._statusVariables:
             self.mw_step = self.limits.list_step_in_range(self._statusVariables['mw_step'])
+
         if 'run_time' in self._statusVariables:
             self.run_time = self._statusVariables['run_time']
+
         if 'saveRawData' in self._statusVariables:
             self.saveRawData = self._statusVariables['saveRawData']
+
         if 'number_of_lines' in self._statusVariables:
             self.number_of_lines = self._statusVariables['number_of_lines']
 
+        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
+            self.fc.load_from_dict(self._statusVariables['fits'])
+        else:
+            d1 = OrderedDict()
+            d1['Lorentzian dip'] = {
+                'fit_function': 'lorentzoffset',
+                'estimator': 'dip'
+                }
+            d1['Two Lorentzian dips'] = {
+                'fit_function': 'doublelorentzoffset',
+                'estimator': 'dip'
+                }
+            d1['N14'] = {
+                'fit_function': 'triplelorentzoffset',
+                'estimator': 'N14'
+                }
+            d1['N15'] = {
+                'fit_function': 'doublelorentzoffset',
+                'estimator': 'N15'
+                }
+            d1['Two Gaussian dips'] = {
+                'fit_function': 'twogaussianoffset',
+                'estimator': 'dip'
+                }
+            default_fits = OrderedDict()
+            default_fits['1d'] = d1
+            self.fc.load_from_dict(default_fits)
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -202,6 +213,8 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
+        if len(self.fc.fit_list) > 0:
+            self._statusVariables['fits'] = self.fc.save_to_dict()
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -281,8 +294,7 @@ class ODMRLogic(GenericLogic):
         self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
 
         self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step / 10.)
-        self._fit_param = dict()
-        self._fit_result = None
+        self.fc.clear_result()
 
         if self.saveRawData:
             # All that is necesarry fo saving of raw data:
@@ -564,303 +576,16 @@ class ODMRLogic(GenericLogic):
 
         return error_code
 
-    def get_fit_functions(self):
-        """ Returns all fit methods, which are currently implemented for that module.
 
-        @return list: with string entries denoting the names of the fit.
-        """
+    def do_fit(self):
 
-        models = list(self.fit_models.keys())
-        models.insert(0, 'No Fit')
-        return models
+        x_data = self._mw_frequency_list
+        y_data = self.ODMR_plot_y
 
-    def do_fit(self, fit_function=None, x_data=None, y_data=None,
-               fit_granularity_fact=10):
-        """Performs the chosen fit on the measured data.
+        self.ODMR_fit_x, self.ODMR_fit_y, result = self.fc.do_fit(x_data, y_data)
 
-        @param str fit_function: name of the chosen fit function
-        @param array x_data: optional, 1D np.array or 1D list with the x values.
-                             If None is passed then the module x values are
-                             taken.
-        @param array y_data: optional, 1D np.array or 1D list with the y values.
-                             If None is passed then the module y values are
-                             taken. If passed, then it should have the same size
-                             as x_data.
-        @param float fit_granularity_fact: optional, set a multiple of the
-                                           length of the input data. For
-                                            fit_granularity_fact = 10
-                                           ten times more datapoints are used
-                                           for the fit display, then for the
-                                           used x_data.
-
-        @return: tuple (fit_x, fit_y, param_dict, fit_result)
-            np.array fit_x: 1D array containing the x values of the fit
-            np.array fit_y: 1D array containing the y values of the fit
-            OrderedDict param_dict: a dictionary with the relevant fit
-                                    parameters, i.e. the result of the fit. Each
-                                    entry is again a dict with three entries,
-                                        {'value': ... , 'error': ...., 'unit': '...'}
-                                    The values and the errors are always saved
-                                    in SI units!
-
-            lmfit.model.ModelResult fit_result:
-                            the result object of lmfit. If additional
-                            information is needed from the fit, then they can be
-                            obtained from this object. If no fit is performed
-                            then result is set to None.
-        """
-
-        self.fit_function = fit_function
-
-        # write all needed parameters (not rounded!) in this dict:
-        param_dict = OrderedDict()
-        result = None
-
-        # Set the instance variable as the data set if nothing is passed.
-        if x_data is None:
-            x_data = self._mw_frequency_list
-        if y_data is None:
-            y_data = self.ODMR_plot_y
-
-        self.ODMR_fit_x = np.linspace(start=x_data[0], stop=x_data[-1],
-                                      num=int(len(x_data)*fit_granularity_fact))
-
-        # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'x_axis': x_data,
-                  'data': y_data,
-                  'add_params': None}
-
-        if self.fit_function == 'Lorentzian':
-
-            result = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
-
-            param_dict['Frequency'] = {'value': result.params['center'].value,
-                                       'error': result.params['center'].stderr,
-                                       'unit': 'Hz'}
-
-            param_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
-                                      'error': result.params['contrast'].stderr,
-                                      'unit': '%'}
-
-            param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-                                       'error': result.params['fwhm'].stderr,
-                                       'unit': 'Hz'}
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-        elif self.fit_function == 'Double Lorentzian':
-
-            result = self._fit_logic.make_doublelorentzdipoffset_fit(**kwargs)
-
-            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                        'error': result.params['l0_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                        'error': result.params['l1_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Linewidth 0'] = {'value': result.params['l0_fwhm'].value,
-                                         'error': result.params['l0_fwhm'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['Linewidth 1'] = {'value': result.params['l1_fwhm'].value,
-                                         'error': result.params['l1_fwhm'].stderr,
-                                         'unit': 'Hz'}
-
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-        elif self.fit_function == 'Double Lorentzian with fixed splitting':
-
-
-            additional_parameters = {}
-            # TODO: insert this in gui config of ODMR
-            splitting_from_gui_config = 5.0  # in MHz
-
-            params = self.fit_models['Double Lorentzian with fixed splitting'][1]
-
-            error, params = self._fit_logic.estimate_doublelorentzdipoffset(self._mw_frequency_list,
-                                                                            self.ODMR_plot_y,
-                                                                            params)
-            lorentz0_amplitude = params['l0_amplitude'].value
-            lorentz1_amplitude = params['l1_amplitude'].value
-            lorentz0_center = params['l1_amplitude'].value
-            lorentz1_center = params['l1_amplitude'].value
-            lorentz0_sigma = params['l0_sigma'].value
-            lorentz1_sigma = params['l1_sigma'].value
-            offset = params['offset'].value
-
-            if lorentz0_center < lorentz1_center:
-                params['l1_center'].set(expr='l0_center{0:+f}'.format(splitting_from_gui_config))
-            else:
-                splitting_from_gui_config *= -1
-                params['l1_center'].set(expr='l0_center{0:+f}'.format(splitting_from_gui_config))
-
-            kwargs['add_params'] = params
-
-
-            result = self._fit_logic.make_doublelorentzdipoffset_fit(**kwargs)
-
-            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                        'error': result.params['l0_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                        'error': result.params['l1_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Linewidth 0'] = {'value': result.params['l0_fwhm'].value,
-                                         'error': result.params['l0_fwhm'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['Linewidth 1'] = {'value': result.params['l1_fwhm'].value,
-                                         'error': result.params['l1_fwhm'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-        elif self.fit_function == 'N14':
-            result = self._fit_logic.make_N14_fit(**kwargs)
-
-            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Freq. 2'] = {'value': result.params['l2_center'].value,
-                                     'error': result.params['l2_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                        'error': result.params['l0_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                        'error': result.params['l1_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
-                                        'error': result.params['l2_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
-                                         'error': result.params['l0_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
-                                         'error': result.params['l1_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['Linewidth 2'] = {'value': result.params['l2_sigma'].value,
-                                         'error': result.params['l2_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-        elif self.fit_function == 'N15':
-
-            result = self._fit_logic.make_N15_fit(**kwargs)
-
-            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                        'error': result.params['l0_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                        'error': result.params['l1_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
-                                         'error': result.params['l0_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
-                                         'error': result.params['l1_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-        elif self.fit_function == 'Double Gaussian':
-
-            result = self._fit_logic.make_twogaussdipoffset_fit(**kwargs)
-
-            param_dict['Freq. 0'] = {'value': result.params['g0_center'].value,
-                                     'error': result.params['g0_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Freq. 1'] = {'value': result.params['g1_center'].value,
-                                     'error': result.params['g1_center'].stderr,
-                                     'unit': 'Hz'}
-
-            param_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
-                                        'error': result.params['g0_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Contrast 1'] = {'value': abs(result.params['g1_contrast'].value),
-                                        'error': result.params['g1_contrast'].stderr,
-                                        'unit': '%'}
-
-            param_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
-                                         'error': result.params['g0_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
-                                         'error': result.params['g1_sigma'].stderr,
-                                         'unit': 'Hz'}
-
-            param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-        elif self.fit_function == 'No Fit':
-            self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
-        else:
-            self.log.warning('The Fit Function "{0}" is not implemented to '
-                    'be used in the ODMR Logic. Correct that! Fit Call will '
-                    'be skipped and Fit Function will be set to '
-                    '"No Fit".'.format(fit_function))
-            self.fit_function = 'No Fit'
-
-        if self.fit_function != 'No Fit':
-            # after the fit was performed, retrieve the fitting function and
-            # evaluate the fitted parameters according to the function:
-            fitted_function, params = self.fit_models[self.fit_function]
-            self.ODMR_fit_y = fitted_function.eval(x=self.ODMR_fit_x, params=result.params)
-
-        #FIXME: Check whether this signal is really necessary here.
+        self.sigOdmrFitUpdated.emit()
         self.sigOdmrPlotUpdated.emit()
-        self.sigOdmrFitUpdated.emit(self.fit_function)   # so that the gui can adjust to that
-        self.sigOdmrFitParameterUpdated.emit(param_dict)
-
-        self._fit_param = param_dict
-        self._fit_result = result
-
-        return self.ODMR_fit_x, self.ODMR_fit_y, param_dict, result
 
     def save_ODMR_Data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
@@ -901,14 +626,12 @@ class ODMRLogic(GenericLogic):
         parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
-        parameters['Fit function'] = self.current_fit_function
+        parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
 
 
         # add all fit parameter to the saved data:
-        for param in self._fit_param:
-            for entry in self._fit_param[param]:
-                name = '{0}_{1}'.format(param, entry)
-                parameters[name] = self._fit_param[param][entry]
+        for name, param in self.fc.current_fit_param.items():
+            parameters[name] = str(param)
 
         fig = self.draw_figure(cbar_range=colorscale_range,
                                percentile_range=percentile_range
@@ -1101,9 +824,8 @@ class ODMRLogic(GenericLogic):
         # check just the state of the optimizer
         while self.getState() != 'idle' and not self.stopRequested:
             time.sleep(1)
-            # print('running')
 
-        fit_x, fit_y, meas_param, result = self.do_fit(fit_function=fit_function)
+        self.do_fit()
 
         meas_param['ODMR frequency start (Hz)'] = self.mw_start
         meas_param['ODMR frequency step (Hz)'] = self.mw_step

@@ -23,11 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit import Parameters
 from lmfit.models import Model
+from collections import OrderedDict
 
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -35,7 +34,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 
 ################################################################################
 #                                                                              #
-#                               Lorentzian Model                               #
+#                       Defining Lorentzian Models                             #
 #                                                                              #
 ################################################################################
 
@@ -102,6 +101,9 @@ numerically, then the parameter sigma can be estimated.
 
 """
 
+####################################
+# Lorentzian model                 #
+####################################
 
 def make_lorentz_model(self, prefix=None):
     """ Create a model of a bare physical Lorentzian with an amplitude.
@@ -143,7 +145,7 @@ def make_lorentz_model(self, prefix=None):
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
         lorentz_model = Model(physical_lorentzian, independent_vars='x')
@@ -168,11 +170,9 @@ def make_lorentz_model(self, prefix=None):
     return full_lorentz_model, params
 
 
-################################################################################
-#                                                                              #
-#                        Lorentzian Model with offset                          #
-#                                                                              #
-################################################################################
+####################################
+# Lorentzian model with offset     #
+####################################
 
 
 def make_lorentzoffset_model(self, prefix=None):
@@ -202,12 +202,9 @@ def make_lorentzoffset_model(self, prefix=None):
     return lorentz_offset_model, params
 
 
-################################################################################
-#                                                                              #
-#                   Multiple Lorentzian Model with offset                      #
-#                                                                              #
-################################################################################
-
+#################################################
+#    Mulitiple Lorentzian model with offset     #
+#################################################
 
 def make_multiplelorentzoffset_model(self, no_of_functions=1):
     """ Create a model with multiple lorentzians with offset.
@@ -244,14 +241,105 @@ def make_multiplelorentzoffset_model(self, no_of_functions=1):
 
     return multi_lorentz_model, params
 
+#################################################
+#    Double Lorentzian model with offset        #
+#################################################
+
+def make_doublelorentzoffset_model(self):
+    """ Create a model with double lorentzian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    return self.make_multiplelorentzoffset_model(no_of_functions=2)
+
+#################################################
+#       Triple Lorentzian model with offset     #
+#################################################
+
+def make_triplelorentzoffset_model(self):
+    """ Create a model with triple lorentzian with offset.
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_lorentzian_model.
+    """
+
+    return self.make_multiplelorentzoffset_model(no_of_functions=3)
 
 ################################################################################
 #                                                                              #
-#                 Single Lorentzian Dip with offset fitting                    #
+#                    Fit functions and their estimators                        #
 #                                                                              #
 ################################################################################
 
-def estimate_lorentzoffsetdip(self, x_axis, data, params):
+################################################################################
+#                 Single Lorentzian with offset fitting                        #
+################################################################################
+#Todo: check where code breaks
+# Old Method Names:
+# make_lorentzoffsetdip_fit
+# estimate_lorentzoffsetpeak
+# make_lorentzoffsetpeak_fit
+
+def make_lorentzoffset_fit(self, x_axis, data, units=None,
+                           estimator=None, add_params=None):
+    """ Perform a 1D lorentzian fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @params method estimator: estimator method
+    @param list units: two string elements containing x and y units.
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object model: lmfit.model.ModelFit object, all parameters
+                          provided about the fitting, like: success,
+                          initial fitting values, best fitting values, data
+                          with best fit with given axis,...
+    """
+
+    model, params = self.make_lorentzoffset_model()
+
+    if estimator is None:
+        error, params = self.estimate_lorentzoffset_dip(x_axis, data, params)
+    else:
+        error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = model.fit(data, x=x_axis, params=params)
+    except:
+        result = model.fit(data, x=x_axis, params=params)
+        self.log.warning('The 1D lorentzian fit did not work. Error '
+                       'message: {0}\n'.format(result.message))
+
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    if units is None:
+        units = ["arb. units"]
+
+    result_str_dict['Position'] = {'value': result.params['center'].value,
+                               'error': result.params['center'].stderr,
+                               'unit': units[0]}
+
+    result_str_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
+                              'error': result.params['contrast'].stderr,
+                              'unit': '%'}
+
+    result_str_dict['FWHM'] = {'value': result.params['fwhm'].value,
+                               'error': result.params['fwhm'].stderr,
+                               'unit': units[0]}
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    result.result_str_dict = result_str_dict
+    return result
+
+def estimate_lorentzoffset_dip(self, x_axis, data, params):
     """ Provides an estimator to obtain initial values for lorentzian function.
 
     @param numpy.array x_axis: 1D axis values
@@ -302,42 +390,9 @@ def estimate_lorentzoffsetdip(self, x_axis, data, params):
 
     return error, params
 
-def make_lorentzoffsetdip_fit(self, x_axis, data, add_params=None):
-    """ Perform a 1D lorentzian dip fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    model, params = self.make_lorentzoffset_model()
-    error, params = self.estimate_lorentzoffsetdip(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = model.fit(data, x=x_axis, params=params)
-    except:
-        result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The 1D lorentzian dip fit did not work. Error '
-                       'message: {0}\n'.format(result.message))
-    return result
 
 
-################################################################################
-#                                                                              #
-#                 Single Lorentzian Peak with offset fitting                   #
-#                                                                              #
-################################################################################
-
-def estimate_lorentzoffsetpeak (self, x_axis, data, params):
+def estimate_lorentzoffset_peak (self, x_axis, data, params):
     """ Provides a lorentzian offset peak estimator.
 
     @param numpy.array x_axis: 1D axis values
@@ -359,7 +414,7 @@ def estimate_lorentzoffsetpeak (self, x_axis, data, params):
     params_dip = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_lorentzoffsetdip(x_axis, data_negative,
+    error, params_ret = self.estimate_lorentzoffset_dip(x_axis, data_negative,
                                                        params_dip)
 
     params['sigma'] = params_ret['sigma']
@@ -371,12 +426,25 @@ def estimate_lorentzoffsetpeak (self, x_axis, data, params):
 
     return error, params
 
+################################################################################
+#                   Double Lorentzian with offset fitting                      #
+################################################################################
+#Todo: check where code breaks
+#Old Names:
+# estimate_doublelorentzdipoffset
+# make_doublelorentzdipoffset_fit
+# estimate_doublelorentzpeakoffset
+# make_doublelorentzpeakoffset_fit
+# make_N15_fit
+# estimate_N15
 
-def make_lorentzoffsetpeak_fit(self, x_axis, data, add_params=None):
-    """ Perform a 1D Lorentzian peak fit on the provided data.
+def make_doublelorentzoffset_fit(self, x_axis, data, units=None,estimator=None, add_params=None):
+    """ Perform a 1D double lorentzian dip fit with offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param list units: two string elements containing x and y units.
+    @param method estimator: estimator method.
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -385,30 +453,70 @@ def make_lorentzoffsetpeak_fit(self, x_axis, data, add_params=None):
                           provided about the fitting, like: success,
                           initial fitting values, best fitting values, data
                           with best fit with given axis,...
+
     """
 
-    model, params = self.make_lorentzoffset_model()
-    error, params = self.estimate_lorentzoffsetpeak(x_axis, data, params)
+    model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
 
+    if estimator is None:
+        error, params = self.estimate_doublelorentzoffset_dip(x_axis, data, params)
+    else:
+        error, params = estimator(x_axis, data, params)
+
+    # redefine values of additional parameters
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.warning('The Lorentzian peak fit did not work. Error '
-                       'message:' + result.message)
+        self.log.error('The double lorentzian fit did not '
+                     'work: {0}'.format(result.message))
 
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    if units is None:
+        units = ["arb. u."]
+
+    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
+                                     'error': result.params['l0_center'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
+                                     'error': result.params['l1_center'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Splitting'] = {'value': (result.params['l1_center'].value -
+                                              result.params['l0_center'].value),
+                                    'error': (result.params['l0_center'].stderr +
+                                              result.params['l1_center'].stderr),
+                                    'unit': units[0]}
+
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                     'error': result.params['l0_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                     'error': result.params['l1_contrast'].stderr,
+                                     'unit': '%'}
+
+    result_str_dict['FWHM 0'] = {'value': result.params['l0_fwhm'].value,
+                                 'error': result.params['l0_fwhm'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['FWHM 1'] = {'value': result.params['l1_fwhm'].value,
+                                 'error': result.params['l1_fwhm'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    result.result_str_dict = result_str_dict
     return result
 
 
-################################################################################
-#                                                                              #
-#                   Double Lorentzian Dip with offset fitting                  #
-#                                                                              #
-################################################################################
 
-def estimate_doublelorentzdipoffset(self, x_axis, data, params,
+def estimate_doublelorentzoffset_dip(self, x_axis, data, params,
                                     threshold_fraction=0.3,
                                     minimal_threshold=0.01,
                                     sigma_threshold_fraction=0.3):
@@ -510,50 +618,7 @@ def estimate_doublelorentzdipoffset(self, x_axis, data, params,
 
     return error, params
 
-
-
-def make_doublelorentzdipoffset_fit(self, x_axis, data, add_params=None):
-    """ Perform a 1D double lorentzian dip fit with offset on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-
-    """
-
-    model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
-    error, params = self.estimate_doublelorentzdipoffset(x_axis, data, params)
-
-    #redefine values of additional parameters
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = model.fit(data, x=x_axis, params=params)
-    except:
-        result = model.fit(data, x=x_axis, params=params)
-        logger.error('The double lorentzian fit did not '
-                     'work: {0}'.format(result.message))
-
-    return result
-
-
-
-
-################################################################################
-#                                                                              #
-#                  Double Lorentzian Peak with offset fitting                  #
-#                                                                              #
-################################################################################
-
-
-def estimate_doublelorentzpeakoffset(self, x_axis, data, params,
+def estimate_doublelorentzoffset_peak(self, x_axis, data, params,
                                     threshold_fraction=0.3,
                                     minimal_threshold=0.01,
                                     sigma_threshold_fraction=0.3):
@@ -578,7 +643,7 @@ def estimate_doublelorentzpeakoffset(self, x_axis, data, params,
     params_dip = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_doublelorentzdipoffset(x_axis,
+    error, params_ret = self.estimate_doublelorentzoffset_dip(x_axis,
                                                              data_negative,
                                                              params_dip)
 
@@ -597,11 +662,209 @@ def estimate_doublelorentzpeakoffset(self, x_axis, data, params,
     return error, params
 
 
-def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
-    """ Perform a 1D double lorentzian peak fit with offset on the provided data.
+# def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
+#     """ Perform a 1D double lorentzian peak fit with offset on the provided data.
+#
+#     @param numpy.array x_axis: 1D axis values
+#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+#     @param Parameters or dict add_params: optional, additional parameters of
+#                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+#                 which will be used instead of the values from the estimator.
+#
+#     @return object model: lmfit.model.ModelFit object, all parameters
+#                           provided about the fitting, like: success,
+#                           initial fitting values, best fitting values, data
+#                           with best fit with given axis,...
+#     """
+#
+#     model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
+#     error, params = self.estimate_doublelorentzpeakoffset(x_axis, data, params)
+#
+#     #redefine values of additional parameters
+#     params = self._substitute_params(initial_params=params,
+#                                      update_params=add_params)
+#     try:
+#         result = model.fit(data, x=x_axis, params=params)
+#     except:
+#         result = model.fit(data, x=x_axis, params=params)
+#         self.log.error('The double lorentzian fit did not '
+#                      'work: {0}'.format(result.message))
+#
+#     return result
+
+############################################################################
+#                               N15 fitting                                #
+############################################################################
+
+def estimate_doublelorentzoffset_N15(self, x_axis, data, params):
+    """ Estimation of a the hyperfine interaction of a N15 nuclear spin.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+
+    Provide an estimation of all fitting parameters for fitting the
+    two equidistant lorentzian dips of the hyperfine interaction
+    of a N15 nuclear spin. Here the splitting is set as an expression,
+    if the splitting is not exactly 3.03MHz the fit will not work.
+    """
+
+    # check if parameters make sense
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    hf_splitting = 3.03 * 1e6 # Hz
+
+    # this is an estimator, for a physical application, therefore the x_axis
+    # should fulfill certain constraints:
+    length_x_scan = x_axis[-1] - x_axis[0]
+
+    if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
+        self.log.error('The N15 estimator expects an x_axis with a length in the '
+                     'range [{0},{1}]Hz, but the passed x_axis has a length of '
+                     '{2}, which is not sensible for the N15 estimator. Correct '
+                     'that!'.format(hf_splitting/2, 1e9, length_x_scan))
+        return -1, params
+
+    data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
+
+    # filter should always have a length of approx linewidth 1MHz
+    points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
+
+    # filter should have a width of 4 MHz
+    x_filter = np.linspace(0,4*points_within_1MHz,4*points_within_1MHz)
+    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter < len(x_filter)/4),
+                                      (x_filter >= len(x_filter)/4)*(x_filter < len(x_filter)*3/4),
+                                      (x_filter >= len(x_filter)*3/4)],
+                           [1, 0, 1])
+
+    # if the filter is smaller than 3 points a convolution does not make sense
+    if len(lorentz) >= 3:
+        data_convolved = filters.convolve1d(data_smooth_lorentz,
+                                            lorentz/lorentz.sum(),
+                                            mode='constant',
+                                            cval=data_smooth_lorentz.max())
+        x_axis_min = x_axis[data_convolved.argmin()]-hf_splitting/2.
+    else:
+        x_axis_min = x_axis[data_smooth_lorentz.argmin()]
+
+    # data_level = data_smooth_lorentz - data_smooth_lorentz.max()
+    data_level = data_smooth_lorentz - offset
+
+    minimum_level = data_level.min()
+    # integral of data:
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = function.integral(x_axis[0], x_axis[-1])
+
+    # assume both peaks contribute to the linewidth, so devive by 2, that makes
+    # the peaks narrower
+    sigma = abs(Integral /(np.pi * minimum_level))
+
+    amplitude = -abs(minimum_level)
+
+    minimal_sigma = x_axis[1]-x_axis[0]
+    maximal_sigma = x_axis[-1]-x_axis[0]
+
+    params['l0_amplitude'].set(value=amplitude, max=-1e-6)
+    params['l0_center'].set(value=x_axis_min)
+    params['l0_sigma'].set(value=sigma, min=minimal_sigma,
+                                 max=maximal_sigma)
+    params['l1_amplitude'].set(value=params['l0_amplitude'].value,
+                               max=-1e-6)
+    params['l1_center'].set(value=params['l0_center'].value+hf_splitting,
+                            expr='l0_center+{0}'.format(hf_splitting))
+    params['l1_sigma'].set(value=params['l0_sigma'].value,
+                           min=minimal_sigma, max=maximal_sigma,
+                           expr='l0_sigma')
+    params['offset'].set(value=offset)
+
+    return error, params
+
+
+# def make_N15_fit(self, x_axis, data, units, add_params=None):
+#     """ Performes a fit where a N15 hyperfine interaction of 3.03 MHz is taken
+#         into account.
+#
+#     @param numpy.array x_axis: 1D axis values
+#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+#     @param Parameters or dict add_params: optional, additional parameters of
+#                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+#                 which will be used instead of the values from the estimator.
+#
+#     @return object model: lmfit.model.ModelFit object, all parameters
+#                           provided about the fitting, like: success,
+#                           initial fitting values, best fitting values, data
+#                           with best fit with given axis,...
+#     """
+#
+#     model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
+#     error, params = self.estimate_N15(x_axis, data, params)
+#
+#     params = self._substitute_params(initial_params=params,
+#                                      update_params=add_params)
+#
+#     try:
+#         result = model.fit(data, x=x_axis, params=params)
+#     except:
+#         result = model.fit(data, x=x_axis, params=params)
+#         self.log.error('The N15 fit did not '
+#                      'work: {0}'.format(result.message))
+#
+#     # Write the parameters to allow human-readable output to be generated
+#     param_dict = OrderedDict()
+#
+#     param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
+#                              'error': result.params['l0_center'].stderr,
+#                              'unit': units[0]}
+#
+#     param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
+#                              'error': result.params['l1_center'].stderr,
+#                              'unit': units[0]}
+#
+#     param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+#                                 'error': result.params['l0_contrast'].stderr,
+#                                 'unit': '%'}
+#
+#     param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+#                                 'error': result.params['l1_contrast'].stderr,
+#                                 'unit': '%'}
+#
+#     param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
+#                                  'error': result.params['l0_sigma'].stderr,
+#                                  'unit': units[0]}
+#
+#     param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
+#                                  'error': result.params['l1_sigma'].stderr,
+#                                  'unit': units[0]}
+#
+#     param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+#
+#     return result, param_dict
+
+############################################################################
+#                                                                          #
+#                      Triple Lorentzian fitting                           #
+#                                                                          #
+############################################################################
+#Todo: check where code breaks
+# Old Method Names:
+# make_N14_fit
+
+
+def make_triplelorentzoffset_fit(self, x_axis, data, units=None, estimator=None,
+                            add_params=None):
+    """ Perform a triple lorentzian fit
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param list units: two string elements containing x and y units.
+    @param method estimator: estimator method.
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -612,30 +875,70 @@ def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
                           with best fit with given axis,...
     """
 
-    model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
-    error, params = self.estimate_doublelorentzpeakoffset(x_axis, data, params)
+    model, params = self.make_multiplelorentzoffset_model(no_of_functions=3)
 
-    #redefine values of additional parameters
+    if estimator is None:
+        error, params = self.estimate_triplelorentzoffset_N14(x_axis, data, params)
+    else:
+        error, params = estimator(x_axis, data, params)
+
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
         result = model.fit(data, x=x_axis, params=params)
     except:
         result = model.fit(data, x=x_axis, params=params)
-        logger.error('The double lorentzian fit did not '
+        self.log.error('The triple lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
+    # Write the parameters to allow human-readable output to be generated
+    result_str_dict = OrderedDict()
+
+    if units is None:
+        units = ["arb. units"]
+
+    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
+                             'error': result.params['l0_center'].stderr,
+                             'unit': units[0]}
+
+    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
+                             'error': result.params['l1_center'].stderr,
+                             'unit': units[0]}
+
+    result_str_dict['Position 2'] = {'value': result.params['l2_center'].value,
+                             'error': result.params['l2_center'].stderr,
+                             'unit': units[0]}
+
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
+                                'error': result.params['l0_contrast'].stderr,
+                                'unit': '%'}
+
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
+                                'error': result.params['l1_contrast'].stderr,
+                                'unit': '%'}
+
+    result_str_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
+                                'error': result.params['l2_contrast'].stderr,
+                                'unit': '%'}
+
+    result_str_dict['FWHM 0'] = {'value': result.params['l0_sigma'].value,
+                                 'error': result.params['l0_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['FWHM 1'] = {'value': result.params['l1_sigma'].value,
+                                 'error': result.params['l1_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['FWHM 2'] = {'value': result.params['l2_sigma'].value,
+                                 'error': result.params['l2_sigma'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
+    result.result_str_dict = result_str_dict
     return result
 
-
-############################################################################
-#                                                                          #
-#                                N14 fitting                               #
-#                                                                          #
-############################################################################
-
-
-def estimate_N14(self, x_axis, data, params):
+def estimate_triplelorentzoffset_N14(self, x_axis, data, params):
     """ Estimation of a the hyperfine interaction of a N14 nuclear spin.
 
     @param numpy.array x_axis: 1D axis values
@@ -671,7 +974,7 @@ def estimate_N14(self, x_axis, data, params):
     length_x_scan = x_axis[-1] - x_axis[0]
 
     if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
-        logger.error('The N14 estimator expects an x_axis with a length in the '
+        self.log.error('The N14 estimator expects an x_axis with a length in the '
                      'range [{0},{1}]Hz, but the passed x_axis has a length of '
                      '{2}, which is not sensible for the N14 estimator. Correct '
                      'that!'.format(hf_splitting/2, 1e9, length_x_scan))
@@ -757,164 +1060,3 @@ def estimate_N14(self, x_axis, data, params):
     params['offset'].set(value=offset)
 
     return error, params
-
-
-def make_N14_fit(self, x_axis, data, add_params=None):
-    """ Perform a N14 fit by taking the hyperfine interaction of 2.15 MHz into
-        account.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    model, params = self.make_multiplelorentzoffset_model(no_of_functions=3)
-    error, params = self.estimate_N14(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-
-    try:
-        result = model.fit(data, x=x_axis, params=params)
-    except:
-        result = model.fit(data, x=x_axis, params=params)
-        logger.error('The N14 fit did not '
-                     'work: {0}'.format(result.message))
-
-    return result
-
-
-############################################################################
-#                                                                          #
-#                               N15 fitting                                #
-#                                                                          #
-############################################################################
-
-def estimate_N15(self, x_axis, data, params):
-    """ Estimation of a the hyperfine interaction of a N15 nuclear spin.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param lmfit.Parameters params: object includes parameter dictionary which
-                                    can be set
-
-    @return tuple (error, params):
-
-    Explanation of the return parameter:
-        int error: error code (0:OK, -1:error)
-        Parameters object params: set parameters of initial values
-
-    Provide an estimation of all fitting parameters for fitting the
-    two equidistant lorentzian dips of the hyperfine interaction
-    of a N15 nuclear spin. Here the splitting is set as an expression,
-    if the splitting is not exactly 3.03MHz the fit will not work.
-    """
-
-    # check if parameters make sense
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
-
-    hf_splitting = 3.03 * 1e6 # Hz
-
-    # this is an estimator, for a physical application, therefore the x_axis
-    # should fulfill certain constraints:
-    length_x_scan = x_axis[-1] - x_axis[0]
-
-    if length_x_scan < hf_splitting/2 or hf_splitting > 1e9:
-        logger.error('The N15 estimator expects an x_axis with a length in the '
-                     'range [{0},{1}]Hz, but the passed x_axis has a length of '
-                     '{2}, which is not sensible for the N15 estimator. Correct '
-                     'that!'.format(hf_splitting/2, 1e9, length_x_scan))
-        return -1, params
-
-    data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
-
-    # filter should always have a length of approx linewidth 1MHz
-    points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
-
-    # filter should have a width of 4 MHz
-    x_filter = np.linspace(0,4*points_within_1MHz,4*points_within_1MHz)
-    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter < len(x_filter)/4),
-                                      (x_filter >= len(x_filter)/4)*(x_filter < len(x_filter)*3/4),
-                                      (x_filter >= len(x_filter)*3/4)],
-                           [1, 0, 1])
-
-    # if the filter is smaller than 3 points a convolution does not make sense
-    if len(lorentz) >= 3:
-        data_convolved = filters.convolve1d(data_smooth_lorentz,
-                                            lorentz/lorentz.sum(),
-                                            mode='constant',
-                                            cval=data_smooth_lorentz.max())
-        x_axis_min = x_axis[data_convolved.argmin()]-hf_splitting/2.
-    else:
-        x_axis_min = x_axis[data_smooth_lorentz.argmin()]
-
-    # data_level = data_smooth_lorentz - data_smooth_lorentz.max()
-    data_level = data_smooth_lorentz - offset
-
-    minimum_level = data_level.min()
-    # integral of data:
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
-    Integral = function.integral(x_axis[0], x_axis[-1])
-
-    # assume both peaks contribute to the linewidth, so devive by 2, that makes
-    # the peaks narrower
-    sigma = abs(Integral /(np.pi * minimum_level))
-
-    amplitude = -abs(minimum_level)
-
-    minimal_sigma = x_axis[1]-x_axis[0]
-    maximal_sigma = x_axis[-1]-x_axis[0]
-
-    params['l0_amplitude'].set(value=amplitude, max=-1e-6)
-    params['l0_center'].set(value=x_axis_min)
-    params['l0_sigma'].set(value=sigma, min=minimal_sigma,
-                                 max=maximal_sigma)
-    params['l1_amplitude'].set(value=params['l0_amplitude'].value,
-                               max=-1e-6)
-    params['l1_center'].set(value=params['l0_center'].value+hf_splitting,
-                            expr='l0_center+{0}'.format(hf_splitting))
-    params['l1_sigma'].set(value=params['l0_sigma'].value,
-                           min=minimal_sigma, max=maximal_sigma,
-                           expr='l0_sigma')
-    params['offset'].set(value=offset)
-
-    return error, params
-
-
-def make_N15_fit(self, x_axis, data, add_params=None):
-    """ Performes a fit where a N15 hyperfine interaction of 3.03 MHz is taken
-        into account.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object model: lmfit.model.ModelFit object, all parameters
-                          provided about the fitting, like: success,
-                          initial fitting values, best fitting values, data
-                          with best fit with given axis,...
-    """
-
-    model, params = self.make_multiplelorentzoffset_model(no_of_functions=2)
-    error, params = self.estimate_N15(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-
-    try:
-        result = model.fit(data, x=x_axis, params=params)
-    except:
-        result = model.fit(data, x=x_axis, params=params)
-        logger.error('The N15 fit did not '
-                     'work: {0}'.format(result.message))
-
-    return result

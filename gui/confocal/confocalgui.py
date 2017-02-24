@@ -33,7 +33,7 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitSettingsWidget
+from gui.fitsettings import FitParametersWidget
 
 class CrossROI(pg.ROI):
 
@@ -786,7 +786,7 @@ class ConfocalGui(GUIBase):
             self._osd.opt_channel_ComboBox.addItem(str(ch), n)
 
         # Generation of the fit params tab ##################
-        self._osd.fit_tab = FitSettingsWidget(self._optimizer_logic.z_params)
+        self._osd.fit_tab = FitParametersWidget(self._optimizer_logic.z_params)
         self._osd.settings_tabWidget.addTab(self._osd.fit_tab, "Fit Params")
 
         # write the configuration to the settings window of the GUI.
@@ -1078,7 +1078,7 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.optimization_sequence = str(self._osd.optimization_sequence_lineEdit.text()).upper().replace(" ", "").split(',')
         self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
-        self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitSettings(self._optimizer_logic.z_params)
+        self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitParameters(self._optimizer_logic.z_params)
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 
@@ -1100,7 +1100,7 @@ class ConfocalGui(GUIBase):
         self._osd.optimization_sequence_lineEdit.setText(', '.join(self._optimizer_logic.optimization_sequence))
 
         # fit parameters
-        self._osd.fit_tab.keepFitSettings(self._optimizer_logic.z_params, self._optimizer_logic.use_custom_params)
+        self._osd.fit_tab.resetFitParameters()
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 

@@ -60,6 +60,7 @@
     <addaction name="action_Settings_Block_Generation"/>
     <addaction name="action_Settings_Sequence_Editor"/>
     <addaction name="action_Predefined_Methods_Config"/>
+    <addaction name="action_FitSettings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -219,6 +220,18 @@
    </property>
    <property name="text">
     <string>Predefined Methods</string>
+   </property>
+  </action>
+  <action name="action_FitSettings">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Fit Settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Customize fitting routines for pulsed measurements</string>
    </property>
   </action>
  </widget>

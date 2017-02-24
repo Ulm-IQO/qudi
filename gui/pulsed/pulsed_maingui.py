@@ -42,12 +42,12 @@ from core.util.mutex import Mutex
 from core.util import units
 from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
 from logic.sampling_functions import SamplingFunctions
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 
 
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
-#FIXME: Later that should be able to round up the values directly within
 
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
@@ -1270,6 +1270,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
 
+        # Fit settings dialog
+        self._fsd = FitSettingsDialog(self._pulsed_master_logic._measurement_logic.fc)
+        self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
+        self._fsd.applySettings()
+
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image)
@@ -1280,8 +1285,6 @@ class PulsedMeasurementGui(GUIBase):
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem(pen=palette.c2)
         self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
-        self._pa.fit_param_fit_func_ComboBox.clear()
-        self._pa.fit_param_fit_func_ComboBox.addItems(self._pulsed_master_logic.get_fit_functions())
 
         # Configure the errorbars of the data in the main pulse analysis display:
         self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
@@ -1357,6 +1360,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_pull_data.triggered.connect(self.pull_data_clicked)
         self._mw.action_save.triggered.connect(self.save_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
+        self._mw.action_FitSettings.triggered.connect(self._fsd.show)
 
         # connect checkbox click signals
         self._pa.ext_control_use_mw_CheckBox.stateChanged.connect(self.ext_mw_params_changed)
@@ -1488,6 +1492,7 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_start_line.sigPositionChangeFinished.disconnect()
         self.ref_end_line.sigPositionChangeFinished.disconnect()
         self._pe.extract_param_conv_std_dev_slider.sliderReleased.disconnect()
+        self._fsd.sigFitsUpdated.disconnect()
         return
 
     def _analysis_apply_hardware_constraints(self):
@@ -1676,17 +1681,16 @@ class PulsedMeasurementGui(GUIBase):
 
     def fit_clicked(self):
         """Fits the current data"""
-        current_fit_function = self._pa.fit_param_fit_func_ComboBox.currentText()
-        self._pulsed_master_logic.do_fit(current_fit_function)
+        current_fit_method = self._pa.fit_param_fit_func_ComboBox.getCurrentFit()[0]
+        self._pulsed_master_logic.do_fit(current_fit_method)
         return
 
-    def fit_data_updated(self, fit_function, fit_data_x, fit_data_y, param_dict, result_dict):
+    def fit_data_updated(self, fit_method, fit_data_x, fit_data_y, result_dict):
         """
 
-        @param fit_function:
+        @param fit_method:
         @param fit_data_x:
         @param fit_data_y:
-        @param param_dict:
         @param result_dict:
         @return:
         """
@@ -1694,17 +1698,22 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.fit_param_fit_func_ComboBox.blockSignals(True)
         # set widgets
         self._pa.fit_param_results_TextBrowser.clear()
-        fit_text = units.create_formatted_output(param_dict)
-        self._pa.fit_param_results_TextBrowser.setPlainText(fit_text)
+        if fit_method == 'No Fit':
+            formatted_fitresult = 'No Fit'
+        else:
+            try:
+                formatted_fitresult = units.create_formatted_output(result_dict.result_str_dict)
+            except:
+                formatted_fitresult = 'This fit does not return formatted results'
+        self._pa.fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
+
         self.fit_image.setData(x=fit_data_x, y=fit_data_y)
-        if fit_function == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
+        if fit_method == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
             self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
-        elif fit_function != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
+        elif fit_method != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
             self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
-        if self._pa.fit_param_fit_func_ComboBox.currentText() != fit_function:
-            index = self._pa.fit_param_fit_func_ComboBox.findText(fit_function)
-            if index >= 0:
-                self._pa.fit_param_fit_func_ComboBox.setCurrentIndex(index)
+        if fit_method is not None:
+            self._pa.fit_param_fit_func_ComboBox.setCurrentFit(fit_method)
         # unblock signals
         self._pa.fit_param_fit_func_ComboBox.blockSignals(False)
         return
