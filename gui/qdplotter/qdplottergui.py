@@ -78,7 +78,7 @@ class QdplotterGui(GUIBase):
                          had happened.
         """
 
-        self._qdplot_logic = self.get_in_connector('qdplotlogic1')
+        self._qdplot_logic = self.get_connector('qdplotlogic1')
 
         #####################
         # Configuring the dock widgets

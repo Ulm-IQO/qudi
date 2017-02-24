@@ -71,9 +71,9 @@ class PulsedExtractionExternalLogic(GenericLogic):
         """
 
 
-        self._save_logic = self.get_in_connector('savelogic')
-        self._pe_logic = self.get_in_connector('pulseextractionlogic')
-        self._pa_logic = self.get_in_connector('pulseanalysislogic')
+        self._save_logic = self.get_connector('savelogic')
+        self._pe_logic = self.get_connector('pulseextractionlogic')
+        self._pa_logic = self.get_connector('pulseanalysislogic')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.

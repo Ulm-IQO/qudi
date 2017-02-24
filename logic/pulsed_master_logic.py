@@ -148,8 +148,8 @@ class PulsedMasterLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self._measurement_logic = self.get_in_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
+        self._generator_logic = self.get_connector('sequencegeneratorlogic')
 
         # Recall status variables
         if 'invoke_settings' in self._statusVariables:

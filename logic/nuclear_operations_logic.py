@@ -307,16 +307,16 @@ class NuclearOperationsLogic(GenericLogic):
         self.initialize_meas_param()
 
         # establish the access to all connectors:
-        self._save_logic = self.get_in_connector('savelogic')
+        self._save_logic = self.get_connector('savelogic')
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._seq_gen_logic = self.get_in_connector('sequencegenerationlogic')
-        self._trace_ana_logic = self.get_in_connector('traceanalysislogic')
-        self._gc_logic = self.get_in_connector('gatedcounterlogic')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
-        self._optimizer_logic = self.get_in_connector('optimizerlogic')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
+        self._seq_gen_logic = self.get_connector('sequencegenerationlogic')
+        self._trace_ana_logic = self.get_connector('traceanalysislogic')
+        self._gc_logic = self.get_connector('gatedcounterlogic')
+        self._odmr_logic = self.get_connector('odmrlogic')
+        self._optimizer_logic = self.get_connector('optimizerlogic')
+        self._confocal_logic = self.get_connector('scannerlogic')
 
 
         # connect signals:

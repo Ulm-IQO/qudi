@@ -78,8 +78,8 @@ class NuclearOperationsGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
-        self._no_logic = self.get_in_connector('nuclearoperationslogic')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._no_logic = self.get_connector('nuclearoperationslogic')
+        self._save_logic = self.get_connector('savelogic')
 
         # Create the MainWindow to display the GUI
         self._mw = NuclearOperationsMainWindow()

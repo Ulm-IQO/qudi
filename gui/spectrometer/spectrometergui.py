@@ -71,7 +71,7 @@ class SpectrometerGui(GUIBase):
                          had happened.
         """
 
-        self._spectrum_logic = self.get_in_connector('spectrumlogic1')
+        self._spectrum_logic = self.get_connector('spectrumlogic1')
 
         # setting up the window
         self._mw = SpectrometerWindow()

@@ -74,8 +74,8 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._motor_device_rot = self.get_in_connector('motorstage_rot')
-        self._motor_device_xyz = self.get_in_connector('motorstage_xyz')
+        self._motor_device_rot = self.get_connector('motorstage_rot')
+        self._motor_device_xyz = self.get_connector('motorstage_xyz')
 
 
 

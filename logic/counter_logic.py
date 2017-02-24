@@ -105,8 +105,8 @@ class CounterLogic(GenericLogic):
                          has happen.
         """
         # Connect to hardware and save logic
-        self._counting_device = self.get_in_connector('counter1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._counting_device = self.get_connector('counter1')
+        self._save_logic = self.get_connector('savelogic')
 
         # Recall saved app-parameters
         if 'count_length' in self._statusVariables:

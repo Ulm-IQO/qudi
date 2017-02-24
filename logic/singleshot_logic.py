@@ -92,17 +92,17 @@ class SingleShotLogic(GenericLogic):
                          had happened.
         """
 
-        self._fast_counter_device = self.get_in_connector('fastcounter')
-        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._traceanalysis_logic = self.get_in_connector('traceanalysislogic1')
-        self._pe_logic = self.get_in_connector('pulseextractionlogic')
-        self._pm_logic = self.get_in_connector('pulsedmeasurementlogic')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
-        self._pulsed_master_logic = self.get_in_connector('pulsedmasterlogic')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
-        self._optimizer_logic = self.get_in_connector('optimizerlogic')
+        self._fast_counter_device = self.get_connector('fastcounter')
+        self._pulse_generator_device = self.get_connector('pulsegenerator')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._traceanalysis_logic = self.get_connector('traceanalysislogic1')
+        self._pe_logic = self.get_connector('pulseextractionlogic')
+        self._pm_logic = self.get_connector('pulsedmeasurementlogic')
+        self._odmr_logic = self.get_connector('odmrlogic')
+        self._pulsed_master_logic = self.get_connector('pulsedmasterlogic')
+        self._confocal_logic = self.get_connector('scannerlogic')
+        self._optimizer_logic = self.get_connector('optimizerlogic')
 
         self.hist_data = None
         self.trace = None

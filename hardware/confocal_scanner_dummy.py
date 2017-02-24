@@ -72,7 +72,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                          has happen.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
