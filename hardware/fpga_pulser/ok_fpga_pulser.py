@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 import thirdparty.opal_kelly.ok64 as ok
 import time
@@ -132,13 +131,25 @@ class OkFpgaPulser(Base, PulserInterface):
         constraints.waveform_format = ['fpga']
         constraints.sequence_format = []
 
-        constraints.sample_rate = ScalarConstraint(min=500e6, max=950e6, step=450e6, default=950e6,
-                                                   unit='Hz')
-        constraints.d_ch_low = ScalarConstraint(min=0.0, max=0.0, step=0.0, default=0.0, unit='V')
-        constraints.d_ch_high = ScalarConstraint(min=3.3, max=3.3, step=0.0, default=3.3, unit='V')
+        constraints.sample_rate.min = 500e6
+        constraints.sample_rate.max = 950e6
+        constraints.sample_rate.step = 450e6
+        constraints.sample_rate.default = 950e6
 
-        constraints.sampled_file_length = ScalarConstraint(min=256, max=134217728, step=1,
-                                                           default=1024, unit='Samples')
+        constraints.d_ch_low.min = 0.0
+        constraints.d_ch_low.max = 0.0
+        constraints.d_ch_low.step = 0.0
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = 3.3
+        constraints.d_ch_high.max = 3.3
+        constraints.d_ch_high.step = 0.0
+        constraints.d_ch_high.default = 3.3
+
+        constraints.sampled_file_length.min = 1024
+        constraints.sampled_file_length.max = 134217728
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 1024
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic

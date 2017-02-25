@@ -25,7 +25,6 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
-from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -161,32 +160,81 @@ class PulserDummy(Base, PulserInterface):
         """
         constraints = PulserConstraints()
 
-        # sample rate
-        constraints.sample_rate = self._get_sample_rate_constraints()
-
         # The file formats are hardware specific.
         constraints.waveform_format = [self.compatible_waveform_format]
         constraints.sequence_format = [self.compatible_sequence_format]
 
-        constraints.a_ch_amplitude = ScalarConstraint(min=0.02, max=2.0, step=0.001, default=2.0,
-                                                      unit='Vpp')
-        constraints.a_ch_offset = ScalarConstraint(min=-1.0, max=1.0, step=0.001, default=0.0,
-                                                   unit='V')
-        constraints.d_ch_low = ScalarConstraint(min=-1.0, max=4.0, step=0.01, default=0.0, unit='V')
-        constraints.d_ch_high = ScalarConstraint(min=0.0, max=5.0, step=0.0, default=5.0, unit='V')
+        if self.interleave:
+            constraints.sample_rate.min = 12.0e9
+            constraints.sample_rate.max = 24.0e9
+            constraints.sample_rate.step = 4.0e8
+            constraints.sample_rate.default = 24.0e9
+        else:
+            constraints.sample_rate.min = 10.0e6
+            constraints.sample_rate.max = 12.0e9
+            constraints.sample_rate.step = 10.0e6
+            constraints.sample_rate.default = 12.0e9
 
-        constraints.sampled_file_length = ScalarConstraint(min=80, max=64800000, step=1, default=80,
-                                                           unit='Samples')
-        constraints.waveform_num = ScalarConstraint(min=1, max=32000, step=1, default=1, unit='#')
-        constraints.sequence_num = ScalarConstraint(min=1, max=8000, step=1, default=1, unit='#')
-        constraints.subsequence_num = ScalarConstraint(min=1, max=4000, step=1, default=1, unit='#')
+        constraints.a_ch_amplitude.min = 0.02
+        constraints.a_ch_amplitude.max = 2.0
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 2.0
+
+        constraints.a_ch_offset.min = -1.0
+        constraints.a_ch_offset.max = 1.0
+        constraints.a_ch_offset.step = 0.001
+        constraints.a_ch_offset.default = 0.0
+
+        constraints.d_ch_low.min = -1.0
+        constraints.d_ch_low.max = 4.0
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = 0.0
+        constraints.d_ch_high.max = 5.0
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 5.0
+
+        constraints.sampled_file_length.min = 80
+        constraints.sampled_file_length.max = 64800000
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 80
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 8000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 4000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
 
         # If sequencer mode is available then these should be specified
-        constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
-        constraints.trigger_connectors = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
-        constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
-                                                     unit='step')
-        constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65539
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
+        constraints.trigger_in.min = 0
+        constraints.trigger_in.max = 2
+        constraints.trigger_in.step = 1
+        constraints.trigger_in.default = 0
+
+        constraints.event_jump_to.min = 0
+        constraints.event_jump_to.max = 8000
+        constraints.event_jump_to.step = 1
+        constraints.event_jump_to.default = 0
+
+        constraints.go_to.min = 0
+        constraints.go_to.max = 8000
+        constraints.go_to.step = 1
+        constraints.go_to.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -212,18 +260,6 @@ class PulserDummy(Base, PulserInterface):
         constraints.activation_config = activation_config
 
         return constraints
-
-    def _get_sample_rate_constraints(self):
-        """ If sample rate changes during Interleave mode, then it has to be
-            adjusted for that state.
-
-        @return dict: with keys 'min', 'max':, 'step' and 'unit' and the
-                      assigned values for that keys.
-        """
-        if self.interleave:
-            return ScalarConstraint(min=12.0e9, max=24.0e9, step=4.0e8, default=24.0e9, unit='Hz')
-        else:
-            return ScalarConstraint(min=10.0e6, max=12.0e9, step=4.0e8, default=12.0e9, unit='Hz')
 
     def pulser_on(self):
         """ Switches the pulsing device on.
