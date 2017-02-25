@@ -54,7 +54,7 @@ class WavemeterLogGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = { 'wavemeterloggerlogic1': 'WavemeterLoggerLogic',
+    _connectors = { 'wavemeterloggerlogic1': 'WavemeterLoggerLogic',
             'savelogic': 'SaveLogic'
             }
 

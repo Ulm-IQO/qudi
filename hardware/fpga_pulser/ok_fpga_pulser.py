@@ -44,7 +44,6 @@ class OkFpgaPulser(Base, PulserInterface):
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

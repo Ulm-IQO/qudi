@@ -165,8 +165,7 @@ class AutomationLogic(GenericLogic):
     """
     _modclass = 'AutomationLogic'
     _modtype = 'logic'
-    _in = {'taskrunner': 'TaskRunner'}
-    _out = {'automationlogic': 'AutomationLogic'}
+    _connectors = {'taskrunner': 'TaskRunner'}
 
     sigRepeat = QtCore.Signal()
 

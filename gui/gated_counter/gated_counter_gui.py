@@ -53,7 +53,7 @@ class GatedCounterGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'gatedcounterlogic1': 'GatedCounterLogic',
+    _connectors = {'gatedcounterlogic1': 'GatedCounterLogic',
            'traceanalysislogic1': 'TraceAnalysisLogic'}
 
 

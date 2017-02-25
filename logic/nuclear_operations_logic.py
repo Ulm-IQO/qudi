@@ -61,15 +61,15 @@ class NuclearOperationsLogic(GenericLogic):
     # declare connectors
     #TODO: Use rather the task runner instead directly the module!
 
-    _in = {'sequencegenerationlogic': 'SequenceGenerationLogic',
-           'traceanalysislogic': 'TraceAnalysisLogic',
-           'gatedcounterlogic': 'CounterLogic',
-           'odmrlogic': 'ODMRLogic',
-           'optimizerlogic': 'OptimizerLogic',
-           'scannerlogic':'ScannerLogic',
-           'savelogic': 'SaveLogic'}
-
-    _out = {'nuclearoperationlogic': 'NuclearOperationsLogic'}
+    _connectors = {
+        'sequencegenerationlogic': 'SequenceGenerationLogic',
+        'traceanalysislogic': 'TraceAnalysisLogic',
+        'gatedcounterlogic': 'CounterLogic',
+        'odmrlogic': 'ODMRLogic',
+        'optimizerlogic': 'OptimizerLogic',
+        'scannerlogic':'ScannerLogic',
+        'savelogic': 'SaveLogic'
+    }
 
     sigNextMeasPoint = QtCore.Signal()
     sigCurrMeasPointUpdated = QtCore.Signal()

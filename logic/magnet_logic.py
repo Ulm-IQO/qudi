@@ -67,16 +67,17 @@ class MagnetLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'magnetstage': 'MagnetInterface',
-           'optimizerlogic': 'OptimizerLogic',
-           'counterlogic': 'CounterLogic',
-           'odmrlogic': 'ODMRLogic',
-           'savelogic': 'SaveLogic',
-           'scannerlogic':'ScannerLogic',
-           'traceanalysis':'TraceAnalysisLogic',
-           'gatedcounterlogic': 'GatedCounterLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
-    _out = {'magnetlogic': 'MagnetLogic'}
+    _connectors = {
+        'magnetstage': 'MagnetInterface',
+        'optimizerlogic': 'OptimizerLogic',
+        'counterlogic': 'CounterLogic',
+        'odmrlogic': 'ODMRLogic',
+        'savelogic': 'SaveLogic',
+        'scannerlogic':'ScannerLogic',
+        'traceanalysis':'TraceAnalysisLogic',
+        'gatedcounterlogic': 'GatedCounterLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic'
+    }
 
     # General Signals, used everywhere:
     sigIdleStateChanged = QtCore.Signal(bool)

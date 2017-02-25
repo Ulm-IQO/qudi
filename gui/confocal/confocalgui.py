@@ -183,7 +183,7 @@ class ConfocalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'confocallogic1': 'ConfocalLogic',
+    _connectors = {'confocallogic1': 'ConfocalLogic',
            'savelogic': 'SaveLogic',
            'optimizerlogic1': 'OptimizerLogic'
            }

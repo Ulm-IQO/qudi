@@ -48,7 +48,7 @@ class LaserScanningGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = { 'laserscanninglogic1': 'LaserScanningLogic',
+    _connectors = { 'laserscanninglogic1': 'LaserScanningLogic',
             'savelogic': 'SaveLogic'
             }
 

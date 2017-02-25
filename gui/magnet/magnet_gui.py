@@ -164,7 +164,7 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'magnetlogic1': 'MagnetLogic',
+    _connectors = {'magnetlogic1': 'MagnetLogic',
            'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):

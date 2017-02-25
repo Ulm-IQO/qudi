@@ -58,10 +58,9 @@ class CounterLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'counter1': 'SlowCounterInterface',
-           'savelogic': 'SaveLogic'}
-
-    _out = {'counterlogic': 'CounterLogic'}
+    _connectors = {
+        'counter1': 'SlowCounterInterface',
+        'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
@@ -328,7 +327,7 @@ class CounterLogic(GenericLogic):
             header = 'Time (s)'
             for i, detector in enumerate(self.get_channels()):
                 header = header + ',Signal{0} (counts/s)'.format(i)
- 
+
             data = {header: self._data_to_save}
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
 

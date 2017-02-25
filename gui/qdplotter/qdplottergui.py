@@ -51,7 +51,7 @@ class QdplotterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'qdplotlogic1': 'QdplotLogic'}
+    _connectors = {'qdplotlogic1': 'QdplotLogic'}
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()

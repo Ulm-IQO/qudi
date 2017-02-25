@@ -45,9 +45,9 @@ class QdplotLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'savelogic': 'SaveLogic'
-           }
-    _out = {'qdplotlogic': 'QdplotLogic'}
+    _connectors = {
+        'savelogic': 'SaveLogic'
+    }
 
     def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.

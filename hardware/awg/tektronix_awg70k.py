@@ -42,9 +42,6 @@ class AWG70K(Base, PulserInterface):
     _modclass = 'awg70k'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'pulser': 'PulserInterface'}
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -214,7 +211,7 @@ class AWG70K(Base, PulserInterface):
         # FIXME: This stuff is not yet properly defined
         # If sequencer mode is available then these should be specified
         constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
-        constraints.trigger_in = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
+        constraints.trigger_connectors = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
         constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
                                                      unit='step')
         constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')

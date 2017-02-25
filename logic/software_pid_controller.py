@@ -35,11 +35,10 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     _modclass = 'pidlogic'
     _modtype = 'logic'
     ## declare connectors
-    _in = {
+    _connectors = {
         'process': 'ProcessInterface',
         'control': 'ProcessControlInterface',
         }
-    _out = {'controller': 'SoftPIDController'}
 
     sigNewValue = QtCore.Signal(float)
 

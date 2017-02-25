@@ -65,7 +65,7 @@ class PulsedExtractionExternalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'pulsedextractionexternallogic1': 'PulsedExtractionExternalLogic'}
+    _connectors = {'pulsedextractionexternallogic1': 'PulsedExtractionExternalLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

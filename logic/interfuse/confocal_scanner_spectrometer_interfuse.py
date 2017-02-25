@@ -34,10 +34,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-           'spectrometer1': 'SpectrometerInterface'}
-    _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
+    _connectors = {
+        'fitlogic': 'FitLogic',
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'spectrometer1': 'SpectrometerInterface'
+    }
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

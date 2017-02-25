@@ -222,7 +222,7 @@ class PoiManagerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'poimanagerlogic1': 'PoiManagerLogic',
+    _connectors = {'poimanagerlogic1': 'PoiManagerLogic',
            'confocallogic1': 'ConfocalLogic'
            }
 

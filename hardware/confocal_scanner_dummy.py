@@ -34,8 +34,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     _modclass = 'ConfocalScannerDummy'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'confocalscanner': 'ConfocalScannerInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -232,7 +231,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
     def get_scanner_count_channels(self):
         """ 3 counting channels in dummy confocal: normal, negative and a ramp."""
-        return ['Norm', 'Neg', 'Ramp'] 
+        return ['Norm', 'Neg', 'Ramp']
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -421,8 +420,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
         c = (np.sin(theta)**2) / (2 * sigma_x**2) + (np.cos(theta)**2) / (2 * sigma_y**2)
         g = offset + amplitude * np.exp(
-            - (a * ((x - x_zero)**2) 
-                + 2 * b * (x - x_zero) * (y - y_zero) 
+            - (a * ((x - x_zero)**2)
+                + 2 * b * (x - x_zero) * (y - y_zero)
                 + c * ((y - y_zero)**2)))
         return g.ravel()
 

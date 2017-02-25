@@ -156,7 +156,7 @@ class PulsedMeasurementGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'pulsedmasterlogic': 'PulsedMasterLogic',
+    _connectors = {'pulsedmasterlogic': 'PulsedMasterLogic',
            'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):

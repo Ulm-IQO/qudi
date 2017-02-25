@@ -52,7 +52,7 @@ class VoltScanGui(GUIBase):
     _modclass = 'VoltScanGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'voltagescannerlogic1': 'VoltageScannerLogic',
+    _connectors = {'voltagescannerlogic1': 'VoltageScannerLogic',
           }
 
     def __init__(self, config, **kwargs):

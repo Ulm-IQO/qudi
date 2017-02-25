@@ -30,8 +30,7 @@ class SimpleDataLogic(GenericLogic):
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
-    _in = {'simpledata': 'SimpleData'}
-    _out = {'simplelogic': 'SimpleDataLogic'}
+    _connectors = {'simpledata': 'SimpleData'}
 
     sigRepeat = QtCore.Signal()
 

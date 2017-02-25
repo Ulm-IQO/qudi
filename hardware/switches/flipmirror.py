@@ -32,7 +32,6 @@ class FlipMirror(Base, SwitchInterface):
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'
-    _out = {'switch':'SwitchInterface'}
 
     def __init__(self, config, **kwargs):
         """ Creae flip mirror control module
