@@ -29,7 +29,6 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
-from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -198,48 +197,82 @@ class AWG7122C(Base, PulserInterface):
         # Todo: Check values for AWG7122c
         constraints = PulserConstraints()
 
-        # Sample rate
-        if self.interleave:
-            constraints.sample_rate = ScalarConstraint(min=12e9, max=24e9, step=5e2, default=24e9,
-                                                       unit='Hz')
-        else:
-            constraints.sample_rate = ScalarConstraint(min=1e7, max=12e9, step=1e7, default=12e9,
-                                                       unit='Hz')
-
-        # The file formats are hardware specific.
         constraints.waveform_format = ['wfm']
         constraints.sequence_format = ['seq']
 
+        if self.interleave:
+            constraints.sample_rate.min = 12.0e9
+            constraints.sample_rate.max = 24.0e9
+            constraints.sample_rate.step = 5.0e2
+            constraints.sample_rate.default = 24.0e9
+        else:
+            constraints.sample_rate.min = 10.0e6
+            constraints.sample_rate.max = 12.0e9
+            constraints.sample_rate.step = 10.0e6
+            constraints.sample_rate.default = 12.0e9
+
+        constraints.a_ch_amplitude.max = 1.0
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 1.0
         if self.zeroing:
-            constraints.a_ch_amplitude = ScalarConstraint(min=0.25, max=1.0, step=1e-3, default=1.0,
-                                                          unit='Vpp')
+            constraints.a_ch_amplitude.min = 0.25
         else:
-            constraints.a_ch_amplitude = ScalarConstraint(min=0.5, max=1.0, step=1e-3, default=1.0,
-                                                          unit='Vpp')
+            constraints.a_ch_amplitude.min = 0.5
 
-        constraints.a_ch_offset = ScalarConstraint(unit='V')
-        constraints.d_ch_low = ScalarConstraint(min=-1.4, max=0.9, step=0.01, default=0.0, unit='V')
-        constraints.d_ch_high = ScalarConstraint(min=-0.9, max=1.4, step=0.01, default=1.4,
-                                                 unit='V')
+        constraints.d_ch_low.min = -1.4
+        constraints.d_ch_low.max = 0.9
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
 
+        constraints.d_ch_high.min = -0.9
+        constraints.d_ch_high.max = 1.4
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 1.4
+
+        constraints.sampled_file_length.min = 1
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 80
         if '01' in self.AWG_options:
-            constraints.sampled_file_length = ScalarConstraint(min=1, max=64800000, step=1,
-                                                               default=1, unit='Samples')
+            constraints.sampled_file_length.max = 64800000
         else:
-            constraints.sampled_file_length = ScalarConstraint(min=1, max=32000000, step=1,
-                                                               default=1, unit='Samples')
+            constraints.sampled_file_length.max = 32000000
 
-        constraints.waveform_num = ScalarConstraint(min=1, max=32000, step=1, default=1, unit='#')
-        constraints.sequence_num = ScalarConstraint(min=1, max=16000, step=1, default=1, unit='#')
-        constraints.subsequence_num = ScalarConstraint(min=1, max=8000, step=1, default=1, unit='#')
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 16000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 8000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
 
         # If sequencer mode is available then these should be specified
-        constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65539
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
         # ToDo: Check how many external triggers this device has
-        constraints.trigger_in = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
-        constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
-                                                     unit='step')
-        constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')
+        constraints.trigger_in.min = 0
+        constraints.trigger_in.max = 2
+        constraints.trigger_in.step = 1
+        constraints.trigger_in.default = 0
+
+        constraints.event_jump_to.min = 0
+        constraints.event_jump_to.max = 8000
+        constraints.event_jump_to.step = 1
+        constraints.event_jump_to.default = 0
+
+        constraints.go_to.min = 0
+        constraints.go_to.max = 8000
+        constraints.go_to.step = 1
+        constraints.go_to.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
