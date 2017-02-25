@@ -25,6 +25,7 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
+from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -147,11 +148,9 @@ class PulserDummy(Base, PulserInterface):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is a dictionary with the following generic form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
@@ -160,44 +159,7 @@ class PulserDummy(Base, PulserInterface):
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
-        sequence mode) then write just zeroes to each generic entry. Note that there is a difference
-        between float input (0.0) and integer input (0).
-
-        ALL THE PRESENT ATTRIBUTES OF THE CONSTRAINTS OBJECT MUST BE ASSIGNED!
-
-        # Example for configuration with default values:
-        constraints = PulserConstraints()
-
-        constraints.sample_rate = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Samples/s'}
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = 'wfm'
-        constraints.sequence_format = 'seq'
-
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_low = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_high = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.sampled_file_length = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Samples'}
-        constraints.digital_bin_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.waveform_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        sequence_param = OrderedDict()
-        constraints.sequence_param = sequence_param
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
-        # channels. Here all possible channel configurations are stated, where only the generic
-        # names should be used. The names for the different configurations can be customary chosen.
-        activation_conf = OrderedDict()
-        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
-        constraints.activation_config = activation_conf
+        sequence mode) just leave it out so that the default is used (only zeros).
         """
         constraints = PulserConstraints()
 
@@ -208,25 +170,25 @@ class PulserDummy(Base, PulserInterface):
         constraints.waveform_format = [self.compatible_waveform_format]
         constraints.sequence_format = [self.compatible_sequence_format]
 
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        # amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0.02, 'max': 2.0, 'step': 0.001, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': -1.0, 'max': 1.0, 'step': 0.001, 'unit': 'V'}
-        constraints.d_ch_low = {'min': -1.0, 'max': 4.0, 'step': 0.01, 'unit': 'V'}
-        constraints.d_ch_high = {'min': 0.0, 'max': 5.0, 'step': 0.0, 'unit': 'V'}
+        constraints.a_ch_amplitude = ScalarConstraint(min=0.02, max=2.0, step=0.001, default=2.0,
+                                                      unit='Vpp')
+        constraints.a_ch_offset = ScalarConstraint(min=-1.0, max=1.0, step=0.001, default=0.0,
+                                                   unit='V')
+        constraints.d_ch_low = ScalarConstraint(min=-1.0, max=4.0, step=0.01, default=0.0, unit='V')
+        constraints.d_ch_high = ScalarConstraint(min=0.0, max=5.0, step=0.0, default=5.0, unit='V')
 
-        constraints.sampled_file_length = {'min': 80, 'max': 64.8e6, 'step': 1, 'unit': 'Samples'}
-        constraints.waveform_num = {'min': 1, 'max': 32000, 'step': 1, 'unit': '#'}
-        constraints.sequence_num = {'min': 1, 'max': 8000, 'step': 1, 'unit': '#'}
-        constraints.subsequence_num = {'min': 1, 'max': 4000, 'step': 1, 'unit': '#'}
+        constraints.sampled_file_length = ScalarConstraint(min=80, max=64800000, step=1, default=80,
+                                                           unit='Samples')
+        constraints.waveform_num = ScalarConstraint(min=1, max=32000, step=1, default=1, unit='#')
+        constraints.sequence_num = ScalarConstraint(min=1, max=8000, step=1, default=1, unit='#')
+        constraints.subsequence_num = ScalarConstraint(min=1, max=4000, step=1, default=1, unit='#')
 
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        sequence_param = OrderedDict()
-        sequence_param['repetitions'] = {'min': 0, 'max': 65536, 'step': 1, 'unit': '#'}
-        sequence_param['trigger_wait'] = {'min': False, 'max': True, 'step': 1, 'unit': 'bool'}
-        sequence_param['event_jump_to'] = {'min': -1, 'max': 8000, 'step': 1, 'unit': 'row'}
-        sequence_param['go_to'] = {'min': 0, 'max': 8000, 'step': 1, 'unit': 'row'}
-        constraints.sequence_param = sequence_param
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
+        constraints.trigger_in = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
+        constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
+                                                     unit='step')
+        constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -261,9 +223,9 @@ class PulserDummy(Base, PulserInterface):
                       assigned values for that keys.
         """
         if self.interleave:
-            return {'min': 12.0e9, 'max': 24.0e9, 'step': 4, 'unit': 'Hz'}
+            return ScalarConstraint(min=12.0e9, max=24.0e9, step=4.0e8, default=24.0e9, unit='Hz')
         else:
-            return {'min': 10.0e6, 'max': 12.0e9, 'step': 4, 'unit': 'Hz'}
+            return ScalarConstraint(min=10.0e6, max=12.0e9, step=4.0e8, default=12.0e9, unit='Hz')
 
     def pulser_on(self):
         """ Switches the pulsing device on.

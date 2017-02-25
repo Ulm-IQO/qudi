@@ -495,11 +495,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # check and set sample rate
         samplerate_constr = pulser_constraints.sample_rate
-        if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
+        if sample_rate_Hz > samplerate_constr.max or sample_rate_Hz < samplerate_constr.min:
             self.log.warning('Desired sample rate of {0:.0e} Hz not within pulse generator '
                              'constraints. Setting {1:.0e} Hz instead.'
-                             ''.format(sample_rate_Hz, samplerate_constr['max']))
-            sample_rate_Hz = samplerate_constr['max']
+                             ''.format(sample_rate_Hz, samplerate_constr.max))
+            sample_rate_Hz = samplerate_constr.max
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
 
         # check and set activation_config
@@ -538,12 +538,12 @@ class PulsedMeasurementLogic(GenericLogic):
         # check and set analogue amplitude dict
         amplitude_constr = pulser_constraints.a_ch_amplitude
         for chnl in amplitude_dict:
-            if amplitude_dict[chnl] > amplitude_constr['max'] or amplitude_dict[chnl] < amplitude_constr['min']:
+            if amplitude_dict[chnl] > amplitude_constr.max or amplitude_dict[chnl] < amplitude_constr.min:
                 self.log.error('Desired analogue voltage of {0} V for channel "{1}" is not within '
                                'pulse generator constraints. Using min voltage {2} V instead to '
                                'avoid damage.'
-                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr['min']))
-                amplitude_dict[chnl] = amplitude_constr['min']
+                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr.min))
+                amplitude_dict[chnl] = amplitude_constr.min
         self.analogue_amplitude, dummy = self._pulse_generator_device.set_analog_level(amplitude=amplitude_dict)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,

@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
+from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 import thirdparty.opal_kelly.ok64 as ok
 import time
@@ -113,11 +114,9 @@ class OkFpgaPulser(Base, PulserInterface):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is a dictionary with the following generic form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
@@ -126,73 +125,21 @@ class OkFpgaPulser(Base, PulserInterface):
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
-        sequence mode) then write just zeroes to each generic entry. Note that there is a difference
-        between float input (0.0) and integer input (0).
-
-        ALL THE PRESENT ATTRIBUTES OF THE CONSTRAINTS OBJECT MUST BE ASSIGNED!
-
-        # Example for configuration with default values:
-        constraints = PulserConstraints()
-
-        constraints.sample_rate = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Samples/s'}
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = 'wfm'
-        constraints.sequence_format = 'seq'
-
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_low = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_high = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.sampled_file_length = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Samples'}
-        constraints.digital_bin_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.waveform_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        sequence_param = OrderedDict()
-        constraints.sequence_param = sequence_param
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
-        # channels. Here all possible channel configurations are stated, where only the generic
-        # names should be used. The names for the different configurations can be customary chosen.
-        activation_conf = OrderedDict()
-        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
-        constraints.activation_config = activation_conf
+        sequence mode) just leave it out so that the default is used (only zeros).
         """
         constraints = PulserConstraints()
-
-        # sample rate
-        constraints.sample_rate = {'min': 500e6, 'max': 950e6, 'step': 450e6, 'unit': 'Hz'}
 
         # The file formats are hardware specific.
         constraints.waveform_format = ['fpga']
         constraints.sequence_format = []
 
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        # amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': 0, 'max': 0, 'step': 0, 'unit': 'V'}
-        constraints.d_ch_low = {'min': 0, 'max': 0, 'step': 0, 'unit': 'V'}
-        constraints.d_ch_high = {'min': 3.3, 'max': 3.3, 'step': 0, 'unit': 'V'}
+        constraints.sample_rate = ScalarConstraint(min=500e6, max=950e6, step=450e6, default=950e6,
+                                                   unit='Hz')
+        constraints.d_ch_low = ScalarConstraint(min=0.0, max=0.0, step=0.0, default=0.0, unit='V')
+        constraints.d_ch_high = ScalarConstraint(min=3.3, max=3.3, step=0.0, default=3.3, unit='V')
 
-        constraints.sampled_file_length = {'min': 256, 'max': 134217728, 'step': 1,
-                                           'unit': 'Samples'}
-        constraints.digital_bin_num = {'min': 0, 'max': 0.0, 'step': 0, 'unit': '#'}
-        constraints.waveform_num = {'min': 1, 'max': 1, 'step': 0, 'unit': '#'}
-        constraints.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        # Insert here in the same fashion like above the parameters, which the device is needing
-        # for a creating sequences:
-        sequence_param = OrderedDict()
-        constraints.sequence_param = sequence_param
+        constraints.sampled_file_length = ScalarConstraint(min=256, max=134217728, step=1,
+                                                           default=1024, unit='Samples')
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
