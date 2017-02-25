@@ -1501,12 +1501,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_fc_bins_ComboBox.blockSignals(True)
         # apply constraints
         pulser_constr, fastcounter_constr = self._pulsed_master_logic.get_hardware_constraints()
-        sample_min = pulser_constr.sample_rate.min
-        sample_max = pulser_constr.sample_rate.max
-        sample_step = pulser_constr.sample_rate.step
-        self._pa.pulser_sample_freq_DSpinBox.setMinimum(sample_min)
-        self._pa.pulser_sample_freq_DSpinBox.setMaximum(sample_max)
-        self._pa.pulser_sample_freq_DSpinBox.setSingleStep(sample_step)
+        self._pa.pulser_sample_freq_DSpinBox.setMinimum(pulser_constr.sample_rate.min)
+        self._pa.pulser_sample_freq_DSpinBox.setMaximum(pulser_constr.sample_rate.max)
+        self._pa.pulser_sample_freq_DSpinBox.setSingleStep(pulser_constr.sample_rate.step)
         self._pa.pulser_activation_config_ComboBox.clear()
         self._pa.pulser_activation_config_ComboBox.addItems(list(pulser_constr.activation_config))
         self._pa.ana_param_fc_bins_ComboBox.clear()
