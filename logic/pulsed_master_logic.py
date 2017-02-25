@@ -540,8 +540,8 @@ class PulsedMasterLogic(GenericLogic):
         # config and sample rate
         self._generator_logic.amplitude_dict = analogue_amplitude
 
-        activation_config = self._measurement_logic.get_pulser_constraints()['activation_config'][
-            activation_config_name]
+        constraints = self._measurement_logic.get_pulser_constraints()
+        activation_config = constraints.activation_config[activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
                                            activation_config, analogue_amplitude, interleave_on)
         return
@@ -855,7 +855,7 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
-        if asset_name is not None:
+        if asset_name is not None and asset_name != '' and asset_name != str(None):
             asset_object = self._generator_logic.get_saved_asset(asset_name)
             asset_type = type(asset_object).__name__
         else:
@@ -1190,7 +1190,7 @@ class PulsedMasterLogic(GenericLogic):
         # get pulser constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # activation config
-        config_constraint = pulser_constraints['activation_config']
+        config_constraint = pulser_constraints.activation_config
         if activation_config_name not in config_constraint:
             new_config_name = list(config_constraint.keys())[0]
             self.log.warning('Activation config "{0}" could not be found in pulser constraints. '
@@ -1215,7 +1215,7 @@ class PulsedMasterLogic(GenericLogic):
                              'config "{1}". Using first valid channel "{2}" instead.'
                              ''.format(old_laser_chnl, activation_config, laser_channel))
         # sample rate
-        samplerate_constraint = pulser_constraints['sample_rate']
+        samplerate_constraint = pulser_constraints.sample_rate
         if sample_rate < samplerate_constraint['min'] or sample_rate > samplerate_constraint['max']:
             self.log.warning('Sample rate of {0} MHz lies not within pulse generator constraints. '
                              'Using max. allowed sample rate of {1} MHz instead.'
@@ -1241,7 +1241,7 @@ class PulsedMasterLogic(GenericLogic):
         # retrieve hardware constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # check activation_config
-        config_dict = pulser_constraints['activation_config']
+        config_dict = pulser_constraints.activation_config
         activation_config_name = ''
         for key in config_dict.keys():
             if config_dict[key] == activation_config:
@@ -1313,7 +1313,7 @@ class PulsedMasterLogic(GenericLogic):
         else:
             return_params['activation_config'] = asset_obj.activation_config
         config_name = None
-        avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
+        avail_configs = self._measurement_logic.get_pulser_constraints().activation_config
         for config in avail_configs:
             if return_params['activation_config'] == avail_configs[config]:
                 config_name = config

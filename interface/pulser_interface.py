@@ -35,92 +35,70 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def get_constraints(self):
-        """ Retrieve the hardware constrains from the Pulsing device.
+        """
+        Retrieve the hardware constrains from the Pulsing device.
 
-        @return dict: dict with constraints for the sequence generation and GUI
+        @return constraints object: object with pulser constraints as attributes.
 
-        Provides all the constraints (e.g. sample_rate, amplitude,
-        total_length_bins, channel_config, ...) related to the pulse generator
-        hardware to the caller.
-        The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method).
+        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
+        channel_config, ...) related to the pulse generator hardware to the caller.
 
-                    NO OTHER KEYS SHOULD BE INVENTED!
+            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
 
-        If you are not sure about the meaning, look in other hardware files to
-        get an impression. If still additional constraints are needed, then they
-        have to be added to all files containing this interface.
+        If you are not sure about the meaning, look in other hardware files to get an impression.
+        If still additional constraints are needed, then they have to be added to the
+        PulserConstraints class.
 
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
+        Each scalar parameter is a dictionary with the following generic form:
             {'min': <value>,
              'max': <value>,
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and differs, since it contain the
-        channel configuration/activation information.
+        PulserConstraints.activation_config differs, since it contain the channel
+        configuration/activation information of the form:
+            {<descriptor_str>: <channel_list>,
+             <descriptor_str>: <channel_list>,
+             ...}
 
-        If the constraints cannot be set in the pulsing hardware (because it
-        might e.g. has no sequence mode) then write just zero to each generic
-        dict. Note that there is a difference between float input (0.0) and
-        integer input (0).
+        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
+        sequence mode) then write just zeroes to each generic entry. Note that there is a difference
+        between float input (0.0) and integer input (0).
 
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+        ALL THE PRESENT ATTRIBUTES OF THE CONSTRAINTS OBJECT MUST BE ASSIGNED!
 
         # Example for configuration with default values:
-        constraints = {}
+        constraints = PulserConstraints()
 
-        # if interleave option is available, then sample rate constraints must
-        # be assigned to the output of a function called
-        # _get_sample_rate_constraints()
-        # which outputs the shown dictionary with the correct values depending
-        # on the present mode. The the GUI will have to check again the
-        # limitations if interleave was selected.
-        constraints['sample_rate'] = {'min': 0.0, 'max': 0.0,
-                                      'step': 0.0, 'unit': 'Samples/s'}
+        constraints.sample_rate = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Samples/s'}
 
-        # The file formats are hardware specific. The sequence_generator_logic will need this
-        # information to choose the proper output format for waveform and sequence files.
-        constraints['waveform_format'] = 'wfm'
-        constraints['sequence_format'] = 'seq'
+        # The file formats are hardware specific.
+        constraints.waveform_format = 'wfm'
+        constraints.sequence_format = 'seq'
 
-        # the stepsize will be determined by the DAC in combination with the
-        # maximal output amplitude (in Vpp):
-        constraints['a_ch_amplitude'] = {'min': 0.0, 'max': 0.0,
-                                         'step': 0.0, 'unit': 'Vpp'}
-        constraints['a_ch_offset'] = {'min': 0.0, 'max': 0.0,
-                                      'step': 0.0, 'unit': 'V'}
-        constraints['d_ch_low'] = {'min': 0.0, 'max': 0.0,
-                                   'step': 0.0, 'unit': 'V'}
-        constraints['d_ch_high'] = {'min': 0.0, 'max': 0.0,
-                                    'step': 0.0, 'unit': 'V'}
-        constraints['sampled_file_length'] = {'min': 0, 'max': 0,
-                                              'step': 0, 'unit': 'Samples'}
-        constraints['digital_bin_num'] = {'min': 0, 'max': 0,
-                                          'step': 0, 'unit': '#'}
-        constraints['waveform_num'] = {'min': 0, 'max': 0,
-                                       'step': 0, 'unit': '#'}
-        constraints['sequence_num'] = {'min': 0, 'max': 0,
-                                       'step': 0, 'unit': '#'}
-        constraints['subsequence_num'] = {'min': 0, 'max': 0,
-                                          'step': 0, 'unit': '#'}
+        # the stepsize will be determined by the DAC in combination with the maximal output
+        amplitude (in Vpp):
+        constraints.a_ch_amplitude = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Vpp'}
+        constraints.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
+        constraints.d_ch_low = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
+        constraints.d_ch_high = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
+        constraints.sampled_file_length = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Samples'}
+        constraints.waveform_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
+        constraints.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
+        constraints.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
 
-        # If sequencer mode is enable than sequence_param should be not just an
-        # empty dictionary.
+        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
         sequence_param = OrderedDict()
-        constraints['sequence_param'] = sequence_param
+        constraints.sequence_param = sequence_param
 
-        # the name a_ch<num> and d_ch<num> are generic names, which describe
-        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used. The names
-        # for the different configurations can be customary chosen.
-
-        activation_config = OrderedDict()
-        activation_config['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_config['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_config['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
-        constraints['activation_config'] = activation_config
+        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
+        # channels. Here all possible channel configurations are stated, where only the generic
+        # names should be used. The names for the different configurations can be customary chosen.
+        activation_conf = OrderedDict()
+        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
+        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
+        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        constraints.activation_config = activation_conf
         """
         pass
 
@@ -521,3 +499,27 @@ a
         """
         pass
 
+
+class PulserConstraints:
+    def __init__(self):
+        # sample rate, i.e. the time base of the pulser
+        self.sample_rate = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Hz'}
+        # The peak-to-peak amplitude and voltage offset of the analog channels
+        self.a_ch_amplitude = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Vpp'}
+        self.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
+        # Low and high voltage level of the digital channels
+        self.d_ch_low = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
+        self.d_ch_high = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
+        # length of the created waveform files in samples
+        self.sampled_file_length = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Samples'}
+        # number of waveforms/sequences to put in a single asset (sequence mode)
+        self.waveform_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
+        self.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
+        self.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
+        # compatible file formats, e.g. 'wfm', 'wfmx', 'fpga', 'seq', 'seqx'
+        self.waveform_format = []
+        self.sequence_format = []
+        # Not used yet
+        self.sequence_param = dict()
+        # add CountingMode enums to this list in instances
+        self.activation_config = dict()
