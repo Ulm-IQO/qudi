@@ -31,7 +31,6 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
-from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -180,44 +179,77 @@ class AWG70K(Base, PulserInterface):
         """
         constraints = PulserConstraints()
 
-        # Sample rate
-        if self.awg_model == 'AWG70002A':
-            constraints.sample_rate = ScalarConstraint(min=15e2, max=25e9, step=5e2, default=25e9,
-                                                       unit='Hz')
-        elif self.awg_model == 'AWG70001A':
-            constraints.sample_rate = ScalarConstraint(min=3e3, max=50e9, step=1e3, default=50e9,
-                                                       unit='Hz')
-
         # The compatible file formats are hardware specific.
         constraints.waveform_format = ['wfmx', 'wfm']
         constraints.sequence_format = ['seqx', 'seq']
 
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        # amplitude (in peak-to-peak voltage):
-        constraints.a_ch_amplitude = ScalarConstraint(min=0.25, max=0.5, step=1e-3, default=0.5,
-                                                      unit='Vpp')
-        constraints.a_ch_offset = ScalarConstraint(min=0.0, max=0.0, step=0.0, default=0.0,
-                                                   unit='V')
-        #FIXME: Enter the proper digital channel low constraints:
-        constraints.d_ch_low = ScalarConstraint(min=0.0, max=0.0, step=0.0, default=0.0, unit='V')
-        #FIXME: Enter the proper digital channel high constraints:
-        constraints.d_ch_high = ScalarConstraint(min=0.0, max=1.4, step=0.1, default=1.4, unit='V')
-        constraints.sampled_file_length = ScalarConstraint(min=1, max=8000000000, step=1, default=1,
-                                                           unit='Samples')
-        #FIXME: Check the proper number for your device
-        constraints.waveform_num = ScalarConstraint(min=1, max=32000, step=1, default=1, unit='#')
-        #FIXME: Check the proper number for your device
-        constraints.sequence_num = ScalarConstraint(min=1, max=4000, step=1, default=1, unit='#')
-        #FIXME: Check the proper number for your device
-        constraints.subsequence_num = ScalarConstraint(min=1, max=8000, step=1, default=1, unit='#')
+        if self.awg_model == 'AWG70002A':
+            constraints.sample_rate.min = 1.5e3
+            constraints.sample_rate.max = 25.0e9
+            constraints.sample_rate.step = 5.0e2
+            constraints.sample_rate.default = 25.0e9
+        elif self.awg_model == 'AWG70001A':
+            constraints.sample_rate.min = 3.0e3
+            constraints.sample_rate.max = 50.0e9
+            constraints.sample_rate.step = 1.0e3
+            constraints.sample_rate.default = 50.0e9
 
-        # FIXME: This stuff is not yet properly defined
+        constraints.a_ch_amplitude.min = 0.25
+        constraints.a_ch_amplitude.max = 0.5
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 0.5
+        # FIXME: Enter the proper digital channel low constraints:
+        constraints.d_ch_low.min = 0.0
+        constraints.d_ch_low.max = 0.0
+        constraints.d_ch_low.step = 0.0
+        constraints.d_ch_low.default = 0.0
+        # FIXME: Enter the proper digital channel high constraints:
+        constraints.d_ch_high.min = 0.0
+        constraints.d_ch_high.max = 1.4
+        constraints.d_ch_high.step = 0.1
+        constraints.d_ch_high.default = 1.4
+
+        constraints.sampled_file_length.min = 1
+        constraints.sampled_file_length.max = 8000000000
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 1
+
+        # FIXME: Check the proper number for your device
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+        # FIXME: Check the proper number for your device
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 4000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+        # FIXME: Check the proper number for your device
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 8000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
+
         # If sequencer mode is available then these should be specified
-        constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
-        constraints.trigger_in = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
-        constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
-                                                     unit='step')
-        constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65536
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+        # ToDo: Check how many external triggers are available
+        constraints.trigger_in.min = 0
+        constraints.trigger_in.max = 2
+        constraints.trigger_in.step = 1
+        constraints.trigger_in.default = 0
+
+        constraints.event_jump_to.min = 0
+        constraints.event_jump_to.max = 8000
+        constraints.event_jump_to.step = 1
+        constraints.event_jump_to.default = 0
+
+        constraints.go_to.min = 0
+        constraints.go_to.max = 8000
+        constraints.go_to.step = 1
+        constraints.go_to.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
