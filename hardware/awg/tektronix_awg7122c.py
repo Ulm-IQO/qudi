@@ -29,6 +29,7 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
+from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -64,7 +65,7 @@ class AWG7122C(Base, PulserInterface):
             self.log.warning('No parameter "default_sample_rate" found in '
                     'the config for the AWG7122C! The maximum sample rate is '
                     'used instead.')
-            self.sample_rate = self.get_constraints().sample_rate['max']
+            self.sample_rate = self.get_constraints().sample_rate.max
 
         if 'awg_ftp_path' in config.keys():
             self.ftp_path = config['awg_ftp_path']
@@ -181,11 +182,9 @@ class AWG7122C(Base, PulserInterface):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is a dictionary with the following generic form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
@@ -194,87 +193,53 @@ class AWG7122C(Base, PulserInterface):
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
-        sequence mode) then write just zeroes to each generic entry. Note that there is a difference
-        between float input (0.0) and integer input (0).
-
-        ALL THE PRESENT ATTRIBUTES OF THE CONSTRAINTS OBJECT MUST BE ASSIGNED!
-
-        # Example for configuration with default values:
-        constraints = PulserConstraints()
-
-        constraints.sample_rate = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Samples/s'}
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = 'wfm'
-        constraints.sequence_format = 'seq'
-
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_low = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_high = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.sampled_file_length = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Samples'}
-        constraints.digital_bin_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.waveform_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        sequence_param = OrderedDict()
-        constraints.sequence_param = sequence_param
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
-        # channels. Here all possible channel configurations are stated, where only the generic
-        # names should be used. The names for the different configurations can be customary chosen.
-        activation_conf = OrderedDict()
-        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
-        constraints.activation_config = activation_conf
+        sequence mode) just leave it out so that the default is used (only zeros).
         """
         # Todo: Check values for AWG7122c
         constraints = PulserConstraints()
 
         # Sample rate
-        constraints.sample_rate = self._get_sample_rate_constraints()
+        if self.interleave:
+            constraints.sample_rate = ScalarConstraint(min=12e9, max=24e9, step=5e2, default=24e9,
+                                                       unit='Hz')
+        else:
+            constraints.sample_rate = ScalarConstraint(min=1e7, max=12e9, step=1e7, default=12e9,
+                                                       unit='Hz')
 
         # The file formats are hardware specific.
         constraints.waveform_format = ['wfm']
         constraints.sequence_format = ['seq']
 
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        # amplitude (in Vpp):
         if self.zeroing:
-            constraints.a_ch_amplitude = {'min': 0.25, 'max': 1.0, 'step': 0.001, 'unit': 'Vpp'}
+            constraints.a_ch_amplitude = ScalarConstraint(min=0.25, max=1.0, step=1e-3, default=1.0,
+                                                          unit='Vpp')
         else:
-            constraints.a_ch_amplitude = {'min': 0.5, 'max': 1.0, 'step': 0.001, 'unit': 'Vpp'}
+            constraints.a_ch_amplitude = ScalarConstraint(min=0.5, max=1.0, step=1e-3, default=1.0,
+                                                          unit='Vpp')
 
-        constraints.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_low = {'min': -1.4, 'max': 0.9, 'step': 0.01, 'unit': 'V'}
-        constraints.d_ch_high = {'min': -0.9, 'max': 1.4, 'step': 0.01, 'unit': 'V'}
+        constraints.a_ch_offset = ScalarConstraint(unit='V')
+        constraints.d_ch_low = ScalarConstraint(min=-1.4, max=0.9, step=0.01, default=0.0, unit='V')
+        constraints.d_ch_high = ScalarConstraint(min=-0.9, max=1.4, step=0.01, default=1.4,
+                                                 unit='V')
 
-        # for arbitrary waveform generators, this values will be used. The step value corresponds
-        # to the waveform granularity.
         if '01' in self.AWG_options:
-            constraints.sampled_file_length = {'min': 1, 'max': 64.8e6, 'step': 1,
-                                               'unit': 'Samples'}
+            constraints.sampled_file_length = ScalarConstraint(min=1, max=64800000, step=1,
+                                                               default=1, unit='Samples')
         else:
-            constraints.sampled_file_length = {'min': 1, 'max': 32e6, 'step': 1, 'unit': 'Samples'}
+            constraints.sampled_file_length = ScalarConstraint(min=1, max=32000000, step=1,
+                                                               default=1, unit='Samples')
 
-        constraints.waveform_num = {'min': 1, 'max': 32000, 'step': 1, 'unit': '#'}
-        constraints.sequence_num = {'min': 1, 'max': 16000, 'step': 1, 'unit': '#'}
-        constraints.subsequence_num = {'min': 1, 'max': 8000, 'step': 1, 'unit': '#'}
+        constraints.waveform_num = ScalarConstraint(min=1, max=32000, step=1, default=1, unit='#')
+        constraints.sequence_num = ScalarConstraint(min=1, max=16000, step=1, default=1, unit='#')
+        constraints.subsequence_num = ScalarConstraint(min=1, max=8000, step=1, default=1, unit='#')
 
-        # If sequencer mode is enable than sequence_param should be not just an
-        # empty dictionary. Insert here in the same fashion like above the parameters, which the
-        # device is needing for a creating sequences:
-        sequence_param = OrderedDict()
-        sequence_param['repetitions'] = {'min': 0, 'max': 65536, 'step': 1, 'unit': '#'}
-        sequence_param['trigger_wait'] = {'min': False, 'max': True, 'step': 1, 'unit': 'bool'}
-        sequence_param['event_jump_to'] = {'min': -1, 'max': 8000, 'step': 1, 'unit': 'row'}
-        sequence_param['go_to'] = {'min': 0, 'max': 8000, 'step': 1, 'unit': 'row'}
-        constraints.sequence_param = sequence_param
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
+        # ToDo: Check how many external triggers this device has
+        constraints.trigger_in = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
+        constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
+                                                     unit='step')
+        constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -294,19 +259,6 @@ class AWG7122C(Base, PulserInterface):
         constraints.activation_config = activation_config
 
         return constraints
-
-
-    def _get_sample_rate_constraints(self):
-        """ If sample rate changes during Interleave mode, then it has to be
-            adjusted for that state.
-
-        @return dict: with keys 'min', 'max':, 'step' and 'unit' and the
-                      assigned values for that keys.
-        """
-        if self.interleave:
-            return {'min': 12.0e9, 'max': 24.0e9, 'step': 8, 'unit': 'Hz'}
-        else:
-            return {'min': 10.0e6, 'max': 12.0e9, 'step': 4, 'unit': 'Hz'}
 
     def pulser_on(self):
         """ Switches the pulsing device on.
@@ -718,18 +670,18 @@ class AWG7122C(Base, PulserInterface):
                     self.log.warning('Channel to set (a_ch{0}) not available in AWG.\nSetting '
                                      'analogue voltage for this channel ignored.'.format(chnl))
                     del amplitude[chnl]
-                if amplitude[chnl] < constraints.a_ch_amplitude['min']:
+                if amplitude[chnl] < constraints.a_ch_amplitude.min:
                     self.log.warning('Minimum Vpp for channel "{0}" is {1}. Requested Vpp of {2}V '
                                      'was ignored and instead set to min value.'
-                                     ''.format(chnl, constraints.a_ch_amplitude['min'],
+                                     ''.format(chnl, constraints.a_ch_amplitude.min,
                                                amplitude[chnl]))
-                    amplitude[chnl] = constraints.a_ch_amplitude['min']
-                elif amplitude[chnl] > constraints.a_ch_amplitude['max']:
+                    amplitude[chnl] = constraints.a_ch_amplitude.min
+                elif amplitude[chnl] > constraints.a_ch_amplitude.max:
                     self.log.warning('Maximum Vpp for channel "{0}" is {1}. Requested Vpp of {2}V '
                                      'was ignored and instead set to max value.'
-                                     ''.format(chnl, constraints.a_ch_amplitude['max'],
+                                     ''.format(chnl, constraints.a_ch_amplitude.max,
                                                amplitude[chnl]))
-                    amplitude[chnl] = constraints.a_ch_amplitude['max']
+                    amplitude[chnl] = constraints.a_ch_amplitude.max
         # offset sanity check
         if offset is not None:
             for chnl in offset:
@@ -738,16 +690,16 @@ class AWG7122C(Base, PulserInterface):
                     self.log.warning('Channel to set (a_ch{0}) not available in AWG.\nSetting '
                                      'offset voltage for this channel ignored.'.format(chnl))
                     del offset[chnl]
-                if offset[chnl] < constraints.a_ch_offset['min']:
+                if offset[chnl] < constraints.a_ch_offset.min:
                     self.log.warning('Minimum offset for channel "{0}" is {1}. Requested offset of '
                                      '{2}V was ignored and instead set to min value.'
-                                     ''.format(chnl, constraints.a_ch_offset['min'], offset[chnl]))
-                    offset[chnl] = constraints.a_ch_offset['min']
-                elif offset[chnl] > constraints.a_ch_offset['max']:
+                                     ''.format(chnl, constraints.a_ch_offset.min, offset[chnl]))
+                    offset[chnl] = constraints.a_ch_offset.min
+                elif offset[chnl] > constraints.a_ch_offset.max:
                     self.log.warning('Maximum offset for channel "{0}" is {1}. Requested offset of '
                                      '{2}V was ignored and instead set to max value.'
-                                     ''.format(chnl, constraints.a_ch_offset['max'], offset[chnl]))
-                    offset[chnl] = constraints.a_ch_offset['max']
+                                     ''.format(chnl, constraints.a_ch_offset.max, offset[chnl]))
+                    offset[chnl] = constraints.a_ch_offset.max
 
         if amplitude is not None:
             for a_ch in amplitude:
