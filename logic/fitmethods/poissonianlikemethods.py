@@ -144,6 +144,9 @@ def make_multiplepoissonian_model(self, no_of_functions=1):
 
     return multi_poisson_model, params
 
+def make_doublepoissonian_model(self):
+    return self.make_multiplepoissonian_model(2)
+
 ################################################################################
 #                                                                              #
 #                    Poissonian fits and their estimators                      #

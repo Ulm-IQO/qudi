@@ -197,7 +197,7 @@ def make_multiplegaussianoffset_model(self, no_of_functions=1):
 ##########################################
 
 
-def make_doublegaussianoffset_model(self):
+def make_twogaussianoffset_model(self):
     """ Create a model with double gaussian with offset.
 
     @return tuple: (object model, object params), for more description see in
@@ -211,7 +211,7 @@ def make_doublegaussianoffset_model(self):
 ##########################################
 
 
-def make_triplegaussianoffset_model(self):
+def make_threegaussianoffset_model(self):
     """ Create a model with double gaussian with offset.
 
     @return tuple: (object model, object params), for more description see in

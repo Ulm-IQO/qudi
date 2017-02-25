@@ -601,6 +601,10 @@ def make_sinedoubleexponentialdecayoffset_model(self, prefix=None):
 
     return model, params
 
+def estimate_sinedoubleexponentialdecayoffset(self, x_axis, data, add_params=None):
+    """ Stopgap, please FIXME
+    """
+    return self.estimate_sineexponentialdecayoffset(x_axis, data, add_params)
 
 def make_sinedoubleexponentialdecayoffset_fit(self, x_axis, data, add_params=None):
     """ Perform a sine double exponential decay fit on the provided data.
