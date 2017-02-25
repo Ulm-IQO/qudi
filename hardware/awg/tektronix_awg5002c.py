@@ -28,7 +28,6 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
-from core.util.interfaces import ScalarConstraint
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -181,29 +180,72 @@ class AWG5002C(Base, PulserInterface):
         constraints.waveform_format = ['wfm']
         constraints.sequence_format = ['seq']
 
-        constraints.sample_rate = ScalarConstraint(min=1e7, max=6e8, step=1e7, default=6e8,
-                                                   unit='Hz')
-        constraints.a_ch_amplitude = ScalarConstraint(min=0.02, max=4.5, step=1e-3, default=4.5,
-                                                      unit='Vpp')
-        constraints.a_ch_offset = ScalarConstraint(min=-2.25, max=2.25, step=1e-3, default=0.0,
-                                                   unit='V')
-        constraints.d_ch_low = ScalarConstraint(min=-1.0, max=2.6, step=0.01, default=0.0, unit='V')
-        constraints.d_ch_high = ScalarConstraint(min=-0.9, max=2.7, step=0.01, default=2.7,
-                                                 unit='V')
+        constraints.sample_rate.min = 10.0e6
+        constraints.sample_rate.max = 600.0e6
+        constraints.sample_rate.step = 10.0e6
+        constraints.sample_rate.default = 600.0e6
 
-        constraints.sampled_file_length = ScalarConstraint(min=1, max=32400000, step=1, default=1,
-                                                           unit='Samples')
-        constraints.waveform_num = ScalarConstraint(min=1, max=32000, step=1, default=1, unit='#')
-        constraints.sequence_num = ScalarConstraint(min=1, max=4000, step=1, default=1, unit='#')
-        constraints.subsequence_num = ScalarConstraint(min=1, max=8000, step=1, default=1, unit='#')
+        constraints.a_ch_amplitude.min = 0.02
+        constraints.a_ch_amplitude.max = 4.5
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 4.5
+
+        constraints.a_ch_offset.min = -2.25
+        constraints.a_ch_offset.max = 2.25
+        constraints.a_ch_offset.step = 0.001
+        constraints.a_ch_offset.default = 0.0
+
+        constraints.d_ch_low.min = -1.0
+        constraints.d_ch_low.max = 2.6
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = -0.9
+        constraints.d_ch_high.max = 2.7
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 2.7
+
+        constraints.sampled_file_length.min = 1
+        constraints.sampled_file_length.max = 32400000
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 1
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 4000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 8000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
 
         # If sequencer mode is available then these should be specified
-        constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65536
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
         # ToDo: Check how many external triggers are available
-        constraints.trigger_connectors = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
-        constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
-                                                     unit='step')
-        constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')
+        constraints.trigger_in.min = 0
+        constraints.trigger_in.max = 2
+        constraints.trigger_in.step = 1
+        constraints.trigger_in.default = 0
+
+        constraints.event_jump_to.min = 0
+        constraints.event_jump_to.max = 8000
+        constraints.event_jump_to.step = 1
+        constraints.event_jump_to.default = 0
+
+        constraints.go_to.min = 0
+        constraints.go_to.max = 8000
+        constraints.go_to.step = 1
+        constraints.go_to.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
