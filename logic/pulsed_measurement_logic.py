@@ -218,8 +218,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Check and configure pulse generator
         self.pulse_generator_off()
-        self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
-        avail_activation_configs = self.get_pulser_constraints()['activation_config']
+        self.loaded_asset_name = str(self._pulse_generator_device.get_loaded_asset())
+        avail_activation_configs = self.get_pulser_constraints().activation_config
         if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
         if self.analogue_amplitude is None:
@@ -512,7 +512,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.interleave_on = self._pulse_generator_device.set_interleave(use_interleave)
 
         # check and set sample rate
-        samplerate_constr = pulser_constraints['sample_rate']
+        samplerate_constr = pulser_constraints.sample_rate
         if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
             self.log.warning('Desired sample rate of {0:.0e} Hz not within pulse generator '
                              'constraints. Setting {1:.0e} Hz instead.'
@@ -521,7 +521,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
 
         # check and set activation_config
-        config_constr = pulser_constraints['activation_config']
+        config_constr = pulser_constraints.activation_config
         if activation_config_name not in config_constr:
             new_config_name = list(config_constr.keys())[0]
             self.log.warning('Desired activation config "{0}" is no part of the pulse generator '
@@ -554,7 +554,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.current_channel_config_name = tmp_config_name
 
         # check and set analogue amplitude dict
-        amplitude_constr = pulser_constraints['a_ch_amplitude']
+        amplitude_constr = pulser_constraints.a_ch_amplitude
         for chnl in amplitude_dict:
             if amplitude_dict[chnl] > amplitude_constr['max'] or amplitude_dict[chnl] < amplitude_constr['min']:
                 self.log.error('Desired analogue voltage of {0} V for channel "{1}" is not within '
