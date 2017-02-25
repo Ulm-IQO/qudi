@@ -1225,11 +1225,11 @@ class PulsedMasterLogic(GenericLogic):
                              ''.format(old_laser_chnl, activation_config, laser_channel))
         # sample rate
         samplerate_constraint = pulser_constraints.sample_rate
-        if sample_rate < samplerate_constraint['min'] or sample_rate > samplerate_constraint['max']:
+        if sample_rate < samplerate_constraint.min or sample_rate > samplerate_constraint.max:
             self.log.warning('Sample rate of {0} MHz lies not within pulse generator constraints. '
                              'Using max. allowed sample rate of {1} MHz instead.'
-                             ''.format(sample_rate, samplerate_constraint['max']))
-            sample_rate = samplerate_constraint['max']
+                             ''.format(sample_rate, samplerate_constraint.max))
+            sample_rate = samplerate_constraint.max
         # amplitude dictionary
         # FIXME: check with pulser constraints
         self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
