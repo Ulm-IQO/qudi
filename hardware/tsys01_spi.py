@@ -33,9 +33,6 @@ class TSYS01SPI(Base, ProcessInterface):
     _modclass = 'TSYS01'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'temperature': 'ProcessInterface'}
-
     # commands to chip (constants)
     READ_ADC  = 0x00
     RESET     = 0x1E

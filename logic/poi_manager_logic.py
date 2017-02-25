@@ -174,11 +174,11 @@ class PoiManagerLogic(GenericLogic):
     _modclass = 'poimanagerlogic'
     _modtype = 'logic'
     # declare connectors
-    _in = {'optimizer1': 'OptimizerLogic',
-           'scannerlogic': 'ConfocalLogic',
-           'savelogic': 'SaveLogic',
-           }
-    _out = {'poimanagerlogic': 'PoiManagerLogic'}
+    _connectors = {
+        'optimizer1': 'OptimizerLogic',
+        'scannerlogic': 'ConfocalLogic',
+        'savelogic': 'SaveLogic',
+    }
 
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()

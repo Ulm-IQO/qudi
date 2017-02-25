@@ -38,12 +38,11 @@ class TraceAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'counterlogic1': 'CounterLogic',
-           'savelogic': 'SaveLogic',
-           'fitlogic': 'FitLogic',
-            }
-
-    _out = {'traceanalysislogic1': 'TraceAnalysisLogic'}
+    _connectors = {
+        'counterlogic1': 'CounterLogic',
+        'savelogic': 'SaveLogic',
+        'fitlogic': 'FitLogic',
+    }
 
     sigHistogramUpdated = QtCore.Signal()
 

@@ -38,10 +38,6 @@ class MotorDummy(Base, MotorInterface):
     _modclass = 'MotorDummy'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'motorstage': 'MotorInterface'}
-
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 

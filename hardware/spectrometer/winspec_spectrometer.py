@@ -40,8 +40,6 @@ import comtypes.gen.WINX32Lib as WinSpecLib
 
 class WinSpec32(Base, SpectrometerInterface):
 
-    _out = {'spec': 'SpectrometerInterface'}
-
     def on_activate(self, e):
         w32c.pythoncom.CoInitialize()
         self.expt_is_running = WinSpecLib.EXP_RUNNING

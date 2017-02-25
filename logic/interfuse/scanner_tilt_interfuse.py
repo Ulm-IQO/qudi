@@ -28,8 +28,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
-    _in = {'confocalscanner1': 'ConfocalScannerInterface'}
-    _out = {'confocalscanner1': 'ConfocalScannerInterface'}
+    _connectors = {'confocalscanner1': 'ConfocalScannerInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

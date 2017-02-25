@@ -111,10 +111,10 @@ class PulsedMasterLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-           }
-    _out = {'pulsedmasterlogic': 'PulsedMasterLogic'}
+    _connectors = {
+        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic',
+    }
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.

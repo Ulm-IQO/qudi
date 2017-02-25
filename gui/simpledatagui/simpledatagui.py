@@ -50,7 +50,7 @@ class SimpleDataGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'simplelogic': 'SimpleDataLogic'}
+    _connectors = {'simplelogic': 'SimpleDataLogic'}
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()

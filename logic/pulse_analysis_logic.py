@@ -34,9 +34,6 @@ class PulseAnalysisLogic(GenericLogic):
     _modclass = 'PulseAnalysisLogic'
     _modtype = 'logic'
 
-    # declare connectors
-    _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 

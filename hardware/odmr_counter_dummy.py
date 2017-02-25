@@ -32,8 +32,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _modtype = 'hardware'
 
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'odmrcounter': 'ODMRCounterInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

@@ -40,8 +40,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
     _modclass = 'MicrowaveSmiq'
     _modtype = 'hardware'
-    # declare connectors
-    _out = {'mwsourcesmiq': 'MicrowaveInterface'}
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.

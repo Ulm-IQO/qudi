@@ -34,9 +34,6 @@ class PulseExtractionLogic(GenericLogic):
     _modclass = 'PulseExtractionLogic'
     _modtype = 'logic'
 
-    # declare connectors
-    _out = {'pulseextractionlogic': 'PulseExtractionLogic'}
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 

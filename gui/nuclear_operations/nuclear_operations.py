@@ -46,7 +46,7 @@ class NuclearOperationsGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'nuclearoperationslogic': 'NuclearOperationsLogic',
+    _connectors = {'nuclearoperationslogic': 'NuclearOperationsLogic',
            'savelogic': 'SaveLogic'}
 
     def __init__(self, manager, name, config, **kwargs):

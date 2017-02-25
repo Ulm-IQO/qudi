@@ -32,7 +32,7 @@ class SwitchGui(GUIBase):
     _modclass = 'SwitchGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'switchlogic': 'SwitchLogic'}
+    _connectors = {'switchlogic': 'SwitchLogic'}
 
     def on_activate(self, e=None):
         """Create all UI objects and show the window.

@@ -32,11 +32,11 @@ class PolarisationDepLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'counterlogic': 'CounterLogic',
-            'savelogic': 'SaveLogic',
-            'motor':'MotorInterface'
-            }
-    _out = {'polarisationdeplogic': 'PolarisationDepLogic'}
+    _connectors = {
+        'counterlogic': 'CounterLogic',
+        'savelogic': 'SaveLogic',
+        'motor':'MotorInterface'
+    }
 
     signal_rotation_finished = QtCore.Signal()
     signal_start_rotation = QtCore.Signal()

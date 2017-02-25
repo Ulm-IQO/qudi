@@ -67,7 +67,7 @@ class ODMRGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'odmrlogic1': 'ODMRLogic',
+    _connectors = {'odmrlogic1': 'ODMRLogic',
            'savelogic': 'SaveLogic'}
 
     sigStartODMRScan = QtCore.Signal()

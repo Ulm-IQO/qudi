@@ -102,11 +102,11 @@ class WavemeterLoggerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'wavemeter1': 'WavemeterInterface',
-           'savelogic': 'SaveLogic',
-           'counterlogic': 'CounterLogic'
-           }
-    _out = {'wavemeterloggerlogic': 'WavemeterLoggerLogic'}
+    _connectors = {
+        'wavemeter1': 'WavemeterInterface',
+        'savelogic': 'SaveLogic',
+        'counterlogic': 'CounterLogic'
+    }
 
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.

@@ -42,8 +42,6 @@ class MagnetDummy(Base, MagnetInterface):
     _modtype = 'MagnetDummy'
     _modclass = 'hardware'
 
-    _out = {'magnetstage': 'MagnetInterface'}
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 

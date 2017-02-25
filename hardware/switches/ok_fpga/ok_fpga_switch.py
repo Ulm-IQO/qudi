@@ -36,7 +36,6 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'
-    _out = {'switch': 'SwitchInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

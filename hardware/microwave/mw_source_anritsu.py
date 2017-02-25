@@ -38,9 +38,6 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAnritsu'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'mwsourceanritsu': 'MicrowaveInterface'}
-
     def on_activate(self,e=None):
         """ Initialisation performed during activation of the module.
 

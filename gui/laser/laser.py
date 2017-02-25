@@ -67,7 +67,7 @@ class LaserGUI(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'laserlogic': 'LaserLogic'}
+    _connectors = {'laserlogic': 'LaserLogic'}
 
     sigLaser = QtCore.Signal(bool)
     sigShutter = QtCore.Signal(bool)

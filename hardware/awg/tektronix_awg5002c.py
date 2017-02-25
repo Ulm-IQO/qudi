@@ -38,9 +38,6 @@ class AWG5002C(Base, PulserInterface):
     _modclass = 'awg5002c'
     _modtype = 'hardware'
 
-    # declare connectors
-    # _out = {'awg5002c': 'PulserInterface'}
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -203,7 +200,7 @@ class AWG5002C(Base, PulserInterface):
         # If sequencer mode is available then these should be specified
         constraints.repetitions = ScalarConstraint(min=0, max=65536, step=1, default=0, unit='#')
         # ToDo: Check how many external triggers are available
-        constraints.trigger_in = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
+        constraints.trigger_connectors = ScalarConstraint(min=0, max=2, step=1, default=0, unit='chnl')
         constraints.event_jump_to = ScalarConstraint(min=0, max=8000, step=1, default=0,
                                                      unit='step')
         constraints.go_to = ScalarConstraint(min=0, max=8000, step=1, default=0, unit='step')

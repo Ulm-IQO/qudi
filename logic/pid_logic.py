@@ -34,11 +34,10 @@ class PIDLogic(GenericLogic):
     _modclass = 'pidlogic'
     _modtype = 'logic'
     ## declare connectors
-    _in = {
+    _connectors = {
         'controller': 'PIDControllerInterface',
         'savelogic': 'SaveLogic'
-        }
-    _out = {'pidlogic': 'PIDLogic'}
+    }
 
     sigUpdateDisplay = QtCore.Signal()
 

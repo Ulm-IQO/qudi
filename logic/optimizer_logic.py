@@ -36,10 +36,10 @@ class OptimizerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'confocalscanner1': 'ConfocalScannerInterface',
-           'fitlogic': 'FitLogic'
-           }
-    _out = {'optimizerlogic': 'OptimizerLogic'}
+    _connectors = {
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'fitlogic': 'FitLogic'
+    }
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()

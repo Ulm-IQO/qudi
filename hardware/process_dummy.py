@@ -31,9 +31,6 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
     _modclass = 'Process'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'dummy': 'Process',}
-
     def on_activate(self, e):
         self.temperature = 300.0
         self.pwmpower = 0

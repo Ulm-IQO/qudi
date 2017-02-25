@@ -28,7 +28,6 @@ class SwitchLogic(GenericLogic):
     """
     _modclass = 'switch'
     _modtype = 'logic'
-    _out = {'switchlogic': 'SwitchLogic'}
 
     def __init__(self, config, **kwargs):
         """ Create logic object

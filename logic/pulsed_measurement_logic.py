@@ -39,15 +39,15 @@ class PulsedMeasurementLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'pulseanalysislogic': 'PulseAnalysisLogic',
-           'pulseextractionlogic': 'PulseExtractionLogic',
-           'fitlogic': 'FitLogic',
-           'savelogic': 'SaveLogic',
-           'fastcounter': 'FastCounterInterface',
-           'microwave': 'MWInterface',
-           'pulsegenerator': 'PulserInterface',
-           }
-    _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
+    _connectors = {
+        'pulseanalysislogic': 'PulseAnalysisLogic',
+        'pulseextractionlogic': 'PulseExtractionLogic',
+        'fitlogic': 'FitLogic',
+        'savelogic': 'SaveLogic',
+        'fastcounter': 'FastCounterInterface',
+        'microwave': 'MWInterface',
+        'pulsegenerator': 'PulserInterface',
+    }
 
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                          np.ndarray, np.ndarray, np.ndarray)

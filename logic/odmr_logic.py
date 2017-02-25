@@ -39,13 +39,13 @@ class ODMRLogic(GenericLogic):
     _modclass = 'odmrlogic'
     _modtype = 'logic'
     # declare connectors
-    _in = {'odmrcounter': 'ODMRCounterInterface',
-           'fitlogic': 'FitLogic',
-           'microwave1': 'mwsourceinterface',
-           'savelogic': 'SaveLogic',
-           'taskrunner': 'TaskRunner'
-           }
-    _out = {'odmrlogic': 'ODMRLogic'}
+    _connectors = {
+        'odmrcounter': 'ODMRCounterInterface',
+        'fitlogic': 'FitLogic',
+        'microwave1': 'mwsourceinterface',
+        'savelogic': 'SaveLogic',
+        'taskrunner': 'TaskRunner'
+    }
 
     sigNextLine = QtCore.Signal()
     sigOdmrStarted = QtCore.Signal()
