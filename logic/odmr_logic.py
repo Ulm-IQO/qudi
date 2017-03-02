@@ -160,23 +160,23 @@ class ODMRLogic(GenericLogic):
         else:
             d1 = OrderedDict()
             d1['Lorentzian dip'] = {
-                'fit_function': 'lorentzoffset',
+                'fit_function': 'lorentzian',
                 'estimator': 'dip'
                 }
             d1['Two Lorentzian dips'] = {
-                'fit_function': 'doublelorentzoffset',
+                'fit_function': 'lorentziandouble',
                 'estimator': 'dip'
                 }
             d1['N14'] = {
-                'fit_function': 'triplelorentzoffset',
+                'fit_function': 'lorentziantriple',
                 'estimator': 'N14'
                 }
             d1['N15'] = {
-                'fit_function': 'doublelorentzoffset',
+                'fit_function': 'lorentziandouble',
                 'estimator': 'N15'
                 }
             d1['Two Gaussian dips'] = {
-                'fit_function': 'twogaussianoffset',
+                'fit_function': 'gaussiandouble',
                 'estimator': 'dip'
                 }
             default_fits = OrderedDict()

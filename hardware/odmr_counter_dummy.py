@@ -152,7 +152,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
+        lorentians,params = self._fit_logic.make_lorentziandouble_model()
 
         sigma = 3.
 
