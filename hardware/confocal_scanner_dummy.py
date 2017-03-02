@@ -301,7 +301,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         return self._current_position[0:len(self.get_scanner_axes())]
 
-    def set_up_line(self, length=100):
+    def _set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.
 
         @param int length: length of the line in pixel
@@ -312,15 +312,13 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self._line_length = length
 
 #        self.log.debug('ConfocalScannerInterfaceDummy>set_up_line')
-
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the voltage
-                                      points
+        @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
@@ -330,7 +328,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             return np.array([[-1.]])
 
         if np.shape(line_path)[1] != self._line_length:
-            self.set_up_line(np.shape(line_path)[1])
+            self._set_up_line(np.shape(line_path)[1])
 
         count_data = np.random.uniform(0, 2e4, self._line_length)
         z_data = line_path[2, :]

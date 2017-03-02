@@ -16,7 +16,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-Copyright (C) 2016 Florian Frank alexander.stark@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -186,17 +185,17 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
         """
         return self._scanning_device.set_up_line(length)
 
-    def scan_line(self, line_path=None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the
-                                     positions pixels
+        @param float[][4] line_path: array of 4-part tuples defining the positions pixels
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
         if self.tiltcorrection:
             line_path[:][2] += self._calc_dz(line_path[:][0], line_path[:][1])
-        return self._scanning_device.scan_line(line_path)
+        return self._scanning_device.scan_line(line_path, pixel_clock)
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.

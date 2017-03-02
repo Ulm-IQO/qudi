@@ -540,8 +540,8 @@ class PulsedMasterLogic(GenericLogic):
         # config and sample rate
         self._generator_logic.amplitude_dict = analogue_amplitude
 
-        activation_config = self._measurement_logic.get_pulser_constraints()['activation_config'][
-            activation_config_name]
+        constraints = self._measurement_logic.get_pulser_constraints()
+        activation_config = constraints.activation_config[activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
                                            activation_config, analogue_amplitude, interleave_on)
         return
@@ -707,14 +707,15 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, controlled_val_unit, save_tag):
+    def save_measurement_data(self, controlled_val_unit, save_tag, with_error):
         """
 
         @param controlled_val_unit:
         @param save_tag:
+        @param with_error:
         @return:
         """
-        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag)
+        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
         return
 
     def clear_pulse_generator(self):
@@ -854,7 +855,7 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
-        if asset_name is not None:
+        if asset_name is not None and asset_name != '' and asset_name != str(None):
             asset_object = self._generator_logic.get_saved_asset(asset_name)
             asset_type = type(asset_object).__name__
         else:
@@ -1189,7 +1190,7 @@ class PulsedMasterLogic(GenericLogic):
         # get pulser constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # activation config
-        config_constraint = pulser_constraints['activation_config']
+        config_constraint = pulser_constraints.activation_config
         if activation_config_name not in config_constraint:
             new_config_name = list(config_constraint.keys())[0]
             self.log.warning('Activation config "{0}" could not be found in pulser constraints. '
@@ -1214,12 +1215,12 @@ class PulsedMasterLogic(GenericLogic):
                              'config "{1}". Using first valid channel "{2}" instead.'
                              ''.format(old_laser_chnl, activation_config, laser_channel))
         # sample rate
-        samplerate_constraint = pulser_constraints['sample_rate']
-        if sample_rate < samplerate_constraint['min'] or sample_rate > samplerate_constraint['max']:
+        samplerate_constraint = pulser_constraints.sample_rate
+        if sample_rate < samplerate_constraint.min or sample_rate > samplerate_constraint.max:
             self.log.warning('Sample rate of {0} MHz lies not within pulse generator constraints. '
                              'Using max. allowed sample rate of {1} MHz instead.'
-                             ''.format(sample_rate, samplerate_constraint['max']))
-            sample_rate = samplerate_constraint['max']
+                             ''.format(sample_rate, samplerate_constraint.max))
+            sample_rate = samplerate_constraint.max
         # amplitude dictionary
         # FIXME: check with pulser constraints
         self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
@@ -1240,7 +1241,7 @@ class PulsedMasterLogic(GenericLogic):
         # retrieve hardware constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # check activation_config
-        config_dict = pulser_constraints['activation_config']
+        config_dict = pulser_constraints.activation_config
         activation_config_name = ''
         for key in config_dict.keys():
             if config_dict[key] == activation_config:
@@ -1312,7 +1313,7 @@ class PulsedMasterLogic(GenericLogic):
         else:
             return_params['activation_config'] = asset_obj.activation_config
         config_name = None
-        avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
+        avail_configs = self._measurement_logic.get_pulser_constraints().activation_config
         for config in avail_configs:
             if return_params['activation_config'] == avail_configs[config]:
                 config_name = config
@@ -1420,51 +1421,3 @@ class PulsedMasterLogic(GenericLogic):
 
         # return all parameters
         return return_params
-
-    def _get_ensemble_laser_properties(self, ensemble_obj):
-        """
-
-        @param ensemble_obj:
-        @return:
-        """
-
-        return num_of_lasers, max_laser_length
-
-    def _get_block_laser_properties(self, block, reps, laser_index, laser_was_on):
-        """
-
-        @param block:
-        @param reps:
-        @param laser_index:
-        @param laser_was_on:
-        @param length_offset:
-        @return:
-        """
-        tmp_laser_on = laser_was_on
-        tmp_laser_length = 0.0
-        err_code = 0
-        num_of_lasers = 0
-        max_laser_length = 0.0
-        for element in block.element_list:
-            if laser_index < len(element.digital_high) and laser_index >= 0:
-                if not tmp_laser_on and element.digital_high[laser_index]:
-                    tmp_laser_on = True
-                    num_of_lasers += 1
-                elif not element.digital_high[laser_index]:
-                    tmp_laser_on = False
-                if tmp_laser_on:
-                    if element.increment_s > 1.0e-15:
-                        tmp_laser_length += (element.init_length_s + reps * element.increment_s)
-                    else:
-                        tmp_laser_length += element.init_length_s
-                    if tmp_laser_length > max_laser_length:
-                        max_laser_length = tmp_laser_length
-                else:
-                    tmp_laser_length = 0.0
-            else:
-                self.log.error('Laser index "{0}" out of range for number of digital channels '
-                               '({1}) in block "{2}".'
-                               ''.format(laser_index, len(element.digital_high), block_obj.name))
-                err_code = -1
-                break
-        return num_of_lasers, max_laser_length, err_code
