@@ -294,7 +294,7 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
                        'Message: {}'.format(str(result.message)))
     return result
 
-def estimate_decayexponentialstretch(self, x_axis, data, params):
+def estimate_decayexponentialstretched(self, x_axis, data, params):
     """ Provide an estimation for initial values for a stretched exponential decay with offset.
 
     @param numpy.array x_axis: 1D axis values
