@@ -40,7 +40,8 @@ from scipy.ndimage import filters
 # Gaussian model                   #
 ####################################
 
-def make_gaussian_model(self, prefix=None):
+
+def make_gaussianwithoutoffset_model(self, prefix=None):
     """ Create a model of a gaussian with specified amplitude.
 
     @return tuple: (object model, object params)
@@ -72,21 +73,20 @@ def make_gaussian_model(self, prefix=None):
         @return: numpy.array with length equals to input x and with the values
                  of a bare Gaussian.
         """
-        return np.exp(- np.power((center - x), 2)/(2 * np.power(sigma, 2)))
+        return np.exp(- np.power((center - x), 2) / (2 * np.power(sigma, 2)))
 
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
     if not isinstance(prefix, str) and prefix is not None:
         self.log.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
+                       'cannot be used as a prefix and will be ignored for now.'
+                       'Correct that!'.format(prefix, type(prefix)))
         gaussian_model = Model(physical_gauss, independent_vars='x')
     else:
         gaussian_model = Model(physical_gauss, independent_vars='x',
-                              prefix=prefix)
+                               prefix=prefix)
 
     full_gaussian_model = amplitude_model * gaussian_model
-
 
     if prefix is None:
         prefix = ''
@@ -101,7 +101,7 @@ def make_gaussian_model(self, prefix=None):
 # 1D Gaussian model with offset    #
 ####################################
 
-def make_gaussianoffset_model(self, prefix=None):
+def make_gaussian_model(self, prefix=None):
     """ Create a gauss model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -109,10 +109,10 @@ def make_gaussianoffset_model(self, prefix=None):
                        distinguished from each other to prevent name collisions.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+                   the method make_gaussianwithoutoffset_model.
     """
 
-    gaussian_model, params = self.make_gaussian_model(prefix=prefix)
+    gaussian_model, params = self.make_gaussianwithoutoffset_model(prefix=prefix)
     constant_model, params = self.make_constant_model(prefix=prefix)
 
     gaussian_offset_model = gaussian_model + constant_model
@@ -121,7 +121,7 @@ def make_gaussianoffset_model(self, prefix=None):
         prefix = ''
 
     gaussian_offset_model.set_param_hint('{0}contrast'.format(prefix),
-                                      expr='({0}amplitude/offset)*100'.format(prefix))
+                                         expr='({0}amplitude/offset)*100'.format(prefix))
 
     params = gaussian_offset_model.make_params()
 
@@ -139,13 +139,13 @@ def make_gaussianlinearoffset_model(self, prefix=None):
                        distinguished from each other to prevent name collisions.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+                   the method make_gaussianwithoutoffset_model.
     """
 
     # Note that the offset parameter comes here from the gauss model and not
     # from the slope model.
     slope_model, params = self.make_slope_model(prefix)
-    gaussian_model, params = self.make_gaussianoffset_model(prefix)
+    gaussian_model, params = self.make_gaussian_model(prefix)
 
     gaussian_linear_offset = gaussian_model + slope_model
     params = gaussian_linear_offset.make_params()
@@ -164,29 +164,28 @@ def make_multiplegaussianoffset_model(self, no_of_functions=1):
                             more functions are added
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+                   the method make_gaussianwithoutoffset_model.
     """
 
     if no_of_functions == 1:
-        multi_gaussian_model, params = self.make_gaussianoffset_model()
+        multi_gaussian_model, params = self.make_gaussian_model()
     else:
 
         prefix = 'g0_'
-        multi_gaussian_model, params = self.make_gaussian_model(prefix=prefix)
+        multi_gaussian_model, params = self.make_gaussianwithoutoffset_model(prefix=prefix)
 
         constant_model, params = self.make_constant_model()
         multi_gaussian_model = multi_gaussian_model + constant_model
 
         multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
-                                         expr='({0}amplitude/offset)*100'.format(prefix))
+                                            expr='({0}amplitude/offset)*100'.format(prefix))
 
         for ii in range(1, no_of_functions):
 
             prefix = 'g{0:d}_'.format(ii)
-            multi_gaussian_model += self.make_gaussian_model(prefix=prefix)[0]
+            multi_gaussian_model += self.make_gaussianwithoutoffset_model(prefix=prefix)[0]
             multi_gaussian_model.set_param_hint('{0}contrast'.format(prefix),
-                                             expr='({0}amplitude/offset)*100'.format(prefix))
-
+                                                expr='({0}amplitude/offset)*100'.format(prefix))
 
     params = multi_gaussian_model.make_params()
 
@@ -197,11 +196,11 @@ def make_multiplegaussianoffset_model(self, no_of_functions=1):
 ##########################################
 
 
-def make_doublegaussianoffset_model(self):
+def make_gaussiandouble_model(self):
     """ Create a model with double gaussian with offset.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+                   the method make_gaussianwithoutoffset_model.
     """
 
     return self.make_multiplegaussianoffset_model(no_of_functions=2)
@@ -211,11 +210,11 @@ def make_doublegaussianoffset_model(self):
 ##########################################
 
 
-def make_triplegaussianoffset_model(self):
+def make_gaussiantriple_model(self):
     """ Create a model with double gaussian with offset.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+                   the method make_gaussianwithoutoffset_model.
     """
 
     return self.make_multiplegaussianoffset_model(no_of_functions=3)
@@ -232,7 +231,7 @@ def make_twoDgaussian_model(self, prefix=None):
                        distinguished from each other to prevent name collisions.
 
     @return tuple: (object model, object params), for more description see in
-                   the method make_gaussian_model.
+                   the method make_gaussianwithoutoffset_model.
 
     """
 
@@ -260,7 +259,7 @@ def make_twoDgaussian_model(self, prefix=None):
                 http://stackoverflow.com/users/5234/mrjrdnthms
         """
 
-        #FIXME: x_data_tuple: dimension of arrays
+        # FIXME: x_data_tuple: dimension of arrays
         # @param np.arra[k][M] x_data_tuple: array which is (k,M)-shaped,
         #                                   x and y values
 
@@ -274,8 +273,8 @@ def make_twoDgaussian_model(self, prefix=None):
             + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
         c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
             + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
-        g = offset + amplitude * np.exp(- (a * ((u - center_x) ** 2) \
-                                           + 2 * b * (u - center_x) * (v - center_y) \
+        g = offset + amplitude * np.exp(- (a * ((u - center_x) ** 2)
+                                           + 2 * b * (u - center_x) * (v - center_y)
                                            + c * ((v - center_y) ** 2)))
         return g.ravel()
 
@@ -302,7 +301,7 @@ def make_twoDgaussian_model(self, prefix=None):
 # 1D Gaussian with flat offset    #
 ###################################
 
-def make_gaussianoffset_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_gaussian_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -319,10 +318,10 @@ def make_gaussianoffset_fit(self, x_axis, data, units=None, estimator=None, add_
                           with best fit with given axis,...
     """
 
-    mod_final, params = self.make_gaussianoffset_model()
+    mod_final, params = self.make_gaussian_model()
 
     if estimator is None:
-        error, params = self.estimate_gaussianoffset_peak(x_axis, data, params)
+        error, params = self.estimate_gaussian_peak(x_axis, data, params)
     else:
         error, params = estimator(x_axis, data, params)
 
@@ -336,7 +335,7 @@ def make_gaussianoffset_fit(self, x_axis, data, units=None, estimator=None, add_
 
     return result
 
-def estimate_gaussianoffset_peak(self, x_axis, data, params):
+def estimate_gaussian_peak(self, x_axis, data, params):
     """ Provides a gaussian offset peak estimator.
 
     @param numpy.array x_axis: 1D axis values
@@ -411,7 +410,7 @@ def estimate_gaussianoffset_peak(self, x_axis, data, params):
 
     return error, params
 
-def estimate_gaussianoffset_dip(self, x_axis, data, params):
+def estimate_gaussian_dip(self, x_axis, data, params):
     """ Provides a gaussian offset dip estimator.
 
     @param numpy.array x_axis: 1D axis values
@@ -432,7 +431,7 @@ def estimate_gaussianoffset_dip(self, x_axis, data, params):
     params_peak = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_gaussianoffset_peak(x_axis,
+    error, params_ret = self.estimate_gaussian_peak(x_axis,
                                                           data_negative,
                                                           params_peak
                                                           )
@@ -502,11 +501,11 @@ def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     # try at first a fit with the ordinary gauss function
-    res_ordinary_gauss = self.make_gaussianoffset_fit(
+    res_ordinary_gauss = self.make_gaussian_fit(
         x_axis=x_axis,
         data=data,
         units=None,
-        estimator=self.estimate_gaussianoffset_peak
+        estimator=self.estimate_gaussian_peak
     )
 
     # subtract the result and perform again a linear fit:
@@ -531,7 +530,7 @@ def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
 # Two Gaussian with flat offset #
 #################################
 
-def make_twogaussianoffset_fit(self, x_axis, data, units=None,
+def make_gaussiandouble_fit(self, x_axis, data, units=None,
                                estimator=None,
                                add_params=None,
                                threshold_fraction=0.4,
@@ -559,7 +558,7 @@ def make_twogaussianoffset_fit(self, x_axis, data, units=None,
     model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
 
     if estimator is None:
-        error, params = self.estimate_twogaussianoffset_peak(x_axis, data, params,
+        error, params = self.estimate_gaussiandouble_peak(x_axis, data, params,
                                                              threshold_fraction,
                                                              minimal_threshold,
                                                              sigma_threshold_fraction
@@ -611,7 +610,7 @@ def make_twogaussianoffset_fit(self, x_axis, data, units=None,
 
     return result, param_dict
 
-def estimate_twogaussianoffset_peak(self, x_axis, data, params,
+def estimate_gaussiandouble_peak(self, x_axis, data, params,
                                 threshold_fraction=0.4, minimal_threshold=0.1,
                                 sigma_threshold_fraction=0.2):
     """ Provide an estimator for a double gaussian peak fit with the parameters
@@ -656,7 +655,7 @@ def estimate_twogaussianoffset_peak(self, x_axis, data, params,
 
     return error, params
 
-def estimate_twogaussianoffset_dip(self, x_axis, data, params,
+def estimate_gaussiandouble_dip(self, x_axis, data, params,
                                threshold_fraction=0.4, minimal_threshold=0.1,
                                sigma_threshold_fraction=0.2):
     """ Provide an estimator for a double gaussian dip fit with the parameters
