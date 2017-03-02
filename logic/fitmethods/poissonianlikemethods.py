@@ -123,7 +123,7 @@ def make_poissonian_model(self, prefix=None):
     return poissonian_ampl_model, params
 
 
-def make_multiplepoissonian_model(self, no_of_functions=1):
+def make_poissonianmultiple_model(self, no_of_functions=1):
     """ Create a model with multiple poissonians with amplitude.
 
     @param no_of_functions: for default=1 there is one poissonian, else
@@ -143,6 +143,15 @@ def make_multiplepoissonian_model(self, no_of_functions=1):
     params = multi_poisson_model.make_params()
 
     return multi_poisson_model, params
+
+def make_poissoniandouble_model(self):
+    """ Create a model with double poissonian
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_poissonian_model.
+    """
+
+    return self.make_poissonianmultiple_model(no_of_functions=2)
 
 ################################################################################
 #                                                                              #
@@ -221,7 +230,7 @@ def estimate_poissonian(self, x_axis, data, params):
     return error, params
 
 
-def make_doublepoissonian_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_poissoniandouble_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
     """ Perform a double poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -236,10 +245,10 @@ def make_doublepoissonian_fit(self, x_axis, data, units=None, estimator=None, ad
                            with best fit with given axis,...
     """
 
-    double_poissonian_model, params = self.make_multiplepoissonian_model(no_of_functions=2)
+    double_poissonian_model, params = self.make_poissoniandouble_model()
 
     if estimator is None:
-        error, params = self.estimate_doublepoissonian(x_axis, data, params)
+        error, params = self.estimate_poissoniandouble(x_axis, data, params)
     else:
         error, params = estimator(x_axis, data, params)
 
@@ -259,7 +268,7 @@ def make_doublepoissonian_fit(self, x_axis, data, units=None, estimator=None, ad
     return result
 
 
-def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4,
+def estimate_poissoniandouble(self, x_axis, data, params, threshold_fraction=0.4,
                               minimal_threshold=0.1, sigma_threshold_fraction=0.2):
     """ Provide initial values for a double poissonian fit.
 
