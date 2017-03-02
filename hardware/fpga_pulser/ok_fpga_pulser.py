@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.base import Base
 from interface.pulser_interface import PulserInterface, PulserConstraints
-import thirdparty.opal_kelly.ok64 as ok
+import okfrontpanel as ok
 import time
 import os
 from collections import OrderedDict

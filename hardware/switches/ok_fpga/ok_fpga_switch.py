@@ -20,14 +20,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
+import os
+import okfrontpanel as ok
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
-import os
-try:
-    import thirdparty.opal_kelly.ok64 as ok
-except ImportError:
-    import thirdparty.opal_kelly.ok32 as ok
 
 
 class OkFpgaTtlSwitch(Base, SwitchInterface):
