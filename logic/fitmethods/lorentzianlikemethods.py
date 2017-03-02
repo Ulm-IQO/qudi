@@ -439,7 +439,7 @@ def make_lorentziandouble_fit(self, x_axis, data, units=None,estimator=None, add
 
     """
 
-    model, params = self.make_multiplelorentzian_model(no_of_functions=2)
+    model, params = self.make_lorentziandouble_model()
 
     if estimator is None:
         error, params = self.estimate_lorentziandouble_dip(x_axis, data, params)
@@ -855,7 +855,7 @@ def make_lorentziantriple_fit(self, x_axis, data, units=None, estimator=None,
                           with best fit with given axis,...
     """
 
-    model, params = self.make_multiplelorentzian_model(no_of_functions=3)
+    model, params = self.make_lorentziantriple_model()
 
     if estimator is None:
         error, params = self.estimate_lorentziantriple_N14(x_axis, data, params)
