@@ -580,35 +580,36 @@ def make_gaussiandouble_fit(self, x_axis, data, units=None,
             result.message))
 
     # Write the parameters to allow human-readable output to be generated
-    param_dict = OrderedDict()
+    result_str_dict = OrderedDict()
 
-    param_dict['Position 0'] = {'value': result.params['g0_center'].value,
-                             'error': result.params['g0_center'].stderr,
-                             'unit': units[0]}
+    result_str_dict['Position 0'] = {'value': result.params['g0_center'].value,
+                                     'error': result.params['g0_center'].stderr,
+                                     'unit': units[0]}
 
-    param_dict['Position 1'] = {'value': result.params['g1_center'].value,
-                             'error': result.params['g1_center'].stderr,
-                             'unit': units[0]}
+    result_str_dict['Position 1'] = {'value': result.params['g1_center'].value,
+                                     'error': result.params['g1_center'].stderr,
+                                     'unit': units[0]}
 
-    param_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
-                                'error': result.params['g0_contrast'].stderr,
-                                'unit': '%'}
+    result_str_dict['Contrast 0'] = {'value': abs(result.params['g0_contrast'].value),
+                                     'error': result.params['g0_contrast'].stderr,
+                                     'unit': '%'}
 
-    param_dict['Contrast 1'] = {'value': abs(result.params['g1_contrast'].value),
-                                'error': result.params['g1_contrast'].stderr,
-                                'unit': '%'}
+    result_str_dict['Contrast 1'] = {'value': abs(result.params['g1_contrast'].value),
+                                     'error': result.params['g1_contrast'].stderr,
+                                     'unit': '%'}
 
-    param_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
-                                 'error': result.params['g0_sigma'].stderr,
-                                 'unit': units[0]}
+    result_str_dict['Linewidth 0'] = {'value': result.params['g0_sigma'].value,
+                                      'error': result.params['g0_sigma'].stderr,
+                                      'unit': units[0]}
 
-    param_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
-                                 'error': result.params['g1_sigma'].stderr,
-                                 'unit': units[0]}
+    result_str_dict['Linewidth 1'] = {'value': result.params['g1_sigma'].value,
+                                      'error': result.params['g1_sigma'].stderr,
+                                      'unit': units[0]}
 
-    param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
-    return result, param_dict
+    result.result_str_dict = result_str_dict
+    return result
 
 def estimate_gaussiandouble_peak(self, x_axis, data, params,
                                 threshold_fraction=0.4, minimal_threshold=0.1,
@@ -636,9 +637,9 @@ def estimate_gaussiandouble_peak(self, x_axis, data, params,
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
 
-    mod_lor, params_lor = self.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod_lor, params_lor = self.make_multiplelorentzian_model(no_of_functions=2)
 
-    error, params_lor = self.estimate_doublelorentzoffset_dip(x_axis=x_axis,
+    error, params_lor = self.estimate_lorentziandouble_dip(x_axis=x_axis,
                                                      data=-data,
                                                      params=params_lor,
                                                      threshold_fraction=threshold_fraction,
@@ -680,9 +681,9 @@ def estimate_gaussiandouble_dip(self, x_axis, data, params,
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    mod_lor, params_lor = self.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod_lor, params_lor = self.make_multiplelorentzian_model(no_of_functions=2)
 
-    error, params_lor = self.estimate_doublelorentzoffset_dip(x_axis=x_axis,
+    error, params_lor = self.estimate_lorentziandouble_dip(x_axis=x_axis,
                                                      data=data,
                                                      params=params_lor,
                                                      threshold_fraction=threshold_fraction,

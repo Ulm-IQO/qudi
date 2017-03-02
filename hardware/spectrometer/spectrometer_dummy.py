@@ -46,7 +46,7 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
         data[0] = np.arange(730, 750, 20/length)
         data[1] = np.random.uniform(0, 2000, length)
 
-        lorentz, params = self._fitLogic.make_multiplelorentzoffset_model(no_of_functions=4)
+        lorentz, params = self._fitLogic.make_multiplelorentzian_model(no_of_functions=4)
         sigma = 0.05
         params.add('l0_amplitude', value=2000)
         params.add('l0_center', value=736.46)
