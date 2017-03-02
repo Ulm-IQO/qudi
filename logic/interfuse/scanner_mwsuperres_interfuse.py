@@ -23,6 +23,7 @@ from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 import copy
 import numpy as np
+import time
 
 
 class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
@@ -124,6 +125,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         """ Pass through scanner counting channels """
         if self.superres_scanmode:
             count_channels = ['no_mw', 'mw_pi1', 'mw_pi2']
+            # count_channels = ['superres']
         else:
             count_channels = self._scanning_device.get_scanner_count_channels()
         return count_channels
@@ -250,6 +252,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         if self.superres_scanmode:
             # Switch on pulse sequence
             self._pulsed_measurement.pulse_generator_on()
+            time.sleep(0.1)
             # always sample 3 times the same position
             #line_path = np.repeat(line_path, 3, axis=1)
             tmp_return = self._scanning_device.scan_line(line_path, True)
@@ -259,6 +262,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             linescan_return[:, 2] = tmp_return[2::3, 0]
             # Switch off pulse sequence (to reset the sequence)
             self._pulsed_measurement.pulse_generator_off()
+            time.sleep(0.1)
         else:
             linescan_return = self._scanning_device.scan_line(line_path, pixel_clock)
 
