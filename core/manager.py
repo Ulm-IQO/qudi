@@ -68,6 +68,7 @@ class Manager(QtCore.QObject):
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object, bool)
+    sigShutdownAcknowledge = QtCore.Signal(bool, bool)
     sigShowManager = QtCore.Signal()
 
     def __init__(self, args, **kwargs):
@@ -825,7 +826,18 @@ class Manager(QtCore.QObject):
         if not self.isModuleLoaded(base, name):
             logger.error('{0} module {1} not loaded.'.format(base, name))
             return False
-        return self.tree['loaded'][base][name].getState() in ('idle', 'running')
+        return self.tree['loaded'][base][name].getState() in ('idle', 'running', 'locked')
+
+    def findBase(self, name):
+        """ Find base for a given module name.
+          @param str name: module name
+
+          @return str: base name
+        """
+        for base in ('hardware', 'logic', 'gui'):
+            if name in self.tree['defined'][base]:
+                return base
+        raise KeyError(name)
 
     @QtCore.Slot(str, str)
     def activateModule(self, base, name):
@@ -882,8 +894,8 @@ class Manager(QtCore.QObject):
             return
         module = self.tree['loaded'][base][name]
         try:
-            if not module.getState() in ('idle', 'running'):
-                logger.error('{0} module {1} not active (idle or running).'.format(base, name))
+            if not self.isModuleActive(base, name):
+                logger.error('{0} module {1} not isModuleActive.'.format(base, name))
                 return
         except:
             logger.exception(
@@ -996,6 +1008,18 @@ class Manager(QtCore.QObject):
             deps.update({key: list(deplist)})
         return deps
 
+    def getAllRecursiveModuleDependencies(self, allmods):
+        """ Build a dependency tre for defined or loaded modules.
+          @param dict allmods: dictionary containing module bases (self.tree['loaded'] equivalent)
+
+          @return dict:  module dependencies in the right format for the toposort function
+        """
+        deps = {}
+        for mbase, bdict in allmods.items():
+            for module in bdict:
+                deps.update(self.getRecursiveModuleDependencies(mbase, module))
+        return deps
+
     @QtCore.Slot(str, str)
     def startModule(self, base, key):
         """ Figure out the module dependencies in terms of connections, load and activate module.
@@ -1053,7 +1077,7 @@ class Manager(QtCore.QObject):
             for mbase in ('hardware', 'logic', 'gui'):
                 if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     try:
-                        deact = self.tree['loaded'][mbase][mkey].getState() in ('idle', 'running')
+                        deact = self.tree['loaded'][mbase][mkey].can('deactivate')
                     except:
                         deact = True
                     if deact:
@@ -1148,13 +1172,15 @@ class Manager(QtCore.QObject):
         """Connect all Qudi modules from the currently loaded configuration and
             activate them.
         """
-        # FIXME: actually load all the modules in the correct order and connect
-        # the interfaces
-        for base,bdict in self.tree['defined'].items():
-            for key in bdict:
-                self.startModule(base, key)
+        deps = self.getAllRecursiveModuleDependencies(self.tree['defined'])
+        sorteddeps = toposort(deps)
 
-        logger.info('Activation finished.')
+        for module in sorteddeps:
+            base = self.findBase(module)
+            if self.startModule(base, module) < 0:
+                break
+
+        logger.info('Start all modules finished.')
 
     def getStatusDir(self):
         """ Get the directory where the app state is saved, create it if necessary.
@@ -1224,14 +1250,41 @@ class Manager(QtCore.QObject):
     @QtCore.Slot()
     def quit(self):
         """Nicely request that all modules shut down."""
-        for mbase,bdict in self.tree['loaded'].items():
-            for module in bdict:
+        lockedmodules = False
+        brokenmodules = False
+        for base, mods in self.tree['loaded'].items():
+            for name, module in mods.items():
                 try:
-                    self.stopModule(mbase, module)
+                    state = module.getState()
+                    if state == 'locked':
+                        lockedmodules = True
                 except:
-                    logger.exception(
-                        'Module {0} failed to stop, continuing anyway.'.format(module))
-                QtCore.QCoreApplication.processEvents()
+                    brokenmodules = True
+        if lockedmodules:
+            if self.hasGui:
+                self.sigShutdownAcknowledge.emit(lockedmodules, brokenmodules)
+            else:
+                # FIXME: console prompt here
+                self.realQuit()
+        else:
+            self.realQuit()
+
+    @QtCore.Slot()
+    def realQuit(self):
+        """ Stop all modules, no questions asked. """
+        deps = self.getAllRecursiveModuleDependencies(self.tree['loaded'])
+        sorteddeps = toposort(deps)
+
+        for module in reversed(sorteddeps):
+            base = self.findBase(module)
+            try:
+                deact = self.tree['loaded'][base][module].can('deactivate')
+            except:
+                deact = True
+            if deact:
+                logger.info('Deactivating module {0}.{1}'.format(base, module))
+                self.deactivateModule(base, module)
+            QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
 
     @QtCore.Slot()

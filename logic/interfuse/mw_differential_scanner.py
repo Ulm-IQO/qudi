@@ -290,25 +290,17 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         """
 
         self._line_length = length
-
 #        self.log.warning('ConfocalScannerInterfaceDummy>set_up_line')
-
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
-
-        #if self.getState() == 'locked':
-        #    self.log.error('A scan_line is already running, close this one first.')
-        #    return -1
-        #
-        #self.lock()
 
         if not isinstance( line_path, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.log.error('Given voltage list is no array type.')

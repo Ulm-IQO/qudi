@@ -189,11 +189,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._line_length = length
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
@@ -213,7 +213,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         count_data = np.zeros(self._line_length)
 
         for i in xrange(self._line_length):
-            coords = line_path[:,i]
+            coords = line_path[:, i]
             self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2], a=coords[3])
             print(coords)
             print(i)

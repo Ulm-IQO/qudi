@@ -218,8 +218,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Check and configure pulse generator
         self.pulse_generator_off()
-        self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
-        avail_activation_configs = self.get_pulser_constraints()['activation_config']
+        self.loaded_asset_name = str(self._pulse_generator_device.get_loaded_asset())
+        avail_activation_configs = self.get_pulser_constraints().activation_config
         if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
         if self.analogue_amplitude is None:
@@ -512,16 +512,16 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.interleave_on = self._pulse_generator_device.set_interleave(use_interleave)
 
         # check and set sample rate
-        samplerate_constr = pulser_constraints['sample_rate']
-        if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
+        samplerate_constr = pulser_constraints.sample_rate
+        if sample_rate_Hz > samplerate_constr.max or sample_rate_Hz < samplerate_constr.min:
             self.log.warning('Desired sample rate of {0:.0e} Hz not within pulse generator '
                              'constraints. Setting {1:.0e} Hz instead.'
-                             ''.format(sample_rate_Hz, samplerate_constr['max']))
-            sample_rate_Hz = samplerate_constr['max']
+                             ''.format(sample_rate_Hz, samplerate_constr.max))
+            sample_rate_Hz = samplerate_constr.max
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
 
         # check and set activation_config
-        config_constr = pulser_constraints['activation_config']
+        config_constr = pulser_constraints.activation_config
         if activation_config_name not in config_constr:
             new_config_name = list(config_constr.keys())[0]
             self.log.warning('Desired activation config "{0}" is no part of the pulse generator '
@@ -554,14 +554,14 @@ class PulsedMeasurementLogic(GenericLogic):
         self.current_channel_config_name = tmp_config_name
 
         # check and set analogue amplitude dict
-        amplitude_constr = pulser_constraints['a_ch_amplitude']
+        amplitude_constr = pulser_constraints.a_ch_amplitude
         for chnl in amplitude_dict:
-            if amplitude_dict[chnl] > amplitude_constr['max'] or amplitude_dict[chnl] < amplitude_constr['min']:
+            if amplitude_dict[chnl] > amplitude_constr.max or amplitude_dict[chnl] < amplitude_constr.min:
                 self.log.error('Desired analogue voltage of {0} V for channel "{1}" is not within '
                                'pulse generator constraints. Using min voltage {2} V instead to '
                                'avoid damage.'
-                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr['min']))
-                amplitude_dict[chnl] = amplitude_constr['min']
+                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr.min))
+                amplitude_dict[chnl] = amplitude_constr.min
         self.analogue_amplitude, dummy = self._pulse_generator_device.set_analog_level(amplitude=amplitude_dict)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
@@ -1020,7 +1020,14 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None):
+    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None, with_error=True):
+        """
+
+        @param controlled_val_unit:
+        @param tag:
+        @param with_error:
+        @return:
+        """
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -1053,19 +1060,35 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         if self.alternating:
-            data_array = np.zeros([3,len(self.signal_plot_x)], dtype=float)
+            if with_error:
+                data_array = np.zeros([5, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.), Error (norm.), Error2(norm.)'
+            else:
+                data_array = np.zeros([3, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
             data_array[2, :] = self.signal_plot_y2
-            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'] = data_array.transpose()
+            if with_error:
+                data_array[3, :] = self.measuring_error_plot_y
+                data_array[4, :] = self.measuring_error_plot_y2
         else:
-            data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
+            if with_error:
+                data_array = np.zeros([3, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Error (norm.)'
+            else:
+                data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
+                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.)'
             data_array[0, :] = self.signal_plot_x
             data_array[1, :] = self.signal_plot_y
-            data['Controlled variable (' + controlled_val_unit + '), Signal (norm.)'] = data_array.transpose()
+            if with_error:
+                data_array[2, :] = self.measuring_error_plot_y
+
+        data[data_key] = data_array.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
+        parameters['approx. measurement time (s)'] = self.elapsed_time
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['Signal start (bin)'] = self._pulse_analysis_logic.signal_start_bin
@@ -1076,9 +1099,14 @@ class PulsedMeasurementLogic(GenericLogic):
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
         fig, ax1 = plt.subplots()
-        ax1.plot(self.signal_plot_x, self.signal_plot_y)
-        if self.alternating:
-            ax1.plot(self.signal_plot_x, self.signal_plot_y2)
+        if with_error:
+            ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y, yerr=self.measuring_error_plot_y, fmt='-o')
+            if self.alternating:
+                ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y2, yerr=self.measuring_error_plot_y2, fmt='-s')
+        else:
+            ax1.plot(self.signal_plot_x, self.signal_plot_y)
+            if self.alternating:
+                ax1.plot(self.signal_plot_x, self.signal_plot_y2)
         ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
         # ax1.set_xlim(self.plot_domain)
@@ -1086,8 +1114,7 @@ class PulsedMeasurementLogic(GenericLogic):
         fig.tight_layout()
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, plotfig=fig,
-                                   precision=':.6e')
+                                   timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6e')
         plt.close(fig)
 
         #####################################################################

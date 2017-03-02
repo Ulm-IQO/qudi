@@ -761,7 +761,7 @@ class ConfocalLogic(GenericLogic):
                     [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
 
             # scan the line in the scan
-            line_counts = self._scanning_device.scan_line(line)
+            line_counts = self._scanning_device.scan_line(line, pixel_clock=True)
             if np.any(line_counts == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
@@ -1148,7 +1148,6 @@ class ConfocalLogic(GenericLogic):
                         xytext=(-0.01, crosshair_pos[1]*np.power(1000,y_prefix_count)), xycoords=trans_ymark,
                         arrowprops=dict(facecolor='#17becf', shrink=0.05),
                         )
-            print(crosshair_pos, x_prefix_count, y_prefix_count)
 
         # Draw the colorbar
         cbar = plt.colorbar(cfimage, shrink=0.8)#, fraction=0.046, pad=0.08, shrink=0.75)
