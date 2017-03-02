@@ -26,7 +26,7 @@ import os
 
 from interface.fast_counter_interface import FastCounterInterface
 from core.base import Base
-import thirdparty.opal_kelly.ok64 as ok
+import okfrontpanel as ok
 from core.util.mutex import Mutex
 
 
