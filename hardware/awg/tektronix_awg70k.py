@@ -41,9 +41,6 @@ class AWG70K(Base, PulserInterface):
     _modclass = 'awg70k'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'pulser': 'PulserInterface'}
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 

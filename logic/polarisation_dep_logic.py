@@ -32,11 +32,11 @@ class PolarisationDepLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'counterlogic': 'CounterLogic',
-            'savelogic': 'SaveLogic',
-            'motor':'MotorInterface'
-            }
-    _out = {'polarisationdeplogic': 'PolarisationDepLogic'}
+    _connectors = {
+        'counterlogic': 'CounterLogic',
+        'savelogic': 'SaveLogic',
+        'motor':'MotorInterface'
+    }
 
     signal_rotation_finished = QtCore.Signal()
     signal_start_rotation = QtCore.Signal()
@@ -47,12 +47,12 @@ class PolarisationDepLogic(GenericLogic):
           @param object e: Fysom state change event
         """
 
-        self._counter_logic = self.get_in_connector('counterlogic')
+        self._counter_logic = self.get_connector('counterlogic')
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.get_in_connector('savelogic')
+        self._save_logic = self.get_connector('savelogic')
 
-        self._hwpmotor = self.get_in_connector('motor')
+        self._hwpmotor = self.get_connector('motor')
 
         # Initialise measurement parameters
         self.scan_length = 360

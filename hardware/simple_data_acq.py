@@ -31,9 +31,6 @@ class SimpleAcq(Base, SimpleDataInterface):
     _modclass = 'simple'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'simple': 'Simple'}
-
     def on_activate(self, e):
         config = self.getConfiguration()
         if 'interface' in config:

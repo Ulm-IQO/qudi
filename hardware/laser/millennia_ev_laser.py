@@ -39,9 +39,6 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
     _modclass = 'millenniaevlaser'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'laser': 'Laser'}
-
     def on_activate(self, e):
         """
 

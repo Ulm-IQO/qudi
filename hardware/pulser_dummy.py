@@ -37,8 +37,6 @@ class PulserDummy(Base, PulserInterface):
     """
     _modclass = 'PulserDummy'
     _modtype = 'hardware'
-    # connectors
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

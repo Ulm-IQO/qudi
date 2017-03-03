@@ -37,8 +37,6 @@ class SlowCounterDummy(Base, SlowCounterInterface):
     """
     _modclass = 'SlowCounterDummy'
     _modtype = 'hardware'
-    # connectors
-    _out = {'counter': 'SlowCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -175,7 +173,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         @return float: the photon counts per second
         """
         count_data = np.array(
-            [self._simulate_counts(samples) + i * self.mean_signal 
+            [self._simulate_counts(samples) + i * self.mean_signal
                 for i, ch in enumerate(self.get_counter_channels())]
             )
 

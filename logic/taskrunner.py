@@ -90,7 +90,6 @@ class TaskRunner(GenericLogic):
     """
     _modclass = 'TaskRunner'
     _modtype = 'Logic'
-    _out = {'runner': 'TaskRunner'}
 
     sigLoadTasks = QtCore.Signal()
     sigCheckTasks = QtCore.Signal()

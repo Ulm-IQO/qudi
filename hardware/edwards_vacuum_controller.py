@@ -32,9 +32,6 @@ class EdwardsVacuumController(Base):
     _modclass = 'edwards_pump'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'pump': 'Pump'}
-
     # IDs for communication
     PRIORITY = {
         0: 'OK',

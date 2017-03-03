@@ -35,9 +35,6 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
     _modclass = 'laserdummy'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'laser': 'SimpleLaser'}
-
     def __init__(self, **kwargs):
         """ """
         super().__init__(**kwargs)
