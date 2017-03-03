@@ -434,9 +434,8 @@ class WavemeterLoggerLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)': np.array(
-                [self.histogram_axis, self.histogram]
-                ).transpose()}
+        data['Wavelength (nm)'] = np.array(self.histogram_axis)
+        data['Signal (counts/s)'] = np.array(self.histogram)
 
         # write the parameters:
         parameters = OrderedDict()
@@ -456,14 +455,14 @@ class WavemeterLoggerLogic(GenericLogic):
                                    filelabel=filelabel,
                                    timestamp=timestamp,
                                    as_text=True,
-                                   precision=':.6f'
+                                   precision='%.6e'
                                    )
 
         filelabel = 'wavemeter_log_wavelength'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s), Wavelength (nm)': self._wavelength_data}
+        data['Time (s), Wavelength (nm)'] = self._wavelength_data
         # write the parameters:
         parameters = OrderedDict()
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
@@ -480,14 +479,14 @@ class WavemeterLoggerLogic(GenericLogic):
                                    filelabel=filelabel,
                                    timestamp=timestamp,
                                    as_text=True,
-                                   precision=':.6f'
+                                   precision='%.6e'
                                    )
 
         filelabel = 'wavemeter_log_counts'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s),Signal (counts/s)': self._counter_logic._data_to_save}
+        data['Time (s),Signal (counts/s)'] = self._counter_logic._data_to_save
 
         # write the parameters:
         parameters = OrderedDict()
@@ -504,7 +503,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    filelabel=filelabel,
                                    timestamp=timestamp,
                                    as_text=True,
-                                   precision=':.6f'
+                                   precision='%.6e'
                                    )
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
@@ -513,7 +512,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)': np.array(self.counts_with_wavelength)}
+        data['Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)'] = np.array(self.counts_with_wavelength)
 
         fig = self.draw_figure()
         # write the parameters:
@@ -532,7 +531,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    timestamp=timestamp,
                                    as_text=True,
                                    plotfig=fig,
-                                   precision=':.6f')
+                                   precision='%.6e')
         plt.close(fig)
         return 0
 
