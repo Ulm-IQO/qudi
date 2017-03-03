@@ -67,16 +67,17 @@ class MagnetLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'magnetstage': 'MagnetInterface',
-           'optimizerlogic': 'OptimizerLogic',
-           'counterlogic': 'CounterLogic',
-           'odmrlogic': 'ODMRLogic',
-           'savelogic': 'SaveLogic',
-           'scannerlogic':'ScannerLogic',
-           'traceanalysis':'TraceAnalysisLogic',
-           'gatedcounterlogic': 'GatedCounterLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
-    _out = {'magnetlogic': 'MagnetLogic'}
+    _connectors = {
+        'magnetstage': 'MagnetInterface',
+        'optimizerlogic': 'OptimizerLogic',
+        'counterlogic': 'CounterLogic',
+        'odmrlogic': 'ODMRLogic',
+        'savelogic': 'SaveLogic',
+        'scannerlogic':'ScannerLogic',
+        'traceanalysis':'TraceAnalysisLogic',
+        'gatedcounterlogic': 'GatedCounterLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic'
+    }
 
     # General Signals, used everywhere:
     sigIdleStateChanged = QtCore.Signal(bool)
@@ -151,8 +152,8 @@ class MagnetLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._magnet_device = self.get_in_connector('magnetstage')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._magnet_device = self.get_connector('magnetstage')
+        self._save_logic = self.get_connector('savelogic')
 
         self.log.info('The following configuration was found.')
         # checking for the right configuration
@@ -162,16 +163,16 @@ class MagnetLogic(GenericLogic):
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._optimizer_logic = self.get_in_connector('optimizerlogic')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
-        self._counter_logic = self.get_in_connector('counterlogic')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
+        self._optimizer_logic = self.get_connector('optimizerlogic')
+        self._confocal_logic = self.get_connector('scannerlogic')
+        self._counter_logic = self.get_connector('counterlogic')
+        self._odmr_logic = self.get_connector('odmrlogic')
 
-        self._gc_logic = self.get_in_connector('gatedcounterlogic')
-        self._ta_logic = self.get_in_connector('traceanalysis')
-        #self._odmr_logic = self.get_in_connector('odmrlogic')
+        self._gc_logic = self.get_connector('gatedcounterlogic')
+        self._ta_logic = self.get_connector('traceanalysis')
+        #self._odmr_logic = self.get_connector('odmrlogic')
 
-        self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._seq_gen_logic = self.get_connector('sequencegeneratorlogic')
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that

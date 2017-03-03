@@ -28,9 +28,6 @@ class InfluxLogger(Base, DataLoggerInterface):
     _modclass = 'InfluxLogger'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'data': 'ProcessInterface'}
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.log_channels = {}

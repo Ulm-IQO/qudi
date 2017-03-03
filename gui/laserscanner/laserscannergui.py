@@ -52,7 +52,7 @@ class VoltScanGui(GUIBase):
     _modclass = 'VoltScanGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'voltagescannerlogic1': 'VoltageScannerLogic',
+    _connectors = {'voltagescannerlogic1': 'VoltageScannerLogic',
           }
 
     def __init__(self, config, **kwargs):
@@ -85,7 +85,7 @@ class VoltScanGui(GUIBase):
 
         """
 
-        self._voltscan_logic = self.get_in_connector('odmrlogic1')
+        self._voltscan_logic = self.get_connector('odmrlogic1')
         print("ODMR logic is", self._odmr_logic)
 
         # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the

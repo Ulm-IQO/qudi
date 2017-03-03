@@ -45,8 +45,6 @@ class LFImageMode(Enum):
 
 class Lightfield(Base, SpectrometerInterface):
 
-    _out = {'spec': 'SpectrometerInterface'}
-
     def on_activate(self, e):
 
         lfpath = os.environ['LIGHTFIELD_ROOT']

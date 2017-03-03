@@ -54,7 +54,7 @@ class CounterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'counterlogic1': 'CounterLogic'}
+    _connectors = {'counterlogic1': 'CounterLogic'}
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -80,7 +80,7 @@ class CounterGui(GUIBase):
                          had happened.
         """
 
-        self._counting_logic = self.get_in_connector('counterlogic1')
+        self._counting_logic = self.get_connector('counterlogic1')
 
         #####################
         # Configuring the dock widgets

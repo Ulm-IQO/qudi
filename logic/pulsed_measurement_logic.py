@@ -39,15 +39,15 @@ class PulsedMeasurementLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'pulseanalysislogic': 'PulseAnalysisLogic',
-           'pulseextractionlogic': 'PulseExtractionLogic',
-           'fitlogic': 'FitLogic',
-           'savelogic': 'SaveLogic',
-           'fastcounter': 'FastCounterInterface',
-           'microwave': 'MWInterface',
-           'pulsegenerator': 'PulserInterface',
-           }
-    _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
+    _connectors = {
+        'pulseanalysislogic': 'PulseAnalysisLogic',
+        'pulseextractionlogic': 'PulseExtractionLogic',
+        'fitlogic': 'FitLogic',
+        'savelogic': 'SaveLogic',
+        'fastcounter': 'FastCounterInterface',
+        'microwave': 'MWInterface',
+        'pulsegenerator': 'PulserInterface',
+    }
 
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                          np.ndarray, np.ndarray, np.ndarray)
@@ -158,13 +158,13 @@ class PulsedMeasurementLogic(GenericLogic):
                          had happened.
         """
         # get all the connectors:
-        self._pulse_analysis_logic = self.get_in_connector('pulseanalysislogic')
-        self._pulse_extraction_logic = self.get_in_connector('pulseextractionlogic')
-        self._fast_counter_device = self.get_in_connector('fastcounter')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
-        self._mycrowave_source_device = self.get_in_connector('microwave')
+        self._pulse_analysis_logic = self.get_connector('pulseanalysislogic')
+        self._pulse_extraction_logic = self.get_connector('pulseextractionlogic')
+        self._fast_counter_device = self.get_connector('fastcounter')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._pulse_generator_device = self.get_connector('pulsegenerator')
+        self._mycrowave_source_device = self.get_connector('microwave')
 
         # Fitting
         self.fc = self._fit_logic.make_fit_container('pulsed', '1d')
@@ -513,11 +513,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # check and set sample rate
         samplerate_constr = pulser_constraints.sample_rate
-        if sample_rate_Hz > samplerate_constr['max'] or sample_rate_Hz < samplerate_constr['min']:
+        if sample_rate_Hz > samplerate_constr.max or sample_rate_Hz < samplerate_constr.min:
             self.log.warning('Desired sample rate of {0:.0e} Hz not within pulse generator '
                              'constraints. Setting {1:.0e} Hz instead.'
-                             ''.format(sample_rate_Hz, samplerate_constr['max']))
-            sample_rate_Hz = samplerate_constr['max']
+                             ''.format(sample_rate_Hz, samplerate_constr.max))
+            sample_rate_Hz = samplerate_constr.max
         self.sample_rate = self._pulse_generator_device.set_sample_rate(sample_rate_Hz)
 
         # check and set activation_config
@@ -556,12 +556,12 @@ class PulsedMeasurementLogic(GenericLogic):
         # check and set analogue amplitude dict
         amplitude_constr = pulser_constraints.a_ch_amplitude
         for chnl in amplitude_dict:
-            if amplitude_dict[chnl] > amplitude_constr['max'] or amplitude_dict[chnl] < amplitude_constr['min']:
+            if amplitude_dict[chnl] > amplitude_constr.max or amplitude_dict[chnl] < amplitude_constr.min:
                 self.log.error('Desired analogue voltage of {0} V for channel "{1}" is not within '
                                'pulse generator constraints. Using min voltage {2} V instead to '
                                'avoid damage.'
-                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr['min']))
-                amplitude_dict[chnl] = amplitude_constr['min']
+                               ''.format(amplitude_dict[chnl], chnl, amplitude_constr.min))
+                amplitude_dict[chnl] = amplitude_constr.min
         self.analogue_amplitude, dummy = self._pulse_generator_device.set_analog_level(amplitude=amplitude_dict)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,

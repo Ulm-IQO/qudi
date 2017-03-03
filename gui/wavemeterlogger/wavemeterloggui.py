@@ -54,7 +54,7 @@ class WavemeterLogGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = { 'wavemeterloggerlogic1': 'WavemeterLoggerLogic',
+    _connectors = { 'wavemeterloggerlogic1': 'WavemeterLoggerLogic',
             'savelogic': 'SaveLogic'
             }
 
@@ -82,8 +82,8 @@ class WavemeterLogGui(GUIBase):
                          had happened.
         """
 
-        self._wm_logger_logic = self.get_in_connector('wavemeterloggerlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._wm_logger_logic = self.get_connector('wavemeterloggerlogic1')
+        self._save_logic = self.get_connector('savelogic')
 
         # setting up the window
         self._mw = WavemeterLogWindow()

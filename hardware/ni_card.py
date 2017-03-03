@@ -138,12 +138,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _modtype = 'NICard'
     _modclass = 'hardware'
 
-    # connectors
-    _out = {'counter': 'SlowCounterInterface',
-            'confocalscanner': 'ConfocalScannerInterface',
-            'odmrcounter': 'ODMRCounterInterface'
-            }
-
     def on_activate(self, e=None):
         """ Starts up the NI Card at activation.
 
@@ -2069,9 +2063,6 @@ class SlowGatedNICard(NICard):
 
     _modtype = 'SlowGatedNICard'
     _modclass = 'hardware'
-
-    # connectors
-    _out = {'gatedslowcounter1' : 'SlowCounterInterface'}
 
     def on_activate(self, e=None):
         """ Starts up the NI Card at activation.

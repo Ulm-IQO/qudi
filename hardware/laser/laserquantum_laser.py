@@ -44,9 +44,6 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
     _modclass = 'lqlaser'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'laser': 'Laser'}
-
     def on_activate(self, e):
         """
 

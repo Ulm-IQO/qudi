@@ -150,8 +150,6 @@ class FastComtec(Base, FastCounterInterface):
     """
     _modclass = 'FastComtec'
     _modtype = 'hardware'
-    # connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

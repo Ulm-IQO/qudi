@@ -50,7 +50,7 @@ class SimpleDataGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'simplelogic': 'SimpleDataLogic'}
+    _connectors = {'simplelogic': 'SimpleDataLogic'}
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
@@ -74,7 +74,7 @@ class SimpleDataGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._simple_logic = self.get_in_connector('simplelogic')
+        self._simple_logic = self.get_connector('simplelogic')
 
         #####################
         # Configuring the dock widgets
