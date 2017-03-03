@@ -246,9 +246,9 @@ class SaveLogic(GenericLogic):
         """
         self._daily_loghandler.setLevel(level)
 
-    def save_data(self, data, filepath, parameters=None, filename=None,
-                  filelabel=None, timestamp=None, as_text=True, as_xml=False,
-                  precision=':.3e', delimiter='\t', plotfig=None):
+    def save_data(self, data, filepath, parameters=None, filename=None, filelabel=None,
+                  timestamp=None, as_text=True, as_xml=False, precision='%.3e', delimiter='\t',
+                  plotfig=None):
         """ General save routine for data.
 
         @param dict or OrderedDict data:
@@ -363,24 +363,23 @@ class SaveLogic(GenericLogic):
         """
 
         try:
-            frm = inspect.stack()[1]    # try to trace back the functioncall to
-                                        # the class which was calling it.
-            mod = inspect.getmodule(frm[0])  # this will get the object, which
-                                             # called the save_data function.
-            module_name = mod.__name__.split('.')[-1]  # that will extract the
-                                                       # name of the class.
+            # try to trace back the functioncall to the class which was calling it.
+            frm = inspect.stack()[1]
+            # this will get the object, which called the save_data function.
+            mod = inspect.getmodule(frm[0])
+            # that will extract the name of the class.
+            module_name = mod.__name__.split('.')[-1]
         except:
-            # Sometimes it is not possible to get the object which called the save_data function (such as when calling this from the console).
+            # Sometimes it is not possible to get the object which called the save_data function
+            # (such as when calling this from the console).
             module_name = 'NaN'
 
         # check whether the given directory path does exist. If not, the
         # file will be saved anyway in the unspecified directory.
-
         if not os.path.exists(filepath):
             filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
-            self.log.warning('No Module name specified! Please correct this! '
-                    'Data are saved in the \'UNSPECIFIED_<module_name>\' '
-                    'folder.')
+            self.log.warning('No Module name specified! Please correct this! Data are saved in the '
+                             '\'UNSPECIFIED_<module_name>\' folder.')
 
         # Produce a filename tag from the active POI name
         if self.active_poi_name == '':
@@ -404,104 +403,70 @@ class SaveLogic(GenericLogic):
                 else:
                     filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
 
-        # open the file
-        textfile = open(os.path.join(filepath, filename), 'w')
-
-        # write the paramters if specified:
-        textfile.write(
-            '# Saved Data from the class {0} on {1}.\n'
-            ''.format(module_name, time.strftime('%d.%m.%Y at %Hh%Mm%Ss')))
-        textfile.write('#\n')
-        textfile.write('# Parameters:\n')
-        textfile.write('# ===========\n')
-        textfile.write('#\n')
-
+        # Create header string for the file
+        header = 'Saved Data from the class {0} on {1}.\n'.format(module_name,
+                                                                  time.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
+        header = header + '\nParameters:\n===========\n\n'
         # Include the active POI name (if not empty) as a parameter in the header
         if self.active_poi_name != '':
-            textfile.write('# Measured at POI: {0}\n'.format(self.active_poi_name))
-
+            header = header + 'Measured at POI: {0}\n'.format(self.active_poi_name)
+        # add the paramters if specified:
         if parameters is not None:
-
             # check whether the format for the parameters have a dict type:
-            if type(parameters) is dict or OrderedDict:
+            if isinstance(parameters, dict):
                 for entry, param in parameters.items():
                     if isinstance(param, float):
-                        textfile.write(('# {0}:{1}{2' + precision + '}\n').format(entry, delimiter, param))
+                        header = header + ('{0}:{1}{2' + precision + '}\n').format(entry,
+                                                                                   delimiter, param)
                     else:
-                        textfile.write('# {0}:{1}{2}\n'.format(entry, delimiter, param))
-
-            # make a hardcore string convertion and try to save the
-            # parameters directly:
+                        header = header + '{0}:{1}{2}\n'.format(entry, delimiter, param)
+            # make a hardcore string conversion and try to save the parameters directly:
             else:
-                self.log.error(
-                    'The parameters are not passed as a dictionary! '
-                    'The SaveLogic will try to save the parameters directly.')
-                textfile.write('# not specified parameters: {0}\n'.format(parameters))
+                self.log.error('The parameters are not passed as a dictionary! The SaveLogic will '
+                               'try to save the parameters directly.')
+                header = header + 'not specified parameters: {0}\n'.format(parameters)
+        header = header + '\nData:\n=====\n'
 
-        textfile.write('#\n')
-        textfile.write('# Data:\n')
-        textfile.write('# =====\n')
-        # check the input data:
-
-        # go through each data in t
+        # write data to file
         if len(data) == 1:
-            key_name = list(data.keys())[0]
+            # if data is a single array just write it to file
+            key_name = list(data)[0]
 
-            # check whether the data is only a 1d trace
-            if len(np.shape(data[key_name])) == 1:
+            header = header + key_name + '\n'
 
-                self.save_1d_trace_as_text(trace_data=data[key_name],
-                                           trace_name=key_name,
-                                           opened_file=textfile,
-                                           precision=precision)
-
-            # check whether the data is only a 2d array
-            elif len(np.shape(data[key_name])) == 2:
-
-                key_name_array = key_name.split(',')
-
-                self.save_2d_points_as_text(trace_data=data[key_name],
-                                            trace_name=key_name_array,
-                                            opened_file=textfile,
-                                            precision=precision,
-                                            delimiter=delimiter)
-            elif len(np.shape(data[key_name])) == 3:
-
-                self.log.warning('Savelogic has no implementation for 3 '
-                        'dimensional arrays. The data is saved in a '
-                        'raw fashion.')
-                textfile.write(str(data[key_name]))
-
+            if data[key_name].ndim < 3:
+                self.save_array_as_text(data=data[key_name], filename=filename, filepath=filepath,
+                                        precision=precision, header=header, delimiter=delimiter,
+                                        append=False)
             else:
-
-                self.log.warning('Savelogic has no implementation for 4 '
-                        'dimensional arrays. The data is saved in a '
-                        'raw fashion.')
-                textfile.write(+str(data[key_name]))
-
+                self.log.warning('Savelogic has no implementation for 3 dimensional arrays. The '
+                                 'data is saved in a raw fashion.')
+                with open(os.path.join(filepath, filename), 'w') as file:
+                    file.write(str(data[key_name]))
         else:
+            # If more data arrays have been passed check if each one is a 1D array.
+            # Save to file if that is the case. If multidimensional arrays are present,
+            # recursively call this method again for each array. This will lead to multiple
+            # individual files.
             key_list = list(data)
 
-            trace_1d_flag = True
+            array_1d_flag = True
 
             data_traces = []
             for entry in key_list:
                 data_traces.append(data[entry])
-                if len(np.shape(data[entry])) > 1:
+                if data[entry].ndim > 1:
                     trace_1d_flag = False
 
-            if trace_1d_flag:
+            if array_1d_flag:
+                for entry in key_list:
+                    header = header + entry + '\t'
+                header = header + '\n'
 
-                self.save_N_1d_traces_as_text(trace_data=data_traces,
-                                              trace_name=key_list,
-                                              opened_file=textfile,
-                                              precision=precision,
-                                              delimiter=delimiter)
+                self.save_array_as_text(data=np.array(data_traces), filename=filename,
+                                        filepath=filepath, precision=precision, header=header,
+                                        delimiter=delimiter, append=False)
             else:
-                # go through each passed element again and treat them as
-                # independant, i.e. each element is saved in an extra file.
-                # That is an recursive procedure:
-
                 for entry in key_list:
                     self.save_data(data={entry: data[entry]},
                                    filepath=filepath,
@@ -510,12 +475,9 @@ class SaveLogic(GenericLogic):
                                    as_text=True, as_xml=False,
                                    precision=precision, delimiter=delimiter)
 
-        textfile.close()
-
         #--------------------------------------------------------------------------------------------
         # Save thumbnail figure of plot
         if plotfig is not None:
-
             # create Metadata
             metadata = dict()
             metadata['Title'] = 'Image produced by qudi: ' + module_name
@@ -569,107 +531,52 @@ class SaveLogic(GenericLogic):
             #----------------------------------------------------------------------------------
 
 
-    def save_1d_trace_as_text(self, trace_data, trace_name, opened_file=None,
-                              filepath=None, filename=None, precision=':.3f'):
-        """An Independent method, which can save a 1d trace.
+    def save_array_as_text(self, data, filename, filepath=None, precision='%.3f', header='',
+                           delimiter='\t', append=False):
+        """
+        An Independent method, which can save a 1D or 2D data array.
 
-        If you call this method but you are respondible, that the passed
-        optional parameters are correct."""
+        If you call this method but you are responsible, that the passed optional parameters are
+        correct.
+        """
+        # Try to cast data array into numpy ndarray if it is not already one
+        if not isinstance(data, np.ndarray):
+            try:
+                data = np.array(data)
+            except:
+                self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. Could '
+                               'not save data.'.format(type(data)))
 
-        close_file_flag = False
+        # Add file extension ".dat" if not already present
+        if not filename.endswith('.dat'):
+            if '.' in filename:
+                filename = filename.rsplit('.', 1)[0]
+            filename = filename + '.dat'
 
-        if opened_file is None:
-            opened_file = open(os.path.join(filepath, filename + '.dat'), 'wb')
-            close_file_flag = True
+        # turn precision specifier into a proper format specifier
+        if precision.startswith(':'):
+            precision.replace(':', '%')
 
-        opened_file.write('# ' + str(trace_name) + '\n')
+        # Check for string array and match precision specifier if necessary
+        if data.dtype.type == np.bytes_ or data.dtype.type == np.str_:
+            if 's' not in precision and 'S' not in precision:
+                precision = '%s'
+                self.log.warning('Tried to write string array to file but precision was '
+                                 'corresponding to a number format. Changed it to "%s".')
 
-        for entry in trace_data:
-            # If entry is a string, then print directly
-            if isinstance(entry, str):
-                opened_file.write(entry + '\n')
-            # Otherwise, format number to requested precision
-            else:
-                opened_file.write(str('{0' + precision + '}\n').format(entry))
+        # write to file. Append if requested.
+        if append:
+            with open(os.path.join(filepath, filename), 'ab') as file:
+                np.savetxt(file, data, fmt=precision, delimiter=delimiter, header=header,
+                           comments='#')
+        else:
+            with open(os.path.join(filepath, filename), 'wb') as file:
+                np.savetxt(file, data, fmt=precision, delimiter=delimiter, header=header,
+                           comments='#')
+        return
 
-        if close_file_flag:
-            opened_file.close()
-
-    def save_N_1d_traces_as_text(self, trace_data, trace_name, opened_file=None,
-                                 filepath=None, filename=None, precision=':.3f',
-                                 delimiter='\t'):
-        """An Independent method, which can save a N 1d trace.
-
-        If you call this method but you are respondible, that the passed
-        optional parameters are correct."""
-
-        close_file_flag = False
-
-        if opened_file is None:
-            opened_file = open(os.path.join(filepath, filename + '.dat'), 'wb')
-            close_file_flag = True
-
-        if trace_name is not None:
-            opened_file.write('# ')
-            for name in trace_name:
-                opened_file.write(name + delimiter)
-            opened_file.write('\n')
-
-        max_trace_length = max(np.shape(trace_data))
-
-        for row in range(max_trace_length):
-            for column in trace_data:
-                try:
-                    # TODO: Lachlan has inserted the if-else in here,
-                    # but it should be properly integrated with the try
-
-                    # If entry is a string, then print directly
-                    if isinstance(column[row], str):
-                        opened_file.write(str('{0}' + delimiter).format(column[row]))
-                    # Otherwise, format number to requested precision
-                    else:
-                        opened_file.write(str('{0' + precision + '}' + delimiter).format(column[row]))
-                except:
-                    opened_file.write(str('{0}' + delimiter).format('NaN'))
-            opened_file.write('\n')
-
-        if close_file_flag:
-            opened_file.close()
-
-    def save_2d_points_as_text(self, trace_data, trace_name=None, opened_file=None,
-                               filepath=None, filename=None, precision=':.3f',
-                               delimiter='\t'):
-        """An Independent method, which can save a matrix like array to file.
-
-        If you call this method but you are respondible, that the passed
-        optional parameters are correct."""
-
-        close_file_flag = False
-
-        if opened_file is None:
-            opened_file = open(os.path.join(filepath, filename + '.dat'), 'wb')
-            close_file_flag = True
-
-        # write the trace names:
-        if trace_name is not None:
-            opened_file.write('# ')
-            for name in trace_name:
-                opened_file.write(name + delimiter)
-            opened_file.write('\n')
-
-        for row in trace_data:
-            for entry in row:
-                if units.is_number(entry):
-                    opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
-                else:
-                    opened_file.write(str(entry).encode('utf-8'))
-            opened_file.write('\n')
-
-        if close_file_flag:
-            opened_file.close()
-
-    def _save_1d_traces_as_xml(self):
-        """ Save 1d data trace in xml conding. """
+    def _save_array_as_xml(self):
+        """ Save data in xml conding. """
         pass
 #        if as_xml:
 #
@@ -739,10 +646,6 @@ class SaveLogic(GenericLogic):
 #            #write to file:
 #            tree = ET.ElementTree(root)
 #            tree.write('output.xml', pretty_print=True, xml_declaration=True)
-
-    def _save_2d_data_as_xml(self):
-        """ Save 2d data in xml conding."""
-        pass
 
     def get_daily_directory(self):
         """
