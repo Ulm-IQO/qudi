@@ -1020,14 +1020,15 @@ class PulsedMeasurementLogic(GenericLogic):
             filelabel = 'laser_pulses'
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data['Signal (counts)'] = self.laser_data.transpose()
+        laser_trace = self.laser_data.astype(int)
+        data['Signal (counts)'] = laser_trace.transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':.6e')
+                                   timestamp=timestamp, as_text=True, precision='%d')
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -1039,32 +1040,14 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
+        data['Controlled variable (' + controlled_val_unit + ')'] = self.signal_plot_x
+        data['Signal (norm.)'] = self.signal_plot_y
         if self.alternating:
-            if with_error:
-                data_array = np.zeros([5, len(self.signal_plot_x)], dtype=float)
-                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.), Error (norm.), Error2(norm.)'
-            else:
-                data_array = np.zeros([3, len(self.signal_plot_x)], dtype=float)
-                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Signal2 (norm.)'
-            data_array[0, :] = self.signal_plot_x
-            data_array[1, :] = self.signal_plot_y
-            data_array[2, :] = self.signal_plot_y2
-            if with_error:
-                data_array[3, :] = self.measuring_error_plot_y
-                data_array[4, :] = self.measuring_error_plot_y2
-        else:
-            if with_error:
-                data_array = np.zeros([3, len(self.signal_plot_x)], dtype=float)
-                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.), Error (norm.)'
-            else:
-                data_array = np.zeros([2, len(self.signal_plot_x)], dtype=float)
-                data_key = 'Controlled variable (' + controlled_val_unit + '), Signal (norm.)'
-            data_array[0, :] = self.signal_plot_x
-            data_array[1, :] = self.signal_plot_y
-            if with_error:
-                data_array[2, :] = self.measuring_error_plot_y
-
-        data[data_key] = data_array.transpose()
+            data['Signal2 (norm.)'] = self.signal_plot_y2
+        if with_error:
+            data['Error (norm.)'] = self.measuring_error_plot_y
+            if self.alternating:
+                data['Error2 (norm.)'] = self.measuring_error_plot_y2
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1087,6 +1070,7 @@ class PulsedMeasurementLogic(GenericLogic):
             ax1.plot(self.signal_plot_x, self.signal_plot_y)
             if self.alternating:
                 ax1.plot(self.signal_plot_x, self.signal_plot_y2)
+        ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
         ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
         # ax1.set_xlim(self.plot_domain)
@@ -1094,7 +1078,7 @@ class PulsedMeasurementLogic(GenericLogic):
         fig.tight_layout()
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, plotfig=fig, precision=':.6e')
+                                   timestamp=timestamp, as_text=True, plotfig=fig, precision='%.12e')
         plt.close(fig)
 
         #####################################################################
@@ -1107,7 +1091,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data['Signal (counts)'] = self.raw_data.transpose()
+        raw_trace = self.raw_data.astype(int)
+        data['Signal (counts)'] = raw_trace.transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Is counter gated?'] = self.fast_counter_gated
@@ -1121,7 +1106,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                     len(self.controlled_vals) - 1)
 
         self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision=':.6e')
+                                   timestamp=timestamp, as_text=True, precision='%d')
         return
 
     def _compute_fft(self):

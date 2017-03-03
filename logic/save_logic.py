@@ -361,7 +361,6 @@ class SaveLogic(GenericLogic):
         YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE
         SAVED TIME TRACE/MATRIX.
         """
-
         try:
             # try to trace back the functioncall to the class which was calling it.
             frm = inspect.stack()[1]
@@ -382,6 +381,15 @@ class SaveLogic(GenericLogic):
                 os.mkdir(filepath)
             self.log.warning('No Module name specified! Please correct this! Data are saved in the '
                              '\'UNSPECIFIED_<module_name>\' folder.')
+
+        # Try to cast data array into numpy ndarray if it is not already one
+        for key in data:
+            if not isinstance(data[key], np.ndarray):
+                try:
+                    data[key] = np.array(data[key])
+                except:
+                    self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. '
+                                   'Could not save data.'.format(type(data[key])))
 
         # Produce a filename tag from the active POI name
         if self.active_poi_name == '':
@@ -418,8 +426,7 @@ class SaveLogic(GenericLogic):
             if isinstance(parameters, dict):
                 for entry, param in parameters.items():
                     if isinstance(param, float):
-                        header = header + ('{0}:{1}{2' + ':' + precision[1:] + '}\n').format(entry,
-                                                                                   delimiter, param)
+                        header = header + ('{0}:{1}{2' + ':.16e}\n').format(entry, delimiter, param)
                     else:
                         header = header + '{0}:{1}{2}\n'.format(entry, delimiter, param)
             # make a hardcore string conversion and try to save the parameters directly:
@@ -507,8 +514,9 @@ class SaveLogic(GenericLogic):
                 pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
 
                 # We can also set the file's metadata via the PdfPages object:
-                pdf_metadata= pdf.infodict()
+                pdf_metadata = pdf.infodict()
                 for x in metadata:
+                    print(metadata[x])
                     pdf_metadata[x] = metadata[x]
 
             # determine the PNG-Filename and save the plain PNG
@@ -544,14 +552,6 @@ class SaveLogic(GenericLogic):
         If you call this method but you are responsible, that the passed optional parameters are
         correct.
         """
-        # Try to cast data array into numpy ndarray if it is not already one
-        if not isinstance(data, np.ndarray):
-            try:
-                data = np.array(data)
-            except:
-                self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. Could '
-                               'not save data.'.format(type(data)))
-
         if data.ndim == 1:
             delimiter = '\n'
 
@@ -563,7 +563,7 @@ class SaveLogic(GenericLogic):
 
         # turn precision specifier into a proper format specifier
         if precision.startswith(':'):
-            precision.replace(':', '%')
+            precision = precision.replace(':', '%')
 
         # Check for string array and match precision specifier if necessary
         if data.dtype.type == np.bytes_ or data.dtype.type == np.str_:
