@@ -432,7 +432,8 @@ class LaserScannerLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)': np.array([self.histogram_axis, self.histogram]).transpose()}
+        data['Wavelength (nm)'] = np.array(self.histogram_axis)
+        data['Signal (counts/s)'] = np.array(self.histogram)
 
         # write the parameters:
         parameters = OrderedDict()
@@ -444,14 +445,14 @@ class LaserScannerLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
+                                   as_text=True, precision='%.6e')  # , as_xml=False, precision=None, delimiter=None)
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan_wavemeter'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s), Wavelength (nm)': self._wavelength_data}
+        data['Time (s), Wavelength (nm)'] = self._wavelength_data
         # write the parameters:
         parameters = OrderedDict()
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
@@ -460,14 +461,14 @@ class LaserScannerLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
+                                   as_text=True, precision='%.6e')  # , as_xml=False, precision=None, delimiter=None)
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan_counts'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s),Signal (counts/s)': self._counter_logic._data_to_save}
+        data['Time (s),Signal (counts/s)'] = self._counter_logic._data_to_save
 
         # write the parameters:
         parameters = OrderedDict()
@@ -480,7 +481,7 @@ class LaserScannerLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
+                                   as_text=True, precision='%.6e')  # , as_xml=False, precision=None, delimiter=None)
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 

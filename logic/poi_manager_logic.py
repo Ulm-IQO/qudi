@@ -715,17 +715,17 @@ class PoiManagerLogic(GenericLogic):
                 y_coords.append(thispoi.get_coords_in_sample()[1])
                 z_coords.append(thispoi.get_coords_in_sample()[2])
 
-        data['POI Name'] = poinames
-        data['POI Key'] = poikeys
-        data['X'] = x_coords
-        data['Y'] = y_coords
-        data['Z'] = z_coords
+        data['POI Name'] = np.array(poinames)
+        data['POI Key'] = np.array(poikeys)
+        data['X'] = np.array(x_coords)
+        data['Y'] = np.array(y_coords)
+        data['Z'] = np.array(z_coords)
 
         self._save_logic.save_data(
             data,
             filepath,
             filelabel=self.roi_name,
-            precision=':.3e',
+            precision='%.6e',
             as_text=True)
 
         self.log.debug('ROI saved to:\n{0}'.format(filepath))

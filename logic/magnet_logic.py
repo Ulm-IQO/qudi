@@ -2113,12 +2113,15 @@ class MagnetLogic(GenericLogic):
                 save_dict[axis0_key].append(x_val[ii])
                 save_dict[axis1_key].append(y_val[jj])
                 save_dict[counts_key].append(col_counts)
+        save_dict[axis0_key] = np.array(save_dict[axis0_key])
+        save_dict[axis1_key] = np.array(save_dict[axis1_key])
+        save_dict[counts_key] = np.array(save_dict[counts_key])
 
         # making saveable dictionaries
 
         self._save_logic.save_data(save_dict, filepath,
                                    filelabel=filelabel3, timestamp=timestamp,
-                                   as_text=True, precision=':.6e')
+                                   as_text=True, precision='%.6e')
         keys = self._2d_intended_fields[0].keys()
         intended_fields = OrderedDict()
         for key in keys:

@@ -911,7 +911,7 @@ class ConfocalLogic(GenericLogic):
                 filelabel=filelabel,
                 as_text=True,
                 timestamp=save_time,
-                precision=':.3e',
+                precision='%.6e',
                 plotfig=figs[ch]
                 )
             plt.close(figs[ch])
@@ -933,7 +933,7 @@ class ConfocalLogic(GenericLogic):
             parameters=parameters,
             filelabel=filelabel,
             as_text=True,
-            precision=':.3e',
+            precision='%.6e',
             timestamp=save_time
             )
 
@@ -1016,7 +1016,7 @@ class ConfocalLogic(GenericLogic):
                 filelabel=filelabel,
                 as_text=True,
                 timestamp=save_time,
-                precision=':.3e',
+                precision='%.6e',
                 plotfig=figs[ch]
                 )
             plt.close(figs[ch])
@@ -1038,7 +1038,7 @@ class ConfocalLogic(GenericLogic):
             parameters=parameters,
             filelabel=filelabel,
             as_text=True,
-            precision=':.3e',
+            precision='%.6e',
             timestamp=save_time
             )
 
