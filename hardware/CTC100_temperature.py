@@ -31,9 +31,6 @@ class CTC100(Base):
     _modclass = 'ctc100'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'ctc': 'CTC'}
-
     def on_activate(self, e):
         config = self.getConfiguration()
         self.connect(config['interface'])

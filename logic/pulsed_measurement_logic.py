@@ -39,15 +39,15 @@ class PulsedMeasurementLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'pulseanalysislogic': 'PulseAnalysisLogic',
-           'pulseextractionlogic': 'PulseExtractionLogic',
-           'fitlogic': 'FitLogic',
-           'savelogic': 'SaveLogic',
-           'fastcounter': 'FastCounterInterface',
-           'microwave': 'MWInterface',
-           'pulsegenerator': 'PulserInterface',
-           }
-    _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
+    _connectors = {
+        'pulseanalysislogic': 'PulseAnalysisLogic',
+        'pulseextractionlogic': 'PulseExtractionLogic',
+        'fitlogic': 'FitLogic',
+        'savelogic': 'SaveLogic',
+        'fastcounter': 'FastCounterInterface',
+        'microwave': 'MWInterface',
+        'pulsegenerator': 'PulserInterface',
+    }
 
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                          np.ndarray, np.ndarray, np.ndarray)
@@ -158,13 +158,13 @@ class PulsedMeasurementLogic(GenericLogic):
                          had happened.
         """
         # get all the connectors:
-        self._pulse_analysis_logic = self.get_in_connector('pulseanalysislogic')
-        self._pulse_extraction_logic = self.get_in_connector('pulseextractionlogic')
-        self._fast_counter_device = self.get_in_connector('fastcounter')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
-        self._mycrowave_source_device = self.get_in_connector('microwave')
+        self._pulse_analysis_logic = self.get_connector('pulseanalysislogic')
+        self._pulse_extraction_logic = self.get_connector('pulseextractionlogic')
+        self._fast_counter_device = self.get_connector('fastcounter')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._pulse_generator_device = self.get_connector('pulsegenerator')
+        self._mycrowave_source_device = self.get_connector('microwave')
 
         # Recall saved status variables
         if 'number_of_lasers' in self._statusVariables:

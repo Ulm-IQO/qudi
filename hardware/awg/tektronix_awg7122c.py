@@ -39,9 +39,6 @@ class AWG7122C(Base, PulserInterface):
     _modclass = 'awg7122c'
     _modtype = 'hardware'
 
-    # declare connectors
-    # _out = {'awg5002c': 'PulserInterface'}
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

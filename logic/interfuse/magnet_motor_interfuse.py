@@ -32,11 +32,8 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _in = {'motorstage': 'MotorInterface'}
+    _connectors = {'motorstage': 'MotorInterface'}
 
-    # And as a result, you will have an out connector, which is compatible to a
-    # magnet interface, and which can be plug in to an appropriated magnet logic
-    _out = {'magnetstage': 'MagnetInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -58,7 +55,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                          had happened.
         """
 
-        self._motor_device = self.get_in_connector('motorstage')
+        self._motor_device = self.get_connector('motorstage')
 
 
     def on_deactivate(self, e):

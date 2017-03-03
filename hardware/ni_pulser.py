@@ -38,8 +38,6 @@ class NIPulser(Base, PulserInterface):
     _modtype = 'PulserInterface'
     _modclass = 'hardware'
 
-    _out = {'pulser': 'PulserInterface'}
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -214,7 +212,7 @@ class NIPulser(Base, PulserInterface):
         # empty dictionary.
         sequence_param = OrderedDict()
         constraints['sequence_param'] = sequence_param
-        
+
         activation_config = OrderedDict()
         activation_config['analog_only'] = [k for k in ch_map.keys() if k.startswith('a')]
         activation_config['digital_only'] = [k for k in ch_map.keys() if k.startswith('d')]

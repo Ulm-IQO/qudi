@@ -59,9 +59,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     _modclass = 'sequencegeneratorlogic'
     _modtype = 'logic'
 
-    ## declare connectors
-    _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
-
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)

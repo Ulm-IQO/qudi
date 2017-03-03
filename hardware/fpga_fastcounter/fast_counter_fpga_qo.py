@@ -46,8 +46,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     """
     _modclass = 'FastCounterFPGAQO'
     _modtype = 'hardware'
-    # declare connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

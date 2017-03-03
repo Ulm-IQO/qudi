@@ -35,8 +35,6 @@ class MotorStagePI(Base, MotorInterface):
     """
     _modclass = 'MotorStagePI'
     _modtype = 'hardware'
-    # connectors
-    _out = {'motorstage': 'MotorInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

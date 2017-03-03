@@ -35,8 +35,6 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
     _modclass = 'MicrowaveSRSSG'
     _modtype = 'interface'
 
-    _out = {'mwsourcesrssg': 'MicrowaveInterface'}
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 

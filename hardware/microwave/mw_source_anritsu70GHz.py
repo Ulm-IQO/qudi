@@ -39,9 +39,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'mwsourceanritsu': 'MicrowaveInterface'}
-
     def on_activate(self,e=None):
         # checking for the right configuration
         config = self.getConfiguration()

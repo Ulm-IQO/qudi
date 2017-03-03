@@ -65,7 +65,7 @@ class PulsedExtractionExternalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'pulsedextractionexternallogic1': 'PulsedExtractionExternalLogic'}
+    _connectors = {'pulsedextractionexternallogic1': 'PulsedExtractionExternalLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -93,7 +93,7 @@ class PulsedExtractionExternalGui(GUIBase):
         # Use the inherited class 'PulsedExtractionExternalMainWindow' to create the GUI window
         self._mw = PulsedExtractionExternalMainWindow()
 
-        self._epe_logic = self.get_in_connector('pulsedextractionexternallogic1')
+        self._epe_logic = self.get_connector('pulsedextractionexternallogic1')
 
         # Setup dock widgets
         self._mw.setDockNestingEnabled(True)
