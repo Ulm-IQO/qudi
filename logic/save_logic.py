@@ -26,6 +26,7 @@ import os
 import sys
 import inspect
 import time
+import datetime
 import numpy as np
 
 from logic.generic_logic import GenericLogic
@@ -397,21 +398,17 @@ class SaveLogic(GenericLogic):
         else:
             poi_tag = '_' + self.active_poi_name.replace(" ", "_")
 
+        # Create timestamp if none is present
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
         # create a unique name for the file, if no name was passed:
         if filename is None:
-            # use the timestamp if that is specified:
-            if timestamp is not None:
-                # use the filelabel if that is specified:
-                if filelabel is None:
-                    filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
-                else:
-                    filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
+            # use the filelabel if that is specified:
+            if filelabel is None:
+                filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
             else:
-                # use the filelabel if that is specified:
-                if filelabel is None:
-                    filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
-                else:
-                    filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
+                filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
 
         # Create header string for the file
         header = 'Saved Data from the class {0} on {1}.\n'.format(module_name,
@@ -516,7 +513,6 @@ class SaveLogic(GenericLogic):
                 # We can also set the file's metadata via the PdfPages object:
                 pdf_metadata = pdf.infodict()
                 for x in metadata:
-                    print(metadata[x])
                     pdf_metadata[x] = metadata[x]
 
             # determine the PNG-Filename and save the plain PNG
