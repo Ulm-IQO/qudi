@@ -377,7 +377,9 @@ class SaveLogic(GenericLogic):
         # check whether the given directory path does exist. If not, the
         # file will be saved anyway in the unspecified directory.
         if not os.path.exists(filepath):
-            filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
+            filepath = os.path.join(self.get_daily_directory(), 'UNSPECIFIED_' + str(module_name))
+            if not os.path.exists(filepath):
+                os.mkdir(filepath)
             self.log.warning('No Module name specified! Please correct this! Data are saved in the '
                              '\'UNSPECIFIED_<module_name>\' folder.')
 
@@ -416,7 +418,7 @@ class SaveLogic(GenericLogic):
             if isinstance(parameters, dict):
                 for entry, param in parameters.items():
                     if isinstance(param, float):
-                        header = header + ('{0}:{1}{2' + precision + '}\n').format(entry,
+                        header = header + ('{0}:{1}{2' + ':' + precision[1:] + '}\n').format(entry,
                                                                                    delimiter, param)
                     else:
                         header = header + '{0}:{1}{2}\n'.format(entry, delimiter, param)
@@ -432,7 +434,11 @@ class SaveLogic(GenericLogic):
             # if data is a single array just write it to file
             key_name = list(data)[0]
 
-            header = header + key_name + '\n'
+            if data[key_name].ndim > 1:
+                for name in key_name.split(','):
+                    header = header + name + delimiter
+            else:
+                header = header + key_name
 
             if data[key_name].ndim < 3:
                 self.save_array_as_text(data=data[key_name], filename=filename, filepath=filepath,
@@ -460,10 +466,9 @@ class SaveLogic(GenericLogic):
 
             if array_1d_flag:
                 for entry in key_list:
-                    header = header + entry + '\t'
-                header = header + '\n'
+                    header = header + entry + delimiter
 
-                self.save_array_as_text(data=np.array(data_traces), filename=filename,
+                self.save_array_as_text(data=np.transpose(np.array(data_traces)), filename=filename,
                                         filepath=filepath, precision=precision, header=header,
                                         delimiter=delimiter, append=False)
             else:
@@ -546,6 +551,9 @@ class SaveLogic(GenericLogic):
             except:
                 self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. Could '
                                'not save data.'.format(type(data)))
+
+        if data.ndim == 1:
+            delimiter = '\n'
 
         # Add file extension ".dat" if not already present
         if not filename.endswith('.dat'):
