@@ -34,8 +34,6 @@ class MotorRotationZaber(Base, MotorInterface):
     """
     _modclass = 'MotorRotation'
     _modtype = 'hardware'
-    # connectors
-    _out = {'motorstage': 'MotorInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

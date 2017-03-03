@@ -35,11 +35,10 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     _modclass = 'pidlogic'
     _modtype = 'logic'
     ## declare connectors
-    _in = {
+    _connectors = {
         'process': 'ProcessInterface',
         'control': 'ProcessControlInterface',
         }
-    _out = {'controller': 'SoftPIDController'}
 
     sigNewValue = QtCore.Signal(float)
 
@@ -59,8 +58,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._process = self.get_in_connector('process')
-        self._control = self.get_in_connector('control')
+        self._process = self.get_connector('process')
+        self._control = self.get_connector('control')
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()

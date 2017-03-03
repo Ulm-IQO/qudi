@@ -29,11 +29,10 @@ import numpy as np
 
 
 class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'spec': 'SpectrometerInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def on_activate(self, e):
-        self._fitLogic = self.get_in_connector('fitlogic')
+        self._fitLogic = self.get_connector('fitlogic')
         self.exposure = 0.1
 
     def on_deactivate(self, e):

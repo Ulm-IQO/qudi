@@ -42,9 +42,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     _modclass = 'MicrowaveSMR20'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'MWSourceSMR20': 'MicrowaveInterface'}
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -90,7 +87,7 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         # set manually the number of entries in a list, the explanation for that
         # procedure is in the function self.set_list.
         self._MAX_LIST_ENTRIES = 4000
-        
+
         self._gpib_connection.write('*WAI')
         self._FREQ_MAX = float(self._gpib_connection.ask('FREQuency? MAX'))
         self._FREQ_MIN = float(self._gpib_connection.ask('FREQuency? MIN'))
@@ -350,9 +347,9 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._gpib_connection.write(':SYSTem:PRESet')
         self._gpib_connection.write('*RST')
         self._gpib_connection.write(':OUTP OFF')
-        
+
         return 0
-        
+
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
 

@@ -30,9 +30,6 @@ class SwitchDummy(Base, SwitchInterface):
     _modclass = 'switchinterfacedummy'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'switch': 'SwitchInterface'}
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

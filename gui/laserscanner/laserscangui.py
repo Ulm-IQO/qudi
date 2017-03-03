@@ -48,7 +48,7 @@ class LaserScanningGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = { 'laserscanninglogic1': 'LaserScanningLogic',
+    _connectors = { 'laserscanninglogic1': 'LaserScanningLogic',
             'savelogic': 'SaveLogic'
             }
 
@@ -77,8 +77,8 @@ class LaserScanningGui(GUIBase):
                          had happened.
         """
 
-        self._scanning_logic = self.get_in_connector('laserscanninglogic1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._scanning_logic = self.get_connector('laserscanninglogic1')
+        self._save_logic = self.get_connector('savelogic')
 
         # setting up the window
         self._mw = LaserScanWindow()

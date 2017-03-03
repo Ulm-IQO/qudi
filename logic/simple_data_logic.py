@@ -30,8 +30,7 @@ class SimpleDataLogic(GenericLogic):
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
-    _in = {'simpledata': 'SimpleData'}
-    _out = {'simplelogic': 'SimpleDataLogic'}
+    _connectors = {'simpledata': 'SimpleData'}
 
     sigRepeat = QtCore.Signal()
 
@@ -40,7 +39,7 @@ class SimpleDataLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        self._data_logic = self.get_in_connector('simpledata')
+        self._data_logic = self.get_connector('simpledata')
         self.stopRequest = False
         self.bufferLength = 10000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)

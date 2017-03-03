@@ -40,8 +40,6 @@ class FastCounterDummy(Base, FastCounterInterface):
     """
     _modclass = 'fastcounterinterface'
     _modtype = 'hardware'
-    # connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

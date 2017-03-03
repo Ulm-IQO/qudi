@@ -174,11 +174,11 @@ class PoiManagerLogic(GenericLogic):
     _modclass = 'poimanagerlogic'
     _modtype = 'logic'
     # declare connectors
-    _in = {'optimizer1': 'OptimizerLogic',
-           'scannerlogic': 'ConfocalLogic',
-           'savelogic': 'SaveLogic',
-           }
-    _out = {'poimanagerlogic': 'PoiManagerLogic'}
+    _connectors = {
+        'optimizer1': 'OptimizerLogic',
+        'scannerlogic': 'ConfocalLogic',
+        'savelogic': 'SaveLogic',
+    }
 
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
@@ -210,9 +210,9 @@ class PoiManagerLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
 
-        self._optimizer_logic = self.get_in_connector('optimizer1')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._optimizer_logic = self.get_connector('optimizer1')
+        self._confocal_logic = self.get_connector('scannerlogic')
+        self._save_logic = self.get_connector('savelogic')
 
         # initally add crosshair to the pois
         crosshair = PoI(point=[0, 0, 0], name='crosshair')

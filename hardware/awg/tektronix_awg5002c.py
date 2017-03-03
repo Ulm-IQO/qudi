@@ -37,9 +37,6 @@ class AWG5002C(Base, PulserInterface):
     _modclass = 'awg5002c'
     _modtype = 'hardware'
 
-    # declare connectors
-    # _out = {'awg5002c': 'PulserInterface'}
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -101,7 +98,7 @@ class AWG5002C(Base, PulserInterface):
             self.log.warning('No parameter "default_sample_rate" found in '
                     'the config for the AWG5002C! The maximum sample rate is '
                     'used instead.')
-            self._sample_rate = self.get_constraints().sample_rate['max']
+            self._sample_rate = self.get_constraints().sample_rate.max
 
         if 'awg_ftp_path' in config.keys():
             self.ftp_path = config['awg_ftp_path']
@@ -164,11 +161,9 @@ class AWG5002C(Base, PulserInterface):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is a dictionary with the following generic form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
@@ -177,76 +172,80 @@ class AWG5002C(Base, PulserInterface):
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
-        sequence mode) then write just zeroes to each generic entry. Note that there is a difference
-        between float input (0.0) and integer input (0).
-
-        ALL THE PRESENT ATTRIBUTES OF THE CONSTRAINTS OBJECT MUST BE ASSIGNED!
-
-        # Example for configuration with default values:
-        constraints = PulserConstraints()
-
-        constraints.sample_rate = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Samples/s'}
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = 'wfm'
-        constraints.sequence_format = 'seq'
-
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_low = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.d_ch_high = {'min': 0.0, 'max': 0.0, 'step': 0.0, 'unit': 'V'}
-        constraints.sampled_file_length = {'min': 0, 'max': 0, 'step': 0, 'unit': 'Samples'}
-        constraints.digital_bin_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.waveform_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.sequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-        constraints.subsequence_num = {'min': 0, 'max': 0, 'step': 0, 'unit': '#'}
-
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        sequence_param = OrderedDict()
-        constraints.sequence_param = sequence_param
-
-        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
-        # channels. Here all possible channel configurations are stated, where only the generic
-        # names should be used. The names for the different configurations can be customary chosen.
-        activation_conf = OrderedDict()
-        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
-        constraints.activation_config = activation_conf
+        sequence mode) just leave it out so that the default is used (only zeros).
         """
         constraints = PulserConstraints()
-
-        # sample rate
-        constraints.sample_rate = {'min': 10.0e6, 'max': 600.0e6, 'step': 1, 'unit': 'Hz'}
 
         # The file formats are hardware specific.
         constraints.waveform_format = ['wfm']
         constraints.sequence_format = ['seq']
 
-        # the stepsize will be determined by the DAC in combination with the maximal output
-        # amplitude (in Vpp):
-        constraints.a_ch_amplitude = {'min': 0.02, 'max': 4.5, 'step': 0.001, 'unit': 'Vpp'}
-        constraints.a_ch_offset = {'min': -2.25, 'max': 2.25, 'step': 0.001, 'unit': 'V'}
-        constraints.d_ch_low = {'min': -1, 'max': 2.6, 'step': 0.01, 'unit': 'V'}
-        constraints.d_ch_high = {'min': -0.9, 'max': 2.7, 'step': 0.01, 'unit': 'V'}
+        constraints.sample_rate.min = 10.0e6
+        constraints.sample_rate.max = 600.0e6
+        constraints.sample_rate.step = 10.0e6
+        constraints.sample_rate.default = 600.0e6
 
-        # for arbitrary waveform generators, this values will be used. The step value corresponds
-        # to the waveform granularity.
-        constraints.sampled_file_length = {'min': 1, 'max': 32400000, 'step': 1, 'unit': 'Samples'}
+        constraints.a_ch_amplitude.min = 0.02
+        constraints.a_ch_amplitude.max = 4.5
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 4.5
 
-        constraints.waveform_num = {'min': 1, 'max': 32000, 'step': 1, 'unit': '#'}
-        constraints.sequence_num = {'min': 1, 'max': 4000, 'step': 1, 'unit': '#'}
-        constraints.subsequence_num = {'min': 1, 'max': 8000, 'step': 1, 'unit': '#'}
+        constraints.a_ch_offset.min = -2.25
+        constraints.a_ch_offset.max = 2.25
+        constraints.a_ch_offset.step = 0.001
+        constraints.a_ch_offset.default = 0.0
 
-        # If sequencer mode is enable than sequence_param should be not just an empty dictionary.
-        sequence_param = OrderedDict()
-        sequence_param['repetitions'] = {'min': 0, 'max': 65536, 'step': 1, 'unit': '#'}
-        sequence_param['trigger_wait'] = {'min': False, 'max': True, 'step': 1, 'unit': 'bool'}
-        sequence_param['event_jump_to'] = {'min': -1, 'max': 8000, 'step': 1, 'unit': 'row'}
-        sequence_param['go_to'] = {'min': 0, 'max': 8000, 'step': 1, 'unit': 'row'}
-        constraints.sequence_param = sequence_param
+        constraints.d_ch_low.min = -1.0
+        constraints.d_ch_low.max = 2.6
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = -0.9
+        constraints.d_ch_high.max = 2.7
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 2.7
+
+        constraints.sampled_file_length.min = 1
+        constraints.sampled_file_length.max = 32400000
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 1
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 4000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 8000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
+
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65536
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
+        # ToDo: Check how many external triggers are available
+        constraints.trigger_in.min = 0
+        constraints.trigger_in.max = 2
+        constraints.trigger_in.step = 1
+        constraints.trigger_in.default = 0
+
+        constraints.event_jump_to.min = 0
+        constraints.event_jump_to.max = 8000
+        constraints.event_jump_to.step = 1
+        constraints.event_jump_to.default = 0
+
+        constraints.go_to.min = 0
+        constraints.go_to.max = 8000
+        constraints.go_to.step = 1
+        constraints.go_to.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -614,15 +613,11 @@ class AWG5002C(Base, PulserInterface):
             if 0 <= a_ch <= self._get_num_a_ch():
                 constr = constraints.a_ch_amplitude
 
-                if not(constr['min'] <= amplitude[a_ch] <= constr['max']):
-                    self.log.warning('Not possible to set for analog channel '
-                            '{0} the amplitude value {1}Vpp, since it is not '
-                            'within the interval [{2},{3}]! Command will '
-                            'be ignored.'.format(
-                                a_ch,
-                                amplitude[a_ch],
-                                constr['min'],
-                                constr['max']))
+                if not(constr.min <= amplitude[a_ch] <= constr.max):
+                    self.log.warning('Not possible to set for analog channel {0} the amplitude '
+                                     'value {1}Vpp, since it is not within the interval [{2},{3}]! '
+                                     'Command will be ignored.'.format(a_ch, amplitude[a_ch],
+                                                                       constr.min, constr.max))
                 else:
                     self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
             else:
@@ -635,15 +630,11 @@ class AWG5002C(Base, PulserInterface):
             if 0 <= a_ch <= self._get_num_a_ch():
                 constr = constraints.a_ch_offset
 
-                if not(constr['min'] <= offset[a_ch] <= constr['max']):
-                    self.log.warning('Not possible to set for analog channel '
-                            '{0} the offset value {1}V, since it is not '
-                            'within the interval [{2},{3}]! Command will '
-                            'be ignored.'.format(
-                                a_ch,
-                                offset[a_ch],
-                                constr['min'],
-                                constr['max']))
+                if not(constr.min <= offset[a_ch] <= constr.max):
+                    self.log.warning('Not possible to set for analog channel {0} the offset value '
+                                     '{1}V, since it is not within the interval [{2},{3}]! Command '
+                                     'will be ignored.'.format(a_ch, offset[a_ch], constr.min,
+                                                               constr.max))
                 else:
                     self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
             else:
@@ -780,15 +771,11 @@ class AWG5002C(Base, PulserInterface):
             if 0 <= d_ch <= self._get_num_d_ch():
                 constr = constraints.d_ch_low
 
-                if not(constr['min'] <= low[d_ch] <= constr['max']):
-                    self.log.warning('Not possible to set for analog channel '
-                            '{0} the amplitude value {1}Vpp, since it is not '
-                            'within the interval [{2},{3}]! Command will '
-                            'be ignored.'.format(
-                                d_ch,
-                                low[d_ch],
-                                constr['min'],
-                                constr['max']))
+                if not(constr.min <= low[d_ch] <= constr.max):
+                    self.log.warning('Not possible to set for analog channel {0} the amplitude '
+                                     'value {1}Vpp, since it is not within the interval [{2},{3}]! '
+                                     'Command will be ignored.'.format(d_ch, low[d_ch], constr.min,
+                                                                       constr.max))
                 else:
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
@@ -797,24 +784,19 @@ class AWG5002C(Base, PulserInterface):
                     else:
                         self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch-2, low[d_ch]))
             else:
-                self.log.warning('The device does not support that much '
-                        'digital channels! A channel number "{0}" was '
-                        'passed, but only "{1}" channels are available!\n'
-                        'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
+                self.log.warning('The device does not support that much digital channels! A channel'
+                                 ' number "{0}" was passed, but only "{1}" channels are available!'
+                                 '\nCommand will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
         for d_ch in high:
             if 0 <= d_ch <= self._get_num_d_ch():
                 constr = constraints.d_ch_high
 
-                if not(constr['min'] <= high[d_ch] <= constr['max']):
-                    self.log.warning('Not possible to set for analog channel '
-                            '{0} the amplitude value {1}Vpp, since it is not '
-                            'within the interval [{2},{3}]! Command will '
-                            'be ignored.'.format(
-                                d_ch,
-                                high[d_ch],
-                                constr['min'],
-                                constr['max']))
+                if not(constr.min <= high[d_ch] <= constr.max):
+                    self.log.warning('Not possible to set for analog channel {0} the amplitude '
+                                     'value {1}Vpp, since it is not within the interval [{2},{3}]! '
+                                     'Command will be ignored.'.format(d_ch, high[d_ch], constr.min,
+                                                                       constr.max))
                 else:
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
@@ -823,10 +805,9 @@ class AWG5002C(Base, PulserInterface):
                     else:
                         self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch-2, high[d_ch]))
             else:
-                self.log.warning('The device does not support that much '
-                        'digital channels! A channel number "{0}" was '
-                        'passed, but only "{1}" channels are available!\n'
-                        'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
+                self.log.warning('The device does not support that much digital channels! A channel'
+                                 ' number "{0}" was passed, but only "{1}" channels are available!'
+                                 '\nCommand will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
         return self.get_digital_level(low=list(low), high=list(high))
 

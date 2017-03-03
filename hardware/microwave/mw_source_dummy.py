@@ -36,9 +36,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     _modclass = 'MicrowaveDummy'
     _modtype = 'mwsource'
 
-    ## declare connectors
-    _out = {'mwsourcedummy': 'MicrowaveInterface'}
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 

@@ -67,7 +67,7 @@ class LaserGUI(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'laserlogic': 'LaserLogic'}
+    _connectors = {'laserlogic': 'LaserLogic'}
 
     sigLaser = QtCore.Signal(bool)
     sigShutter = QtCore.Signal(bool)
@@ -89,7 +89,7 @@ class LaserGUI(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._laser_logic = self.get_in_connector('laserlogic')
+        self._laser_logic = self.get_connector('laserlogic')
 
         #####################
         # Configuring the dock widgets

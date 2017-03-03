@@ -536,7 +536,8 @@ class Manager(QtCore.QObject):
         return instance
 
     def connectModule(self, base, mkey):
-        """ Connects the given module in mkey to main object with the help of base.
+        """ Connects the given module in mkey to main object with the help
+            of base.
 
           @param string base: module base package (hardware, logic or gui)
           @param string mkey: module which you want to connect
@@ -544,125 +545,103 @@ class Manager(QtCore.QObject):
           @return int: 0 on success, -1 on failure
         """
         thismodule = self.tree['defined'][base][mkey]
-        if not self.isModuleLoaded(base, mkey):
+        if (not self.isModuleLoaded(base, mkey)):
             logger.error('Loading of {0} module {1} as {2} was not '
                          'successful, not connecting it.'.format(
                              base, thismodule['module.Class'], mkey))
             return -1
         loaded_module = self.tree['loaded'][base][mkey]
-        if 'connect' not in thismodule:
+        if ('connect' not in thismodule):
             return 0
-        if 'in' not in loaded_module.connector:
-            logger.error('{0} module {1} loaded as {2} is supposed to '
-                         'get connected but it does not declare any IN '
-                         'connectors.'.format(base, thismodule['module.Class'], mkey))
+        if (not isinstance(loaded_module.connectors, OrderedDict)):
+            logger.error('Connectors attribute of module {0}.{1} is not a '
+                         'dictionary.'.format(base, mkey))
             return -1
-        if 'module.Class' not in thismodule:
-            logger.error('{0} module {1} ({2}) connection configuration '
+        if ('module.Class' not in thismodule):
+            logger.error('Connection configuration of module {0}.{1} '
                          'is broken: no module defined.'.format(
-                             base, mkey, thismodule['module.Class']))
+                             base, mkey))
             return -1
-        if not isinstance(thismodule['connect'], OrderedDict):
-            logger.error('{0} module {1} ({2}) connection configuration '
+        if (not isinstance(thismodule['connect'], OrderedDict)):
+            logger.error('Connection configuration of module {0}.{1} '
                          'is broken: connect is not a dictionary.'
-                         ''.format(base, mkey, thismodule['module.Class']))
+                         ''.format(base, mkey))
             return -1
 
+        # lets go through all connections provided in configuration
         connections = thismodule['connect']
         for c in connections:
-            connectorIn = loaded_module.connector['in']
-            if c not in connectorIn:
-                logger.error('IN connector {0} of {1} module {2} loaded '
-                             'as {3} is supposed to get connected but is not declared '
-                             'in the module.'.format(
-                                 c, base, thismodule['module.Class'], mkey))
+            connectors = loaded_module.connectors
+            if (c not in connectors):
+                logger.error('Connector {0}.{1}.{2} is supposed to get '
+                             'connected but is not declared in the module '
+                             'class.'.format(c, base, mkey))
                 continue
-            if not isinstance(connectorIn[c], OrderedDict):
-                logger.error('IN connector is no dictionary.')
+            if (not isinstance(connectors[c], OrderedDict)):
+                logger.error('Connector is no dictionary.')
                 continue
-            if 'class' not in connectorIn[c]:
+            if ('class' not in connectors[c]):
                 logger.error('No class key in connection declaration.')
                 continue
-            if not isinstance(connectorIn[c]['class'], str):
+            if (not isinstance(connectors[c]['class'], str)):
                 logger.error('Value for class key is not a string.')
                 continue
-            if 'object' not in connectorIn[c]:
+            if ('object' not in connectors[c]):
                 logger.error('No object key in connection declaration.')
                 continue
-            if connectorIn[c]['object'] is not None:
-                logger.warning('IN connector {0} of {1} module {2}'
-                               ' loaded as {3} is already connected.'
-                               ''.format(c, base, thismodule['module.Class'], mkey))
+            if (connectors[c]['object'] is not None):
+                logger.warning('Connector {0}.{1}.{2} is already connected.'
+                               ''.format(c, base, mkey))
                 continue
-            if not isinstance(connections[c], str):
-                logger.error('{0} module {1} ({2}) connection configuration '
-                             'is broken, value for key {3} is not a string.'
-                             ''.format(base, mkey, thismodule['module.Class'], c))
+            if (not isinstance(connections[c], str)):
+                logger.error('Connector configuration {0}.{1}.{2} '
+                             'is broken since it is not a string.'
+                             ''.format(base, mkey, c))
                 continue
-            if '.' not in connections[c]:
-                logger.error('{0} module {1} ({2}) connection configuration '
-                             'is broken, value {3} for key {4} does not contain '
-                             'a dot.'.format(base, mkey,
-                                             thismodule['module.Class'], connections[c], c))
-                continue
-            destmod = connections[c].split('.')[0]
-            destcon = connections[c].split('.')[1]
+            if ('.' in connections[c]):
+                logger.warning('Connector configuration {0}.{1}.{2} has '
+                               'legacy format since it contains a dot.'
+                               ''.format(base, mkey, c))
+                destmod = connections[c].split('.')[0]
+            else:
+                destmod = connections[c]
             destbase = ''
-            if destmod in self.tree['loaded']['hardware'] and destmod in self.tree['loaded']['logic']:
-                logger.error('Unique name {0} is in both hardware and logic '
-                             'module list. Connection is not well defined, cannot '
-                             'connect {1} ({2}) to  it.'.format(
-                                 destmod, mkey, thismodule['module.Class']))
+            # check if module exists at all
+            if (not destmod in self.tree['loaded']['gui'] and
+                    not destmod in self.tree['loaded']['hardware'] and
+                    not destmod in self.tree['loaded']['logic']):
+                logger.error('Cannot connect {0}.{1}.{2} to module {3}. '
+                             'Module does not exist.'.format(
+                             base, mkey, c, destmod))
+                continue
+            # check that module exists only once
+            if not ((destmod in self.tree['loaded']['gui']) ^
+                    (destmod in self.tree['loaded']['hardware']) ^
+                    (destmod in self.tree['loaded']['logic'])):
+                logger.error('Cannot connect {0}.{1}.{2} to module {3}. '
+                             'Module exists more than once.'.format(
+                                 base, mkey, c, destmod))
                 continue
 
-            # Connect to hardware module
+            # find category of module that should be connected to
+            if (destmod in self.tree['loaded']['gui']):
+                destbase = 'gui'
             elif destmod in self.tree['loaded']['hardware']:
                 destbase = 'hardware'
             elif destmod in self.tree['loaded']['logic']:
                 destbase = 'logic'
-            else:
-                logger.error('Unique name {0} is neither in hardware or '
-                             'logic module list. Cannot connect {1} ({2}) to it.'
-                             ''.format(connections[c], mkey,
-                                       thismodule['module.Class']))
-                continue
-
-            if 'out' not in self.tree['loaded'][destbase][destmod].connector:
-                logger.error('Module {0} loaded as {1} is supposed to '
-                             'get connected to module loaded as {2} that does not '
-                             'declare any OUT connectors.'.format(
-                                 thismodule['module.Class'], mkey, destmod))
-                continue
-            outputs = self.tree['loaded'][destbase][destmod].connector['out']
-            if destcon not in outputs:
-                logger.error('OUT connector {0} not declared in module {1}.{2} '
-                             'but connected to IN connector {3} of module {4}.'
-                             ''.format(destcon, destbase, destmod, c,
-                                       thismodule['module.Class']))
-                continue
-            if not isinstance(outputs[destcon], OrderedDict):
-                logger.error('OUT connector not a dictionary.')
-                continue
-            if 'class' not in outputs[destcon]:
-                logger.error('No class key in OUT connector dictionary.')
-                continue
-            if not isinstance(outputs[destcon]['class'], str):
-                logger.error('Class value not a string.')
-                continue
-#            if not issubclass(self.tree['loaded'][destbase][destmod].__class__, outputs[destcon]['class']):
-#                logger.error('not the correct class for declared interface.')
-#                return
 
             # Finally set the connection object
-            logger.info('Connecting {0} module {1}.IN.{2} to {3} {4}.{5}'
-                        ''.format(base, mkey, c, destbase, destmod, destcon))
-            connectorIn[c]['object'] = self.tree['loaded'][destbase][destmod]
+            logger.info('Connecting {0}.{1}.{2} to {3}.{4}'
+                        ''.format(base, mkey, c, destbase, destmod))
+            connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
 
-        # check that all IN connectors are connected
-        for c, v in self.tree['loaded'][base][mkey].connector['in'].items():
-            if v['object'] is None:
-                logger.error('IN connector {} of module {}.{} is empty, '
-                             'connection not complete.'.format(c, base, mkey))
+        # check that all connectors are connected
+        for c, v in self.tree['loaded'][base][mkey].connectors.items():
+            if (v['object'] is None):
+                logger.error('Connector {0} of module {1}.{2} is not '
+                             'connected. Connection not complete.'.format(
+                                 c, base, mkey))
                 return -1
         return 0
 
@@ -937,20 +916,22 @@ class Manager(QtCore.QObject):
                         toposort function
         """
         deplist = list()
-        if not self.isModuleLoaded(base, key):
+        if (not self.isModuleLoaded(base, key)):
             logger.error('{0} module {1} not loaded.'.format(base, key))
             return None
         for mbase in self.tree['loaded']:
             for mkey,target in self.tree['loaded'][mbase].items():
-                if not hasattr(target, 'connector'):
-                    logger.error('No connector in module .{0}.{1}!'.format(mbase, mkey))
+                if (not hasattr(target, 'connector')):
+                    logger.error('No connector in module .{0}.{1}!'.format(
+                        mbase, mkey))
                     continue
-                for conn in target.connector['in']:
-                    if not 'object' in target.connector['in'][conn]:
+                for conn in target.connectors:
+                    if (not 'object' in target.connectors[conn]):
                         logger.error('Malformed connector {2} in module '
                                      '.{0}.{1}!'.format(mbase, mkey, conn))
                         continue
-                    if target.connector['in'][conn]['object'] is self.tree['loaded'][base][key]:
+                    if (target.connectors[conn]['object'] is self.tree[
+                            'loaded'][base][key]):
                         deplist.append((mbase, mkey))
         return {key: deplist}
 
@@ -978,11 +959,13 @@ class Manager(QtCore.QObject):
             if not isinstance(connections[c], str):
                 logger.error('Value for class key is not a string.')
                 return None
-            if not '.' in connections[c]:
-                logger.error('{0}.{1}: connection {2}: {3} has wrong format'
-                             'for connection target'.format(base, key, c, connections[c]))
-                return None
-            destmod = connections[c].split('.')[0]
+            if '.' in connections[c]:
+                logger.warning('{0}.{1}: connection {2}: {3} has legacy '
+                               ' format for connection target'.format(
+                                   base, key, c, connections[c]))
+                destmod = connections[c].split('.')[0]
+            else:
+                destmod = connections[c]
             destbase = ''
             if destmod in self.tree['defined']['hardware'] and destmod in self.tree['defined']['logic']:
                 logger.error('Unique name {0} is in both hardware and '
@@ -1096,24 +1079,25 @@ class Manager(QtCore.QObject):
             ensure correct connections.
         """
         deps = self.getSimpleModuleDependencies(base, key)
-        if deps is None:
+        if (deps is None):
             return
         # Remove references
         for destbase,destmod in deps[key]:
-            for c,v in self.tree['loaded'][destbase][destmod].connector['in'].items():
-                if v['object'] is self.tree['loaded'][base][key]:
-                    if self.isModuleActive(destbase, destmod):
+            for c,v in self.tree['loaded'][destbase][
+                    destmod].connectors.items():
+                if (v['object'] is self.tree['loaded'][base][key]):
+                    if (self.isModuleActive(destbase, destmod)):
                         self.deactivateModule(destbase, destmod)
                     v['object'] = None
 
         # reload and reconnect
         success = self.reloadConfigureModule(base, key)
-        if success < 0:
+        if (success < 0):
             logger.warning('Stopping module {0}.{1} loading after loading '
                            'failure.'.format(base, key))
             return -1
         success = self.connectModule(base, key)
-        if success < 0:
+        if (success < 0):
             logger.warning('Stopping module {0}.{1} loading after '
                            'connection failure.'.format(base, key))
             return -1

@@ -51,8 +51,6 @@ class FitLogic(GenericLogic):
     """
     _modclass = 'fitlogic'
     _modtype = 'logic'
-    # declare connectors
-    _out = {'fitlogic': 'FitLogic'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
