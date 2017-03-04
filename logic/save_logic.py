@@ -247,99 +247,78 @@ class SaveLogic(GenericLogic):
         """
         self._daily_loghandler.setLevel(level)
 
-    def save_data(self, data, filepath, parameters=None, filename=None, filelabel=None,
-                  timestamp=None, as_text=True, as_xml=False, precision='%.3e', delimiter='\t',
-                  plotfig=None):
-        """ General save routine for data.
+    def save_data(self, data, filepath=None, parameters=None, filename=None, filelabel=None,
+                  timestamp=None, filetype='text', fmt='%.15e', delimiter='\t', plotfig=None):
+        """
+        General save routine for data.
 
-        @param dict or OrderedDict data:
-                                  Any dictonary with a keyword of the data
-                                  and a corresponding list, where the data
-                                  are situated. E.g. like:
+        @param dictionary data: Dictionary containing the data to be saved. The keys should be
+                                strings containing the data header/description. The corresponding
+                                items are 1D or 2D arrays containing the data (list or
+                                numpy.ndarray). Example:
 
-                     data = {'Frequency (MHz)':[1,2,4,5,6]}
-                     data = {'Frequency':[1,2,4,5,6],'Counts':[234,894,743,423,235]}
-                     data = {'Frequency (MHz),Counts':[ [1,234],[2,894],...[30,504] ]}
+                                    data = {'Frequency (MHz)': [1,2,4,5,6]}
+                                    data = {'Frequency': [1, 2, 4], 'Counts': [234, 894, 743, 423]}
+                                    data = {'Frequency (MHz),Counts':[[1,234], [2,894],...[30,504]]}
 
-        @param string filepath: The path to the directory, where the data
-                                  will be saved.
-                                  If filepath is corrupt, the saving routine
-                                  will retrieve the basic filepath for the
-                                  data from the inherited base module
-                                  'get_data_dir' and saves the data in the
-                                  directory .../UNSPECIFIED_<module_name>/
-        @param dict or OrderedDict parameters:
-                                  optional, a dictionary
-                                  with all parameters you want to pass to
-                                  the saving routine.
-        @parem string filename: optional, if you really want to fix an own
-                                filename. BUT THIS IS NOT RECOMMENDED! If
-                                passed the whole file will have the name
+        @param string filepath: optional, the path to the directory, where the data will be saved.
+                                If the specified path does not exist yet, the saving routine will
+                                try to create it.
+                                If no path is passed (default filepath=None) the saving routine will
+                                create a directory by the name of the calling module inside the
+                                daily data directory.
+                                If no calling module can be inferred and/or the requested path can
+                                not be created the data will be saved in a subfolder of the daily
+                                data directory called UNSPECIFIED
+        @param dictionary parameters: optional, a dictionary with all parameters you want to save in
+                                      the header of the created file.
+        @parem string filename: optional, if you really want to fix your own filename. If passed,
+                                the whole file will have the name
 
                                     <filename>
 
-                                If nothing is specified the save logic will
-                                generate a filename either based on the
-                                class, from which this method was called,
-                                or it will use the passed filelabel if that
-                                is speficied.
-                                Keep in mind that you have also to specify
-                                the ending of the filename!
-        @parem string filelabel: optional, if filelabel is set and no
-                                 filename was specified, the savelogic will
-                                 create a name which looks like
+                                If nothing is specified the save logic will generate a filename
+                                either based on the module name from which this method was called,
+                                or it will use the passed filelabel if that is speficied.
+                                You also need to specify the ending of the filename!
+        @parem string filelabel: optional, if filelabel is set and no filename was specified, the
+                                 savelogic will create a name which looks like
 
                                      YYYY-MM-DD_HHh-MMm-SSs_<filelabel>.dat
 
-                                The timestamp will be created at runtime if
-                                no user defined timestamp was passed.
-        @param datetime timestamp: optional, a datetime.datetime object,
-                                   which saves the timestamp in a general
-                                   way. Create a datetime.datetime.now()
-                                   object from the module datetime if you
-                                   want to fix the timestamp for the
-                                   filename. The filename will like in the
-                                   description of the filelabel parameter.
-                                   Be careful if you pass a filename and a
-                                   timestamp, because then the timestamp
-                                   will be not considered.
-        @param bool as_text: specify how the saved data are saved to file.
-        @param bool as_xml: specify how the saved data are saved to file.
-
-        @param int precision: optional, specifies the number of digits
-                              after the comma for the saving precision. All
-                              number, which follows afterwards are cut off.
-                              A c-like format should be used.
-                              For 'precision=3' a number like
-                                   '323.423842' is saved as '323.423'.
-                                   Default is precision = 3.
-
-        @param string delimiter: optional, insert here the delimiter, like
-                                 \n for new line,  \t for tab, , for a
-                                 comma, ect.
-
-        This method should be called from the modules and it will call all
-        the needed methods for the saving routine. This module guarentees
-        that if the passing of the data is correct, the data are saved
-        always.
+                                 The timestamp will be created at runtime if no user defined
+                                 timestamp was passed.
+        @param datetime timestamp: optional, a datetime.datetime object. You can create this object
+                                   with datetime.datetime.now() in the calling module if you want to
+                                   fix the timestamp for the filename. Be careful when passing a
+                                   filename and a timestamp, because then the timestamp will be
+                                   ignored.
+        @param string filetype: optional, the file format the data should be saved in. Valid inputs
+                                are 'text', 'xml' and 'npz'. Default is 'text'.
+        @param string fmt: optional, format specifier for saved data. See python documentation
+                              for "Format Specification Mini-Language". If you want for example save
+                              a float in scientific notation with 6 decimals this would look like
+                              '%.6e'. For saving integers you could use '%d', '%s' for strings.
+                              The default is '%.15e'.
+        @param string delimiter: optional, insert here the delimiter, like '\n' for new line, '\t'
+                                 for tab, ',' for a comma ect.
 
         1D data
         =======
-        1D data should be passed in a dictionary where the data trace
-        should be assigned to one identifier like
+        1D data should be passed in a dictionary where the data trace should be assigned to one
+        identifier like
 
             {'<identifier>':[list of values]}
             {'Numbers of counts':[1.4, 4.2, 5, 2.0, 5.9 , ... , 9.5, 6.4]}
 
         You can also pass as much 1D arrays as you want:
+
             {'Frequency (MHz)':list1, 'signal':list2, 'correlations': list3, ...}
-
-
 
         2D data
         =======
-        2D data should be passed in a dictionary where the matrix like data
-        should be assigned to one identifier like
+        2D data should be passed in a dictionary where the matrix like data should be assigned to
+        one identifier like
 
             {'<identifier>':[[1,2,3],[4,5,6],[7,8,9]]}
 
@@ -349,21 +328,32 @@ class SaveLogic(GenericLogic):
             4   5   6
             7   8   9
 
-        3-X data
+        3D-ND data
         ========
-        There is no specific implementation to save 3D or higher dimension
-        data arrays. If you split the N-dimensional data in N one
-        dimensional data traces, which have a length of M (see last example
-        in 1D data) then the savelogic will handle them. If the save logic
-        cannot identify the passed data as 1D or 2D data, the data will be
-        saved in a raw fashion.
-
+        There is no generic style to save 3D or higher dimension data arrays. If you split the
+        N-dimensional data in N one dimensional data traces by flattening them for example, the
+        savelogic will handle them. If you are still trying to pass multidimensional (N>2) data, it
+        will get saved as a binary numpy .npz-file.
 
         YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE
         SAVED TIME TRACE/MATRIX.
         """
+        # Create timestamp if none is present
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        # Try to cast data array into numpy.ndarray if it is not already one
+        for keyname in data:
+            if not isinstance(data[keyname], np.ndarray):
+                try:
+                    data[keyname] = np.array(data[keyname])
+                except:
+                    self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. '
+                                   'Could not save data.'.format(type(data[keyname])))
+                    return -1
+
+        # try to trace back the functioncall to the class which was calling it.
         try:
-            # try to trace back the functioncall to the class which was calling it.
             frm = inspect.stack()[1]
             # this will get the object, which called the save_data function.
             mod = inspect.getmodule(frm[0])
@@ -372,66 +362,69 @@ class SaveLogic(GenericLogic):
         except:
             # Sometimes it is not possible to get the object which called the save_data function
             # (such as when calling this from the console).
-            module_name = 'NaN'
+            module_name = 'UNSPECIFIED'
 
-        # check whether the given directory path does exist. If not, the
-        # file will be saved anyway in the unspecified directory.
-        if not os.path.exists(filepath):
-            filepath = os.path.join(self.get_daily_directory(), 'UNSPECIFIED_' + str(module_name))
-            if not os.path.exists(filepath):
-                os.mkdir(filepath)
-            self.log.warning('No Module name specified! Please correct this! Data are saved in the '
-                             '\'UNSPECIFIED_<module_name>\' folder.')
+        # determine proper file path
+        if filepath is None:
+            filepath = self.get_path_for_module(module_name)
+        elif not os.path.exists(filepath):
+            os.makedirs(filepath)
+            self.log.info('Custom filepath does not exist. Created directory "{0}"'
+                          ''.format(filepath))
 
-        # Try to cast data array into numpy ndarray if it is not already one
-        for key in data:
-            if not isinstance(data[key], np.ndarray):
-                try:
-                    data[key] = np.array(data[key])
-                except:
-                    self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. '
-                                   'Could not save data.'.format(type(data[key])))
+        # create filelabel if none has been passed
+        if filelabel is None:
+            filelabel = module_name
+        if self.active_poi_name != '':
+            filelabel = self.active_poi_name.replace(' ', '_') + '_' + filelabel
 
-        # Produce a filename tag from the active POI name
-        if self.active_poi_name == '':
-            poi_tag = ''
-        else:
-            poi_tag = '_' + self.active_poi_name.replace(" ", "_")
-
-        # Create timestamp if none is present
-        if timestamp is None:
-            timestamp = datetime.datetime.now()
-
-        # create a unique name for the file, if no name was passed:
+        # determine proper unique filename to save if none has been passed
         if filename is None:
-            # use the filelabel if that is specified:
-            if filelabel is None:
-                filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
-            else:
-                filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
+            filename = timestamp.strftime('%Y%m%d-%H%M-%S' + '_' + filelabel + '.dat')
 
         # Create header string for the file
-        header = 'Saved Data from the class {0} on {1}.\n'.format(module_name,
-                                                                  time.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
-        header = header + '\nParameters:\n===========\n\n'
+        header = 'Saved Data from the class {0} on {1}.\n' \
+                 ''.format(module_name, timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
+        header += '\nParameters:\n===========\n\n'
         # Include the active POI name (if not empty) as a parameter in the header
         if self.active_poi_name != '':
-            header = header + 'Measured at POI: {0}\n'.format(self.active_poi_name)
-        # add the paramters if specified:
+            header += 'Measured at POI: {0}\n'.format(self.active_poi_name)
+        # add the parameters if specified:
         if parameters is not None:
             # check whether the format for the parameters have a dict type:
             if isinstance(parameters, dict):
                 for entry, param in parameters.items():
                     if isinstance(param, float):
-                        header = header + ('{0}:{1}{2' + ':.16e}\n').format(entry, delimiter, param)
+                        header += '{0}: {1:.16e}\n'.format(entry, param)
                     else:
-                        header = header + '{0}:{1}{2}\n'.format(entry, delimiter, param)
+                        header += '{0}: {1}\n'.format(entry, param)
             # make a hardcore string conversion and try to save the parameters directly:
             else:
                 self.log.error('The parameters are not passed as a dictionary! The SaveLogic will '
-                               'try to save the parameters directly.')
-                header = header + 'not specified parameters: {0}\n'.format(parameters)
-        header = header + '\nData:\n=====\n'
+                               'try to save the parameters nevertheless.')
+                header += 'not specified parameters: {0}\n'.format(parameters)
+        header += '\nData:\n=====\n'
+
+        # Reorganise data arrays if necessary and save them. Also check if arrays have equal length.
+        found_1d = False
+        found_2d = False
+        found_xd = False
+        unequal_length = False
+        for keyname in data:
+            if data[keyname].ndim == 1:
+                found_1d = True
+            elif data[keyname].ndim == 2:
+                found_2d = True
+            elif data[keyname].ndim > 2:
+                found_xd = True
+        if found_xd:
+            if filetype != 'npz':
+                self.log.error('Passed multidimensional (N>2) array(s). These can only be saved in '
+                               'binary .npz format. Filetype ignored.')
+            data['header'] = np.array(header)
+            np.savez(os.path.join(filepath, filename), **data)
+        elif found_1d and found_2d:
+            self.log.warning('Passed mixture of 1D and 2D arrays. Morph 2D into 1D arrays.')
 
         # write data to file
         if len(data) == 1:
@@ -716,33 +709,14 @@ class SaveLogic(GenericLogic):
 
         return current_dir
 
-    def get_path_for_module(self, module_name=None):
+    def get_path_for_module(self, module_name):
         """
         Method that creates a path for 'module_name' where data are stored.
 
-          @param string module_name: Specify the folder, which should be
-                                     created in the daily directory. The
-                                     module_name can be e.g. 'Confocal'.
-          @retun string: absolute path to the module name
-
-        This method should be called directly in the saving routine and NOT in
-        the init method of the specified module! This prevents to create empty
-        folders!
-
+        @param string module_name: Specify the folder, which should be created in the daily
+                                   directory. The module_name can be e.g. 'Confocal'.
+        @return string: absolute path to the module name
         """
-        if module_name is None:
-            self.log.warning('No Module name specified! Please correct this! '
-                    'Data is saved in the \'UNSPECIFIED_<module_name>\' '
-                    'folder.')
-
-            frm = inspect.stack()[1]    # try to trace back the functioncall to
-                                        # the class which was calling it.
-            mod = inspect.getmodule(frm[0]) # this will get the object, which
-                                            # called the save_data function.
-            module_name =  mod.__name__.split('.')[-1]  # that will extract the
-                                                        # name of the class.
-            module_name = 'UNSPECIFIED_' + module_name
-
         dir_path = os.path.join(self.get_daily_directory(), module_name)
 
         if not os.path.exists(dir_path):
