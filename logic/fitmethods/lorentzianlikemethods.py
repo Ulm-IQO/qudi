@@ -275,14 +275,14 @@ def make_lorentziantriple_model(self):
 #                 Single Lorentzian with offset fitting                        #
 ################################################################################
 
-def make_lorentzian_fit(self, x_axis, data, units=None,
-                        estimator=None, add_params=None):
+def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
+                        add_params=None):
     """ Perform a 1D lorentzian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @params method estimator: estimator method
-    @param list units: two string elements containing x and y units.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -295,10 +295,7 @@ def make_lorentzian_fit(self, x_axis, data, units=None,
 
     model, params = self.make_lorentzian_model()
 
-    if estimator is None:
-        error, params = self.estimate_lorentzian_dip(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -421,13 +418,13 @@ def estimate_lorentzian_peak (self, x_axis, data, params):
 #                   Double Lorentzian with offset fitting                      #
 ################################################################################
 
-def make_lorentziandouble_fit(self, x_axis, data, units=None,estimator=None, add_params=None):
+def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a 1D double lorentzian dip fit with offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param list units: two string elements containing x and y units.
-    @param method estimator: estimator method.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -441,10 +438,7 @@ def make_lorentziandouble_fit(self, x_axis, data, units=None,estimator=None, add
 
     model, params = self.make_lorentziandouble_model()
 
-    if estimator is None:
-        error, params = self.estimate_lorentziandouble_dip(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     # redefine values of additional parameters
     params = self._substitute_params(initial_params=params,
@@ -837,14 +831,14 @@ def estimate_lorentziandouble_N15(self, x_axis, data, params):
 # make_N14_fit
 
 
-def make_lorentziantriple_fit(self, x_axis, data, units=None, estimator=None,
+def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
                             add_params=None):
     """ Perform a triple lorentzian fit
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param list units: two string elements containing x and y units.
-    @param method estimator: estimator method.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -857,10 +851,7 @@ def make_lorentziantriple_fit(self, x_axis, data, units=None, estimator=None,
 
     model, params = self.make_lorentziantriple_model()
 
-    if estimator is None:
-        error, params = self.estimate_lorentziantriple_N14(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
