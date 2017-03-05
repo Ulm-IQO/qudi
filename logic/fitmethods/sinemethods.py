@@ -547,11 +547,13 @@ def estimate_sinewithoutoffset(self, x_axis, data, params):
 # Sine #
 ########
 
-def make_sine_fit(self, x_axis, data, add_params=None):
+def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a sine fit with a constant offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -564,7 +566,7 @@ def make_sine_fit(self, x_axis, data, add_params=None):
 
     sine, params = self.make_sine_model()
 
-    error, params = self.estimate_sine(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -610,11 +612,13 @@ def estimate_sine(self, x_axis, data, params):
 # Sine exponential decay #
 ##########################
 
-def make_sineexponentialdecay_fit(self, x_axis, data, add_params=None):
+def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a sine exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -626,7 +630,7 @@ def make_sineexponentialdecay_fit(self, x_axis, data, add_params=None):
     """
     sine_exp_decay_offset, params = self.make_sineexponentialdecay_model()
 
-    error, params = self.estimate_sineexponentialdecay(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -733,11 +737,13 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 # Sinus with stretched exponential decay fitting  #
 ###################################################
 
-def sinestretchedexponentialdecay_fit(self, x_axis, data, add_params=None):
+def sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -749,7 +755,7 @@ def sinestretchedexponentialdecay_fit(self, x_axis, data, add_params=None):
     """
     sine_stretched_exp_decay, params = self.sinestretchedexponentialdecay_model()
 
-    error, params = self.estimate_sinestretchedexponentialdecayoffset(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -787,11 +793,13 @@ def estimate_sinestretchedexponentialdecayoffset(self, x_axis, data, params):
 # Sum of two individual Sinus with offset #
 ###########################################
 
-def make_sinedouble_fit(self, x_axis, data, add_params=None):
+def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a two sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -803,7 +811,7 @@ def make_sinedouble_fit(self, x_axis, data, add_params=None):
     """
     two_sine_offset, params = self.make_sinedouble_model()
 
-    error, params = self.estimate_sinedouble(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -859,12 +867,14 @@ def estimate_sinedouble(self, x_axis, data, params):
 #    Sum of two individual Sinus with offset and single exponential decay      #
 ################################################################################
 
-def make_sinedoublewithexpdecay_fit(self, x_axis, data, add_params=None):
+def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a two sine with one exponential decay offset fit on the provided
         data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -876,7 +886,7 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, add_params=None):
     """
     two_sine_exp_decay_offset, params = self.make_sinedoublewithexpdecay_model()
 
-    error, params = self.estimate_sinedoublewithexpdecay(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -936,12 +946,14 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
 # Sum of two individual Sinus exponential decays (and offset) #
 ###############################################################
 
-def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, add_params=None):
+def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -953,7 +965,7 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, add_params=None):
     """
     two_sine_two_exp_decay_offset, params = self.make_sinedoublewithtwoexpdecay_model()
 
-    error, params = self.estimate_sinedoublewithtwoexpdecay(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -1014,11 +1026,13 @@ def estimate_sinedoublewithtwoexpdecay(self, x_axis, data, params):
 # Sum of three individual Sinus with offset #
 #############################################
 
-def make_sinetriple_fit(self, x_axis, data, add_params=None):
+def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a three sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -1030,7 +1044,7 @@ def make_sinetriple_fit(self, x_axis, data, add_params=None):
     """
     two_sine_offset, params = self.make_sinetriple_model()
 
-    error, params = self.estimate_sinetriple(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -1093,12 +1107,14 @@ def estimate_sinetriple(self, x_axis, data, params):
 # Sum of three individual Sinus with offset and single exponential decay #
 ##########################################################################
 
-def make_sinetriplewithexpdecay_fit(self, x_axis, data, add_params=None):
+def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a three sine with one exponential decay offset fit on the provided
         data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -1110,7 +1126,7 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, add_params=None):
     """
     three_sine_exp_decay_offset, params = self.make_sinetriplewithexpdecay_model()
 
-    error, params = self.estimate_sinetriplewithexpdecay(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -1178,12 +1194,14 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
 # Sum of three individual Sinus with offset and three exponential decay #
 #########################################################################
 
-def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, add_params=None):
+def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a three sine with three exponential decay and offset fit on the
         provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -1195,7 +1213,7 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, add_params=None):
     """
     three_sine_three_exp_decay_offset, params = self.make_sinetriplewiththreeexpdecay_model()
 
-    error, params = self.estimate_sinetriplewiththreeexpdecay(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
