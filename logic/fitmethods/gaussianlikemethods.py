@@ -301,13 +301,13 @@ def make_twoDgaussian_model(self, prefix=None):
 # 1D Gaussian with flat offset    #
 ###################################
 
-def make_gaussian_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_gaussian_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param list units: two string elements containing x and y units.
-    @param ???? estimator: estimator method.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -320,10 +320,7 @@ def make_gaussian_fit(self, x_axis, data, units=None, estimator=None, add_params
 
     mod_final, params = self.make_gaussian_model()
 
-    if estimator is None:
-        error, params = self.estimate_gaussian_peak(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -449,13 +446,13 @@ def estimate_gaussian_dip(self, x_axis, data, params):
 # 1D Gaussian with linear inclined offset    #
 ##############################################
 
-def make_gaussianlinearoffset_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a 1D gaussian peak fit with linear offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param list units: two string elements containing x and y units.
-    @param ???? estimator: estimator method.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -468,10 +465,7 @@ def make_gaussianlinearoffset_fit(self, x_axis, data, units=None, estimator=None
 
     mod_final, params = self.make_gaussianlinearoffset_model()
 
-    if estimator is None:
-        error, params = self.estimate_gaussianlinearoffset_peak(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -530,16 +524,18 @@ def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
 # Two Gaussian with flat offset #
 #################################
 
-def make_gaussiandouble_fit(self, x_axis, data, units=None,
-                               estimator=None,
-                               add_params=None,
-                               threshold_fraction=0.4,
-                               minimal_threshold=0.2,
-                               sigma_threshold_fraction=0.3):
+def make_gaussiandouble_fit(self, x_axis, data, estimator,
+                            units=None,
+                            add_params=None,
+                            threshold_fraction=0.4,
+                            minimal_threshold=0.2,
+                            sigma_threshold_fraction=0.3):
     """ Perform a 1D two gaussian dip fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -557,18 +553,11 @@ def make_gaussiandouble_fit(self, x_axis, data, units=None,
 
     model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
 
-    if estimator is None:
-        error, params = self.estimate_gaussiandouble_peak(x_axis, data, params,
-                                                             threshold_fraction,
-                                                             minimal_threshold,
-                                                             sigma_threshold_fraction
-                                                             )
-    else:
-        error, params = estimator(x_axis, data, params,
-                                  threshold_fraction,
-                                  minimal_threshold,
-                                  sigma_threshold_fraction
-                                  )
+    error, params = estimator(x_axis, data, params,
+                              threshold_fraction,
+                              minimal_threshold,
+                              sigma_threshold_fraction
+                              )
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -707,20 +696,18 @@ def estimate_gaussiandouble_dip(self, x_axis, data, params,
 # TODO: I think this has an offset, and it should be named so to be consistent with
 #       the 1D functions.
 
-def make_twoDgaussian_fit(self, xy_axes, data, units=None, add_params=None,
-                          estimator="estimate_twoDgaussian_MLE"):
+def make_twoDgaussian_fit(self, xy_axes, data, estimator, units=None, add_params=None):
     """ This method performes a 2D gaussian fit on the provided data.
 
     @param numpy.array xy_axes: 2D axes values. xy_axes[0] contains x_axis and
                                 xy_axes[1] contains y_axis
     @param numpy.array data: 2D matrix data, should have the dimension as
                              len(xy_axes[0]) x len(xy_axes[1]).
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
-    @param str estimator: the string should contain the name of the function you
-                           want to use to estimate the parameters. The default
-                           estimator is estimate_twoDgaussian_MLE.
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -732,18 +719,8 @@ def make_twoDgaussian_fit(self, xy_axes, data, units=None, add_params=None,
 
     gaussian_2d_model, params = self.make_twoDgaussian_model()
 
-    error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis, y_axis=y_axis,
-                                                   data=data, params=params)
-
-    if estimator is "estimate_twoDgaussian_MLE":
-        error, params = self.estimate_twoDgaussian_MLE(x_axis=x_axis,
-                                                       y_axis=y_axis,
-                                                       data=data,
-                                                       params=params)
-    else:
-        error, params = globals()[estimator](0, x_axis=x_axis, y_axis=y_axis,
-                                             data=data, params=params)
-
+    error, params = estimator(x_axis=x_axis, y_axis=y_axis,
+                              data=data, params=params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)

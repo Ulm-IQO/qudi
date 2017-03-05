@@ -160,11 +160,13 @@ def make_poissoniandouble_model(self):
 ################################################################################
 
 
-def make_poissonian_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Performe a poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -177,10 +179,7 @@ def make_poissonian_fit(self, x_axis, data, units=None, estimator=None, add_para
 
     poissonian_model, params = self.make_poissonian_model()
 
-    if estimator is None:
-        error, params = self.estimate_poissonian(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -230,11 +229,13 @@ def estimate_poissonian(self, x_axis, data, params):
     return error, params
 
 
-def make_poissoniandouble_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a double poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -247,10 +248,7 @@ def make_poissoniandouble_fit(self, x_axis, data, units=None, estimator=None, ad
 
     double_poissonian_model, params = self.make_poissoniandouble_model()
 
-    if estimator is None:
-        error, params = self.estimate_poissoniandouble(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
