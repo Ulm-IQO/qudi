@@ -181,7 +181,7 @@ def make_sineexponentialdecay_model(self, prefix=None):
 # Sinus with stretched exponential decay fitting  #
 ###################################################
 
-def make_sinestretchedexponentialdecay_model(self, prefix=None):
+def sinestretchedexponentialdecay_model(self, prefix=None):
     """ Create a model of a sine with stretched exponential decay.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -737,17 +737,13 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 # Sinus with stretched exponential decay fitting  #
 ###################################################
 
-def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
     @param method estimator: Pointer to the estimator method
     @param list units: List containing the ['horizontal', 'vertical'] units as strings
-def estimate_sinedoubleexponentialdecayoffset(self, x_axis, data, add_params=None):
-    """ Stopgap, please FIXME
-    """
-    return self.estimate_sineexponentialdecayoffset(x_axis, data, add_params)
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -757,7 +753,7 @@ def estimate_sinedoubleexponentialdecayoffset(self, x_axis, data, add_params=Non
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    sine_stretched_exp_decay, params = self.make_sinestretchedexponentialdecay_model()
+    sine_stretched_exp_decay, params = self.sinestretchedexponentialdecay_model()
 
     error, params = estimator(x_axis, data, params)
 
@@ -1282,4 +1278,3 @@ def estimate_sinetriplewiththreeexpdecay(self, x_axis, data, params):
     params['offset'].set(value=data.mean())
 
     return error, params
-
