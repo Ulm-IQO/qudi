@@ -162,7 +162,7 @@ def N15_testing():
     """ Test function to implement the estimator for the N15 fit with offset. """
     x_axis = np.linspace(2850, 2860, 101)*1e6
 
-    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 #            print('Parameters of the model',mod.param_names)
 
     p=Parameters()
@@ -246,7 +246,7 @@ def N15_testing():
     minimal_sigma = x_axis[1]-x_axis[0]
     maximal_sigma = x_axis[-1]-x_axis[0]
 
-    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod, params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 
     params['l0_amplitude'].set(value=amplitude, max=-1e-6)
     params['l0_center'].set(value=x_axis_min)
@@ -277,7 +277,7 @@ def N15_testing2():
 
     x_axis = np.linspace(2850, 2860, 101)*1e6
 
-    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 #            print('Parameters of the model',mod.param_names)
 
     p=Parameters()
@@ -295,8 +295,8 @@ def N15_testing2():
 
     data_noisy=(data_nice + 14000*np.random.normal(size=x_axis.shape))
 
-    result = qudi_fitting.make_doublelorentzoffset_fit(x_axis, data_noisy,
-                                                       estimator=qudi_fitting.estimate_doublelorentzoffset_N15)
+    result = qudi_fitting.make_lorentziandouble_fit(x_axis, data_noisy,
+                                                       estimator=qudi_fitting.estimate_lorentziandouble_N15)
 
     plt.figure()
     plt.plot(x_axis, data_noisy,'-b', label='data')
@@ -315,7 +315,7 @@ def N14_testing():
 
     # get the model of the three lorentzian peak, this gives you the
     # ability to get the used parameter container for the fit.
-    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
+    mod, params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=3)
 
 #    x_axis = np.linspace(2850, 2860, 101)*1e6
     x_axis = np.linspace(2720, 2890, 301)*1e6
@@ -486,7 +486,7 @@ def N14_testing2():
 
     # get the model of the three lorentzian peak, this gives you the
     # ability to get the used parameter container for the fit.
-    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
+    mod, params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=3)
 
     x_axis = np.linspace(2845, 2860, 101)*1e6
 
@@ -515,8 +515,8 @@ def N14_testing2():
     data_noisy=(mod.eval(x=x_axis, params=params) + \
                 5000*np.random.normal(size=x_axis.shape))
 
-    result = qudi_fitting.make_triplelorentzoffset_fit(x_axis, data_noisy,
-                                                       estimator=qudi_fitting.estimate_triplelorentzoffset_N14)
+    result = qudi_fitting.make_lorentziantriple_fit(x_axis, data_noisy,
+                                                       estimator=qudi_fitting.estimate_lorentziantriple_N14)
 
     print(result.fit_report())
 
@@ -541,7 +541,7 @@ def N14_testing_data():
 
     # get the model of the three lorentzian peak, this gives you the
     # ability to get the used parameter container for the fit.
-    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
+    mod, params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=3)
 
     # you can insert the whole path with the windows separator
     # symbol \ just use the r in front of the string to indicated
@@ -702,7 +702,7 @@ def N14_testing_data2():
 
     # get the model of the three lorentzian peak, this gives you the
     # ability to get the used parameter container for the fit.
-    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=3)
+    mod, params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=3)
 
     # you can insert the whole path with the windows separator
     # symbol \ just use the r in front of the string to indicated
@@ -1081,9 +1081,9 @@ def two_gaussian_peak_testing():
     sigma_threshold_fraction=0.3
 
 
-    mod_lor, params_lor = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod_lor, params_lor = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 
-    error, params_lor = qudi_fitting.estimate_doublelorentzoffset_dip(x_axis=x_axis,
+    error, params_lor = qudi_fitting.estimate_lorentziandouble_dip(x_axis=x_axis,
                                                      data=-data_noisy,
                                                      params=params_lor,
                                                      threshold_fraction=threshold_fraction,
@@ -1149,7 +1149,7 @@ def two_gaussian_peak_testing():
 #    sigma_threshold_fraction=0.3
 #
 #
-#    qudi_fitting.estimate_doublelorentzoffset_dip()
+#    qudi_fitting.estimate_lorentziandouble_dip()
 #
 #    error, \
 #    sigma0_argleft, dip0_arg, sigma0_argright, \
@@ -1447,7 +1447,7 @@ def double_lorentzdip_testing():
 
     x_nice = np.linspace(start, stop, num_points*4)
 
-    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 #    print('Parameters of the model',mod.param_names)
 
     p=Parameters()
@@ -1468,8 +1468,8 @@ def double_lorentzdip_testing():
     data_noisy=(mod.eval(x=x_axis,params=p)
                 + 6*np.random.normal(size=x_axis.shape))
 
-    result = qudi_fitting.make_doublelorentzoffset_fit(x_axis=x_axis, data=data_noisy,
-                estimator=qudi_fitting.estimate_doublelorentzoffset_dip)
+    result = qudi_fitting.make_lorentziandouble_fit(x_axis=x_axis, data=data_noisy,
+                estimator=qudi_fitting.estimate_lorentziandouble_dip)
 
     data_smooth, offset = qudi_fitting.find_offset_parameter(x_axis, data_noisy)
 
@@ -1521,7 +1521,7 @@ def double_lorentzdip_testing():
     full_width = x_axis[-1]-x_axis[0]
     n_steps = len(x_axis)
 
-    mod, params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod, params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 
     if lorentz0_center < lorentz1_center:
         params['l0_amplitude'].set(value=lorentz0_amplitude, max=-0.01)
@@ -1577,7 +1577,7 @@ def double_lorentzdip_testing2():
 
     x_nice = np.linspace(start, stop, num_points*4)
 
-    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 #    print('Parameters of the model',mod.param_names)
 
     p=Parameters()
@@ -1598,8 +1598,8 @@ def double_lorentzdip_testing2():
     data_noisy=(mod.eval(x=x,params=p)
                 + 6*np.random.normal(size=x.shape))
 
-    result = qudi_fitting.make_doublelorentzoffset_fit(x_axis=x, data=data_noisy,
-                estimator=qudi_fitting.estimate_doublelorentzoffset_dip)
+    result = qudi_fitting.make_lorentziandouble_fit(x_axis=x, data=data_noisy,
+                estimator=qudi_fitting.estimate_lorentziandouble_dip)
 
     data_smooth, offset = qudi_fitting.find_offset_parameter(x,data_noisy)
 
@@ -1634,7 +1634,7 @@ def double_lorentzpeak_testing2():
 
     x_nice = np.linspace(start, stop, num_points*4)
 
-    mod,params = qudi_fitting.make_multiplelorentzoffset_model(no_of_functions=2)
+    mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
 #    print('Parameters of the model',mod.param_names)
 
     p=Parameters()
@@ -1657,8 +1657,8 @@ def double_lorentzpeak_testing2():
 
 #    data_noisy_inv = data_noisy*(-1)
 
-    result = qudi_fitting.make_doublelorentzoffset_fit(x_axis=x, data=data_noisy,
-                                                       estimator=qudi_fitting.estimate_doublelorentzoffset_peak)
+    result = qudi_fitting.make_lorentziandouble_fit(x_axis=x, data=data_noisy,
+                                                       estimator=qudi_fitting.estimate_lorentziandouble_peak)
 
     plt.figure()
     plt.plot(x, data_noisy,'o', label='noisy data')
@@ -1735,7 +1735,7 @@ def lorentziandip_testing():
     """ Test the lorentzian estimator. """
     x_axis = np.linspace(800, 1000, 101)
 
-    mod, params = qudi_fitting.make_lorentzoffset_model()
+    mod, params = qudi_fitting.make_lorentzian_model()
     print('Parameters of the model',mod.param_names)
     params = Parameters()
 
@@ -1814,7 +1814,7 @@ def lorentziandip_testing():
     stepsize = x_axis[1]-x_axis[0]
     n_steps = len(x_axis)
 
-    mod, params = qudi_fitting.make_lorentzoffset_model()
+    mod, params = qudi_fitting.make_lorentzian_model()
 
     params['amplitude'].set(value=amplitude, max=-1e-12)
     params['sigma'].set(value=sigma, min=stepsize/2,
@@ -1853,7 +1853,7 @@ def lorentziandip_testing2():
     """ Test the lorentzian fit directy with simulated data. """
     x_axis = np.linspace(800, 1000, 101)
 
-    mod, params = qudi_fitting.make_lorentzoffset_model()
+    mod, params = qudi_fitting.make_lorentzian_model()
     print('Parameters of the model',mod.param_names)
     params = Parameters()
 
@@ -1865,10 +1865,10 @@ def lorentziandip_testing2():
     data_nice = mod.eval(x=x_axis,params=params)
     data_noisy = data_nice + 2.0*np.random.normal(size=x_axis.shape)
     
-    print(qudi_fitting.estimate_lorentzoffset_dip)
+    print(qudi_fitting.estimate_lorentzian_dip)
 
 
-    result = qudi_fitting.make_lorentzoffset_fit(x_axis=x_axis, data=data_noisy, units=["MHz"], estimator = qudi_fitting.estimate_lorentzoffset_dip)
+    result = qudi_fitting.make_lorentzian_fit(x_axis=x_axis, data=data_noisy, units=["MHz"], estimator = qudi_fitting.estimate_lorentzian_dip)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -1886,7 +1886,7 @@ def lorentzianpeak_testing2():
     """ Test the lorentzian fit directy with simulated data. """
     x_axis = np.linspace(800, 1000, 101)
 
-    mod, params = qudi_fitting.make_lorentzoffset_model()
+    mod, params = qudi_fitting.make_lorentzian_model()
     print('Parameters of the model',mod.param_names)
     params = Parameters()
 
@@ -1898,8 +1898,8 @@ def lorentzianpeak_testing2():
     data_nice = mod.eval(x=x_axis,params=params)
     data_noisy = data_nice + 5.0*np.random.normal(size=x_axis.shape)
 
-    result = qudi_fitting.make_lorentzoffset_fit(x_axis=x_axis, data=data_noisy,
-                                                 estimator=qudi_fitting.estimate_lorentzoffset_peak)
+    result = qudi_fitting.make_lorentzian_fit(x_axis=x_axis, data=data_noisy,
+                                                 estimator=qudi_fitting.estimate_lorentzian_peak)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -2116,7 +2116,7 @@ def sine_testing():
     x_axis = np.append(x_axis, x_axis1)
     x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
 
-    mod,params = qudi_fitting.make_sineoffset_model()
+    mod,params = qudi_fitting.make_sine_model()
     print('Parameters of the model',mod.param_names,
           ' with the independet variable',mod.independent_vars)
 
@@ -2209,7 +2209,7 @@ def sine_testing():
     # be in the interval [-pi,pi].
     phase = sum_res.argmax()/iter_steps *2*np.pi - np.pi
 
-    mod, params = qudi_fitting.make_sineoffset_model()
+    mod, params = qudi_fitting.make_sine_model()
 
     # values and bounds of initial parameters
     params['amplitude'].set(value=ampl_val)
@@ -2244,7 +2244,7 @@ def sine_testing2():
     x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
 
 
-    mod, params = qudi_fitting.make_sineoffset_model()
+    mod, params = qudi_fitting.make_sine_model()
 
     params['phase'].value = np.pi/2 # np.random.uniform()*2*np.pi
     params['frequency'].value = 0.01
@@ -2271,7 +2271,7 @@ def sine_testing2():
     update_dict = {}
     update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
 
-    result = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_noisy,
+    result = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_noisy,
                                               add_params=update_dict)
 
 
@@ -2297,7 +2297,7 @@ def sine_testing_data():
     meas_data = np.loadtxt(os.path.join(path, filename))
     x_axis = meas_data[0]
     data = meas_data[1]
-    mod, params = qudi_fitting.make_sineoffset_model()
+    mod, params = qudi_fitting.make_sine_model()
 
 
     # level data
@@ -2361,7 +2361,7 @@ def sine_testing_data():
 
     result =mod.fit(data, x=x_axis, params=params)
 
-#            result=qudi_fitting.make_sineoffset_fit(axis=x_axis, data=data, add_parameters=None)
+#            result=qudi_fitting.make_sine_fit(axis=x_axis, data=data, add_parameters=None)
 
     plt.figure()
     #plt.plot(x_nice,mod.eval(x=x_nice,params=params),'-g', label='nice data')
@@ -2806,7 +2806,7 @@ def sineexponentialdecay_testing():
     x_axis = np.linspace(0, 100, 100)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
 
-    mod, params = qudi_fitting.make_sineexponentialdecay_model()
+    mod, params = qudi_fitting.make_sineexpdecaywithoutoffset_model()
     print('Parameters of the model', mod.param_names,
           ' with the independet variable', mod.independent_vars)
 
@@ -2878,7 +2878,7 @@ def sineexponentialdecay_testing_data():
     x_axis = meas_data[0]
     data = meas_data[1]
 
-    mod, params = qudi_fitting.make_sineexponentialdecay_model()
+    mod, params = qudi_fitting.make_sineexpdecaywithoutoffset_model()
 
     offset = np.mean(data)
 
@@ -3321,12 +3321,12 @@ def two_sine_offset_testing():
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*2
 
 
-    res = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=noisy_data)
+    res = qudi_fitting.make_sine_fit(x_axis=x_axis, data=noisy_data)
 
 
     data_sub = noisy_data - res.best_fit
 
-    res2 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_sub)
+    res2 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_sub)
 
     plt.figure()
 #    plt.plot(x_axis, data_sub,'-', label='sub')
@@ -3339,7 +3339,7 @@ def two_sine_offset_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    mod, params = qudi_fitting.make_twosineoffset_model()
+    mod, params = qudi_fitting.make_sinedouble_model()
 
     params['s1_amplitude'].set(value=res.params['amplitude'].value)
     params['s1_frequency'].set(value=res.params['frequency'].value)
@@ -3387,7 +3387,7 @@ def two_sine_offset_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.0
 
-    result = qudi_fitting.make_twosineoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinedouble_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -3421,12 +3421,12 @@ def two_sine_exp_decay_offset_testing():
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.6
 
 
-    result1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result1 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=noisy_data)
     data_sub = noisy_data - result1.best_fit
 
-    result2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub)
+    result2 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub)
 
-    mod, params = qudi_fitting.make_twosineexpdecayoffset_model()
+    mod, params = qudi_fitting.make_sinedoublewithexpdecay_model()
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -3479,7 +3479,7 @@ def two_sine_exp_decay_offset_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.2
 
-    result = qudi_fitting.make_twosineexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinedoublewithexpdecay_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -3515,10 +3515,10 @@ def two_sine_two_exp_decay_offset_testing():
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.5
 
 
-    result1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result1 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=noisy_data)
     data_sub = noisy_data - result1.best_fit
 
-    result2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub)
+    result2 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub)
 
     plt.figure()
     plt.plot(x_axis, data_sub,'-', label='sub')
@@ -3532,7 +3532,7 @@ def two_sine_two_exp_decay_offset_testing():
     plt.show()
 
 
-    mod, params = qudi_fitting.make_twosinetwoexpdecayoffset_model()
+    mod, params = qudi_fitting.make_sinedoublewithtwoexpdecay_model()
 
     # Fill the parameter dict:
     params['e1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -3587,7 +3587,7 @@ def two_sine_two_exp_decay_offset_testing2():
     data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1)*np.exp(-(x_axis/lifetime1))  +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2)*np.exp(-(x_axis/lifetime2)) + offset
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1
 
-    result = qudi_fitting.make_twosinetwoexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinedoublewithtwoexpdecay_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -3635,15 +3635,15 @@ def three_sine_offset_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    res1 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=noisy_data)
+    res1 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=noisy_data)
     data_sub1 = noisy_data - res1.best_fit
 
     x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
-    res2 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_sub1)
+    res2 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_sub1)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = qudi_fitting.make_sineoffset_fit(x_axis=x_axis, data=data_sub2)
+    res3 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_sub2)
 
     x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
 
@@ -3658,7 +3658,7 @@ def three_sine_offset_testing():
     plt.show()
 
 
-    mod, params = qudi_fitting.make_threesineoffset_model()
+    mod, params = qudi_fitting.make_sinetriple_model()
 
     params['s1_amplitude'].set(value=res1.params['amplitude'].value)
     params['s1_frequency'].set(value=res1.params['frequency'].value)
@@ -3713,7 +3713,7 @@ def three_sine_offset_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*3
 
-    result = qudi_fitting.make_threesineoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinetriple_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -3763,15 +3763,15 @@ def three_sine_exp_decay_offset_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    res1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    res1 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=noisy_data)
     data_sub1 = noisy_data - res1.best_fit
 
     x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
-    res2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub1)
+    res2 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub2)
+    res3 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
 
     x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
 
@@ -3786,7 +3786,7 @@ def three_sine_exp_decay_offset_testing():
     plt.show()
 
 
-    mod, params = qudi_fitting.make_threesineexpdecayoffset_model()
+    mod, params = qudi_fitting.make_sinetriplewithexpdecay_model()
 
     params['s1_amplitude'].set(value=res1.params['amplitude'].value)
     params['s1_frequency'].set(value=res1.params['frequency'].value)
@@ -3846,7 +3846,7 @@ def three_sine_exp_decay_offset_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1
 
-    result = qudi_fitting.make_threesineexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinetriplewithexpdecay_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -3902,15 +3902,15 @@ def three_sine_three_exp_decay_offset_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 
-    res1 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    res1 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=noisy_data)
     data_sub1 = noisy_data - res1.best_fit
 
     x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
-    res2 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub1)
+    res2 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = qudi_fitting.make_sineexponentialdecayoffset_fit(x_axis=x_axis, data=data_sub2)
+    res3 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
 
     x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
 
@@ -3925,7 +3925,7 @@ def three_sine_three_exp_decay_offset_testing():
     plt.show()
 
 
-    mod, params = qudi_fitting.make_threesinethreeexpdecayoffset_model()
+    mod, params = qudi_fitting.make_sinetriplewiththreeexpdecay_model()
 
     params['e1_amplitude'].set(value=res1.params['amplitude'].value)
     params['e1_frequency'].set(value=res1.params['frequency'].value)
@@ -3992,7 +3992,7 @@ def three_sine_three_exp_decay_offset_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1.2
 
-    result = qudi_fitting.make_threesinethreeexpdecayoffset_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinetriplewiththreeexpdecay_fit(x_axis=x_axis, data=noisy_data)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')

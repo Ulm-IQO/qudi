@@ -79,11 +79,13 @@ def make_hyperbolicsaturation_model(self, prefix=None):
     return complete_model, params
 
 
-def make_hyperbolicsaturation_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a fit on the provided data with a fluorescence depending function.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -96,10 +98,7 @@ def make_hyperbolicsaturation_fit(self, x_axis, data, units=None, estimator=None
 
     mod_final, params = self.make_hyperbolicsaturation_model()
 
-    if estimator is None:
-        error, params = self.estimate_hyperbolicsaturation(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     # overwrite values of additional parameters
     params = self._substitute_params(initial_params=params,

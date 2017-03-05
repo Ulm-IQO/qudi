@@ -189,6 +189,38 @@ def make_linear_model(self, prefix=None):
     return model, params
 
 
+def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
+    """ Performe a linear fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    # Make mathematical fit model
+    linear, params = self.make_linear_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params, update_params=add_params)
+
+    try:
+        result = linear.fit(data, x=x_axis, params=params)
+    except:
+        self.log.warning('The linear fit did not work. lmfit result Message:\n'
+                         '{0}'.format(str(result.message)))
+        result = linear.fit(data, x=x_axis, params=params)
+
+    return result
+
 def estimate_linear(self, x_axis, data, params):
     """ Provide an estimation for the initial values of a linear function.
 
@@ -227,40 +259,3 @@ def estimate_linear(self, x_axis, data, params):
         params['offset'].value = 0
 
     return error, params
-
-
-def make_linear_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
-    """ Performe a linear fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param units:
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-    # Make mathematical fit model
-    linear, params = self.make_linear_model()
-
-    # Check if an estimator has been passed to this method and use default if this is not the case.
-    if estimator is None:
-        self.log.warning('No estimator given for linear fit. Using default estimator.')
-        error, params = self.estimate_linear(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params, update_params=add_params)
-
-    try:
-        result = linear.fit(data, x=x_axis, params=params)
-    except:
-        self.log.warning('The linear fit did not work. lmfit result Message:\n'
-                         '{0}'.format(str(result.message)))
-        result = linear.fit(data, x=x_axis, params=params)
-
-    return result
