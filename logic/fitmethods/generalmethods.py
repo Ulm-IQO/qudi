@@ -460,7 +460,7 @@ def find_offset_parameter(self, x_values=None, data=None):
 
     """
     # lorentzian filter
-    mod, params = self.make_lorentzoffset_model()
+    mod, params = self.make_lorentzian_model()
 
     # Todo: exclude filter in seperate method to be used in other methods
 

@@ -123,7 +123,7 @@ def make_poissonian_model(self, prefix=None):
     return poissonian_ampl_model, params
 
 
-def make_multiplepoissonian_model(self, no_of_functions=1):
+def make_poissonianmultiple_model(self, no_of_functions=1):
     """ Create a model with multiple poissonians with amplitude.
 
     @param no_of_functions: for default=1 there is one poissonian, else
@@ -144,7 +144,7 @@ def make_multiplepoissonian_model(self, no_of_functions=1):
 
     return multi_poisson_model, params
 
-def make_doublepoissonian_model(self):
+def make_poissoniandouble_model(self):
     return self.make_multiplepoissonian_model(2)
 
 ################################################################################
@@ -154,11 +154,13 @@ def make_doublepoissonian_model(self):
 ################################################################################
 
 
-def make_poissonian_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Performe a poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -171,10 +173,7 @@ def make_poissonian_fit(self, x_axis, data, units=None, estimator=None, add_para
 
     poissonian_model, params = self.make_poissonian_model()
 
-    if estimator is None:
-        error, params = self.estimate_poissonian(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -224,11 +223,13 @@ def estimate_poissonian(self, x_axis, data, params):
     return error, params
 
 
-def make_doublepoissonian_fit(self, x_axis, data, units=None, estimator=None, add_params=None):
+def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a double poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -239,12 +240,9 @@ def make_doublepoissonian_fit(self, x_axis, data, units=None, estimator=None, ad
                            with best fit with given axis,...
     """
 
-    double_poissonian_model, params = self.make_multiplepoissonian_model(no_of_functions=2)
+    double_poissonian_model, params = self.make_poissoniandouble_model()
 
-    if estimator is None:
-        error, params = self.estimate_doublepoissonian(x_axis, data, params)
-    else:
-        error, params = estimator(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
@@ -262,7 +260,7 @@ def make_doublepoissonian_fit(self, x_axis, data, units=None, estimator=None, ad
     return result
 
 
-def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4,
+def estimate_poissoniandouble(self, x_axis, data, params, threshold_fraction=0.4,
                               minimal_threshold=0.1, sigma_threshold_fraction=0.2):
     """ Provide initial values for a double poissonian fit.
 
