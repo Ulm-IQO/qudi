@@ -181,7 +181,7 @@ def make_sineexponentialdecay_model(self, prefix=None):
 # Sinus with stretched exponential decay fitting  #
 ###################################################
 
-def sinestretchedexponentialdecay_model(self, prefix=None):
+def make_sinestretchedexponentialdecay_model(self, prefix=None):
     """ Create a model of a sine with stretched exponential decay.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -737,7 +737,7 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 # Sinus with stretched exponential decay fitting  #
 ###################################################
 
-def sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -753,7 +753,7 @@ def sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None,
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    sine_stretched_exp_decay, params = self.sinestretchedexponentialdecay_model()
+    sine_stretched_exp_decay, params = self.make_sinestretchedexponentialdecay_model()
 
     error, params = estimator(x_axis, data, params)
 
@@ -768,7 +768,7 @@ def sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None,
 
     return result
 
-def estimate_sinestretchedexponentialdecayoffset(self, x_axis, data, params):
+def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
     """ Provide a estimation of a initial values for a sine stretched exponential decay function.
 
     @param numpy.array x_axis: 1D axis values
@@ -845,10 +845,10 @@ def estimate_sinedouble(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    result1 = self.make_sine_fit(x_axis=x_axis, data=data)
+    result1 = self.make_sine_fit(x_axis=x_axis, data=data, estimator=self.estimate_sine)
     data_sub = data - result1.best_fit
 
-    result2 = self.make_sine_fit(x_axis=x_axis, data=data_sub)
+    result2 = self.make_sine_fit(x_axis=x_axis, data=data_sub, estimator=self.estimate_sine)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -1078,13 +1078,13 @@ def estimate_sinetriple(self, x_axis, data, params):
     # sine offset fits where for the next fit the previous is subtracted to
     # delete its contribution in the data.
 
-    res1 = self.make_sine_fit(x_axis=x_axis, data=data)
+    res1 = self.make_sine_fit(x_axis=x_axis, data=data, estimator=self.estimate_sine)
     data_sub1 = data - res1.best_fit
 
-    res2 = self.make_sine_fit(x_axis=x_axis, data=data_sub1)
+    res2 = self.make_sine_fit(x_axis=x_axis, data=data_sub1, estimator=self.estimate_sine)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = self.make_sine_fit(x_axis=x_axis, data=data_sub2)
+    res3 = self.make_sine_fit(x_axis=x_axis, data=data_sub2, estimator=self.estimate_sine)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=res1.params['amplitude'].value)
