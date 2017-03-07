@@ -145,7 +145,7 @@ class ManagerGui(GUIBase):
                 loghandler.sigLoggedMessage.connect(self.handleLogEntry)
         # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
-        self.sigReloadModule.connect(self._manager.restartModuleSimple)
+        self.sigReloadModule.connect(self._manager.restartModuleRecursive)
         self.sigCleanupStatus.connect(self._manager.removeStatusFile)
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
