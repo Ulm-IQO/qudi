@@ -905,36 +905,52 @@ class Manager(QtCore.QObject):
             logger.exception('{0} module {1}: error during deactivation:'.format(base, name))
         QtCore.QCoreApplication.instance().processEvents()
 
-    def getSimpleModuleDependencies(self, base, key):
-        """ Based on object id, find which connections to replace.
+    @QtCore.Slot(str, str)
+    def getReverseRecursiveModuleDependencies(self, base, module, deps=None):
+        """ Based on input connector declarations, determine in which other modules need to be removed when stopping.
 
           @param str base: Module category
-          @param str key: Unique configured module name for module where
-                          we want the dependencies
+          @param str key: Unique configured module name for module where we want the dependencies
 
-          @return dict: module dependencies in the right format for the
-                        toposort function
+          @return dict: module dependencies in the right format for the toposort function
         """
-        deplist = list()
-        if (not self.isModuleLoaded(base, key)):
-            logger.error('{0} module {1} not loaded.'.format(base, key))
+        if deps is None:
+            deps = dict()
+        if not self.isModuleDefined(base, module):
+            logger.error('{0} module {1}: no such module defined'.format(base, module))
             return None
-        for mbase in self.tree['loaded']:
-            for mkey,target in self.tree['loaded'][mbase].items():
-                if (not hasattr(target, 'connector')):
-                    logger.error('No connector in module .{0}.{1}!'.format(
-                        mbase, mkey))
-                    continue
-                for conn in target.connectors:
-                    if (not 'object' in target.connectors[conn]):
-                        logger.error('Malformed connector {2} in module '
-                                     '.{0}.{1}!'.format(mbase, mkey, conn))
-                        continue
-                    if (target.connectors[conn]['object'] is self.tree[
-                            'loaded'][base][key]):
-                        deplist.append((mbase, mkey))
-        return {key: deplist}
 
+        deplist = set()
+        for bname, base in self.tree['defined'].items():
+            for mname, mod in base.items():
+                if 'connect' not in mod:
+                    continue
+                connections = mod['connect']
+                if not isinstance(connections, OrderedDict):
+                    logger.error('{0} module {1}: connect is not a dictionary'.format(bname, mname))
+                    continue
+                for cname, connection in connections.items():
+                    conn = connection
+                    if '.' in connection:
+                        conn = connection.split('.')[0]
+                        logger.warning(
+                           '{0}.{1}: connection {2}: {3} has legacy '
+                           ' format for connection target'
+                           ''.format(bname, mname, cname, connection))
+                    if conn == module:
+                        deplist.add(mname)
+        if len(deplist) > 0:
+            deps.update({module: list(deplist)})
+
+        for name in deplist:
+            if name not in deps:
+                subdeps = self.getReverseRecursiveModuleDependencies(self.findBase(name), name, deps)
+                if subdeps is not None:
+                    deps.update(subdeps)
+
+        return deps
+
+    @QtCore.Slot(str, str)
     def getRecursiveModuleDependencies(self, base, key):
         """ Based on input connector declarations, determine in which other modules are needed for a specific module to run.
 
@@ -1068,48 +1084,6 @@ class Manager(QtCore.QObject):
                         self.deactivateModule(mbase, mkey)
 
     @QtCore.Slot(str, str)
-    def restartModuleSimple(self, base, key):
-        """Deactivate, reloade, activate module.
-          @param str base: Module category
-          @param str key: Unique module name
-
-          @return int: 0 on success, -1 on error
-
-            Deactivates and activates all modules that depend on it in order to
-            ensure correct connections.
-        """
-        deps = self.getSimpleModuleDependencies(base, key)
-        if (deps is None):
-            return
-        # Remove references
-        for destbase,destmod in deps[key]:
-            for c,v in self.tree['loaded'][destbase][
-                    destmod].connectors.items():
-                if (v['object'] is self.tree['loaded'][base][key]):
-                    if (self.isModuleActive(destbase, destmod)):
-                        self.deactivateModule(destbase, destmod)
-                    v['object'] = None
-
-        # reload and reconnect
-        success = self.reloadConfigureModule(base, key)
-        if (success < 0):
-            logger.warning('Stopping module {0}.{1} loading after loading '
-                           'failure.'.format(base, key))
-            return -1
-        success = self.connectModule(base, key)
-        if (success < 0):
-            logger.warning('Stopping module {0}.{1} loading after '
-                           'connection failure.'.format(base, key))
-            return -1
-        self.activateModule(base, key)
-
-        for depmod in deps[key]:
-            destbase, destmod = depmod
-            self.connectModule(destbase, destmod)
-            self.activateModule(destbase, destmod)
-        return 0
-
-    @QtCore.Slot(str, str)
     def restartModuleRecursive(self, base, key):
         """ Figure out the module dependencies in terms of connections, reload and activate module.
 
@@ -1117,39 +1091,43 @@ class Manager(QtCore.QObject):
           @param str key: Unique configured module name
 
         """
-        deps = self.getSimpleModuleDependencies(base, key)
-        sorteddeps = toposort(deps)
+        unload_deps = self.getReverseRecursiveModuleDependencies(base, key)
+        sorted_u_deps = toposort(unload_deps)
+        unloaded_mods = []
 
-        for mkey in sorteddeps:
-            for mbase in ['gui', 'logic', 'hardware']:
-                # load if the config changed
-                if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
-                    success = self.loadConfigureModule(mbase, mkey)
-                    if success < 0:
-                        logger.warning('Stopping loading module {0}.{1} after '
-                                       'loading error.'.format(mbase, mkey))
-                        return -1
+        for mkey in sorted_u_deps:
+            mbase = self.findBase(mkey)
+            if mkey in self.tree['loaded'][mbase]:
+                success = self.reloadConfigureModule(mbase, mkey)
+                if success < 0:
+                    logger.warning('Stopping loading module {0}.{1} after '
+                        'loading error'.format(mbase, mkey))
+                    return -1
+                unloaded_mods.append(mkey)
+
+        for mkey in reversed(unloaded_mods):
+            mbase = self.findBase(mkey)
+            if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
+                success = self.loadConfigureModule(mbase, mkey)
+                if success < 0:
+                    logger.warning('Stopping loading module {0}.{1} after '
+                                   'loading error.'.format(mbase, mkey))
+                    return -1
+                success = self.connectModule(mbase, mkey)
+                if success < 0:
+                    logger.warning('Stopping loading module {0}.{1} after '
+                                   'connection error'.format(mbase, mkey))
+                    return -1
+
+            if mkey in self.tree['loaded'][mbase]:
+                if mkey in self.tree['loaded'][mbase]:
                     success = self.connectModule(mbase, mkey)
                     if success < 0:
                         logger.warning('Stopping loading module {0}.{1} after '
                                        'connection error'.format(mbase, mkey))
                         return -1
-                    if mkey in self.tree['loaded'][mbase]:
-                        self.activateModule(mbase, mkey)
-                # reload if already there
-                elif mkey in self.tree['loaded'][mbase]:
-                    success = self.reloadConfigureModule(mbase, mkey)
-                    if success < 0:
-                        logger.warning('Stopping loading module {0}.{1} after '
-                                       'loading error'.format(mbase, mkey))
-                        return -1
-                    success = self.connectModule(mbase, mkey)
-                    if success < 0:
-                        logger.warning('Stopping loading module {0}.{1} after '
-                                       'connection error'.format(mbase, mkey))
-                        return -1
-                    if mkey in self.tree['loaded'][mbase]:
-                        self.activateModule(mbase, mkey)
+                    self.activateModule(mbase, mkey)
+        return 0
 
     @QtCore.Slot()
     def startAllConfiguredModules(self):
