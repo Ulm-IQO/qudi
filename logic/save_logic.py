@@ -254,8 +254,8 @@ class SaveLogic(GenericLogic):
 
         @param dictionary data: Dictionary containing the data to be saved. The keys should be
                                 strings containing the data header/description. The corresponding
-                                items are 1D or 2D arrays containing the data (list or
-                                numpy.ndarray). Example:
+                                items are one or more 1D arrays or one 2D array containing the data
+                                (list or numpy.ndarray). Example:
 
                                     data = {'Frequency (MHz)': [1,2,4,5,6]}
                                     data = {'Frequency': [1, 2, 4], 'Counts': [234, 894, 743, 423]}
@@ -295,11 +295,18 @@ class SaveLogic(GenericLogic):
                                    ignored.
         @param string filetype: optional, the file format the data should be saved in. Valid inputs
                                 are 'text', 'xml' and 'npz'. Default is 'text'.
-        @param string fmt: optional, format specifier for saved data. See python documentation
-                              for "Format Specification Mini-Language". If you want for example save
-                              a float in scientific notation with 6 decimals this would look like
-                              '%.6e'. For saving integers you could use '%d', '%s' for strings.
-                              The default is '%.15e'.
+        @param string or list of strings fmt: optional, format specifier for saved data. See python
+                                              documentation for
+                                              "Format Specification Mini-Language". If you want for
+                                              example save a float in scientific notation with 6
+                                              decimals this would look like '%.6e'. For saving
+                                              integers you could use '%d', '%s' for strings.
+                                              The default is '%.15e' for numbers and '%s' for str.
+                                              If len(data) > 1 you should pass a list of format
+                                              specifiers; one for each item in the data dict. If
+                                              only one specifier is passed but the data arrays have
+                                              different data types this can lead to strange
+                                              behaviour or failure to save right away.
         @param string delimiter: optional, insert here the delimiter, like '\n' for new line, '\t'
                                  for tab, ',' for a comma ect.
 
@@ -328,22 +335,25 @@ class SaveLogic(GenericLogic):
             4   5   6
             7   8   9
 
-        3D-ND data
-        ========
-        There is no generic style to save 3D or higher dimension data arrays. If you split the
-        N-dimensional data in N one dimensional data traces by flattening them for example, the
-        savelogic will handle them. If you are still trying to pass multidimensional (N>2) data, it
-        will get saved as a binary numpy .npz-file.
 
-        YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE
-        SAVED TIME TRACE/MATRIX.
+        YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE SAVED TIME
+        TRACE/MATRIX.
         """
         # Create timestamp if none is present
         if timestamp is None:
             timestamp = datetime.datetime.now()
 
         # Try to cast data array into numpy.ndarray if it is not already one
+        # Also collect information on arrays in the process and do sanity checks
+        found_1d = False
+        found_2d = False
+        multiple_dtypes = False
+        arr_length = []
+        arr_dtype = []
+        max_row_num = 0
+        max_line_num = 0
         for keyname in data:
+            # Cast into numpy array
             if not isinstance(data[keyname], np.ndarray):
                 try:
                     data[keyname] = np.array(data[keyname])
@@ -351,6 +361,37 @@ class SaveLogic(GenericLogic):
                     self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. '
                                    'Could not save data.'.format(type(data[keyname])))
                     return -1
+
+            # determine dimensions
+            if data[keyname].ndim < 3:
+                length = data[keyname].shape[0]
+                arr_length.append(length)
+                if length > max_line_num:
+                    max_line_num = length
+                if data[keyname].ndim == 2:
+                    found_2d = True
+                    width = data[keyname].shape[1]
+                    if max_row_num < width:
+                        max_row_num = width
+                else:
+                    found_1d = True
+                    max_row_num += 1
+            else:
+                self.log.error('Found data array with dimension >2. Unable to save data.')
+                return -1
+
+            # determine array data types
+            if len(arr_dtype) > 0:
+                if arr_dtype[-1] != data[keyname].dtype:
+                    multiple_dtypes = True
+            arr_dtype.append(data[keyname].dtype)
+
+        # Raise error if data contains a mixture of 1D and 2D arrays
+        if found_2d and found_1d:
+            self.log.error('Passed data dictionary contains 1D AND 2D arrays. This is not allowed. '
+                           'Either fit all data arrays into a single 2D array or pass multiple 1D '
+                           'arrays only. Saving data failed!')
+            return -1
 
         # try to trace back the functioncall to the class which was calling it.
         try:
@@ -382,6 +423,51 @@ class SaveLogic(GenericLogic):
         if filename is None:
             filename = timestamp.strftime('%Y%m%d-%H%M-%S' + '_' + filelabel + '.dat')
 
+        # Check format specifier.
+        if not isinstance(fmt, str) and len(fmt) != len(data):
+            self.log.error('Length of list of format specifiers and number of data items differs. '
+                           'Saving not possible. Please pass exactly as many format specifiers as '
+                           'data arrays.')
+            return -1
+
+        # Reshape data if multiple 1D arrays have been passed to this method.
+        # If a 2D array has been passed, reformat the specifier
+        if len(data) != 1:
+            identifier_str = ''
+            if multiple_dtypes:
+                field_dtypes = list(zip(['f{0:d}'.format(i) for i in range(len(arr_dtype))],
+                                        arr_dtype))
+                new_array = np.empty(max_line_num, dtype=field_dtypes)
+                for i, keyname in enumerate(data):
+                    identifier_str += keyname + delimiter
+                    field = 'f{0:d}'.format(i)
+                    length = data[keyname].size
+                    new_array[field][:length] = data[keyname]
+                    if length < max_line_num:
+                        if isinstance(data[keyname][0], str):
+                            new_array[field][length:] = 'nan'
+                        else:
+                            new_array[field][length:] = np.nan
+            else:
+                new_array = np.empty([max_line_num, max_row_num], arr_dtype[0])
+                for i, keyname in enumerate(data):
+                    identifier_str += keyname + delimiter
+                    length = data[keyname].size
+                    new_array[:length, i] = data[keyname]
+                    if length < max_line_num:
+                        if isinstance(data[keyname][0], str):
+                            new_array[length:, i] = 'nan'
+                        else:
+                            new_array[length:, i] = np.nan
+            # discard old data array and use new one
+            data = {identifier_str: new_array}
+        elif found_2d:
+            keyname = list(data.keys())[0]
+            identifier_str = keyname.replace(', ', delimiter).replace(',', delimiter)
+            data[identifier_str] = data.pop(keyname)
+        else:
+            identifier_str = list(data)[0]
+
         # Create header string for the file
         header = 'Saved Data from the class {0} on {1}.\n' \
                  ''.format(module_name, timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
@@ -404,78 +490,20 @@ class SaveLogic(GenericLogic):
                                'try to save the parameters nevertheless.')
                 header += 'not specified parameters: {0}\n'.format(parameters)
         header += '\nData:\n=====\n'
-
-        # Reorganise data arrays if necessary and save them. Also check if arrays have equal length.
-        found_1d = False
-        found_2d = False
-        found_xd = False
-        unequal_length = False
-        for keyname in data:
-            if data[keyname].ndim == 1:
-                found_1d = True
-            elif data[keyname].ndim == 2:
-                found_2d = True
-            elif data[keyname].ndim > 2:
-                found_xd = True
-        if found_xd:
-            if filetype != 'npz':
-                self.log.error('Passed multidimensional (N>2) array(s). These can only be saved in '
-                               'binary .npz format. Filetype ignored.')
-            data['header'] = np.array(header)
-            np.savez(os.path.join(filepath, filename), **data)
-        elif found_1d and found_2d:
-            self.log.warning('Passed mixture of 1D and 2D arrays. Morph 2D into 1D arrays.')
+        header += list(data)[0]
 
         # write data to file
-        if len(data) == 1:
-            # if data is a single array just write it to file
-            key_name = list(data)[0]
-
-            if data[key_name].ndim > 1:
-                for name in key_name.split(','):
-                    header = header + name + delimiter
-            else:
-                header = header + key_name
-
-            if data[key_name].ndim < 3:
-                self.save_array_as_text(data=data[key_name], filename=filename, filepath=filepath,
-                                        precision=precision, header=header, delimiter=delimiter,
-                                        append=False)
-            else:
-                self.log.warning('Savelogic has no implementation for 3 dimensional arrays. The '
-                                 'data is saved in a raw fashion.')
-                with open(os.path.join(filepath, filename), 'w') as file:
-                    file.write(str(data[key_name]))
+        # FIXME: Implement other file formats
+        if filetype == 'text':
+            self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
+                                    fmt=fmt, header=header, delimiter=delimiter, comments='#',
+                                    append=False)
         else:
-            # If more data arrays have been passed check if each one is a 1D array.
-            # Save to file if that is the case. If multidimensional arrays are present,
-            # recursively call this method again for each array. This will lead to multiple
-            # individual files.
-            key_list = list(data)
-
-            array_1d_flag = True
-
-            data_traces = []
-            for entry in key_list:
-                data_traces.append(data[entry])
-                if data[entry].ndim > 1:
-                    trace_1d_flag = False
-
-            if array_1d_flag:
-                for entry in key_list:
-                    header = header + entry + delimiter
-
-                self.save_array_as_text(data=np.transpose(np.array(data_traces)), filename=filename,
-                                        filepath=filepath, precision=precision, header=header,
-                                        delimiter=delimiter, append=False)
-            else:
-                for entry in key_list:
-                    self.save_data(data={entry: data[entry]},
-                                   filepath=filepath,
-                                   parameters=parameters,
-                                   filename=filename[:-4] + '_' + entry + '.dat',
-                                   as_text=True, as_xml=False,
-                                   precision=precision, delimiter=delimiter)
+            self.log.error('Only saving of data as textfile is implemented. Filetype "{0}" is not '
+                           'supported yet. Saving as textfile.'.format(filetype))
+            self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
+                                    fmt=fmt, header=header, delimiter=delimiter, comments='#',
+                                    append=False)
 
         #--------------------------------------------------------------------------------------------
         # Save thumbnail figure of plot
@@ -533,46 +561,24 @@ class SaveLogic(GenericLogic):
             #----------------------------------------------------------------------------------
 
 
-    def save_array_as_text(self, data, filename, filepath=None, precision='%.3f', header='',
-                           delimiter='\t', append=False):
+    def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
+                           delimiter='\t', comments='#', append=False):
         """
-        An Independent method, which can save a 1D or 2D data array.
-
-        If you call this method but you are responsible, that the passed optional parameters are
-        correct.
+        An Independent method, which can save a 1D or 2D numpy.ndarray as textfile.
+        Can append to files.
         """
-        if data.ndim == 1:
-            delimiter = '\n'
-
-        # Add file extension ".dat" if not already present
-        if not filename.endswith('.dat'):
-            if '.' in filename:
-                filename = filename.rsplit('.', 1)[0]
-            filename = filename + '.dat'
-
-        # turn precision specifier into a proper format specifier
-        if precision.startswith(':'):
-            precision = precision.replace(':', '%')
-
-        # Check for string array and match precision specifier if necessary
-        if data.dtype.type == np.bytes_ or data.dtype.type == np.str_:
-            if 's' not in precision and 'S' not in precision:
-                precision = '%s'
-                self.log.warning('Tried to write string array to file but precision was '
-                                 'corresponding to a number format. Changed it to "%s".')
-
         # write to file. Append if requested.
         if append:
             with open(os.path.join(filepath, filename), 'ab') as file:
-                np.savetxt(file, data, fmt=precision, delimiter=delimiter, header=header,
-                           comments='#')
+                np.savetxt(file, data, fmt=fmt, delimiter=delimiter, header=header,
+                           comments=comments)
         else:
             with open(os.path.join(filepath, filename), 'wb') as file:
-                np.savetxt(file, data, fmt=precision, delimiter=delimiter, header=header,
-                           comments='#')
+                np.savetxt(file, data, fmt=fmt, delimiter=delimiter, header=header,
+                           comments=comments)
         return
 
-    def _save_array_as_xml(self):
+    def save_array_as_xml(self):
         """ Save data in xml conding. """
         pass
 #        if as_xml:
