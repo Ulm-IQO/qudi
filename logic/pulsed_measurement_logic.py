@@ -1008,12 +1008,12 @@ class PulsedMeasurementLogic(GenericLogic):
         @param with_error:
         @return:
         """
+        filepath = self._save_logic.get_path_for_module('PulsedMeasurement')
+        timestamp = datetime.datetime.now()
+
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
-        filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
-        timestamp = datetime.datetime.now()
-
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_laser_pulses'
         else:
@@ -1021,14 +1021,14 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         laser_trace = self.laser_data.astype(int)
-        data['Signal (counts)'] = laser_trace.transpose()
+        data['Signal (counts)\nLaser'.format()] = laser_trace.transpose()
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
 
-        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision='%d')
+        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters,
+                                   filepath=filepath, filelabel=filelabel, fmt='%d', delimiter='\t')
 
         #####################################################################
         ####                Save measurement data                        ####
@@ -1073,13 +1073,11 @@ class PulsedMeasurementLogic(GenericLogic):
         ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
         ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (a.u.)')
-        # ax1.set_xlim(self.plot_domain)
-        # ax1.set_ylim(self.plot_range)
         fig.tight_layout()
 
-        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, plotfig=fig, precision='%.12e')
-        plt.close(fig)
+        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters, fmt='%.15e',
+                                   filepath=filepath, filelabel=filelabel, delimiter='\t',
+                                   plotfig=fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####
@@ -1100,13 +1098,10 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
-        parameters['Controlled variable start'] = self.controlled_vals[0]
-        parameters['Controlled variable increment'] = (self.controlled_vals[-1] -
-                                                     self.controlled_vals[0]) / (
-                                                    len(self.controlled_vals) - 1)
+        parameters['Controlled variable values'] = list(self.controlled_vals)
 
-        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                   timestamp=timestamp, as_text=True, precision='%d')
+        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters, fmt='%d',
+                                   filepath=filepath, filelabel=filelabel, delimiter='\t')
         return
 
     def _compute_fft(self):

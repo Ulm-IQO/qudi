@@ -450,13 +450,11 @@ class WavemeterLoggerLogic(GenericLogic):
                                                     )
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
-                                   precision='%.6e'
-                                   )
+                                   fmt='%.6e')
 
         filelabel = 'wavemeter_log_wavelength'
 
@@ -474,13 +472,11 @@ class WavemeterLoggerLogic(GenericLogic):
                                                     )
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
-                                   precision='%.6e'
-                                   )
+                                   fmt='%.6e')
 
         filelabel = 'wavemeter_log_counts'
 
@@ -498,13 +494,11 @@ class WavemeterLoggerLogic(GenericLogic):
         parameters['Smooth Window Length (# of events)'] = self._counter_logic._smooth_window_length
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
-                                   precision='%.6e'
-                                   )
+                                   fmt='%.6e')
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
@@ -525,13 +519,12 @@ class WavemeterLoggerLogic(GenericLogic):
                                                     )
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
                                    plotfig=fig,
-                                   precision='%.6e')
+                                   fmt='%.6e')
         plt.close(fig)
         return 0
 

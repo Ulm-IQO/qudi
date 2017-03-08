@@ -443,9 +443,8 @@ class LaserScannerLogic(GenericLogic):
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._acqusition_start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision='%.6e')  # , as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters, fmt='%.6e',
+                                   filelabel=filelabel, timestamp=timestamp, delimiter='\t')
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan_wavemeter'
@@ -459,9 +458,8 @@ class LaserScannerLogic(GenericLogic):
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._acqusition_start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision='%.6e')  # , as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters, delimiter='\t',
+                                   filelabel=filelabel, timestamp=timestamp, fmt='%.6e')
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan_counts'
@@ -479,9 +477,8 @@ class LaserScannerLogic(GenericLogic):
         parameters['Oversampling (Samples)'] = self._counter_logic._counting_samples
         parameters['Smooth Window Length (# of events)'] = self._counter_logic._smooth_window_length
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision='%.6e')  # , as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters, fmt='%.6e',
+                                   filelabel=filelabel, timestamp=timestamp, delimiter='\t')
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 

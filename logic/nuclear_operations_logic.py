@@ -1164,29 +1164,25 @@ class NuclearOperationsLogic(GenericLogic):
         param['Start of measurement'] = self.start_time.strftime('%Y-%m-%d %H:%M:%S')
 
         self._save_logic.save_data(data1,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=param,
                                    filelabel=filelabel1,
-                                   timestamp=timestamp,
-                                   as_text=True)
+                                   timestamp=timestamp)
 
         self._save_logic.save_data(data2,
-                                   filepath,
+                                   filepath=filepath,
                                    filelabel=filelabel2,
-                                   timestamp=timestamp,
-                                   as_text=True)
+                                   timestamp=timestamp)
 
         self._save_logic.save_data(data4,
-                                   filepath,
+                                   filepath=filepath,
                                    filelabel=filelabel4,
-                                   timestamp=timestamp,
-                                   as_text=True)
+                                   timestamp=timestamp)
 
         # self._save_logic.save_data(data3,
-        #                            filepath,
+        #                            filepath=filepath,
         #                            filelabel=filelabel3,
-        #                            timestamp=timestamp,
-        #                            as_text=True)
+        #                            timestamp=timestamp)
 
         self.log.info('Nuclear Operation data saved to:\n{0}'.format(filepath))
 
