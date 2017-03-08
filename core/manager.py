@@ -921,7 +921,7 @@ class Manager(QtCore.QObject):
             return None
         for mbase in self.tree['loaded']:
             for mkey,target in self.tree['loaded'][mbase].items():
-                if (not hasattr(target, 'connector')):
+                if (not hasattr(target, 'connectors')):
                     logger.error('No connector in module .{0}.{1}!'.format(
                         mbase, mkey))
                     continue
