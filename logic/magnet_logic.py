@@ -2064,9 +2064,8 @@ class MagnetLogic(GenericLogic):
 
 
 
-        self._save_logic.save_data(matrix_data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp)
 
         self.log.debug('Magnet 2D data saved to:\n{0}'.format(filepath))
 
@@ -2091,9 +2090,8 @@ class MagnetLogic(GenericLogic):
 
 
 
-        self._save_logic.save_data(add_data, filepath,
-                                   filelabel=filelabel2, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(add_data, filepath=filepath, filelabel=filelabel2,
+                                   timestamp=timestamp)
         # save the data table
 
         count_data = self._2D_data_matrix
@@ -2119,34 +2117,30 @@ class MagnetLogic(GenericLogic):
 
         # making saveable dictionaries
 
-        self._save_logic.save_data(save_dict, filepath,
-                                   filelabel=filelabel3, timestamp=timestamp,
-                                   as_text=True, precision='%.6e')
+        self._save_logic.save_data(save_dict, filepath=filepath, filelabel=filelabel3,
+                                   timestamp=timestamp, fmt='%.6e')
         keys = self._2d_intended_fields[0].keys()
         intended_fields = OrderedDict()
         for key in keys:
             field_values = [coord_dict[key] for coord_dict in self._2d_intended_fields]
             intended_fields[key] = field_values
 
-        self._save_logic.save_data(intended_fields, filepath,
-                                   filelabel=filelabel4, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(intended_fields, filepath=filepath, filelabel=filelabel4,
+                                   timestamp=timestamp)
 
         measured_fields = OrderedDict()
         for key in keys:
             field_values = [coord_dict[key] for coord_dict in self._2d_measured_fields]
             measured_fields[key] = field_values
 
-        self._save_logic.save_data(measured_fields, filepath,
-                                   filelabel=filelabel5, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(measured_fields, filepath=filepath, filelabel=filelabel5,
+                                   timestamp=timestamp)
 
         error = OrderedDict()
         error['quadratic error'] = self._2d_error
 
-        self._save_logic.save_data(error, filepath,
-                                   filelabel=filelabel6, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(error, filepath=filepath, filelabel=filelabel6,
+                                   timestamp=timestamp)
 
     def _move_to_index(self, pathway_index, pathway):
 

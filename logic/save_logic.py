@@ -32,6 +32,7 @@ import numpy as np
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.util import units
+import matplotlib.pyplot as plt
 # Use the PDF backend to attach metadata
 from matplotlib.backends.backend_pdf import PdfPages
 # Use Pillow (active fork from PIL) to attach metadata to PNG files
@@ -339,6 +340,7 @@ class SaveLogic(GenericLogic):
         YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE SAVED TIME
         TRACE/MATRIX.
         """
+        start_time = time.time()
         # Create timestamp if none is present
         if timestamp is None:
             timestamp = datetime.datetime.now()
@@ -558,8 +560,11 @@ class SaveLogic(GenericLogic):
 
             # save the picture again, this time including the metadata
             png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
-            #----------------------------------------------------------------------------------
 
+            # close matplotlib figure
+            plt.close(plotfig)
+            self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
+            #----------------------------------------------------------------------------------
 
     def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
                            delimiter='\t', comments='#', append=False):

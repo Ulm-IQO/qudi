@@ -482,7 +482,7 @@ class SingleShotLogic(GenericLogic):
         np.save(meta_path,meta_data_dict)
         for key in meta_data_dict:
             meta_data_dict[key] = [meta_data_dict[key]]
-        self._save_logic.save_data(meta_data_dict, filepath, filelabel='meta_data')
+        self._save_logic.save_data(meta_data_dict, filepath=filepath, filelabel='meta_data')
 
 
         return
