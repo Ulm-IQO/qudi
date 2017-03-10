@@ -25,14 +25,10 @@ import fnmatch
 import importlib
 
 def print_connectors(moduledict):
-    for k,v in moduledict.items():
+    for k, v in moduledict.items():
         if k == 'in' and len(v) > 0:
             print('  IN:')
-            for conn in moduledict['in']:
-                print('    {}: {}'.format(conn[0], conn[1]))
-        if k == 'out' and len(v) > 0:
-            print('  OUT:')
-            for conn in moduledict['out']:
+            for conn in moduledict['conn']:
                 print('    {}: {}'.format(conn[0], conn[1]))
     print('')
 
@@ -62,7 +58,7 @@ def check_qudi_modules(filelist):
     from gui.guibase import GUIBase
     from logic.generic_logic import GenericLogic
     from logic.generic_task import InterruptableTask, PrePostTask
- 
+
     othererror = []
     importerror = []
     importsuccess = []
@@ -83,13 +79,11 @@ def check_qudi_modules(filelist):
                 try:
                     if issubclass(thing, GenericLogic) and thingname != 'GenericLogic':
                         d = {}
-                        d['in'] = [(i,v) for i,v in thing._in.items()]
-                        d['out'] = [(i,v) for i,v in thing._out.items()]
+                        d['conn'] = [(i,v) for i,v in thing._connectors.items()]
                         modules['logic']['{}.{}'.format(f, thingname)] = d
                     elif issubclass(thing, GUIBase) and thingname != 'GUIBase':
                         d = {}
-                        d['in'] = [(i,v) for i,v in thing._in.items()]
-                        d['out'] = [(i,v) for i,v in thing._out.items()]
+                        d['conn'] = [(i,v) for i,v in thing._connectors.items()]
                         modules['gui']['{}.{}'.format(f, thingname)] = d
                     elif issubclass(thing, InterruptableTask) and thingname != 'InterruptableTask' :
                         modules['itask']['{}.{}'.format(f, thingname)] = {'pause': [i for i in thing.pauseTasks]}
@@ -97,8 +91,7 @@ def check_qudi_modules(filelist):
                         modules['pptask']['{}.{}'.format(f, thingname)] = {}
                     elif issubclass(thing, Base) and thingname != 'Base' and thingname != 'GenericLogic' and thingname != 'GUIBase':
                         d = {}
-                        d['in'] = [(i,v) for i,v in thing._in.items()]
-                        d['out'] = [(i,v) for i,v in thing._out.items()]
+                        d['conn'] = [(i,v) for i,v in thing._connectors.items()]
                         modules['hardware']['{}.{}'.format(f, thingname)] = d
                     else:
                         pass
@@ -133,7 +126,7 @@ if __name__ == '__main__':
 
     for k,v in m['pptask'].items():
         print('PPTASK {}'.format(k))
-    
+
     for k,v in m['itask'].items():
         print('ITASK {}'.format(k))
         for pt in v['pause']:
