@@ -482,7 +482,7 @@ class TraceAnalysisLogic(GenericLogic):
             result = self._fit_logic.make_gaussian_fit(x_axis=axis,
                                                        data=data,
                                                        estimator=self._fit_logic.estimate_gaussian_peak,
-                                                       units=None  # TODO
+                                                       units=None,  # TODO
                                                        add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
