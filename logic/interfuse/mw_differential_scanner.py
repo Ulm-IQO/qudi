@@ -33,8 +33,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'confocalscanner': 'ConfocalScannerInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -67,7 +66,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])

@@ -28,8 +28,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
-    _in = {'confocalscanner1': 'ConfocalScannerInterface'}
-    _out = {'confocalscanner1': 'ConfocalScannerInterface'}
+    _connectors = {'confocalscanner1': 'ConfocalScannerInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -45,7 +44,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._scanning_device = self.get_connector('confocalscanner1')
 
         self.tilt_variable_ax = 1
         self.tilt_variable_ay = 1

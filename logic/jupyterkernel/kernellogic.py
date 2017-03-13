@@ -35,7 +35,6 @@ class QudiKernelLogic(GenericLogic):
     """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
-    _out = {'kernel': 'QudiKernelLogic'}
 
     sigStartKernel = QtCore.Signal(str)
     sigStopKernel = QtCore.Signal(int)

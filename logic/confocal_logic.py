@@ -254,11 +254,10 @@ class ConfocalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {
+    _connectors = {
         'confocalscanner1': 'ConfocalScannerInterface',
         'savelogic': 'SaveLogic'
         }
-    _out = {'scannerlogic': 'ConfocalLogic'}
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -304,8 +303,8 @@ class ConfocalLogic(GenericLogic):
 
         @param e: error code
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._scanning_device = self.get_connector('confocalscanner1')
+        self._save_logic = self.get_connector('savelogic')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -672,7 +671,7 @@ class ConfocalLogic(GenericLogic):
 
         for i, ch in enumerate(self.get_scanner_axes()):
             pos_dict[ch_array[i]] = pos_array[i]
- 
+
         self._scanning_device.scanner_set_position(**pos_dict)
         return 0
 
@@ -728,7 +727,7 @@ class ConfocalLogic(GenericLogic):
 
         try:
             if self._scan_counter == 0:
-                # make a line from the current cursor position to 
+                # make a line from the current cursor position to
                 # the starting position of the first scan line of the scan
                 rs = self.return_slowness
                 lsx = np.linspace(self._current_x, image[self._scan_counter, 0, 0], rs)
@@ -797,7 +796,7 @@ class ConfocalLogic(GenericLogic):
                     image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
                         np.ones(self._return_YL.shape) * self._current_a
                         ])
- 
+
             # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
             if np.any(return_line_counts == -1):

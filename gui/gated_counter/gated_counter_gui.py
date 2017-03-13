@@ -53,7 +53,7 @@ class GatedCounterGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'gatedcounterlogic1': 'GatedCounterLogic',
+    _connectors = {'gatedcounterlogic1': 'GatedCounterLogic',
            'traceanalysislogic1': 'TraceAnalysisLogic'}
 
 
@@ -81,8 +81,8 @@ class GatedCounterGui(GUIBase):
                          had happened.
         """
 
-        self._counter_logic = self.get_in_connector('gatedcounterlogic1')
-        self._trace_analysis = self.get_in_connector('traceanalysislogic1')
+        self._counter_logic = self.get_connector('gatedcounterlogic1')
+        self._trace_analysis = self.get_connector('traceanalysislogic1')
 
         self._mw = GatedCounterMainWindow()
         self._mw.centralwidget.hide()

@@ -36,10 +36,10 @@ class OptimizerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'confocalscanner1': 'ConfocalScannerInterface',
-           'fitlogic': 'FitLogic'
-           }
-    _out = {'optimizerlogic': 'OptimizerLogic'}
+    _connectors = {
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'fitlogic': 'FitLogic'
+    }
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -82,8 +82,8 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._scanning_device = self.get_connector('confocalscanner1')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
