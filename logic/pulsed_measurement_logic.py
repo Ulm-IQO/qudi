@@ -208,13 +208,6 @@ class PulsedMeasurementLogic(GenericLogic):
             self.show_laser_index = self._statusVariables['show_laser_index']
         if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
             self.fc.load_from_dict(self._statusVariables['fits'])
-        else:
-            d1 = OrderedDict()
-            d1['Lorentzian dip'] = {'fit_function': 'lorentzoffset', 'estimator': 'dip'}
-            d1['Two Lorentzian dips'] = {'fit_function': 'doublelorentzoffset', 'estimator': 'dip'}
-            default_fits = OrderedDict()
-            default_fits['1d'] = d1
-            self.fc.load_from_dict(default_fits)
 
         # Check and configure pulse generator
         self.pulse_generator_off()
