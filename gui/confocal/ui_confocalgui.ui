@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1348</width>
-    <height>1402</height>
+    <width>1403</width>
+    <height>1362</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -27,7 +27,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1348</width>
+     <width>1403</width>
      <height>30</height>
     </rect>
    </property>
@@ -257,56 +257,6 @@
           <bool>false</bool>
          </property>
         </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_14">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QPushButton" name="depth_rotate_anticlockwise_PushButton">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="icon">
-            <iconset>
-             <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</iconset>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="depth_rotate_clockwise_PushButton">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="icon">
-            <iconset>
-             <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</iconset>
-           </property>
-           <property name="checkable">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
        </item>
       </layout>
      </item>
@@ -1252,7 +1202,7 @@
         </widget>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0,0">
+        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0">
          <item>
           <widget class="QComboBox" name="xy_channel_ComboBox"/>
          </item>
@@ -1421,50 +1371,6 @@
             <bool>false</bool>
            </property>
           </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_6">
-           <item>
-            <widget class="QPushButton" name="xy_rotate_anticlockwise_PushButton">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="icon">
-              <iconset>
-               <normaloff>../../artwork/icons/oxygen/16x16/object-rotate-left.png</normaloff>../../artwork/icons/oxygen/16x16/object-rotate-left.png</iconset>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="xy_rotate_clockwise_PushButton">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="icon">
-              <iconset>
-               <normaloff>../../artwork/icons/oxygen/16x16/object-rotate-right.png</normaloff>../../artwork/icons/oxygen/16x16/object-rotate-right.png</iconset>
-             </property>
-            </widget>
-           </item>
-          </layout>
          </item>
         </layout>
        </item>
@@ -2298,8 +2204,6 @@
   <tabstop>xy_cb_min_DoubleSpinBox</tabstop>
   <tabstop>xy_cb_centiles_RadioButton</tabstop>
   <tabstop>xy_cb_manual_RadioButton</tabstop>
-  <tabstop>xy_rotate_anticlockwise_PushButton</tabstop>
-  <tabstop>xy_rotate_clockwise_PushButton</tabstop>
   <tabstop>depth_cb_max_DoubleSpinBox</tabstop>
   <tabstop>depth_cb_high_percentile_DoubleSpinBox</tabstop>
   <tabstop>depth_cb_ViewWidget</tabstop>
@@ -2307,8 +2211,6 @@
   <tabstop>depth_cb_min_DoubleSpinBox</tabstop>
   <tabstop>depth_cb_centiles_RadioButton</tabstop>
   <tabstop>depth_cb_manual_RadioButton</tabstop>
-  <tabstop>depth_rotate_anticlockwise_PushButton</tabstop>
-  <tabstop>depth_rotate_clockwise_PushButton</tabstop>
   <tabstop>tilt_set_01_pushButton</tabstop>
   <tabstop>tilt_set_02_pushButton</tabstop>
   <tabstop>tilt_set_03_pushButton</tabstop>
