@@ -111,10 +111,10 @@ class PulsedMasterLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-           }
-    _out = {'pulsedmasterlogic': 'PulsedMasterLogic'}
+    _connectors = {
+        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic',
+    }
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
@@ -148,8 +148,8 @@ class PulsedMasterLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self._measurement_logic = self.get_in_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
+        self._generator_logic = self.get_connector('sequencegeneratorlogic')
 
         # Recall status variables
         if 'invoke_settings' in self._statusVariables:

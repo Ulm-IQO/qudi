@@ -31,9 +31,6 @@ class PiPWM(Base, ProcessControlInterface):
     _modclass = 'ProcessControlInterface'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'pwm': 'ProcessControlInterface'}
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

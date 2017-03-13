@@ -33,7 +33,7 @@ class NotebookWebView(GUIBase):
     _modclass = 'NotebookWebView'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'notebooklogic': 'NotebookLogic'}
+    _connectors = {'notebooklogic': 'NotebookLogic'}
 
     def on_activate(self, e):
         """ Initializes all needed UI files and establishes the connectors.

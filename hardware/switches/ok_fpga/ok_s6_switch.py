@@ -43,8 +43,6 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     """
     _modclass = 'HardwareSwitchFpga'
     _modtype = 'hardware'
-    # declare connectors
-    _out = {'hardwareswitch': 'HardwareSwitchFpga'}
 
     def on_activate(self, e):
         """ Connect and configure the access to the FPGA.

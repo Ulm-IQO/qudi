@@ -41,9 +41,6 @@ class Magnet(Base, MagnetInterface):
     _modtype = 'Magnet'
     _modclass = 'hardware'
 
-    _out = {'magnetstage': 'magnet_interface'}
-
-
     def __init__(self, **kwargs):
         """Here the connections to the power supplies and to the counter are established"""
         super().__init__(**kwargs)

@@ -124,9 +124,6 @@ class SaveLogic(GenericLogic):
     _modclass = 'savelogic'
     _modtype = 'logic'
 
-    # declare connectors
-    _out = {'savelogic': 'SaveLogic'}
-
     # Matplotlib style definition for saving plots
     mpl_qd_style = {'axes.prop_cycle': cycler('color', ['#1f17f4',
                                                         '#ffa40e',

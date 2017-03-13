@@ -156,7 +156,7 @@ class PulsedMeasurementGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'pulsedmasterlogic': 'PulsedMasterLogic',
+    _connectors = {'pulsedmasterlogic': 'PulsedMasterLogic',
            'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):
@@ -182,8 +182,8 @@ class PulsedMeasurementGui(GUIBase):
         Establish general connectivity and activate the different tabs of the
         GUI.
         """
-        self._pulsed_master_logic = self.get_in_connector('pulsedmasterlogic')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._pulsed_master_logic = self.get_connector('pulsedmasterlogic')
+        self._save_logic = self.get_connector('savelogic')
 
         self._mw = PulsedMeasurementMainWindow()
         self._pa = PulseAnalysisTab()

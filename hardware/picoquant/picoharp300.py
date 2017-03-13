@@ -94,11 +94,6 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     _modclass = 'PicoHarp300'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'picocounter': 'PicoHarp300',
-            'counter': 'SlowCounterInterface'
-            }
-
     sigReadoutPicoharp = QtCore.Signal()
     sigAnalyzeData = QtCore.Signal(object, object)
     sigStart = QtCore.Signal()
@@ -1029,7 +1024,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         #FIXME: make the counter channel chooseable in config
         #FIXME: add second photon source either to config or in a better way to file
         return 0
- 
+
     def get_counter_channels(self):
         """ Return one counter channel. """
         return ['Ctr0']

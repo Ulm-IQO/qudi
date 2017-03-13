@@ -51,7 +51,7 @@ class QdplotterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'qdplotlogic1': 'QdplotLogic'}
+    _connectors = {'qdplotlogic1': 'QdplotLogic'}
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -78,7 +78,7 @@ class QdplotterGui(GUIBase):
                          had happened.
         """
 
-        self._qdplot_logic = self.get_in_connector('qdplotlogic1')
+        self._qdplot_logic = self.get_connector('qdplotlogic1')
 
         #####################
         # Configuring the dock widgets
