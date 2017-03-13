@@ -572,6 +572,8 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self.update_depth_cb_range)
         self._scanning_logic.signal_history_event.connect(self._mw.xy_ViewWidget.autoRange)
         self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
+        self._scanning_logic.signal_history_event.connect(self.reset_xy_imagerange)
+        self._scanning_logic.signal_history_event.connect(self.reset_depth_imagerange)
 
         # Get initial tilt correction values
         self._mw.action_TiltCorrection.setChecked(
@@ -670,10 +672,6 @@ class ConfocalGui(GUIBase):
 
         self._mw.depth_ViewWidget.sigMouseClick.connect(self.depth_scan_start_zoom_point)
         self._mw.depth_ViewWidget.sigMouseReleased.connect(self.depth_scan_end_zoom_point)
-
-        # Check whenever a state of the ViewBox was changed inside of a
-        # PlotWidget, which creates a xy_ViewWidget or a depth_Viewwidget:
-        #self._mw.xy_ViewWidget.getViewBox().sigRangeChanged.connect(self.reset_xy_imagerange)
 
         ###################################################################
         #               Icons for the scan actions                        #
@@ -2112,27 +2110,25 @@ class ConfocalGui(GUIBase):
         # second time is really needed, otherwisa zooming will not work for the first time
         viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
 
-    def reset_xy_imagerange(self, viewbox):
+    def reset_xy_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
 
         Take the image range values directly from the scanned image and set
-        them as the current image ranges. This method is only applied if the
-        zoom button is pressed.
+        them as the current image ranges.
         """
-        if (viewbox.state['autoRange'][0] is True) and (self._mw.action_zoom.isChecked()):
-            # extract the range directly from the image:
-            xMin = self._scanning_logic.xy_image[0, 0, 0]
-            yMin = self._scanning_logic.xy_image[0, 0, 1]
-            xMax = self._scanning_logic.xy_image[-1, -1, 0]
-            yMax = self._scanning_logic.xy_image[-1, -1, 1]
+        # extract the range directly from the image:
+        xMin = self._scanning_logic.xy_image[0, 0, 0]
+        yMin = self._scanning_logic.xy_image[0, 0, 1]
+        xMax = self._scanning_logic.xy_image[-1, -1, 0]
+        yMax = self._scanning_logic.xy_image[-1, -1, 1]
 
-            self._mw.x_min_InputWidget.setValue(xMin)
-            self._mw.x_max_InputWidget.setValue(xMax)
-            self.change_x_image_range()
+        self._mw.x_min_InputWidget.setValue(xMin)
+        self._mw.x_max_InputWidget.setValue(xMax)
+        self.change_x_image_range()
 
-            self._mw.y_min_InputWidget.setValue(yMin)
-            self._mw.y_max_InputWidget.setValue(yMax)
-            self.change_y_image_range()
+        self._mw.y_min_InputWidget.setValue(yMin)
+        self._mw.y_max_InputWidget.setValue(yMax)
+        self.change_y_image_range()
 
     def depth_scan_start_zoom_point(self, event):
         """ Get the mouse coordinates if the mouse button was pressed.
@@ -2202,27 +2198,25 @@ class ConfocalGui(GUIBase):
         # second time is really needed, otherwisa zooming will not work for the first time
         viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
 
-    def reset_depth_imagerange(self, viewbox):
+    def reset_depth_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
 
         Take the image range values directly from the scanned image and set
-        them as the current image ranges. This method is only applied if the
-        zoom button is pressed.
+        them as the current image ranges.
         """
-        if (viewbox.state['autoRange'][0] is True) and (self._mw.action_zoom.isChecked()):
-            # extract the range directly from the image:
-            xMin = self._scanning_logic.depth_image[0, 0, 0]
-            zMin = self._scanning_logic.depth_image[0, 0, 2]
-            xMax = self._scanning_logic.depth_image[-1, -1, 0]
-            zMax = self._scanning_logic.depth_image[-1, -1, 2]
+        # extract the range directly from the image:
+        xMin = self._scanning_logic.depth_image[0, 0, 0]
+        zMin = self._scanning_logic.depth_image[0, 0, 2]
+        xMax = self._scanning_logic.depth_image[-1, -1, 0]
+        zMax = self._scanning_logic.depth_image[-1, -1, 2]
 
-            self._mw.x_min_InputWidget.setValue(xMin)
-            self._mw.x_max_InputWidget.setValue(xMax)
-            self.change_x_image_range()
+        self._mw.x_min_InputWidget.setValue(xMin)
+        self._mw.x_max_InputWidget.setValue(xMax)
+        self.change_x_image_range()
 
-            self._mw.z_min_InputWidget.setValue(zMin)
-            self._mw.z_max_InputWidget.setValue(zMax)
-            self.change_z_image_range()
+        self._mw.z_min_InputWidget.setValue(zMin)
+        self._mw.z_max_InputWidget.setValue(zMax)
+        self.change_z_image_range()
 
     def _set_scan_icons(self):
         """ Set the scan icons depending on whether loop-scan is active or not
