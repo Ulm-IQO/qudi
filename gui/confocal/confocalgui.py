@@ -2038,11 +2038,11 @@ class ConfocalGui(GUIBase):
         # of readability it is better to use the direct attributes from the
         # ViewWidgets and pass them to setDragMode.
         if is_checked:
-            self._mw.xy_ViewWidget.setDragMode(self._mw.xy_ViewWidget.RubberBandDrag)
-            self._mw.depth_ViewWidget.setDragMode(self._mw.xy_ViewWidget.RubberBandDrag)
+            self.xy_image.getViewBox().setLeftButtonAction('rect')
+            self.depth_image.getViewBox().setLeftButtonAction('rect')
         else:
-            self._mw.xy_ViewWidget.setDragMode(self._mw.xy_ViewWidget.NoDrag)
-            self._mw.depth_ViewWidget.setDragMode(self._mw.xy_ViewWidget.NoDrag)
+            self.xy_image.getViewBox().setLeftButtonAction('pan')
+            self.depth_image.getViewBox().setLeftButtonAction('pan')
 
     def xy_scan_start_zoom_point(self, event):
         """ Get the mouse coordinates if the mouse button was pressed.
