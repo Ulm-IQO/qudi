@@ -805,7 +805,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(asset_names_list)
         return
 
-    def load_asset_into_channels(self, asset_name, load_dict={}):
+    def load_asset_into_channels(self, asset_name, load_dict=None):
         """
 
         @param asset_name:
