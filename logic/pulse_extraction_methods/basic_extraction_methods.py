@@ -245,15 +245,15 @@ def ungated_threshold(self, count_data):
     laser_y = []
     excep=0
 
-    for ii in range(len(count_data)):
+    for index, count_bin in enumerate(count_data):
 
-            if count_data[ii] >= self.count_treshold:
-                x_data.append(ii)
-                y_data.append(count_data[ii])
+            if count_bin >= self.count_treshold:
+                x_data.append(index)
+                y_data.append(count_bin)
             else:
                 if excep < self.threshold_tolerance_bins:
-                    x_data.append(ii)
-                    y_data.append(count_data[ii])
+                    x_data.append(index)
+                    y_data.append(count_bin)
                     excep += 1
                 elif len(x_data) > self.min_laser_length:
                     laser_x.append(np.array(x_data))
@@ -268,15 +268,15 @@ def ungated_threshold(self, count_data):
 
     # find the longest laser pulse
     length = np.zeros(len(laser_y))
-    for jj in range(len(laser_y)):
-        length[jj] = len(laser_y[jj])
+    for laser_index, laser_step in enumerate(laser_y):
+        length[laser_index] = len(laser_step)
     longest = np.max(length)
 
     # symmetrize all pulses so that they have the same length
-    for jj in range(len(laser_y)):
-        while len(laser_y[jj]) < longest:
-            laser_x[jj] = np.append(laser_x[jj], laser_x[jj][-1]+1)
-            laser_y[jj] = np.append(laser_y[jj], laser_y[jj][-1])
+    for laser_index, laser_step in enumerate(laser_y):
+        while len(laser_step) < longest:
+            laser_x[laser_index] = np.append(laser_x[laser_index], laser_x[laser_index][-1]+1)
+            laser_y[laser_index] = np.append(laser_step, laser_step[-1])
 
     laser_arr = np.asarray(laser_y)
     rising_ind = np.array([i[0] for i in laser_x])
