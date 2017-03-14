@@ -194,8 +194,8 @@ class PulsedExtractionExternalGui(GUIBase):
         self._mw.number_pulses_lcdNumber.display(len(self.laser_y))
         self._mw.choose_laserpulse_ComboBox.clear()
         self._mw.choose_laserpulse_ComboBox.addItem('sum')
-        for laserindex in range(len(self.laser_y)):
-            	self._mw.choose_laserpulse_ComboBox.addItem(str(laserindex+1))
+        for index, laser in enumerate(self.laser_y):
+            self._mw.choose_laserpulse_ComboBox.addItem(str(index+1))
         self.plot_just_laser()
         longest=self._epe_logic.length_laser_pulses(self.laser_y)
         self._mw.length_pulse_lcdNumber.display(longest)

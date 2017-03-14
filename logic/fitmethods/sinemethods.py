@@ -243,7 +243,7 @@ def estimate_sine(self, x_axis, data, params):
 
     # if at least two identical values are in the array, then the difference is of course zero,
     # catch that case.
-    for tries in range(len(diff_array)):
+    for tries, diff_array_step in enumerate(diff_array):
         if np.isclose(min_x_diff, 0.0, atol=1e-12):
             index = np.argmin(diff_array)
             diff_array = np.delete(diff_array, index)
