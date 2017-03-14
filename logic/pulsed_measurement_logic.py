@@ -609,7 +609,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self._pulse_generator_device.has_sequence_mode()
 
-    def load_asset(self, asset_name, load_dict={}):
+    def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
         Emmits a signal that the current sequence/ensemble (asset) has changed.
 
