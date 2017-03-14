@@ -332,7 +332,7 @@ class SingleShotLogic(GenericLogic):
     # =========================================================================
 
     # TODO make more general for other devices
-    def do_singleshot(self, mw_dict={}, refocus=True, laser_wfm='LaserOn', singleshot_wfm='SSR_normalise_2MW',
+    def do_singleshot(self, mw_dict=None, refocus=True, laser_wfm='LaserOn', singleshot_wfm='SSR_normalise_2MW',
                       normalized=True):
         """
         For additional microwave usage this assumes an external signal generator. Could be also done with an
