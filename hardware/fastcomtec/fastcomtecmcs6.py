@@ -246,7 +246,7 @@ class FastComtec(Base, FastCounterInterface):
         no_of_bins = int(record_length_FastComTech_s / self.set_binwidth(bin_width_s))
         self.set_length(no_of_bins)
 
-        if not filename is None:
+        if filename is not None:
             self._change_filename(filename)
         return (self.get_binwidth(), record_length_FastComTech_s, None)
 
