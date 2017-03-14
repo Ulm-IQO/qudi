@@ -2205,7 +2205,7 @@ class MagnetLogic(GenericLogic):
 
         @return dict: Dictionary with new values
         """
-        if param_list==None:
+        if param_list is None:
             return self.move_rel
         else:
             dict={}
