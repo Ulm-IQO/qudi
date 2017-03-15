@@ -213,11 +213,8 @@ class SpectrumLogic(GenericLogic):
 
         # Save to file
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
-                                   as_text=True,
-                                   plotfig=fig
-                                   )
-        plt.close(fig)
+                                   plotfig=fig)
         self.log.debug('Spectrum saved to:\n{0}'.format(filepath))

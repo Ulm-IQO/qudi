@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 from collections import OrderedDict
 from copy import copy
-from datetime import datetime
+import time
+import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -848,10 +849,8 @@ class ConfocalLogic(GenericLogic):
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
-        save_time = datetime.now()
-
-        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-
+        filepath = self._save_logic.get_path_for_module('Confocal')
+        timestamp = datetime.datetime.now()
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
@@ -869,51 +868,41 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
-
         # Prepare a figure to be saved
         figure_data = self.xy_image[:, :, 3]
-        image_extent = [
-            self.image_x_range[0],
-            self.image_x_range[1],
-            self.image_y_range[0],
-            self.image_y_range[1]
-            ]
+        image_extent = [self.image_x_range[0],
+                        self.image_x_range[1],
+                        self.image_y_range[0],
+                        self.image_y_range[1]]
         axes = ['X', 'Y']
         crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
-        figs = {
-            ch: self.draw_figure(
-                    data=self.xy_image[:, :, 3 + n],
-                    image_extent=image_extent,
-                    scan_axis=axes,
-                    cbar_range=colorscale_range,
-                    percentile_range=percentile_range,
-                    crosshair_pos=crosshair_pos
-                )
-            for n, ch in enumerate(self.get_scanner_count_channels())
-            }
+        figs = {ch: self.draw_figure(data=self.xy_image[:, :, 3 + n],
+                                     image_extent=image_extent,
+                                     scan_axis=axes,
+                                     cbar_range=colorscale_range,
+                                     percentile_range=percentile_range,
+                                     crosshair_pos=crosshair_pos)
+                for n, ch in enumerate(self.get_scanner_count_channels())}
 
         # Save the image data and figure
         for n, ch in enumerate(self.get_scanner_count_channels()):
             # data for the text-array "image":
             image_data = OrderedDict()
             image_data['Confocal pure XY scan image data without axis.\n'
-                '# The upper left entry represents the signal at the upper left pixel position.\n'
-                '# A pixel-line in the image corresponds to a row '
+                'The upper left entry represents the signal at the upper left pixel position.\n'
+                'A pixel-line in the image corresponds to a row '
                 'of entries where the Signal is in counts/s:'] = self.xy_image[:, :, 3 + n]
 
             filelabel = 'confocal_xy_image_{0}'.format(ch.replace('/', ''))
-            self._save_logic.save_data(
-                image_data,
-                filepath,
-                parameters=parameters,
-                filelabel=filelabel,
-                as_text=True,
-                timestamp=save_time,
-                precision=':.3e',
-                plotfig=figs[ch]
-                )
-            plt.close(figs[ch])
+            self._save_logic.save_data(image_data,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       plotfig=figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -926,18 +915,17 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_xy_data'
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True,
-            precision=':.3e',
-            timestamp=save_time
-            )
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
 
-        self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.log.debug('Confocal Image saved.')
         self.signal_xy_data_saved.emit()
+        return
 
     def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
@@ -947,10 +935,8 @@ class ConfocalLogic(GenericLogic):
 
         The second file saves the full raw data with x, y, z, and counts at every pixel.
         """
-        save_time = datetime.now()
-
-        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-
+        filepath = self._save_logic.get_path_for_module('Confocal')
+        timestamp = datetime.datetime.now()
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
@@ -979,46 +965,37 @@ class ConfocalLogic(GenericLogic):
             axes = ['Y', 'Z']
             crosshair_pos = [self.get_position()[1], self.get_position()[2]]
 
-        image_extent = [
-            horizontal_range[0],
-            horizontal_range[1],
-            self.image_z_range[0],
-            self.image_z_range[1]
-            ]
+        image_extent = [horizontal_range[0],
+                        horizontal_range[1],
+                        self.image_z_range[0],
+                        self.image_z_range[1]]
 
-        figs = {
-            ch: self.draw_figure(
-                    data=self.depth_image[:, :, 3 + n],
-                    image_extent=image_extent,
-                    scan_axis=axes,
-                    cbar_range=colorscale_range,
-                    percentile_range=percentile_range,
-                    crosshair_pos=crosshair_pos
-                )
-            for n, ch in enumerate(self.get_scanner_count_channels())
-            }
+        figs = {ch: self.draw_figure(data=self.depth_image[:, :, 3 + n],
+                                     image_extent=image_extent,
+                                     scan_axis=axes,
+                                     cbar_range=colorscale_range,
+                                     percentile_range=percentile_range,
+                                     crosshair_pos=crosshair_pos)
+                for n, ch in enumerate(self.get_scanner_count_channels())}
 
         # Save the image data and figure
         for n, ch in enumerate(self.get_scanner_count_channels()):
             # data for the text-array "image":
             image_data = OrderedDict()
             image_data['Confocal pure depth scan image data without axis.\n'
-                '# The upper left entry represents the signal at the upper left pixel position.\n'
-                '# A pixel-line in the image corresponds to a row in '
+                'The upper left entry represents the signal at the upper left pixel position.\n'
+                'A pixel-line in the image corresponds to a row in '
                 'of entries where the Signal is in counts/s:'] = self.depth_image[:, :, 3 + n]
 
             filelabel = 'confocal_depth_image_{0}'.format(ch.replace('/', ''))
-            self._save_logic.save_data(
-                image_data,
-                filepath,
-                parameters=parameters,
-                filelabel=filelabel,
-                as_text=True,
-                timestamp=save_time,
-                precision=':.3e',
-                plotfig=figs[ch]
-                )
-            plt.close(figs[ch])
+            self._save_logic.save_data(image_data,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       plotfig=figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -1031,18 +1008,17 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_depth_data'
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True,
-            precision=':.3e',
-            timestamp=save_time
-            )
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
 
-        self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.log.debug('Confocal Image saved.')
         self.signal_depth_data_saved.emit()
+        return
 
     def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.

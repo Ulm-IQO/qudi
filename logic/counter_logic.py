@@ -332,9 +332,8 @@ class CounterLogic(GenericLogic):
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
             fig = self.draw_figure(data=np.array(self._data_to_save))
-            self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel,
-                                       as_text=True, plotfig=fig)
-            plt.close(fig)
+            self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
+                                       filelabel=filelabel, plotfig=fig, delimiter='\t')
             self.log.info('Counter Trace saved to:\n{0}'.format(filepath))
 
         self.sigSavingStatusChanged.emit(self._saving)
@@ -553,12 +552,8 @@ class CounterLogic(GenericLogic):
         parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
 
         filepath = self._save_logic.get_path_for_module(module_name='Counter')
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, delimiter='\t')
 
         self.log.debug('Current Counter Trace saved to: {0}'.format(filepath))
         return data, filepath, parameters, filelabel
