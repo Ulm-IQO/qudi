@@ -889,9 +889,9 @@ class ODMRLogic(GenericLogic):
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
         matrix_data = self.ODMR_plot_xy  # the data in the matrix plot
-        data['frequency values (Hz)'] = freq_data
-        data['count data (counts/s)'] = count_data
-        data2['count data (counts/s)'] = matrix_data  # saves the raw data used in the matrix NOT all only the size of the matrix
+        data['frequency values (Hz)'] = np.array(freq_data)
+        data['count data (counts/s)'] = np.array(count_data)
+        data2['count data (counts/s)'] = np.array(matrix_data)  # saves the raw data used in the matrix NOT all only the size of the matrix
 
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.mw_power
@@ -914,36 +914,29 @@ class ODMRLogic(GenericLogic):
                                percentile_range=percentile_range
                                )
 
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            timestamp=timestamp,
-            plotfig=fig,
-            as_text=True)
-        plt.close(fig)
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp,
+                                   plotfig=fig)
 
-        self._save_logic.save_data(
-            data2,
-            filepath2,
-            parameters=parameters,
-            filelabel=filelabel2,
-            timestamp=timestamp,
-            as_text=True)
+        self._save_logic.save_data(data2,
+                                   filepath=filepath2,
+                                   parameters=parameters,
+                                   filelabel=filelabel2,
+                                   timestamp=timestamp)
 
         self.log.info('ODMR data saved to:\n{0}'.format(filepath))
 
         if self.saveRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
-            data3['count data'] = raw_data  # saves the raw data, ALL of it so keep an eye on performance
-            self._save_logic.save_data(
-                data3,
-                filepath3,
-                parameters=parameters,
-                filelabel=filelabel3,
-                timestamp=timestamp,
-                as_text=True)
+            data3['count data'] = np.array(raw_data)  # saves the raw data, ALL of it so keep an eye on performance
+            self._save_logic.save_data(data3,
+                                       filepath=filepath3,
+                                       parameters=parameters,
+                                       filelabel=filelabel3,
+                                       timestamp=timestamp)
 
             self.log.info('Raw data succesfully saved.')
         else:

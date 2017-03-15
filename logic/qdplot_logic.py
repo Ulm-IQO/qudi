@@ -216,11 +216,10 @@ class QdplotLogic(GenericLogic):
 
         # Call save logic to write everything to file
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
-                                   as_text=True,
-                                   plotfig=fig
-                                   )
+                                   plotfig=fig,
+                                   delimiter='\t')
         plt.close(fig)
         self.log.debug('Data saved to:\n{0}'.format(filepath))

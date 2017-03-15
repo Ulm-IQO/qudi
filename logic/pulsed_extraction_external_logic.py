@@ -156,14 +156,8 @@ class PulsedExtractionExternalLogic(GenericLogic):
         filelabel='result'
         filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
-        self._save_logic.save_data(data,
-                                       filepath,
-                                       parameters=parameters,
-                                       filelabel=filelabel,
-                                       as_text=True,
-                                       plotfig=fig
-                                       )
-        plt.close(fig)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, plotfig=fig, delimiter='\t')
 
         return self._data_to_save, parameters
 
