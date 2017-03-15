@@ -505,7 +505,11 @@ def estimate_gaussianlinearoffset_peak(self, x_axis, data, params):
     # subtract the result and perform again a linear fit:
     data_subtracted = data - res_ordinary_gauss.best_fit
 
-    res_linear = self.make_linear_fit(x_axis=x_axis, data=data_subtracted)
+    res_linear = self.make_linear_fit(
+        x_axis=x_axis,
+        data=data_subtracted,
+        estimator=self.estimate_linear
+    )
 
     # this way works much better than performing at first a linear fit,
     # subtracting the fit and make an ordinary gaussian fit. Especially for a
