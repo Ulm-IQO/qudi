@@ -119,7 +119,7 @@ class GatedCounterGui(GUIBase):
         self._mw.hist_bins_Slider.setSingleStep(1)
 
         # set the counting mode in the logic:
-        self._counter_logic.set_counting_mode('finite-gated')
+        self._counter_logic.set_counting_mode('FINITE_GATED')
 
         # Setting default parameters
         self._mw.count_length_SpinBox.setValue(self._counter_logic.get_count_length())
