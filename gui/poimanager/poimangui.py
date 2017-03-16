@@ -659,15 +659,15 @@ class PoiManagerGui(GUIBase):
             if key is not 'crosshair' and key is not 'sample':
                 poi_list_empty = False
                 self._mw.active_poi_ComboBox.addItem(
-                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                    self._poi_manager_logic.poi_list[key].get_name(), key)
                 self._mw.offset_anchor_ComboBox.addItem(
-                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                    self._poi_manager_logic.poi_list[key].get_name(), key)
                 self._rrd.ref_a_poi_ComboBox.addItem(
-                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                    self._poi_manager_logic.poi_list[key].get_name(), key)
                 self._rrd.ref_b_poi_ComboBox.addItem(
-                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                    self._poi_manager_logic.poi_list[key].get_name(), key)
                 self._rrd.ref_c_poi_ComboBox.addItem(
-                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                    self._poi_manager_logic.poi_list[key].get_name(), key)
 
         # If list is empty, reset selected POI pointer
         if poi_list_empty:
@@ -808,7 +808,7 @@ class PoiManagerGui(GUIBase):
     def _redraw_sample_shift(self):
 
         # Get trace data and calculate shifts in x,y,z
-        poi_trace = self._poi_manager_logic.get_trace(poikey='sample')
+        poi_trace = self._poi_manager_logic.poi_list['sample'].get_position_history()
 
         # If duration display is checked, subtract initial time and convert to
         # mins or hours as appropriate
@@ -858,7 +858,7 @@ class PoiManagerGui(GUIBase):
                     # Create Region of Interest as marker:
                     marker = PoiMark(
                         position,
-                        poi=self._poi_manager_logic.track_point_list[key],
+                        poi=self._poi_manager_logic.poi_list[key],
                         click_action=self.select_poi_from_marker,
                         movable=False,
                         scaleSnap=False,
@@ -947,9 +947,9 @@ class PoiManagerGui(GUIBase):
         ref_c_key = self._rrd.ref_c_poi_ComboBox.itemData(self._rrd.ref_c_poi_ComboBox.currentIndex())
 
         # Get the old coords for these refs
-        ref_a_coords = np.array(self._poi_manager_logic.track_point_list[ref_a_key].get_coords_in_sample())
-        ref_b_coords = np.array(self._poi_manager_logic.track_point_list[ref_b_key].get_coords_in_sample())
-        ref_c_coords = np.array(self._poi_manager_logic.track_point_list[ref_c_key].get_coords_in_sample())
+        ref_a_coords = np.array(self._poi_manager_logic.poi_list[ref_a_key].get_coords_in_sample())
+        ref_b_coords = np.array(self._poi_manager_logic.poi_list[ref_b_key].get_coords_in_sample())
+        ref_c_coords = np.array(self._poi_manager_logic.poi_list[ref_c_key].get_coords_in_sample())
 
         ref_a_newpos = np.array([self._rrd.ref_a_x_pos_DoubleSpinBox.value(),
                                  self._rrd.ref_a_y_pos_DoubleSpinBox.value(),

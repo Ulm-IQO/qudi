@@ -42,7 +42,7 @@ class PoI:
 
     """
 
-    def __init__(self, point=None, name=None, key=None):
+    def __init__(self, pos=None, name=None, key=None):
         # The POI has fixed coordinates relative to the sample, enabling a map to be saved.
         self._coords_in_sample = []
 
@@ -59,15 +59,15 @@ class PoI:
         else:
             self._key = key
 
-        if point is not None:
-            if len(point) != 3:
+        if pos is not None:
+            if len(pos) != 3:
                 self.log.error('Given position does not contain 3 '
                         'dimensions.')
             # Store the time in the history log as seconds since 1970,
             # rather than as a datetime object.
             creation_time_sec = (self._creation_time - datetime.utcfromtimestamp(0)).total_seconds()
             self._position_time_trace.append(
-                np.array([creation_time_sec, point[0], point[1], point[2]]))
+                np.array([creation_time_sec, pos[0], pos[1], pos[2]]))
         if name is None:
             self._name = self._creation_time.strftime('poi_%H%M%S')
         else:
@@ -87,10 +87,10 @@ class PoI:
                         'dimensions.')
             self._coords_in_sample = [coords[0], coords[1], coords[2]]
 
-    def add_position_to_trace(self, position=None):
-        """ Adds an explicitly known position+time to the time trace of the POI.
+    def add_position_to_history(self, position=None):
+        """ Adds an explicitly known position+time to the history of the POI.
 
-        @param float[3] point: position coordinates of the poi
+        @param float[3] position: position coordinates of the poi
 
         @return int: error code (0:OK, -1:error)
         """
@@ -146,18 +146,18 @@ class PoI:
         """
         return self._key
 
-    def get_trace(self):  # TODO: instead of "trace": drift_log, history,
-        """ Returns the whole position time trace as array.
+    def get_position_history(self):  # TODO: instead of "trace": drift_log, history,
+        """ Returns the whole position history as array.
 
-        @return float[][4]: the whole position time trace
+        @return float[][4]: the whole position history
         """
 
         return np.array(self._position_time_trace)
 
-    def delete_last_point(self):  # TODO:Rename to delete_last_position
-        """ Delete the last point in the trace.
+    def delete_last_position(self):  # TODO:Rename to delete_last_position
+        """ Delete the last position in the history.
 
-        @return float[4]: the point just deleted.
+        @return float[4]: the position just deleted.
         """
 
         if len(self._position_time_trace) > 0:
@@ -193,7 +193,7 @@ class PoiManagerLogic(GenericLogic):
             self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.roi_name = ''
-        self.track_point_list = dict()
+        self.poi_list = dict()
         self._current_poi_key = None
         self.go_to_crosshair_after_refocus = False  # default value
 
@@ -215,14 +215,14 @@ class PoiManagerLogic(GenericLogic):
         self._save_logic = self.get_connector('savelogic')
 
         # initally add crosshair to the pois
-        crosshair = PoI(point=[0, 0, 0], name='crosshair')
+        crosshair = PoI(pos=[0, 0, 0], name='crosshair')
         crosshair._key = 'crosshair'
-        self.track_point_list[crosshair._key] = crosshair
+        self.poi_list[crosshair._key] = crosshair
 
         # initally add sample to the pois
-        sample = PoI(point=[0, 0, 0], name='sample')
+        sample = PoI(pos=[0, 0, 0], name='sample')
         sample._key = 'sample'
-        self.track_point_list[sample._key] = sample
+        self.poi_list[sample._key] = sample
 
         # listen for the refocus to finish
         self._optimizer_logic.sigRefocusFinished.connect(self._refocus_done)
@@ -255,31 +255,31 @@ class PoiManagerLogic(GenericLogic):
         If no position is provided, then the current crosshair position is used.
         """
         # If there are only 2 POIs (sample and crosshair) then the newly added POI needs to start the sample drift logging.
-        if len(self.track_point_list) == 2:
-            self.track_point_list['sample']._creation_time = time.time()
-            self.track_point_list['sample'].delete_last_point()
-            self.track_point_list['sample'].add_position_to_trace(position=[0, 0, 0])
-            self.track_point_list['sample'].set_coords_in_sample(coords=[0, 0, 0])
+        if len(self.poi_list) == 2:
+            self.poi_list['sample']._creation_time = time.time()
+            self.poi_list['sample'].delete_last_position()
+            self.poi_list['sample'].add_position_to_history(position=[0, 0, 0])
+            self.poi_list['sample'].set_coords_in_sample(coords=[0, 0, 0])
 
         if position is None:
             position = self._confocal_logic.get_position()
 
-        new_track_point = PoI(point=position, key=key)
-        self.track_point_list[new_track_point.get_key()] = new_track_point
+        new_poi = PoI(pos=position, key=key)
+        self.poi_list[new_poi.get_key()] = new_poi
 
         # The POI coordinates are set relative to the last known sample position
-        most_recent_sample_pos = self.track_point_list['sample'].get_trace()[-1, :][1:4]
+        most_recent_sample_pos = self.poi_list['sample'].get_position_history()[-1, :][1:4]
         this_poi_coords = position - most_recent_sample_pos
-        new_track_point.set_coords_in_sample(coords=this_poi_coords)
+        new_poi.set_coords_in_sample(coords=this_poi_coords)
 
         # Since POI was created at current scanner position, it automatically
         # becomes the active POI.
-        self.set_active_poi(poi=new_track_point)
+        self.set_active_poi(poi=new_poi)
 
         if emit_change:
             self.signal_poi_updated.emit()
 
-        return new_track_point.get_key()
+        return new_poi.get_key()
 
     def on_deactivate(self, e):
         return
@@ -291,20 +291,20 @@ class PoiManagerLogic(GenericLogic):
         self.roi_map_data = self._confocal_logic.xy_image
 
     def get_all_pois(self, abc_sort=False):
-        """ Returns a list of the names of all existing trackpoints.
+        """ Returns a list of the names of all existing POIs.
 
-        @return string[]: List of names of the pois
+        @return string[]: List of names of the POIs
 
         Also crosshair and sample are included.
         """
         if abc_sort is False:
-            return sorted(self.track_point_list.keys())
+            return sorted(self.poi_list.keys())
 
         elif abc_sort is True:
             # First create a dictionary with poikeys indexed against names
-            poinames = [''] * len(self.track_point_list.keys())
-            for i, poikey in enumerate(self.track_point_list.keys()):
-                poiname = self.track_point_list[poikey].get_name()
+            poinames = [''] * len(self.poi_list.keys())
+            for i, poikey in enumerate(self.poi_list.keys()):
+                poiname = self.poi_list[poikey].get_name()
                 poinames[i] = [poiname, poikey]
 
             # Sort names in the way that humans expect (site1, site2, site11, etc)
@@ -331,11 +331,11 @@ class PoiManagerLogic(GenericLogic):
         Does not delete the crosshair and sample.
         """
 
-        if poikey is not None and poikey in self.track_point_list.keys():
+        if poikey is not None and poikey in self.poi_list.keys():
             if poikey is 'crosshair' or poikey is 'sample':
                 self.log.warning('You cannot delete the crosshair or sample.')
                 return -1
-            del self.track_point_list[poikey]
+            del self.poi_list[poikey]
             self.signal_poi_updated.emit()
             return 0
         else:
@@ -354,8 +354,8 @@ class PoiManagerLogic(GenericLogic):
         The function _refocus_done handles the data when the optimisation returns.
         """
 
-        if poikey is not None and poikey in self.track_point_list.keys():
-            self.track_point_list['crosshair'].add_position_to_trace(position=self._confocal_logic.get_position())
+        if poikey is not None and poikey in self.poi_list.keys():
+            self.poi_list['crosshair'].add_position_to_history(position=self._confocal_logic.get_position())
             self._current_poi_key = poikey
             self._optimizer_logic.start_refocus(
                 initial_pos=self.get_poi_position(poikey=poikey),
@@ -373,7 +373,7 @@ class PoiManagerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        if poikey is not None and poikey in self.track_point_list.keys():
+        if poikey is not None and poikey in self.poi_list.keys():
             self._current_poi_key = poikey
             x, y, z = self.get_poi_position(poikey=poikey)
             self._confocal_logic.set_position('poimanager', x=x, y=y, z=z)
@@ -383,7 +383,7 @@ class PoiManagerLogic(GenericLogic):
             return -1
 
         # This is now the active POI to send to save logic for naming in any saved filenames.
-        self.set_active_poi(poi=self.track_point_list[poikey])
+        self.set_active_poi(poi=self.poi_list[poikey])
 
     def get_poi_position(self, poikey=None):
         """ Returns the current position of the given poi, calculated from the
@@ -394,10 +394,10 @@ class PoiManagerLogic(GenericLogic):
         @return
         """
 
-        if poikey is not None and poikey in self.track_point_list.keys():
+        if poikey is not None and poikey in self.poi_list.keys():
 
-            poi_coords = self.track_point_list[poikey].get_coords_in_sample()
-            sample_pos = self.track_point_list['sample'].get_trace()[-1, :][1:4]
+            poi_coords = self.poi_list[poikey].get_coords_in_sample()
+            sample_pos = self.poi_list['sample'].get_position_history()[-1, :][1:4]
 
             return sample_pos + poi_coords
 
@@ -406,32 +406,32 @@ class PoiManagerLogic(GenericLogic):
                 poikey))
             return [-1., -1., -1.]
 
-    def set_new_position(self, poikey=None, point=None):
+    def set_new_position(self, poikey=None, newpos=None):
         """
         Moves the given POI to a new position, and uses this information to update
         the sample position.
 
         @param string poikey: the key of the poi
-        @param float[3] point: coordinates of the next point
+        @param float[3] newpos: coordinates of the new position
 
         @return int: error code (0:OK, -1:error)
         """
 
-        # If no new point is given, take the current confocal crosshair position
-        if point is None:
-            point = self._confocal_logic.get_position()
+        # If no new position is given, take the current confocal crosshair position
+        if newpos is None:
+            newpos = self._confocal_logic.get_position()
 
-        if poikey is not None and poikey in self.track_point_list.keys():
-            if len(point) != 3:
+        if poikey is not None and poikey in self.poi_list.keys():
+            if len(newpos) != 3:
                 self.log.error('Length of set poi is not 3.')
                 return -1
             # Add new position to trace of POI
-            self.track_point_list[poikey].add_position_to_trace(position=point)
+            self.poi_list[poikey].add_position_to_history(position=newpos)
 
             # Calculate sample shift and add it to the trace of 'sample' POI
-            sample_shift = point - self.get_poi_position(poikey=poikey)
-            sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
-            self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
+            sample_shift = newpos - self.get_poi_position(poikey=poikey)
+            sample_shift += self.poi_list['sample'].get_position_history()[-1, :][1:4]
+            self.poi_list['sample'].add_position_to_history(position=sample_shift)
 
             # signal POI has been updated (this will cause GUI to redraw)
             if (poikey is not 'crosshair') and (poikey is not 'sample'):
@@ -442,22 +442,23 @@ class PoiManagerLogic(GenericLogic):
         self.log.error('J. The given POI ({0}) does not exist.'.format(poikey))
         return -1
 
-    def move_coords(self, poikey=None, point=None):
-        """Updates the coords of a given POI, and adds a point to the POI history, but DOES NOT update the sample position.
+    def move_coords(self, poikey=None, newpos=None):
+        """Updates the coords of a given POI, and adds a position to the POI history, 
+        but DOES NOT update the sample position.
         """
-        if point is None:
-            point = self._confocal_logic.get_position()
+        if newpos is None:
+            newpos = self._confocal_logic.get_position()
 
-        if poikey is not None and poikey in self.track_point_list.keys():
-            if len(point) != 3:
+        if poikey is not None and poikey in self.poi_list.keys():
+            if len(newpos) != 3:
                 self.log.error('Length of set poi is not 3.')
                 return -1
-            this_poi = self.track_point_list[poikey]
-            return_val = this_poi.add_position_to_trace(position=point)
+            this_poi = self.poi_list[poikey]
+            return_val = this_poi.add_position_to_history(position=newpos)
 
-            sample_pos = self.track_point_list['sample'].get_trace()[-1, :][1:4]
+            sample_pos = self.poi_list['sample'].get_position_history()[-1, :][1:4]
 
-            new_coords = point - sample_pos
+            new_coords = newpos - sample_pos
 
             this_poi.set_coords_in_sample(new_coords)
 
@@ -477,12 +478,12 @@ class PoiManagerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
-        if poikey is not None and name is not None and poikey in self.track_point_list.keys():
+        if poikey is not None and name is not None and poikey in self.poi_list.keys():
 
-            success = self.track_point_list[poikey].set_name(name=name)
+            success = self.poi_list[poikey].set_name(name=name)
 
             # if this is the active POI then we need to update poi tag in savelogic
-            if self.track_point_list[poikey] == self.active_poi:
+            if self.poi_list[poikey] == self.active_poi:
                 self.update_poi_tag_in_savelogic()
 
             if emit_change:
@@ -495,38 +496,6 @@ class PoiManagerLogic(GenericLogic):
                 poikey))
             return -1
 
-    def delete_last_point(self, poikey=None):
-        """ Deletes the last tracked point from the trace of the given poi.
-
-        @param string poikey: the key of the poi
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        if poikey is not None and poikey in self.track_point_list.keys():
-            self.track_point_list['sample'].delete_last_point()
-            self.signal_poi_updated.emit()
-            return self.track_point_list[poikey].delete_last_point()
-        else:
-            self.log.error('C. The given POI ({0}) does not exist.'.format(
-                poikey))
-            return -1
-
-    def get_trace(self, poikey=None):
-        """ Get the full time trace of the given poi.
-
-        @param string poikey: the key of the poi for the trace
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        if poikey is not None and poikey in self.track_point_list.keys():
-            return self.track_point_list[poikey].get_trace()
-        else:
-            self.log.error('C. The given POI ({0}) does not exist.'.format(
-                poikey))
-            return [-1., -1., -1, -1]
-
     def set_current_poi(self, poikey=None):
         """ Set the internal current poi.
 
@@ -535,7 +504,7 @@ class PoiManagerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
-        if poikey is not None and poikey in self.track_point_list.keys():
+        if poikey is not None and poikey in self.poi_list.keys():
             self._current_poi_key = poikey
             return 0
         else:
@@ -557,7 +526,7 @@ class PoiManagerLogic(GenericLogic):
             self.log.warning('No timer duration given, using {0} s.'.format(
                 self.timer_duration))
 
-        if poikey is not None and poikey in self.track_point_list.keys():
+        if poikey is not None and poikey in self.poi_list.keys():
             self._current_poi_key = poikey
 
         self.log.info('Periodic refocus on {0}.'.format(self._current_poi_key))
@@ -606,7 +575,8 @@ class PoiManagerLogic(GenericLogic):
         return 0
 
     def _refocus_done(self, caller_tag, optimal_pos):
-        """ Gets called automatically after the refocus is done and saves the new point.
+        """ Gets called automatically after the refocus is done and saves the new position
+        to the poi history.
 
         Also it tracks the sample and may go back to the crosshair.
 
@@ -619,14 +589,14 @@ class PoiManagerLogic(GenericLogic):
         # do anything with sample position.
         caller_tags = ['confocalgui', 'magnet_logic', 'singleshot_logic']
         if caller_tag in caller_tags:
-            self.track_point_list['crosshair'].add_position_to_trace(position=optimized_position)
+            self.poi_list['crosshair'].add_position_to_history(position=optimized_position)
 
         # If the refocus was initiated here by poimanager, then update POI and sample
         elif caller_tag == 'poimanager':
 
-            if self._current_poi_key is not None and self._current_poi_key in self.track_point_list.keys():
+            if self._current_poi_key is not None and self._current_poi_key in self.poi_list.keys():
 
-                self.set_new_position(poikey=self._current_poi_key, point=optimized_position)
+                self.set_new_position(poikey=self._current_poi_key, newpos=optimized_position)
 
                 if self.go_to_crosshair_after_refocus:
                     temp_key = self._current_poi_key
@@ -647,21 +617,21 @@ class PoiManagerLogic(GenericLogic):
 
     def reset_roi(self):
 
-        del self.track_point_list
+        del self.poi_list
 
-        self.track_point_list = dict()
+        self.poi_list = dict()
 
         self.roi_name = ''
 
         # initally add crosshair to the pois
-        crosshair = PoI(point=[0, 0, 0], name='crosshair')
+        crosshair = PoI(pos=[0, 0, 0], name='crosshair')
         crosshair._key = 'crosshair'
-        self.track_point_list[crosshair._key] = crosshair
+        self.poi_list[crosshair._key] = crosshair
 
         # Re-initialise sample in the poi list
-        sample = PoI(point=[0, 0, 0], name='sample')
+        sample = PoI(pos=[0, 0, 0], name='sample')
         sample._key = 'sample'
-        self.track_point_list[sample._key] = sample
+        self.poi_list[sample._key] = sample
 
         self.signal_poi_updated.emit()
 
@@ -707,7 +677,7 @@ class PoiManagerLogic(GenericLogic):
 
         for poikey in self.get_all_pois(abc_sort=True):
             if poikey is not 'sample' and poikey is not 'crosshair':
-                thispoi = self.track_point_list[poikey]
+                thispoi = self.poi_list[poikey]
 
                 poinames.append(thispoi.get_name())
                 poikeys.append(poikey)
@@ -862,13 +832,13 @@ class PoiManagerLogic(GenericLogic):
 
         for poikey in self.get_all_pois(abc_sort=True):
             if poikey is not 'sample' and poikey is not 'crosshair':
-                thispoi = self.track_point_list[poikey]
+                thispoi = self.poi_list[poikey]
 
                 old_coords = thispoi.get_coords_in_sample()
 
                 new_coords = self.triangulate(old_coords, ref1_coords, ref2_coords, ref3_coords, ref1_newpos, ref2_newpos, ref3_newpos)
 
-                self.move_coords(poikey=poikey, point=new_coords)
+                self.move_coords(poikey=poikey, newpos=new_coords)
 
     def autofind_pois(self, neighborhood_size = 1, min_threshold = 10000, max_threshold = 1e6):
         """Automatically search the xy scan image for POIs.
