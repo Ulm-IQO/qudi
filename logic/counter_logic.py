@@ -381,7 +381,7 @@ class CounterLogic(GenericLogic):
         if self.getState() != 'locked':
             if CountingMode[mode] in constraints.counting_mode:
                 self._counting_mode = CountingMode[mode]
-                self.log.debug('New counting mode: ' + self._counting_mode)
+                self.log.debug('New counting mode: {}'.format(self._counting_mode))
             else:
                 self.log.warning('Counting mode not supported from hardware. Command ignored!')
             self.sigCountingModeChanged.emit(self._counting_mode)
