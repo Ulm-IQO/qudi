@@ -85,7 +85,8 @@ class LaserLogic(GenericLogic):
     def check_laser_loop(self):
         """ Get power, current, shutter state and temperatures from laser. """
         if self.stopRequest:
-            self.stop()
+            if self.can('stop'):
+                self.stop()
             self.stopRequest = False
             return
         qi = self.queryInterval
