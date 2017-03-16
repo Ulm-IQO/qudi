@@ -19,9 +19,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-import numpy as np
 import time
+import numpy as np
+from qtpy import QtCore
 
 from logic.generic_logic import GenericLogic
 from interface.simple_laser_interface import ControlMode, ShutterState, LaserState
@@ -80,6 +80,9 @@ class LaserLogic(GenericLogic):
           @param object e: Fysom state change notification
         """
         self.stop_query_loop()
+        for i in range(5):
+            time.sleep(self.queryInterval / 1000)
+            QtCore.QCoreAppliction.processEvents()
 
     @QtCore.Slot()
     def check_laser_loop(self):
