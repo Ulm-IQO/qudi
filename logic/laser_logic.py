@@ -82,7 +82,7 @@ class LaserLogic(GenericLogic):
         self.stop_query_loop()
         for i in range(5):
             time.sleep(self.queryInterval / 1000)
-            QtCore.QCoreAppliction.processEvents()
+            QtCore.QCoreApplication.processEvents()
 
     @QtCore.Slot()
     def check_laser_loop(self):
