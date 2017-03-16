@@ -357,7 +357,7 @@ class MagnetLogic(GenericLogic):
         if 'odmr_2d_low_fitfunction' in self._statusVariables:
             self.odmr_2d_low_fitfunction = self._statusVariables['odmr_2d_low_fitfunction']
         else:
-            self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
+            self.odmr_2d_low_fitfunction = list(self.odmr_2d_low_fitfunction_list)[1]
 
 
 
@@ -391,7 +391,7 @@ class MagnetLogic(GenericLogic):
         if 'odmr_2d_high_fitfunction' in self._statusVariables:
             self.odmr_2d_high_fitfunction = self._statusVariables['odmr_2d_high_fitfunction']
         else:
-            self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
+            self.odmr_2d_high_fitfunction = list(self.odmr_2d_high_fitfunction_list)[1]
 
         if 'odmr_2d_save_after_measure' in self._statusVariables:
             self.odmr_2d_save_after_measure = self._statusVariables['odmr_2d_save_after_measure']
