@@ -176,7 +176,7 @@ def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_par
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    exponentialdecay, params = self.make_exponentialdecay_model()
+    exponentialdecay, params = self.make_decayexponential_model()
 
     error, params = estimator(x_axis, data, params)
 
@@ -282,7 +282,7 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    stret_exp_decay_offset, params = self.make_stretchedexponentialdecay_model()
+    stret_exp_decay_offset, params = self.make_decayexponentialstretched_model()
 
     error, params = estimator(x_axis, data, params)
 
