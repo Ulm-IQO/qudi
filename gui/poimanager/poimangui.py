@@ -469,6 +469,9 @@ class PoiManagerGui(GUIBase):
         self._poi_manager_logic.signal_poi_deleted.connect(
             self._remove_poi_marker
         )
+        self._poi_manager_logic.signal_confocal_image_updated.connect(
+            self._redraw_roi_image
+        )
 
         # Connect track period
         self._mw.track_period_SpinBox.valueChanged.connect(self.change_track_period)
@@ -535,6 +538,8 @@ class PoiManagerGui(GUIBase):
 
         # Make poi manager logic get the confocal data
         self._poi_manager_logic.get_confocal_image_data()
+
+    def _redraw_roi_image(self):
 
         # the image data is the fluorescence part, transposed for appropriate plotting
         self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
@@ -722,7 +727,6 @@ class PoiManagerGui(GUIBase):
 
         # Keep track of selected POI
         self._poi_manager_logic.set_active_poi(poikey=poikey)
-        print(poikey)
 
 #        # Set the selected POI in the combobox
 #        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(poikey))
