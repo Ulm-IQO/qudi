@@ -238,7 +238,13 @@ class PoiManagerLogic(GenericLogic):
         # A POI is active if the scanner is at that POI
         self.active_poi = None
 
+    def on_deactivate(self, e):
+        return
+
     def user_move_deactivates_poi(self, tag):
+        """ Deactivate the active POI if the confocal microscope scanner position is
+        moved by anything other than the optimizer
+        """
         if tag != 'optimizer':
             self._deactivate_poi()
 
@@ -281,14 +287,14 @@ class PoiManagerLogic(GenericLogic):
 
         return new_poi.get_key()
 
-    def on_deactivate(self, e):
-        return
-
     def get_confocal_image_data(self):
         """ Get the current confocal xy scan data to hold as image of ROI"""
 
         # get the roi_map_data (xy confocal image)
         self.roi_map_data = self._confocal_logic.xy_image
+
+        # todo
+        # self.signal.emit
 
     def get_all_pois(self, abc_sort=False):
         """ Returns a list of the names of all existing POIs.
@@ -493,22 +499,6 @@ class PoiManagerLogic(GenericLogic):
 
         else:
             self.log.error('AAAThe given POI ({0}) does not exist.'.format(
-                poikey))
-            return -1
-
-    def set_current_poi(self, poikey=None):
-        """ Set the internal current poi.
-
-        @param string poikey: the key of the current poi to be set
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        if poikey is not None and poikey in self.poi_list.keys():
-            self._current_poi_key = poikey
-            return 0
-        else:
-            self.log.error('B. The given POI ({0}) does not exist.'.format(
                 poikey))
             return -1
 
