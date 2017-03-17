@@ -1159,6 +1159,7 @@ class PulsedMeasurementGui(GUIBase):
             self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_name_LineEdit'])
         if 'ana_param_second_plot_y_axis_unit_LineEdit' in self._statusVariables:
             self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'])
+        self._as.ana_param_couple_settings_checkBox.setChecked(self._pulsed_master_logic.couple_generator_hw)
         self.update_analysis_settings()
         return
 
@@ -1200,6 +1201,18 @@ class PulsedMeasurementGui(GUIBase):
             axis='bottom',
             text=self._as.ana_param_x_axis_name_LineEdit.text(),
             units=self._as.ana_param_x_axis_unit_LineEdit.text())
+        couple_settings = self._as.ana_param_couple_settings_checkBox.isChecked()
+        self._pulsed_master_logic.couple_generator_hw = couple_settings
+        if couple_settings:
+            self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
+            self._pg.gen_activation_config_ComboBox.blockSignals(True)
+            self._pg.gen_sample_freq_DSpinBox.setEnabled(False)
+            self._pg.gen_activation_config_ComboBox.setEnabled(False)
+        else:
+            self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
+            self._pg.gen_activation_config_ComboBox.blockSignals(False)
+            self._pg.gen_sample_freq_DSpinBox.setEnabled(True)
+            self._pg.gen_activation_config_ComboBox.setEnabled(True)
         # FIXME: Not very elegant
         self._pulsed_master_logic._measurement_logic.fc.set_units([self._as.ana_param_x_axis_unit_LineEdit.text(),
                                                                    self._as.ana_param_y_axis_unit_LineEdit.text()])

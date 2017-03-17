@@ -156,6 +156,10 @@ class PulsedMasterLogic(GenericLogic):
             self.invoke_settings = self._statusVariables['invoke_settings']
         else:
             self.invoke_settings = False
+        if 'couple_generator_hw' in self._statusVariables:
+            self.couple_generator_hw = self._statusVariables['couple_generator_hw']
+        else:
+            self.couple_generator_hw = True
 
             # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
@@ -317,6 +321,7 @@ class PulsedMasterLogic(GenericLogic):
         """
         # Save status variables
         self._statusVariables['invoke_settings'] = self.invoke_settings
+        self._statusVariables['couple_generator_hw'] = self.couple_generator_hw
 
         # Disconnect all signals
         # Signals controlling the pulsed_measurement_logic
@@ -523,6 +528,11 @@ class PulsedMasterLogic(GenericLogic):
         """
         self.sigPulseGeneratorSettingsChanged.emit(sample_rate_hz, activation_config_name,
                                                    analogue_amplitude, interleave_on)
+        if self.couple_generator_hw:
+            self.generator_settings_changed(activation_config_name,
+                                            self._generator_logic.laser_channel,
+                                            sample_rate_hz, analogue_amplitude,
+                                            self._generator_logic.waveform_format)
         return
 
     def pulse_generator_settings_updated(self, sample_rate_hz, activation_config_name,
@@ -1260,6 +1270,10 @@ class PulsedMasterLogic(GenericLogic):
             self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
                                                   sample_rate, amplitude_dict, laser_channel,
                                                   waveform_format)
+            if self.couple_generator_hw:
+                self.sigPulserSettingsUpdated.emit(sample_rate, activation_config_name,
+                                                   activation_config, amplitude_dict,
+                                                   self._measurement_logic.interleave_on)
         return
 
     def generate_predefined_sequence(self, generator_method_name, arg_list):
