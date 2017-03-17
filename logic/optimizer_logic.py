@@ -470,8 +470,6 @@ class OptimizerLogic(GenericLogic):
         # z scaning
         self._scan_z_line()
 
-        self.sigImageUpdated.emit()
-
         # z-fit
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
@@ -530,6 +528,7 @@ class OptimizerLogic(GenericLogic):
                         else:
                             self.optim_pos_z = self.z_range[0]  # moves to lowest possible value
 
+        self.sigImageUpdated.emit()
         self._sigDoNextOptimizationStep.emit()
 
     def finish_refocus(self):
