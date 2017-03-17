@@ -1043,10 +1043,12 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.opt_channel = int(self._osd.opt_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
 
 
-        self._optimizer_logic.optimization_sequence = str(self._osd.optimization_sequence_lineEdit.text()).upper().replace(" ", "").split(',')
+        self._optimizer_logic.optimization_sequence = str(
+            self._osd.optimization_sequence_lineEdit.text()
+            ).upper().replace(" ", "").split(',')
         self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
-        self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitParameters(self._optimizer_logic.z_params)
+        self._optimizer_logic.use_custom_params = self._osd.fit_tab.paramUseSettings
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 
