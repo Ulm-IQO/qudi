@@ -24,11 +24,10 @@ class ModuleObject(QtCore.QObject):
 
     sigAddModule = QtCore.Signal(object)
 
-    def __init__(self, path, conn_in, conn_out):
+    def __init__(self, path, conn):
         super().__init__()
         self.path = path
-        self.conn_in = conn_in
-        self.conn_out = conn_out
+        self.conn = conn
 
     def addModule(self):
         self.sigAddModule.emit(self)
@@ -65,7 +64,7 @@ class ModMenu(QtWidgets.QMenu):
 
         for k,v in sorted(m['hardware'].items()):
             self.build_submenu(self.hwmenuitems, k, v)
-            
+
         for k,v in sorted(m['logic'].items()):
             self.build_submenu(self.logicmenuitems, k, v)
 
@@ -88,7 +87,7 @@ class ModMenu(QtWidgets.QMenu):
                     mlist = mlist['children'][part]
         action = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
         mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = action
-        module = ModuleObject(modpath, moddef['in'], moddef['out'])
+        module = ModuleObject(modpath, moddef['conn'])
         action.triggered.connect(module.addModule)
         self.modules.append(module)
 

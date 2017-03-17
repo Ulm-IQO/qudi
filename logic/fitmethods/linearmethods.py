@@ -21,9 +21,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-import logging
-logger = logging.getLogger(__name__)
 from lmfit.models import Model
 import numpy as np
 
@@ -69,12 +66,10 @@ def make_constant_model(self, prefix=None):
         return offset
 
     if not isinstance(prefix, str) and prefix is not None:
-
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
+                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
+                                                                                    type(prefix)))
         model = Model(constant_function, independent_vars='x')
-
     else:
         model = Model(constant_function, independent_vars='x', prefix=prefix)
 
@@ -107,20 +102,17 @@ def make_amplitude_model(self, prefix=None):
         return amplitude
 
     if not isinstance(prefix, str) and prefix is not None:
-
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
+                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
+                                                                                    type(prefix)))
         model = Model(amplitude_function, independent_vars='x')
-
     else:
         model = Model(amplitude_function, independent_vars='x', prefix=prefix)
-
-
 
     params = model.make_params()
 
     return model, params
+
 
 def make_slope_model(self, prefix=None):
     """ Create a slope model.
@@ -146,11 +138,9 @@ def make_slope_model(self, prefix=None):
         return slope
 
     if not isinstance(prefix, str) and prefix is not None:
-
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
-
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
+                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
+                                                                                    type(prefix)))
         model = Model(slope_function, independent_vars='x')
     else:
         model = Model(slope_function, independent_vars='x', prefix=prefix)
@@ -183,9 +173,9 @@ def make_linear_model(self, prefix=None):
         return x
 
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
+                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
+                                                                                    type(prefix)))
         linear_mod = Model(linear_function, independent_vars='x')
     else:
         linear_mod = Model(linear_function, independent_vars='x', prefix=prefix)
@@ -198,6 +188,38 @@ def make_linear_model(self, prefix=None):
 
     return model, params
 
+
+def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
+    """ Performe a linear fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    # Make mathematical fit model
+    linear, params = self.make_linear_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params, update_params=add_params)
+
+    try:
+        result = linear.fit(data, x=x_axis, params=params)
+    except:
+        self.log.warning('The linear fit did not work. lmfit result Message:\n'
+                         '{0}'.format(str(result.message)))
+        result = linear.fit(data, x=x_axis, params=params)
+
+    return result
 
 def estimate_linear(self, x_axis, data, params):
     """ Provide an estimation for the initial values of a linear function.
@@ -217,10 +239,8 @@ def estimate_linear(self, x_axis, data, params):
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     try:
-
         # calculate the parameters using Least-squares estimation of linear
         # regression
-
         a_1 = 0
         a_2 = 0
         x_mean = x_axis.mean()
@@ -230,43 +250,12 @@ def estimate_linear(self, x_axis, data, params):
             a_1 += (x_axis[i]-x_mean)*(data[i]-data_mean)
             a_2 += np.power(x_axis[i]-x_mean, 2)
         slope = a_1/a_2
-        intercept = data_mean - slope*x_mean
+        intercept = data_mean - slope * x_mean
         params['offset'].value = intercept
         params['slope'].value = slope
     except:
-        logger.error('The linear fit did not work.')
+        self.log.warning('The estimation for linear fit did not work.')
         params['slope'].value = 0
         params['offset'].value = 0
 
     return error, params
-
-
-def make_linear_fit(self, x_axis, data, add_params=None):
-    """ Performe a linear fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-
-    linear, params = self.make_linear_model()
-
-    error, params = self.estimate_linear(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = linear.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The linear fit did not work.lmfit result '
-                       'Message: {}'.format(str(result.message)))
-        result = linear.fit(data, x=x_axis, params=params)
-
-    return result

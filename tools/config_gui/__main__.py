@@ -60,7 +60,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         self.globalsection = OrderedDict()
         self.currentFile = ''
 
-        # init 
+        # init
         self.setupUi()
         self.show()
 
@@ -74,7 +74,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         self.actionOpen_configuration.triggered.connect(self.openConfigFile)
         self.actionDelete_selected_nodes.triggered.connect(self.graphView.deleteSelectedNodes)
         self.actionFrame_selected_nodes.triggered.connect(self.graphView.frameSelectedNodes)
-        self.actionFrame_all_nodes.activated.connect(self.graphView.frameAllNodes)
+        self.actionFrame_all_nodes.triggered.connect(self.graphView.frameAllNodes)
 
         # add module menu
         self.findModules()
@@ -124,11 +124,10 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         else:
             node.setColor(palette.c3)
 
-        for conn in module.conn_in:
+        for conn in module.conn:
             node.addPort(InputPort(node, g, conn[0], palette.c3, conn[1]))
 
-        for conn in module.conn_out:
-            node.addPort(OutputPort(node, g, conn[0], palette.c3, conn[1]))
+        node.addPort(OutputPort(node, g, 'out', palette.c3, ''))
 
         node.setGraphPos(QtCore.QPointF(pos[0], pos[1]))
 
@@ -144,7 +143,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             self,
             'Load Configration',
             defaultconfigpath ,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if len(filename) > 0:
             print('Open:', filename)
             self.loadConfigFile(filename)
@@ -173,7 +172,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             self,
             'Save Configration As',
             defaultconfigpath ,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if len(filename) > 0:
             print('Save:', filename)
             config = self.nodesToConfig()
@@ -182,17 +181,17 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
 
     def updateWindowTitle(self, filename, extra=''):
         self.setWindowTitle('{}{} - Qudi configuration editor'.format(filename, extra))
-    
+
     def getModuleInfo(self):
         modules = listmods.find_pyfiles(os.getcwd())
         m, i_s, ie, oe = listmods.check_qudi_modules(modules)
 
     def configToNodes(self, config):
         pos = [0, 0]
-        for b,m in config.items():
+        for b, m in config.items():
             if b not in ['hardware', 'logic', 'gui']:
                 continue
-            for k,v in m.items():
+            for k, v in m.items():
                 mc = 'module.Class'
                 #print(b, k, v)
                 if mc in v and self.mmroot.hasModule(b + '.' + v[mc]):
@@ -202,43 +201,40 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
             pos[0] += 600
             pos[1] = 0
 
-        for b,m in config.items():
+        for b, m in config.items():
             if b not in ['hardware', 'logic', 'gui']:
                 continue
-            for k,v in m.items():
+            for k, v in m.items():
                 if 'connect' in v:
                     for conn_in, conn_out in v['connect'].items():
-                        cl = conn_out.split('.')
-                        src = '.'.join(cl[:-1])
-
+                        src = conn_out
                         if k not in self.mods:
                             self.log.error(
-                                'Target module {} not present while connecting {}.{} to {}'
-                                ''.format(k, conn_in, src, cl[-1]))
+                                'Target module {} not present while connecting {} to {}'
+                                ''.format(k, conn_in, src))
                             continue
-                        if conn_in not in [c[0] for c in self.mods[k]['module'].conn_in]:
+                        if conn_in not in [c[0] for c in self.mods[k]['module'].conn]:
                             self.log.error(
-                                'Target connector {} not present while connecting {}.{} to {}.{}'
-                                ''.format(conn_in, src, cl[-1], k, conn_in))
+                                'Target connector {} not present while connecting {} to {}.{}'
+                                ''.format(conn_in, src, k, conn_in))
                             continue
                         if src not in self.mods:
                             self.log.error(
-                                'Source module {} not present while connecting {} to {}.{}'
-                                ''.format(src, cl[-1], k, conn_in))
-                            continue
-                        if cl[-1] not in [c[0] for c in self.mods[src]['module'].conn_out]:
-                            self.log.error(
-                                'Source connector {} not present while connecting {}.{} to {}.{}'
-                                ''.format(conn_in, src, cl[-1], k, conn_in))
+                                'Source module {} not present while connecting it to {}.{}'
+                                ''.format(src, k, conn_in))
                             continue
 
                         try:
-                            self.graphView.connectPorts(self.mods[src]['node'], cl[-1], self.mods[k]['node'], conn_in)
+                            self.graphView.connectPorts(
+                                self.mods[src]['node'],
+                                'out',
+                                self.mods[k]['node'],
+                                conn_in)
                         except:
                             self.log.error(
-                                'pyflowgraph failed while connecting {}.{} to {}.{}'
-                                ''.format(src, cl[-1], k, conn_in))
-                            
+                                'pyflowgraph failed while connecting {} to {}.{}'
+                                ''.format(src, k, conn_in))
+
         self.globalsection = config['global']
 
     def nodesToConfig(self):

@@ -21,9 +21,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
@@ -35,9 +32,10 @@ from scipy.special import gammaln, xlogy
 
 ################################################################################
 #                                                                              #
-#                              Poissonian model                                #
+#                      Defining Poissonian models                              #
 #                                                                              #
 ################################################################################
+
 
 def poisson(self, x, mu):
     """
@@ -55,9 +53,9 @@ def poisson(self, x, mu):
         check_val = x[0]
 
     if check_val > 1e18:
-        logger.warning('The current value in the poissonian distribution '
-                       'exceeds 1e18! Due to numerical imprecision a valid '
-                       'functional output cannot be guaranteed any more!')
+        self.log.warning('The current value in the poissonian distribution '
+                         'exceeds 1e18! Due to numerical imprecision a valid '
+                         'functional output cannot be guaranteed any more!')
 
     # According to the central limit theorem, a poissonian distribution becomes
     # a gaussian distribution for large enough x. Since the numerical precision
@@ -69,7 +67,8 @@ def poisson(self, x, mu):
     if check_val < 1e12:
         return np.exp(xlogy(x, mu) - gammaln(x + 1) - mu)
     else:
-        return np.exp(-((x-mu)**2)/(2*mu)) / (np.sqrt(2*np.pi*mu))
+        return np.exp(-((x - mu) ** 2) / (2 * mu)) / (np.sqrt(2 * np.pi * mu))
+
 
 def make_poissonian_model(self, prefix=None):
     """ Create a model of a single poissonian with an offset.
@@ -107,9 +106,9 @@ def make_poissonian_model(self, prefix=None):
 
     if not isinstance(prefix, str) and prefix is not None:
 
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
+                       'cannot be used as a prefix and will be ignored for now.'
+                       'Correct that!'.format(prefix, type(prefix)))
 
         poissonian_model = Model(poisson_function, independent_vars='x')
 
@@ -118,10 +117,78 @@ def make_poissonian_model(self, prefix=None):
         poissonian_model = Model(poisson_function, independent_vars='x',
                                  prefix=prefix)
 
-    poissonian_ampl_model = amplitude_model*poissonian_model
+    poissonian_ampl_model = amplitude_model * poissonian_model
     params = poissonian_ampl_model.make_params()
 
     return poissonian_ampl_model, params
+
+
+def make_poissonianmultiple_model(self, no_of_functions=1):
+    """ Create a model with multiple poissonians with amplitude.
+
+    @param no_of_functions: for default=1 there is one poissonian, else
+                            more functions are added
+
+    @return tuple: (object model, object params), for more description see in
+                   the method make_poissonian_model.
+    """
+
+    if no_of_functions == 1:
+        multi_poisson_model, params = self.make_poissonian_model()
+    else:
+        multi_poisson_model, params = self.make_poissonian_model(prefix='p0_')
+
+        for ii in range(1, no_of_functions):
+            multi_poisson_model += self.make_poissonian_model(prefix='p{0:d}_'.format(ii))[0]
+    params = multi_poisson_model.make_params()
+
+    return multi_poisson_model, params
+
+def make_poissoniandouble_model(self):
+    return self.make_multiplepoissonian_model(2)
+
+################################################################################
+#                                                                              #
+#                    Poissonian fits and their estimators                      #
+#                                                                              #
+################################################################################
+
+
+def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=None):
+    """ Performe a poissonian fit on the provided data.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    poissonian_model, params = self.make_poissonian_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+
+    try:
+        result = poissonian_model.fit(data, x=x_axis, params=params)
+    except:
+        self.log.warning('The poissonian fit did not work. Check if a poisson '
+                         'distribution is needed or a normal approximation can be'
+                         'used. For values above 10 a normal/ gaussian distribution '
+                         'is a good approximation.')
+        result = poissonian_model.fit(data, x=x_axis, params=params)
+        print(result.message)
+
+    return result
 
 
 def estimate_poissonian(self, x_axis, data, params):
@@ -151,16 +218,18 @@ def estimate_poissonian(self, x_axis, data, params):
     # set parameters
     mu = x_axis[np.argmax(data_smooth)]
     params['mu'].value = mu
-    params['amplitude'].value = data_smooth.max()/self.poisson(mu,mu)
+    params['amplitude'].value = data_smooth.max() / self.poisson(mu, mu)
 
     return error, params
 
 
-def make_poissonian_fit(self, x_axis, data, add_params=None):
-    """ Performe a poissonian fit on the provided data.
+def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
+    """ Perform a double poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
@@ -171,60 +240,27 @@ def make_poissonian_fit(self, x_axis, data, add_params=None):
                            with best fit with given axis,...
     """
 
-    poissonian_model, params = self.make_poissonian_model()
+    double_poissonian_model, params = self.make_poissoniandouble_model()
 
-    error, params = self.estimate_poissonian(x_axis, data, params)
+    error, params = estimator(x_axis, data, params)
 
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
 
     try:
-        result = poissonian_model.fit(data, x=x_axis, params=params)
+        result = double_poissonian_model.fit(data, x=x_axis, params=params)
     except:
-        logger.warning('The poissonian fit did not work. Check if a poisson '
-                       'distribution is needed or a normal approximation can be'
-                       'used. For values above 10 a normal/ gaussian distribution'
-                       ' is a good approximation.')
-        result = poissonian_model.fit(data, x=x_axis, params=params)
-        print(result.message)
+        self.log.warning('The double poissonian fit did not work. Check if a '
+                         'poisson distribution is needed or a normal '
+                         'approximation can be used. For values above 10 a '
+                         'normal/ gaussian distribution is a good '
+                         'approximation.')
+        result = double_poissonian_model.fit(data, x=x_axis, params=params)
 
     return result
 
-################################################################################
-#                                                                              #
-#                        Multiple Poissonian model                             #
-#                                                                              #
-################################################################################
 
-
-def make_multiplepoissonian_model(self, no_of_functions=1):
-    """ Create a model with multiple poissonians with amplitude.
-
-    @param no_of_functions: for default=1 there is one poissonian, else
-                            more functions are added
-
-    @return tuple: (object model, object params), for more description see in
-                   the method make_poissonian_model.
-    """
-
-    if no_of_functions == 1:
-        multi_poisson_model, params = self.make_poissonian_model()
-    else:
-        multi_poisson_model, params = self.make_poissonian_model(prefix='p0_')
-
-        for ii in range(1, no_of_functions):
-            multi_poisson_model += self.make_poissonian_model(prefix='p{0:d}_'.format(ii))[0]
-    params = multi_poisson_model.make_params()
-
-    return multi_poisson_model, params
-
-################################################################################
-#                                                                              #
-#                    Double Poissonian fitting model                           #
-#                                                                              #
-################################################################################
-
-def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4,
+def estimate_poissoniandouble(self, x_axis, data, params, threshold_fraction=0.4,
                               minimal_threshold=0.1, sigma_threshold_fraction=0.2):
     """ Provide initial values for a double poissonian fit.
 
@@ -253,7 +289,7 @@ def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    #TODO: make the filter an extra function shared and usable for other functions.
+    # TODO: make the filter an extra function shared and usable for other functions.
     # Calculate here also an interpolation factor, which will be based on the
     # given data set. If the convolution later on has more points, then the fit
     # has a higher chance to be successful. The interpol_factor multiplies the
@@ -278,7 +314,7 @@ def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4
     # Create the interpolation function, based on the data:
     interpol_function = InterpolatedUnivariateSpline(x_axis, data, k=1)
     # adjust the x_axis to that:
-    x_axis_interpol = np.linspace(x_axis[0], x_axis[-1], len(x_axis)*interpol_factor)
+    x_axis_interpol = np.linspace(x_axis[0], x_axis[-1], len(x_axis) * interpol_factor)
     # create actually the interpolated data:
     interpol_data = interpol_function(x_axis_interpol)
 
@@ -308,37 +344,3 @@ def estimate_doublepoissonian(self, x_axis, data, params, threshold_fraction=0.4
     params['p1_amplitude'].set(value=amplitude1, min=1e-15)
 
     return error, params
-
-def make_doublepoissonian_fit(self, x_axis, data, add_params=None):
-    """ Perform a double poissonian fit on the provided data.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-
-    double_poissonian_model, params = self.make_multiplepoissonian_model(no_of_functions=2)
-
-    error, params = self.estimate_doublepoissonian(x_axis, data, params)
-
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-
-    try:
-        result = double_poissonian_model.fit(data, x=x_axis, params=params)
-    except:
-        logger.warning('The double poissonian fit did not work. Check if a '
-                       'poisson distribution is needed or a normal '
-                       'approximation can be used. For values above 10 a '
-                       'normal/ gaussian distribution is a good '
-                       'approximation.')
-        result = double_poissonian_model.fit(data, x=x_axis, params=params)
-
-    return result

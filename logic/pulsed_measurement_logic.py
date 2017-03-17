@@ -54,7 +54,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, dict, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, object)
     sigMeasurementRunningUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
@@ -142,7 +142,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.recalled_raw_data = None  # the currently recalled raw data to add
 
         # for fit:
-        self._fit_param = {}
+        self.fc = None  # Fit container
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
 
@@ -165,6 +165,10 @@ class PulsedMeasurementLogic(GenericLogic):
         self._fit_logic = self.get_connector('fitlogic')
         self._pulse_generator_device = self.get_connector('pulsegenerator')
         self._mycrowave_source_device = self.get_connector('microwave')
+
+        # Fitting
+        self.fc = self._fit_logic.make_fit_container('pulsed', '1d')
+        self.fc.set_units(['s', 'a.u.'])
 
         # Recall saved status variables
         if 'number_of_lasers' in self._statusVariables:
@@ -202,6 +206,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.show_raw_data = self._statusVariables['show_raw_data']
         if 'show_laser_index' in self._statusVariables:
             self.show_laser_index = self._statusVariables['show_laser_index']
+        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
+            self.fc.load_from_dict(self._statusVariables['fits'])
 
         # Check and configure pulse generator
         self.pulse_generator_off()
@@ -238,6 +244,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # recalled saved raw data
         self.recalled_raw_data = None
+        return
 
     def on_deactivate(self, e):
         """ Deactivate the module properly.
@@ -266,6 +273,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['alternating'] = self.alternating
         self._statusVariables['show_raw_data'] = self.show_raw_data
         self._statusVariables['show_laser_index'] = self.show_laser_index
+        if len(self.fc.fit_list) > 0:
+            self._statusVariables['fits'] = self.fc.save_to_dict()
+        return
 
     def request_init_values(self):
         """
@@ -306,7 +316,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
                                        self.measuring_error_plot_y, self.measuring_error_plot_y2,
                                        self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
-        self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit, {}, {})
+        #self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit,
+        #                        {})
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
@@ -701,6 +712,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.elapsed_time = 0.0
                 self.elapsed_time_str = '00:00:00:00'
                 self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
+                # Clear previous fits
+                self.fc.clear_result()
                 # initialize plots
                 self._initialize_plots()
 
@@ -1163,248 +1176,29 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_fft_x = np.abs(np.fft.fftfreq(len(corrected_y), d=x_spacing))[:middle]
         return
 
-    def get_fit_functions(self):
-        """Giving the available fit functions
-
-        @return list of strings with all available fit functions
-
-        """
-        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)', 'Lorentian (pos)', 'N14',
-                'N15', 'Stretched Exponential', 'Exponential', 'XY8']
-
-    def do_fit(self, fit_function, x_data=None, y_data=None, fit_granularity_fact=10):
+    def do_fit(self, fit_method, x_data=None, y_data=None):
         """Performs the chosen fit on the measured data.
 
-        @param string fit_function: name of the chosen fit function
+        @param string fit_method: name of the chosen fit method
 
         @return float array pulsed_fit_x: Array containing the x-values of the fit
         @return float array pulsed_fit_y: Array containing the y-values of the fit
-        @return str array pulsed_fit_result: String containing the fit parameters displayed in a nice form
-        @return dict param_dict: a dictionary containing the fit result
+        @return dict fit_result: a dictionary containing the fit result
         """
+        # Set current fit
+        self.fc.set_current_fit(fit_method)
 
-        # compute x-axis for fit:
-        if x_data is None:
+        if x_data is None or y_data is None:
             x_data = self.signal_plot_x
-
-        if y_data is None:
             y_data = self.signal_plot_y
 
-        num_fit_points = int(fit_granularity_fact*len(x_data))
-        pulsed_fit_x = np.linspace(start=x_data[0], stop=x_data[-1], num=num_fit_points)
-        result = None
+        self.signal_plot_x_fit, self.signal_plot_y_fit, result = self.fc.do_fit(x_data, y_data)
 
-        # set the keyword arguments, which will be passed to the fit.
-        kwargs = {'x_axis': x_data,
-                  'data': y_data,
-                  'add_params': None}
+        fit_name = self.fc.current_fit
+        fit_result = self.fc.current_fit_result
+        fit_param = self.fc.current_fit_param
 
-        param_dict = OrderedDict()
+        self.sigFitUpdated.emit(fit_name, self.signal_plot_x_fit, self.signal_plot_y_fit,
+                                fit_result)
 
-        if fit_function == 'No Fit':
-            pulsed_fit_y = np.zeros(len(pulsed_fit_x), dtype=float)
-
-        elif fit_function in ('Sine', 'Cos_FixedPhase'):
-            update_dict = {}
-            if fit_function == 'Cos_FixedPhase':
-                # set some custom defined constraints for this module and for
-                # this fit:
-                update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
-                # update_dict['amplitude'] = {'min': 0.0}
-
-                # add to the keywords dictionary
-                kwargs['add_params'] = update_dict
-
-            result = self._fit_logic.make_sineoffset_fit(**kwargs)
-            sine, params = self._fit_logic.make_sineoffset_model()
-            pulsed_fit_y = sine.eval(x=pulsed_fit_x, params=result.params)
-
-            param_dict['Contrast'] = {'value': np.abs(2*result.params['amplitude'].value*100),
-                                      'error': np.abs(2 * result.params['amplitude'].stderr*100),
-                                      'unit' : '%'}
-            param_dict['Frequency'] = {'value': result.params['frequency'].value,
-                                       'error': result.params['frequency'].stderr,
-                                       'unit' : 'Hz'}
-
-            # use proper error propagation formula:
-            error_per = 1/(result.params['frequency'].value)**2
-            error_per = error_per * result.params['frequency'].stderr
-
-            param_dict['Period'] = {'value': 1/result.params['frequency'].value,
-                                    'error': error_per,
-                                    'unit' : 's'}
-            param_dict['Phase'] = {'value': result.params['phase'].value/np.pi *180,
-                                   'error': result.params['phase'].stderr/np.pi *180,
-                                   'unit' : '°'}
-            param_dict['Offset'] = {'value': result.params['offset'].value,
-                                    'error': result.params['offset'].stderr,
-                                    'unit' : 'norm. signal'}
-
-        elif fit_function == 'Lorentian (neg)':
-
-            result = self._fit_logic.make_lorentzoffsetdip_fit(**kwargs)
-            lorentzian, params = self._fit_logic.make_lorentzoffset_model()
-            pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
-
-            param_dict['Minimum'] = {'value': result.params['center'].value,
-                                     'error': result.params['center'].stderr,
-                                     'unit' : 's'}
-            param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-                                       'error': result.params['fwhm'].stderr,
-                                       'unit' : 's'}
-
-            cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['offset'].value)
-
-            # use gaussian error propagation for error calculation:
-            cont_err = np.sqrt(
-                  (cont / result.params['amplitude'].value * result.params['amplitude'].stderr)**2
-                + (cont / result.params['sigma'].value * result.params['sigma'].stderr)**2
-                + (cont / result.params['offset'].value * result.params['offset'].stderr)**2)
-
-            param_dict['Contrast'] = {'value': cont*100,
-                                      'error': cont_err*100,
-                                      'unit' : '%'}
-
-
-        elif fit_function == 'Lorentian (pos)':
-
-            result = self._fit_logic.make_lorentzoffsetpeak_fit(**kwargs)
-            lorentzian, params = self._fit_logic.make_lorentzoffset_model()
-            pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
-
-            param_dict['Maximum'] = {'value': result.params['center'].value,
-                                     'error': result.params['center'].stderr,
-                                     'unit' : 's'}
-            param_dict['Linewidth'] = {'value': result.params['fwhm'].value,
-                                       'error': result.params['fwhm'].stderr,
-                                       'unit' : 's'}
-
-            cont = result.params['amplitude'].value
-            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['offset'].value)
-            param_dict['Contrast'] = {'value': cont*100,
-                                      'unit' : '%'}
-
-        elif fit_function == 'N14':
-
-            result = self._fit_logic.make_N14_fit(**kwargs)
-            fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=3)
-            pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
-
-            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['0_center'].stderr,
-                                     'unit' : 'Hz'}
-            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit' : 'Hz'}
-            param_dict['Freq. 2'] = {'value': result.params['l2_center'].value,
-                                     'error': result.params['l2_center'].stderr,
-                                     'unit' : 'Hz'}
-
-            cont0 = result.params['l0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['l0_sigma'].value*result.params['offset'].value)
-
-            # use gaussian error propagation for error calculation:
-            cont0_err = np.sqrt(
-                  (cont0 / result.params['l0_amplitude'].value * result.params['l0_amplitude'].stderr) ** 2
-                + (cont0 / result.params['l0_sigma'].value * result.params['l0_sigma'].stderr) ** 2
-                + (cont0 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
-
-            param_dict['Contrast 0'] = {'value': cont0*100,
-                                        'error': cont0_err*100,
-                                        'unit' : '%'}
-
-            cont1 = result.params['l1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['l1_sigma'].value*result.params['offset'].value)
-
-            # use gaussian error propagation for error calculation:
-            cont1_err = np.sqrt(
-                  (cont1 / result.params['l1_amplitude'].value * result.params['l1_amplitude'].stderr) ** 2
-                + (cont1 / result.params['l1_sigma'].value * result.params['l1_sigma'].stderr) ** 2
-                + (cont1 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
-
-            param_dict['Contrast 1'] = {'value': cont1*100,
-                                        'error': cont1_err*100,
-                                        'unit' : '%'}
-
-            cont2 = result.params['l2_amplitude'].value
-            cont2 = cont2/(-1*np.pi*result.params['l2_sigma'].value*result.params['offset'].value)
-
-            # use gaussian error propagation for error calculation:
-            cont2_err = np.sqrt(
-                  (cont2 / result.params['l2_amplitude'].value * result.params['l2_amplitude'].stderr) ** 2
-                + (cont2 / result.params['l2_sigma'].value * result.params['l2_sigma'].stderr) ** 2
-                + (cont2 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
-
-            param_dict['Contrast 2'] = {'value': cont2*100,
-                                        'error': cont2_err*100,
-                                        'unit' : '%'}
-
-        elif fit_function =='N15':
-
-            result = self._fit_logic.make_N15_fit(**kwargs)
-            fitted_function, params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
-            pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
-
-            param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit' : 'Hz'}
-            param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit' : 'Hz'}
-
-            cont0 = result.params['l0_amplitude'].value
-            cont0 = cont0/(-1*np.pi*result.params['l0_sigma'].value*result.params['offset'].value)
-
-            # use gaussian error propagation for error calculation:
-            cont0_err = np.sqrt(
-                  (cont0 / result.params['l0_amplitude'].value * result.params['l0_amplitude'].stderr) ** 2
-                + (cont0 / result.params['l0_sigma'].value * result.params['l0_sigma'].stderr) ** 2
-                + (cont0 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
-
-            param_dict['Contrast 0'] = {'value': cont0*100,
-                                        'error': cont0_err*100,
-                                        'unit' : '%'}
-
-            cont1 = result.params['l1_amplitude'].value
-            cont1 = cont1/(-1*np.pi*result.params['l1_sigma'].value*result.params['offset'].value)
-
-            # use gaussian error propagation for error calculation:
-            cont1_err = np.sqrt(
-                  (cont1 / result.params['l1_amplitude'].value * result.params['l1_amplitude'].stderr) ** 2
-                + (cont1 / result.params['l1_sigma'].value * result.params['l1_sigma'].stderr) ** 2
-                + (cont1 / result.params['offset'].value * result.params['offset'].stderr) ** 2)
-
-            param_dict['Contrast 1'] = {'value': cont1*100,
-                                        'error': cont1_err*100,
-                                        'unit' : '%'}
-
-        elif fit_function == 'Stretched Exponential':
-            self.log.warning('Stretched Exponential not yet implemented.')
-            pulsed_fit_x = np.array([])
-            pulsed_fit_y = np.array([])
-
-        elif fit_function == 'Exponential':
-            self.log.warning('Exponential not yet implemented.')
-            pulsed_fit_x = np.array([])
-            pulsed_fit_y = np.array([])
-
-        elif fit_function == 'XY8':
-            self.log.warning('XY8 not yet implemented')
-            pulsed_fit_x = np.array([])
-            pulsed_fit_y = np.array([])
-        else:
-            self.log.warning('The Fit Function "{0}" is not implemented to '
-                    'be used in the Pulsed Measurement Logic. Correct that! '
-                    'Fit Call will be skipped and Fit Function will be set '
-                    'to "No Fit".'.format(fit_function))
-            pulsed_fit_x = np.array([])
-            pulsed_fit_y = np.array([])
-
-        self.signal_plot_x_fit = pulsed_fit_x
-        self.signal_plot_y_fit = pulsed_fit_y
-
-        self.sigFitUpdated.emit(fit_function, self.signal_plot_x_fit, self.signal_plot_y_fit,
-                                param_dict, result)
-
-        return pulsed_fit_x, pulsed_fit_y, param_dict, result
+        return self.signal_plot_x_fit, self.signal_plot_y_fit, fit_result
