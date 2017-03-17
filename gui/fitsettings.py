@@ -232,7 +232,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
                 tab = self.tabs.pop(name)
                 index = self._tabWidget.indexOf(tab)
                 if index >= 0:
-                    self._tabWidget.remove(index)
+                    self._tabWidget.removeTab(index)
                 model, params = self.all_functions[widget.fit]['make_model']()
                 self.tabs[name] = FitParametersWidget(params)
                 if index >= 0:
