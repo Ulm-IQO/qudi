@@ -182,6 +182,7 @@ class PoiManagerLogic(GenericLogic):
 
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
+    signal_poi_deleted = QtCore.Signal(str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -280,7 +281,7 @@ class PoiManagerLogic(GenericLogic):
 
         # Since POI was created at current scanner position, it automatically
         # becomes the active POI.
-        self.set_active_poi(poi=new_poi)
+        self.set_active_poi(poikey=new_poi.get_key())
 
         if emit_change:
             self.signal_poi_updated.emit()
@@ -342,7 +343,14 @@ class PoiManagerLogic(GenericLogic):
                 self.log.warning('You cannot delete the crosshair or sample.')
                 return -1
             del self.poi_list[poikey]
+
+            # If the active poi was deleted, there is no way to automatically choose
+            # another active POI, so we deactivate POI
+            if self.active_poi is not None and poikey == self.active_poi.get_key():
+                self._deactivate_poi()
+
             self.signal_poi_updated.emit()
+            self.signal_poi_deleted.emit(poikey)
             return 0
         else:
             self.log.error('X. The given POI ({0}) does not exist.'.format(
@@ -389,7 +397,7 @@ class PoiManagerLogic(GenericLogic):
             return -1
 
         # This is now the active POI to send to save logic for naming in any saved filenames.
-        self.set_active_poi(poi=self.poi_list[poikey])
+        self.set_active_poi(poikey)
 
     def get_poi_position(self, poikey=None):
         """ Returns the current position of the given poi, calculated from the
@@ -625,22 +633,35 @@ class PoiManagerLogic(GenericLogic):
 
         self.signal_poi_updated.emit()
 
-    def set_active_poi(self, poi=None):
+    def set_active_poi(self, poikey=None):
         """
         Set the active POI object.
         """
 
-        # If poi is the current active POI then we don't do anything
-        if poi == self.active_poi:
-            return
+        if poikey is None:
+            # If poikey is none and no active poi is set, then do nothing
+            if self.active_poi is None:
+                return
+            else:
+                self.active_poi = None
+
+        elif poikey in self.get_all_pois():
+            # If poikey is the current active POI then do nothing
+            if self.poi_list[poikey] == self.active_poi:
+                return
+
+            else:
+                self.active_poi = self.poi_list[poikey]
+
         else:
+            # todo: error poikey unknown
+            return -1
 
-            self.active_poi = poi
-
-            self.update_poi_tag_in_savelogic()
+        self.update_poi_tag_in_savelogic()
+        self.signal_poi_updated.emit()  # todo: this breaks the emit_change = false case
 
     def _deactivate_poi(self):
-        self.set_active_poi(poi=None)
+        self.set_active_poi(poikey=None)
 
     def update_poi_tag_in_savelogic(self):
 
