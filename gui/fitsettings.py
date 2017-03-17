@@ -573,4 +573,5 @@ class FitParametersWidget(QtWidgets.QWidget):
                 self.widgets[name + '_expr'].setText(param.expr)
                 self.widgets[name + '_vary'].setChecked(param.vary)
                 self.parameters[name] = param
+        return self.parameters, self.paramUseSettings
 
