@@ -1300,14 +1300,14 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the lasertrace plot display:
-        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3), movable=True)
-        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c2))
-        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3), movable=True)
-        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c2))
-        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
-        self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4))
-        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
-        self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4))
+        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
+        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3))
+        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
+        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3))
+        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
+        self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
+        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
+        self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         # Configure the measuring error display:
         self.measuring_error_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10),
                                                      pen=palette.c1)
