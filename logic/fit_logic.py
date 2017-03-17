@@ -28,6 +28,7 @@ import numpy as np
 from os import listdir
 from os.path import isfile, join
 from collections import OrderedDict
+from distutils.version import LooseVersion
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -157,7 +158,9 @@ class FitLogic(GenericLogic):
                          had happened.
         """
         # FIXME: load all the fits here, otherwise reloading this module is really questionable
-        pass
+        fitversion = LooseVersion(lmfit.__version__)
+        if fitversion < LooseVersion('0.9.2'):
+            raise Exception('lmfit needs to be at least version 0.9.2!')
 
     def on_deactivate(self, e):
         """ """
