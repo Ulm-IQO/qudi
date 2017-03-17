@@ -91,7 +91,7 @@ class PulsedMasterLogic(GenericLogic):
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, dict, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, object)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
@@ -413,14 +413,6 @@ class PulsedMasterLogic(GenericLogic):
         pulsegenerator_constraints = self._measurement_logic.get_pulser_constraints()
         return pulsegenerator_constraints, fastcounter_constraints
 
-    def get_fit_functions(self):
-        """
-
-        @param functions_list:
-        @return:
-        """
-        return self._measurement_logic.get_fit_functions()
-
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
@@ -602,17 +594,16 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDoFit.emit(fit_function)
         return
 
-    def fit_updated(self, fit_function, fit_data_x, fit_data_y, param_dict, result_dict):
+    def fit_updated(self, fit_function, fit_data_x, fit_data_y, result_dict):
         """
 
         @param fit_function:
         @param fit_data_x:
         @param fit_data_y:
-        @param param_dict:
         @param result_dict:
         @return:
         """
-        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, param_dict, result_dict)
+        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, result_dict)
         return
 
     def analysis_interval_changed(self, analysis_interval_s):

@@ -204,7 +204,7 @@ class LaserGUI(GUIBase):
         self._mw.shutterButton.setEnabled(False)
         self.sigShutter.emit(on)
 
-    @QtCore.Slot(int)
+    @QtCore.Slot(QtWidgets.QAbstractButton)
     def changeControlMode(self, buttonId):
         """ Process signal from laser control mode radio button group. """
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()

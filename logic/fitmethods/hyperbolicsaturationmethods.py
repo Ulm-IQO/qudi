@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains methods for a power vs. fluorescence fitting, these methods
+This file contains methods for hyperbolic saturation fitting, these methods
 are imported by class FitLogic.
 
 Qudi is free software: you can redistribute it and/or modify
@@ -21,19 +21,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 from lmfit.models import Model
 
 
 ################################################################################
 #                                                                              #
-#                Excitation power - fluorescence dependency                    #
+#                Hyperbolic saturation models                                  #
 #                                                                              #
 ################################################################################
 
-#Todo: Rename to real function name
-def make_powerfluorescence_model(self, prefix=None):
+def make_hyperbolicsaturation_model(self, prefix=None):
     """ Create a model of the fluorescence depending on excitation power with
         linear offset.
 
@@ -52,27 +49,26 @@ def make_powerfluorescence_model(self, prefix=None):
             information about the current value.
     """
 
-    def powerfluorescence_function(x, I_sat, P_sat):
+    def hyperbolicsaturation_function(x, I_sat, P_sat):
         """ Fluorescence depending excitation power function
 
         @param numpy.array x: 1D array as the independent variable e.g. power
         @param float I_sat: Saturation Intensity
         @param float P_sat: Saturation power
 
-        @return: powerfluorescence function: for using it as a model
+        @return: hyperbolicsaturation function: for using it as a model
         """
 
         return I_sat * (x / (x + P_sat))
 
-
     if not isinstance(prefix, str) and prefix is not None:
-        logger.error('The passed prefix <{0}> of type {1} is not a string and'
+        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
                      'cannot be used as a prefix and will be ignored for now.'
                      'Correct that!'.format(prefix, type(prefix)))
 
-        mod_sat = Model(powerfluorescence_function, independent_vars='x')
+        mod_sat = Model(hyperbolicsaturation_function, independent_vars='x')
     else:
-        mod_sat = Model(powerfluorescence_function, independent_vars='x',
+        mod_sat = Model(hyperbolicsaturation_function, independent_vars='x',
                         prefix=prefix)
 
     linear_model, params = self.make_linear_model(prefix=prefix)
@@ -83,7 +79,42 @@ def make_powerfluorescence_model(self, prefix=None):
     return complete_model, params
 
 
-def estimate_powerfluorescence(self, x_axis, data, params):
+def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add_params=None):
+    """ Perform a fit on the provided data with a fluorescence depending function.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param method estimator: Pointer to the estimator method
+    @param list units: List containing the ['horizontal', 'vertical'] units as strings
+    @param Parameters or dict add_params: optional, additional parameters of
+                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
+                which will be used instead of the values from the estimator.
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    mod_final, params = self.make_hyperbolicsaturation_model()
+
+    error, params = estimator(x_axis, data, params)
+
+    # overwrite values of additional parameters
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
+    try:
+        result = mod_final.fit(data, x=x_axis, params=params)
+    except:
+        self.log.error('The Powerfluorescence fit did not work. Here the fit '
+                     'result message:\n'
+                     '{0}'.format(result.message))
+        result = mod_final.fit(data, x=x_axis, params=params)
+
+    return result
+
+
+def estimate_hyperbolicsaturation(self, x_axis, data, params):
     """ Provides an estimation for a saturation like function.
 
     @param numpy.array x_axis: 1D axis values
@@ -100,40 +131,6 @@ def estimate_powerfluorescence(self, x_axis, data, params):
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    #TODO: some estimated values should be input here
+    # TODO: some estimated values should be input here
 
     return error, params
-
-
-def make_powerfluorescence_fit(self, x_axis, data, add_params=None):
-    """ Perform a fit on the provided data with a fluorescence depending function.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param Parameters or dict add_params: optional, additional parameters of
-                type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-                which will be used instead of the values from the estimator.
-
-    @return object result: lmfit.model.ModelFit object, all parameters
-                           provided about the fitting, like: success,
-                           initial fitting values, best fitting values, data
-                           with best fit with given axis,...
-    """
-
-    mod_final, params = self.make_powerfluorescence_model()
-
-    error, params = self.estimate_powerfluorescence(x_axis, data, params)
-
-    # overwrite values of additional parameters
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        logger.error('The Powerfluorescence fit did not work. Here the fit '
-                     'result message:\n'
-                     '{0}'.format(result.message))
-        result = mod_final.fit(data, x=x_axis, params=params)
-
-    return result
-
