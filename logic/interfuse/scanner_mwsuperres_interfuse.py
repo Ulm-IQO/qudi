@@ -31,11 +31,9 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
     _modclass = 'ScannerMwsuperresInterfuse'
     _modtype = 'interfuse'
 
-    _in = {'confocalscanner1': 'ConfocalScannerInterface',
-           'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-           }
-    _out = {'confocalscanner1': 'ConfocalScannerInterface'}
+    _connectors = {'confocalscanner1': 'ConfocalScannerInterface',
+                   'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
+                   'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -51,9 +49,9 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
-        self._pulsed_measurement = self.get_in_connector('pulsedmeasurementlogic')
-        self._sequence_generator = self.get_in_connector('sequencegeneratorlogic')
+        self._scanning_device = self.get_connector('confocalscanner1')
+        self._pulsed_measurement = self.get_connector('pulsedmeasurementlogic')
+        self._sequence_generator = self.get_connector('sequencegeneratorlogic')
 
         # For tilt correction
         self.tilt_variable_ax = 1
