@@ -1200,6 +1200,9 @@ class PulsedMeasurementGui(GUIBase):
             axis='bottom',
             text=self._as.ana_param_x_axis_name_LineEdit.text(),
             units=self._as.ana_param_x_axis_unit_LineEdit.text())
+        # FIXME: Not very elegant
+        self._pulsed_master_logic._measurement_logic.fc.set_units([self._as.ana_param_x_axis_unit_LineEdit.text(),
+                                                                   self._as.ana_param_y_axis_unit_LineEdit.text()])
         return
 
     def keep_former_analysis_settings(self):
