@@ -1094,6 +1094,8 @@ class Manager(QtCore.QObject):
         unload_deps = self.getReverseRecursiveModuleDependencies(base, key)
         sorted_u_deps = toposort(unload_deps)
         unloaded_mods = []
+        if len(sorted_u_deps) == 0:
+            sorted_u_deps.append(key)
 
         for mkey in sorted_u_deps:
             mbase = self.findBase(mkey)
