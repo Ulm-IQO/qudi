@@ -67,7 +67,7 @@ class LaserGUI(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'laserlogic': 'LaserLogic'}
+    _connectors = {'laserlogic': 'LaserLogic'}
 
     sigLaser = QtCore.Signal(bool)
     sigShutter = QtCore.Signal(bool)
@@ -89,7 +89,7 @@ class LaserGUI(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._laser_logic = self.get_in_connector('laserlogic')
+        self._laser_logic = self.get_connector('laserlogic')
 
         #####################
         # Configuring the dock widgets
@@ -204,7 +204,7 @@ class LaserGUI(GUIBase):
         self._mw.shutterButton.setEnabled(False)
         self.sigShutter.emit(on)
 
-    @QtCore.Slot(int)
+    @QtCore.Slot(QtWidgets.QAbstractButton)
     def changeControlMode(self, buttonId):
         """ Process signal from laser control mode radio button group. """
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()

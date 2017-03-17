@@ -36,10 +36,10 @@ class OptimizerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'confocalscanner1': 'ConfocalScannerInterface',
-           'fitlogic': 'FitLogic'
-           }
-    _out = {'optimizerlogic': 'OptimizerLogic'}
+    _connectors = {
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'fitlogic': 'FitLogic'
+    }
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -82,8 +82,8 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._scanning_device = self.get_connector('confocalscanner1')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
@@ -163,7 +163,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gausslinearoffset_model()
+        model, params = self._fit_logic.make_gaussianlinearoffset_model()
         self.z_params = params
         self.use_custom_params = {name: False for name, param in params.items()}
 
@@ -437,8 +437,11 @@ class OptimizerLogic(GenericLogic):
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(xy_axes=axes,
-                                                               data=xy_fit_data)
+        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
+            xy_axes=axes,
+            data=xy_fit_data,
+            estimator=self._fit_logic.estimate_twoDgaussian
+        )
         # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
@@ -467,8 +470,6 @@ class OptimizerLogic(GenericLogic):
         # z scaning
         self._scan_z_line()
 
-        self.sigImageUpdated.emit()
-
         # z-fit
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
@@ -490,9 +491,12 @@ class OptimizerLogic(GenericLogic):
                     # Todo: It is required that the changed parameters are given as a dictionary or parameter object
                     add_params=None)
             else:
-                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                result = self._fit_logic.make_gaussianlinearoffset_fit(
                     x_axis=self._zimage_Z_values,
-                    data=self.z_refocus_line[:, self.opt_channel])
+                    data=self.z_refocus_line[:, self.opt_channel],
+                    units='m',
+                    estimator=self._fit_logic.estimate_gaussianlinearoffset_peak
+                    )
         self.z_params = result.params
 
         if result.success is False:
@@ -506,7 +510,7 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gausslinearoffset_model()
+                    gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
@@ -524,6 +528,7 @@ class OptimizerLogic(GenericLogic):
                         else:
                             self.optim_pos_z = self.z_range[0]  # moves to lowest possible value
 
+        self.sigImageUpdated.emit()
         self._sigDoNextOptimizationStep.emit()
 
     def finish_refocus(self):

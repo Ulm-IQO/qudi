@@ -40,8 +40,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
     _modclass = 'MicrowaveAgilent'
     _modtype = 'hardware'
-    ## declare connectors
-    _out = {'mwsourceagilent': 'MicrowaveInterface'}
 
     def on_activate(self,e):
         """ Initialisation performed during activation of the module.

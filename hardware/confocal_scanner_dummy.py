@@ -34,8 +34,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     _modclass = 'ConfocalScannerDummy'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'confocalscanner': 'ConfocalScannerInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -72,7 +71,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
                          has happen.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
@@ -301,7 +300,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         return self._current_position[0:len(self.get_scanner_axes())]
 
-    def set_up_line(self, length=100):
+    def _set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.
 
         @param int length: length of the line in pixel
@@ -328,7 +327,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             return np.array([[-1.]])
 
         if np.shape(line_path)[1] != self._line_length:
-            self.set_up_line(np.shape(line_path)[1])
+            self._set_up_line(np.shape(line_path)[1])
 
         count_data = np.random.uniform(0, 2e4, self._line_length)
         z_data = line_path[2, :]
@@ -421,8 +420,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
         c = (np.sin(theta)**2) / (2 * sigma_x**2) + (np.cos(theta)**2) / (2 * sigma_y**2)
         g = offset + amplitude * np.exp(
-            - (a * ((x - x_zero)**2) 
-                + 2 * b * (x - x_zero) * (y - y_zero) 
+            - (a * ((x - x_zero)**2)
+                + 2 * b * (x - x_zero) * (y - y_zero)
                 + c * ((y - y_zero)**2)))
         return g.ravel()
 

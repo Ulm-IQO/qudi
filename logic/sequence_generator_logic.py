@@ -59,9 +59,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     _modclass = 'sequencegeneratorlogic'
     _modtype = 'logic'
 
-    ## declare connectors
-    _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
-
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -108,19 +105,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             if not os.path.exists(self.pulsed_file_dir):
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directort defined in "pulsed_file_dir" '
-                        'in the config for SequenceGeneratorLogic class does '
-                        'not exist!\n'
-                        'The default home directory\n{0}\n will be '
-                        'taken instead.'.format(self.pulsed_file_dir))
+                self.log.warning('The directort defined in "pulsed_file_dir" in the config for '
+                                 'SequenceGeneratorLogic class does not exist! The default home '
+                                 'directory\n{0}'
+                                 '\nwill be taken instead.'.format(self.pulsed_file_dir))
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No directory with the attribute '
-                    '"pulsed_file_dir" is defined for the '
-                    'SequenceGeneratorLogic!\n'
-                    'The default home directory\n{0}\n will be taken '
-                    'instead.'.format(self.pulsed_file_dir))
+            self.log.warning('No directory with the attribute "pulsed_file_dir" is defined for the '
+                             'SequenceGeneratorLogic! The default home directory\n{0}\nwill be '
+                             'taken instead.'.format(self.pulsed_file_dir))
 
         # Byte size of the max. memory usage during sampling/write-to-file process
         if 'overhead_bytes' in config.keys():
@@ -367,7 +361,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """ Update the saved_pulse_block dict from file """
         block_files = [f for f in os.listdir(self.block_dir) if 'block_dict.blk' in f]
         if len(block_files) == 0:
-            self.log.warning('No serialized block dict was found in {0}.'.format(self.block_dir))
+            self.log.info('No serialized block dict was found in {0}.'.format(self.block_dir))
             self.saved_pulse_blocks = OrderedDict()
             self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
             return
@@ -465,8 +459,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """ Update the saved_pulse_block_ensembles dict from file """
         ensemble_files = [f for f in os.listdir(self.ensemble_dir) if 'ensemble_dict.ens' in f]
         if len(ensemble_files) == 0:
-            self.log.warning('No serialized ensembles dict was found in {0}.'
-                             ''.format(self.ensemble_dir))
+            self.log.info('No serialized ensembles dict was found in {0}.'
+                          ''.format(self.ensemble_dir))
             self.saved_pulse_block_ensembles = OrderedDict()
             self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
             return
@@ -586,8 +580,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """ Update the saved_pulse_sequences dict from file """
         sequence_files = [f for f in os.listdir(self.sequence_dir) if 'sequence_dict.sequ' in f]
         if len(sequence_files) == 0:
-            self.log.warning('No serialized sequence dict was found in {0}.'
-                             ''.format(self.sequence_dir))
+            self.log.info('No serialized sequence dict was found in {0}.'.format(self.sequence_dir))
             self.saved_pulse_sequences = OrderedDict()
             self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
             return

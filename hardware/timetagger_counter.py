@@ -34,9 +34,6 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
     _modtype = 'TTCounter'
     _modclass = 'hardware'
 
-    # connectors
-    _out = {'ttcounter': 'SlowCounterInterface'
-            }
 
     def on_activate(self, e=None):
         """ Starts up the NI Card at activation.

@@ -67,16 +67,17 @@ class MagnetLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'magnetstage': 'MagnetInterface',
-           'optimizerlogic': 'OptimizerLogic',
-           'counterlogic': 'CounterLogic',
-           'odmrlogic': 'ODMRLogic',
-           'savelogic': 'SaveLogic',
-           'scannerlogic':'ScannerLogic',
-           'traceanalysis':'TraceAnalysisLogic',
-           'gatedcounterlogic': 'GatedCounterLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
-    _out = {'magnetlogic': 'MagnetLogic'}
+    _connectors = {
+        'magnetstage': 'MagnetInterface',
+        'optimizerlogic': 'OptimizerLogic',
+        'counterlogic': 'CounterLogic',
+        'odmrlogic': 'ODMRLogic',
+        'savelogic': 'SaveLogic',
+        'scannerlogic':'ScannerLogic',
+        'traceanalysis':'TraceAnalysisLogic',
+        'gatedcounterlogic': 'GatedCounterLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic'
+    }
 
     # General Signals, used everywhere:
     sigIdleStateChanged = QtCore.Signal(bool)
@@ -151,8 +152,8 @@ class MagnetLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._magnet_device = self.get_in_connector('magnetstage')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._magnet_device = self.get_connector('magnetstage')
+        self._save_logic = self.get_connector('savelogic')
 
         self.log.info('The following configuration was found.')
         # checking for the right configuration
@@ -162,16 +163,16 @@ class MagnetLogic(GenericLogic):
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._optimizer_logic = self.get_in_connector('optimizerlogic')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
-        self._counter_logic = self.get_in_connector('counterlogic')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
+        self._optimizer_logic = self.get_connector('optimizerlogic')
+        self._confocal_logic = self.get_connector('scannerlogic')
+        self._counter_logic = self.get_connector('counterlogic')
+        self._odmr_logic = self.get_connector('odmrlogic')
 
-        self._gc_logic = self.get_in_connector('gatedcounterlogic')
-        self._ta_logic = self.get_in_connector('traceanalysis')
-        #self._odmr_logic = self.get_in_connector('odmrlogic')
+        self._gc_logic = self.get_connector('gatedcounterlogic')
+        self._ta_logic = self.get_connector('traceanalysis')
+        #self._odmr_logic = self.get_connector('odmrlogic')
 
-        self._seq_gen_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._seq_gen_logic = self.get_connector('sequencegeneratorlogic')
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that
@@ -356,7 +357,7 @@ class MagnetLogic(GenericLogic):
         if 'odmr_2d_low_fitfunction' in self._statusVariables:
             self.odmr_2d_low_fitfunction = self._statusVariables['odmr_2d_low_fitfunction']
         else:
-            self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
+            self.odmr_2d_low_fitfunction = list(self.odmr_2d_low_fitfunction_list)[1]
 
 
 
@@ -390,7 +391,7 @@ class MagnetLogic(GenericLogic):
         if 'odmr_2d_high_fitfunction' in self._statusVariables:
             self.odmr_2d_high_fitfunction = self._statusVariables['odmr_2d_high_fitfunction']
         else:
-            self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
+            self.odmr_2d_high_fitfunction = list(self.odmr_2d_high_fitfunction_list)[1]
 
         if 'odmr_2d_save_after_measure' in self._statusVariables:
             self.odmr_2d_save_after_measure = self._statusVariables['odmr_2d_save_after_measure']
@@ -2064,9 +2065,8 @@ class MagnetLogic(GenericLogic):
 
 
 
-        self._save_logic.save_data(matrix_data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp)
 
         self.log.debug('Magnet 2D data saved to:\n{0}'.format(filepath))
 
@@ -2091,9 +2091,8 @@ class MagnetLogic(GenericLogic):
 
 
 
-        self._save_logic.save_data(add_data, filepath,
-                                   filelabel=filelabel2, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(add_data, filepath=filepath, filelabel=filelabel2,
+                                   timestamp=timestamp)
         # save the data table
 
         count_data = self._2D_data_matrix
@@ -2113,37 +2112,36 @@ class MagnetLogic(GenericLogic):
                 save_dict[axis0_key].append(x_val[ii])
                 save_dict[axis1_key].append(y_val[jj])
                 save_dict[counts_key].append(col_counts)
+        save_dict[axis0_key] = np.array(save_dict[axis0_key])
+        save_dict[axis1_key] = np.array(save_dict[axis1_key])
+        save_dict[counts_key] = np.array(save_dict[counts_key])
 
         # making saveable dictionaries
 
-        self._save_logic.save_data(save_dict, filepath,
-                                   filelabel=filelabel3, timestamp=timestamp,
-                                   as_text=True, precision=':.6e')
+        self._save_logic.save_data(save_dict, filepath=filepath, filelabel=filelabel3,
+                                   timestamp=timestamp, fmt='%.6e')
         keys = self._2d_intended_fields[0].keys()
         intended_fields = OrderedDict()
         for key in keys:
             field_values = [coord_dict[key] for coord_dict in self._2d_intended_fields]
             intended_fields[key] = field_values
 
-        self._save_logic.save_data(intended_fields, filepath,
-                                   filelabel=filelabel4, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(intended_fields, filepath=filepath, filelabel=filelabel4,
+                                   timestamp=timestamp)
 
         measured_fields = OrderedDict()
         for key in keys:
             field_values = [coord_dict[key] for coord_dict in self._2d_measured_fields]
             measured_fields[key] = field_values
 
-        self._save_logic.save_data(measured_fields, filepath,
-                                   filelabel=filelabel5, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(measured_fields, filepath=filepath, filelabel=filelabel5,
+                                   timestamp=timestamp)
 
         error = OrderedDict()
         error['quadratic error'] = self._2d_error
 
-        self._save_logic.save_data(error, filepath,
-                                   filelabel=filelabel6, timestamp=timestamp,
-                                   as_text=True)
+        self._save_logic.save_data(error, filepath=filepath, filelabel=filelabel6,
+                                   timestamp=timestamp)
 
     def _move_to_index(self, pathway_index, pathway):
 
@@ -2204,7 +2202,7 @@ class MagnetLogic(GenericLogic):
 
         @return dict: Dictionary with new values
         """
-        if param_list==None:
+        if param_list is None:
             return self.move_rel
         else:
             dict={}

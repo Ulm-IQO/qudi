@@ -25,7 +25,7 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 
 from core.base import Base
-from interface.pulser_interface import PulserInterface
+from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class PulserDummy(Base, PulserInterface):
@@ -37,8 +37,6 @@ class PulserDummy(Base, PulserInterface):
     """
     _modclass = 'PulserDummy'
     _modtype = 'hardware'
-    # connectors
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -100,7 +98,7 @@ class PulserDummy(Base, PulserInterface):
 
         self.uploaded_assets_list = []
         self.uploaded_files_list = []
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         self.is_output_enabled = True
 
         # settings for remote access on the AWG PC
@@ -133,101 +131,114 @@ class PulserDummy(Base, PulserInterface):
         self.connected = False
 
     def get_constraints(self):
-        """ Retrieve the hardware constrains from the Pulsing device.
-
-        @return dict: dict with constraints for the sequence generation and GUI
-
-        Provides all the constraints (e.g. sample_rate, amplitude,
-        total_length_bins, channel_config, ...) related to the pulse generator
-        hardware to the caller.
-        The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method).
-
-                    NO OTHER KEYS SHOULD BE INVENTED!
-
-        If you are not sure about the meaning, look in other hardware files to
-        get an impression. If still additional constraints are needed, then they
-        have to be added to all files containing this interface.
-
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
-
-        Only the keys 'activation_config' and differs, since it contain the
-        channel configuration/activation information.
-
-        If the constraints cannot be set in the pulsing hardware (because it
-        might e.g. has no sequence mode) then write just zero to each generic
-        dict. Note that there is a difference between float input (0.0) and
-        integer input (0).
-
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
         """
-        constraints = dict()
+        Retrieve the hardware constrains from the Pulsing device.
 
-        # if interleave option is available, then sample rate constraints must
-        # be assigned to the output of a function called
-        # _get_sample_rate_constraints()
-        # which outputs the shown dictionary with the correct values depending
-        # on the present mode. The the GUI will have to check again the
-        # limitations if interleave was selected.
-        constraints['sample_rate']  = self._get_sample_rate_constraints()
+        @return constraints object: object with pulser constraints as attributes.
 
-        # The file formats are hardware specific. The sequence_generator_logic will need this
-        # information to choose the proper output format for waveform and sequence files.
-        constraints['waveform_format'] = self.compatible_waveform_format
-        constraints['sequence_format'] = self.compatible_sequence_format
+        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
+        channel_config, ...) related to the pulse generator hardware to the caller.
 
-        # the stepsize will be determined by the DAC in combination with the
-        # maximal output amplitude (in Vpp):
-        constraints['a_ch_amplitude'] = {'min': 0.02, 'max': 2.0,
-                                         'step': 0.001, 'unit': 'Vpp'}
+            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
 
-        constraints['a_ch_offset'] = {'min': -1.0, 'max': 1.0,
-                                      'step': 0.001, 'unit': 'V'}
+        If you are not sure about the meaning, look in other hardware files to get an impression.
+        If still additional constraints are needed, then they have to be added to the
+        PulserConstraints class.
 
-        constraints['d_ch_low'] = {'min': -1.0, 'max': 4.0,
-                                   'step': 0.01, 'unit': 'V'}
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
 
-        constraints['d_ch_high'] = {'min': 0.0, 'max': 5.0,
-                                    'step': 0.0, 'unit': 'V'}
+        PulserConstraints.activation_config differs, since it contain the channel
+        configuration/activation information of the form:
+            {<descriptor_str>: <channel_list>,
+             <descriptor_str>: <channel_list>,
+             ...}
 
-        constraints['sampled_file_length'] = {'min': 80, 'max': 64.8e6,
-                                              'step': 1, 'unit': 'Samples'}
+        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
+        sequence mode) just leave it out so that the default is used (only zeros).
+        """
+        constraints = PulserConstraints()
 
-        constraints['digital_bin_num'] = {'min': 0, 'max': 0.0,
-                                          'step': 0, 'unit': '#'}
+        # The file formats are hardware specific.
+        constraints.waveform_format = [self.compatible_waveform_format]
+        constraints.sequence_format = [self.compatible_sequence_format]
 
-        constraints['waveform_num'] = {'min': 1, 'max': 32000,
-                                       'step': 1, 'unit': '#'}
+        if self.interleave:
+            constraints.sample_rate.min = 12.0e9
+            constraints.sample_rate.max = 24.0e9
+            constraints.sample_rate.step = 4.0e8
+            constraints.sample_rate.default = 24.0e9
+        else:
+            constraints.sample_rate.min = 10.0e6
+            constraints.sample_rate.max = 12.0e9
+            constraints.sample_rate.step = 10.0e6
+            constraints.sample_rate.default = 12.0e9
 
-        constraints['sequence_num'] = {'min': 1, 'max': 8000,
-                                       'step': 1, 'unit': '#'}
+        constraints.a_ch_amplitude.min = 0.02
+        constraints.a_ch_amplitude.max = 2.0
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 2.0
 
-        constraints['subsequence_num'] = {'min': 1, 'max': 4000,
-                                          'step': 1, 'unit': '#'}
+        constraints.a_ch_offset.min = -1.0
+        constraints.a_ch_offset.max = 1.0
+        constraints.a_ch_offset.step = 0.001
+        constraints.a_ch_offset.default = 0.0
 
-        # If sequencer mode is enable than sequence_param should be not just an
-        # empty dictionary.
-        sequence_param = OrderedDict()
-        sequence_param['repetitions'] = {'min': 0, 'max': 65536, 'step': 1,
-                                         'unit': '#'}
-        sequence_param['trigger_wait'] = {'min': False, 'max': True, 'step': 1,
-                                          'unit': 'bool'}
-        sequence_param['event_jump_to'] = {'min': -1, 'max': 8000, 'step': 1,
-                                           'unit': 'row'}
-        sequence_param['go_to'] = {'min': 0, 'max': 8000, 'step': 1,
-                                   'unit': 'row'}
-        constraints['sequence_param'] = sequence_param
+        constraints.d_ch_low.min = -1.0
+        constraints.d_ch_low.max = 4.0
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
 
-        # the name a_ch<num> and d_ch<num> are generic names, which describe
-        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used. The names
-        # for the different configurations can be customary chosen.
+        constraints.d_ch_high.min = 0.0
+        constraints.d_ch_high.max = 5.0
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 5.0
 
+        constraints.sampled_file_length.min = 80
+        constraints.sampled_file_length.max = 64800000
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 80
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 8000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 4000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
+
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65539
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
+        constraints.trigger_in.min = 0
+        constraints.trigger_in.max = 2
+        constraints.trigger_in.step = 1
+        constraints.trigger_in.default = 0
+
+        constraints.event_jump_to.min = 0
+        constraints.event_jump_to.max = 8000
+        constraints.event_jump_to.step = 1
+        constraints.event_jump_to.default = 0
+
+        constraints.go_to.min = 0
+        constraints.go_to.max = 8000
+        constraints.go_to.step = 1
+        constraints.go_to.default = 0
+
+        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
+        # channels. Here all possible channel configurations are stated, where only the generic
+        # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
         activation_config['config0'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         activation_config['config1'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
@@ -238,32 +249,17 @@ class PulserDummy(Base, PulserInterface):
         # Usage of Interleave mode:
         activation_config['config4'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of only digital channels:
-        activation_config['config5'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
-                                        'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
+        activation_config['config5'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6',
+                                        'd_ch7', 'd_ch8']
         # Usage of only one analog channel:
         activation_config['config6'] = ['a_ch1']
         activation_config['config7'] = ['a_ch2']
         activation_config['config8'] = ['a_ch3']
         # Usage of only the analog channels:
         activation_config['config9'] = ['a_ch2', 'a_ch3']
-
-        constraints['activation_config'] = activation_config
+        constraints.activation_config = activation_config
 
         return constraints
-
-    def _get_sample_rate_constraints(self):
-        """ If sample rate changes during Interleave mode, then it has to be
-            adjusted for that state.
-
-        @return dict: with keys 'min', 'max':, 'step' and 'unit' and the
-                      assigned values for that keys.
-        """
-        if self.interleave:
-            return {'min': 12.0e9, 'max': 24.0e9,
-                    'step': 4, 'unit': 'Samples/s'}
-        else:
-            return {'min': 10.0e6, 'max': 12.0e9,
-                    'step': 4, 'unit': 'Samples/s'}
 
     def pulser_on(self):
         """ Switches the pulsing device on.
@@ -392,7 +388,7 @@ class PulserDummy(Base, PulserInterface):
         Unused for digital pulse generators without storage capability
         (PulseBlaster, FPGA).
         """
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         return
 
     def get_status(self):
@@ -882,7 +878,7 @@ class PulserDummy(Base, PulserInterface):
 
         @return int: number of analog channels.
         """
-        config = self.get_constraints()['activation_config']
+        config = self.get_constraints().activation_config
 
         all_a_ch = []
         for conf in config:
@@ -903,7 +899,7 @@ class PulserDummy(Base, PulserInterface):
 
         @return int: number of digital channels.
         """
-        config = self.get_constraints()['activation_config']
+        config = self.get_constraints().activation_config
 
         all_d_ch = []
         for conf in config:

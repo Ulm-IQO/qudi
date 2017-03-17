@@ -345,12 +345,12 @@ def generate_cpmg_nsweep(self, name='CPMG_Nsweep', rabi_period=1.0e-8, mw_freq=2
     elem_list = []
     # actual CPMG-N-sweep sequence
 
-    for nn in range(len(n_array)):
+    for outer_counter, outer_element in enumerate(n_array):
         elem_list.append(pihalf_element)
         elem_list.append(tauhalf_element)
-        for n in range(n_array[nn]):
+        for n in range(outer_element):
             elem_list.append(piy_element)
-            if n != n_array[nn]-1:
+            if n != outer_element-1:
                 elem_list.append(tau_element)
         elem_list.append(tauhalf_element)
         elem_list.append(pihalf_element)
@@ -360,9 +360,9 @@ def generate_cpmg_nsweep(self, name='CPMG_Nsweep', rabi_period=1.0e-8, mw_freq=2
         if alternating:
             elem_list.append(pihalf_element)
             elem_list.append(tauhalf_element)
-            for n in range(n_array[nn]):
+            for n in range(outer_element):
                 elem_list.append(piy_element)
-                if n != n_array[nn] - 1:
+                if n != outer_element - 1:
                     elem_list.append(tau_element)
             elem_list.append(tauhalf_element)
             elem_list.append(pi3half_element)

@@ -174,11 +174,11 @@ class PoiManagerLogic(GenericLogic):
     _modclass = 'poimanagerlogic'
     _modtype = 'logic'
     # declare connectors
-    _in = {'optimizer1': 'OptimizerLogic',
-           'scannerlogic': 'ConfocalLogic',
-           'savelogic': 'SaveLogic',
-           }
-    _out = {'poimanagerlogic': 'PoiManagerLogic'}
+    _connectors = {
+        'optimizer1': 'OptimizerLogic',
+        'scannerlogic': 'ConfocalLogic',
+        'savelogic': 'SaveLogic',
+    }
 
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
@@ -210,9 +210,9 @@ class PoiManagerLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
 
-        self._optimizer_logic = self.get_in_connector('optimizer1')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._optimizer_logic = self.get_connector('optimizer1')
+        self._confocal_logic = self.get_connector('scannerlogic')
+        self._save_logic = self.get_connector('savelogic')
 
         # initally add crosshair to the pois
         crosshair = PoI(point=[0, 0, 0], name='crosshair')
@@ -715,18 +715,13 @@ class PoiManagerLogic(GenericLogic):
                 y_coords.append(thispoi.get_coords_in_sample()[1])
                 z_coords.append(thispoi.get_coords_in_sample()[2])
 
-        data['POI Name'] = poinames
-        data['POI Key'] = poikeys
-        data['X'] = x_coords
-        data['Y'] = y_coords
-        data['Z'] = z_coords
+        data['POI Name'] = np.array(poinames)
+        data['POI Key'] = np.array(poikeys)
+        data['X'] = np.array(x_coords)
+        data['Y'] = np.array(y_coords)
+        data['Z'] = np.array(z_coords)
 
-        self._save_logic.save_data(
-            data,
-            filepath,
-            filelabel=self.roi_name,
-            precision=':.3e',
-            as_text=True)
+        self._save_logic.save_data(data, filepath=filepath, filelabel=self.roi_name, fmt='%.6e')
 
         self.log.debug('ROI saved to:\n{0}'.format(filepath))
 

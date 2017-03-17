@@ -222,7 +222,7 @@ class PoiManagerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'poimanagerlogic1': 'PoiManagerLogic',
+    _connectors = {'poimanagerlogic1': 'PoiManagerLogic',
            'confocallogic1': 'ConfocalLogic'
            }
 
@@ -253,8 +253,8 @@ class PoiManagerGui(GUIBase):
         self.selected_poi_key = None
 
         # Connectors
-        self._poi_manager_logic = self.get_in_connector('poimanagerlogic1')
-        self._confocal_logic = self.get_in_connector('confocallogic1')
+        self._poi_manager_logic = self.get_connector('poimanagerlogic1')
+        self._confocal_logic = self.get_connector('confocallogic1')
         self.log.debug("POI Manager logic is {0}".format(self._poi_manager_logic))
         self.log.debug("Confocal logic is {0}".format(self._confocal_logic))
 
@@ -898,7 +898,10 @@ class PoiManagerGui(GUIBase):
         """ Load a saved ROI from file."""
 
         this_file = QtWidgets.QFileDialog.getOpenFileName(
-            self._mw, str("Open ROI"), None, str("Data files (*.dat)"))
+            self._mw,
+            str("Open ROI"),
+            None,
+            str("Data files (*.dat)"))[0]
 
         self._poi_manager_logic.load_roi_from_file(filename=this_file)
 

@@ -41,13 +41,11 @@ class CounterLogic(GenericLogic):
     @return error: 0 is OK, -1 is error
     """
     sigCounterUpdated = QtCore.Signal()
-    sigCountContinuousNext = QtCore.Signal()
-    sigCountGatedNext = QtCore.Signal()
 
-    sigCountFiniteGatedNext = QtCore.Signal()
+    sigCountDataNext = QtCore.Signal()
+
     sigGatedCounterFinished = QtCore.Signal()
     sigGatedCounterContinue = QtCore.Signal(bool)
-
     sigCountingSamplesChanged = QtCore.Signal(int)
     sigCountLengthChanged = QtCore.Signal(int)
     sigCountFrequencyChanged = QtCore.Signal(float)
@@ -60,10 +58,9 @@ class CounterLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'counter1': 'SlowCounterInterface',
-            'savelogic': 'SaveLogic'
-            }
-    _out = {'counterlogic': 'CounterLogic'}
+    _connectors = {
+        'counter1': 'SlowCounterInterface',
+        'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
@@ -80,20 +77,20 @@ class CounterLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         # in bins
         self._count_length = 300
+        self._smooth_window_length = 10
+        self._counting_samples = 1      # oversampling
         # in hertz
         self._count_frequency = 50
-        # oversampling in bins
-        self._counting_samples = 1
-        # in bins
-        self._smooth_window_length = 10
-        self._binned_counting = True
 
+        # self._binned_counting = True  # UNUSED?
         self._counting_mode = CountingMode['CONTINUOUS']
 
+        self._saving = False
+        return
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -107,39 +104,41 @@ class CounterLogic(GenericLogic):
                          has happen.
         """
         # Connect to hardware and save logic
-        self._counting_device = self.get_in_connector('counter1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._counting_device = self.get_connector('counter1')
+        self._save_logic = self.get_connector('savelogic')
+
+        # Recall saved app-parameters
+        if 'count_length' in self._statusVariables:
+            self._count_length = self._statusVariables['count_length']
+        if 'smooth_window_length' in self._statusVariables:
+            self._smooth_window_length = self._statusVariables['smooth_window_length']
+        if 'counting_samples' in self._statusVariables:
+            self._counting_samples = self._statusVariables['counting_samples']
+        if 'count_frequency' in self._statusVariables:
+            self._count_frequency = self._statusVariables['count_frequency']
+        if 'counting_mode' in self._statusVariables:
+            self._counting_mode = CountingMode[self._statusVariables['counting_mode']]
+        if 'saving' in self._statusVariables:
+            self._saving = self._statusVariables['saving']
 
         constraints = self.get_hardware_constraints()
         number_of_detectors = constraints.max_detectors
 
-        self.countdata = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        self.countdata_smoothed = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        self.rawdata = np.zeros(
-            (len(self.get_channels()), self._counting_samples))
- 
-        self.running = False
+        # initialize data arrays
+        self.countdata = np.zeros([len(self.get_channels()), self._count_length])
+        self.countdata_smoothed = np.zeros([len(self.get_channels()), self._count_length])
+        self.rawdata = np.zeros([len(self.get_channels()), self._counting_samples])
+        self._already_counted_samples = 0  # For gated counting
+        self._data_to_save = []
+
+        # Flag to stop the loop
         self.stopRequested = False
-        self._saving = False
-        self._data_to_save=[]
+
         self._saving_start_time = time.time()
 
         # connect signals
-        # FIXME: Is it really necessary to have three different Signals? They are doing almost the same
-        # for continuous counting:
-        self.sigCountContinuousNext.connect(
-            self.countLoopBody_continuous,
-            QtCore.Qt.QueuedConnection)
-        # for gated counting:
-        self.sigCountGatedNext.connect(
-            self.countLoopBody_gated,
-            QtCore.Qt.QueuedConnection)
-        # for finite gated counting:
-        self.sigCountFiniteGatedNext.connect(
-            self.countLoopBody_finite_gated,
-            QtCore.Qt.QueuedConnection)
+        self.sigCountDataNext.connect(self.count_loop_body, QtCore.Qt.QueuedConnection)
+        return
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -147,36 +146,46 @@ class CounterLogic(GenericLogic):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
-        #print('{0} -> {1}'.format(e.src, e.dst))
-        if e.src == 'idle':
-            return
+        # Save parameters to disk
+        self._statusVariables['count_length'] = self._count_length
+        self._statusVariables['smooth_window_length'] = self._smooth_window_length
+        self._statusVariables['counting_samples'] = self._counting_samples
+        self._statusVariables['count_frequency'] = self._count_frequency
+        self._statusVariables['counting_mode'] = self._counting_mode.name
+        self._statusVariables['saving'] = self._saving
 
-        self.stopCount()
-        for attempt in range(20):
-            if not self.stopRequested:
-                break
-            QtCore.QCoreApplication.processEvents()
-            time.sleep(0.1)
-        else:
-            self.log.error('Stopped deactivate counter after trying for 2 seconds!')
+        # Stop measurement
+        if self.getState() == 'locked':
+            self._stopCount_wait()
+
+        self.sigCountDataNext.disconnect()
+        return
 
     def get_hardware_constraints(self):
-        """ Retrieve the hardware constrains from the counter device.
+        """
+        Retrieve the hardware constrains from the counter device.
+
         @return SlowCounterConstraints: object with constraints for the counter
         """
         return self._counting_device.get_constraints()
 
     def set_counting_samples(self, samples=1):
-        """ Sets the length of the counted bins.
+        """
+        Sets the length of the counted bins.
+        The counter is stopped first and restarted afterwards.
 
         @param int samples: oversampling in units of bins (positive int ).
 
         @return int: oversampling in units of bins.
-
-        This makes sure, the counter is stopped first and restarted afterwards.
         """
+        # Determine if the counter has to be restarted after setting the parameter
+        if self.getState() == 'locked':
+            restart = True
+        else:
+            restart = False
+
         if samples > 0:
-            restart = self.stop_counter()
+            self._stopCount_wait()
             self._counting_samples = int(samples)
             # if the counter was running, restart it
             if restart:
@@ -195,8 +204,13 @@ class CounterLogic(GenericLogic):
 
         This makes sure, the counter is stopped first and restarted afterwards.
         """
+        if self.getState() == 'locked':
+            restart = True
+        else:
+            restart = False
+
         if length > 0:
-            restart = self.stop_counter()
+            self._stopCount_wait()
             self._count_length = int(length)
             # if the counter was running, restart it
             if restart:
@@ -216,8 +230,14 @@ class CounterLogic(GenericLogic):
         This makes sure, the counter is stopped first and restarted afterwards.
         """
         constraints = self.get_hardware_constraints()
+
+        if self.getState() == 'locked':
+            restart = True
+        else:
+            restart = False
+
         if constraints.min_count_frequency <= frequency <= constraints.max_count_frequency:
-            restart = self.stop_counter()
+            self._stopCount_wait()
             self._count_frequency = frequency
             # if the counter was running, restart it
             if restart:
@@ -257,18 +277,20 @@ class CounterLogic(GenericLogic):
         return self._saving
 
     def start_saving(self, resume=False):
-        """ Sets up start-time and initializes data array, if not resuming, and changes saving state
-        If the counter is not running it will be started in order to have data to save
+        """
+        Sets up start-time and initializes data array, if not resuming, and changes saving state.
+        If the counter is not running it will be started in order to have data to save.
 
         @return bool: saving state
         """
         if not resume:
             self._data_to_save = []
             self._saving_start_time = time.time()
+
         self._saving = True
 
         # If the counter is not running, then it should start running so there is data to save
-        if self.isstate('idle'):
+        if self.getState() != 'locked':
             self.startCount()
 
         self.sigSavingStatusChanged.emit(self._saving)
@@ -288,8 +310,8 @@ class CounterLogic(GenericLogic):
 
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
-        parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+        parameters['Start counting time'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
+        parameters['Stop counting time'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
         parameters['Count frequency (Hz)'] = self._count_frequency
         parameters['Oversampling (Samples)'] = self._counting_samples
         parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
@@ -302,24 +324,16 @@ class CounterLogic(GenericLogic):
                 filelabel = 'count_trace_' + postfix
 
             # prepare the data in a dict or in an OrderedDict:
-            data = OrderedDict()
             header = 'Time (s)'
             for i, detector in enumerate(self.get_channels()):
                 header = header + ',Signal{0} (counts/s)'.format(i)
- 
+
             data = {header: self._data_to_save}
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
             fig = self.draw_figure(data=np.array(self._data_to_save))
-            self._save_logic.save_data(
-                data,
-                filepath,
-                parameters=parameters,
-                filelabel=filelabel,
-                as_text=True,
-                plotfig=fig
-                )
-            plt.close(fig)
+            self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
+                                       filelabel=filelabel, plotfig=fig, delimiter='\t')
             self.log.info('Counter Trace saved to:\n{0}'.format(filepath))
 
         self.sigSavingStatusChanged.emit(self._saving)
@@ -332,18 +346,15 @@ class CounterLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-
         count_data = data[:, 1:len(self.get_channels())+1]
         time_data = data[:, 0]
 
         # Scale count values using SI prefix
         prefix = ['', 'k', 'M', 'G']
         prefix_index = 0
-
         while np.max(count_data) > 1000:
             count_data = count_data / 1000
             prefix_index = prefix_index + 1
-
         counts_prefix = prefix[prefix_index]
 
         # Use qudi style
@@ -351,12 +362,9 @@ class CounterLogic(GenericLogic):
 
         # Create figure
         fig, ax = plt.subplots()
-
         ax.plot(time_data, count_data, linestyle=':', linewidth=0.5)
-
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
-
         return fig
 
     def set_counting_mode(self, mode='CONTINUOUS'):
@@ -369,13 +377,15 @@ class CounterLogic(GenericLogic):
         @return str: counting mode
         """
         constraints = self.get_hardware_constraints()
-
-        if CountingMode[mode] in constraints.counting_mode:
-            self._counting_mode = CountingMode[mode]
-            self.log.debug(self._counting_mode)
+        if self.getState() != 'locked':
+            if CountingMode[mode] in constraints.counting_mode:
+                self._counting_mode = CountingMode[mode]
+                self.log.debug('New counting mode: {}'.format(self._counting_mode))
+            else:
+                self.log.warning('Counting mode not supported from hardware. Command ignored!')
+            self.sigCountingModeChanged.emit(self._counting_mode)
         else:
-            self.log.warning('Counting mode not supported from hardware. Command ignored!')
-        self.sigCountingModeChanged.emit(self._counting_mode)
+            self.log.error('Cannot change counting mode while counter is still running.')
         return self._counting_mode
 
     def get_counting_mode(self):
@@ -387,318 +397,112 @@ class CounterLogic(GenericLogic):
                 'FINITE_GATED'  = finite measurement with predefined number of samples
         """
         return self._counting_mode
- 
-    # FIXME: Is it really necessary to have 3 different methods here?
+
+    # FIXME: Not implemented for self._counting_mode == 'gated'
     def startCount(self):
         """ This is called externally, and is basically a wrapper that
             redirects to the chosen counting mode start function.
 
             @return error: 0 is OK, -1 is error
         """
-
-        if self._counting_mode == CountingMode['CONTINUOUS']:
-            self.sigCountStatusChanged.emit(True)
-            return self._startCount_continuous()
-        elif self._counting_mode == CountingMode['GATED']:
-            self.sigCountStatusChanged.emit(True)
-            return self._startCount_gated()
-        elif self._counting_mode == CountingMode['FINITE_GATED']:
-            self.sigCountStatusChanged.emit(True)
-            return self._startCount_finite_gated()
-        else:
+        # Sanity checks
+        constraints = self.get_hardware_constraints()
+        if self._counting_mode not in constraints.counting_mode:
+            self.log.error('Unknown counting mode "{0}". Cannot start the counter.'
+                           ''.format(self._counting_mode))
             self.sigCountStatusChanged.emit(False)
-            self.log.error('Unknown counting mode, cannot start the counter.')
             return -1
 
-    def _startCount_continuous(self):
-        """Prepare to start counting change state and start counting 'loop'."""
-        # setting up the counter
-        # set a lock, to signify the measurment is running
+        with self.threadlock:
+            # Lock module
+            if self.getState() != 'locked':
+                self.lock()
+            else:
+                self.log.warning('Counter already running. Method call ignored.')
+                return 0
 
-        #@return error: 0 is OK, -1 is error
-        self.lock()
+            # Set up clock
+            clock_status = self._counting_device.set_up_clock(clock_frequency=self._count_frequency)
+            if clock_status < 0:
+                self.unlock()
+                self.sigCountStatusChanged.emit(False)
+                return -1
 
-        clock_status = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
-        if clock_status < 0:
-            self.unlock()
-            self.sigCounterUpdated.emit()
-            return -1
+            # Set up counter
+            if self._counting_mode == CountingMode['FINITE_GATED']:
+                counter_status = self._counting_device.set_up_counter(counter_buffer=self._count_length)
+            # elif self._counting_mode == CountingMode['GATED']:
+            #
+            else:
+                counter_status = self._counting_device.set_up_counter()
+            if counter_status < 0:
+                self._counting_device.close_clock()
+                self.unlock()
+                self.sigCountStatusChanged.emit(False)
+                return -1
 
-        counter_status = self._counting_device.set_up_counter()
-        if counter_status < 0:
-            self._counting_device.close_clock()
-            self.unlock()
-            self.sigCounterUpdated.emit()
-            return -1
+            # initialising the data arrays
+            self.rawdata = np.zeros([len(self.get_channels()), self._counting_samples])
+            self.countdata = np.zeros([len(self.get_channels()), self._count_length])
+            self.countdata_smoothed = np.zeros([len(self.get_channels()), self._count_length])
+            self._sampling_data = np.empty([len(self.get_channels()), self._counting_samples])
 
-        # initialising the data arrays
-        self.rawdata = np.zeros(
-            (len(self.get_channels()), self._counting_samples))
-        self.countdata = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        self.countdata_smoothed = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        self._sampling_data = np.empty(
-            (len(self.get_channels()), self._counting_samples))
+            # the sample index for gated counting
+            self._already_counted_samples = 0
 
-        self.sigCountContinuousNext.emit()
-        return 0
-
-    #FIXME: To Do!
-    def _startCount_gated(self):
-        """Prepare to start gated counting, and start the loop.
-        """
-        #eventually:
-        #self.sigCountGatedNext.emit()
-        pass
+            # Start data reader loop
+            self.sigCountStatusChanged.emit(True)
+            self.sigCountDataNext.emit()
+            return
 
     def stopCount(self):
         """ Set a flag to request stopping counting.
         """
-        with self.threadlock:
-            self.stopRequested = True
-
-        self.sigCountStatusChanged.emit(False)
-
-
-    def stop_counter(self):
-        """ Stops the counter if it is running and returns whether it was running.
-        @return bool restart: True if counter was running
-        """
         if self.getState() == 'locked':
-            restart = True
-            self.stopCount()
-            while self.getState() == 'locked':
-                time.sleep(0.01)
-        else:
-            restart = False
-        return restart
+            with self.threadlock:
+                self.stopRequested = True
+        return
 
-
-    def _startCount_finite_gated(self):
-        """Prepare to start finite gated counting.
-
-        @return error: 0 is OK, -1 is error
-
-        Change state and start counting 'loop'.
-        """
-        # setting up the counter
-        # set a lock, to signify the measurment is running
-        self.lock()
-
-        returnvalue = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
-        if returnvalue < 0:
-            self.unlock()
-            self.sigCounterUpdated.emit()
-            return -1
-
-        returnvalue = self._counting_device.set_up_counter(counter_buffer=self._count_length)
-        if returnvalue < 0:
-            self.unlock()
-            self.sigCounterUpdated.emit()
-            return -1
-
-        # initialising the data arrays
-
-        # in rawdata the 'fresh counts' are read in
-        self.rawdata = np.zeros(
-            (len(self.get_channels()), self._counting_samples))
-        # countdata contains the appended data, that is the total displayed counttrace
-        self.countdata = np.zeros(
-            (len(self.get_channels()), self._count_length))
-        # the index
-        self._already_counted_samples = 0
-        self.sigCountFiniteGatedNext.emit()
-        return 0
-
-    def countLoopBody_continuous(self):
+    def count_loop_body(self):
         """ This method gets the count data from the hardware for the continuous counting mode (default).
 
         It runs repeatedly in the logic module event loop by being connected
         to sigCountContinuousNext and emitting sigCountContinuousNext through a queued connection.
         """
-
-        # check for aborts of the thread in break if necessary
-        if self.stopRequested:
+        if self.getState() == 'locked':
             with self.threadlock:
-                try:
+                # check for aborts of the thread in break if necessary
+                if self.stopRequested:
                     # close off the actual counter
-                    self._counting_device.close_counter()
-                    self._counting_device.close_clock()
-                except Exception as e:
-                    self.log.exception('Could not even close the hardware, giving up.')
-                    raise e
-                finally:
+                    cnt_err = self._counting_device.close_counter()
+                    clk_err = self._counting_device.close_clock()
+                    if cnt_err < 0 or clk_err < 0:
+                        self.log.error('Could not even close the hardware, giving up.')
                     # switch the state variable off again
-                    self.unlock()
                     self.stopRequested = False
+                    self.unlock()
                     self.sigCounterUpdated.emit()
                     return
-        try:
-            # read the current counter value
-            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
 
-        except Exception as e:
-            self.log.error('The counting went wrong, killing the counter.')
-            self.stopCount()
-            self.sigCountContinuousNext.emit()
-            raise e
+                # read the current counter value
+                self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+                if self.rawdata[0, 0] < 0:
+                    self.log.error('The counting went wrong, killing the counter.')
+                    self.stopRequested = True
+                else:
+                    if self._counting_mode == CountingMode['CONTINUOUS']:
+                        self._process_data_continous()
+                    elif self._counting_mode == CountingMode['GATED']:
+                        self._process_data_gated()
+                    elif self._counting_mode == CountingMode['FINITE_GATED']:
+                        self._process_data_finite_gated()
+                    else:
+                        self.log.error('No valid counting mode set! Can not process counter data.')
 
-        for i, ch in enumerate(self.get_channels()):
-            # remember the new count data in circular array
-            self.countdata[i, 0] = np.average(self.rawdata[i])
-        # move the array to the left to make space for the new data
-        self.countdata = np.roll(self.countdata, -1, axis=1)
-        # also move the smoothing array
-        self.countdata_smoothed = np.roll(self.countdata_smoothed, -1, axis=1)
-        # calculate the median and save it
-        window = -int(self._smooth_window_length / 2) - 1
-        for i, ch in enumerate(self.get_channels()):
-            self.countdata_smoothed[i, window:] = np.median(self.countdata[i, -self._smooth_window_length:])
-
-        # save the data if necessary
-        if self._saving:
-             # if oversampling is necessary
-            if self._counting_samples > 1:
-                chans = self.get_channels()
-                self._sampling_data = np.empty((len(chans) + 1, self._counting_samples))
-                self._sampling_data[0, :] = time.time() - self._saving_start_time
-                for i, ch in enumerate(chans):
-                    self._sampling_data[i+1, 0] = self.rawdata[i]
-
-                self._data_to_save.extend(list(self._sampling_data))
-            # if we don't want to use oversampling
-            else:
-                # append tuple to data stream (timestamp, average counts)
-                chans = self._counting_device.get_counter_channels()
-                newdata =  np.empty((len(chans) + 1, ))
-                newdata[0] = time.time() - self._saving_start_time
-                for i, ch in enumerate(chans):
-                    newdata[i+1] = self.countdata[i, -1]
-                self._data_to_save.append(newdata)
-
-        # call this again from event loop
-        self.sigCounterUpdated.emit()
-        self.sigCountContinuousNext.emit()
-
-    def countLoopBody_gated(self):
-        """ This method gets the count data from the hardware for the gated
-        counting mode.
-
-        It runs repeatedly in the logic module event loop by being connected
-        to sigCountGatedNext and emitting sigCountGatedNext through a queued
-        connection.
-        """
-
-        # check for aborts of the thread in break if necessary
-        if self.stopRequested:
-            with self.threadlock:
-                try:
-                    # close off the actual counter
-                    self._counting_device.close_counter()  # gated
-                    self._counting_device.close_clock()  # gated
-                except Exception as e:
-                    self.log.error('Could not even close the hardware, giving up.')
-                    raise e
-                finally:
-                    # switch the state variable off again
-                    self.unlock()
-                    self.stopRequested = False
-                    self.sigCounterUpdated.emit()
-                    return
-        try:
-            # read the current counter value
-            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)  # gated
-
-        except:
-            self.log.exception('The counting went wrong, killing the counter.')
-            self.stopCount()
-            self.sigCountContinuousNext.emit()
-            return
-
-        # remember the new count data in circular array
-        self.countdata[0] = np.average(self.rawdata[0])
-        # move the array to the left to make space for the new data
-        self.countdata = np.roll(self.countdata, -1)
-        # also move the smoothing array
-        self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
-        # calculate the median and save it
-        self.countdata_smoothed[-int(self._smooth_window_length/2)-1:] = np.median(self.countdata[-self._smooth_window_length:])
-
-        # save the data if necessary
-        if self._saving:
-             # if oversampling is necessary
-            if self._counting_samples > 1:
-                self._sampling_data = np.empty((self._counting_samples, 2))
-                self._sampling_data[:, 0] = time.time() - self._saving_start_time
-                self._sampling_data[:, 1] = self.rawdata[0]
-                self._data_to_save.extend(list(self._sampling_data))
-            # if we don't want to use oversampling
-            else:
-                # append tuple to data stream (timestamp, average counts)
-                self._data_to_save.append(np.array((time.time() - self._saving_start_time, self.countdata[-1])))
-        # call this again from event loop
-        self.sigCounterUpdated.emit()
-        self.sigCountGatedNext.emit()
-
-    def countLoopBody_finite_gated(self):
-        """ This method gets the count data from the hardware for the finite
-        gated counting mode.
-
-        It runs repeatedly in the logic module event loop by being connected
-        to sigCountFiniteGatedNext and emitting sigCountFiniteGatedNext through
-        a queued connection.
-        """
-
-        # check for aborts of the thread in break if necessary
-        if self.stopRequested:
-            with self.threadlock:
-                try:
-                    # close off the actual counter
-                    self._counting_device.close_counter()
-                    self._counting_device.close_clock()
-                except Exception as e:
-                    self.log.exception('Could not even close the '
-                            'hardware, giving up.')
-                    raise e
-                finally:
-                    # switch the state variable off again
-                    self.unlock()
-                    self.stopRequested = False
-                    self.sigCounterUpdated.emit()
-                    self.sigGatedCounterFinished.emit()
-                    return
-        try:
-            # read the current counter value
-
-            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-
-        except:
-            self.log.exception('The counting went wrong, killing the counter.')
-            self.stopCount()
-            self.sigCountFiniteGatedNext.emit()
-            return
-
-
-        if self._already_counted_samples+len(self.rawdata[0]) >= len(self.countdata):
-
-            needed_counts = len(self.countdata) - self._already_counted_samples
-            self.countdata[0:needed_counts] = self.rawdata[0][0:needed_counts]
-            self.countdata=np.roll(self.countdata, -needed_counts)
-
-            self._already_counted_samples = 0
-            self.stopRequested = True
-
-        else:
-            # replace the first part of the array with the new data:
-            self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
-            # roll the array by the amount of data it had been inserted:
-            self.countdata=np.roll(self.countdata, -len(self.rawdata[0]))
-            # increment the index counter:
-            self._already_counted_samples += len(self.rawdata[0])
-
-        self.sigCounterUpdated.emit()
-        self.sigCountFiniteGatedNext.emit()
+            # call this again from event loop
+            self.sigCounterUpdated.emit()
+            self.sigCountDataNext.emit()
+        return
 
     def save_current_count_trace(self, name_tag=''):
         """ The currently displayed counttrace will be saved.
@@ -737,23 +541,19 @@ class CounterLogic(GenericLogic):
             savearr[i+1] = self.countdata[i]
             datastr += ',Signal {0} (counts/s)'.format(i)
 
-        data[datastr] = savearr.transpose() 
+        data[datastr] = savearr.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
         timestr = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(time.time()))
-        parameters['Saved at time (s)'] = timestr
+        parameters['Saved at time'] = timestr
         parameters['Count frequency (Hz)'] = self._count_frequency
         parameters['Oversampling (Samples)'] = self._counting_samples
         parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
 
         filepath = self._save_logic.get_path_for_module(module_name='Counter')
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, delimiter='\t')
 
         self.log.debug('Current Counter Trace saved to: {0}'.format(filepath))
         return data, filepath, parameters, filelabel
@@ -765,3 +565,110 @@ class CounterLogic(GenericLogic):
         """
         return self._counting_device.get_counter_channels()
 
+    def _process_data_continous(self):
+        """
+        Processes the raw data from the counting device
+        @return:
+        """
+        for i, ch in enumerate(self.get_channels()):
+            # remember the new count data in circular array
+            self.countdata[i, 0] = np.average(self.rawdata[i])
+        # move the array to the left to make space for the new data
+        self.countdata = np.roll(self.countdata, -1, axis=1)
+        # also move the smoothing array
+        self.countdata_smoothed = np.roll(self.countdata_smoothed, -1, axis=1)
+        # calculate the median and save it
+        window = -int(self._smooth_window_length / 2) - 1
+        for i, ch in enumerate(self.get_channels()):
+            self.countdata_smoothed[i, window:] = np.median(self.countdata[i,
+                                                            -self._smooth_window_length:])
+
+        # save the data if necessary
+        if self._saving:
+             # if oversampling is necessary
+            if self._counting_samples > 1:
+                chans = self.get_channels()
+                self._sampling_data = np.empty([len(chans) + 1, self._counting_samples])
+                self._sampling_data[0, :] = time.time() - self._saving_start_time
+                for i, ch in enumerate(chans):
+                    self._sampling_data[i+1, 0] = self.rawdata[i]
+
+                self._data_to_save.extend(list(self._sampling_data))
+            # if we don't want to use oversampling
+            else:
+                # append tuple to data stream (timestamp, average counts)
+                chans = self.get_channels()
+                newdata = np.empty((len(chans) + 1, ))
+                newdata[0] = time.time() - self._saving_start_time
+                for i, ch in enumerate(chans):
+                    newdata[i+1] = self.countdata[i, -1]
+                self._data_to_save.append(newdata)
+        return
+
+    def _process_data_gated(self):
+        """
+        Processes the raw data from the counting device
+        @return:
+        """
+        # remember the new count data in circular array
+        self.countdata[0] = np.average(self.rawdata[0])
+        # move the array to the left to make space for the new data
+        self.countdata = np.roll(self.countdata, -1)
+        # also move the smoothing array
+        self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
+        # calculate the median and save it
+        self.countdata_smoothed[-int(self._smooth_window_length / 2) - 1:] = np.median(
+            self.countdata[-self._smooth_window_length:])
+
+        # save the data if necessary
+        if self._saving:
+            # if oversampling is necessary
+            if self._counting_samples > 1:
+                self._sampling_data = np.empty((self._counting_samples, 2))
+                self._sampling_data[:, 0] = time.time() - self._saving_start_time
+                self._sampling_data[:, 1] = self.rawdata[0]
+                self._data_to_save.extend(list(self._sampling_data))
+            # if we don't want to use oversampling
+            else:
+                # append tuple to data stream (timestamp, average counts)
+                self._data_to_save.append(np.array((time.time() - self._saving_start_time,
+                                                    self.countdata[-1])))
+        return
+
+    def _process_data_finite_gated(self):
+        """
+        Processes the raw data from the counting device
+        @return:
+        """
+        if self._already_counted_samples+len(self.rawdata[0]) >= len(self.countdata):
+            needed_counts = len(self.countdata) - self._already_counted_samples
+            self.countdata[0:needed_counts] = self.rawdata[0][0:needed_counts]
+            self.countdata = np.roll(self.countdata, -needed_counts)
+            self._already_counted_samples = 0
+            self.stopRequested = True
+        else:
+            # replace the first part of the array with the new data:
+            self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
+            # roll the array by the amount of data it had been inserted:
+            self.countdata = np.roll(self.countdata, -len(self.rawdata[0]))
+            # increment the index counter:
+            self._already_counted_samples += len(self.rawdata[0])
+        return
+
+    def _stopCount_wait(self, timeout=5.0):
+        """
+        Stops the counter and waits until it actually has stopped.
+
+        @param timeout: float, the max. time in seconds how long the method should wait for the
+                        process to stop.
+
+        @return: error code
+        """
+        self.stopCount()
+        start_time = time.time()
+        while self.getState() == 'locked':
+            time.sleep(0.1)
+            if time.time() - start_time >= timeout:
+                self.log.error('Stopping the counter timed out after {0}s'.format(timeout))
+                return -1
+        return 0

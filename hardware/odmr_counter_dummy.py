@@ -32,8 +32,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _modtype = 'hardware'
 
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'odmrcounter': 'ODMRCounterInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -65,7 +64,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -152,7 +151,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
+        lorentians,params = self._fit_logic.make_lorentziandouble_model()
 
         sigma = 3.
 

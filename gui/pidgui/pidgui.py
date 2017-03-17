@@ -51,7 +51,7 @@ class PIDGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'pidlogic': 'PIDLogic'}
+    _connectors = {'pidlogic': 'PIDLogic'}
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
@@ -76,7 +76,7 @@ class PIDGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._pid_logic = self.get_in_connector('pidlogic')
+        self._pid_logic = self.get_connector('pidlogic')
 
         #####################
         # Configuring the dock widgets

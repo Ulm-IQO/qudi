@@ -40,9 +40,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
     _modclass = 'MicrowaveInterface'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'mwsourcegigatronics': 'MicrowaveInterface'}
-
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 

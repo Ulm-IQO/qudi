@@ -74,9 +74,6 @@ class WavemeterDummy(Base, WavemeterInterface):
     _modclass = 'WavemeterDummy'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'highhinessewavemeter': 'WavemeterInterface'}
-
     sig_handle_timer = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):

@@ -198,7 +198,7 @@
      <x>0</x>
      <y>0</y>
      <width>946</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -213,6 +213,7 @@
      <string>O&amp;ptions</string>
     </property>
     <addaction name="action_Settings"/>
+    <addaction name="action_FitSettings"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -549,7 +550,7 @@
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QComboBox" name="fit_methods_ComboBox">
+        <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
          <property name="minimumSize">
           <size>
            <width>150</width>
@@ -671,6 +672,11 @@
     <string>Restore &amp;default</string>
    </property>
   </action>
+  <action name="action_FitSettings">
+   <property name="text">
+    <string>Fit settings</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -682,6 +688,11 @@
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>FitSettingsComboBox</class>
+   <extends>QComboBox</extends>
+   <header>gui/fitsettings</header>
   </customwidget>
  </customwidgets>
  <tabstops>

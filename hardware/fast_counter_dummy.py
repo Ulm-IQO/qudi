@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import os
 import numpy as np
-from qtpy import QtWidgets
 
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface
@@ -41,8 +40,6 @@ class FastCounterDummy(Base, FastCounterInterface):
     """
     _modclass = 'fastcounterinterface'
     _modtype = 'hardware'
-    # connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -61,13 +58,13 @@ class FastCounterDummy(Base, FastCounterInterface):
                         'config. The default configuration gated={0} will be '
                         'taken instead.'.format(self._gated))
 
-        if 'choose_trace' in config.keys():
-            self._choose_trace = config['choose_trace']
+        if 'load_trace' in config.keys():
+            self.trace_path = config['load_trace']
         else:
-            self._choose_trace = False
-            self.log.warning('No parameter "choose_trace" was specified in '
-                    'the config. The default configuration choose_trace={0} '
-                    'will be taken instead.'.format(self._choose_trace))
+            self.trace_path = os.path.join(
+                self.get_main_dir(),
+                'tools',
+                'FastComTec_demo_timetrace.asc')
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -174,30 +171,10 @@ class FastCounterDummy(Base, FastCounterInterface):
     def start_measure(self):
         time.sleep(1)
         self.statusvar = 2
-
-        if self._choose_trace:
-            defaultconfigpath = os.path.join(self.get_main_dir())
-
-            # choose the filename via the Qt Dialog window:
-            filename = QtWidgets.QFileDialog.getOpenFileName(None,
-                                                         'Load Pulsed File',
-                                                         defaultconfigpath)#,
-                                                         # 'Configuration files (*.cfg)')
-
-            if filename == '':
-                self._count_data = np.loadtxt(
-                    os.path.join(self.get_main_dir(), 'tools',
-                                 'FastComTec_demo_timetrace.asc'))
-            else:
-                # the file must have a standard structure (laser pulses in one
-                # or several columns) so that the load routine can open them:
-                self._count_data = np.loadtxt(filename).transpose()
-
-        else:
-            self._count_data = np.loadtxt(
-                os.path.join(self.get_main_dir(), 'tools',
-                             'FastComTec_demo_timetrace.asc'))
-
+        try:
+            self._count_data = np.loadtxt(self.trace_path)
+        except:
+            return -1
         return 0
 
     def pause_measure(self):

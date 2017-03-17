@@ -43,10 +43,11 @@ class PulsedExtractionExternalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'savelogic': 'SaveLogic',
-           'pulseextractionlogic': 'PulseExtractionLogic',
-           'pulseanalysislogic': 'PulseAnalysisLogic'}
-    _out = {'pulsedextractionexternallogic': 'PulsedExtractionExternalLogic'}
+    _connectors = {
+        'savelogic': 'SaveLogic',
+        'pulseextractionlogic': 'PulseExtractionLogic',
+        'pulseanalysislogic': 'PulseAnalysisLogic'
+    }
 
     def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.
@@ -71,9 +72,9 @@ class PulsedExtractionExternalLogic(GenericLogic):
         """
 
 
-        self._save_logic = self.get_in_connector('savelogic')
-        self._pe_logic = self.get_in_connector('pulseextractionlogic')
-        self._pa_logic = self.get_in_connector('pulseanalysislogic')
+        self._save_logic = self.get_connector('savelogic')
+        self._pe_logic = self.get_connector('pulseextractionlogic')
+        self._pa_logic = self.get_connector('pulseanalysislogic')
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -155,14 +156,8 @@ class PulsedExtractionExternalLogic(GenericLogic):
         filelabel='result'
         filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
-        self._save_logic.save_data(data,
-                                       filepath,
-                                       parameters=parameters,
-                                       filelabel=filelabel,
-                                       as_text=True,
-                                       plotfig=fig
-                                       )
-        plt.close(fig)
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
+                                   filelabel=filelabel, plotfig=fig, delimiter='\t')
 
         return self._data_to_save, parameters
 

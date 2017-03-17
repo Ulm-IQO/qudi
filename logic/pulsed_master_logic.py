@@ -91,7 +91,7 @@ class PulsedMasterLogic(GenericLogic):
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, dict, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, object)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
@@ -111,10 +111,10 @@ class PulsedMasterLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-           }
-    _out = {'pulsedmasterlogic': 'PulsedMasterLogic'}
+    _connectors = {
+        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic',
+    }
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
@@ -148,8 +148,8 @@ class PulsedMasterLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self._measurement_logic = self.get_in_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
+        self._generator_logic = self.get_connector('sequencegeneratorlogic')
 
         # Recall status variables
         if 'invoke_settings' in self._statusVariables:
@@ -413,14 +413,6 @@ class PulsedMasterLogic(GenericLogic):
         pulsegenerator_constraints = self._measurement_logic.get_pulser_constraints()
         return pulsegenerator_constraints, fastcounter_constraints
 
-    def get_fit_functions(self):
-        """
-
-        @param functions_list:
-        @return:
-        """
-        return self._measurement_logic.get_fit_functions()
-
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
                                               sequence_length_s, laser_ignore_list, alternating,
                                               laser_trigger_delay):
@@ -548,8 +540,8 @@ class PulsedMasterLogic(GenericLogic):
         # config and sample rate
         self._generator_logic.amplitude_dict = analogue_amplitude
 
-        activation_config = self._measurement_logic.get_pulser_constraints()['activation_config'][
-            activation_config_name]
+        constraints = self._measurement_logic.get_pulser_constraints()
+        activation_config = constraints.activation_config[activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
                                            activation_config, analogue_amplitude, interleave_on)
         return
@@ -602,17 +594,16 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDoFit.emit(fit_function)
         return
 
-    def fit_updated(self, fit_function, fit_data_x, fit_data_y, param_dict, result_dict):
+    def fit_updated(self, fit_function, fit_data_x, fit_data_y, result_dict):
         """
 
         @param fit_function:
         @param fit_data_x:
         @param fit_data_y:
-        @param param_dict:
         @param result_dict:
         @return:
         """
-        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, param_dict, result_dict)
+        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, result_dict)
         return
 
     def analysis_interval_changed(self, analysis_interval_s):
@@ -805,7 +796,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(asset_names_list)
         return
 
-    def load_asset_into_channels(self, asset_name, load_dict={}):
+    def load_asset_into_channels(self, asset_name, load_dict=None):
         """
 
         @param asset_name:
@@ -814,6 +805,8 @@ class PulsedMasterLogic(GenericLogic):
                                      according to the loaded assets metadata.
         @return:
         """
+        if load_dict is None:
+            load_dict = dict()
         # invoke measurement parameters from asset object
         if self.invoke_settings:
             # get asset object
@@ -864,7 +857,7 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
-        if asset_name is not None:
+        if asset_name is not None and asset_name != '' and asset_name != str(None):
             asset_object = self._generator_logic.get_saved_asset(asset_name)
             asset_type = type(asset_object).__name__
         else:
@@ -1199,7 +1192,7 @@ class PulsedMasterLogic(GenericLogic):
         # get pulser constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # activation config
-        config_constraint = pulser_constraints['activation_config']
+        config_constraint = pulser_constraints.activation_config
         if activation_config_name not in config_constraint:
             new_config_name = list(config_constraint.keys())[0]
             self.log.warning('Activation config "{0}" could not be found in pulser constraints. '
@@ -1224,12 +1217,12 @@ class PulsedMasterLogic(GenericLogic):
                              'config "{1}". Using first valid channel "{2}" instead.'
                              ''.format(old_laser_chnl, activation_config, laser_channel))
         # sample rate
-        samplerate_constraint = pulser_constraints['sample_rate']
-        if sample_rate < samplerate_constraint['min'] or sample_rate > samplerate_constraint['max']:
+        samplerate_constraint = pulser_constraints.sample_rate
+        if sample_rate < samplerate_constraint.min or sample_rate > samplerate_constraint.max:
             self.log.warning('Sample rate of {0} MHz lies not within pulse generator constraints. '
                              'Using max. allowed sample rate of {1} MHz instead.'
-                             ''.format(sample_rate, samplerate_constraint['max']))
-            sample_rate = samplerate_constraint['max']
+                             ''.format(sample_rate, samplerate_constraint.max))
+            sample_rate = samplerate_constraint.max
         # amplitude dictionary
         # FIXME: check with pulser constraints
         self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
@@ -1250,7 +1243,7 @@ class PulsedMasterLogic(GenericLogic):
         # retrieve hardware constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # check activation_config
-        config_dict = pulser_constraints['activation_config']
+        config_dict = pulser_constraints.activation_config
         activation_config_name = ''
         for key in config_dict.keys():
             if config_dict[key] == activation_config:
@@ -1322,7 +1315,7 @@ class PulsedMasterLogic(GenericLogic):
         else:
             return_params['activation_config'] = asset_obj.activation_config
         config_name = None
-        avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
+        avail_configs = self._measurement_logic.get_pulser_constraints().activation_config
         for config in avail_configs:
             if return_params['activation_config'] == avail_configs[config]:
                 config_name = config

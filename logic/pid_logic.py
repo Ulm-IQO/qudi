@@ -34,11 +34,10 @@ class PIDLogic(GenericLogic):
     _modclass = 'pidlogic'
     _modtype = 'logic'
     ## declare connectors
-    _in = {
+    _connectors = {
         'controller': 'PIDControllerInterface',
         'savelogic': 'SaveLogic'
-        }
-    _out = {'pidlogic': 'PIDLogic'}
+    }
 
     sigUpdateDisplay = QtCore.Signal()
 
@@ -57,8 +56,8 @@ class PIDLogic(GenericLogic):
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self._controller = self.get_in_connector('controller')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._controller = self.get_connector('controller')
+        self._save_logic = self.get_connector('savelogic')
 
         config = self.getConfiguration()
 

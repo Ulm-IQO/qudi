@@ -54,7 +54,7 @@ class CounterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'counterlogic1': 'CounterLogic'}
+    _connectors = {'counterlogic1': 'CounterLogic'}
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -80,7 +80,7 @@ class CounterGui(GUIBase):
                          had happened.
         """
 
-        self._counting_logic = self.get_in_connector('counterlogic1')
+        self._counting_logic = self.get_connector('counterlogic1')
 
         #####################
         # Configuring the dock widgets
@@ -170,8 +170,6 @@ class CounterGui(GUIBase):
 
         return 0
 
-
-
     def show(self):
         """Make window visible and put it above all other windows.
         """
@@ -187,6 +185,23 @@ class CounterGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        # disconnect signals
+        self._mw.start_counter_Action.triggered.disconnect()
+        self._mw.record_counts_Action.triggered.disconnect()
+        self._mw.count_length_SpinBox.valueChanged.disconnect()
+        self._mw.count_freq_SpinBox.valueChanged.disconnect()
+        self._mw.oversampling_SpinBox.valueChanged.disconnect()
+        self._mw.restore_default_view_Action.triggered.disconnect()
+        self.sigStartCounter.disconnect()
+        self.sigStopCounter.disconnect()
+        self._counting_logic.sigCounterUpdated.disconnect()
+        self._counting_logic.sigCountingSamplesChanged.disconnect()
+        self._counting_logic.sigCountLengthChanged.disconnect()
+        self._counting_logic.sigCountFrequencyChanged.disconnect()
+        self._counting_logic.sigSavingStatusChanged.disconnect()
+        self._counting_logic.sigCountingModeChanged.disconnect()
+        self._counting_logic.sigCountStatusChanged.disconnect()
+
         self._mw.close()
         return
 

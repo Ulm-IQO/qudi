@@ -40,20 +40,19 @@ class SingleShotLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'savelogic': 'SaveLogic',
-           'fitlogic': 'FitLogic',
-           'fastcounter': 'FastCounterInterface',
-           'pulseextractionlogic': 'PulseExtractionLogic',
-           'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-           'traceanalysislogic1': 'TraceAnalysisLogic',
-           'pulsegenerator': 'PulserInterface',
-           'scannerlogic': 'ScannerLogic',
-           'optimizerlogic': 'OptimizerLogic',
-           'pulsedmasterlogic': 'PulsedMasterLogic',
-           'odmrlogic': 'ODMRLogic'
-            }
-
-    _out = {'singleshotlogic1': 'SingleShotLogic'}
+    _connectors = {
+        'savelogic': 'SaveLogic',
+        'fitlogic': 'FitLogic',
+        'fastcounter': 'FastCounterInterface',
+        'pulseextractionlogic': 'PulseExtractionLogic',
+        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
+        'traceanalysislogic1': 'TraceAnalysisLogic',
+        'pulsegenerator': 'PulserInterface',
+        'scannerlogic': 'ScannerLogic',
+        'optimizerlogic': 'OptimizerLogic',
+        'pulsedmasterlogic': 'PulsedMasterLogic',
+        'odmrlogic': 'ODMRLogic'
+    }
 
     # add possible signals here
     sigHistogramUpdated = QtCore.Signal()
@@ -92,17 +91,17 @@ class SingleShotLogic(GenericLogic):
                          had happened.
         """
 
-        self._fast_counter_device = self.get_in_connector('fastcounter')
-        self._pulse_generator_device = self.get_in_connector('pulsegenerator')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._traceanalysis_logic = self.get_in_connector('traceanalysislogic1')
-        self._pe_logic = self.get_in_connector('pulseextractionlogic')
-        self._pm_logic = self.get_in_connector('pulsedmeasurementlogic')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
-        self._pulsed_master_logic = self.get_in_connector('pulsedmasterlogic')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
-        self._optimizer_logic = self.get_in_connector('optimizerlogic')
+        self._fast_counter_device = self.get_connector('fastcounter')
+        self._pulse_generator_device = self.get_connector('pulsegenerator')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._traceanalysis_logic = self.get_connector('traceanalysislogic1')
+        self._pe_logic = self.get_connector('pulseextractionlogic')
+        self._pm_logic = self.get_connector('pulsedmeasurementlogic')
+        self._odmr_logic = self.get_connector('odmrlogic')
+        self._pulsed_master_logic = self.get_connector('pulsedmasterlogic')
+        self._confocal_logic = self.get_connector('scannerlogic')
+        self._optimizer_logic = self.get_connector('optimizerlogic')
 
         self.hist_data = None
         self.trace = None
@@ -333,7 +332,7 @@ class SingleShotLogic(GenericLogic):
     # =========================================================================
 
     # TODO make more general for other devices
-    def do_singleshot(self, mw_dict={}, refocus=True, laser_wfm='LaserOn', singleshot_wfm='SSR_normalise_2MW',
+    def do_singleshot(self, mw_dict=None, refocus=True, laser_wfm='LaserOn', singleshot_wfm='SSR_normalise_2MW',
                       normalized=True):
         """
         For additional microwave usage this assumes an external signal generator. Could be also done with an
@@ -482,7 +481,7 @@ class SingleShotLogic(GenericLogic):
         np.save(meta_path,meta_data_dict)
         for key in meta_data_dict:
             meta_data_dict[key] = [meta_data_dict[key]]
-        self._save_logic.save_data(meta_data_dict, filepath, filelabel='meta_data')
+        self._save_logic.save_data(meta_data_dict, filepath=filepath, filelabel='meta_data')
 
 
         return

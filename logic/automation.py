@@ -165,8 +165,7 @@ class AutomationLogic(GenericLogic):
     """
     _modclass = 'AutomationLogic'
     _modtype = 'logic'
-    _in = {'taskrunner': 'TaskRunner'}
-    _out = {'automationlogic': 'AutomationLogic'}
+    _connectors = {'taskrunner': 'TaskRunner'}
 
     sigRepeat = QtCore.Signal()
 
@@ -175,7 +174,7 @@ class AutomationLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        self._taskrunner = self.get_in_connector('taskrunner')
+        self._taskrunner = self.get_connector('taskrunner')
         #stuff = "a\txyz\n    b\tx\n    c\ty\n        d\tw\ne\tm\n"
         #tr = OrderedDict([
         #    ('a', OrderedDict([

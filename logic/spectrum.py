@@ -41,11 +41,11 @@ class SpectrumLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'spectrometer': 'SpectrometerInterface',
-           'odmrlogic1': 'ODMRLogic',
-           'savelogic': 'SaveLogic'
-           }
-    _out = {'spectrumlogic': 'SpectrumLogic'}
+    _connectors = {
+        'spectrometer': 'SpectrometerInterface',
+        'odmrlogic1': 'ODMRLogic',
+        'savelogic': 'SaveLogic'
+    }
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
@@ -67,9 +67,9 @@ class SpectrumLogic(GenericLogic):
         self.diff_spec_data_mod_off = np.array([])
         self.repetition_count = 0    # count loops for differential spectrum
 
-        self._spectrometer_device = self.get_in_connector('spectrometer')
-        self._odmr_logic = self.get_in_connector('odmrlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._spectrometer_device = self.get_connector('spectrometer')
+        self._odmr_logic = self.get_connector('odmrlogic1')
+        self._save_logic = self.get_connector('savelogic')
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
 
@@ -213,11 +213,8 @@ class SpectrumLogic(GenericLogic):
 
         # Save to file
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
-                                   as_text=True,
-                                   plotfig=fig
-                                   )
-        plt.close(fig)
+                                   plotfig=fig)
         self.log.debug('Spectrum saved to:\n{0}'.format(filepath))

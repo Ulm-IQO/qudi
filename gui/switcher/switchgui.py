@@ -32,7 +32,7 @@ class SwitchGui(GUIBase):
     _modclass = 'SwitchGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'switchlogic': 'SwitchLogic'}
+    _connectors = {'switchlogic': 'SwitchLogic'}
 
     def on_activate(self, e=None):
         """Create all UI objects and show the window.
@@ -46,7 +46,7 @@ class SwitchGui(GUIBase):
                          had happened.
         """
         self._mw = SwitchMainWindow()
-        lsw =  self.get_in_connector('switchlogic')
+        lsw =  self.get_connector('switchlogic')
         # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
             frame = QtWidgets.QGroupBox(hw, self._mw.scrollAreaWidgetContents)

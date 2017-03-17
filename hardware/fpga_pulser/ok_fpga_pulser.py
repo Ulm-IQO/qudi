@@ -20,8 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.base import Base
-from interface.pulser_interface import PulserInterface
-import thirdparty.opal_kelly.ok64 as ok
+from interface.pulser_interface import PulserInterface, PulserConstraints
+import okfrontpanel as ok
 import time
 import os
 from collections import OrderedDict
@@ -43,7 +43,6 @@ class OkFpgaPulser(Base, PulserInterface):
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
-    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -78,18 +77,19 @@ class OkFpgaPulser(Base, PulserInterface):
             self._fpga_type = config['fpga_type']
         else:
             self._fpga_type = 'XEM6310_LX150'
-            self.log.warning('No parameter "fpga_type" specified in the config!\nPossible types are'
-                             ' "XEM6310_LX150" or "XEM6310_LX45".\nTaking the type "{0}" as '
-                             'default.'.format(self._fpga_type))
+            self.log.warning(
+                'No parameter "fpga_type" specified in the config!\n'
+                'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
+                'Taking the type "{0}" as default.'.format(self._fpga_type))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
         self.current_status = -1
         self.sample_rate = 950e6
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
 
     def on_activate(self, e):
-        self.current_loaded_asset = None
+        self.current_loaded_asset = ''
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
         self.sample_rate = self.get_sample_rate()
@@ -98,94 +98,66 @@ class OkFpgaPulser(Base, PulserInterface):
         self._disconnect_fpga()
 
     def get_constraints(self):
-        """ Retrieve the hardware constrains from the Pulsing device.
-
-        @return dict: dict with constraints for the sequence generation and GUI
-
-        Provides all the constraints (e.g. sample_rate, amplitude,
-        total_length_bins, channel_config, ...) related to the pulse generator
-        hardware to the caller.
-        The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method). No other keys should be invented. If you
-        are not sure about the meaning, look in other hardware files to get an
-        impression. If still additional constraints are needed, then they have
-        to be add to all files containing this interface.
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
-
-        Only the keys 'activation_config' and differs, since it contain the
-        channel configuration/activation information.
-
-        If the constraints cannot be set in the pulsing hardware (because it
-        might e.g. has no sequence mode) then write just zero to each generic
-        dict. Note that there is a difference between float input (0.0) and
-        integer input (0).
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
         """
-        constraints = dict()
+        Retrieve the hardware constrains from the Pulsing device.
 
-        # if interleave option is available, then sample rate constraints must
-        # be assigned to the output of a function called
-        # _get_sample_rate_constraints()
-        # which outputs the shown dictionary with the correct values depending
-        # on the present mode. The the GUI will have to check again the
-        # limitations if interleave was selected.
-        constraints['sample_rate'] = {'min': 500e6, 'max': 950e6,
-                                      'step': 450e6, 'unit': 'Samples/s'}
+        @return constraints object: object with pulser constraints as attributes.
 
-        # The file formats are hardware specific. The sequence_generator_logic will need this
-        # information to choose the proper output format for waveform and sequence files.
-        constraints['waveform_format'] = 'fpga'
-        constraints['sequence_format'] = None
+        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
+        channel_config, ...) related to the pulse generator hardware to the caller.
 
-        # the stepsize will be determined by the DAC in combination with the
-        # maximal output amplitude (in Vpp):
-        constraints['a_ch_amplitude'] = {'min': 0, 'max': 0,
-                                         'step': 0, 'unit': 'Vpp'}
+            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
 
-        constraints['a_ch_offset'] = {'min': 0, 'max': 0,
-                                      'step': 0, 'unit': 'V'}
+        If you are not sure about the meaning, look in other hardware files to get an impression.
+        If still additional constraints are needed, then they have to be added to the
+        PulserConstraints class.
 
-        constraints['d_ch_low'] = {'min': 0, 'max': 0,
-                                   'step': 0, 'unit': 'V'}
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
 
-        constraints['d_ch_high'] = {'min': 3.3, 'max': 3.3,
-                                    'step': 0, 'unit': 'V'}
+        PulserConstraints.activation_config differs, since it contain the channel
+        configuration/activation information of the form:
+            {<descriptor_str>: <channel_list>,
+             <descriptor_str>: <channel_list>,
+             ...}
 
-        constraints['sampled_file_length'] = {'min': 256, 'max': 134217728,
-                                              'step': 1, 'unit': 'Samples'}
+        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
+        sequence mode) just leave it out so that the default is used (only zeros).
+        """
+        constraints = PulserConstraints()
 
-        constraints['digital_bin_num'] = {'min': 0, 'max': 0.0,
-                                          'step': 0, 'unit': '#'}
+        # The file formats are hardware specific.
+        constraints.waveform_format = ['fpga']
+        constraints.sequence_format = []
 
-        constraints['waveform_num'] = {'min': 1, 'max': 1,
-                                       'step': 0, 'unit': '#'}
+        constraints.sample_rate.min = 500e6
+        constraints.sample_rate.max = 950e6
+        constraints.sample_rate.step = 450e6
+        constraints.sample_rate.default = 950e6
 
-        constraints['sequence_num'] = {'min': 0, 'max': 0,
-                                       'step': 0, 'unit': '#'}
+        constraints.d_ch_low.min = 0.0
+        constraints.d_ch_low.max = 0.0
+        constraints.d_ch_low.step = 0.0
+        constraints.d_ch_low.default = 0.0
 
-        constraints['subsequence_num'] = {'min': 0, 'max': 0,
-                                          'step': 0, 'unit': '#'}
+        constraints.d_ch_high.min = 3.3
+        constraints.d_ch_high.max = 3.3
+        constraints.d_ch_high.step = 0.0
+        constraints.d_ch_high.default = 3.3
 
-        # If sequencer mode is enable than sequence_param should be not just an
-        # empty dictionary. Insert here in the same fashion like above the
-        # parameters, which the device is needing for a creating sequences:
-        sequence_param = OrderedDict()
-        constraints['sequence_param'] = sequence_param
+        constraints.sampled_file_length.min = 1024
+        constraints.sampled_file_length.max = 134217728
+        constraints.sampled_file_length.step = 1
+        constraints.sampled_file_length.default = 1024
 
-        # the name a_ch<num> and d_ch<num> are generic names, which describe
-        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used. The names
-        # for the different configurations can be customary chosen.
-
+        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
+        # channels. Here all possible channel configurations are stated, where only the generic
+        # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
-                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
-        constraints['activation_config'] = activation_config
+        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7',
+                                    'd_ch8']
+        constraints.activation_config = activation_config
 
         return constraints
 

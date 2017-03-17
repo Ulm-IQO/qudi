@@ -38,12 +38,11 @@ class TraceAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'counterlogic1': 'CounterLogic',
-           'savelogic': 'SaveLogic',
-           'fitlogic': 'FitLogic',
-            }
-
-    _out = {'traceanalysislogic1': 'TraceAnalysisLogic'}
+    _connectors = {
+        'counterlogic1': 'CounterLogic',
+        'savelogic': 'SaveLogic',
+        'fitlogic': 'FitLogic',
+    }
 
     sigHistogramUpdated = QtCore.Signal()
 
@@ -77,9 +76,9 @@ class TraceAnalysisLogic(GenericLogic):
                          had happened.
         """
 
-        self._counter_logic = self.get_in_connector('counterlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._counter_logic = self.get_connector('counterlogic1')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         self._counter_logic.sigGatedCounterFinished.connect(self.do_calculate_histogram)
 
@@ -451,7 +450,7 @@ class TraceAnalysisLogic(GenericLogic):
         @return:
         """
 
-        model, params = self._fit_logic.make_gaussoffset_model()
+        model, params = self._fit_logic.make_gaussian_model()
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points.')
@@ -480,9 +479,11 @@ class TraceAnalysisLogic(GenericLogic):
             update_dict['sigma']     = {'min': -np.inf,    'max': np.inf,     'value': sigma}
             update_dict['amplitude'] = {'min': 0,          'max': np.inf,     'value': amplitude}
 
-            result = self._fit_logic.make_gaussoffsetpeak_fit(x_axis=axis,
-                                                              data=data,
-                                                              add_params=update_dict)
+            result = self._fit_logic.make_gaussian_fit(x_axis=axis,
+                                                       data=data,
+                                                       estimator=self._fit_logic.estimate_gaussian_peak,
+                                                       units=None,  # TODO
+                                                       add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
@@ -512,7 +513,7 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublegaussian_fit(self, axis, data):
-        model, params = self._fit_logic.make_multiplegaussoffset_model(no_of_functions=2)
+        model, params = self._fit_logic.make_gaussiandouble_model()
 
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '

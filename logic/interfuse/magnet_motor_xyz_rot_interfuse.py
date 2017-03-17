@@ -48,12 +48,10 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _in = {'motorstage_xyz': 'MotorInterface',
-           'motorstage_rot': 'MotorInterface'}
-
-    # And as a result, you will have an out connector, which is compatible to a
-    # magnet interface, and which can be plug in to an appropriated magnet logic
-    _out = {'magnetstage': 'MagnetInterface'}
+    _connectors = {
+        'motorstage_xyz': 'MotorInterface',
+        'motorstage_rot': 'MotorInterface'
+    }
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -74,8 +72,8 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._motor_device_rot = self.get_in_connector('motorstage_rot')
-        self._motor_device_xyz = self.get_in_connector('motorstage_xyz')
+        self._motor_device_rot = self.get_connector('motorstage_rot')
+        self._motor_device_xyz = self.get_connector('motorstage_xyz')
 
 
 
@@ -174,7 +172,7 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
                       position.
         """
         # split dictionary
-        if param_list==None:
+        if param_list is None:
             pos_xyz = self._motor_device_xyz.get_pos()
             pos_rot = self._motor_device_rot.get_pos()
         else:
@@ -202,7 +200,7 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
 
         @return dict: with the axis label as key and the status number as item.
         """
-        if param_list==None:
+        if param_list is None:
             status_xyz = self._motor_device_xyz.get_status()
             status_rot = self._motor_device_rot.get_status()
             #self.log.debug(status_rot)
@@ -236,7 +234,7 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         different for each stage.
         """
         if not self._magnet_idle:
-            if param_list==None:
+            if param_list is None:
                 pos_xyz = self._motor_device_xyz.calibrate()
                 pos_rot = self._motor_device_rot.calibrate()
             else:
@@ -270,7 +268,7 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
         @return dict: with the axis label as key and the velocity as item.
         """
 
-        if param_list==None:
+        if param_list is None:
             vel_xyz = self._motor_device_xyz.get_velocity()
             vel_rot = self._motor_device_rot.get_velocity()
         else:

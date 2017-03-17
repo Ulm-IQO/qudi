@@ -26,7 +26,7 @@ import os
 
 from interface.fast_counter_interface import FastCounterInterface
 from core.base import Base
-import thirdparty.opal_kelly.ok64 as ok
+import okfrontpanel as ok
 from core.util.mutex import Mutex
 
 
@@ -46,8 +46,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     """
     _modclass = 'FastCounterFPGAQO'
     _modtype = 'hardware'
-    # declare connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

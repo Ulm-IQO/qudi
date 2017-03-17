@@ -30,9 +30,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
-
     def on_activate(self, e):
         """ Connect and configure the access to the FPGA.
 

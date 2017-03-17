@@ -164,7 +164,7 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'magnetlogic1': 'MagnetLogic',
+    _connectors = {'magnetlogic1': 'MagnetLogic',
            'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):
@@ -190,8 +190,8 @@ class MagnetGui(GUIBase):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._magnet_logic = self.get_in_connector('magnetlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._magnet_logic = self.get_connector('magnetlogic1')
+        self._save_logic = self.get_connector('savelogic')
 
         self._mw = MagnetMainWindow()
 
@@ -410,7 +410,7 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis1_name_ComboBox.currentIndexChanged.connect(self.align_2d_axis1_name_changed)
         self._mw.align_2d_axis1_range_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_range)
         self._mw.align_2d_axis1_range_DSpinBox.valueChanged.connect(self.align_2d_axis1_range_changed)
-        self._mw.align_2d_axes1_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
+        self._mw.align_2d_axis1_range_DSpinBox.valueChanged.connect(self.update_roi_from_range)
         self._mw.align_2d_axis1_step_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_step)
         self._mw.align_2d_axis1_step_DSpinBox.valueChanged.connect(self.align_2d_axis1_step_changed)
         self._mw.align_2d_axis1_vel_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_vel)
@@ -1637,8 +1637,8 @@ class MagnetGui(GUIBase):
         @return:
         """
         # first get the size of axis0 and axis1 range
-        x_range = self._mw.align_2d_axes0_range_DSpinBox.value()
-        y_range = self._mw.align_2d_axes0_range_DSpinBox.value()
+        x_range = self._mw.align_2d_axis0_range_DSpinBox.value()
+        y_range = self._mw.align_2d_axis0_range_DSpinBox.value()
         self.roi_magnet.setSize([x_range/100, y_range/100])
 
 

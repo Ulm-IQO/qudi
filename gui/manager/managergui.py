@@ -66,6 +66,7 @@ class ManagerGui(GUIBase):
     sigStopModule = QtCore.Signal(str, str)
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
+    sigRealQuit = QtCore.Signal()
 
     def __init__(self, **kwargs):
         """Create an instance of the module.
@@ -136,6 +137,7 @@ class ManagerGui(GUIBase):
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
+        self._manager.sigShutdownAcknowledge.connect(self.promptForShutdown)
         # Log widget
         self._mw.logwidget.setManager(self._manager)
         for loghandler in logging.getLogger().handlers:
@@ -143,11 +145,12 @@ class ManagerGui(GUIBase):
                 loghandler.sigLoggedMessage.connect(self.handleLogEntry)
         # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
-        self.sigReloadModule.connect(self._manager.restartModuleSimple)
+        self.sigReloadModule.connect(self._manager.restartModuleRecursive)
         self.sigCleanupStatus.connect(self._manager.removeStatusFile)
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
+        self.sigRealQuit.connect(self._manager.realQuit)
         # Module state display
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
@@ -209,6 +212,20 @@ class ManagerGui(GUIBase):
         """Show a dialog with details about Qudi.
         """
         self._about.show()
+
+    @QtCore.Slot(bool, bool)
+    def promptForShutdown(self, locked, broken):
+        """ Display a dialog, asking the user to confirm shutdown. """
+        text = "Some modules are locked right now, really quit?"
+        result = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Qudi: Really Quit?',
+            text,
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No
+            )
+        if result == QtWidgets.QMessageBox.Yes:
+            self.sigRealQuit.emit()
 
     def resetToDefaultLayout(self):
         """ Return the dockwidget layout and visibility to its default state """
@@ -471,7 +488,7 @@ Go, play.
             self._mw,
             'Load Configration',
             defaultconfigpath,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if filename != '':
             reply = QtWidgets.QMessageBox.question(
                 self._mw,
@@ -492,7 +509,7 @@ Go, play.
             self._mw,
             'Save Configration',
             defaultconfigpath,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if filename != '':
             self.sigSaveConfig.emit(filename)
 

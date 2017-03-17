@@ -29,9 +29,6 @@ class InfluxDataClient(Base, ProcessInterface):
     _modclass = 'InfluxDataClient'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'data': 'ProcessInterface'}
-
     def on_activate(self, e):
         config = self.getConfiguration()
 

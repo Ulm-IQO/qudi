@@ -65,7 +65,7 @@ class PulsedExtractionExternalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'pulsedextractionexternallogic1': 'PulsedExtractionExternalLogic'}
+    _connectors = {'pulsedextractionexternallogic1': 'PulsedExtractionExternalLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -93,7 +93,7 @@ class PulsedExtractionExternalGui(GUIBase):
         # Use the inherited class 'PulsedExtractionExternalMainWindow' to create the GUI window
         self._mw = PulsedExtractionExternalMainWindow()
 
-        self._epe_logic = self.get_in_connector('pulsedextractionexternallogic1')
+        self._epe_logic = self.get_connector('pulsedextractionexternallogic1')
 
         # Setup dock widgets
         self._mw.setDockNestingEnabled(True)
@@ -149,7 +149,7 @@ class PulsedExtractionExternalGui(GUIBase):
 
 
     def load_data_clicked(self):
-        filename = QtGui.QFileDialog.getOpenFileName(None,"Load File","","All Files (*)")
+        filename = QtGui.QFileDialog.getOpenFileName(None,"Load File","","All Files (*)")[0]
         self._mw.data_filename_LineEdit.setText(filename)
         self.load_data()
         return
@@ -194,8 +194,8 @@ class PulsedExtractionExternalGui(GUIBase):
         self._mw.number_pulses_lcdNumber.display(len(self.laser_y))
         self._mw.choose_laserpulse_ComboBox.clear()
         self._mw.choose_laserpulse_ComboBox.addItem('sum')
-        for laserindex in range(len(self.laser_y)):
-            	self._mw.choose_laserpulse_ComboBox.addItem(str(laserindex+1))
+        for index, laser in enumerate(self.laser_y):
+            self._mw.choose_laserpulse_ComboBox.addItem(str(index+1))
         self.plot_just_laser()
         longest=self._epe_logic.length_laser_pulses(self.laser_y)
         self._mw.length_pulse_lcdNumber.display(longest)

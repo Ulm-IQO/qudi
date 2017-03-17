@@ -53,7 +53,7 @@ class GatedCounterGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'gatedcounterlogic1': 'GatedCounterLogic',
+    _connectors = {'gatedcounterlogic1': 'GatedCounterLogic',
            'traceanalysislogic1': 'TraceAnalysisLogic'}
 
 
@@ -81,8 +81,8 @@ class GatedCounterGui(GUIBase):
                          had happened.
         """
 
-        self._counter_logic = self.get_in_connector('gatedcounterlogic1')
-        self._trace_analysis = self.get_in_connector('traceanalysislogic1')
+        self._counter_logic = self.get_connector('gatedcounterlogic1')
+        self._trace_analysis = self.get_connector('traceanalysislogic1')
 
         self._mw = GatedCounterMainWindow()
         self._mw.centralwidget.hide()
@@ -119,7 +119,7 @@ class GatedCounterGui(GUIBase):
         self._mw.hist_bins_Slider.setSingleStep(1)
 
         # set the counting mode in the logic:
-        self._counter_logic.set_counting_mode('finite-gated')
+        self._counter_logic.set_counting_mode('FINITE_GATED')
 
         # Setting default parameters
         self._mw.count_length_SpinBox.setValue(self._counter_logic.get_count_length())

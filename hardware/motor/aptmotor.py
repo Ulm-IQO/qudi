@@ -1146,10 +1146,6 @@ class APTOneAxisStage(APTStage):
     _modclass = 'APTOneAxis'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'aptmotor': 'MotorInterface'}
-
-
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.
 
@@ -1266,9 +1262,6 @@ class APTThreeAxisStage(APTStage):
 
     _modclass = 'APTThreeAxis'
     _modtype = 'hardware'
-
-    # connectors
-    _out = {'aptmotor': 'MotorInterface'}
 
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.
@@ -1414,9 +1407,6 @@ class APTFourAxisStage(APTStage):
 
     _modclass = 'APTThreeAxis'
     _modtype = 'hardware'
-
-    # connectors
-    _out = {'aptmotor': 'MotorInterface'}
 
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.

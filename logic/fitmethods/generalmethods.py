@@ -21,8 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 import lmfit
 from scipy.signal import gaussian
@@ -125,7 +123,7 @@ def _substitute_params(self, initial_params, update_params=None):
                 initial_params[para].value = update_params[para]['value']
 
     else:
-        logger.error('The type of the passed update_params object <{0}> is '
+        self.log.error('The type of the passed update_params object <{0}> is '
                      'neither of type lmfit.parameter.Parameters, '
                      'OrderedDict or dict! Correct that, the initial_params'
                      'will be returned.'.format(type(update_params)))
@@ -176,7 +174,7 @@ def create_fit_string(self, result, model, units=None, decimal_digits_value_give
                                                                 float(result.params[variable].stderr),
                                                                 decimal_digits_err)))
         except:
-            # logger.warning('No unit given for parameter {}, setting unit '
+            # self.log.warning('No unit given for parameter {}, setting unit '
             #             'to empty string'.format(variable))
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             "arb. u.",
@@ -389,7 +387,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
                 if abs(threshold/absolute_min)<abs(minimal_threshold):
                     if make_prints:
                         print('h16')
-                    logger.warning('Threshold to minimum ratio was too '
+                    lself.log.warning('Threshold to minimum ratio was too '
                             'small to estimate two minima. So both '
                             'are set to the same value')
                     error=-1
@@ -462,7 +460,7 @@ def find_offset_parameter(self, x_values=None, data=None):
 
     """
     # lorentzian filter
-    mod, params = self.make_lorentzoffset_model()
+    mod, params = self.make_lorentzian_model()
 
     # Todo: exclude filter in seperate method to be used in other methods
 
@@ -532,13 +530,13 @@ def _check_1D_input(self, x_axis, data, params):
     parameters = [x_axis, data]
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            logger.error('Given parameter is no array.')
+            self.log.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            logger.error('Given parameter is no one dimensional array.')
+            lself.log.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        logger.error('Parameters object is not valid in estimate_gaussian.')
+        lself.log.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     return error

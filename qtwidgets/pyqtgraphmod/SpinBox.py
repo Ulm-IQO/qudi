@@ -6,7 +6,8 @@ from pyqtgraph.SignalProxy import SignalProxy
 from pyqtgraph import functions as fn
 from math import log
 from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-point errors
-from decimal import *
+from decimal import ROUND_FLOOR
+#from decimal import *
 import weakref
 
 from qtpy.QtCore import Property
@@ -403,7 +404,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
                     vs = [D(-1), D(1)][val >= 0]
                     #exp = D(int(abs(val*(D('1.01')**(s*vs))).log10()))
                     fudge = D('1.01')**(s*vs) ## fudge factor. at some places, the step size depends on the step sign.
-                    exp = abs(val * fudge).log10().quantize(1, ROUND_FLOOR)
+                    exp = abs(val * fudge).log10().quantize(1, rounding=ROUND_FLOOR)
                     step = self.opts['step'] * D(10)**exp
                 if 'minStep' in self.opts:
                     step = max(step, self.opts['minStep'])
