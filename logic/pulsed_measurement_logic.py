@@ -58,7 +58,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigMeasurementRunningUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
+    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
     sigUploadAssetComplete = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
@@ -104,9 +104,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sample_rate = 25e9
         self.analogue_amplitude = None
         self.interleave_on = False
-
-        # setup parameters
-        self.laser_trigger_delay_s = 0.7e-6
 
         # timer for data analysis
         self.analysis_timer = None
@@ -174,8 +171,6 @@ class PulsedMeasurementLogic(GenericLogic):
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
             self._pulse_extraction_logic.number_of_lasers = self.number_of_lasers
-        if 'laser_trigger_delay_s' in self._statusVariables:
-            self.laser_trigger_delay_s = self._statusVariables['laser_trigger_delay_s']
         if 'fast_counter_record_length' in self._statusVariables:
             self.fast_counter_record_length = self._statusVariables['fast_counter_record_length']
         if 'sequence_length_s' in self._statusVariables:
@@ -257,7 +252,6 @@ class PulsedMeasurementLogic(GenericLogic):
             self.stop_pulsed_measurement()
 
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        self._statusVariables['laser_trigger_delay_s'] = self.laser_trigger_delay_s
         self._statusVariables['fast_counter_record_length'] = self.fast_counter_record_length
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
         self._statusVariables['controlled_vals'] = list(self.controlled_vals)
@@ -289,8 +283,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                 self.fast_counter_record_length)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating,
-                                                  self.laser_trigger_delay_s)
+                                                  self.laser_ignore_list, self.alternating)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
                                                    self.current_channel_config_name,
                                                    self.analogue_amplitude, self.interleave_on)
@@ -369,16 +362,14 @@ class PulsedMeasurementLogic(GenericLogic):
         return self.fast_counter_binwidth, self.fast_counter_record_length
 
     def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
-                                      sequence_length_s, laser_ignore_list, is_alternating,
-                                      laser_trigger_delay_s):
+                                      sequence_length_s, laser_ignore_list, is_alternating):
         if len(controlled_vals) < 1:
             self.log.error('Tried to set empty controlled variables array. This can not work.')
             self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                       self.number_of_lasers, self.sequence_length_s,
-                                                      self.laser_ignore_list, self.alternating,
-                                                      self.laser_trigger_delay_s)
+                                                      self.laser_ignore_list, self.alternating)
             return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
-                   self.laser_ignore_list, self.alternating, self.laser_trigger_delay_s
+                   self.laser_ignore_list, self.alternating
 
         if is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list))/2:
             self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
@@ -401,17 +392,15 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
         self.alternating = is_alternating
-        self.laser_trigger_delay_s = laser_trigger_delay_s
         if self.fast_counter_gated:
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating,
-                                                  self.laser_trigger_delay_s)
+                                                  self.laser_ignore_list, self.alternating)
         return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
-               self.laser_ignore_list, self.alternating, self.laser_trigger_delay_s
+               self.laser_ignore_list, self.alternating
 
     def get_fastcounter_constraints(self):
         """ Request the constrains from the hardware, in order to pass them
