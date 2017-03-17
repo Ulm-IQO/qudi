@@ -183,6 +183,7 @@ class PoiManagerLogic(GenericLogic):
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
     signal_poi_deleted = QtCore.Signal(str)
+    signal_confocal_image_updated = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -294,8 +295,7 @@ class PoiManagerLogic(GenericLogic):
         # get the roi_map_data (xy confocal image)
         self.roi_map_data = self._confocal_logic.xy_image
 
-        # todo
-        # self.signal.emit
+        self.signal_confocal_image_updated.emit()
 
     def get_all_pois(self, abc_sort=False):
         """ Returns a list of the names of all existing POIs.
