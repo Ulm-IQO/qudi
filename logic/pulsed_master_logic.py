@@ -42,7 +42,7 @@ class PulsedMasterLogic(GenericLogic):
     sigStartPulser = QtCore.Signal()
     sigStopPulser = QtCore.Signal()
     sigFastCounterSettingsChanged = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool, float)
+    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
     sigUploadAsset = QtCore.Signal(str)
     sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
@@ -95,7 +95,7 @@ class PulsedMasterLogic(GenericLogic):
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
+    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulserSettingsUpdated = QtCore.Signal(float, str, list, dict, bool)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
@@ -419,8 +419,7 @@ class PulsedMasterLogic(GenericLogic):
         return pulsegenerator_constraints, fastcounter_constraints
 
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating,
-                                              laser_trigger_delay):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -428,17 +427,15 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param laser_trigger_delay:
         @return:
         """
         self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating, laser_trigger_delay)
+                                                        alternating)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating,
-                                              laser_trigger_delay):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -446,12 +443,11 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param laser_trigger_delay:
         @return:
         """
         self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating, laser_trigger_delay)
+                                                        alternating)
         return
 
     def fast_counter_settings_changed(self, bin_width_s, record_length_s):
@@ -839,12 +835,11 @@ class PulsedMasterLogic(GenericLogic):
                 # Only invoke settings if asset_params are valid
                 if asset_params['err_code'] >= 0:
                     interleave = self._measurement_logic.interleave_on
-                    laser_trigger_delay = self._measurement_logic.laser_trigger_delay_s
                     fc_binwidth_s = self._measurement_logic.fast_counter_binwidth
                     if self._measurement_logic.fast_counter_gated:
-                        fc_record_length_s = asset_params['max_laser_length'] + laser_trigger_delay
+                        fc_record_length_s = asset_params['max_laser_length']
                     else:
-                        fc_record_length_s = asset_params['sequence_length'] + laser_trigger_delay
+                        fc_record_length_s = asset_params['sequence_length']
                     self.fast_counter_settings_changed(fc_binwidth_s, fc_record_length_s)
                     self.pulse_generator_settings_changed(asset_params['sample_rate'],
                                                           asset_params['config_name'],
@@ -854,8 +849,7 @@ class PulsedMasterLogic(GenericLogic):
                                                                asset_params['num_of_lasers'],
                                                                asset_params['sequence_length'],
                                                                asset_params['laser_ignore_list'],
-                                                               asset_params['is_alternating'],
-                                                               laser_trigger_delay)
+                                                               asset_params['is_alternating'])
         # Load asset into channel
         self.status_dict['loading_busy'] = True
         self.sigLoadAsset.emit(asset_name, load_dict)
