@@ -805,6 +805,8 @@ class PulsedMasterLogic(GenericLogic):
                                      according to the loaded assets metadata.
         @return:
         """
+        if load_dict is None:
+            load_dict = dict()
         # invoke measurement parameters from asset object
         if self.invoke_settings:
             # get asset object
