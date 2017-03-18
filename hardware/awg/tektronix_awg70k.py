@@ -1348,7 +1348,7 @@ class AWG70K(Base, PulserInterface):
                     actual_filename = size_filename.split(' ', 1)[1].lstrip()
                     file_list.append(actual_filename)
             for filename in file_list:
-                if (filename.endswith('.wfmx') or filename.endswith('.mat')):
+                if filename.endswith(('.wfm', '.wfmx', '.mat', '.seq', '.seqx')):
                     if filename not in filename_list:
                         filename_list.append(filename)
         return filename_list
