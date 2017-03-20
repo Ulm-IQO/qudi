@@ -83,7 +83,7 @@ class CTC100(Base):
 
             @return bool: whether channel is selected
         """
-         return self.inst.ask(channel.replace(" ", "") + '.selected?' ).split(' = ')[-1] == 'On'
+        return self.inst.ask(channel.replace(" ", "") + '.selected?' ).split(' = ')[-1] == 'On'
 
     def is_output_on(self):
         """ Check if device outputs are enabled.

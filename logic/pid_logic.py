@@ -152,7 +152,7 @@ class PIDLogic(GenericLogic):
 
     def set_kp(self, kp):
         """ Set the proportional constant of the PID controller.
-            
+
             @prarm float kp: proportional constant of PID controller
         """
         return self._controller.set_kp(kp)
@@ -165,7 +165,7 @@ class PIDLogic(GenericLogic):
         return self._controller.get_ki()
 
     def set_ki(self, ki):
-         """ Set the integration constant of the PID controller.
+        """ Set the integration constant of the PID controller.
 
             @param float ki: integration constant of the PID controller
         """
