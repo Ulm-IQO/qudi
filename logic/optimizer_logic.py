@@ -237,17 +237,27 @@ class OptimizerLogic(GenericLogic):
         return 0
 
     def set_refocus_XY_size(self, size):
+        """ Set the number of pixels in the refocus image for X and Y directions
+
+            @param int size: XY image size in pixels
+        """
         self.refocus_XY_size = size
         self.sigRefocusXySizeChanged.emit()
 
     def set_refocus_Z_size(self, size):
+        """ Set the number of values for Z refocus
+
+            @param int size: number of values for Z refocus
+        """
         self.refocus_Z_size = size
         self.sigRefocusZSizeChanged.emit()
 
     def start_refocus(self, initial_pos=None, caller_tag='unknown',tag='logic'):
         """Starts the optimization scan around initial_pos
 
-        @param initial_pos
+            @param [float, float, float] initial_pos:
+            @param str caller_tag: 
+            @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
@@ -297,7 +307,7 @@ class OptimizerLogic(GenericLogic):
         x0 = self.optim_pos_x
         y0 = self.optim_pos_y
 
-        # defining position intervals for refocus
+        # defining position intervals for refocushttp://www.spiegel.de/
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         xmax = np.clip(x0 + 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         ymin = np.clip(y0 - 0.5 * self.refocus_XY_size, self.y_range[0], self.y_range[1])
@@ -678,7 +688,14 @@ class OptimizerLogic(GenericLogic):
             self._sigScanZLine.emit()
 
     def set_position(self, tag, x=None, y=None, z=None, a=None):
+        """ Set focus position.
 
+            @param str tag: sting indicating who caused position change
+            @param float x: x axis position in m
+            @param float y: y axis position in m
+            @param float z: z axis position in m
+            @param float a: a axis position in m
+        """
         if x is not None:
             self._current_x = x
         if y is not None:
