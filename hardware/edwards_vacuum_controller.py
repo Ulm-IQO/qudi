@@ -290,15 +290,19 @@ class EdwardsVacuumController(Base):
             return {}
 
     def _get_gauge(self, gauge):
-        """ Get gauge
+        """ Get gauge value
+
+            @param int gauge: number of gauge
+
+            @return dict: gauge values in dict
         """
-         g = self.inst.ask('?V{0}'.format(gauge))
-         param = g.split()[0]
-         values = g.split()[1]
-         if param == '=V{0}'.format(gauge):
-             return self._parse_gauge_answer(values)
-         else:
-             return
+        g = self.inst.ask('?V{0}'.format(gauge))
+        param = g.split()[0]
+        values = g.split()[1]
+        if param == '=V{0}'.format(gauge):
+            return self._parse_gauge_answer(values)
+        else:
+            return
 
     def get_pressures(self):
         """ Get all pressures.
