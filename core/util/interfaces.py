@@ -33,6 +33,13 @@ class InterfaceMetaclass(QObjectMeta, abc.ABCMeta):
     pass
 
 
+class TaskMetaclass(QObjectMeta, abc.ABCMeta):
+    """
+    Metaclass for interfaces.
+    """
+    pass
+
+
 class ScalarConstraint:
     """
     Constraint definition for a scalar variable hardware parameter.
