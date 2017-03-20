@@ -33,6 +33,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 def waitForClose():
+    """ Wait for program to close on its own and print some old school meme in the meantime.
+    """
     time.sleep(1)
     print('> Mechanic: Somebody set us up the bomb.')
     time.sleep(2)
@@ -51,11 +53,17 @@ class ParentPollerUnix(Thread):
     """
 
     def __init__(self, quitfunction=None):
+        """ Create the parentpoller.
+
+            @param callable quitfunction: function to run before exiting
+        """
         super().__init__()
         self.daemon = True
         self.quitfunction = quitfunction
 
     def run(self):
+        """ Run the parentpoller.
+        """
         # We cannot use os.waitpid because it works only for child processes.
         from errno import EINTR
         while True:
