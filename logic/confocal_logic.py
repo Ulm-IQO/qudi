@@ -34,6 +34,12 @@ from core.util.mutex import Mutex
 
 
 def numpy_from_b(compressed_b):
+    """ Load Numpy array from compressed byte string.
+
+        @param bytes compressed_b: bytestring containing compressed numpy array
+
+        @return dict(str: ndarray): dict of ndarrays
+    """
     f = BytesIO(bytes(compressed_b))
     np_file = np.load(f)
     redict = dict()
@@ -44,6 +50,8 @@ def numpy_from_b(compressed_b):
 
 
 class OldConfigFileError(Exception):
+    """ Exception that is thrown when an old config file is loaded.
+    """
     def __init__(self):
         super().__init__('Old configuration file detected. Ignoring history.')
 
@@ -1188,12 +1196,18 @@ class ConfocalLogic(GenericLogic):
 
     @QtCore.Slot(bool)
     def set_tilt_correction(self, enabled):
+        """ Set tilt correction in tilt interfuse.
+
+            @param bool enabled: whether we want to use tilt correction
+        """
         self._scanning_device.tiltcorrection = enabled
         self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
         self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
         self.signal_tilt_correction_active.emit(enabled)
 
     def history_forward(self):
+        """ Move forward in confocal image history.
+        """
         if self.history_index < len(self.history) - 1:
             self.history_index += 1
             self.history[self.history_index].restore(self)
@@ -1206,6 +1220,8 @@ class ConfocalLogic(GenericLogic):
             self.signal_history_event.emit()
 
     def history_back(self):
+        """ Move backwards in confocal image history.
+        """
         if self.history_index > 0:
             self.history_index -= 1
             self.history[self.history_index].restore(self)
