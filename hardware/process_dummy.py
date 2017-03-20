@@ -32,6 +32,10 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
     _modtype = 'hardware'
 
     def on_activate(self, e):
+        """ Activate module.
+
+            @param object e: fysom state transition information
+        """
         self.temperature = 300.0
         self.pwmpower = 0
 
