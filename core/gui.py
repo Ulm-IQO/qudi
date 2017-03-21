@@ -27,12 +27,16 @@ from qtpy.QtCore import QSize
 
 
 class Gui(QObject):
+    """ Set up all necessary GUI elements, like application icons, themes, etc.
+    """
 
     def __init__(self):
         super().__init__()
         QApplication.instance().setQuitOnLastWindowClosed(False)
 
     def setAppIcon(self):
+        """ Set up the Qudi application icon.
+        """
         iconpath = 'artwork/logo/logo-qudi-'
         self.appIcon = QIcon()
         self.appIcon.addFile('{0}16x16.png'.format(iconpath), QSize(16, 16))
@@ -45,6 +49,8 @@ class Gui(QObject):
 
     def setTheme(self, theme, path):
         """ Set icon theme for qudi app.
+            
+            @param str theme: Qudi theme name
             @param str path: search path for qudi icons
         """
         # Make icons work on non-X11 platforms, set custom theme
@@ -59,6 +65,10 @@ class Gui(QObject):
         QIcon.setThemeName(theme)
 
     def setStyleSheet(self, stylesheetpath):
+        """ Set qss style sheet for application.
+
+            @param str stylesheetpath: path to style sheet file
+        """
         with open(stylesheetpath, 'r') as stylesheetfile:
             stylesheet = stylesheetfile.read()
 
@@ -76,4 +86,6 @@ class Gui(QObject):
         QApplication.instance().setStyleSheet(stylesheet)
 
     def closeWindows(self):
+        """ Close all application windows.
+        """
         QApplication.instance().closeAllWindows()

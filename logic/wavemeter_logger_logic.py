@@ -201,15 +201,33 @@ class WavemeterLoggerLogic(GenericLogic):
         self.sig_handle_timer.disconnect()
 
     def get_max_wavelength(self):
+        """ Current maximum wavelength of the scan.
+
+            @return float: current maximum wavelength
+        """
         return self._xmax
 
     def get_min_wavelength(self):
+        """ Current minimum wavelength of the scan.
+
+            @return float: current minimum wavelength
+        """
         return self._xmin
 
     def get_bins(self):
+        """ Current number of bins in the spectrum.
+
+            @return int: current number of bins in the scan
+        """
         return self._bins
 
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
+        """ Recalculate the current spectrum from raw data.
+
+            @praram int bins: new number of bins
+            @param float xmin: new minimum wavelength
+            @param float xmax: new maximum wavelength
+        """
         if bins is not None:
             self._bins = bins
         if xmin is not None:
@@ -217,7 +235,6 @@ class WavemeterLoggerLogic(GenericLogic):
         if xmax is not None:
             self._xmax = xmax
 
-#        print('New histogram', self._bins,self._xmin,self._xmax)
         # create a new x axis from xmin to xmax with bins points
         self.rawhisto = np.zeros(self._bins)
         self.envelope_histogram = np.zeros(self._bins)
@@ -228,6 +245,8 @@ class WavemeterLoggerLogic(GenericLogic):
     def start_scanning(self, resume=False):
         """ Prepare to start counting:
             zero variables, change state and start counting "loop"
+
+            @param bool resume: whether to resume measurement
         """
 
         self.run()
@@ -578,4 +597,10 @@ class WavemeterLoggerLogic(GenericLogic):
         return fig
 
     def nm_to_ghz(self, wavelength):
+        """ Convert wavelength to frequency.
+
+            @param float wavelength: vacuum wavelength
+
+            @return float: freequency
+        """
         return 3e8 / wavelength

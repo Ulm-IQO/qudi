@@ -101,6 +101,12 @@ class ThreadManager(QtCore.QAbstractTableModel):
             self._threads[name].thread.quit()
 
     def getItemByNumber(self, n):
+        """ Get thread by number ins list.
+
+            @param int n: number in list
+
+            @return (threadname, thread): thread name and thread
+        """
         i = 0
         if not(0 <= n < len(self._threads)):
             raise IndexError
@@ -112,6 +118,12 @@ class ThreadManager(QtCore.QAbstractTableModel):
         return key, self._threads[key]
 
     def getItemNumberByKey(self, key):
+        """ Get number in list from thread name.
+
+            @param str key: thread name
+
+            @return int: thread number in list
+        """
         i = 0
         it = iter(self._threads)
         newkey = next(it)
