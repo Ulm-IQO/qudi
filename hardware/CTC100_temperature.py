@@ -100,11 +100,11 @@ class CTC100(Base):
         """
         return self.inst.ask_for_values('{}.value?'.format(name))[0]
 
-#
-# All the functions below need to be refactored with multichannel PID in mind
-#
-
     def get_all_outputs(self):
+        """ Get a list of all output names
+
+            @return list(str): output names
+        """
         names = self.get_channel_names()
         raw = self.inst.ask('getOutputs?').split(', ')
         values = []
@@ -113,13 +113,28 @@ class CTC100(Base):
         return dict(zip(names, values))
 
     def get_selected_channels(self):
+        """ Get all selected channels.
+
+            @return dict: dict of channel_name: bool indicating selected channels
+        """
         names = self.get_channel_names()
         values = []
         for channel in names:
                 values.append(self.is_channel_selected(channel))
         return dict(zip(names, values))
 
+    def channel_off(self, channel):
+        """ Turn off channel.
+
+            @param channel str: name of channel to turn off
+        """
+        return self.inst.ask('{}.Off'.format(channel)).split(' = ')[1]
+
     def enable_output(self):
+        """ Turn on all outputs.
+
+            @return bool: whether turning on was successful
+        """
         if self.is_output_on():
             return True
         else:
@@ -127,33 +142,39 @@ class CTC100(Base):
             return result == 'On'
 
     def disable_output(self):
+        """ Turn off all outputs.
+
+            @return bool: whether turning off was successful
+        """
         if self.is_output_on():
             result = self.inst.ask('OutputEnable = Off').split()[2]
             return result == 'Off'
         else:
             return True
 
-    def get_setpoint(self, channel):
-        return self.inst.ask_for_values('{}.PID.setpoint?'.format(channel))[0]
 
-    def set_setpoint(self, channel, setpoint):
-        return self.inst.ask_for_values('{}.PID.setpoint = {}'.format(channel, setpoint))[0]
-
-    def get_pid_mode(self, channel):
-        return self.inst.ask('{}.PID.Mode?'.format(channel)).split(' = ')[1]
-
-    def set_pid_mode(self, channel, mode):
-        return self.inst.ask('{}.PID.Mode = {}'.format(channel, mode)).split(' = ')[1]
-
-    def channel_off(self, channel):
-        return self.inst.ask('{}.Off'.format(channel)).split(' = ')[1]
-
-    def get_value(self, channel):
-        try:
-            return self.inst.ask_for_values('{}.Value?'.format(channel))[0]
-        except:
-            return NonNonee
-
-    def set_value(self, channel, value):
-        return self.inst.ask_for_values('{}.Value = {}'.format(channel, value))[0]
+#
+# All the functions below need to be refactored with multichannel PID in mind
+#
+#    def get_setpoint(self, channel):
+#        return self.inst.ask_for_values('{}.PID.setpoint?'.format(channel))[0]
+#
+#    def set_setpoint(self, channel, setpoint):
+#        return self.inst.ask_for_values('{}.PID.setpoint = {}'.format(channel, setpoint))[0]
+#
+#    def get_pid_mode(self, channel):
+#        return self.inst.ask('{}.PID.Mode?'.format(channel)).split(' = ')[1]
+#
+#    def set_pid_mode(self, channel, mode):
+#        return self.inst.ask('{}.PID.Mode = {}'.format(channel, mode)).split(' = ')[1]
+#
+#
+#    def get_value(self, channel):
+#        try:
+#            return self.inst.ask_for_values('{}.Value?'.format(channel))[0]
+#        except:
+#            return NonNonee
+#
+#    def set_value(self, channel, value):
+#        return self.inst.ask_for_values('{}.Value = {}'.format(channel, value))[0]
 
