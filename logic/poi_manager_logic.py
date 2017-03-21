@@ -721,7 +721,8 @@ class PoiManagerLogic(GenericLogic):
         data['Y'] = np.array(y_coords)
         data['Z'] = np.array(z_coords)
 
-        self._save_logic.save_data(data, filepath=filepath, filelabel=self.roi_name, fmt='%.6e')
+        self._save_logic.save_data(data, filepath=filepath, filelabel=self.roi_name,
+                                   fmt=['%s', '%s', '%.6e', '%.6e', '%.6e'])
 
         self.log.debug('ROI saved to:\n{0}'.format(filepath))
 
