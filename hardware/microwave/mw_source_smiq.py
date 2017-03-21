@@ -94,6 +94,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self.rm.close()
 
     def get_limits(self):
+        """ Create an object containing parameter limits for this microwave source.
+            
+            @return MicrowaveLimits: device-specific parameter limits
+        """
         limits = MicrowaveLimits()
         limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
 
@@ -275,13 +279,13 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start, stop, step, power):
-        """
+        """ Activate sweep mode on the microwave source
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
+        @param start float: start frequency
+        @param stop float: stop frequency
+        @param step float: frequency step
+        @param power float: output power
+        @return int: number of frequency steps generated
         """
         self._gpib_connection.write(':SOUR:POW ' + str(power))
         self._gpib_connection.write('*WAI')

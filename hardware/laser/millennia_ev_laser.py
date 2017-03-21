@@ -29,6 +29,8 @@ import visa
 
 
 class Models(Enum):
+    """ Model numbers for Millennia lasers
+    """
     MilEV = 0
 
 
