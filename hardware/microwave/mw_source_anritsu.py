@@ -274,13 +274,13 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start, stop, step, power):
-        """
+        """ Activate sweep mode on the microwave source
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
+        @param start float: start frequency
+        @param stop float: stop frequency
+        @param step float: frequency step
+        @param power float: output power
+        @return int: number of frequency steps generated
         """
         self._gpib_connection.write(':SWE:GEN STEP')
         self._gpib_connection.write(':FREQ:START {0}'.format(start-step))
