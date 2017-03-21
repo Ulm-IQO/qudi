@@ -23,6 +23,8 @@ from logic.generic_task import InterruptableTask
 import time
 
 class Task(InterruptableTask):
+    """ This task does a confocal focus optimisation.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

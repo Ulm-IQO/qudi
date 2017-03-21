@@ -165,6 +165,10 @@ class AppWatchdog(QtCore.QObject):
             x += i
 
     def setupParentPoller(self, manager):
+        """ Set up parent pooler to find out when parent process is killed.
+
+            @param manager Manager: manager reference
+        """
         self.parent_handle = int(os.environ.get('QUDI_PARENT_PID') or 0)
         self.interrupt = int(os.environ.get('QUDI_INTERRUPT_EVENT') or 0)
         if sys.platform == 'win32':
@@ -179,6 +183,10 @@ class AppWatchdog(QtCore.QObject):
             
 
     def quitProxy(self, obj):
+        """ Helper function to emit doQuit signal
+
+            @param obj object: object passed to doQuit
+        """
         print('Parent process is daed, committing sudoku...')
         self.sigDoQuit.emit(obj)
 
