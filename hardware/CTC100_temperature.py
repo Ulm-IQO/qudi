@@ -25,17 +25,26 @@ import visa
 
 class CTC100(Base):
     """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    This module implements communication with CTC100 temperature controllers or clones/licensed devices.
+
+    This module is untested and very likely broken.
     """
     _modclass = 'ctc100'
     _modtype = 'hardware'
 
     def on_activate(self, e):
+        """ Activate modeule
+
+            @param object e: fysom state transition information
+        """
         config = self.getConfiguration()
         self.connect(config['interface'])
 
     def on_deactivate(self, e):
+        """ Deactivate modeule
+
+            @param object e: fysom state transition information
+        """
         self.disconnect()
 
     def connect(self, interface):
@@ -55,24 +64,45 @@ class CTC100(Base):
             return True
 
     def disconnect(self):
-        """
-        Close the connection to the instrument.
+        """ Close the connection to the instrument.
         """
         self.inst.close()
         self.rm.close()
 
     def get_channel_names(self):
+        """ Get a list of channel names.
+
+            @return list(str): list of channel names
+        """
         return self.inst.ask('getOutputNames?').split(', ')
 
     def is_channel_selected(self, channel):
-         return self.inst.ask(channel.replace(" ", "") + '.selected?' ).split(' = ')[-1] == 'On'
+        """ Check if a channel is selectes
+
+            @param str channel: channel name
+
+            @return bool: whether channel is selected
+        """
+        return self.inst.ask(channel.replace(" ", "") + '.selected?' ).split(' = ')[-1] == 'On'
 
     def is_output_on(self):
+        """ Check if device outputs are enabled.
+
+            @return bool: wheter device outputs are enabled
+        """
         result = self.inst.ask('OutputEnable?').split()[2]
         return result == 'On'
 
     def get_temp_by_name(self, name):
+        """ Get temperature by name.
+
+            @return float: temperature value
+        """
         return self.inst.ask_for_values('{}.value?'.format(name))[0]
+
+#
+# All the functions below need to be refactored with multichannel PID in mind
+#
 
     def get_all_outputs(self):
         names = self.get_channel_names()

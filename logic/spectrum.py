@@ -82,6 +82,8 @@ class SpectrumLogic(GenericLogic):
             pass
 
     def get_single_spectrum(self):
+        """ Record a single spectrum from the spectrometer.
+        """
         self.spectrum_data = netobtain(self._spectrometer_device.recordSpectrum())
 
         # Clearing the differential spectra data arrays so that they do not get
