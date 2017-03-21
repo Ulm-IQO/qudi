@@ -24,6 +24,8 @@ import copy
 
 
 class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
+    """ This interfuse produces a Z correction corresponding to a tilted surface.
+    """
 
     _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
