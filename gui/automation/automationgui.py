@@ -27,7 +27,7 @@ from qtpy import uic
 
 
 class AutomationGui(GUIBase):
-    """ """
+    """ Graphical interface for arranging tasks without using Python code. """
     _modclass = 'AutomationGui'
     _modtype = 'gui'
     ## declare connectors
