@@ -36,6 +36,8 @@ from core.util import units
 
 
 class ODMRMainWindow(QtWidgets.QMainWindow):
+    """ The main window for the ODMR measurement GUI.
+    """
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -48,6 +50,8 @@ class ODMRMainWindow(QtWidgets.QMainWindow):
 
 
 class ODMRSettingDialog(QtWidgets.QDialog):
+    """ The settings dialog for ODMR measurements.
+    """
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -60,7 +64,7 @@ class ODMRSettingDialog(QtWidgets.QDialog):
 
 class ODMRGui(GUIBase):
     """
-    This is the GUI Class for ODMR
+    This is the GUI Class for ODMR measurements
     """
 
     _modclass = 'ODMRGui'

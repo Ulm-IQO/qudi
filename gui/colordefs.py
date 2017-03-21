@@ -24,9 +24,10 @@ import pyqtgraph as pg
 
 
 class ColorScale():
+    """ Custom color scale for use in Qudi.
 
-    # you need to add two numpy arrays,  COLORS and COLORS_INV when subclassing
-
+        You need to add two numpy arrays, COLORS and COLORS_INV when subclassing
+    """
     def __init__(self):
         color_positions = np.linspace(0.0, 1.0, num=len(self.COLORS))
 
@@ -41,7 +42,12 @@ class ColorScale():
 
 
 class ColorScaleRainbow(ColorScale):
-    # Define the color map that goes from dark blue to bright red
+    """ Define the color map that goes from dark blue to bright red.
+        Looks gay but is not preferable for a number of reasons:
+        brightness linearity, visual banding, red-green colorblindness problems, etc.
+
+        See the matplotlib discussion about their default color scale for reference.
+    """
     COLORS = np.array([
         [  0,   0, 132, 255],
         [  0,   0, 241, 255],
@@ -72,6 +78,7 @@ class ColorScaleRainbow(ColorScale):
 # work.  If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 class ColorScaleMagma(ColorScale):
+    """ Magma color scale proposal for matplotlib default color scale """
     COLORS = np.array([
                [0.001462, 0.000466, 0.013866, 1.0],
                [0.002258, 0.001295, 0.018331, 1.0],
@@ -334,6 +341,7 @@ class ColorScaleMagma(ColorScale):
     COLORS_INV = COLORS[::-1]
 
 class ColorScaleInferno(ColorScale):
+    """ Inferno color scale proposal for matplotlib default color scale """
     COLORS = np.array([
                  [0.001462, 0.000466, 0.013866, 1.0],
                  [0.002267, 0.001270, 0.018570, 1.0],
@@ -595,6 +603,7 @@ class ColorScaleInferno(ColorScale):
     COLORS_INV = COLORS[::-1]
 
 class ColorScalePlasma(ColorScale):
+    """ Plasma color scale proposal for matplotlib default color scale """
     COLORS = np.array([
                 [0.050383, 0.029803, 0.527975, 1.0],
                 [0.063536, 0.028426, 0.533124, 1.0],
@@ -856,6 +865,7 @@ class ColorScalePlasma(ColorScale):
     COLORS_INV = COLORS[::-1]
 
 class ColorScaleViridis(ColorScale):
+    """ Viridis color scale proposal for matplotlib and winner (because it is green!) """
     COLORS = np.array([
                  [0.267004, 0.004874, 0.329415, 1.0],
                  [0.268510, 0.009605, 0.335427, 1.0],
@@ -1118,6 +1128,7 @@ class ColorScaleViridis(ColorScale):
 
 
 class QudiPalette():
+    """ Qudi saturated color palette """
 
     blue = pg.mkColor(34, 23, 244)
     c1 = blue
@@ -1139,6 +1150,7 @@ class QudiPalette():
 
 
 class QudiPalettePale():
+    """ Qudi desaturated color palette """
 
     blue = pg.mkColor(102, 94, 252)
     c1 = blue
