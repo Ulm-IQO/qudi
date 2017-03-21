@@ -164,7 +164,8 @@ class ConfocalSettingDialog(QtWidgets.QDialog):
 
 
 class OptimizerSettingDialog(QtWidgets.QDialog):
-
+    """ User configurable settings for the optimizer embedded in cofocal gui"""
+    
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -1143,7 +1144,8 @@ class ConfocalGui(GUIBase):
 
     def roi_xy_bounds_check(self, roi):
         """ Check if the focus cursor is oputside the allowed range after drag
-            and set its position to the limit """
+            and set its position to the limit
+        """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
@@ -1213,6 +1215,8 @@ class ConfocalGui(GUIBase):
         self.roi_xy.setPos([roi_x_view, roi_y_view])
 
     def update_roi_xy_size(self):
+        """ Update the cursor size showing the optimizer scan area for the XY image.
+        """
         xpos = self.roi_xy.pos()[0]
         ypos = self.roi_xy.pos()[1]
         xsize = self.roi_xy.size()[0]
@@ -1224,6 +1228,8 @@ class ConfocalGui(GUIBase):
         self.roi_xy.setPos([xcenter-newsize / 2, ycenter-newsize / 2])
 
     def update_roi_depth_size(self):
+        """ Update the cursor size showing the optimizer scan area for the X-depth image.
+        """
         xpos = self.roi_depth.pos()[0]
         ypos = self.roi_depth.pos()[1]
         xsize = self.roi_depth.size()[0]
@@ -1481,12 +1487,18 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
     def update_xy_channel(self, index):
-        """ """
+        """ The displayed channel for the XY image was changed, refresh the displayed image.
+            
+            @param index int: index of selected channel item in combo box
+        """
         self.xy_channel = int(self._mw.xy_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
         self.refresh_xy_image()
 
     def update_depth_channel(self, index):
-        """ """
+        """ The displayed channel for the X-depth image was changed, refresh the displayed image.
+            
+            @param index int: index of selected channel item in combo box
+        """
         self.depth_channel = int(self._mw.depth_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
         self.refresh_depth_image()
 
@@ -2093,18 +2105,27 @@ class ConfocalGui(GUIBase):
             self._mw.action_scan_xy_start.setIcon(self._scan_xy_single_icon)
             self._mw.action_scan_depth_start.setIcon(self._scan_depth_single_icon)
 
-    def logic_started_scanning(self,tag):
+    def logic_started_scanning(self, tag):
+        """ Disable icons if a scan was started.
+
+            @param tag str: tag indicating command source
+        """
         if tag == 'logic':
             self.disable_scan_actions()
 
-    def logic_continued_scanning(self,tag):
+    def logic_continued_scanning(self, tag):
+        """ Disable icons if a scan was continued.
+
+            @param tag str: tag indicating command source
+        """
         if tag == 'logic':
             self.disable_scan_actions()
 
-    def logic_started_refocus(self,tag):
+    def logic_started_refocus(self, tag):
+        """ Disable icons if a refocus was started.
+
+            @param tag str: tag indicating command source
+        """
         if tag == 'logic':
             self.disable_scan_actions()
 
-
-    # def logic_stopped_scanning(self,tag):
-    #     if tag == 'logic':
