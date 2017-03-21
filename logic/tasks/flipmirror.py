@@ -30,8 +30,8 @@ class Task(PrePostTask):
         print('Task {0} added!'.format(self.name))
 
     def preExecute(self):
-    """ Flip in one direction before the other task executes
-    """
+        """ Flip in one direction before the other task executes
+        """
         if ('switchlogic' in self.ref
             and 'sequence' in self.config):
                 logic = self.ref['switchlogic']
@@ -46,8 +46,8 @@ class Task(PrePostTask):
 
 
     def postExecute(self):
-    """ Flip in the other direction after the other task has finished
-    """
+        """ Flip in the other direction after the other task has finished
+        """
         if ('switchlogic' in self.ref
             and 'sequence' in self.config):
                 logic = self.ref['switchlogic']
