@@ -632,8 +632,8 @@ class ODMRLogic(GenericLogic):
         parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
-        parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
-
+        if self.fc.current_fit != 'No Fit':
+            parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
 
         # add all fit parameter to the saved data:
         for name, param in self.fc.current_fit_param.items():
