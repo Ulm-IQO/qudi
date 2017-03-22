@@ -416,6 +416,7 @@ class PoiManagerGui(GUIBase):
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
         self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
+        self._mw.track_poi_Action.triggered.connect(self.toggle_tracking)
 
         # Interface controls
         self._mw.get_confocal_image_PushButton.clicked.connect(self.get_confocal_image)
@@ -429,7 +430,6 @@ class PoiManagerGui(GUIBase):
 
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
 
-        self._mw.periodic_refind_CheckBox.stateChanged.connect(self.toggle_periodic_refind)
 
         # This needs to be activated so that it only listens to user input, and ignores
         # algorithmic index changes
@@ -473,8 +473,22 @@ class PoiManagerGui(GUIBase):
             self._redraw_roi_image
         )
 
-        # Connect track period
-        self._mw.track_period_SpinBox.valueChanged.connect(self.change_track_period)
+        self._poi_manager_logic.signal_periodic_opt_duration_changed.connect(
+            self._track_period_changed
+        )
+        self._poi_manager_logic.signal_periodic_opt_started.connect(
+            self._tracking_started
+        )
+        self._poi_manager_logic.signal_periodic_opt_stopped.connect(
+            self._tracking_stopped
+        )
+
+        # Connect track period after setting the GUI value from the logic
+        initial_period = self._poi_manager_logic.timer_duration
+        self._mw.track_period_SpinBox.setValue(initial_period)
+        self._mw.time_till_next_update_ProgressBar.setMaximum(initial_period)
+        self._mw.time_till_next_update_ProgressBar.setValue(initial_period)
+        self._mw.track_period_SpinBox.valueChanged.connect(self.set_track_period)
 
         # Redraw the sample_shift axes if the range changes
         self._mw.sample_shift_ViewWidget.plotItem.sigRangeChanged.connect(self._redraw_sample_shift)
@@ -637,14 +651,18 @@ class PoiManagerGui(GUIBase):
 
         self._poi_manager_logic.move_coords(poikey=self._poi_manager_logic.active_poi.get_key())
 
-    def toggle_periodic_refind(self):
+    def toggle_tracking(self):
         if self._poi_manager_logic.timer is None:
-            period = self._mw.track_period_SpinBox.value()
-
-            self._poi_manager_logic.start_periodic_refocus(duration=period, poikey=self._poi_manager_logic.active_poi.get_key())
+            self._poi_manager_logic.start_periodic_refocus(poikey=self._poi_manager_logic.active_poi.get_key())
 
         else:
             self._poi_manager_logic.stop_periodic_refocus()
+
+    def _tracking_started(self):
+        self._mw.track_poi_Action.setChecked(True)
+
+    def _tracking_stopped(self):
+        self._mw.track_poi_Action.setChecked(False)
 
     def goto_poi(self, key):
         """ Go to the last known position of poi <key>."""
@@ -751,20 +769,23 @@ class PoiManagerGui(GUIBase):
     def _update_timer(self):
         self._mw.time_till_next_update_ProgressBar.setValue(self._poi_manager_logic.time_left)
 
-    def change_track_period(self):
+    def set_track_period(self):
         """ Change the progress bar and update the timer duration."""
 
         new_track_period = self._mw.track_period_SpinBox.value()
+        self._poi_manager_logic.set_periodic_optimize_duration(duration=new_track_period)
 
+    def _track_period_changed(self):
+        """ Reflect the changed track period in the GUI elements.
+        """
+        new_track_period = self._poi_manager_logic.timer_duration
         # Set the new maximum for the progress bar
         self._mw.time_till_next_update_ProgressBar.setMaximum(new_track_period)
 
-        # If the tracker is not active, then set the value of the progress bar to the new maximum
-        if not self._mw.periodic_refind_CheckBox.isChecked():
+        # If the tracker is not active, then set the value of the progress bar to the 
+        # new maximum
+        if not self._mw.track_poi_Action.isChecked():
             self._mw.time_till_next_update_ProgressBar.setValue(new_track_period)
-        # Otherwise (if the tracker is active), send the new track period to the tracking logic.
-        else:
-            self._poi_manager_logic.change_periodic_optimize_duration(duration=new_track_period)
 
     def _redraw_clocktime_ticks(self):
         """If duration is displayed, reset ticks to default.

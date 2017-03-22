@@ -184,6 +184,9 @@ class PoiManagerLogic(GenericLogic):
     signal_poi_updated = QtCore.Signal()
     signal_poi_deleted = QtCore.Signal(str)
     signal_confocal_image_updated = QtCore.Signal()
+    signal_periodic_opt_started = QtCore.Signal()
+    signal_periodic_opt_duration_changed = QtCore.Signal()
+    signal_periodic_opt_stopped = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -510,22 +513,20 @@ class PoiManagerLogic(GenericLogic):
                 poikey))
             return -1
 
-    def start_periodic_refocus(self, duration=None, poikey=None):
+    def start_periodic_refocus(self, poikey=None):
         """ Starts the perodic refocussing of the poi.
 
         @param float duration: (optional) the time between periodic optimization
-        @param string poikey: (optional) the key of the current poi to be set and refocussed on.
+        @param string poikey: (optional) the key of the poi to be set and refocussed on.
 
         @return int: error code (0:OK, -1:error)
         """
-        if duration is not None:
-            self.timer_duration = duration
-        else:
-            self.log.warning('No timer duration given, using {0} s.'.format(
-                self.timer_duration))
 
         if poikey is not None and poikey in self.poi_list.keys():
             self._current_poi_key = poikey
+        else:
+            # Todo: warning message that active POI used by default
+            self._current_poi_key = self.active_poi.get_key()
 
         self.log.info('Periodic refocus on {0}.'.format(self._current_poi_key))
 
@@ -534,9 +535,11 @@ class PoiManagerLogic(GenericLogic):
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self._periodic_refocus_loop)
         self.timer.start(300)
+
+        self.signal_periodic_opt_started.emit()
         return 0
 
-    def change_periodic_optimize_duration(self, duration=None):
+    def set_periodic_optimize_duration(self, duration=None):
         """ Change the duration of the periodic optimize timer during active
         periodic refocussing.
 
@@ -547,6 +550,8 @@ class PoiManagerLogic(GenericLogic):
         else:
             self.log.warning('No timer duration given, using {0} s.'.format(
                 self.timer_duration))
+
+        self.signal_periodic_opt_duration_changed.emit()
 
     def _periodic_refocus_loop(self):
         """ This is the looped function that does the actual periodic refocus.
@@ -570,6 +575,8 @@ class PoiManagerLogic(GenericLogic):
             return -1
         self.timer.stop()
         self.timer = None
+
+        self.signal_periodic_opt_stopped.emit()
         return 0
 
     def _refocus_done(self, caller_tag, optimal_pos):
