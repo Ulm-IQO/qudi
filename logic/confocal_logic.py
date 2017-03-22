@@ -33,27 +33,11 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
 
-def numpy_from_b(compressed_b):
-    """ Load Numpy array from compressed byte string.
-
-        @param bytes compressed_b: bytestring containing compressed numpy array
-
-        @return dict(str: ndarray): dict of ndarrays
-    """
-    f = BytesIO(bytes(compressed_b))
-    np_file = np.load(f)
-    redict = dict()
-    for name in np_file.files:
-        redict.update({name: np_file[name]})
-    f.close()
-    return redict
-
-
 class OldConfigFileError(Exception):
     """ Exception that is thrown when an old config file is loaded.
     """
     def __init__(self):
-        super().__init__('Old configuration file detected. Ignoring history.')
+        super().__init__('Old configuration file detected. Ignoring confocal history.')
 
 
 class ConfocalHistoryEntry(QtCore.QObject):
@@ -238,20 +222,12 @@ class ConfocalHistoryEntry(QtCore.QObject):
             if isinstance(serialized['xy_image'], np.ndarray):
                 self.xy_image = serialized['xy_image']
             else:
-                try:
-                    self.xy_image = numpy_from_b(
-                            eval(serialized['xy_image']))['image']
-                except:
-                    raise OldConfigFileError()
+                raise OldConfigFileError()
         if 'depth_image' in serialized:
             if isinstance(serialized['depth_image'], np.ndarray):
                 self.depth_image = serialized['depth_image'].copy()
             else:
-                try:
-                    self.depth_image = numpy_from_b(
-                            eval(serialized['depth_image']))['image']
-                except:
-                    raise OldConfigFileError()
+                raise OldConfigFileError()
 
 
 class ConfocalLogic(GenericLogic):
