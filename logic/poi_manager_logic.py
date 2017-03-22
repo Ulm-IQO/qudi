@@ -62,7 +62,8 @@ class PoI:
         if pos is not None:
             if len(pos) != 3:
                 self.log.error('Given position does not contain 3 '
-                        'dimensions.')
+                               'dimensions.'
+                               )
             # Store the time in the history log as seconds since 1970,
             # rather than as a datetime object.
             creation_time_sec = (self._creation_time - datetime.utcfromtimestamp(0)).total_seconds()
@@ -84,7 +85,8 @@ class PoI:
         if coords is not None:  # FIXME: Futurewarning fired here.
             if len(coords) != 3:
                 self.log.error('Given position does not contain 3 '
-                        'dimensions.')
+                               'dimensions.'
+                               )
             self._coords_in_sample = [coords[0], coords[1], coords[2]]
 
     def add_position_to_history(self, position=None):
@@ -460,7 +462,7 @@ class PoiManagerLogic(GenericLogic):
         return -1
 
     def move_coords(self, poikey=None, newpos=None):
-        """Updates the coords of a given POI, and adds a position to the POI history, 
+        """Updates the coords of a given POI, and adds a position to the POI history,
         but DOES NOT update the sample position.
         """
         if newpos is None:
@@ -617,8 +619,9 @@ class PoiManagerLogic(GenericLogic):
 
         else:
             self.log.error('Unknown caller_tag for the optimizer. POI '
-                    'Manager does not know what to do with optimized '
-                    'position, and has done nothing.')
+                           'Manager does not know what to do with optimized '
+                           'position, and has done nothing.'
+                           )
 
     def reset_roi(self):
 
@@ -789,9 +792,20 @@ class PoiManagerLogic(GenericLogic):
         n2 = axis1[1]
         n3 = axis1[2]
 
-        m1 = np.matrix(((((n1*n1)*(1-np.cos(angle1))+np.cos(angle1)), ((n1*n2)*(1-np.cos(angle1))-n3*np.sin(angle1)), ((n1*n3)*(1-np.cos(angle1))+n2*np.sin(angle1))),
-                        (((n2*n1)*(1-np.cos(angle1))+n3*np.sin(angle1)), ((n2*n2)*(1-np.cos(angle1))+np.cos(angle1)), ((n2*n3)*(1-np.cos(angle1))-n1*np.sin(angle1))),
-                        (((n3*n1)*(1-np.cos(angle1))-n2*np.sin(angle1)), ((n3*n2)*(1-np.cos(angle1))+n1*np.sin(angle1)), ((n3*n3)*(1-np.cos(angle1))+np.cos(angle1)))))
+        m1 = np.matrix(((((n1 * n1) * (1 - np.cos(angle1)) + np.cos(angle1)),
+                         ((n1 * n2) * (1 - np.cos(angle1)) - n3 * np.sin(angle1)),
+                         ((n1 * n3) * (1 - np.cos(angle1)) + n2 * np.sin(angle1))
+                         ),
+                        (((n2 * n1) * (1 - np.cos(angle1)) + n3 * np.sin(angle1)),
+                         ((n2 * n2) * (1 - np.cos(angle1)) + np.cos(angle1)),
+                         ((n2 * n3) * (1 - np.cos(angle1)) - n1 * np.sin(angle1))
+                         ),
+                        (((n3 * n1) * (1 - np.cos(angle1)) - n2 * np.sin(angle1)),
+                         ((n3 * n2) * (1 - np.cos(angle1)) + n1 * np.sin(angle1)),
+                         ((n3 * n3) * (1 - np.cos(angle1)) + np.cos(angle1))
+                         )
+                        )
+                       )
 
         # Now that ab_old can be rotated to overlap with ab_new, we need to rotate in another
         # axis to fix "tilt".  By choosing ab_new as the rotation axis we ensure that the
@@ -822,9 +836,20 @@ class PoiManagerLogic(GenericLogic):
         n2 = axis2[1]
         n3 = axis2[2]
 
-        m2 = np.matrix(((((n1*n1)*(1-np.cos(angle2))+np.cos(angle2)),((n1*n2)*(1-np.cos(angle2))-n3*np.sin(angle2)),((n1*n3)*(1-np.cos(angle2))+n2*np.sin(angle2))),
-                        (((n2*n1)*(1-np.cos(angle2))+n3*np.sin(angle2)),((n2*n2)*(1-np.cos(angle2))+np.cos(angle2)),((n2*n3)*(1-np.cos(angle2))-n1*np.sin(angle2))),
-                        (((n3*n1)*(1-np.cos(angle2))-n2*np.sin(angle2)),((n3*n2)*(1-np.cos(angle2))+n1*np.sin(angle2)),((n3*n3)*(1-np.cos(angle2))+np.cos(angle2)))))
+        m2 = np.matrix(((((n1 * n1) * (1 - np.cos(angle2)) + np.cos(angle2)),
+                         ((n1 * n2) * (1 - np.cos(angle2)) - n3 * np.sin(angle2)),
+                         ((n1 * n3) * (1 - np.cos(angle2)) + n2 * np.sin(angle2))
+                         ),
+                        (((n2 * n1) * (1 - np.cos(angle2)) + n3 * np.sin(angle2)),
+                         ((n2 * n2) * (1 - np.cos(angle2)) + np.cos(angle2)),
+                         ((n2 * n3) * (1 - np.cos(angle2)) - n1 * np.sin(angle2))
+                         ),
+                        (((n3 * n1) * (1 - np.cos(angle2)) - n2 * np.sin(angle2)),
+                         ((n3 * n2) * (1 - np.cos(angle2)) + n1 * np.sin(angle2)),
+                         ((n3 * n3) * (1 - np.cos(angle2)) + np.cos(angle2))
+                         )
+                        )
+                       )
 
         # To find the new position of r, displace by (a2 - a1) and do the rotations
         a1r = r - a1
@@ -859,7 +884,7 @@ class PoiManagerLogic(GenericLogic):
 
                 self.move_coords(poikey=poikey, newpos=new_coords)
 
-    def autofind_pois(self, neighborhood_size = 1, min_threshold = 10000, max_threshold = 1e6):
+    def autofind_pois(self, neighborhood_size=1, min_threshold=10000, max_threshold=1e6):
         """Automatically search the xy scan image for POIs.
 
         @param neighborhood_size: size in microns.  Only the brightest POI per neighborhood will be found.
@@ -873,7 +898,7 @@ class PoiManagerLogic(GenericLogic):
         x_range_microns = np.max(self.roi_map_data[:, :, 0]) - np.min(self.roi_map_data[:, :, 0])
         y_range_microns = np.max(self.roi_map_data[:, :, 1]) - np.min(self.roi_map_data[:, :, 1])
         y_pixels = len(self.roi_map_data)
-        x_pixels = len(self.roi_map_data[1,:])
+        x_pixels = len(self.roi_map_data[1, :])
 
         pixels_per_micron = np.max([x_pixels, y_pixels]) / np.max([x_range_microns, y_range_microns])
         # The neighborhood in pixels is nbhd_size * pixels_per_um, but it must be 1 or greater
@@ -883,17 +908,17 @@ class PoiManagerLogic(GenericLogic):
 
         data_max = filters.maximum_filter(data, neighborhood_pix)
         maxima = (data == data_max)
-        data_min = filters.minimum_filter(data, 3*neighborhood_pix)
+        data_min = filters.minimum_filter(data, 3 * neighborhood_pix)
         diff = ((data_max - data_min) > min_threshold)
-        maxima[diff == False] = 0
+        maxima[diff is False] = 0
 
         labeled, num_objects = ndimage.label(maxima)
-        xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects+1)))
+        xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects + 1)))
 
         for count, pix_pos in enumerate(xy):
             poi_pos = self.roi_map_data[pix_pos[0], pix_pos[1], :][0:3]
-            this_poi_key = self.add_poi(position = poi_pos, emit_change=False)
-            self.rename_poi(poikey=this_poi_key, name='spot'+str(count), emit_change=False)
+            this_poi_key = self.add_poi(position=poi_pos, emit_change=False)
+            self.rename_poi(poikey=this_poi_key, name='spot' + str(count), emit_change=False)
 
         # Now that all the POIs are created, emit the signal for other things (ie gui) to update
         self.signal_poi_updated.emit()
