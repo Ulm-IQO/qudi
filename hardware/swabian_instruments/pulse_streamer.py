@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Use Swabian Instruments PulseStreamer8/2 as a pulse generator
+Use Swabian Instruments PulseStreamer8/2 as a pulse generator.
+
+Protobuf (pb2) and grpc files generated from pulse_streamer.proto 
+file available at https://www.swabianinstruments.com/static/documentation/PulseStreamer/sections/interface.html#grpc-interface.
+
+Regenerate files for an update proto file using the following:
+python3 -m grpc_tools.protoc -I=./ --python_out=. --grpc_python_out=. ./pulse_streamer.proto
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
