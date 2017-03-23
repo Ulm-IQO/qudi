@@ -30,6 +30,7 @@ import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
 import math
 import time
+import logging
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -43,6 +44,9 @@ class PoI:
     """
 
     def __init__(self, pos=None, name=None, key=None):
+        # Logging
+        self.log = logging.getLogger(__name__)
+
         # The POI has fixed coordinates relative to the sample, enabling a map to be saved.
         self._coords_in_sample = []
 
@@ -276,6 +280,10 @@ class PoiManagerLogic(GenericLogic):
 
         if position is None:
             position = self._confocal_logic.get_position()
+        if len(position) != 3:
+            self.log.error('Given position is not 3-dimensional.'
+                           'Please pass POIManager a 3-dimensional position to set a POI.')
+            return
 
         new_poi = PoI(pos=position, key=key)
         self.poi_list[new_poi.get_key()] = new_poi
