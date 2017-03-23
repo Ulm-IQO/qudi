@@ -21,12 +21,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
-import thirdparty.stuttgart_counter.TimeTagger as tt
+import TimeTagger as tt
 from core.base import Base
 import os
 
 
-class FastCounterFGAPiP3(Base, FastCounterInterface):
+class TimeTaggerFastCounter(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
 
@@ -42,43 +42,48 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
                                  has happen.
                 """
 
+        self._tagger = tt.createTimeTagger()
+        self._tagger.reset()
         config = self.getConfiguration()
-        if 'fpgacounter_serial' in config.keys():
-            self._fpgacounter_serial=config['fpgacounter_serial']
-        else:
-            self.log.warning('No serial number defined for fpga counter')
 
-        if 'fpgacounter_channel_apd_0' in config.keys():
-            self._channel_apd_0 = config['fpgacounter_channel_apd_0']
+        if 'timetagger_channel_apd_0' in config.keys():
+            self._channel_apd_0 = config['timetagger_channel_apd_0']
         else:
-            self.log.warning('No apd0 channel defined for fpga counter')
+            self.log.warning('No apd0 channel defined for timetagger')
 
-        if 'fpgacounter_channel_apd_1' in config.keys():
-            self._channel_apd_1 = config['fpgacounter_channel_apd_1']
+        if 'timetagger_channel_apd_1' in config.keys():
+            self._channel_apd_1 = config['timetagger_channel_apd_1']
         else:
-            self.log.warning('No apd1 channel defined for fpga counter')
+            self.log.warning('No apd1 channel defined for timetagger')
 
-        if 'fpgacounter_channel_detect' in config.keys():
-            self._channel_detect = config['fpgacounter_channel_detect']
+        if 'timetagger_channel_detect' in config.keys():
+            self._channel_detect = config['timetagger_channel_detect']
         else:
-            self.log.warning('No no detect channel defined for fpga counter')
+            self.log.warning('No detect channel defined for timetagger')
 
-        if 'fpgacounter_channel_sequence' in config.keys():
-            self._channel_sequence = config['fpgacounter_channel_sequence']
+        if 'timetagger_channel_sequence' in config.keys():
+            self._channel_sequence = config['timetagger_channel_sequence']
         else:
-            self.log.warning('No sequence channel defined for fpga counter')
+            self.log.warning('No sequence channel defined for timetagger')
 
-        tt._Tagger_setSerial(self._fpgacounter_serial)
-        thirdpartypath = os.path.join(self.get_main_dir(), 'thirdparty')
-        bitfilepath = os.path.join(thirdpartypath, 'stuttgart_counter', 'TimeTaggerController.bit')
-        tt._Tagger_setBitfilePath(bitfilepath)
-        del bitfilepath, thirdpartypath
+        if 'timetagger_sum_channels' in config.keys():
+            self._sum_channels = config['timetagger_sum_channels']
+        else:
+            self.log.warning('No indication whether or not to sum apd channels for timetagger. Assuming true.')
+            self._sum_channels = True
 
         self._number_of_gates = int(100)
         self._bin_width = 1
         self._record_length = int(4000)
 
-        self.configure(self._bin_width*1e-9,self._record_length*1e-9,self._number_of_gates)
+        if self._sum_channels == True:
+            self._channel_combined = tt.Combiner(self._tagger, channels=[self._channel_apd_0, self._channel_apd_1])
+            self._channel_apd = self._channel_combined.getChannel()
+        else:
+            self._channel_apd = self._channel_apd_0
+
+        self.log.info('TimeTagger (fast counter) configured to use  channel {0}'
+                      .format(self._channel_apd))
 
         self.statusvar = 0
 
@@ -157,21 +162,28 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         """
         self._number_of_gates = number_of_gates
         self._bin_width = bin_width_s * 1e9
-        self._record_length = int(record_length_s / bin_width_s)
+        self._record_length = 1 + int(record_length_s / bin_width_s)
         self.statusvar = 1
 
-        self.pulsed = tt.Pulsed(
-            self._record_length,
-            int(np.round(self._bin_width*1000)),
-            self._number_of_gates,
-            self._channel_apd_0,
-            self._channel_detect,
-            self._channel_sequence
-        )
+        print('Configuring timetagger. detect: {0}, sequence: {1}, bin width: {2}, length: {3}, ngates: {4}, apd: {5}'.format(self._channel_detect, self._channel_sequence, int(np.round(self._bin_width * 1000)), self._record_length, number_of_gates, self._channel_apd))
+
+        self.pulsed = tt.TimeDifferences(
+            tagger=self._tagger,
+            click_channel=self._channel_apd,
+            start_channel=self._channel_detect,
+            next_channel=self._channel_detect,
+            sync_channel=tt.CHANNEL_UNUSED,
+            binwidth=int(np.round(self._bin_width * 1000)),
+            n_bins=int(self._record_length),
+            n_histograms=number_of_gates)
+
+        self.pulsed.stop()
+
         return (bin_width_s, record_length_s, number_of_gates)
 
     def start_measure(self):
         """ Start the fast counter. """
+        print('Starting timetagger measurement')
         self.lock()
         self.pulsed.clear()
         self.pulsed.start()
