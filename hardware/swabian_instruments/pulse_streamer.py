@@ -31,7 +31,7 @@ from collections import OrderedDict
 
 import grpc
 import os
-import hardware.fpga_pulser.pulse_streamer_pb2 as pulse_streamer_pb2
+import hardware.swabian_instruments.pulse_streamer_pb2 as pulse_streamer_pb2
 import dill
 
 class PulseStreamer(Base, PulserInterface):
