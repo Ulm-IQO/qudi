@@ -165,8 +165,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         self._record_length = 1 + int(record_length_s / bin_width_s)
         self.statusvar = 1
 
-        print('Configuring timetagger. detect: {0}, sequence: {1}, bin width: {2}, length: {3}, ngates: {4}, apd: {5}'.format(self._channel_detect, self._channel_sequence, int(np.round(self._bin_width * 1000)), self._record_length, number_of_gates, self._channel_apd))
-
         self.pulsed = tt.TimeDifferences(
             tagger=self._tagger,
             click_channel=self._channel_apd,
@@ -183,7 +181,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
     def start_measure(self):
         """ Start the fast counter. """
-        print('Starting timetagger measurement')
         self.lock()
         self.pulsed.clear()
         self.pulsed.start()
