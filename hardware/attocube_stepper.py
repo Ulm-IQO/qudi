@@ -35,6 +35,13 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
     microwave hardware.
     """
 
+    _modtype = 'AttoCubeStepper'
+    _modclass = 'hardware'
+
+    # connectors
+    #_out = {'confocalscanner': 'ConfocalScannerInterface'
+       #     }
+
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -51,6 +58,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         # some default values for the hardware:
         self._voltage_range_coarse = [0., 60.]
         self._voltage_range_fine = [0.,100.]
+        self._voltage_range_res = [0.,2.]
         self._position_range = [[0., 5000.], [0., 5000.], [0., 5000.], [0., 5000.]]
         self._current_position = [2500., 2500., 2500., 0.]
         self._frequency_range = [0, 10000]
@@ -134,6 +142,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         else:
             self.log.warning('No frequency_range configured taking [0,60] instead.')
 
+
         if 'password' in config.keys():
             self._password = str(config['password']).encode('ascii')
         else:
@@ -165,8 +174,6 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.tn.close()
         self.connected = False
 
-    _modtype = 'AttoCubeStepper'
-    _modclass = 'hardware'
 
     # =================== Attocube Communication ========================
 
@@ -277,10 +284,25 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
     # =================== General Methods ==========================================
 
-    def _temperature_change(self):
+    def _temperature_change(self, new_temp):
+        """
+        Changes parameters in attocubes to keep requirements like stepsize and scan speed
+        constant for different temperatures
+        :param float new_temp: the new temperature of the setup
+        :return: error code (0: OK, -1:error)
+        """
         pass
         # Todo: This needs to get a certain kind of change, as this then depends on
             # temperature. also maybe method name is not appropriate
+
+    def change_step_size(self, stepsize, temp):
+        """Changes the step size of the attocubes according to a list give in the config file
+        @param float stepsize: The wanted stepsize in nm
+        @param float temp: The estimated temperature of the attocubes
+
+        @return: float, float : Actual stepsize and used temperature"""
+
+        pass
 
     # =================== ConfocalScannerInterface Commands ========================
     @abc.abstractmethod
@@ -290,8 +312,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo: Do we need this here, i do not deem it necessary, as can be accesed from multiple
-        # puttys
+        self.log.warning('Attocube Device does not need to be reset.')
         pass
 
     @abc.abstractmethod
@@ -303,6 +324,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
 
         pass
+
 
     @abc.abstractmethod
     def set_position_range(self, myrange=None):
@@ -341,8 +363,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         return 0
 
     @abc.abstractmethod
-    def set_voltage_range_coarse\
-                    (self, myrange=None):
+    def set_voltage_range_coarse(self, myrange=None):
         """ Sets the voltage range of the attocubes.
 
         @param float [2] myrange: array containing lower and upper limit
@@ -366,7 +387,35 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
             self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
             return -1
 
-        self._voltage_range = myrange
+        self._voltage_range_coarse = myrange
+        return 0
+
+    @abc.abstractmethod
+    def set_voltage_range_fine(self, myrange=None):
+        """ Sets the voltage range of the attocubes.
+
+        @param float [2] myrange: array containing lower and upper limit
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if myrange is None:
+            myrange = [0, 100.]
+
+        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Given range is no array type.')
+            return -1
+
+        if len(myrange) != 2:
+            self.log.error(
+                'Given range should have dimension 2, but has {0:d} instead.'
+                ''.format(len(myrange)))
+            return -1
+
+        if myrange[0] > myrange[1]:
+            self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
+            return -1
+
+        self._voltage_range_fine = myrange
         return 0
 
     @abc.abstractmethod
@@ -380,7 +429,8 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        # This hardware does not need a clock
+        return 0
 
     @abc.abstractmethod
     def set_up_scanner(self, counter_channel=None, photon_source=None,
@@ -411,7 +461,8 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        print "Changing the scanner position does not work yet"
+        return -1
 
     @abc.abstractmethod
     def get_scanner_position(self):
@@ -456,4 +507,5 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        print "As there is no scanner clock it does not need to be closed "
+        return 0
