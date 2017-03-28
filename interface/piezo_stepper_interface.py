@@ -46,8 +46,8 @@ class PiezoStepperInterface(metaclass=InterfaceMetaclass):
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 
-        @return float [4][2]: array of 4 ranges with an array containing lower
-                              and upper limit
+        @return float [n][2]: array of n ranges with an array containing lower
+                              and upper limit, n defined in config
         """
         pass
 
