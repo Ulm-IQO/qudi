@@ -57,7 +57,7 @@ if set_api:
         sip.setapi('QString', 2)
         sip.setapi('QVariant', 2)
         # IPython needs this
-        os.environ['QT_API'] = 'pyqt'
+        os.environ['QT_API'] = 'pyqt5'
     except ImportError:
         print('Import Error in core/__init__.py: no sip module found. '
                'Implement the error handling!')
@@ -77,6 +77,11 @@ if sys.platform == 'win32':
 
 # Install a simple message handler for Qt errors:
 def messageHandler(msgType, msg):
+    """ Handle error messages from Qt.
+
+        @param QtMsType msgType: message type
+        @param str msg: error message from Qt
+    """
     import traceback
     print("Qt Error: (traceback follows)")
     print(msg)
@@ -103,5 +108,11 @@ if 'PyQt4' in sys.modules:
     QtCore.qInstallMsgHandler(messageHandler)
 else:
     def qt5_messageHandler(msgType, context, msg):
+        """ Handle error messages from Qt.
+
+            @param QtMsType msgType: message type
+            @param QMesageLogContrxt context: message context
+            @param str msg: error message from Qt
+        """
         messageHandler(msgType, msg)
     QtCore.qInstallMessageHandler(qt5_messageHandler)

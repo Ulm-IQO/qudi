@@ -31,13 +31,16 @@ class HBridge(Base, SwitchInterface):
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'
-    _out = {'switch': 'SwitchInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.lock = Mutex()
 
     def on_activate(self, e):
+        """ Activate module.
+
+            @param object e: fysom state transition information
+        """
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
@@ -52,6 +55,10 @@ class HBridge(Base, SwitchInterface):
         )
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param object e: fysom state transition information
+        """
         self.inst.close()
 
     def getNumberOfSwitches(self):

@@ -20,22 +20,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-"""
-An interfuse file is indented to fuse/combine a logic with a hardware, which
-was not indented to be used with the logic. The interfuse file extend the
-ability of a hardware file by converting the logic calls (from a different
-interface) to the interface commands, which suits the hardware.
-In order to be addressed by the (magnet) logic it should inherit the (magnet)
-interface, and given the fact that it will convert a magnet logic call to a
-motor hardware call, that 'interfuse' file has to stick to the interfaces
-methods of the motor interface.
-
-Reimplement each call from the magnet interface and use only the motor interface
-command to talk to the motor hardware.
-"""
-
-
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 
@@ -48,11 +32,8 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _in = {'motorstage': 'MotorInterface'}
+    _connectors = {'motorstage': 'MotorInterface'}
 
-    # And as a result, you will have an out connector, which is compatible to a
-    # magnet interface, and which can be plug in to an appropriated magnet logic
-    _out = {'magnetstage': 'MagnetInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -74,7 +55,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                          had happened.
         """
 
-        self._motor_device = self.get_in_connector('motorstage')
+        self._motor_device = self.get_connector('motorstage')
 
 
     def on_deactivate(self, e):
@@ -115,6 +96,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                     'perform "move_rel" commands. Couple the Motor to '
                     'control via the command "set_magnet_idle_state(False)" '
                     'to have control over its movement.')
+        return param_dict
 
 
     def move_abs(self, param_dict):
@@ -133,6 +115,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                     'perform "move_abs" commands. Couple the Motor to '
                     'control via the command "set_magnet_idle_state (False)" '
                     'to have control over its movement.')
+        return param_dict
 
 
     def abort(self):
@@ -141,6 +124,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         @return int: error code (0:OK, -1:error)
         """
         self._motor_device.abort()
+        return 0
 
 
     def get_pos(self, param_list=None):
@@ -209,7 +193,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         return self._motor_device.get_velocity(param_list)
 
 
-    def set_velocity(self, param_list=None):
+    def set_velocity(self, param_dict=None):
         """ Write new value for velocity.
 
         @param dict param_dict: dictionary, which passes all the relevant
@@ -227,6 +211,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                     'perform "set_velocity" commands. Couple the Motor to '
                     'control via the command "set_magnet_idle_state(False)" '
                     'to have control over its movement.')
+        return param_dict
 
 
     def tell(self, param_dict=None):
@@ -243,6 +228,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         self.log.info('You can tell the motor dummy as much as you want, it '
                 'has always an open ear for you. But do not expect an '
                 'answer, it is very shy!')
+        return param_dict
 
     def ask(self, param_dict=None):
         """ Ask the magnet a question.
@@ -279,6 +265,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         """
         self.log.info('Motor Hardware does not need initialization for '
                 'starting or ending a movement. Nothing will happen.')
+        return 0
 
 
     def set_magnet_idle_state(self, magnet_idle=True):

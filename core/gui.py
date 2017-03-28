@@ -27,12 +27,16 @@ from qtpy.QtCore import QSize
 
 
 class Gui(QObject):
+    """ Set up all necessary GUI elements, like application icons, themes, etc.
+    """
 
     def __init__(self):
         super().__init__()
         QApplication.instance().setQuitOnLastWindowClosed(False)
 
     def setAppIcon(self):
+        """ Set up the Qudi application icon.
+        """
         iconpath = 'artwork/logo/logo-qudi-'
         self.appIcon = QIcon()
         self.appIcon.addFile('{0}16x16.png'.format(iconpath), QSize(16, 16))
@@ -43,7 +47,12 @@ class Gui(QObject):
                              QSize(256, 256))
         QApplication.instance().setWindowIcon(self.appIcon)
 
-    def setTheme(self):
+    def setTheme(self, theme, path):
+        """ Set icon theme for qudi app.
+            
+            @param str theme: Qudi theme name
+            @param str path: search path for qudi icons
+        """
         # Make icons work on non-X11 platforms, set custom theme
         # if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
         #
@@ -51,11 +60,15 @@ class Gui(QObject):
         # removed and the QT theme is being set to our artwork/icons folder for
         # all OSs.
         themepaths = QIcon.themeSearchPaths()
-        themepaths.append('artwork/icons')
+        themepaths.append(path)
         QIcon.setThemeSearchPaths(themepaths)
-        QIcon.setThemeName('qudiTheme')
+        QIcon.setThemeName(theme)
 
     def setStyleSheet(self, stylesheetpath):
+        """ Set qss style sheet for application.
+
+            @param str stylesheetpath: path to style sheet file
+        """
         with open(stylesheetpath, 'r') as stylesheetfile:
             stylesheet = stylesheetfile.read()
 
@@ -73,4 +86,6 @@ class Gui(QObject):
         QApplication.instance().setStyleSheet(stylesheet)
 
     def closeWindows(self):
+        """ Close all application windows.
+        """
         QApplication.instance().closeAllWindows()

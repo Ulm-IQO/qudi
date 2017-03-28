@@ -26,30 +26,52 @@ from interface.simple_data_interface import SimpleDataInterface
 
 
 class SimpleAcq(Base, SimpleDataInterface):
-    """
+    """ Read human readable numbers from serial port.
     """
     _modclass = 'simple'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'simple': 'Simple'}
-
     def on_activate(self, e):
-        self.rm = visa.ResourceManager('@py')
-        print(self.rm.list_resources())
-        self.my_instrument = self.rm.open_resource('ASRL/dev/ttyUSB0::INSTR', baud_rate=115200)
+        """ Activate module.
 
+            @param object e: fysom state transition information
+        """
+        config = self.getConfiguration()
+        if 'interface' in config:
+            self.resource = config['interface']
+        else:
+            self.resource = 'ASRL1::INSTR'
+
+        if 'baudrate' in config:
+            self.baudrate = config['baudrate']
+        else:
+            self.baudrate = 115200
+
+        self.rm = visa.ResourceManager()
+        self.log.debug('Resources: {0}'.format(self.rm.list_resources()))
+        self.my_instrument = self.rm.open_resource(self.resource, baud_rate=self.baudrate)
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param object e: fysom state transition information
+        """
         self.my_instrument.close()
         self.rm.close()
 
-
     def getData(self):
+        """ Read one value from serial port.
+
+            @return int: vaue form serial port
+        """
         try:
-            return int(self.my_instrument.read_raw().decode('utf-8').rstrip())
+            return int(self.my_instrument.read_raw().decode('utf-8').rstrip().split()[1])
         except:
             return 0
 
     def getChannels(self):
+        """ Number of channels.
+
+            @return int: number of channels
+        """
         return 1

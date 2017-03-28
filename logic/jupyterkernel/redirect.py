@@ -22,12 +22,12 @@ class _RedirectStream:
         setattr(sys, self._stream, self._old_targets.pop())
 
 
-class redirect_stdout(_RedirectStream):
+class RedirectedStdOut(_RedirectStream):
     """Context manager for temporarily redirecting stdout to another file."""
     _stream = "stdout"
 
 
-class redirect_stderr(_RedirectStream):
+class RedirectedStdErr(_RedirectStream):
     """Context manager for temporarily redirecting stderr to another file."""
     _stream = "stderr"
 

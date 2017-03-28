@@ -21,12 +21,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-import logging
-logger = logging.getLogger(__name__)
 import numpy as np
 import lmfit
 from scipy.signal import gaussian
 from scipy.ndimage import filters
+from lmfit import Parameters
+from collections import OrderedDict
 
 ############################################################################
 #                                                                          #
@@ -34,75 +34,101 @@ from scipy.ndimage import filters
 #                                                                          #
 ############################################################################
 
-def _substitute_parameter(self, parameters=None, update_dict=None):
-    """ This method substitutes all parameters handed in the
-    update_parameters object in an initial set of parameters.
+def _substitute_params(self, initial_params, update_params=None):
+    """ Substitute all parameters handed in the update_parameters object in an
+        initial set of parameters.
 
-    @param object parameters: lmfit.parameter.Parameters object, initial
-                              parameters
-    @param parameter object update_dict: lmfit.parameter.Parameters object
-                                    or      dictionary with parameters to update  e.g.
-                                            update_dict=dict()
-                                            update_dict['c']={'min':0,
-                                                     'max':120,
-                                                     'vary':True,
-                                                     'value':0.1
-                                                     'expr':None}
+    @param lmfit.parameter.Parameters initial_params: object containing initial
+                                                      parameters which will be
+                                                      either updated or set.
+    @param lmfit.parameter.Parameters or dict update_params:
+                parameter object or dict with parameters to update the
+                initial_params. For a lmfit.parameter.Parameters object have a
+                look at:
 
-    @return object parameters: lmfit.parameter.Parameters object, new object
-                               with substituted parameters
+    https://lmfit.github.io/lmfit-py/parameters.html#lmfit.parameter.Parameters
+
+                An update_params can also be a dict e.g. like:
+                    update_dict=dict()
+                    update_dict['c']={'min':0, 'max':120, 'vary':True,
+                                      'value':0.1, 'expr':None}
+
+    @return lmfit.parameter.Parameters: object with substituted parameters. If
+                                        update_params is None, then no parameter
+                                        will be updated in initial_params and it
+                                        will be returned as it is.
     """
-    if update_dict is None:
-        return parameters
-    elif type(update_dict) == lmfit.parameter.Parameters:
-        for para in update_dict:
-            if para not in parameters:
-                parameters.add(para)
-            if update_dict[para].min != None:
-                parameters[para].min = update_dict[para].min
 
-            if update_dict[para].max != None:
-                parameters[para].max = update_dict[para].max
+    if update_params is None:
+        return initial_params
 
-            if update_dict[para].vary != None:
-                parameters[para].vary = update_dict[para].vary
+    # Check the case for an lmfit.parameter.Parameters
+    elif type(update_params) == lmfit.parameter.Parameters:
 
-            if update_dict[para].expr != None:
-                parameters[para].expr = update_dict[para].expr
+        # Go though each parameter in the Parameters object
+        for para in update_params:
 
-            if update_dict[para].value != None:
-                if parameters[para].min is not None:
-                    if (parameters[para].min > update_dict[para].value):
-                        parameters[para].min = update_dict[para].value
-                if parameters[para].max is not None:
-                    if (parameters[para].max < update_dict[para].value):
-                        parameters[para].max = update_dict[para].value
-                parameters[para].value = update_dict[para].value
+            if para not in initial_params:
+                initial_params.add(para)
+            if update_params[para].min is not None:
+                initial_params[para].min = update_params[para].min
+
+            if update_params[para].max is not None:
+                initial_params[para].max = update_params[para].max
+
+            if update_params[para].vary is not None:
+                initial_params[para].vary = update_params[para].vary
+
+            if update_params[para].expr is not None:
+                initial_params[para].expr = update_params[para].expr
+
+            if update_params[para].value is not None:
+
+                # Adapt the limits to the value:
+                if (initial_params[para].min is not None) and (initial_params[para].min > update_params[para].value):
+                   initial_params[para].min = update_params[para].value
+
+                if (initial_params[para].max is not None) and (initial_params[para].max < update_params[para].value):
+                   initial_params[para].max = update_params[para].value
+
+                initial_params[para].value = update_params[para].value
+
+    # Check the case for an OrderedDict or dict parameter:
+    elif type(update_params) == OrderedDict or type(update_params) == dict:
+
+        for para in update_params:
+            if para not in initial_params:
+                initial_params.add(para)
+            if 'min' in update_params[para]:
+                initial_params[para].min = update_params[para]['min']
+
+            if 'max' in update_params[para]:
+                initial_params[para].max = update_params[para]['max']
+
+            if 'vary' in update_params[para]:
+                initial_params[para].vary = update_params[para]['vary']
+
+            if 'expr' in update_params[para]:
+                initial_params[para].expr = update_params[para]['expr']
+
+            if 'value' in update_params[para]:
+
+                # Adapt the limits to the value:
+                if (initial_params[para].min is not None) and (initial_params[para].min > update_params[para]['value']):
+                    initial_params[para].min = update_params[para]['value']
+
+                if (initial_params[para].max is not None) and (initial_params[para].max < update_params[para]['value']):
+                    initial_params[para].max = update_params[para]['value']
+
+                initial_params[para].value = update_params[para]['value']
+
     else:
-        for para in update_dict:
-            if para not in parameters:
-                parameters.add(para)
-            if 'min' in update_dict[para]:
-                parameters[para].min = update_dict[para]['min']
+        self.log.error('The type of the passed update_params object <{0}> is '
+                     'neither of type lmfit.parameter.Parameters, '
+                     'OrderedDict or dict! Correct that, the initial_params'
+                     'will be returned.'.format(type(update_params)))
 
-            if 'max' in update_dict[para]:
-                parameters[para].max = update_dict[para]['max']
-
-            if 'vary' in update_dict[para]:
-                parameters[para].vary = update_dict[para]['vary']
-
-            if 'expr' in update_dict[para]:
-                parameters[para].expr = update_dict[para]['expr']
-
-            if 'value' in update_dict[para]:
-                if parameters[para].min is not None:
-                    if (parameters[para].min > update_dict[para]['value']):
-                        parameters[para].min = update_dict[para]['value']
-                if parameters[para].max is not None:
-                    if (parameters[para].max < update_dict[para]['value']):
-                        parameters[para].max = update_dict[para]['value']
-                parameters[para].value = update_dict[para]['value']
-        return parameters
+    return initial_params
 
 def create_fit_string(self, result, model, units=None, decimal_digits_value_given=None,
                       decimal_digits_err_given=None):
@@ -148,7 +174,7 @@ def create_fit_string(self, result, model, units=None, decimal_digits_value_give
                                                                 float(result.params[variable].stderr),
                                                                 decimal_digits_err)))
         except:
-            # logger.warning('No unit given for parameter {}, setting unit '
+            # self.log.warning('No unit given for parameter {}, setting unit '
             #             'to empty string'.format(variable))
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             "arb. u.",
@@ -361,7 +387,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
                 if abs(threshold/absolute_min)<abs(minimal_threshold):
                     if make_prints:
                         print('h16')
-                    logger.warning('Threshold to minimum ratio was too '
+                    lself.log.warning('Threshold to minimum ratio was too '
                             'small to estimate two minima. So both '
                             'are set to the same value')
                     error=-1
@@ -445,7 +471,7 @@ def find_offset_parameter(self, x_values=None, data=None):
     else:
         len_x = int(len(x_values)/10.)+1
 
-    lorentz = mod.eval(x=np.linspace(0, len_x, len_x), amplitude=1, c=0.,
+    lorentz = mod.eval(x=np.linspace(0, len_x, len_x), amplitude=1, offset=0.,
                        sigma=len_x/4., center=len_x/2.)
     data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(),
                                      mode='constant', cval=data.max())
@@ -488,4 +514,30 @@ def gaussian_smoothing(self, data=None, filter_len=None, filter_sigma=None):
     return filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
 
 
+
+def _check_1D_input(self, x_axis, data, params):
+    """ Helper function to check the input of the fit for general consistency.
+
+    @param numpy.array x_axis: x values
+    @param numpy.array data: value of each data point corresponding to x values
+    @param lmfit.Parameters params: a parameter object which will be filled with
+                                    initial values for the fit
+
+    @return int: error code (0:OK, -1:error)
+    """
+
+    error = 0
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.log.error('Given parameter is no array.')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            lself.log.error('Given parameter is no one dimensional array.')
+            error = -1
+    if not isinstance(params, Parameters):
+        lself.log.error('Parameters object is not valid in estimate_gaussian.')
+        error = -1
+
+    return error
 

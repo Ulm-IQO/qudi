@@ -34,10 +34,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-           'spectrometer1': 'SpectrometerInterface'}
-    _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
+    _connectors = {
+        'fitlogic': 'FitLogic',
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'spectrometer1': 'SpectrometerInterface'
+    }
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -70,9 +71,9 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._scanner_hw = self.get_in_connector('confocalscanner1')
-        self._spectrometer_hw = self.get_in_connector('spectrometer1')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._scanner_hw = self.get_connector('confocalscanner1')
+        self._spectrometer_hw = self.get_connector('spectrometer1')
 
 
     def on_deactivate(self, e):
@@ -121,9 +122,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
             myrange = [-10.,10.]
 
         self._scanner_hw.set_voltage_range(myrange=myrange)
-
         return 0
-
 
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -150,11 +149,12 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
-
         return 0
 
+    def get_scanner_axes(self):
+        """ Pass through scanner axes. """
+        return self._scanner_hw.get_scanner_axes()
 
     def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
@@ -169,7 +169,6 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """
 
         self._scanner_hw.scanner_set_position(x=x, y=y, z=z, a=a)
-
         return 0
 
     def get_scanner_position(self):
@@ -191,11 +190,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._line_length = length
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
@@ -215,7 +214,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         count_data = np.zeros(self._line_length)
 
         for i in xrange(self._line_length):
-            coords = line_path[:,i]
+            coords = line_path[:, i]
             self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2], a=coords[3])
             print(coords)
             print(i)

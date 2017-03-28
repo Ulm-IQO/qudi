@@ -26,7 +26,7 @@ import os
 
 from interface.fast_counter_interface import FastCounterInterface
 from core.base import Base
-import thirdparty.opal_kelly.ok64 as ok
+import okfrontpanel as ok
 from core.util.mutex import Mutex
 
 
@@ -46,8 +46,22 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     """
     _modclass = 'FastCounterFPGAQO'
     _modtype = 'hardware'
-    # declare connectors
-    _out = {'fastcounter': 'FastCounterInterface'}
+
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
+
+        self.log.info('The following configuration was found.')
+        for key in config.keys():
+            self.log.info('{0}: {1}'.format(key, config[key]))
+
+        # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
+        # c dll which was wrapped with SWIG for Windows type systems to be
+        # accessed with python 3.4. You have to ensure to use the python 3.4
+        # version to be able to run the Frontpanel wrapper:
+        self._fpga = ok.FrontPanel()
+
+        self._internal_clock_hz = 950e6     # that is a fixed number, 950MHz
+        self.statusvar = -1                 # fast counter state
 
     def on_activate(self, e):
         """ Connect and configure the access to the FPGA.
@@ -85,12 +99,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             if 'threshV_ch' in key:
                 self._switching_voltage[int(key[-1])] = config[key]
 
-        # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
-        # c dll which was wrapped with SWIG for Windows type systems to be
-        # accessed with python 3.4. You have to ensure to use the python 3.4
-        # version to be able to run the Frontpanel wrapper:
-
-        self._fpga = ok.FrontPanel()
         # fast counter state
         self.statusvar = -1
         # fast counter parameters to be configured. Default values.
@@ -108,14 +116,13 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._overflown = False         # overflow indicator
         self.count_data = None
 
-        self._internal_clock_hz = 950e6 # that is a fixed number, 950MHz
-
         # connect to the FPGA module
         self._connect()
         # configure DAC for threshold voltages
         self._reset_dac()
         self._activate_dac_ref()
         self._set_dac_voltages()
+        return
 
     def on_deactivate(self, e):
         """ Deactivate the FPGA.
@@ -126,15 +133,16 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self.stop_measure()
         self.statusvar = 0
         del self._fpga
+        return
 
     def _connect(self):
-        """ Connect host PC to FPGA module with the specified serial number. """
-
+        """
+        Connect host PC to FPGA module with the specified serial number.
+        """
         # check if a FPGA is connected to this host PC. That method is used to
         # determine also how many devices are available.
         if not self._fpga.GetDeviceCount():
-            self.log.error('No FPGA connected to host PC or FrontPanel.exe '
-                    'is running.')
+            self.log.error('No FPGA connected to host PC or FrontPanel.exe is running.')
             return -1
 
         # open a connection to the FPGA with the specified serial number
@@ -142,7 +150,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
         # upload the proper fast counter configuration bitfile to the FPGA
         bitfile_name = 'fastcounter_' + self._fpga_type + '.bit'
-
         # Load on the FPGA a configuration file (bit file).
         self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga',
                                               bitfile_name))
@@ -150,7 +157,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # Check if the upload was successful and the Opal Kelly FrontPanel is
         # enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
-            self.log.error('Opal Kelly FrontPanel is not enabled in FPGA')
+            self.log.error('Opal Kelly FrontPanel is not enabled in FPGA.\n'
+                           'Upload of bitfile failed.')
             self.statusvar = -1
             return -1
         else:
@@ -176,6 +184,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             self._fpga.SetWireInValue(0x01, tmp_cmd)
             self._fpga.UpdateWireIns()
             self._fpga.ActivateTriggerIn(0x40, 0)
+        return
 
     def _activate_dac_ref(self):
         """
@@ -183,11 +192,13 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._fpga.SetWireInValue(0x01, 0x08000001)
         self._fpga.UpdateWireIns()
         self._fpga.ActivateTriggerIn(0x40, 0)
+        return
 
     def _reset_dac(self):
         """
         """
         self._fpga.ActivateTriggerIn(0x40, 31)
+        return
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
@@ -223,17 +234,13 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
         ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
         """
-
         constraints = dict()
-
         # the unit of those entries are seconds per bin. In order to get the
         # current binwidth in seonds use the get_binwidth method.
         constraints['hardware_binwidth_list'] = [1/950e6]
 
-        #TODO: think maybe about a software_binwidth_list, which will
-        #      postprocess the obtained counts. These bins must be integer
-        #      multiples of the current hardware_binwidth
-
+        #TODO:  think maybe about a software_binwidth_list, which will postprocess the obtained
+        #       counts. These bins must be integer multiples of the current hardware_binwidth
         return constraints
 
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
@@ -251,6 +258,12 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                     gate_length_s: the actual set gate length in seconds
                     number_of_gates: the number of gated, which are accepted
         """
+        # Do nothing if fast counter is running
+        if self.statusvar >= 2:
+            binwidth_s = self._binwidth / self._internal_clock_hz
+            gate_length_s = self._gate_length_bins * binwidth_s
+            return binwidth_s, gate_length_s, self._number_of_gates
+
         # set class variables
         self._binwidth = int(np.rint(bin_width_s * self._internal_clock_hz))
 

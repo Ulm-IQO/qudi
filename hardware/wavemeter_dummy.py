@@ -74,9 +74,6 @@ class WavemeterDummy(Base, WavemeterInterface):
     _modclass = 'WavemeterDummy'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'highhinessewavemeter': 'WavemeterInterface'}
-
     sig_handle_timer = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):
@@ -98,7 +95,10 @@ class WavemeterDummy(Base, WavemeterInterface):
                     'using {} instead.'.format(self._measurement_timing))
 
     def on_activate(self, e):
+        """ Activate module.
 
+            @param object e: fysom state transition information
+        """
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
 
@@ -113,6 +113,10 @@ class WavemeterDummy(Base, WavemeterInterface):
         self.hardware_thread.start()
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param object e: fysom state transition information
+        """
 
         self.stop_acqusition()
         self.hardware_thread.quit()

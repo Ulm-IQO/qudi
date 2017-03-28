@@ -57,6 +57,8 @@ def generate_laser_on(self, name='Laser_On', length=3.0e-6, amp=1.0):
     element_list = [laser_element]
     # create the PulseBlock object.
     block = PulseBlock(name, element_list)
+    # save block
+    self.save_block(name, block)
     # put block in a list with repetitions
     block_list = [(block, 0)]
     # create ensemble out of the block(s)
@@ -148,8 +150,7 @@ def generate_idle(self, name='Idle', length=3.0e-6):
 
 def generate_rabi(self, name='Rabi', tau_start=10.0e-9, tau_step=10.0e-9, number_of_taus=50,
                   mw_freq=2870.0e6, mw_amp=1.0, mw_channel='a_ch1', laser_length=3.0e-6,
-                  channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6, gate_count_channel='',
-                  seq_trig_channel=''):
+                  channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6, seq_trig_channel='',gate_count_channel=''):
     """
 
     """
@@ -715,7 +716,7 @@ def generate_HHpol(self, name='HHpol', rabi_period=1.0e-6, spinlock_length=20.0e
 def generate_xy8_tau(self, name='XY8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                      start_tau=0.5e-6, incr_tau=0.01e-6, num_of_points=50, xy8_order=4,
                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
-                     wait_time=1.0e-6, seq_trig_channel='', gate_count_channel=''):
+                     wait_time=1.0e-6, seq_trig_channel='', gate_count_channel='',alternating=True):
     """
 
     """
@@ -748,9 +749,9 @@ def generate_xy8_tau(self, name='XY8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
     # get pihalf element
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
-    # get 3pihalf element
-    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
-                                           mw_freq, 0.0)
+    # get -x pihalf (3pihalf) element
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 180.)
     # get pi elements
     pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
                                        0.0)
@@ -775,8 +776,13 @@ def generate_xy8_tau(self, name='XY8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
     xy8_elem_list.append(pihalf_element)
     xy8_elem_list.append(tauhalf_element)
     for n in range(xy8_order):
-        xy8_elem_list.append(pix_element)
-        xy8_elem_list.append(tau_element)
+        if n==0:
+            xy8_elem_list.append( self._get_mw_element(rabi_period / 2, 0.0, mw_channel, True, mw_amp,
+                                                       mw_freq,0.0))
+            xy8_elem_list.append(self._get_idle_element(real_start_tau, incr_tau, True))
+        else:
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
         xy8_elem_list.append(piy_element)
         xy8_elem_list.append(tau_element)
         xy8_elem_list.append(pix_element)
@@ -798,31 +804,32 @@ def generate_xy8_tau(self, name='XY8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
     xy8_elem_list.append(delay_element)
     xy8_elem_list.append(waiting_element)
 
-    xy8_elem_list.append(pihalf_element)
-    xy8_elem_list.append(tauhalf_element)
-    for n in range(xy8_order):
-        xy8_elem_list.append(pix_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(piy_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(pix_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(piy_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(piy_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(pix_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(piy_element)
-        xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(pix_element)
-        if n != xy8_order - 1:
+    if alternating:
+        xy8_elem_list.append(pihalf_element)
+        xy8_elem_list.append(tauhalf_element)
+        for n in range(xy8_order):
+            xy8_elem_list.append(pix_element)
             xy8_elem_list.append(tau_element)
-    xy8_elem_list.append(tauhalf_element)
-    xy8_elem_list.append(pi3half_element)
-    xy8_elem_list.append(laser_element)
-    xy8_elem_list.append(delay_element)
-    xy8_elem_list.append(waiting_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            if n != xy8_order - 1:
+                xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(tauhalf_element)
+        xy8_elem_list.append(pi3half_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
 
     # create XY8-N block object
     xy8_block = PulseBlock(name, xy8_elem_list)
@@ -987,6 +994,135 @@ def generate_xy8_freq(self, name='XY8_freq', rabi_period=1.0e-6, mw_freq=2870.0e
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
+def generate_Pol20(self, name='Pol 2.0', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
+                     start_tau=0.5e-6, incr_tau=0.01e-6, num_of_points=50, order=8,
+                     mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
+                     wait_time=1.0e-6, seq_trig_channel='', gate_count_channel='',alternating=True):
+    """
+
+    """
+    # Sanity checks
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
+        return
+
+    # get tau array for measurement ticks
+    tau_array = start_tau + np.arange(num_of_points) * incr_tau
+    # calculate "real" start length of the waiting times (tau and tauhalf)
+    real_start_tau = start_tau - 2.*rabi_period
+    if real_start_tau < 0.0 :
+        self.log.error('Pol 2.0 generation failed! Rabi period of {0:.3e} s is too long for start tau '
+                       'of {1:.3e} s.'.format(rabi_period, start_tau))
+        return
+
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get -x pihalf element
+    pihalfminusx_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          180.)
+    pihalfminusx_element_first = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, True, mw_amp, mw_freq,
+                                          180.)
+    # get y pihalf element
+    pihalfy_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 90.)
+    pihalfy_element_first = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, True, mw_amp,
+                                           mw_freq, 90.)
+    # get pi elements
+    pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       0.0)
+    pix_element_first = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, True, mw_amp, mw_freq,
+                                       0.0)
+    piy_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       90.0)
+    piy_element_first = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, True, mw_amp, mw_freq,
+                                       90.0)
+    # get tau/4 element
+    tau_element = self._get_idle_element(real_start_tau/4., incr_tau/4., False)
+    tau_element_first = self._get_idle_element(real_start_tau/4., incr_tau/4., True)
+
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
+        # Create its own block out of the element
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
+        # save block
+        self.save_block('seq_trigger', seq_block)
+
+    # create Pol 2.0 block element list
+    pol20_elem_list = []
+    # actual (Pol 2.0)_2N sequence
+    for n in range(2*order):
+        if n==0:
+            pol20_elem_list.append(pihalfminusx_element_first)
+            pol20_elem_list.append(tau_element_first)
+            pol20_elem_list.append(piy_element_first)
+            pol20_elem_list.append(tau_element_first)
+            pol20_elem_list.append(pihalfminusx_element_first)
+
+            pol20_elem_list.append(pihalfy_element_first)
+            pol20_elem_list.append(tau_element_first)
+            pol20_elem_list.append(pix_element_first)
+            pol20_elem_list.append(tau_element_first)
+            pol20_elem_list.append(pihalfy_element_first)
+        else:
+            pol20_elem_list.append(pihalfminusx_element)
+            pol20_elem_list.append(tau_element)
+            pol20_elem_list.append(piy_element)
+            pol20_elem_list.append(tau_element)
+            pol20_elem_list.append(pihalfminusx_element)
+
+            pol20_elem_list.append(pihalfy_element)
+            pol20_elem_list.append(tau_element)
+            pol20_elem_list.append(pix_element)
+            pol20_elem_list.append(tau_element)
+            pol20_elem_list.append(pihalfy_element)
+    pol20_elem_list.append(laser_element)
+    pol20_elem_list.append(delay_element)
+    pol20_elem_list.append(waiting_element)
+
+    if alternating:
+        pol20_elem_list.append(pihalfy_element)
+        pol20_elem_list.append(tau_element)
+        pol20_elem_list.append(pix_element)
+        pol20_elem_list.append(tau_element)
+        pol20_elem_list.append(pihalfy_element)
+
+        pol20_elem_list.append(pihalfminusx_element)
+        pol20_elem_list.append(tau_element)
+        pol20_elem_list.append(piy_element)
+        pol20_elem_list.append(tau_element)
+        pol20_elem_list.append(pihalfminusx_element)
+
+        pol20_elem_list.append(laser_element)
+        pol20_elem_list.append(delay_element)
+        pol20_elem_list.append(waiting_element)
+
+
+    # create Pol 2.0 block object
+    pol20_block = PulseBlock(name, pol20_elem_list)
+    self.save_block(name, pol20_block)
+
+    # create block list and ensemble object
+    block_list = [(pol20_block, num_of_points - 1)]
+    if seq_trig_channel is not None:
+        block_list.append((seq_block, 0))
+
+    # create ensemble out of the block(s)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to ensemble object
+    block_ensemble.measurement_ticks_list = tau_array
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    return block_ensemble
 
 ####################################################################################################
 #                                   Helper methods                                              ####
@@ -1158,6 +1294,69 @@ def _get_mw_element(self, length, increment, mw_channel, use_as_tick, amp=None, 
                                    parameters=mw_params, use_as_tick=use_as_tick)
     return mw_element
 
+def _get_multiple_mw_element(self, length, increment, mw_channel, use_as_tick, amps = None, freqs = None,
+                                                                          phases = None):
+    """
+    Creates at the mment double or triple mw element. Is easily extended when further methods are developed in the
+    module sampling_functions.
+
+    @param float length: MW pulse duration in seconds
+    @param float increment: MW pulse duration increment in seconds
+    @param string mw_channel: The pulser channel controlling the MW. If set to 'd_chX' this will be
+                              interpreted as trigger for an external microwave source. If set to
+                              'a_chX' the pulser (AWG) will act as microwave source.
+    @param bool use_as_tick: use as tick flag of the PulseBlockElement
+    @param amps: list containing the amplitudes
+    @param freqs: list containing the frequencies
+    @param phases: list containing the phases
+    @return: PulseBlockElement, the generated MW element
+    """
+
+    # some check if all the parameter lists have the same length
+    set1 = set([len(amps), len(freqs), len(phases)])
+    if len(set1) != 1:
+        self.log.warning('the lists amps, freqs and phases should have same length')
+    # get channel lists
+    digital_channels, analog_channels = self._get_channel_lists()
+    # supported sine methods at the moment
+    prefix = ['Double', 'Triple']
+
+    # check if the list lengths are in the supported range
+    # and find out the method needed in this specific case
+
+    list_len = [i for i in set1][0]
+    if (list_len - 2 < 0) | (list_len - 2 > 1):
+        self.log.warning('the length of your parameter lists is not supported')
+    cur_prefix = prefix[list_len - 2]
+
+    # input params for MW element generation
+    mw_params = [{}] * self.analog_channels
+    mw_digital = [False] * self.digital_channels
+    mw_function = ['Idle'] * self.analog_channels
+
+    param_bare = ['amplitude', 'frequency', 'phase']
+
+    pre_settings = {param_bare[0]: amps, param_bare[1]: freqs, param_bare[2]: phases}
+    settings= {}
+
+    for key in pre_settings:
+        for ii, val in enumerate(pre_settings[key]):
+            settings[key + str(ii+1)] = val
+
+
+    # Determine analogue or digital MW channel and set parameters accordingly.
+    if 'd_ch' in mw_channel:
+        self.log.warning('for multiple_mw_element only pulser can be used')
+    elif 'a_ch' in mw_channel:
+        mw_index = analog_channels.index(mw_channel)
+        mw_function[mw_index] = cur_prefix + 'Sin'
+        mw_params[mw_index] = settings
+
+    # Create MW element
+    multiple_mw_element = PulseBlockElement(init_length_s=length, increment_s=increment,
+                                   pulse_function=mw_function, digital_high=mw_digital,
+                                   parameters=mw_params, use_as_tick=use_as_tick)
+    return multiple_mw_element
 
 def _get_mw_laser_element(self, length, increment, mw_channel, use_as_tick, delay_time=None,
                           laser_amp=None, mw_amp=None, mw_freq=None, mw_phase=None,

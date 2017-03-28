@@ -38,16 +38,27 @@ import System.Collections.Generic as col
 
 
 class LFImageMode(Enum):
+    """ Spectrometer imaging mode.
+    """
     LFImageModeNormal = 1
     LFImageModePreview = 2
     LFImageModeBackground = 3
 
 
 class Lightfield(Base, SpectrometerInterface):
+    """ Control Princeton Instruments Lightfield from Qudi.
 
-    _out = {'spec': 'SpectrometerInterface'}
+        This hardware module needs a brave soul fluent in C# and Python,
+        as it can only do one thing right now: crash Lightfield.
+    """
 
     def on_activate(self, e):
+        """ Activate module.
+
+            @param e object: fysom state transition information
+
+            This method needs to set ip the CLR to Python binding and start Lightfield.
+        """
 
         lfpath = os.environ['LIGHTFIELD_ROOT']
         lfaddinpath = os.path.join(os.environ['LIGHTFIELD_ROOT'], 'AddInViews')
@@ -101,17 +112,29 @@ class Lightfield(Base, SpectrometerInterface):
         self.lastframe = list()
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param e object: fysom state transition information
+
+            This method needs to get rid of all the stuff fron the activation.
+        """
         if hasattr(self, 'au'):
             del self.au
 
 # Callbacks
     def settingChangedCallback(self, sender, args):
+        """ Lightfieldsettings changed.
+        """
         pass
 
     def exitHandler(self, sender, args):
+        """ Something went wrong, clean up.
+        """
         del self.au
 
     def frameCallback(self, sender, args):
+        """ A frame/spectrum was recorded.
+        """
         print(sender)
         print(args)
         dataSet = args.ImageDataSet
@@ -126,19 +149,25 @@ class Lightfield(Base, SpectrometerInterface):
         self.lastframe = list(arr)
 
     def setAcquisitionComplete(self, sender, args):
+        """ A frame/spectrum was recorded
+        """
         pass
 
 # other stuff
     def getExperimentList(self):
+        """ Get experiments configured in Lightfield """
         pass
 
     def openExperiment(self, expName):
+        """ Open experiments configured in Lightfield """
         pass
 
     def buildFeatureList(self, feature):
+        """ Get features supported by Lightfield """
         pass
 
     def startAcquire(self):
+        """ Acquire a frame/spectrum """
         self.calibration = self.exp.SystemColumnCalibration
         self.calerrors = self.exp.SystemColumnCalibrationErrors
         self.intcal = self.exp.SystemIntensityCalibration
@@ -146,19 +175,25 @@ class Lightfield(Base, SpectrometerInterface):
             self.exp.Acquire()
 
     def setFilePathAndName(self, autoIncrement):
+        """ Set the file path and name for storing recorded frame/spectrum """
         pass
 
     def setBackgroundFile(self):
+        """ Set the file path where dark image correction is stored """
         pass
 
     def getROI(self):
+        """ Get the region of interest """
         pass
 
     def setROI(self):
+        """ Set the region of interest """
         pass
 
     def setShutter(self, isOpen):
+        """ Set the camera/spectrometer shutter state """
         pass
 
     def recordSpectrum(self):
+        """ One-stop function to ecord a spectrum """
         pass

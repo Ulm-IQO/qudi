@@ -32,17 +32,22 @@
       <widget class="QComboBox" name="sampled_file_format_comboBox">
        <item>
         <property name="text">
-         <string>wfm/seq</string>
+         <string>wfm</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>wfmx/seqx</string>
+         <string>wfmx</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>fpga/fpga</string>
+         <string>fpga</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>pstream</string>
         </property>
        </item>
       </widget>
@@ -50,7 +55,7 @@
      <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Sampling file format (waveform/sequence):</string>
+        <string>Waveform file format:</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

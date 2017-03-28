@@ -39,19 +39,31 @@ import comtypes.gen.WINX32Lib as WinSpecLib
 
 
 class WinSpec32(Base, SpectrometerInterface):
-
-    _out = {'spec': 'SpectrometerInterface'}
+    """ Hardware module for reading spectra from the WinSpec32 spectrometer software.
+    """
 
     def on_activate(self, e):
+        """ Activate module.
+
+            @param object e: fysom state transition information
+        """
         w32c.pythoncom.CoInitialize()
         self.expt_is_running = WinSpecLib.EXP_RUNNING
         self.path = 'asdf'
         self.prefix = 'test'
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param object e: fysom state transition information
+        """
         pass
 
     def recordSpectrum(self):
+        """ Record spectrum from WinSpec32 software.
+
+            @return []: spectrum data
+        """
         w32c.pythoncom.CoInitialize()
         # get some data structures from COM that we need later
         self.WinspecDoc = w32c.Dispatch("WinX32.DocFile")
@@ -112,6 +124,11 @@ class WinSpec32(Base, SpectrometerInterface):
             return {'wavelength': [0], 'intensity': [0]}
 
     def saveSpectrum(self, path, postfix = ''):
+        """ Save spectrum from WinSpec32 software.
+
+            @param str path: path to save origial spectrum
+            @param str postfix: file posfix
+        """
         savetime=datetime.datetime.now()
         w32c.pythoncom.CoInitialize()
         timestr = savetime.strftime("%Y%m%d-%H%M-%S-%f_")
@@ -123,7 +140,19 @@ class WinSpec32(Base, SpectrometerInterface):
         self.WinspecDoc.Save()
 
     def getExposure(self):
+        """ Get exposure.
+
+            @return float: exposure
+
+            Not implemented.
+        """
         return -1
 
     def setExposure(self, exposureTime):
+        """ Set exposure.
+
+            @param float exposureTime: exposure
+
+            Not implemented.
+        """
         pass

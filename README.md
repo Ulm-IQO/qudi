@@ -17,19 +17,24 @@ Originally built around a confocal fluorescence microscope experiments, it has g
 
 ## Citation
 If you are publishing scientific results, mentioning Qudi in your methods decscription is the least you can do as good scientific practice.
-We are preparing a paper about the software and DOIs for releases, which will make this process easier and more reliable.
+A paper about Qudi has been accepted for publication in [SoftwareX](https://www.journals.elsevier.com/softwarex/). Until it is officailly published, you should cite the preprint [arXiv:1611.09146](https://arxiv.org/abs/1611.09146) \[quant-ph\] for this purpose.
 
 ## Documentation
-User and code documentation about Qudi is located at http://qosvn.physik.uni-ulm.de/qudi-docs .
+User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi-generated-docs/html-docs/ .
 
 ## Continuous integration 
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
-[![Build status](https://ci.appveyor.com/api/projects/status/xbrn22i4jdda3t8e?svg=true)](https://ci.appveyor.com/project/drogenlied/qudi-3s43k)
+[![Build status](https://ci.appveyor.com/api/projects/status/ma1a125b31cbl6tu/branch/master?svg=true)](https://ci.appveyor.com/project/InstituteforQuantumOptics/qudi/branch/master)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/?branch=master)
+[![Code Issues](https://www.quantifiedcode.com/api/v1/project/d31724e4b9704732ac1f508c7de1999d/badge.svg)](https://www.quantifiedcode.com/app/project/d31724e4b9704732ac1f508c7de1999d)
 
 ## Collaboration
-Feel free to register and add issues to our trac at http://qosvn.physik.uni-ulm.de/trac/qudi .
-and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
+For development-related questions and discussion, please use the [qudi-dev mailing list](http://www.freelists.org/list/qudi-dev).
+
+If you just want updates about releases and breaking changes to Qudi without discussion or issue reports,
+subscribe to the [quid-announce mailing list](http://www.freelists.org/list/qudi-announce).
+
+Feel free to add issues and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
 
 The code in pull requests should be clean, PEP8-compliant and commented, as with every academic institution in Germany,
 our resources in the area of software development are quite limited.

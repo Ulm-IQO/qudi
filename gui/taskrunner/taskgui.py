@@ -32,7 +32,7 @@ class TaskGui(GUIBase):
     _modclass = 'TaskGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'tasklogic': 'TaskRunner'}
+    _connectors = {'tasklogic': 'TaskRunner'}
 
     sigRunTaskFromList = QtCore.Signal(object)
     sigPauseTaskFromList = QtCore.Signal(object)
@@ -51,7 +51,7 @@ class TaskGui(GUIBase):
         """
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
-        self.logic = self.get_in_connector('tasklogic')
+        self.logic = self.get_connector('tasklogic')
         self._mw.taskTableView.setModel(self.logic.model)
         self._mw.taskTableView.clicked.connect(self.setRunToolState)
         self._mw.actionStart_Task.triggered.connect(self.manualStart)

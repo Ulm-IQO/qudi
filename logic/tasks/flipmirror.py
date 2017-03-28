@@ -22,12 +22,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from logic.generic_task import PrePostTask
 
 class Task(PrePostTask):
+    """ A task to flip a switch/mirror/etc before and after another task
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         print('Task {0} added!'.format(self.name))
 
     def preExecute(self):
+        """ Flip in one direction before the other task executes
+        """
         if ('switchlogic' in self.ref
             and 'sequence' in self.config):
                 logic = self.ref['switchlogic']
@@ -42,6 +46,8 @@ class Task(PrePostTask):
 
 
     def postExecute(self):
+        """ Flip in the other direction after the other task has finished
+        """
         if ('switchlogic' in self.ref
             and 'sequence' in self.config):
                 logic = self.ref['switchlogic']

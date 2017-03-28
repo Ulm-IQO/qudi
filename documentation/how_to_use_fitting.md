@@ -14,7 +14,7 @@ A fitting routine consists of three major parts:
       new_model = ConstantModel()+GaussianModel(), which yields a
       Gaussian model with an offset.
     * If there is no standard model one can define a customized model,
-      see make_sine_model()
+      see make_sinewithoutoffset_model()
     * With model.make_params() one can create a set of parameters with
       a value, min, max, vary and an expression. These parameters are
       returned as a Parameters object which contains all variables
@@ -35,7 +35,7 @@ A fitting routine consists of three major parts:
     * Constraints are set, e.g. param['offset'].min=0
                                 param['offset'].max=data.max()
     * Additional parameters given by inputs can be overwritten by
-      substitute_parameter method
+      substitute_params method
     * Finally fit is done via model.fit(data, x=axis,params=params)
     * The fit routine from lmfit returns a dictionary with many
       parameters like: results with errors and correlations,
@@ -67,7 +67,7 @@ underscores, and that it starts with `estimate_`, e.g.
 model from a custom (not built-in) function one can do that within the
  `make_<custom>_model()`` method e.g.
 
-            def make_sine_model(self):
+            def make_sinewithoutoffset_model(self):
                 """ This method creates a model of sine.
 
                 @return tuple: (object model, object params)

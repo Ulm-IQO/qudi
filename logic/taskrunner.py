@@ -90,7 +90,6 @@ class TaskRunner(GenericLogic):
     """
     _modclass = 'TaskRunner'
     _modtype = 'Logic'
-    _out = {'runner': 'TaskRunner'}
 
     sigLoadTasks = QtCore.Signal()
     sigCheckTasks = QtCore.Signal()
@@ -121,6 +120,8 @@ class TaskRunner(GenericLogic):
         """
         config = self.getConfiguration()
         if not 'tasks' in config:
+            return
+        if (config['tasks'] is None):
             return
         for task in config['tasks']:
             t = {}

@@ -49,8 +49,8 @@ class Base(QtCore.QObject, Fysom):
     sigStateChanged = QtCore.Signal(object)  # (module name, state change)
     _modclass = 'base'
     _modtype = 'base'
-    _in = dict()
-    _out = dict()
+    _in = dict() # legacy
+    _connectors = dict()
 
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
@@ -85,17 +85,13 @@ class Base(QtCore.QObject, Fysom):
                 {'name': 'activate',    'src': 'deactivated',   'dst': 'idle'},
                 {'name': 'deactivate',  'src': 'idle',          'dst': 'deactivated'},
                 {'name': 'deactivate',  'src': 'running',       'dst': 'deactivated'},
+                {'name': 'deactivate',  'src': 'locked',       'dst': 'deactivated'},
                 {'name': 'run',         'src': 'idle',          'dst': 'running'},
                 {'name': 'stop',        'src': 'running',       'dst': 'idle'},
                 {'name': 'lock',        'src': 'idle',          'dst': 'locked'},
                 {'name': 'lock',        'src': 'running',       'dst': 'locked'},
-                {'name': 'block',       'src': 'idle',          'dst': 'blocked'},
-                {'name': 'block',       'src': 'running',       'dst': 'blocked'},
-                {'name': 'locktoblock', 'src': 'locked',        'dst': 'blocked'},
                 {'name': 'unlock',      'src': 'locked',        'dst': 'idle'},
-                {'name': 'unblock',     'src': 'blocked',       'dst': 'idle'},
                 {'name': 'runlock',     'src': 'locked',        'dst': 'running'},
-                {'name': 'runblock',    'src': 'blocked',       'dst': 'running'}
             ],
             'callbacks': default_callbacks
         }
@@ -108,17 +104,16 @@ class Base(QtCore.QObject, Fysom):
             super().__init__(cfg=_baseStateList, **kwargs)
 
         # add connection base
-        self.connector = OrderedDict()
-        self.connector['in'] = OrderedDict()
+        self.connectors = OrderedDict()
+        for con in self._connectors:
+            self.connectors[con] = OrderedDict()
+            self.connectors[con]['class'] = self._connectors[con]
+            self.connectors[con]['object'] = None
+        # legacy (deprecated soon)
         for con in self._in:
-            self.connector['in'][con] = OrderedDict()
-            self.connector['in'][con]['class'] = self._in[con]
-            self.connector['in'][con]['object'] = None
-
-        self.connector['out'] = OrderedDict()
-        for con in self._out:
-            self.connector['out'][con] = OrderedDict()
-            self.connector['out'][con]['class'] = self._out[con]
+            self.connectors[con] = OrderedDict()
+            self.connectors[con]['class'] = self._in[con]
+            self.connectors[con]['object'] = None
 
         self._manager = manager
         self._name = name
@@ -271,14 +266,14 @@ class Base(QtCore.QObject, Fysom):
         """
         return os.path.abspath(os.path.expanduser('~'))
 
-    def get_in_connector(self, connector_name):
+    def get_connector(self, connector_name):
         """ Return module connected to the given named connector.
           @param str connector_name: name of the connector
 
           @return obj: module that is connected to the named connector
         """
-        obj = self.connector['in'][connector_name]['object']
-        if obj is None:
+        obj = self.connectors[connector_name]['object']
+        if (obj is None):
             raise TypeError('No module connected')
         return obj
 

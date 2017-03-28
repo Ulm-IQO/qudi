@@ -51,7 +51,7 @@ class QdplotterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _in = {'qdplotlogic1': 'QdplotLogic'}
+    _connectors = {'qdplotlogic1': 'QdplotLogic'}
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -78,7 +78,7 @@ class QdplotterGui(GUIBase):
                          had happened.
         """
 
-        self._qdplot_logic = self.get_in_connector('qdplotlogic1')
+        self._qdplot_logic = self.get_connector('qdplotlogic1')
 
         #####################
         # Configuring the dock widgets
@@ -113,15 +113,18 @@ class QdplotterGui(GUIBase):
 
         #####################
         # Connecting user interactions
-        self._mw.domain_min_DoubleSpinBox.valueChanged.connect(self.domain_changed)
-        self._mw.domain_max_DoubleSpinBox.valueChanged.connect(self.domain_changed)
-        self._mw.range_min_DoubleSpinBox.valueChanged.connect(self.range_changed)
-        self._mw.range_max_DoubleSpinBox.valueChanged.connect(self.range_changed)
+        self._mw.domain_min_DoubleSpinBox.valueChanged.connect(self.domain_min_changed)
+        self._mw.domain_max_DoubleSpinBox.valueChanged.connect(self.domain_max_changed)
+        self._mw.range_min_DoubleSpinBox.valueChanged.connect(self.range_min_changed)
+        self._mw.range_max_DoubleSpinBox.valueChanged.connect(self.range_max_changed)
 
         self._mw.horizontal_label_lineEdit.editingFinished.connect(self.h_label_changed)
         self._mw.horizontal_units_lineEdit.editingFinished.connect(self.h_label_changed)
         self._mw.vertical_label_lineEdit.editingFinished.connect(self.v_label_changed)
         self._mw.vertical_units_lineEdit.editingFinished.connect(self.v_label_changed)
+        
+        self._mw.fit_domain_to_data_PushButton.clicked.connect(self.fit_domain_to_data)
+        self._mw.fit_range_to_data_PushButton.clicked.connect(self.fit_range_to_data)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -176,24 +179,47 @@ class QdplotterGui(GUIBase):
         """
         self._qdplot_logic.save_data()
 
-    def domain_changed(self):
-        """ Handling the change of the domain.
+    def domain_min_changed(self):
+        """ Handling the change of the domain minimum.
         """
         self._qdplot_logic.set_domain([self._mw.domain_min_DoubleSpinBox.value(),
+                                       self._qdplot_logic.get_domain()[1]
+                                       ]
+                                      )
+
+    def domain_max_changed(self):
+        """ Handling the change of the domain minimum.
+        """
+        self._qdplot_logic.set_domain([self._qdplot_logic.get_domain()[0],
                                        self._mw.domain_max_DoubleSpinBox.value()
                                        ]
                                       )
 
 
-    def range_changed(self):
+
+    def range_min_changed(self):
         """ Handling the change of range.
         """
         self._qdplot_logic.set_range([self._mw.range_min_DoubleSpinBox.value(),
+                                      self._qdplot_logic.get_range()[1]
+                                      ]
+                                     )
+    def range_max_changed(self):
+        """ Handling the change of range.
+        """
+        self._qdplot_logic.set_range([self._qdplot_logic.get_range()[0],
                                       self._mw.range_max_DoubleSpinBox.value()
                                       ]
                                      )
 
-        return
+    def fit_domain_to_data(self):
+        """Set the domain to the min/max of the data values"""
+        self._qdplot_logic.set_domain()
+
+    def fit_range_to_data(self):
+        """Set the range to the min/max of the data values"""
+        self._qdplot_logic.set_range()
+
 
     def h_label_changed(self):
         self._qdplot_logic.set_hlabel(self._mw.horizontal_label_lineEdit.text(),

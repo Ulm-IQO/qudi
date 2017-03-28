@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
 
@@ -42,18 +42,20 @@ class PulsedMasterLogic(GenericLogic):
     sigStartPulser = QtCore.Signal()
     sigStopPulser = QtCore.Signal()
     sigFastCounterSettingsChanged = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool, float)
+    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
     sigUploadAsset = QtCore.Signal(str)
+    sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
+    sigDirectWriteSequence = QtCore.Signal(str, list)
     sigLoadAsset = QtCore.Signal(str, dict)
     sigClearPulseGenerator = QtCore.Signal()
     sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
     sigExtMicrowaveStartStop = QtCore.Signal(bool)
     sigTimerIntervalChanged = QtCore.Signal(float)
-    sigAnalysisWindowsChanged = QtCore.Signal(int, int, int, int)
+    sigAnalysisSettingsChanged = QtCore.Signal(str, int, int, int, int)
     sigManuallyPullData = QtCore.Signal()
     sigRequestMeasurementInitValues = QtCore.Signal()
-    sigAnalysisMethodChanged = QtCore.Signal(float)
+    sigExtractionSettingsChanged = QtCore.Signal(str, float, int, int, int)
 
     # sequence_generator_logic signals
     sigSavePulseBlock = QtCore.Signal(str, object)
@@ -65,8 +67,8 @@ class PulsedMasterLogic(GenericLogic):
     sigLoadPulseBlock = QtCore.Signal(str)
     sigLoadBlockEnsemble = QtCore.Signal(str)
     sigLoadSequence = QtCore.Signal(str)
-    sigSampleBlockEnsemble = QtCore.Signal(str, bool, bool)
-    sigSampleSequence = QtCore.Signal(str, bool, bool)
+    sigSampleBlockEnsemble = QtCore.Signal(str, bool)
+    sigSampleSequence = QtCore.Signal(str, bool)
     sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
     sigRequestGeneratorInitValues = QtCore.Signal()
     sigGeneratePredefinedSequence = QtCore.Signal(str, list)
@@ -78,56 +80,88 @@ class PulsedMasterLogic(GenericLogic):
     sigCurrentPulseBlockUpdated = QtCore.Signal(object)
     sigCurrentBlockEnsembleUpdated = QtCore.Signal(object, dict)
     sigCurrentSequenceUpdated = QtCore.Signal(object, dict)
-    sigBlockEnsembleSampled = QtCore.Signal(str)
-    sigSequenceSampled = QtCore.Signal(str)
+    sigEnsembleSaUpComplete = QtCore.Signal(str)
+    sigSequenceSaUpComplete = QtCore.Signal(str)
     sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str, str)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, dict, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, object)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, float)
+    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulserSettingsUpdated = QtCore.Signal(float, str, list, dict, bool)
-    sigAssetUploaded = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisWindowsUpdated = QtCore.Signal(int, int, int, int)
-    sigAnalysisMethodUpdated = QtCore.Signal(float)
+    sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
+    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     _modclass = 'pulsedmasterlogic'
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-           'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-           }
-    _out = {'pulsedmasterlogic': 'PulsedMasterLogic'}
+    _connectors = {
+        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
+        'sequencegeneratorlogic': 'SequenceGeneratorLogic',
+    }
 
-    def __init__(self, **kwargs):
+    def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
 
           @param dict kwargs: optional parameters
         """
-        super().__init__(**kwargs)
+        super().__init__(config=config, **kwargs)
+
+        self.log.info('The following configuration was found.')
+
+        # checking for the right configuration
+        for key in config.keys():
+            self.log.info('{0}: {1}'.format(key, config[key]))
+
+        if 'direct_write' in config.keys():
+            if isinstance(config['direct_write'], bool):
+                self.direct_write = config['direct_write']
+            else:
+                self.log.warning('The "direct_write" parameter in config is non-bool type\n'
+                                 'Using "False" as default.')
+                self.direct_write = False
+        else:
+            self.log.warning('The "direct_write" parameter in config is not defined.\n'
+                             'If you want to use direct write, set this parameter to "True". '
+                             'Default is "False".')
+            self.direct_write = False
+
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
         """
-        self._measurement_logic = self.get_in_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_in_connector('sequencegeneratorlogic')
+        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
+        self._generator_logic = self.get_connector('sequencegeneratorlogic')
 
-        # Signals controlling the pulsed_measurement_logic
+        # Recall status variables
+        if 'invoke_settings' in self._statusVariables:
+            self.invoke_settings = self._statusVariables['invoke_settings']
+        else:
+            self.invoke_settings = False
+        if 'couple_generator_hw' in self._statusVariables:
+            self.couple_generator_hw = self._statusVariables['couple_generator_hw']
+        else:
+            self.couple_generator_hw = True
+
+            # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
                                                      QtCore.Qt.QueuedConnection)
         self.sigMeasurementSequenceSettingsChanged.connect(
@@ -140,8 +174,8 @@ class PulsedMasterLogic(GenericLogic):
                                               QtCore.Qt.QueuedConnection)
         self.sigPulseGeneratorSettingsChanged.connect(
             self._measurement_logic.set_pulse_generator_settings, QtCore.Qt.QueuedConnection)
-        self.sigAnalysisWindowsChanged.connect(self._measurement_logic.set_analysis_windows,
-                                               QtCore.Qt.QueuedConnection)
+        self.sigAnalysisSettingsChanged.connect(self._measurement_logic.analysis_settings_changed,
+                                                QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(self._measurement_logic.do_fit, QtCore.Qt.QueuedConnection)
         self.sigTimerIntervalChanged.connect(self._measurement_logic.set_timer_interval,
                                              QtCore.Qt.QueuedConnection)
@@ -153,7 +187,7 @@ class PulsedMasterLogic(GenericLogic):
                                         QtCore.Qt.QueuedConnection)
         self.sigPauseMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
                                          QtCore.Qt.QueuedConnection)
-        self.sigContinueMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
+        self.sigContinueMeasurement.connect(self._measurement_logic.continue_pulsed_measurement,
                                             QtCore.Qt.QueuedConnection)
         self.sigStartPulser.connect(self._measurement_logic.pulse_generator_on,
                                     QtCore.Qt.QueuedConnection)
@@ -164,10 +198,14 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadAsset.connect(self._measurement_logic.upload_asset,
                                     QtCore.Qt.QueuedConnection)
         self.sigLoadAsset.connect(self._measurement_logic.load_asset, QtCore.Qt.QueuedConnection)
+        self.sigDirectWriteEnsemble.connect(self._measurement_logic.direct_write_ensemble,
+                                            QtCore.Qt.QueuedConnection)
+        self.sigDirectWriteSequence.connect(self._measurement_logic.direct_write_sequence,
+                                            QtCore.Qt.QueuedConnection)
         self.sigLaserToShowChanged.connect(self._measurement_logic.set_laser_to_show,
                                            QtCore.Qt.QueuedConnection)
-        self.sigAnalysisMethodChanged.connect(self._measurement_logic.analysis_method_changed,
-                                              QtCore.Qt.QueuedConnection)
+        self.sigExtractionSettingsChanged.connect(self._measurement_logic.extraction_settings_changed,
+                                                  QtCore.Qt.QueuedConnection)
 
         # Signals controlling the sequence_generator_logic
         self.sigRequestGeneratorInitValues.connect(self._generator_logic.request_init_values,
@@ -229,10 +267,14 @@ class PulsedMasterLogic(GenericLogic):
             self.ext_microwave_running_updated, QtCore.Qt.QueuedConnection)
         self._measurement_logic.sigTimerIntervalUpdated.connect(self.analysis_interval_updated,
                                                                 QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigAnalysisWindowsUpdated.connect(self.analysis_windows_updated,
+        self._measurement_logic.sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated,
+                                                                   QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigAnalysisMethodsUpdated.connect(self.analysis_methods_updated,
                                                                   QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigAnalysisMethodUpdated.connect(self.analysis_method_updated,
-                                                                 QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigExtractionSettingsUpdated.connect(self.extraction_settings_updated,
+                                                                     QtCore.Qt.QueuedConnection)
+        self._measurement_logic.sigExtractionMethodsUpdated.connect(self.extraction_methods_updated,
+                                                                    QtCore.Qt.QueuedConnection)
 
         # connect signals coming from the sequence_generator_logic
         self._generator_logic.sigBlockDictUpdated.connect(self.saved_pulse_blocks_updated,
@@ -259,14 +301,17 @@ class PulsedMasterLogic(GenericLogic):
             self.predefined_sequence_generated, QtCore.Qt.QueuedConnection)
 
         self.status_dict = OrderedDict()
-        self.status_dict['sauplo_busy'] = False
-        self.status_dict['loading_busy'] = False
-        self.status_dict['upload_busy'] = False
+        self.status_dict['sauplo_ensemble_busy'] = False
+        self.status_dict['sauplo_sequence_busy'] = False
+        self.status_dict['saup_ensemble_busy'] = False
+        self.status_dict['saup_sequence_busy'] = False
         self.status_dict['sampling_busy'] = False
+        self.status_dict['upload_busy'] = False
+        self.status_dict['loading_busy'] = False
+
         self.status_dict['pulser_running'] = False
         self.status_dict['measurement_running'] = False
-
-        self.invoke_settings = False
+        self.status_dict['microwave_running'] = False
 
     def on_deactivate(self, e):
         """
@@ -274,6 +319,10 @@ class PulsedMasterLogic(GenericLogic):
         @param e:
         @return:
         """
+        # Save status variables
+        self._statusVariables['invoke_settings'] = self.invoke_settings
+        self._statusVariables['couple_generator_hw'] = self.couple_generator_hw
+
         # Disconnect all signals
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.disconnect()
@@ -282,7 +331,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigExtMicrowaveSettingsChanged.disconnect()
         self.sigExtMicrowaveStartStop.disconnect()
         self.sigPulseGeneratorSettingsChanged.disconnect()
-        self.sigAnalysisWindowsChanged.disconnect()
+        self.sigAnalysisSettingsChanged.disconnect()
         self.sigDoFit.disconnect()
         self.sigTimerIntervalChanged.disconnect()
         self.sigManuallyPullData.disconnect()
@@ -295,8 +344,10 @@ class PulsedMasterLogic(GenericLogic):
         self.sigClearPulseGenerator.disconnect()
         self.sigUploadAsset.disconnect()
         self.sigLoadAsset.disconnect()
+        self.sigDirectWriteEnsemble.disconnect()
+        self.sigDirectWriteSequence.disconnect()
         self.sigLaserToShowChanged.disconnect()
-        self.sigAnalysisMethodChanged.disconnect()
+        self.sigExtractionSettingsChanged.disconnect()
         # Signals controlling the sequence_generator_logic
         self.sigRequestGeneratorInitValues.disconnect()
         self.sigSavePulseBlock.disconnect()
@@ -323,13 +374,16 @@ class PulsedMasterLogic(GenericLogic):
         self._measurement_logic.sigFastCounterSettingsUpdated.disconnect()
         self._measurement_logic.sigPulseSequenceSettingsUpdated.disconnect()
         self._measurement_logic.sigPulseGeneratorSettingsUpdated.disconnect()
+        self._measurement_logic.sigUploadAssetComplete.disconnect()
         self._measurement_logic.sigUploadedAssetsUpdated.disconnect()
         self._measurement_logic.sigLoadedAssetUpdated.disconnect()
         self._measurement_logic.sigExtMicrowaveSettingsUpdated.disconnect()
         self._measurement_logic.sigExtMicrowaveRunningUpdated.disconnect()
         self._measurement_logic.sigTimerIntervalUpdated.disconnect()
-        self._measurement_logic.sigAnalysisWindowsUpdated.disconnect()
-        self._measurement_logic.sigAnalysisMethodUpdated.disconnect()
+        self._measurement_logic.sigAnalysisSettingsUpdated.disconnect()
+        self._measurement_logic.sigAnalysisMethodsUpdated.disconnect()
+        self._measurement_logic.sigExtractionSettingsUpdated.disconnect()
+        self._measurement_logic.sigExtractionMethodsUpdated.disconnect()
         # Signals coming from the sequence_generator_logic
         self._generator_logic.sigBlockDictUpdated.disconnect()
         self._generator_logic.sigEnsembleDictUpdated.disconnect()
@@ -364,17 +418,8 @@ class PulsedMasterLogic(GenericLogic):
         pulsegenerator_constraints = self._measurement_logic.get_pulser_constraints()
         return pulsegenerator_constraints, fastcounter_constraints
 
-    def get_fit_functions(self):
-        """
-
-        @param functions_list:
-        @return:
-        """
-        return self._measurement_logic.get_fit_functions()
-
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating,
-                                              laser_trigger_delay):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -382,17 +427,15 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param laser_trigger_delay:
         @return:
         """
         self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating, laser_trigger_delay)
+                                                        alternating)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating,
-                                              laser_trigger_delay):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -400,12 +443,11 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param laser_trigger_delay:
         @return:
         """
         self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating, laser_trigger_delay)
+                                                        alternating)
         return
 
     def fast_counter_settings_changed(self, bin_width_s, record_length_s):
@@ -482,6 +524,11 @@ class PulsedMasterLogic(GenericLogic):
         """
         self.sigPulseGeneratorSettingsChanged.emit(sample_rate_hz, activation_config_name,
                                                    analogue_amplitude, interleave_on)
+        if self.couple_generator_hw:
+            self.generator_settings_changed(activation_config_name,
+                                            self._generator_logic.laser_channel,
+                                            sample_rate_hz, analogue_amplitude,
+                                            self._generator_logic.waveform_format)
         return
 
     def pulse_generator_settings_updated(self, sample_rate_hz, activation_config_name,
@@ -499,38 +546,49 @@ class PulsedMasterLogic(GenericLogic):
         # config and sample rate
         self._generator_logic.amplitude_dict = analogue_amplitude
 
-        activation_config = self._measurement_logic.get_pulser_constraints()['activation_config'][
-            activation_config_name]
+        constraints = self._measurement_logic.get_pulser_constraints()
+        activation_config = constraints.activation_config[activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
                                            activation_config, analogue_amplitude, interleave_on)
         return
 
-    def analysis_windows_changed(self, signal_start_bin, signal_width_bins, norm_start_bin,
-                                 norm_width_bins):
+    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
+        @param method:
         @param signal_start_bin:
-        @param signal_width_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_width_bins:
+        @param norm_end_bin:
         @return:
         """
-        self.sigAnalysisWindowsChanged.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                            norm_width_bins)
+        self.sigAnalysisSettingsChanged.emit(method, signal_start_bin, signal_end_bin,
+                                             norm_start_bin, norm_end_bin)
         return
 
-    def analysis_windows_updated(self, signal_start_bin, signal_width_bins, norm_start_bin,
-                                 norm_width_bins):
+    def analysis_settings_updated(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
+                                  norm_end_bin):
         """
 
+        @param method:
         @param signal_start_bin:
-        @param signal_width_bins:
+        @param signal_end_bin:
         @param norm_start_bin:
-        @param norm_width_bins:
+        @param norm_end_bin:
         @return:
         """
-        self.sigAnalysisWindowsUpdated.emit(signal_start_bin, signal_width_bins, norm_start_bin,
-                                            norm_width_bins)
+        self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
+                                             norm_start_bin, norm_end_bin)
+        return
+
+    def analysis_methods_updated(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
+        self.sigAnalysisMethodsUpdated.emit(methods_dict)
         return
 
     def do_fit(self, fit_function):
@@ -542,17 +600,16 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDoFit.emit(fit_function)
         return
 
-    def fit_updated(self, fit_function, fit_data_x, fit_data_y, param_dict, result_dict):
+    def fit_updated(self, fit_function, fit_data_x, fit_data_y, result_dict):
         """
 
         @param fit_function:
         @param fit_data_x:
         @param fit_data_y:
-        @param param_dict:
         @param result_dict:
         @return:
         """
-        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, param_dict, result_dict)
+        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, result_dict)
         return
 
     def analysis_interval_changed(self, analysis_interval_s):
@@ -586,10 +643,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        #if self.manual_xaxis_def:
-
-        #if self.manual_laser_def:
-
         self.sigStartMeasurement.emit(stashed_raw_data_tag)
         return
 
@@ -660,13 +713,15 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, save_tag):
+    def save_measurement_data(self, controlled_val_unit, save_tag, with_error):
         """
 
+        @param controlled_val_unit:
         @param save_tag:
+        @param with_error:
         @return:
         """
-        self._measurement_logic.save_measurement_data(save_tag)
+        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
         return
 
     def clear_pulse_generator(self):
@@ -677,14 +732,41 @@ class PulsedMasterLogic(GenericLogic):
         self.sigClearPulseGenerator.emit()
         return
 
-    def upload_asset(self, asset_name):
+    def upload_ensemble(self, ensemble_name, analog_samples=None, digital_samples=None):
         """
 
-        @param asset_name:
+        @param ensemble_name:
+        @param analog_samples:
+        @param digital_samples:
         @return:
         """
+        if self.direct_write and (analog_samples is None or digital_samples is None):
+            self.log.error('Upload ensemble failed because direct write is enabled but no sample '
+                           'arrays are given.')
+            return
         self.status_dict['upload_busy'] = True
-        self.sigUploadAsset.emit(asset_name)
+        if self.direct_write:
+            self.sigDirectWriteEnsemble.emit(ensemble_name, analog_samples, digital_samples)
+        else:
+            self.sigUploadAsset.emit(ensemble_name)
+        return
+
+    def upload_sequence(self, sequence_name, sequence_params=None):
+        """
+
+        @param sequence_name:
+        @param sequence_params:
+        @return:
+        """
+        if self.direct_write and sequence_params is None:
+            self.log.error('Upload sequence failed because direct write is enabled but no '
+                           'sequence_params dict is given.')
+            return
+        self.status_dict['upload_busy'] = True
+        if self.direct_write:
+            self.sigDirectWriteSequence.emit(sequence_name, sequence_params)
+        else:
+            self.sigUploadAsset.emit(sequence_name)
         return
 
     def upload_asset_finished(self, asset_name):
@@ -693,11 +775,22 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
-        if self.status_dict['sauplo_busy']:
-            self.load_asset_into_channels(asset_name)
-        self.log.debug('PULSEDMASTER: Asset "{0}" uploaded!'.format(asset_name))
-        self.status_dict['upload_busy'] = False
-        self.sigAssetUploaded.emit(asset_name)
+        if asset_name in self._generator_logic.saved_pulse_sequences:
+            if self.status_dict['sauplo_sequence_busy']:
+                self.load_asset_into_channels(asset_name)
+            self.log.debug('Sequence "{0}" uploaded to pulse generator device!'.format(asset_name))
+            self.status_dict['upload_busy'] = False
+            if self.status_dict['saup_sequence_busy']:
+                self.status_dict['saup_sequence_busy'] = False
+                self.sigSequenceSaUpComplete.emit(asset_name)
+        elif asset_name in self._generator_logic.saved_pulse_block_ensembles:
+            if self.status_dict['sauplo_ensemble_busy']:
+                self.load_asset_into_channels(asset_name)
+            self.log.debug('Ensemble "{0}" uploaded to pulse generator device!'.format(asset_name))
+            self.status_dict['upload_busy'] = False
+            if self.status_dict['saup_ensemble_busy']:
+                self.status_dict['saup_ensemble_busy'] = False
+                self.sigEnsembleSaUpComplete.emit(asset_name)
         return
 
     def uploaded_assets_updated(self, asset_names_list):
@@ -709,7 +802,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(asset_names_list)
         return
 
-    def load_asset_into_channels(self, asset_name, load_dict={}, invoke_settings=None):
+    def load_asset_into_channels(self, asset_name, load_dict=None):
         """
 
         @param asset_name:
@@ -718,8 +811,8 @@ class PulsedMasterLogic(GenericLogic):
                                      according to the loaded assets metadata.
         @return:
         """
-        if invoke_settings is not None:
-            self.invoke_settings = invoke_settings
+        if load_dict is None:
+            load_dict = dict()
         # invoke measurement parameters from asset object
         if self.invoke_settings:
             # get asset object
@@ -742,12 +835,11 @@ class PulsedMasterLogic(GenericLogic):
                 # Only invoke settings if asset_params are valid
                 if asset_params['err_code'] >= 0:
                     interleave = self._measurement_logic.interleave_on
-                    laser_trigger_delay = self._measurement_logic.laser_trigger_delay_s
                     fc_binwidth_s = self._measurement_logic.fast_counter_binwidth
                     if self._measurement_logic.fast_counter_gated:
-                        fc_record_length_s = asset_params['max_laser_length'] + laser_trigger_delay
+                        fc_record_length_s = asset_params['max_laser_length']
                     else:
-                        fc_record_length_s = asset_params['sequence_length'] + laser_trigger_delay
+                        fc_record_length_s = asset_params['sequence_length']
                     self.fast_counter_settings_changed(fc_binwidth_s, fc_record_length_s)
                     self.pulse_generator_settings_changed(asset_params['sample_rate'],
                                                           asset_params['config_name'],
@@ -757,8 +849,7 @@ class PulsedMasterLogic(GenericLogic):
                                                                asset_params['num_of_lasers'],
                                                                asset_params['sequence_length'],
                                                                asset_params['laser_ignore_list'],
-                                                               asset_params['is_alternating'],
-                                                               laser_trigger_delay)
+                                                               asset_params['is_alternating'])
         # Load asset into channel
         self.status_dict['loading_busy'] = True
         self.sigLoadAsset.emit(asset_name, load_dict)
@@ -770,13 +861,15 @@ class PulsedMasterLogic(GenericLogic):
         @param asset_name:
         @return:
         """
-        if asset_name is not None:
+        if asset_name is not None and asset_name != '' and asset_name != str(None):
             asset_object = self._generator_logic.get_saved_asset(asset_name)
             asset_type = type(asset_object).__name__
         else:
             asset_type = 'No asset loaded'
-        self.log.debug('PULSEDMASTER: Asset "{0}" of type "{1}" loaded into pulser channel(s)!'.format(asset_name, asset_type))
-        self.status_dict['sauplo_busy'] = False
+        self.log.debug('Asset "{0}" of type "{1}" loaded into pulse generator channel(s)!'
+                       ''.format(asset_name, asset_type))
+        self.status_dict['sauplo_ensemble_busy'] = False
+        self.status_dict['sauplo_sequence_busy'] = False
         self.status_dict['loading_busy'] = False
         self.sigLoadedAssetUpdated.emit(asset_name, asset_type)
         return asset_name, asset_type
@@ -811,7 +904,8 @@ class PulsedMasterLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(laser_data_x, laser_data_y)
         return
 
-    def signal_data_updated(self, signal_data_x, signal_data_y, signal_data_y2, error_data_y, error_data_y2):
+    def signal_data_updated(self, signal_data_x, signal_data_y, signal_data_y2, error_data_y,
+                            error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2):
         """
 
         @param signal_data_x:
@@ -821,25 +915,47 @@ class PulsedMasterLogic(GenericLogic):
         @param error_data_y2:
         @return:
         """
-        self.sigSignalDataUpdated.emit(signal_data_x, signal_data_y, signal_data_y2, error_data_y, error_data_y2)
+        self.sigSignalDataUpdated.emit(signal_data_x, signal_data_y, signal_data_y2, error_data_y,
+                                       error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
         return
 
-    def analysis_method_changed(self, gaussfilt_std_dev):
+    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
-        self.sigAnalysisMethodChanged.emit(gaussfilt_std_dev)
+        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_treshold,
+                                               threshold_tolerance_bins, min_laser_length)
         return
 
-    def analysis_method_updated(self, gaussfilt_std_dev):
+    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
+                                    threshold_tolerance_bins, min_laser_length):
         """
 
-        @param gaussfilt_std_dev:
+        @param method:
+        @param conv_std_dev:
+        @param count_treshold:
+        @param threshold_tolerance_bins:
+        @param min_laser_length:
         @return:
         """
-        self.sigAnalysisMethodUpdated.emit(gaussfilt_std_dev)
+        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
+                                               threshold_tolerance_bins, min_laser_length)
+        return
+
+    def extraction_methods_updated(self, methods_dict):
+        """
+
+        @param methods_dict:
+        @return:
+        """
+        self.sigExtractionMethodsUpdated.emit(methods_dict)
         return
 
 
@@ -852,6 +968,8 @@ class PulsedMasterLogic(GenericLogic):
         @return:
         """
         self.sigRequestGeneratorInitValues.emit()
+        self.sigEnsembleSaUpComplete.emit('')
+        self.sigSequenceSaUpComplete.emit('')
         return
 
     def save_pulse_block(self, block_name, block_object):
@@ -1013,56 +1131,55 @@ class PulsedMasterLogic(GenericLogic):
         self.sigSavedSequencesUpdated.emit(sequence_dict)
         return
 
-    def sample_block_ensemble(self, ensemble_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
+    def sample_block_ensemble(self, ensemble_name, with_load=False):
         """
 
         @param ensemble_name:
+        @param with_load:
         @return:
         """
-        if sample_upload_load:
-            self.status_dict['sauplo_busy'] = True
-            if invoke_settings is not None:
-                self.invoke_settings = invoke_settings
+        if with_load:
+            self.status_dict['sauplo_ensemble_busy'] = True
+        else:
+            self.status_dict['saup_ensemble_busy'] = True
         self.status_dict['sampling_busy'] = True
-        self.sigSampleBlockEnsemble.emit(ensemble_name, write_to_file, write_chunkwise)
+        self.sigSampleBlockEnsemble.emit(ensemble_name, not self.direct_write)
         return
 
-    def sample_sequence(self, sequence_name, write_to_file, write_chunkwise, sample_upload_load = False, invoke_settings=None):
+    def sample_sequence(self, sequence_name, with_load=False):
         """
 
         @param sequence_name:
+        @param with_load:
         @return:
         """
-        if sample_upload_load:
-            self.status_dict['sauplo_busy'] = True
-            if invoke_settings is not None:
-                self.invoke_settings = invoke_settings
+        if with_load:
+            self.status_dict['sauplo_sequence_busy'] = True
+        else:
+            self.status_dict['saup_sequence_busy'] = True
         self.status_dict['sampling_busy'] = True
-        self.sigSampleSequence.emit(sequence_name, write_to_file, write_chunkwise)
+        self.sigSampleSequence.emit(sequence_name, not self.direct_write)
         return
 
-    def sample_ensemble_finished(self, ensemble_name):
+    def sample_ensemble_finished(self, ensemble_name, analog_samples, digital_samples):
         """
 
         @return:
         """
-        if self.status_dict['sauplo_busy']:
-            self.upload_asset(ensemble_name)
-        self.log.debug('PULSEDMASTER: Sampling of ensemble "{0}" finished!'.format(ensemble_name))
-        self.status_dict['sampling_busy'] = False
-        self.sigBlockEnsembleSampled.emit(ensemble_name)
+        self.upload_ensemble(ensemble_name, analog_samples, digital_samples)
+        self.log.debug('Sampling of ensemble "{0}" finished!'.format(ensemble_name))
+        if self.status_dict['saup_ensemble_busy'] or self.status_dict['sauplo_ensemble_busy']:
+            self.status_dict['sampling_busy'] = False
         return
 
-    def sample_sequence_finished(self, sequence_name):
+    def sample_sequence_finished(self, sequence_name, sequence_params):
         """
 
         @return:
         """
-        if self.status_dict['sauplo_busy']:
-            self.upload_asset(sequence_name)
-        self.log.debug('PULSEDMASTER: Sampling of sequence "{0}" finished!'.format(sequence_name))
+        self.upload_sequence(sequence_name, sequence_params)
+        self.log.debug('Sampling of sequence "{0}" finished!'.format(sequence_name))
         self.status_dict['sampling_busy'] = False
-        self.sigSequenceSampled.emit(sequence_name)
         return
 
     def generator_settings_changed(self, activation_config_name, laser_channel, sample_rate,
@@ -1079,7 +1196,7 @@ class PulsedMasterLogic(GenericLogic):
         # get pulser constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # activation config
-        config_constraint = pulser_constraints['activation_config']
+        config_constraint = pulser_constraints.activation_config
         if activation_config_name not in config_constraint:
             new_config_name = list(config_constraint.keys())[0]
             self.log.warning('Activation config "{0}" could not be found in pulser constraints. '
@@ -1104,12 +1221,12 @@ class PulsedMasterLogic(GenericLogic):
                              'config "{1}". Using first valid channel "{2}" instead.'
                              ''.format(old_laser_chnl, activation_config, laser_channel))
         # sample rate
-        samplerate_constraint = pulser_constraints['sample_rate']
-        if sample_rate < samplerate_constraint['min'] or sample_rate > samplerate_constraint['max']:
+        samplerate_constraint = pulser_constraints.sample_rate
+        if sample_rate < samplerate_constraint.min or sample_rate > samplerate_constraint.max:
             self.log.warning('Sample rate of {0} MHz lies not within pulse generator constraints. '
                              'Using max. allowed sample rate of {1} MHz instead.'
-                             ''.format(sample_rate, samplerate_constraint['max']))
-            sample_rate = samplerate_constraint['max']
+                             ''.format(sample_rate, samplerate_constraint.max))
+            sample_rate = samplerate_constraint.max
         # amplitude dictionary
         # FIXME: check with pulser constraints
         self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
@@ -1117,7 +1234,7 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     def generator_settings_updated(self, activation_config, laser_channel, sample_rate,
-                                   amplitude_dict, sampling_format):
+                                   amplitude_dict, waveform_format):
         """
 
         @param activation_config:
@@ -1130,7 +1247,7 @@ class PulsedMasterLogic(GenericLogic):
         # retrieve hardware constraints
         pulser_constraints = self._measurement_logic.get_pulser_constraints()
         # check activation_config
-        config_dict = pulser_constraints['activation_config']
+        config_dict = pulser_constraints.activation_config
         activation_config_name = ''
         for key in config_dict.keys():
             if config_dict[key] == activation_config:
@@ -1142,11 +1259,15 @@ class PulsedMasterLogic(GenericLogic):
                              'Taking first valid config "{1}" '
                              'instead.'.format(activation_config, activation_config_name))
             self.generator_settings_changed(activation_config_name, laser_channel, sample_rate,
-                                            amplitude_dict, sampling_format)
+                                            amplitude_dict, waveform_format)
         else:
             self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
                                                   sample_rate, amplitude_dict, laser_channel,
-                                                  sampling_format)
+                                                  waveform_format)
+            if self.couple_generator_hw:
+                self.sigPulserSettingsUpdated.emit(sample_rate, activation_config_name,
+                                                   activation_config, amplitude_dict,
+                                                   self._measurement_logic.interleave_on)
         return
 
     def generate_predefined_sequence(self, generator_method_name, arg_list):
@@ -1202,7 +1323,7 @@ class PulsedMasterLogic(GenericLogic):
         else:
             return_params['activation_config'] = asset_obj.activation_config
         config_name = None
-        avail_configs = self._measurement_logic.get_pulser_constraints()['activation_config']
+        avail_configs = self._measurement_logic.get_pulser_constraints().activation_config
         for config in avail_configs:
             if return_params['activation_config'] == avail_configs[config]:
                 config_name = config
@@ -1310,51 +1431,3 @@ class PulsedMasterLogic(GenericLogic):
 
         # return all parameters
         return return_params
-
-    def _get_ensemble_laser_properties(self, ensemble_obj):
-        """
-
-        @param ensemble_obj:
-        @return:
-        """
-
-        return num_of_lasers, max_laser_length
-
-    def _get_block_laser_properties(self, block, reps, laser_index, laser_was_on):
-        """
-
-        @param block:
-        @param reps:
-        @param laser_index:
-        @param laser_was_on:
-        @param length_offset:
-        @return:
-        """
-        tmp_laser_on = laser_was_on
-        tmp_laser_length = 0.0
-        err_code = 0
-        num_of_lasers = 0
-        max_laser_length = 0.0
-        for element in block.element_list:
-            if laser_index < len(element.digital_high) and laser_index >= 0:
-                if not tmp_laser_on and element.digital_high[laser_index]:
-                    tmp_laser_on = True
-                    num_of_lasers += 1
-                elif not element.digital_high[laser_index]:
-                    tmp_laser_on = False
-                if tmp_laser_on:
-                    if element.increment_s > 1.0e-15:
-                        tmp_laser_length += (element.init_length_s + reps * element.increment_s)
-                    else:
-                        tmp_laser_length += element.init_length_s
-                    if tmp_laser_length > max_laser_length:
-                        max_laser_length = tmp_laser_length
-                else:
-                    tmp_laser_length = 0.0
-            else:
-                self.log.error('Laser index "{0}" out of range for number of digital channels '
-                               '({1}) in block "{2}".'
-                               ''.format(laser_index, len(element.digital_high), block_obj.name))
-                err_code = -1
-                break
-        return num_of_lasers, max_laser_length, err_code

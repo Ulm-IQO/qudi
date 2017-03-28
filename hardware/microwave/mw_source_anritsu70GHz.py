@@ -26,7 +26,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
@@ -36,10 +39,17 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
 
-    ## declare connectors
-    _out = {'mwsourceanritsu': 'MicrowaveInterface'}
+    def on_activate(self, e):
+        """ Initialisation performed during activation of the module.
 
-    def on_activate(self,e=None):
+        @param e object: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
@@ -72,14 +82,19 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self.log.info('Anritsu {} initialised and connected to hardware.'
                 ''.format(self.model))
 
-    def on_deactivate(self,e=None):
+    def on_deactivate(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param e object: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
+        """
         self._gpib_connection.close()
         self.rm.close()
 
     def get_limits(self):
         """ Right now, this is for Anritsu MG3696B only."""
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST)
 
         limits.min_frequency = 10e6
         limits.max_frequency = 70e9
@@ -101,7 +116,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        print("on")
         self._gpib_connection.write('RF1')
 
         return 0
@@ -111,7 +125,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        print("off")
         self._gpib_connection.write('RF0')
 
         return 0
@@ -168,7 +181,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         Interleave option is used for arbitrary waveform generator devices.
         """
         error = 0
-        print("set cw")
         if freq is not None:
             error = self.set_frequency(freq)
         else:
@@ -228,33 +240,32 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self._gpib_connection.write('LST LEA RF1')
         return 0
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
-        print("trigger")
-        self._gpib_connection.write('MNT')
+        try:
+            self._gpib_connection.write('MNT')
+        except:
+            return -1
         return 0
 
     def set_sweep(self, start, stop, step, power):
-        """
+        """ Activate sweep mode on the microwave source
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
+        @param start float: start frequency
+        @param stop float: stop frequency
+        @param step float: frequency step
+        @param power float: output power
+        @return int: number of frequency steps generated
         """
-        print("sweep on")
         self.set_power(power)
         self._gpib_connection.write('F1 {0} Hz, SYZ {1} Hz, F2 {2} Hz, SF1'.format(start - step, step, stop))
         nrsteps = int(self._gpib_connection.query('OSS'))
-        print('steps', nrsteps)
         return nrsteps - 1
 
     def reset_sweep(self):
@@ -262,15 +273,13 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        print("reset sweep")
         self._gpib_connection.write('RSS')
         return 0
 
     def sweep_on(self):
-        """ Switches on the list mode.
+        """ Switches on sweep mode.
 
-        @return int: error code (1: ready, 0:not ready, -1:error)
+        @return int: error code ( 0:ok, -1:error)
         """
-        print("sweep on")
         self._gpib_connection.write('SSP RF1')
         return 0

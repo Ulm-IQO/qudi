@@ -33,8 +33,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'confocalscanner': 'ConfocalScannerInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -67,7 +66,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
@@ -130,6 +129,10 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         """
         self.log.warning('Scanning Device will be reset.')
         return 0
+
+    def get_scanner_axes(self):
+        """ Dmmy scanner axes. """
+        return ['x', 'y', 'z']
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -286,25 +289,17 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         """
 
         self._line_length = length
-
 #        self.log.warning('ConfocalScannerInterfaceDummy>set_up_line')
-
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
-
-        #if self.getState() == 'locked':
-        #    self.log.error('A scan_line is already running, close this one first.')
-        #    return -1
-        #
-        #self.lock()
 
         if not isinstance( line_path, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.log.error('Given voltage list is no array type.')

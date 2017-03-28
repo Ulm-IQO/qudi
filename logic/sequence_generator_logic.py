@@ -59,16 +59,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     _modclass = 'sequencegeneratorlogic'
     _modtype = 'logic'
 
-    ## declare connectors
-    _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
-
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
     sigSequenceDictUpdated = QtCore.Signal(dict)
-    sigSampleEnsembleComplete = QtCore.Signal(str)
-    sigSampleSequenceComplete = QtCore.Signal(str)
+    sigSampleEnsembleComplete = QtCore.Signal(str, np.ndarray, np.ndarray)
+    sigSampleSequenceComplete = QtCore.Signal(str, list)
     sigCurrentBlockUpdated = QtCore.Signal(object)
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
@@ -83,7 +80,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
+            self.log.info('{0}: {1}'.format(key, config[key]))
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
@@ -108,19 +105,25 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             if not os.path.exists(self.pulsed_file_dir):
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directort defined in "pulsed_file_dir" '
-                        'in the config for SequenceGeneratorLogic class does '
-                        'not exist!\n'
-                        'The default home directory\n{0}\n will be '
-                        'taken instead.'.format(self.pulsed_file_dir))
+                self.log.warning('The directort defined in "pulsed_file_dir" in the config for '
+                                 'SequenceGeneratorLogic class does not exist! The default home '
+                                 'directory\n{0}'
+                                 '\nwill be taken instead.'.format(self.pulsed_file_dir))
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No directory with the attribute '
-                    '"pulsed_file_dir" is defined for the '
-                    'SequenceGeneratorLogic!\n'
-                    'The default home directory\n{0}\n will be taken '
-                    'instead.'.format(self.pulsed_file_dir))
+            self.log.warning('No directory with the attribute "pulsed_file_dir" is defined for the '
+                             'SequenceGeneratorLogic! The default home directory\n{0}\nwill be '
+                             'taken instead.'.format(self.pulsed_file_dir))
+
+        # Byte size of the max. memory usage during sampling/write-to-file process
+        if 'overhead_bytes' in config.keys():
+            self.sampling_overhead_bytes = config['overhead_bytes']
+        else:
+            self.sampling_overhead_bytes = None
+            self.log.warning('No max. memory overhead specified in config.\nIn order to avoid '
+                             'memory overflow during sampling/writing of Pulse objects you must '
+                             'set "overhead_bytes".')
 
 
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
@@ -138,12 +141,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.amplitude_dict = OrderedDict({'a_ch1': 0.5, 'a_ch2': 0.5, 'a_ch3': 0.5, 'a_ch4': 0.5})
         self.sample_rate = 25e9
         # The file format for the sampled hardware-compatible waveforms and sequences
-        self.waveform_format = 'wfmx' # can be 'wfmx', 'wfm' or 'fpga'
-        self.sequence_format = 'seqx' # can be 'seqx' or 'seq'
+        self.waveform_format = 'wfmx'  # can be 'wfmx', 'wfm' or 'fpga'
+        self.sequence_format = 'seq'  # only .seq file format
 
         # a dictionary with all predefined generator methods and measurement sequence names
         self.generate_methods = None
-
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -172,13 +174,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.sample_rate = self._statusVariables['sample_rate']
         if 'waveform_format' in self._statusVariables:
             self.waveform_format = self._statusVariables['waveform_format']
-        if 'sequence_format' in self._statusVariables:
-            self.sequence_format = self._statusVariables['sequence_format']
         self.analog_channels = len([chnl for chnl in self.activation_config if 'a_ch' in chnl])
         self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict,
-                                     self.waveform_format + '/' + self.sequence_format)
+                                     self.amplitude_dict, self.waveform_format)
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -191,7 +190,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self._statusVariables['amplitude_dict'] = self.amplitude_dict
         self._statusVariables['sample_rate'] = self.sample_rate
         self._statusVariables['waveform_format'] = self.waveform_format
-        self._statusVariables['sequence_format'] = self.sequence_format
 
     def _attach_predefined_methods(self):
         """
@@ -245,18 +243,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
         self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
         self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-        self.sigSampleEnsembleComplete.emit('')
-        self.sigSampleSequenceComplete.emit('')
         self.sigCurrentBlockUpdated.emit(self.current_block)
         self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
         self.sigCurrentSequenceUpdated.emit(self.current_sequence)
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict,
-                                     self.waveform_format + '/' + self.sequence_format)
+                                     self.amplitude_dict, self.waveform_format)
         self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
-    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict, sampling_format):
+    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict, waveform_format):
         """
         Sets all settings for the generator logic.
 
@@ -264,7 +259,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param laser_channel:
         @param sample_rate:
         @param amplitude_dict:
-        @param sampling_format:
+        @param waveform_format:
         @return:
         """
         # check if the currently chosen laser channel is part of the config and adjust if this
@@ -284,12 +279,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.digital_channels = len([chnl for chnl in activation_config if 'd_ch' in chnl])
         self.amplitude_dict = amplitude_dict
         self.sample_rate = sample_rate
-        self.waveform_format = sampling_format.split('/')[0]
-        self.sequence_format = sampling_format.split('/')[1]
+        self.waveform_format = waveform_format
         self.sigSettingsUpdated.emit(activation_config, laser_channel, sample_rate, amplitude_dict,
-                                     sampling_format)
+                                     waveform_format)
         return self.activation_config, self.laser_channel, self.sample_rate, self.amplitude_dict, \
-               sampling_format
+               waveform_format
 
 # -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -367,7 +361,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """ Update the saved_pulse_block dict from file """
         block_files = [f for f in os.listdir(self.block_dir) if 'block_dict.blk' in f]
         if len(block_files) == 0:
-            self.log.warning('No serialized block dict was found in {0}.'.format(self.block_dir))
+            self.log.info('No serialized block dict was found in {0}.'.format(self.block_dir))
             self.saved_pulse_blocks = OrderedDict()
             self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
             return
@@ -441,8 +435,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if ensemble.laser_channel is not None:
             self.laser_channel = ensemble.laser_channel
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict,
-                                     self.waveform_format + '/' + self.sequence_format)
+                                     self.amplitude_dict, self.waveform_format)
         self.current_ensemble = ensemble
         self.sigCurrentEnsembleUpdated.emit(ensemble)
         return
@@ -466,8 +459,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """ Update the saved_pulse_block_ensembles dict from file """
         ensemble_files = [f for f in os.listdir(self.ensemble_dir) if 'ensemble_dict.ens' in f]
         if len(ensemble_files) == 0:
-            self.log.warning('No serialized ensembles dict was found in {0}.'
-                             ''.format(self.ensemble_dir))
+            self.log.info('No serialized ensembles dict was found in {0}.'
+                          ''.format(self.ensemble_dir))
             self.saved_pulse_block_ensembles = OrderedDict()
             self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
             return
@@ -543,8 +536,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if sequence.laser_channel is not None:
             self.laser_channel = sequence.laser_channel
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict,
-                                     self.waveform_format + '/' + self.sequence_format)
+                                     self.amplitude_dict, self.waveform_format)
         self.current_sequence = sequence
         self.sigCurrentSequenceUpdated.emit(sequence)
         return
@@ -588,8 +580,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         """ Update the saved_pulse_sequences dict from file """
         sequence_files = [f for f in os.listdir(self.sequence_dir) if 'sequence_dict.sequ' in f]
         if len(sequence_files) == 0:
-            self.log.warning('No serialized sequence dict was found in {0}.'
-                             ''.format(self.sequence_dir))
+            self.log.info('No serialized sequence dict was found in {0}.'.format(self.sequence_dir))
             self.saved_pulse_sequences = OrderedDict()
             self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
             return
@@ -662,8 +653,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         number_of_states = len(state_length_bins_arr)
         return number_of_samples, number_of_elements, number_of_states, state_length_bins_arr
 
-    def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True,
-                                    offset_bin=0, name_tag=''):
+    def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
+                                    name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
@@ -671,8 +662,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param bool write_to_file: Write either to RAM or to File (depends on the available space
                                    in RAM). If set to FALSE, this method will return the samples
                                    (digital and analog) as numpy arrays
-        @param bool chunkwise: Decide, whether you want to write chunkwise, which will reduce
-                               memory usage but will increase vastly the amount of time needed.
         @param int offset_bin: If many pulse ensembles are samples sequentially, then the
                                offset_bin of the previous sampling can be passed to maintain
                                rotating frame across pulse_block_ensembles
@@ -717,18 +706,25 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             sequence_sampling_in_progress = False
         else:
             sequence_sampling_in_progress = True
+        # determine if chunkwise writing is enabled (the overhead byte size is set)
+        chunkwise = self.sampling_overhead_bytes is not None
+        # Set the filename (excluding the channel naming suffix, i.e. '_ch1')
+        if name_tag is None:
+            filename = ensemble_name
+        else:
+            filename = name_tag
         # check for old files associated with the new ensemble and delete them from host PC
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
             filename_list = [f for f in os.listdir(self.waveform_dir) if
-                             f.startswith(ensemble_name + '_ch')]
+                             f.startswith(filename + '_ch')]
             # delete all filenames in the list
             for file in filename_list:
                 os.remove(os.path.join(self.waveform_dir, file))
 
             if len(filename_list) != 0:
                 self.log.info('Found old sampled ensembles for name "{0}". Files deleted before '
-                              'sampling: {1}'.format(ensemble_name, filename_list))
+                              'sampling: {1}'.format(filename, filename_list))
 
         start_time = time.time()
         # get ensemble
@@ -737,13 +733,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
         ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+        dig_chnl_names = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
         if self.digital_channels != dig_channels or self.analog_channels != ana_channels:
             self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in number of '
                            'analog and digital channels between logic ({1}, {2}) and '
                            'PulseBlockEnsemble ({3}, {4}).'
                            ''.format(ensemble_name, self.analog_channels, self.digital_channels,
                                      ana_channels, dig_channels))
-            return [], [], [''], 0
+            return np.array([]), np.array([]), -1
 
         number_of_samples, number_of_elements, number_of_states, state_length_bins_arr = self._analyze_block_ensemble(ensemble)
         # The time bin offset for each element to be sampled to preserve rotating frame.
@@ -792,11 +789,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
-
                         # write temporary sample array to file
-                        created_files = self._write_to_file[self.waveform_format](
-                            ensemble.name + name_tag, analog_samples, digital_samples,
-                            number_of_samples, is_first_chunk, is_last_chunk)
+                        self._write_to_file[self.waveform_format](filename, analog_samples,
+                                                                  digital_samples,
+                                                                  number_of_samples, is_first_chunk,
+                                                                  is_last_chunk)
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
@@ -824,8 +821,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # return the sample arrays for write_to_file was set to FALSE
             if not sequence_sampling_in_progress:
                 self.unlock()
-                self.sigSampleEnsembleComplete.emit(ensemble_name)
-            return analog_samples, digital_samples, created_files, offset_bin
+            self.sigSampleEnsembleComplete.emit(filename, analog_samples, digital_samples)
+            return analog_samples, digital_samples, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
             # chunkwise.
@@ -833,28 +830,26 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                           ''.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
                 self.unlock()
-                self.sigSampleEnsembleComplete.emit(ensemble_name)
-            return [], [], created_files, offset_bin
+            self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
+            return np.array([]), np.array([]), offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
             # write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            created_files = self._write_to_file[self.waveform_format](ensemble.name + name_tag,
-                                                                      analog_samples,
-                                                                      digital_samples,
-                                                                      number_of_samples,
-                                                                      is_first_chunk, is_last_chunk)
+            self._write_to_file[self.waveform_format](filename, analog_samples, digital_samples,
+                                                      number_of_samples, is_first_chunk,
+                                                      is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
             self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
                           'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
                 self.unlock()
-                self.sigSampleEnsembleComplete.emit(ensemble_name)
-            return [], [], created_files, offset_bin
+            self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
+            return np.array([]), np.array([]), offset_bin
 
-    def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):
+    def sample_pulse_sequence(self, sequence_name, write_to_file=True):
         """ Samples the PulseSequence object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
@@ -862,8 +857,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param bool write_to_file: Write either to RAM or to File (depends on the available space
                                    in RAM). If set to FALSE, this method will return the samples
                                    (digital and analog) as numpy arrays
-        @param bool chunkwise: Decide, whether you want to write chunkwise, which will reduce
-                               memory usage but will increase vastly the amount of time needed.
 
         The sequence object is sampled by call subsequently the sampling routine for the
         PulseBlockEnsemble objects and passing if needed the rotating frame option.
@@ -898,12 +891,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                  'sampling: {1}'.format(sequence_name, filename_list))
 
         start_time = time.time()
+
+        ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+        ana_chnl_num = [int(chnl.split('ch')[-1]) for chnl in ana_chnl_names]
+
         # get ensemble
         sequence_obj = self.saved_pulse_sequences[sequence_name]
         sequence_param_dict_list = []
-
-        # Here all the sampled ensembles with their result file name will be locally stored:
-        sampled_ensembles = OrderedDict()
 
         # if all the Pulse_Block_Ensembles should be in the rotating frame, then each ensemble
         # will be created in general with a different offset_bin. Therefore, in order to keep track
@@ -914,24 +908,22 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             offset_bin = 0      # that will be used for phase preserving
             for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
                 # to make something like 001
-                name_tag = '_' + str(ensemble_index).zfill(3)
+                name_tag = sequence_name + '_' + str(ensemble_index).zfill(3)
 
                 dummy1, \
                 dummy2, \
-                created_files, \
                 offset_bin_return = self.sample_pulse_block_ensemble(ensemble_obj.name,
-                                                                     write_to_file,
-                                                                     chunkwise,
+                                                                     write_to_file=write_to_file,
                                                                      offset_bin=offset_bin,
                                                                      name_tag=name_tag)
 
                 # the temp_dict is a format how the sequence parameter will be saved
                 temp_dict = dict()
-                temp_dict['name'] = created_files
+                name_list = []
+                for ch_num in ana_chnl_num:
+                    name_list.append(name_tag + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                temp_dict['name'] = name_list
 
-                # relate the created_files to a name identifier. Maybe this information will be
-                # needed later on about that sequence object
-                sampled_ensembles[ensemble_obj.name + name_tag] = created_files
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
                 # add the whole dict to the list of dicts, containing information about how to
@@ -946,44 +938,33 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # if phase prevervation between the sequence entries is not needed, then only the
             # different ensembles will be sampled, since the offset_bin does not matter for them:
             for ensemble_name in sequence_obj.different_ensembles_dict:
-                ensemble_obj = self.saved_pulse_block_ensembles[ensemble_name]
-
-                dummy1, \
-                dummy2, \
-                created_files, \
-                offset_bin = self.sample_pulse_block_ensemble(ensemble_name, write_to_file,
-                                                              chunkwise, offset_bin=0, name_tag='')
-
-                # contains information about which file(s) was/were created for the specified
-                # ensemble:
-                sampled_ensembles[ensemble_name] = created_files
+                self.sample_pulse_block_ensemble(ensemble_name, write_to_file=write_to_file,
+                                                 offset_bin=0, name_tag=None)
 
             # go now through the sequence list and replace all the entries with the output of the
             # sampled ensemble file:
             for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
-
                 temp_dict = dict()
-                temp_dict['name'] = sampled_ensembles[ensemble_obj.name]
+                name_list = []
+                for ch_num in ana_chnl_num:
+                    name_list.append(ensemble_obj.name + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                temp_dict['name'] = name_list
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
 
                 sequence_param_dict_list.append(temp_dict)
 
-        # FIXME: That is most propably not a good idea!!! But let's see whether that will work out
-        #        and whether it will be necessary (for the upload method it is!)
-
-        sequence_obj.sampled_ensembles = sampled_ensembles
-        # save the current object, since it has now a different attribute:
-        self.save_sequence(sequence_name, sequence_obj)
-
-        # pass the whole information to the sequence creation method:
-        self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
-
-        self.log.info('Time needed for sampling and writing Pulse Sequence to file as a whole: '
-                      '{0} sec.'.format(int(np.rint(time.time() - start_time))))
-        self.sigSampleSequenceComplete.emit(sequence_name)
+        if write_to_file:
+            # pass the whole information to the sequence creation method:
+            self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
+            self.log.info('Time needed for sampling and writing Pulse Sequence to file: {0} sec.'
+                          ''.format(int(np.rint(time.time() - start_time))))
+        else:
+            self.log.info('Time needed for sampling Pulse Sequence: {0} sec.'
+                          ''.format(int(np.rint(time.time() - start_time))))
         # unlock module
         self.unlock()
+        self.sigSampleSequenceComplete.emit(sequence_name, sequence_param_dict_list)
         return
 
     #---------------------------------------------------------------------------

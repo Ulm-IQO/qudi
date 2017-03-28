@@ -28,7 +28,10 @@ import numpy as np
 import time
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveGigatronics(Base, MicrowaveInterface):
@@ -36,9 +39,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
     _modclass = 'MicrowaveInterface'
     _modtype = 'hardware'
-
-    ## declare connectors
-    _out = {'mwsourcegigatronics': 'MicrowaveInterface'}
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -103,7 +103,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
           return MicrowaveLimits: limits of the particular Gigatronics MW source model
         """
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST)
 
         limits.min_frequency = 100e3
         limits.max_frequency = 20e9
@@ -128,7 +128,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         elif self.model.startswith('2540'):
             limits.max_frequency = 40e9
         else:
-            self.log.warn('Unknown Gigatronics moel, you are on your own!')
+            self.log.warn('Unknown Gigatronics model, you are on your own!')
 
         return limits
 
@@ -284,17 +284,32 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         return 0
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
         return 0
 
+    def sweep_on(self):
+        """ Switches on the sweep mode.
 
+        @return int: error code (0:OK, -1:error)
+        """
+        return -1
 
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
+        """
+        return -1
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return -1
 

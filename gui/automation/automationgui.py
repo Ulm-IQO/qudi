@@ -27,11 +27,11 @@ from qtpy import uic
 
 
 class AutomationGui(GUIBase):
-    """ """
+    """ Graphical interface for arranging tasks without using Python code. """
     _modclass = 'AutomationGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'automationlogic': 'AutomationLogic'}
+    _connectors = {'automationlogic': 'AutomationLogic'}
 
     sigRunTaskFromList = QtCore.Signal(object)
     sigPauseTaskFromList = QtCore.Signal(object)
@@ -50,7 +50,7 @@ class AutomationGui(GUIBase):
         """
         self._mw = AutomationMainWindow()
         self.restoreWindowPos(self._mw)
-        self.logic = self.get_in_connector('automationlogic')
+        self.logic = self.get_connector('automationlogic')
         self._mw.autoTreeView.setModel(self.logic.model)
         #self._mw.taskTableView.clicked.connect(self.setRunToolState)
         #self._mw.actionStart_Task.triggered.connect(self.manualStart)

@@ -318,8 +318,10 @@ class PulseSequence:
             if self.different_ensembles_dict.get(ensemble.name) is None:
                 self.different_ensembles_dict[ensemble.name] = ensemble
 
-            self.controlled_vals_array = np.append(self.controlled_vals_array,
-                                                    offset_tick_bin + ensemble.controlled_vals_array)
+            if hasattr(ensemble, 'controlled_vals_array'):
+                self.controlled_vals_array = np.append(self.controlled_vals_array,
+                                                       offset_tick_bin +
+                                                       ensemble.controlled_vals_array)
 
             # for the next repetition or pulse_block_ensemble, add last number from the
             # controlled_vals_array as offset_tick_bin. Otherwise the controlled_vals_array will

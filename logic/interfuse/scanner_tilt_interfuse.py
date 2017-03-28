@@ -16,7 +16,6 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-Copyright (C) 2016 Florian Frank alexander.stark@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -25,12 +24,13 @@ import copy
 
 
 class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
+    """ This interfuse produces a Z correction corresponding to a tilted surface.
+    """
 
     _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
-    _in = {'confocalscanner1': 'ConfocalScannerInterface'}
-    _out = {'confocalscanner1': 'ConfocalScannerInterface'}
+    _connectors = {'confocalscanner1': 'ConfocalScannerInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -46,7 +46,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
+        self._scanning_device = self.get_connector('confocalscanner1')
 
         self.tilt_variable_ax = 1
         self.tilt_variable_ay = 1
@@ -101,6 +101,14 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
             myrange = [-10., 10.]
         return self._scanning_device.set_voltage_range(myrange)
 
+    def get_scanner_axes(self):
+        """ Pass through scanner axes """
+        return self._scanning_device.get_scanner_axes()
+
+    def get_scanner_count_channels(self):
+        """ Pass through scanner counting channels """
+        return self._scanning_device.get_scanner_count_channels()
+
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -111,7 +119,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        return self._scanning_device.set_up_scanner_clock(clock_frequency,clock_channel)
+        return self._scanning_device.set_up_scanner_clock(clock_frequency, clock_channel)
 
     def set_up_scanner(self, counter_channel=None, photon_source=None,
                        clock_channel=None, scanner_ao_channels=None):
@@ -128,7 +136,6 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         return self._scanning_device.set_up_scanner(
             counter_channel,
             photon_source,
@@ -179,17 +186,17 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
         """
         return self._scanning_device.set_up_line(length)
 
-    def scan_line(self, line_path=None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the
-                                     positions pixels
+        @param float[][4] line_path: array of 4-part tuples defining the positions pixels
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
         if self.tiltcorrection:
             line_path[:][2] += self._calc_dz(line_path[:][0], line_path[:][1])
-        return self._scanning_device.scan_line(line_path)
+        return self._scanning_device.scan_line(line_path, pixel_clock)
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.

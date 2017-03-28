@@ -10,24 +10,60 @@ from logic.pulse_objects import PulseSequence
 from logic.sampling_functions import SamplingFunctions
 
 from .spinbox_delegate import SpinBoxDelegate
-from .doublespinbox_delegate import DoubleSpinBoxDelegate
+# from .doublespinbox_delegate import DoubleSpinBoxDelegate
+from .scientificspinbox_delegate import ScienDSpinBoxDelegate
 from .combobox_delegate import ComboBoxDelegate
 from .checkbox_delegate import CheckBoxDelegate
 
 
 class BlockEditor:
+    """
+    The QTableWidget has already an underlying model, where the data are saved.
+    The view widgets are handeled by the delegates.
+
+    Access to the view object:
+
+    Each element (in the table) of a QTableWidget is called a QTableItemWidget,
+    where the reference to each item can be obtained via
+
+        item = be_widget.item(row, column)
+
+    This is in general the view object, which will be seen on the editor. The
+    kind of object can be changed by modifying the createEditor method of the
+    delegate.
+    To get the reference to the delegated (parent) object use
+        c = be_widget.itemDelegate(index)
+
+    Access to the model object:
+    To access the model object, i.e. the object where the actual data is stored,
+    a reference to the model needs to be obtained:
+
+        model = be_widget.model()
+
+    and the index object to the data, which holds the reference to get the data,
+    will be obtained by selecting the proper row and column number (starting
+    from 0):
+
+        index = model.index(row, column)
+
+    """
     def __init__(self, block_editor_widget):
         self.be_widget = block_editor_widget
         self.parameter_dict = OrderedDict()
         self.parameter_dict['length'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
                                          'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
-        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
+        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -999999999.99, 'max': np.inf,
                                             'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
         self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1, 'view_stepsize': 1,
                                                'dec': 0, 'unit_prefix': '', 'type': bool}
         self.activation_config = None
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
+
+        # this behaviour should be customized for the combobox, since you need
+        # 3 clicks in the default settings to open it.
+        # self.be_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+
         return
 
     def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
@@ -115,7 +151,7 @@ class BlockEditor:
                     self.be_widget.setColumnWidth(column_count, 100)
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self.be_widget, item_dict)
+                    delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
                     self.be_widget.setItemDelegateForColumn(column_count, delegate)
                     column_count += 1
 
@@ -147,7 +183,7 @@ class BlockEditor:
             if item_dict['type'] is bool:
                 delegate = CheckBoxDelegate(self.be_widget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self.be_widget, item_dict)
+                delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
             self.be_widget.setItemDelegateForColumn(num_of_columns + column, delegate)
 
             # initialize the whole row with default values:
@@ -215,6 +251,8 @@ class BlockEditor:
 
     def delete_row(self, index):
         """ Delete row number 'index' """
+        if self.be_widget.rowCount() == 1 and index == 0:
+            return
         self.be_widget.blockSignals(True)
         self.be_widget.removeRow(index)
         self.be_widget.blockSignals(False)
@@ -246,7 +284,16 @@ class BlockEditor:
         model = self.be_widget.model()
         access = self.be_widget.itemDelegateForColumn(column).model_data_access
         data = model.index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -399,6 +446,8 @@ class BlockOrganizer:
                                               'unit_prefix': '', 'type': int}
         self._cfg_param_pb = None
         self.block_dict = None
+
+        self.bo_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
         return
 
     def set_block_dict(self, block_dict):
@@ -480,7 +529,7 @@ class BlockOrganizer:
             elif item_dict['type'] is int:
                 delegate = SpinBoxDelegate(self.bo_widget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self.bo_widget, item_dict)
+                delegate = ScienDSpinBoxDelegate(self.bo_widget, item_dict)
             self.bo_widget.setItemDelegateForColumn(1+column, delegate)
 
         self.initialize_cells(start_row=0, stop_row=self.bo_widget.rowCount())
@@ -517,7 +566,11 @@ class BlockOrganizer:
 
     def delete_row(self, index):
         """ Delete row number 'index' """
+        if self.bo_widget.rowCount() == 1 and index == 0:
+            return
+        self.bo_widget.blockSignals(True)
         self.bo_widget.removeRow(index)
+        self.bo_widget.blockSignals(False)
         # FIXME: Implement a proper way to update the current block ensemble parameters
         return
 
@@ -545,7 +598,16 @@ class BlockOrganizer:
         model = self.bo_widget.model()
         access = self.bo_widget.itemDelegateForColumn(column).model_data_access
         data = self.bo_widget.model().index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -588,6 +650,7 @@ class BlockOrganizer:
         for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
             column = self._cfg_param_pb['pulse_block']
             self.set_element(row_index, column, pulse_block.name)
+            print(pulse_block.name)
             column = self._cfg_param_pb['repetitions']
             self.set_element(row_index, column, int(repetitions))
         return
@@ -627,14 +690,15 @@ class SequenceEditor:
         self.parameter_dict['trigger_wait'] = {'unit': '', 'init_val': False, 'min': 0,
                                                'max': 1, 'view_stepsize': 1, 'dec': 0,
                                                'unit_prefix': '', 'type': bool}
-        self.parameter_dict['go_to'] = {'unit': '', 'init_val': False, 'min': 0,
-                                        'max': 1, 'view_stepsize': 1, 'dec': 0,
-                                        'unit_prefix': '', 'type': bool}
+        self.parameter_dict['go_to'] = {'unit': '', 'init_val': 0, 'min': -1,
+                                        'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
+                                        'unit_prefix': '', 'type': int}
         self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': -1,
                                                 'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
                                                 'unit_prefix': '', 'type': int}
         self._cfg_param_ps = None
         self.ensemble_dict = None
+        self.se_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
         return
 
     def set_ensemble_dict(self, ensemble_dict):
@@ -720,7 +784,7 @@ class SequenceEditor:
             elif item_dict['type'] is int:
                 delegate = SpinBoxDelegate(self.se_widget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self.se_widget, item_dict)
+                delegate = ScienDSpinBoxDelegate(self.se_widget, item_dict)
             self.se_widget.setItemDelegateForColumn(1+column, delegate)
 
         self.initialize_cells(start_row=0, stop_row=self.se_widget.rowCount())
@@ -763,7 +827,11 @@ class SequenceEditor:
 
     def delete_row(self, index):
         """ Delete row number 'index' """
+        if self.se_widget.rowCount() == 1 and index == 0:
+            return
+        self.se_widget.blockSignals(True)
         self.se_widget.removeRow(index)
+        self.se_widget.blockSignals(False)
         # FIXME: Implement a proper way to update the current block ensemble parameters
         return
 
@@ -791,7 +859,16 @@ class SequenceEditor:
         model = self.se_widget.model()
         access = self.se_widget.itemDelegateForColumn(column).model_data_access
         data = self.se_widget.model().index(row, column).data(access)
-        if type(data) == type(value):
+        if isinstance(data, float) and isinstance(value, float):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, int) and isinstance(value, int):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, bool) and isinstance(value, bool):
+            model.setData(model.index(row, column), value, access)
+            return value
+        elif isinstance(data, str) and isinstance(value, str):
             model.setData(model.index(row, column), value, access)
             return value
         else:
@@ -838,7 +915,7 @@ class SequenceEditor:
             column = self._cfg_param_ps['trigger_wait']
             self.set_element(row_index, column, bool(seq_param['trigger_wait']))
             column = self._cfg_param_ps['go_to']
-            self.set_element(row_index, column, bool(seq_param['go_to']))
+            self.set_element(row_index, column, int(seq_param['go_to']))
             column = self._cfg_param_ps['event_jump_to']
             self.set_element(row_index, column, int(seq_param['event_jump_to']))
         return
@@ -852,23 +929,24 @@ class SequenceEditor:
                                     throughout the sequence.
         """
         # list of all the pulse block ensemble objects
-        pbe_obj_list = [None] * self.se_widget.rowCount()
-        # parameter dictionary for pulse sequences
-        seq_param = dict()
+        pbe_obj_list = []
 
         for row_index in range(self.se_widget.rowCount()):
+            # Fetch previously saved ensemble object
             block_ensemble_name = self.get_element(row_index, self._cfg_param_ps['block_ensemble'])
+            ensemble = self.ensemble_dict[block_ensemble_name]
+
+            # parameter dictionary for pulse sequences
+            seq_param = dict()
             seq_param['repetitions'] = self.get_element(row_index,
                                                         self._cfg_param_ps['repetitions'])
             seq_param['trigger_wait'] = int(self.get_element(row_index,
                                                              self._cfg_param_ps['trigger_wait']))
-            seq_param['go_to'] = int(self.get_element(row_index, self._cfg_param_ps['go_to']))
+            seq_param['go_to'] = self.get_element(row_index, self._cfg_param_ps['go_to'])
             seq_param['event_jump_to'] = self.get_element(row_index,
                                                           self._cfg_param_ps['event_jump_to'])
-            # Fetch previously saved ensemble object
-            ensemble = self.ensemble_dict[block_ensemble_name]
             # Append ensemble object along with repetitions to the ensemble list
-            pbe_obj_list[row_index] = (ensemble, seq_param)
+            pbe_obj_list.append((ensemble, seq_param))
 
         # Create the PulseSequence object
         pulse_sequence = PulseSequence(name=sequence_name, ensemble_param_list=pbe_obj_list,

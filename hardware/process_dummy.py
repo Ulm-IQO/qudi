@@ -31,10 +31,11 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
     _modclass = 'Process'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'dummy': 'Process',}
-
     def on_activate(self, e):
+        """ Activate module.
+
+            @param object e: fysom state transition information
+        """
         self.temperature = 300.0
         self.pwmpower = 0
 
@@ -43,27 +44,57 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         self.recalctimer.start(100)
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param object e: fysom state transition information
+        """
         pass
 
     def getProcessValue(self):
+        """ Process value, here temperature.
+
+            @return float: process value
+        """
         return self.temperature
 
     def getProcessUnit(self):
+        """ Process unit, here kelvin.
+
+            @return float: process unit
+        """
         return ('K', 'kelvin')
 
     def setControlValue(self, value):
+        """ Set control value, here heating power.
+
+            @param flaot value: control value
+        """
         self.pwmpower = value
 
     def getControlValue(self):
+        """ Get current control value, here heating power
+
+            @return float: current control value
+        """
         return self.pwmpower
 
     def getControlUnit(self):
+        """ Get unit of control value.
+
+            @return tuple(str): short and text unit of control value
+        """
         return ('%', 'percent')
 
     def getControlLimits(self):
+        """ Get minimum and maximum of control value.
+            
+            @return tuple(float, float): minimum and maximum of control value
+        """
         return (-100, 100)
 
     def _recalcTemp(self):
+        """ Update current temperature based on model.
+        """
         pfactor = 1
         heatCapacity = self.metalHeatCapacity(self.temperature)
         dt = self.pwmpower * abs((self.temperature - 4)/self.temperature) * pfactor / heatCapacity
@@ -73,6 +104,12 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         # print(self.temperature, self.pwmpower, heatCapacity)
 
     def metalHeatCapacity(self, T):
+        """ Calculate heat capacity of copper at given temperature.
+
+            @param float T: temperature at which to calculate heat capacity
+
+            @return float: hrat capacity at temperature T
+        """
         NA = 6.02214086 * 10**23  # Avogadro constant
         k = 1.38064852 * 10**(-23)  # Boltzmann constant
         TD = 343.5 # Debye temperatre of copper

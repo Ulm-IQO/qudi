@@ -23,7 +23,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 
 from core.base import Base
-from interface.microwave_interface import MicrowaveInterface, MicrowaveLimits
+from interface.microwave_interface import MicrowaveInterface
+from interface.microwave_interface import MicrowaveLimits
+from interface.microwave_interface import MicrowaveMode
+from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):
@@ -33,9 +36,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     _modclass = 'MicrowaveDummy'
     _modtype = 'mwsource'
 
-    ## declare connectors
-    _out = {'mwsourcedummy': 'MicrowaveInterface'}
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -44,13 +44,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         # checking for the right configuration
         for key in config.keys():
             self.log.info("{0}: {1}".format(key,config[key]))
-
-        # trying to load the visa connection
-        try:
-            import visa
-        except:
-            self.log.error('No visa connection installed. Please install '
-                    'pyvisa.')
 
     def on_activate(self, e):
         """ Initialisation performed during activation of the module.
@@ -63,6 +56,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
                          of the state which should be reached after the event
                          had happened.
         """
+        self.mw_power = -120
         pass
 
     def on_deactivate(self, e):
@@ -76,7 +70,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     def get_limits(self):
         """Dummy limits"""
         limits = MicrowaveLimits()
-        limits.supported_modes = ('CW', 'LIST', 'SWEEP', 'AN_SWEEP')
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
 
         limits.min_frequency = 100e3
         limits.max_frequency = 20e9
@@ -98,7 +92,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>on')
+        self.log.info('MicrowaveDummy>on')
         return 0
 
     def off(self):
@@ -106,7 +100,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>off')
+        self.log.info('MicrowaveDummy>off')
         return 0
 
     def get_power(self):
@@ -114,27 +108,26 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        self.log.warning('MicrowaveDummy>get_power')
-        return random.uniform(-10, 10)
+        self.log.info('MicrowaveDummy>get_power')
+        return self.mw_power
 
-    def set_power(self,power=None):
+    def set_power(self, power=None):
         """ Sets the microwave output power.
 
         @param float power: the power (in dBm) set for this device
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>set_power, power: {0:f}'.format(
-            power))
+        self.mw_power = power
+        self.log.info('MicrowaveDummy>set_power, power: {0:f}'.format(power))
         return 0
-
 
     def get_frequency(self):
         """ Gets the frequency of the microwave output.
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        self.log.warning('MicrowaveDummy>get_frequency')
+        self.log.info('MicrowaveDummy>get_frequency')
         return random.uniform(0, 1e6)
 
     def set_frequency(self, freq=None):
@@ -144,8 +137,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>set_frequency, frequency: '
-                    '{0:f}'.format(freq))
+        self.log.info('MicrowaveDummy>set_frequency, frequency: {0:f}'.format(freq))
         return 0
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
@@ -159,8 +151,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        self.log.warning('MicrowaveDummy>set_cw, frequency: {0:f}, power '
-                    '{0:f}:'.format(freq, power))
+        self.log.info(
+            'MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(freq, power))
         return 0
 
     def set_list(self, freq=None, power=None):
@@ -172,8 +164,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.log.warning('MicrowaveDummy>set_list,\nfrequency (Hz): {0}\n'
-                    'power (dBm): {1}'.format(freq, power))
+        self.log.info(
+            'MicrowaveDummy>set_list,\nfrequency: {0}Hz\npower : {1}dBm'.format(freq, power))
         return 0
 
     def reset_listpos(self):
@@ -189,18 +181,38 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('MicrowaveDummy>list_on')
+        self.log.info('MicrowaveDummy>list_on')
         return 0
 
-    def set_ex_trigger(self, source, pol):
+    def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
-        @param str pol: polarisation of the trigger (basically rising edge or
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        self.log.info('MicrowaveDummy>ext_trigger')
+        return 0
 
+    def sweep_on(self):
+        """ Switches on the sweep mode.
 
+        @return int: error code (0:OK, -1:error)
+        """
+        self.log.info('MicrowaveDummy>sweep_on')
+        return 0
+
+    def set_sweep(self, start, stop, step, power):
+        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
+        """
+        self.log.info(
+            'MicrowaveDummy>set_sweep {0} {1} {2} {3}'.format(start, stop, step, power))
+        return 0
+
+    def reset_sweep(self):
+        """ Reset of MW sweep position to start
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0

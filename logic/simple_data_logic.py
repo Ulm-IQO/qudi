@@ -30,8 +30,7 @@ class SimpleDataLogic(GenericLogic):
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
-    _in = {'simpledata': 'SimpleData'}
-    _out = {'simplelogic': 'SimpleDataLogic'}
+    _connectors = {'simpledata': 'SimpleData'}
 
     sigRepeat = QtCore.Signal()
 
@@ -40,9 +39,9 @@ class SimpleDataLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        self._data_logic = self.get_in_connector('simpledata')
+        self._data_logic = self.get_connector('simpledata')
         self.stopRequest = False
-        self.bufferLength = 1000
+        self.bufferLength = 10000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self, e):
@@ -72,10 +71,11 @@ class SimpleDataLogic(GenericLogic):
             self.unlock()
             return
 
-        data = [self._data_logic.getData() for i in range(10)]
+        data = np.zeros((100,  self._data_logic.getChannels()))
+        data[:, 0] = np.array([self._data_logic.getData() for i in range(100)])
 
-        self.buf = np.roll(self.buf, -10, axis=0)
-        self.buf[-11:-1] = data
+        self.buf = np.roll(self.buf, -100, axis=0)
+        self.buf[-101:-1] = data
         w = np.hanning(self.window_len)
         s = np.r_[self.buf[self.window_len-1:0:-1], self.buf, self.buf[-1:-self.window_len:-1]]
         for channel in range(self._data_logic.getChannels()):

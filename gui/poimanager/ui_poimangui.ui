@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>691</width>
-    <height>820</height>
+    <height>864</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -159,7 +159,7 @@
         </font>
        </property>
        <property name="text">
-        <string>(x,y,z):</string>
+        <string>Coordinates: (x,y,z)</string>
        </property>
       </widget>
      </item>
@@ -173,6 +173,20 @@
        </property>
        <property name="textInteractionFlags">
         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Distance: direct (x, y)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="poi_distance_label">
+       <property name="text">
+        <string>? (?, ?)</string>
        </property>
       </widget>
      </item>
@@ -326,9 +340,9 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_11">
        <item>
-        <widget class="QCheckBox" name="periodic_refind_CheckBox">
+        <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Track (refind every</string>
+          <string>Track period:</string>
          </property>
         </widget>
        </item>
@@ -351,7 +365,7 @@
        <item>
         <widget class="QLabel" name="label_6">
          <property name="text">
-          <string>seconds)</string>
+          <string>seconds</string>
          </property>
         </widget>
        </item>
@@ -1159,38 +1173,6 @@
     <hint type="sourcelabel">
      <x>384</x>
      <y>41</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>track_poi_Action</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>periodic_refind_CheckBox</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>268</x>
-     <y>603</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>periodic_refind_CheckBox</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>track_poi_Action</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>268</x>
-     <y>603</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>

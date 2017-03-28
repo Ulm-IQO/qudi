@@ -24,6 +24,7 @@ from qtpy import QtCore
 import numpy as np
 from scipy.signal import gaussian
 from scipy.ndimage import filters
+import scipy.integrate as integrate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from collections import OrderedDict
 
@@ -37,12 +38,11 @@ class TraceAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'counterlogic1': 'CounterLogic',
-           'savelogic': 'SaveLogic',
-           'fitlogic': 'FitLogic',
-            }
-
-    _out = {'traceanalysislogic1': 'TraceAnalysisLogic'}
+    _connectors = {
+        'counterlogic1': 'CounterLogic',
+        'savelogic': 'SaveLogic',
+        'fitlogic': 'FitLogic',
+    }
 
     sigHistogramUpdated = QtCore.Signal()
 
@@ -76,11 +76,12 @@ class TraceAnalysisLogic(GenericLogic):
                          had happened.
         """
 
-        self._counter_logic = self.get_in_connector('counterlogic1')
-        self._save_logic = self.get_in_connector('savelogic')
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._counter_logic = self.get_connector('counterlogic1')
+        self._save_logic = self.get_connector('savelogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         self._counter_logic.sigGatedCounterFinished.connect(self.do_calculate_histogram)
+
 
         self.current_fit_function = 'No Fit'
 
@@ -104,15 +105,17 @@ class TraceAnalysisLogic(GenericLogic):
         if update:
             self.do_calculate_histogram()
 
-    def do_calculate_histogram(self):
+    def do_calculate_histogram(self, mode='normal'):
         """ Passes all the needed parameters to the appropriated methods.
 
         @return:
         """
+        if mode == 'normal':
+            self.hist_data = self.calculate_histogram(self._counter_logic.countdata[0],
+                                                      self._hist_num_bins)
+        if mode == 'fastcomtec':
+            self.sigHistogramUpdated.emit()
 
-        self.hist_data = self.calculate_histogram(self._counter_logic.countdata,
-                                                  self._hist_num_bins)
-        self.sigHistogramUpdated.emit()
 
     def calculate_histogram(self, trace, num_bins=None, custom_bin_arr=None):
         """ Calculate the histogram of a given trace.
@@ -235,17 +238,6 @@ class TraceAnalysisLogic(GenericLogic):
 
         return flip_prob, param
 
-    def analyze_lifetime(self, trace, dt, estimated_lifetime=None):
-        """ Perform an lifetime analysis of a 1D time trace. The analysis is
-            based on the Hidden-Markov-Model
-
-        @return:
-        """
-
-        pass
-
-
-
     def analyze_flip_prob_postselect(self):
         """ Post select the data trace so that the flip probability is only
             calculated from a jump from below a threshold value to an value
@@ -254,6 +246,8 @@ class TraceAnalysisLogic(GenericLogic):
         @return:
         """
         pass
+
+
 
     def get_fit_functions(self):
         """ Return all fit functions, which are currently implemented for that module.
@@ -322,6 +316,132 @@ class TraceAnalysisLogic(GenericLogic):
         fit_result = None
         return hist_fit_x, hist_fit_y, param_dict, fit_result
 
+    def analyze_lifetime(self, trace, dt, method='postselect',
+                         distr='gaussian_normalized', state='|-1>', num_bins=50):
+        """ Perform an lifetime analysis of a 1D time trace. The analysis is
+            based on the method provided ( for now only post select is implemented ).
+
+        @param numpy array trace: 1 D array
+        @param string method: The method used for the lifetime analysis
+        @param string distr: distribution used for analysis
+        @param string state: State that the mw was applied to
+        @param int num_bins: number of bins used in the histogram to determine the threshold before digitalisation
+                             of data
+        @return: dictionary containing the lifetimes of the different states |0>, |1>, |-1> in the case of the HMM method
+                 For the postselect method only lifetime for bright and darkstate is returned, keys are 'bright_state' and
+                 'dark_state'
+        """
+        lifetime_dict = {}
+
+        if method == 'postselect':
+            if distr == 'gaussian_normalized':
+                hist_y_val, hist_x_val = np.histogram(trace, num_bins)
+                hist_data = np.array([hist_x_val, hist_y_val])
+                threshold_fit, fidelity, param_dict = self.calculate_threshold(hist_data=hist_data,
+                                                                               distr='gaussian_normalized')
+                threshold = threshold_fit
+
+            # helper functions to get and analyze the timetrace
+            def analog_digitial_converter(cut_off, data):
+                digital_trace = []
+                for data_point in data:
+                    if data_point >= cut_off:
+                        digital_trace.append(1)
+                    else:
+                        digital_trace.append(0)
+                return digital_trace
+
+            def time_in_high_low(digital_trace, dt):
+                """
+                What I need this function to do is to get all consecutive {1, ... , n} 1s or 0s and add
+                them up and put into a list to later make a histogram from them.
+                """
+                occurances = []
+                index = 0
+                index2 = 0
+
+                while (index < len(digital_trace)):
+                    occurances.append(0)
+                    # start following the consecutive 1s
+                    while (digital_trace[index] == 1):
+                        occurances[index2] += 1
+                        if index == (len(digital_trace) - 1):
+                            occurances = np.array(occurances)
+                            return occurances * dt
+                        else:
+                            index += 1
+                    if digital_trace[index - 1] == 1:
+                        index2 += 1
+                        occurances.append(0)
+                    # start following the consecutive 0s
+                    while (digital_trace[index] == 0):
+                        occurances[index2] -= 1
+                        if index == (len(digital_trace) - 1):
+                            occurances = np.array(occurances)
+                            return occurances * dt
+                        else:
+                            index += 1
+                    index2 += 1
+
+            digital_trace = analog_digitial_converter(threshold, trace)
+            time_array = time_in_high_low(digital_trace, dt)
+
+            # now we need to make a histogram as well as a fit
+            # what would be a good estimate for the number of bins
+
+            # longest = np.max(np.array(occurances))
+            # number of steps in between, rather not use that for now
+            # est_bins = np.int(longest/dt)
+
+            time_array_high = np.array([ii for ii in filter(lambda x: x > 0, time_array)])
+            time_array_low = np.array([ii for ii in filter(lambda x: x < 0, time_array)])
+
+
+            # get lifetime of bright state
+            time_hist_high = np.histogram(time_array_high, bins=num_bins)
+            vals = [i for i in filter(lambda x: x[1] > 0, enumerate(time_hist_high[0][0:num_bins]))]
+
+            indices = np.array([val[0] for val in vals])
+            indices = np.array([np.int(indice) for indice in indices])
+            self.log.debug('threshold {0}'.format(threshold))
+            self.log.debug('time_array:{0}'.format(time_array))
+            self.log.debug('time_array_high:{0}'.format(time_array_high))
+            self.log.debug('time_hist_high:{0}'.format(time_hist_high))
+            self.log.debug('indices: {0}'.format(indices))
+            self.debug_lifetime_x = time_hist_high[1][indices]
+            self.debug_lifetime_y = time_hist_high[0][indices]
+            para = dict()
+            para['offset'] = {"value": 0.0, "vary": False}
+            result = self._fit_logic.make_exponentialdecayoffset_fit(time_hist_high[1][indices],
+                                                               time_hist_high[0][indices], add_params=para)
+            bright_liftime = result.params['lifetime']
+            # for debug purposes give also the results back of the fits for now
+            lifetime_dict['result_bright'] = result
+            # also give back the data used for the fit
+            lifetime_dict['bright_raw'] =  np.array([time_hist_high[1][indices],time_hist_high[0][indices]])
+
+            # get lifetime of dark state
+            time_hist_low = np.histogram(time_array_low, bins=num_bins)
+            vals = [i for i in filter(lambda x: x[1] > 0, enumerate(time_hist_low[0][0:num_bins]))]
+            indices = np.array([val[0] for val in vals])
+            indices = np.array([np.int(indice) for indice in indices])
+            values = np.array([val[1] for val in vals])
+            # positive axis
+            mirror_axis = -time_hist_low[1][indices]
+            result = self._fit_logic.make_exponentialdecayoffset_fit(mirror_axis,
+                                                               values, add_params=para)
+            dark_liftime = result.params['lifetime']
+            lifetime_dict['result_dark'] = result
+
+            lifetime_dict['bright_state'] = bright_liftime.value
+            lifetime_dict['dark_state'] = dark_liftime.value
+            # also give back the data used for the fit
+            lifetime_dict['dark_raw'] = np.array([mirror_axis, values])
+
+
+
+        return lifetime_dict
+
     def do_gaussian_fit(self, axis, data):
         """ Perform a gaussian fit.
 
@@ -354,14 +474,16 @@ class TraceAnalysisLogic(GenericLogic):
             sigma = Integral / amp / np.sqrt(2 * np.pi)
             amplitude = amp * sigma * np.sqrt(2 * np.pi)
 
-            update_dict['c']         = {'min': 0,          'max': data.max(), 'value': 0, 'vary': False}
+            update_dict['offset']    = {'min': 0,          'max': data.max(), 'value': 0, 'vary': False}
             update_dict['center']    = {'min': axis.min(), 'max': axis.max(), 'value': axis[np.argmax(data)]}
             update_dict['sigma']     = {'min': -np.inf,    'max': np.inf,     'value': sigma}
             update_dict['amplitude'] = {'min': 0,          'max': np.inf,     'value': amplitude}
 
-            result = self._fit_logic.make_gaussian_fit(axis=axis,
+            result = self._fit_logic.make_gaussian_fit(x_axis=axis,
                                                        data=data,
-                                                       add_parameters=update_dict)
+                                                       estimator=self._fit_logic.estimate_gaussian_peak,
+                                                       units=None,  # TODO
+                                                       add_params=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
@@ -369,9 +491,9 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['sigma_0'] = {'value': result.params['amplitude'].value,
-                                      'error': result.params['amplitude'].stderr,
-                                      'unit' : 'Occurrences'}
+            param_dict['sigma_0'] = {'value': result.params['sigma'].value,
+                                     'error': result.params['sigma'].stderr,
+                                     'unit' : 'Occurrences'}
 
             param_dict['FWHM'] = {'value': result.params['fwhm'].value,
                                   'error': result.params['fwhm'].stderr,
@@ -391,7 +513,7 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublegaussian_fit(self, axis, data):
-        model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
+        model, params = self._fit_logic.make_gaussiandouble_model()
 
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '
@@ -399,9 +521,8 @@ class TraceAnalysisLogic(GenericLogic):
             return self.do_no_fit()
 
         else:
-            result = self._fit_logic.make_doublegaussian_fit(axis=axis,
-                                                             data=data, estimator='gated_counter',
-                                                             add_parameters=None)
+            result = self._fit_logic.make_twogausspeakoffset_fit(x_axis=axis,
+                                                                 data=data)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -411,36 +532,36 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['sigma_0'] = {'value': result.params['gaussian0_sigma'].value,
-                                     'error': result.params['gaussian0_sigma'].stderr,
+            param_dict['sigma_0'] = {'value': result.params['g0_sigma'].value,
+                                     'error': result.params['g0_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
-            param_dict['FWHM_0'] = {'value': result.params['gaussian0_fwhm'].value,
-                                    'error': result.params['gaussian0_fwhm'].stderr,
+            param_dict['FWHM_0'] = {'value': result.params['g0_fwhm'].value,
+                                    'error': result.params['g0_fwhm'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Center_0'] = {'value': result.params['gaussian0_center'].value,
-                                      'error': result.params['gaussian0_center'].stderr,
+            param_dict['Center_0'] = {'value': result.params['g0_center'].value,
+                                      'error': result.params['g0_center'].stderr,
                                       'unit' : 'Counts/s'}
 
-            param_dict['Amplitude_0'] = {'value': result.params['gaussian0_amplitude'].value,
-                                         'error': result.params['gaussian0_amplitude'].stderr,
+            param_dict['Amplitude_0'] = {'value': result.params['g0_amplitude'].value,
+                                         'error': result.params['g0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            param_dict['sigma_1'] = {'value': result.params['gaussian1_sigma'].value,
-                                     'error': result.params['gaussian1_sigma'].stderr,
+            param_dict['sigma_1'] = {'value': result.params['g1_sigma'].value,
+                                     'error': result.params['g1_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
-            param_dict['FWHM_1'] = {'value': result.params['gaussian1_fwhm'].value,
-                                    'error': result.params['gaussian1_fwhm'].stderr,
+            param_dict['FWHM_1'] = {'value': result.params['g1_fwhm'].value,
+                                    'error': result.params['g1_fwhm'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Center_1'] = {'value': result.params['gaussian1_center'].value,
-                                      'error': result.params['gaussian1_center'].stderr,
+            param_dict['Center_1'] = {'value': result.params['g1_center'].value,
+                                      'error': result.params['g1_center'].stderr,
                                       'unit' : 'Counts/s'}
 
-            param_dict['Amplitude_1'] = {'value': result.params['gaussian1_amplitude'].value,
-                                         'error': result.params['gaussian1_amplitude'].stderr,
+            param_dict['Amplitude_1'] = {'value': result.params['g1_amplitude'].value,
+                                         'error': result.params['g1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
@@ -448,16 +569,16 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, param_dict, result
 
     def do_doublepossonian_fit(self, axis, data):
-        model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
+        model, params = self._fit_logic.make_multiplepoissonian_model(no_of_functions=2)
         if len(axis) < len(params):
             self.log.warning('Fit could not be performed because number of '
                     'parameters is smaller than data points')
             return self.do_no_fit()
 
         else:
-            result = self._fit_logic.make_doublepoissonian_fit(axis=axis,
+            result = self._fit_logic.make_doublepoissonian_fit(x_axis=axis,
                                                                data=data,
-                                                               add_parameters=None)
+                                                               add_params=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -467,22 +588,23 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['lambda_0'] = {'value': result.params['poissonian0_mu'].value,
-                                     'error': result.params['poissonian0_mu'].stderr,
+            param_dict['lambda_0'] = {'value': result.params['p0_mu'].value,
+                                     'error': result.params['p0_mu'].stderr,
                                      'unit' : 'Counts/s'}
-            param_dict['Amplitude_0'] = {'value': result.params['poissonian0_amplitude'].value,
-                                         'error': result.params['poissonian0_amplitude'].stderr,
+            param_dict['Amplitude_0'] = {'value': result.params['p0_amplitude'].value,
+                                         'error': result.params['p0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
-            param_dict['lambda_1'] = {'value': result.params['poissonian1_mu'].value,
-                                     'error': result.params['poissonian1_mu'].stderr,
+            param_dict['lambda_1'] = {'value': result.params['p1_mu'].value,
+                                     'error': result.params['p1_mu'].stderr,
                                      'unit' : 'Counts/s'}
-            param_dict['Amplitude_1'] = {'value': result.params['poissonian1_amplitude'].value,
-                                         'error': result.params['poissonian1_amplitude'].stderr,
+            param_dict['Amplitude_1'] = {'value': result.params['p1_amplitude'].value,
+                                         'error': result.params['p1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-            return hist_fit_x, hist_fit_y, param_dict, result
+            # removed last return value <<result>> here, because function calculate_threshold only expected
+            # three return values
+            return hist_fit_x, hist_fit_y, param_dict
 
     def do_possonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model()
@@ -491,9 +613,9 @@ class TraceAnalysisLogic(GenericLogic):
                     'parameters is smaller than data points')
             return self.do_no_fit()
         else:
-            result = self._fit_logic.make_poissonian_fit(axis=axis,
+            result = self._fit_logic.make_poissonian_fit(x_axis=axis,
                                                          data=data,
-                                                         add_parameters=None)
+                                                         add_params=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -503,8 +625,8 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['lambda'] = {'value': result.params['poissonian_mu'].value,
-                                    'error': result.params['poissonian_mu'].stderr,
+            param_dict['lambda'] = {'value': result.params['mu'].value,
+                                    'error': result.params['mu'].stderr,
                                     'unit' : 'Counts/s'}
 
             param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
@@ -566,11 +688,14 @@ class TraceAnalysisLogic(GenericLogic):
 
         return guessed_threshold
 
-    def calculate_threshold(self, hist_data=None):
+    def calculate_threshold(self, hist_data=None, distr='poissonian'):
         """ Calculate the threshold by minimizing its overlap with the poissonian fits.
 
         @param np.array hist_data: 2D array whitch represent the x and y values
                                    of a histogram of a trace.
+               string distr: tells the function on what distribution it should calculate
+                             the threshold ( Added because it might happen that one normalizes data
+                             between (-1,1) and then a poissonian distribution won't work anymore.
 
         @return tuple(float, float):
                     threshold: the calculated threshold between two overlapping
@@ -583,105 +708,183 @@ class TraceAnalysisLogic(GenericLogic):
         respect to the overlap area:
 
         """
-
-        # perform the fit
-        x_axis = hist_data[0][:-1]+(hist_data[0][1]-hist_data[0][0])/2.
+        # in any case calculate the hist data
+        x_axis = hist_data[0][:-1] + (hist_data[0][1] - hist_data[0][0]) / 2.
         y_data = hist_data[1]
-        hist_fit_x, hist_fit_y, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
+        if distr == 'poissonian':
+            # perform the fit
 
-        if param_dict.get('lambda_0') is None:
-            self.log.error('The double poissonian fit does not work! Take at '
-                        'least a dummy value, in order not to break the '
-                        'routine.')
-            amp0 = 1
-            amp1 = 1
+            hist_fit_x, hist_fit_y, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
 
-            param_dict['Amplitude_0'] = {'value': amp0, 'unit': 'occurences'}
-            param_dict['Amplitude_1'] = {'value': amp0, 'unit': 'occurences'}
+            if param_dict.get('lambda_0') is None:
+                self.log.error('The double poissonian fit does not work! Take at '
+                            'least a dummy value, in order not to break the '
+                            'routine.')
+                amp0 = 1
+                amp1 = 1
 
-            # make them a bit different so that fit works.
-            mu0 = hist_data[0][:].mean()-0.1
-            mu1 = hist_data[0][:].mean()+0.1
+                param_dict['Amplitude_0'] = {'value': amp0, 'unit': 'occurences'}
+                param_dict['Amplitude_1'] = {'value': amp0, 'unit': 'occurences'}
 
-            param_dict['lambda_0'] = {'value': mu0, 'unit': 'counts'}
-            param_dict['lambda_1'] = {'value': mu1, 'unit': 'counts'}
+                # make them a bit different so that fit works.
+                mu0 = hist_data[0][:].mean()-0.1
+                mu1 = hist_data[0][:].mean()+0.1
 
-        else:
+                param_dict['lambda_0'] = {'value': mu0, 'unit': 'counts'}
+                param_dict['lambda_1'] = {'value': mu1, 'unit': 'counts'}
 
-            mu0 = param_dict['lambda_0']['value']
-            mu1 = param_dict['lambda_1']['value']
+            else:
 
-            amp0 = param_dict['Amplitude_0']['value']
-            amp1 = param_dict['Amplitude_1']['value']
+                mu0 = param_dict['lambda_0']['value']
+                mu1 = param_dict['lambda_1']['value']
 
-        if mu0 < mu1:
-            first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
-            sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
-        else:
-            first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
-            sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
+                amp0 = param_dict['Amplitude_0']['value']
+                amp1 = param_dict['Amplitude_1']['value']
 
-        # create a two poissonian array, where the second poissonian
-        # distribution is add as negative values. Now the transition from
-        # positive to negative values will get the threshold:
-        difference_poissonian = first_dist - sec_dist
+            if mu0 < mu1:
+                first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
+                sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
+            else:
+                first_dist = self.get_poissonian(x_val=hist_data[0], mu=mu1, amplitude=amp1)
+                sec_dist = self.get_poissonian(x_val=hist_data[0], mu=mu0, amplitude=amp0)
 
-        trans_index = 0
-        for i in range(len(difference_poissonian)-1):
-            # go through the combined histogram array and the point which
-            # changes the sign. The transition from positive to negative values
-            # will get the threshold:
-            if difference_poissonian[i] < 0 and difference_poissonian[i+1] >= 0:
-                trans_index = i
-                break
-            elif difference_poissonian[i] > 0 and difference_poissonian[i+1] <= 0:
-                trans_index = i
-                break
+            # create a two poissonian array, where the second poissonian
+            # distribution is add as negative values. Now the transition from
+            # positive to negative values will get the threshold:
+            difference_poissonian = first_dist - sec_dist
 
-        threshold_fit = hist_data[0][trans_index]
+            trans_index = 0
+            for i in range(len(difference_poissonian)-1):
+                # go through the combined histogram array and the point which
+                # changes the sign. The transition from positive to negative values
+                # will get the threshold:
+                if difference_poissonian[i] < 0 and difference_poissonian[i+1] >= 0:
+                    trans_index = i
+                    break
+                elif difference_poissonian[i] > 0 and difference_poissonian[i+1] <= 0:
+                    trans_index = i
+                    break
 
-        # Calculate also the readout fidelity, i.e. sum the area under the
-        # first peak before the threshold of the first and second distribution
-        # and take the ratio of that area. Do the same thing after the threshold
-        # (of course with a reversed choice of the distribution). If the overlap
-        # in both cases is very small, then the fidelity is good, if the overlap
-        # is identical, then fidelity indicates a poor separation of the peaks.
+            threshold_fit = hist_data[0][trans_index]
 
-        if mu0 < mu1:
-            area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, 1).sum()
-            area0_high = self.get_poissonian(hist_data[0][trans_index:], mu0, 1).sum()
-            area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, 1).sum()
-            area1_high = self.get_poissonian(hist_data[0][trans_index:], mu1, 1).sum()
+            # Calculate also the readout fidelity, i.e. sum the area under the
+            # first peak before the threshold of the first and second distribution
+            # and take the ratio of that area. Do the same thing after the threshold
+            # (of course with a reversed choice of the distribution). If the overlap
+            # in both cases is very small, then the fidelity is good, if the overlap
+            # is identical, then fidelity indicates a poor separation of the peaks.
 
-            area0_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
-            area0_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
-            area1_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
-            area1_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
+            if mu0 < mu1:
+                area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, 1).sum()
+                area0_high = self.get_poissonian(hist_data[0][trans_index:], mu0, 1).sum()
+                area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, 1).sum()
+                area1_high = self.get_poissonian(hist_data[0][trans_index:], mu1, 1).sum()
 
-        else:
-            area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, 1).sum()
-            area1_high = self.get_poissonian(hist_data[0][trans_index:], mu0, 1).sum()
-            area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, 1).sum()
-            area0_high = self.get_poissonian(hist_data[0][trans_index:], mu1, 1).sum()
+                area0_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
+                area0_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
+                area1_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
+                area1_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
 
-            area1_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
-            area1_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
-            area0_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
-            area0_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
+            else:
+                area1_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, 1).sum()
+                area1_high = self.get_poissonian(hist_data[0][trans_index:], mu0, 1).sum()
+                area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu1, 1).sum()
+                area0_high = self.get_poissonian(hist_data[0][trans_index:], mu1, 1).sum()
 
-        # Now calculate how big is the overlap relative to the sum of the other
-        # part of the area, that will give the normalized fidelity:
-        fidelity = 1 - (area1_low / area0_low + area0_high / area1_high) / 2
+                area1_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
+                area1_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu0, amp0).sum()
+                area0_low_amp = self.get_poissonian(hist_data[0][0:trans_index], mu1, amp1).sum()
+                area0_high_amp = self.get_poissonian(hist_data[0][trans_index:], mu1, amp1).sum()
 
-        area0 = self.get_poissonian(hist_data[0][:], mu0, amp0).sum()
-        area1 = self.get_poissonian(hist_data[0][:], mu1, amp1).sum()
+            # Now calculate how big is the overlap relative to the sum of the other
+            # part of the area, that will give the normalized fidelity:
+            fidelity = 1 - (area1_low / area0_low + area0_high / area1_high) / 2
 
-        # try this new measure for the fidelity
-        fidelity2 = 1 - ((area1_low_amp/area1) / (area0_low_amp/area0) + (area0_high_amp/area0) / (area1_high_amp/area1) ) / 2
+            area0 = self.get_poissonian(hist_data[0][:], mu0, amp0).sum()
+            area1 = self.get_poissonian(hist_data[0][:], mu1, amp1).sum()
 
-        param_dict['normalized_fidelity'] = fidelity2
+            # try this new measure for the fidelity
+            fidelity2 = 1 - ((area1_low_amp/area1) / (area0_low_amp/area0) + (area0_high_amp/area0) / (area1_high_amp/area1) ) / 2
 
-        return threshold_fit, fidelity, param_dict
+            param_dict['normalized_fidelity'] = fidelity2
+
+            return threshold_fit, fidelity, param_dict
+
+        # this works if your data is normalized to the interval (-1,1)
+        if distr == 'gaussian_normalized':
+            # first some helper functions
+            def two_gaussian_intersect(m1, m2, std1, std2, amp1, amp2):
+                """
+                function to calculate intersection of two gaussians
+                """
+                a = 1 / (2 * std1 ** 2) - 1 / (2 * std2 ** 2)
+                b = m2 / (std2 ** 2) - m1 / (std1 ** 2)
+                c = m1 ** 2 / (2 * std1 ** 2) - m2 ** 2 / (2 * std2 ** 2) - np.log(amp2 / amp1)
+                return np.roots([a, b, c])
+
+            def gaussian(counts, amp, stdv, mean):
+                return amp * np.exp(-(counts - mean) ** 2 / (2 * stdv ** 2)) / (stdv * np.sqrt(2 * np.pi))
+
+            try:
+                result = self._fit_logic.make_twogausspeakoffset_fit(x_axis, y_data)
+                # calculating the threshold
+                # NOTE the threshold is taken as the intersection of the two gaussians, while this should give
+                # a good approximation I doubt it is mathematical exact.
+
+                mu0 = result.params['g0_center'].value
+                mu1 = result.params['g1_center'].value
+                sigma0 = result.params['g0_sigma'].value
+                sigma1 = result.params['g1_sigma'].value
+                amp0 = result.params['g0_amplitude'].value / (sigma0 * np.sqrt(2 * np.pi))
+                amp1 = result.params['g1_amplitude'].value / (sigma1 * np.sqrt(2 * np.pi))
+                candidates = two_gaussian_intersect(mu0, mu1, sigma0, sigma1, amp0, amp1)
+
+                # we want to get the intersection that lies between the two peaks
+                if mu0 < mu1:
+                    threshold = [i for i in filter(lambda x: (x > mu0) & (x < mu1), candidates)]
+                else:
+                    threshold = [i for i in filter(lambda x: (x < mu0) & (x > mu1), candidates)]
+
+                threshold = threshold[0]
+
+                # now we want to get the readout fidelity
+                # of the bigger peak ( most likely the two states that aren't driven by the mw pi pulse )
+                if mu0 < mu1:
+                    gc0 = integrate.quad(lambda counts: gaussian(counts, amp1, sigma1, mu1), -1, 1)
+                    gp0 = integrate.quad(lambda counts: gaussian(counts, amp1, sigma1, mu1), -1, threshold)
+                else:
+                    gc0 = integrate.quad(lambda counts: gaussian(counts, amp0, sigma0, mu0), -1, 1)
+                    gp0 = integrate.quad(lambda counts: gaussian(counts, amp0, sigma0, mu0), -1, threshold)
+
+                # and then the same for the other peak ]
+
+                if mu0 > mu1:
+                    gc1 = integrate.quad(lambda counts: gaussian(counts, amp1, sigma1, mu1), -1, 1)
+                    gp1 = integrate.quad(lambda counts: gaussian(counts, amp1, sigma1, mu1), threshold, 1)
+                else:
+                    gc1 = integrate.quad(lambda counts: gaussian(counts, amp0, sigma0, mu0), -1, 1)
+                    gp1 = integrate.quad(lambda counts: gaussian(counts, amp0, sigma0, mu0), threshold, 1)
+
+                param_dict = {}
+                fidelity = 1 - (gp0[0] / gc0[0] + gp1[0] / gc1[0])/2
+                fidelity1 = 1 - (gp0[0] / gc0[0])
+                fidelity2 = 1 - gp1[0] / gc1[0]
+                threshold_fit = threshold
+                # if the fit worked, add also the result to the param_dict, which might be useful for debugging
+                param_dict['result'] = result
+            except:
+                self.log.error('could not fit the data')
+                error= True
+                fidelity = 0
+                threshold_fit = 0
+                param_dict = {}
+                new_dict = {}
+                new_dict['value'] = np.inf
+                param_dict['chi_sqr'] = new_dict
+
+            return threshold_fit, fidelity, param_dict
+
+
 
 
     def calculate_binary_trace(self, trace, threshold):

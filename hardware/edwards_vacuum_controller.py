@@ -26,14 +26,14 @@ import visa
 
 class EdwardsVacuumController(Base):
     """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    This module implements communication with Edwards turbopump and
+    vacuum PIC.
+
+
+    This module is not complete or functional.
     """
     _modclass = 'edwards_pump'
     _modtype = 'hardware'
-
-    # connectors
-    _out = {'pump': 'Pump'}
 
     # IDs for communication
     PRIORITY = {
@@ -189,10 +189,18 @@ class EdwardsVacuumController(Base):
 
 
     def on_activate(self, e):
+        """ Activate modeule
+
+            @param object e: fysom state transition information
+        """
         config = self.getConfiguration()
         self.connect_tic(config['interface'])
 
     def on_deactivate(self, e):
+        """ Deactivate modeule
+
+            @param object e: fysom state transition information
+        """
         self.disconnect_tic()
 
     def connect_tic(self, interface):
@@ -217,24 +225,35 @@ class EdwardsVacuumController(Base):
             return False
 
     def disconnect_tic(self):
-        """
-        Close connection to instrument.
+        """ Close connection to instrument.
         """
         self.inst.close()
         self.rm.close()
 
     def _parse_gauge_answer(self, answer):
+        """ Parse vacuum gauge answer string into dict.
+
+            @param str answer: string returned by vacuum gauge
+
+            @return dict: dict of values from gauge string
+        """
         valuess = answer.split(';')
         parsed = {
             'value': float(valuess[0]),
-            'unit': self.GAUGE_UNIT[ int(valuess[1]) ],
-            'state': self.GAUGE_STATE[ int(valuess[2]) ],
-            'alert': self.ALERT_ID[ int(valuess[3]) ],
-            'priority': self.PRIORITY[ int(valuess[4]) ]
+            'unit': self.GAUGE_UNIT[int(valuess[1])],
+            'state': self.GAUGE_STATE[int(valuess[2])],
+            'alert': self.ALERT_ID[int(valuess[3])],
+            'priority': self.PRIORITY[int(valuess[4])]
         }
         return parsed
 
     def _get_pstate(self, register):
+        """ Parse pump state string into dict.
+
+            @param str pstate: pump state string
+
+            @return dict: pump state dict
+        """
         g = self.inst.ask('?V{0}'.format(register))
         param = g.split()[0]
         value = g.split()[1]
@@ -250,6 +269,12 @@ class EdwardsVacuumController(Base):
             return
 
     def _get_pval(self, register):
+        """ Parse pump register into dict.
+
+            @param str regiser: pressure gauge string
+
+            @returm dict: pressure gauge dict
+        """
         g = self.inst.ask('?V{0}'.format(register))
         param = g.split()[0]
         value = g.split()[1]
@@ -265,63 +290,103 @@ class EdwardsVacuumController(Base):
             return {}
 
     def _get_gauge(self, gauge):
-         g = self.inst.ask('?V{0}'.format(gauge))
-         param = g.split()[0]
-         values = g.split()[1]
-         if param == '=V{0}'.format(gauge):
-             return self._parse_gauge_answer(values)
-         else:
-             return
+        """ Get gauge value
+
+            @param int gauge: number of gauge
+
+            @return dict: gauge values in dict
+        """
+        g = self.inst.ask('?V{0}'.format(gauge))
+        param = g.split()[0]
+        values = g.split()[1]
+        if param == '=V{0}'.format(gauge):
+            return self._parse_gauge_answer(values)
+        else:
+            return
 
     def get_pressures(self):
+        """ Get all pressures.
+
+            @return dict: dict of gauge names and pressures
+        """
         p1 = self._get_gauge(913)['value']
         p2 = self._get_gauge(914)['value']
         p3 = self._get_gauge(915)['value']
         return {'gauge1': p1, 'gauge2': p2, 'gauge3': p3}
 
     def get_turbo_status(self):
+        """ Get state of turbo pump.
+
+            @return dict: stae of turbo pump
+        """
         return self._get_pstate(904)
 
     def get_turbo_speed(self):
+        """ Get turbo pump speed.
+        """
         return self._get_pval(905)
 
     def get_turbo_power(self):
+        """ Get turbo pump power.
+        """
         return self._get_pval(906)
 
     def get_backing_status(self):
+        """ Get backing pump status.
+        """
         return self._get_pstate(910)
 
     def get_backing_speed(self):
+        """ Get backing pump speed.
+        """
         return self._get_pval(911)
 
     def get_backing_power(self):
+        """ Get backing pump power.
+        """
         return self._get_pval(912)
 
     def get_gauge1(self):
+        """ Get gauge 1 pressure.
+        """
         return self._get_gauge(913)
 
     def get_gauge2(self):
+        """ Get gauge 2 pressure.
+        """
         return self._get_gauge(914)
 
     def get_gauge3(self):
+        """ Get gauge 3 pressure.
+        """
         return self._get_gauge(915)
 
     def get_extra_info(self):
+        """ Get extra information about pumping system.
+        """
         return 'Controller: {0}\nTurbo: {1}\nBacking: {2}'.format(
             self.inst.ask('?S902'),
             self.inst.ask('?S904'),
             self.inst.ask('?S910'))
 
     def get_pump_speeds(self):
+        """ Get pump speeds.
+        """
         return {'turbo': self.get_turbo_speed()['value'], 'backing': self.get_backing_speed()['value']}
 
     def get_pump_powers(self):
+        """ Get pump powers.
+        """
         return {'turbo': self.get_turbo_power()['value'], 'backing': self.get_backing_power()['value']}
 
     def get_pump_states(self):
+        """ Get pump states.
+        """
         return {'turbo': self.get_turbo_status()['state'], 'backing': self.get_backing_status()['state']}
 
     def set_pump_states(self, states):
+        """ St pump states
+        """
         new_state = {}
         if 'turbo' in states:
             reply = self.inst.ask('!C904 {0}'.format(1 if states['turbo'] else 0))
@@ -331,7 +396,11 @@ class EdwardsVacuumController(Base):
         return new_state
 
     def get_system_state(self):
+        """ Get system state
+        """
         return self.inst.ask('?V933')
 
     def set_system_state(self, state):
+        """ Set system state
+        """
         return self.inst.ask('!C933 {0}'.format(1 if state else 0))

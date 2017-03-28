@@ -1,0 +1,90 @@
+name: qudi
+channels:
+- defaults
+dependencies:
+- bzip2=1.0.6=vc14_3
+- colorama=0.3.7=py36_0
+- comtypes=1.1.2=py36_0
+- cycler=0.10.0=py36_0
+- decorator=4.0.11=py36_0
+- entrypoints=0.2.2=py36_0
+- freetype=2.5.5=vc14_2
+- h5py=2.6.0=np112py36_2
+- hdf5=1.8.15.1=vc14_4
+- icu=57.1=vc14_0
+- ipykernel=4.5.2=py36_0
+- ipython=5.1.0=py36_0
+- ipython_genutils=0.1.0=py36_0
+- ipywidgets=5.2.2=py36_1
+- jedi=0.9.0=py36_1
+- jinja2=2.9.4=py36_0
+- jpeg=9b=vc14_0
+- jsonschema=2.5.1=py36_0
+- jupyter=1.0.0=py36_3
+- jupyter_client=4.4.0=py36_0
+- jupyter_console=5.0.0=py36_0
+- jupyter_core=4.2.1=py36_0
+- libpng=1.6.27=vc14_0
+- libtiff=4.0.6=vc14_3
+- lxml=3.7.2=py36_0
+- markupsafe=0.23=py36_2
+- matplotlib=2.0.0=np112py36_0
+- mistune=0.7.3=py36_0
+- mkl=2017.0.1=0
+- nbconvert=4.2.0=py36_0
+- nbformat=4.2.0=py36_0
+- notebook=4.3.1=py36_1
+- numpy=1.12.0=py36_0
+- olefile=0.44=py36_0
+- openssl=1.0.2k=vc14_0
+- path.py=10.0=py36_0
+- pickleshare=0.7.4=py36_0
+- pillow=4.0.0=py36_1
+- pip=9.0.1=py36_1
+- prompt_toolkit=1.0.9=py36_0
+- pygments=2.1.3=py36_0
+- pyparsing=2.1.4=py36_0
+- pyqt=5.6.0=py36_2
+- python=3.6.0=0
+- python-dateutil=2.6.0=py36_0
+- pytz=2016.10=py36_0
+- pywin32=220=py36_2
+- pyzmq=16.0.2=py36_0
+- qt=5.6.2=vc14_3
+- qtconsole=4.2.1=py36_2
+- qtpy=1.2.1=py36_0
+- scipy=0.18.1=np112py36_1
+- setuptools=27.2.0=py36_1
+- simplegeneric=0.8.1=py36_1
+- sip=4.18=py36_0
+- six=1.10.0=py36_0
+- tk=8.5.18=vc14_0
+- tornado=4.4.2=py36_0
+- traitlets=4.3.1=py36_0
+- vs2015_runtime=14.0.25123=0
+- wcwidth=0.1.7=py36_0
+- wheel=0.29.0=py36_0
+- widgetsnbextension=1.2.6=py36_0
+- win_unicode_console=0.5=py36_0
+- zlib=1.2.8=vc14_3
+- pip:
+  - fysom==2.1.2
+  - gitdb2==2.0.0
+  - gitpython==2.1.1
+  - hdf5storage==0.1.14
+  - ipython-genutils==0.1.0
+  - jupyter-client==4.4.0
+  - jupyter-console==5.0.0
+  - jupyter-core==4.2.1
+  - lmfit==0.9.5
+  - plumbum==1.6.3
+  - prompt-toolkit==1.0.9
+  - pydaqmx==1.3.2
+  - pyqtgraph==0.10.0
+  - pyvisa==1.8
+  - pyvisa-py==0.2
+  - rpyc==3.3.0
+  - ruamel.yaml==0.13.13
+  - smmap2==2.0.1
+  - typing==3.5.3.0
+  - win-unicode-console==0.5

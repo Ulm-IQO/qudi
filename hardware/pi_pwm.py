@@ -28,11 +28,11 @@ import RPi.GPIO as GPIO
 
 
 class PiPWM(Base, ProcessControlInterface):
+    """ Hardware module for Raspberry Pi-based PWM controller.
+    """
+
     _modclass = 'ProcessControlInterface'
     _modtype = 'hardware'
-
-    ## declare connectors
-    _out = {'pwm': 'ProcessControlInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -41,6 +41,10 @@ class PiPWM(Base, ProcessControlInterface):
         self.threadlock = Mutex()
 
     def on_activate(self, e):
+        """ Activate module.
+
+            @param object e: fysom state transition information
+        """
         config = self.getConfiguration()
 
         if 'channel' in config:
@@ -78,9 +82,15 @@ class PiPWM(Base, ProcessControlInterface):
         self.startPWM()
 
     def on_deactivate(self, e):
+        """ Deactivate module.
+
+            @param object e: fysom state transition information
+        """
         self.stopPWM()
 
     def setupPins(self):
+        """ Set Raspberry Pi GPIO pins to the right mode.
+        """
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.enapin, GPIO.OUT)
         GPIO.setup(self.enbpin, GPIO.OUT)
@@ -93,6 +103,8 @@ class PiPWM(Base, ProcessControlInterface):
         self.p = GPIO.PWM(self.pwmpin, self.freq)
 
     def startPWM(self):
+        """ Start the PWM output.
+        """
         GPIO.output(self.fanpin, True)
         GPIO.output(self.enapin, True)
         GPIO.output(self.enbpin, True)
@@ -104,6 +116,8 @@ class PiPWM(Base, ProcessControlInterface):
         self.dutycycle = 0
 
     def stopPWM(self):
+        """ Stop the PWM output.
+        """
         # Stop PWM
         self.p.stop()
         GPIO.output(self.enapin, False)
@@ -113,6 +127,10 @@ class PiPWM(Base, ProcessControlInterface):
         GPIO.output(self.fanpin, False)
 
     def changeDutyCycle(self, duty):
+        """ Set the PWM duty cycle in percent.
+
+            @param float duty: PWM duty cycle 0 < duty < 100
+        """
         self.dutycycle = 0
         if duty >= 0:
             GPIO.output(self.inapin, True)
@@ -123,20 +141,39 @@ class PiPWM(Base, ProcessControlInterface):
         self.p.ChangeDutyCycle(abs(duty))
 
     def setControlValue(self, value):
+        """ Set control value for this controller.
+        
+            @param float value: control value, in this case duty cycle in percent
+        """
         with self.threadlock:
             self.changeDutyCycle(value)
 
     def getControlValue(self):
+        """ Get control value for this controller.
+        
+            @return float: control value, in this case duty cycle in percent
+        """
         return self.dutycycle
 
     def getControlUnit(self):
+        """ Get unit for control value.
+
+            @return tuple(str, str): short and text form of unit
+        """
         return ('%', 'percent')
 
     def getControlLimits(self):
+        """ Get minimum and maxuimum value for control value.
+
+            @return tuple(float, float): min and max control value
+        """
         return (-100, 100)
 
 
 class PiPWMHalf(PiPWM):
+    """ PWM controller restricted to positive values.
+    """
+    
     def __init__(self, manager, name, config = None, **kwargs):
         if config is None:
             config = {}
@@ -146,4 +183,8 @@ class PiPWMHalf(PiPWM):
         self.threadlock = Mutex()
 
     def getControlLimits(self):
+        """ Get minimum and maxuimum value for control value.
+
+            @return tuple(float, float): min and max control value
+        """
         return (0, 100)
