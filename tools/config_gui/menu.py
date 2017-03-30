@@ -26,10 +26,19 @@ class ModuleObject(QtCore.QObject):
 
     sigAddModule = QtCore.Signal(object)
 
-    def __init__(self, path, conn):
+    def __init__(self, path, moddef):
         super().__init__()
         self.path = path
-        self.conn = conn
+        if path.startswith('hardware'):
+            self.base = 'hardware'
+        elif path.startswith('logic'):
+            self.base = 'logic'
+        elif path.startswith('gui'):
+            self.base = 'gui'
+        else:
+            base = ''
+        self.conn = moddef['conn']
+        self.ifaces = moddef['if']
 
     def addModule(self):
         """ Add this module to the config.
@@ -103,7 +112,7 @@ class ModMenu(QtWidgets.QMenu):
                     mlist = mlist['children'][part]
         action = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
         mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = action
-        module = ModuleObject(modpath, moddef['conn'])
+        module = ModuleObject(modpath, moddef)
         action.triggered.connect(module.addModule)
         self.modules.append(module)
 
