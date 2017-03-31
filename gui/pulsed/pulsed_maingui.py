@@ -1159,6 +1159,7 @@ class PulsedMeasurementGui(GUIBase):
             self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_name_LineEdit'])
         if 'ana_param_second_plot_y_axis_unit_LineEdit' in self._statusVariables:
             self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'])
+        self._as.ana_param_couple_settings_checkBox.setChecked(self._pulsed_master_logic.couple_generator_hw)
         self.update_analysis_settings()
         return
 
@@ -1200,6 +1201,21 @@ class PulsedMeasurementGui(GUIBase):
             axis='bottom',
             text=self._as.ana_param_x_axis_name_LineEdit.text(),
             units=self._as.ana_param_x_axis_unit_LineEdit.text())
+        couple_settings = self._as.ana_param_couple_settings_checkBox.isChecked()
+        self._pulsed_master_logic.couple_generator_hw = couple_settings
+        if couple_settings:
+            self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
+            self._pg.gen_activation_config_ComboBox.blockSignals(True)
+            self._pg.gen_sample_freq_DSpinBox.setEnabled(False)
+            self._pg.gen_activation_config_ComboBox.setEnabled(False)
+        else:
+            self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
+            self._pg.gen_activation_config_ComboBox.blockSignals(False)
+            self._pg.gen_sample_freq_DSpinBox.setEnabled(True)
+            self._pg.gen_activation_config_ComboBox.setEnabled(True)
+        # FIXME: Not very elegant
+        self._pulsed_master_logic._measurement_logic.fc.set_units([self._as.ana_param_x_axis_unit_LineEdit.text(),
+                                                                   self._as.ana_param_y_axis_unit_LineEdit.text()])
         return
 
     def keep_former_analysis_settings(self):
@@ -1900,7 +1916,6 @@ class PulsedMeasurementGui(GUIBase):
         num_of_lasers = self._pa.ana_param_num_laser_pulse_SpinBox.value()
         controlled_vals_start = self._pa.ana_param_x_axis_start_ScienDSpinBox.value()
         controlled_vals_incr = self._pa.ana_param_x_axis_inc_ScienDSpinBox.value()
-        laser_trigger_delay = self._as.ana_param_lasertrigger_delay_ScienDSpinBox.value()
         # FIXME: properly implement sequence_length_s
         sequence_length_s = self._pulsed_master_logic._measurement_logic.sequence_length_s
         num_of_ticks = num_of_lasers - len(laser_ignore_list)
@@ -1914,13 +1929,11 @@ class PulsedMeasurementGui(GUIBase):
                                                                         num_of_lasers,
                                                                         sequence_length_s,
                                                                         laser_ignore_list,
-                                                                        alternating,
-                                                                        laser_trigger_delay)
+                                                                        alternating)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating,
-                                              laser_trigger_delay):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -1928,7 +1941,6 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param laser_trigger_delay:
         @return:
         """
         # block signals
@@ -1938,14 +1950,12 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_num_laser_pulse_SpinBox.blockSignals(True)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(True)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(True)
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.blockSignals(True)
         self._pe.laserpulses_ComboBox.blockSignals(True)
         # set widgets
         self._pa.ana_param_ignore_first_CheckBox.setChecked(0 in laser_ignore_list)
         self._pa.ana_param_ignore_last_CheckBox.setChecked(-1 in laser_ignore_list)
         self._pa.ana_param_alternating_CheckBox.setChecked(alternating)
         self._pa.ana_param_num_laser_pulse_SpinBox.setValue(number_of_lasers)
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(laser_trigger_delay)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(controlled_vals[0])
         if len(controlled_vals) > 1:
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
@@ -1983,7 +1993,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_num_laser_pulse_SpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(False)
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
         return
 

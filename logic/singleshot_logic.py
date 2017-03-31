@@ -388,8 +388,7 @@ class SingleShotLogic(GenericLogic):
     # TODO include focusing on a single peak here
     # TODO refocus replaced through refocus frequency
     def do_pulsed_odmr(self, measurement_time, controlled_vals_start, controlled_vals_incr, num_of_lasers,
-                       sequence_length_s, laser_trigger_delay=7e-7, refocus=True, pulsedODMR_wfm='PulsedODMR',
-                       save_tag=''):
+                       sequence_length_s, refocus=True, pulsedODMR_wfm='PulsedODMR', save_tag=''):
         """
         A function to do pulsed odmr. Important as exact transition frequencies are important.
         @param measurement_time:
@@ -397,7 +396,6 @@ class SingleShotLogic(GenericLogic):
         @param controlled_vals_incr:
         @param num_of_lasers:
         @param sequence_length_s:
-        @param laser_trigger_delay:
         @param refocus:
         @param pulsedODMR_wfm:
         @param save_tag:
@@ -416,8 +414,7 @@ class SingleShotLogic(GenericLogic):
                                                                         num_of_lasers,
                                                                         sequence_length_s,
                                                                         laser_ignore_list,
-                                                                        alternating,
-                                                                        laser_trigger_delay)
+                                                                        alternating)
         self._pm_logic._initialize_plots()
 
         self._pulse_generator_device.load_asset(pulsedODMR_wfm)

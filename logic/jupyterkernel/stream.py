@@ -78,4 +78,3 @@ class QZMQStream(QtCore.QObject):
         self.readnotifier.activated.disconnect()
         self.sigMsgRecvd.disconnect()
 
-

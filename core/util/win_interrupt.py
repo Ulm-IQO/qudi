@@ -23,6 +23,7 @@ def create_interrupt_event():
     # handle by new processes.
     # FIXME: We can clean up this mess by requiring pywin32 for IPython.
     class SECURITY_ATTRIBUTES(ctypes.Structure):
+        """ MS Windows security attributes """
         _fields_ = [ ("nLength", ctypes.c_int),
                      ("lpSecurityDescriptor", ctypes.c_void_p),
                      ("bInheritHandle", ctypes.c_int) ]

@@ -39,7 +39,17 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
 
-    def on_activate(self,e=None):
+    def on_activate(self, e):
+        """ Initialisation performed during activation of the module.
+
+        @param e object: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
@@ -72,7 +82,12 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self.log.info('Anritsu {} initialised and connected to hardware.'
                 ''.format(self.model))
 
-    def on_deactivate(self,e=None):
+    def on_deactivate(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param e object: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
+        """
         self._gpib_connection.close()
         self.rm.close()
 
@@ -240,13 +255,13 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start, stop, step, power):
-        """
+        """ Activate sweep mode on the microwave source
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
+        @param start float: start frequency
+        @param stop float: stop frequency
+        @param step float: frequency step
+        @param power float: output power
+        @return int: number of frequency steps generated
         """
         self.set_power(power)
         self._gpib_connection.write('F1 {0} Hz, SYZ {1} Hz, F2 {2} Hz, SF1'.format(start - step, step, stop))

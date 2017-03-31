@@ -1094,6 +1094,8 @@ class Manager(QtCore.QObject):
         unload_deps = self.getReverseRecursiveModuleDependencies(base, key)
         sorted_u_deps = toposort(unload_deps)
         unloaded_mods = []
+        if len(sorted_u_deps) == 0:
+            sorted_u_deps.append(key)
 
         for mkey in sorted_u_deps:
             mbase = self.findBase(mkey)
@@ -1236,6 +1238,12 @@ class Manager(QtCore.QObject):
         """ Stop all modules, no questions asked. """
         deps = self.getAllRecursiveModuleDependencies(self.tree['loaded'])
         sorteddeps = toposort(deps)
+        for b, mods in self.tree['loaded'].items():
+            for m in mods.keys():
+                if m not in sorteddeps:
+                    sorteddeps.append(m)
+
+        logger.debug('Deactivating {}'.format(sorteddeps))
 
         for module in reversed(sorteddeps):
             base = self.findBase(module)
