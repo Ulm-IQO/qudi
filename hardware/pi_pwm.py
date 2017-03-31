@@ -174,11 +174,8 @@ class PiPWMHalf(PiPWM):
     """ PWM controller restricted to positive values.
     """
     
-    def __init__(self, manager, name, config = None, **kwargs):
-        if config is None:
-            config = {}
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        PiPWM.__init__(self, manager, name, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         #locking for thread safety
         self.threadlock = Mutex()
 
