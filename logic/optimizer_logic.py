@@ -152,6 +152,9 @@ class OptimizerLogic(GenericLogic):
         self.optim_pos_x = self._initial_pos_x
         self.optim_pos_y = self._initial_pos_y
         self.optim_pos_z = self._initial_pos_z
+        self.optim_sigma_x = 0.
+        self.optim_sigma_y = 0.
+        self.optim_sigma_z = 0.
 
         self._max_offset = 3.
 
@@ -279,6 +282,9 @@ class OptimizerLogic(GenericLogic):
         self.optim_pos_x = self._initial_pos_x
         self.optim_pos_y = self._initial_pos_y
         self.optim_pos_z = self._initial_pos_z
+        self.optim_sigma_x = 0.
+        self.optim_sigma_y = 0.
+        self.optim_sigma_z = 0.
 
         self._xy_scan_line_count = 0
         self._optimization_step = 0
@@ -459,6 +465,8 @@ class OptimizerLogic(GenericLogic):
             print('2D gaussian fit not successfull')
             self.optim_pos_x = self._initial_pos_x
             self.optim_pos_y = self._initial_pos_y
+            self.optim_sigma_x = 0.
+            self.optim_sigma_y = 0.
             # hier abbrechen
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
@@ -467,9 +475,13 @@ class OptimizerLogic(GenericLogic):
                     if result_2D_gaus.best_values['center_y'] >= self.y_range[0] and result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
                         self.optim_pos_x = result_2D_gaus.best_values['center_x']
                         self.optim_pos_y = result_2D_gaus.best_values['center_y']
+                        self.optim_sigma_x = result_2D_gaus.best_values['sigma_x']
+                        self.optim_sigma_y = result_2D_gaus.best_values['sigma_y']
             else:
                 self.optim_pos_x = self._initial_pos_x
                 self.optim_pos_y = self._initial_pos_y
+                self.optim_sigma_x = 0.
+                self.optim_sigma_y = 0.
 
         # emit image updated signal so crosshair can be updated from this fit
         self.sigImageUpdated.emit()
@@ -512,6 +524,7 @@ class OptimizerLogic(GenericLogic):
         if result.success is False:
             self.log.error('error in 1D Gaussian Fit.')
             self.optim_pos_z = self._initial_pos_z
+            self.optim_sigma_z = 0.
             # interrupt here?
         else:  # move to new position
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
@@ -520,11 +533,13 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
+                    self.optim_sigma_z = result.best_values['sigma']
                     gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
                     # checks if new pos is too high
+                    self.optim_sigma_z = 0.
                     if result.best_values['center'] > self._initial_pos_z:
                         if self._initial_pos_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
                             # moves to higher edge of scan range
