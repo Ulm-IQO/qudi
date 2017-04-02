@@ -30,17 +30,9 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Connect and configure the access to the FPGA.
-
-                @param object e: Event class object from Fysom.
-                                 An object created by the state machine module Fysom,
-                                 which is connected to a specific event (have a look in
-                                 the Base Class). This object contains the passed event
-                                 the state before the event happens and the destination
-                                 of the state which should be reached after the event
-                                 has happen.
-                """
+        """
 
         config = self.getConfiguration()
         if 'fpgacounter_serial' in config.keys():
@@ -128,11 +120,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         return constraints
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the FPGA.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         if self.getState() == 'locked':
             self.pulsed.stop()

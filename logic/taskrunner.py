@@ -94,10 +94,8 @@ class TaskRunner(GenericLogic):
     sigLoadTasks = QtCore.Signal()
     sigCheckTasks = QtCore.Signal()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialise task runner.
-
-        @param object e: Fysom state change notification
         """
         self.model = TaskListTableModel()
         self.model.rowsInserted.connect(self.modelChanged)
@@ -107,10 +105,8 @@ class TaskRunner(GenericLogic):
         self._manager.registerTaskRunner(self)
         self.sigLoadTasks.emit()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Shut down task runner.
-
-        @param object e: Fysom state change notification
         """
         self._manager.registerTaskRunner(None)
 

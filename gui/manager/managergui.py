@@ -79,16 +79,8 @@ class ManagerGui(GUIBase):
         self.modlist = list()
         self.modules = set()
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Activation method called on change to active state.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look
-                         in the Base Class). This object contains the passed
-                         event, the state before the event happened and the
-                         destination of the state which should be reached
-                         after the event had happened.
 
         This method creates the Manager main window.
         """
@@ -176,11 +168,8 @@ class ManagerGui(GUIBase):
         self._mw.threadDockWidget.hide()
         self._mw.show()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """Close window and remove connections.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
         self.stopIPythonWidget()
         self.stopIPython()

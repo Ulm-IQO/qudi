@@ -36,10 +36,8 @@ class LaserLogic(GenericLogic):
 
     sigUpdate = QtCore.Signal()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare logic module for work.
-
-          @param object e: Fysom state change notification
         """
         self._laser = self.get_connector('laser')
         self.stopRequest = False
@@ -74,10 +72,8 @@ class LaserLogic(GenericLogic):
         self.init_data_logging()
         self.start_query_loop()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate modeule.
-
-          @param object e: Fysom state change notification
         """
         self.stop_query_loop()
         for i in range(5):

@@ -46,10 +46,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
     _modclass = 'lqlaser'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-        @param e: fysom state transition information
         """
         config = self.getConfiguration()
         if 'psu' in config:
@@ -67,10 +65,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         else:
             self.maxpower = 0.250
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-        @param e: fysom state transition information
         """
         self.disconnect_laser()
 
@@ -363,7 +359,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
     def off(self):
         """ Turn laser off.
-            
+
             @return LaserState: actual laser state
         """
         return self.set_laser_state(LaserState.OFF)

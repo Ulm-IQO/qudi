@@ -38,10 +38,10 @@ class SwitchDummy(Base, SwitchInterface):
         self.switchCalibration['On'] = [0.9, 0.8, 0.88]
         self.switchCalibration['Off'] = [0.15, 0.3, 0.2]
 
-    def on_activate(self, e):
+    def on_activate(self):
         pass
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         pass
 
     def getNumberOfSwitches(self):

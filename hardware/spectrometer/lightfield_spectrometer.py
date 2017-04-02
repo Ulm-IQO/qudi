@@ -52,10 +52,8 @@ class Lightfield(Base, SpectrometerInterface):
         as it can only do one thing right now: crash Lightfield.
     """
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param e object: fysom state transition information
 
             This method needs to set ip the CLR to Python binding and start Lightfield.
         """
@@ -111,7 +109,7 @@ class Lightfield(Base, SpectrometerInterface):
         #self.openExperiment(name)
         self.lastframe = list()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
 
             @param e object: fysom state transition information

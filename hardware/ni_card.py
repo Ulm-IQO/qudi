@@ -431,11 +431,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error('Failed to start analog output.')
             raise Exception('Failed to start NI Card module due to analog output failure.')
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Shut down the NI card.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.reset_hardware()
 
@@ -2064,16 +2061,8 @@ class SlowGatedNICard(NICard):
     _modtype = 'SlowGatedNICard'
     _modclass = 'hardware'
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Starts up the NI Card at activation.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
         self._gated_counter_daq_task = None
         # used as a default for expected maximum counts

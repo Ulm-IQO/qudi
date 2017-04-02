@@ -41,16 +41,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     _modclass = 'MicrowaveSmiq'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         # checking for the right configuration
         config = self.getConfiguration()
@@ -83,11 +75,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self.log.info('MWSMIQ initialised and connected to hardware.')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
 
         self._gpib_connection.close()
@@ -95,7 +84,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
     def get_limits(self):
         """ Create an object containing parameter limits for this microwave source.
-            
+
             @return MicrowaveLimits: device-specific parameter limits
         """
         limits = MicrowaveLimits()

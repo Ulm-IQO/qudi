@@ -31,10 +31,8 @@ class SimpleAcq(Base, SimpleDataInterface):
     _modclass = 'simple'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         config = self.getConfiguration()
         if 'interface' in config:
@@ -51,10 +49,8 @@ class SimpleAcq(Base, SimpleDataInterface):
         self.log.debug('Resources: {0}'.format(self.rm.list_resources()))
         self.my_instrument = self.rm.open_resource(self.resource, baud_rate=self.baudrate)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         self.my_instrument.close()
         self.rm.close()

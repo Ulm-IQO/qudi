@@ -65,10 +65,8 @@ class LaserScannerLogic(GenericLogic):
 
         self.stopRequested = False
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-          @param object e: Fysom state change event
         """
         self._scanning_device = self.get_connector('confocalscanner1')
         self._save_logic = self.get_connector('savelogic')
@@ -122,10 +120,8 @@ class LaserScannerLogic(GenericLogic):
         # Initialie data matrix
         self._initialise_data_matrix(100)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-          @param object e: Fysom state change event
         """
         pass
 
