@@ -32,7 +32,7 @@ User and code documentation about Qudi is located at http://ulm-iqo.github.io/qu
 For development-related questions and discussion, please use the [qudi-dev mailing list](http://www.freelists.org/list/qudi-dev).
 
 If you just want updates about releases and breaking changes to Qudi without discussion or issue reports,
-subscribe to the [quid-announce mailing list](http://www.freelists.org/list/qudi-announce).
+subscribe to the [qudi-announce mailing list](http://www.freelists.org/list/qudi-announce).
 
 Feel free to add issues and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
 
