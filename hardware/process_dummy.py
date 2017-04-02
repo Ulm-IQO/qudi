@@ -31,10 +31,8 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
     _modclass = 'Process'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         self.temperature = 300.0
         self.pwmpower = 0
@@ -43,10 +41,8 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         self.recalctimer.timeout.connect(self._recalcTemp)
         self.recalctimer.start(100)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         pass
 
@@ -87,7 +83,7 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
 
     def getControlLimits(self):
         """ Get minimum and maximum of control value.
-            
+
             @return tuple(float, float): minimum and maximum of control value
         """
         return (-100, 100)

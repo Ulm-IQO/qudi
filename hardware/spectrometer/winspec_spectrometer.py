@@ -42,20 +42,16 @@ class WinSpec32(Base, SpectrometerInterface):
     """ Hardware module for reading spectra from the WinSpec32 spectrometer software.
     """
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         w32c.pythoncom.CoInitialize()
         self.expt_is_running = WinSpecLib.EXP_RUNNING
         self.path = 'asdf'
         self.prefix = 'test'
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         pass
 

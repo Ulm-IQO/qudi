@@ -55,10 +55,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-            @param object e: fysom state transition object
         """
         self._process = self.get_connector('process')
         self._control = self.get_connector('control')
@@ -114,10 +112,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
         self.timer.start(self.timestep)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Perform required deactivation.
-        
-            @param object e: fysom state transition object
         """
 
         # save parameters stored in app state store
@@ -190,7 +186,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
     def getSavingState(self):
         """ Find out if we are keeping data for saving later.
-        
+
             @return bool: whether module is saving process and control data
         """
         return self.savingState
@@ -218,7 +214,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
     def set_kp(self, kp):
         """ Set the proportional constant of the PID controller.
-            
+
             @prarm float kp: proportional constant of PID controller
         """
         self.kP = kp

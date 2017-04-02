@@ -57,7 +57,7 @@ class MotorDummy(Base, MotorInterface):
 
     #TODO: Checks if configuration is set and is reasonable
 
-    def on_activate(self, e):
+    def on_activate(self):
 
         # PLEASE REMEMBER: DO NOT CALL THE POSITION SIMPLY self.x SINCE IT IS
         # EXTREMLY DIFFICULT TO SEARCH FOR x GLOBALLY IN A FILE!
@@ -78,7 +78,7 @@ class MotorDummy(Base, MotorInterface):
         self._z_axis.status = 0
         self._phi_axis.status = 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         pass
 
 

@@ -34,10 +34,8 @@ class InfluxLogger(Base, DataLoggerInterface):
         super().__init__(**kwargs)
         self.log_channels = {}
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-        
-            @param e object: Fysom state transition information
         """
         config = self.getConfiguration()
 
@@ -69,10 +67,8 @@ class InfluxLogger(Base, DataLoggerInterface):
 
         self.connect_db()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-        
-            @param e object: Fysom state transition information
         """
         del self.conn
 
@@ -82,14 +78,14 @@ class InfluxLogger(Base, DataLoggerInterface):
 
     def get_log_channels(self):
         """ Get number of logging channels
-        
+
             @return int: number of channels
         """
         return self.log_channels
 
     def set_log_channels(self, channelspec):
         """ Set number of logging channels.
-        
+
             @param channelspec dict: name, spec
         """
         for name, spec in channelspec.items():

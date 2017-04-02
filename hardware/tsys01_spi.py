@@ -47,10 +47,8 @@ class TSYS01SPI(Base, ProcessInterface):
         #locking for thread safety
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         config = self.getConfiguration()
         print(config)
@@ -62,10 +60,8 @@ class TSYS01SPI(Base, ProcessInterface):
         self.reset()
         self.readROM()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         self.spi.close()
 

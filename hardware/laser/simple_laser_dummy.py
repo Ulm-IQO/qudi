@@ -44,17 +44,13 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         self.current_setpoint = 0
         self.power_setpoint = 0
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-        @param e: fysom state transition information
         """
         pass
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-        @param e: fysom state transition information
         """
         pass
 
@@ -74,7 +70,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_power_setpoint(self):
         """ Return optical power setpoint.
-            
+
             @return float: power setpoint in watts
         """
         return self.power_setpoint
@@ -83,7 +79,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
         """ Set power setpoint.
 
             @param float power: power setpoint
-        
+
             @return float: actual new power setpoint
         """
         self.power_setpoint = power
@@ -113,16 +109,16 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_current_setpoint(self):
         """ Get laser curent setpoint
-        
+
             @return float: laser current setpoint
         """
         return self.current_setpoint
 
     def set_current(self, current):
         """ Set laser current setpoint
-        
+
             @prarm float current: desired laser current setpoint
-            
+
             @return float: actual laser current setpoint
         """
         self.current_setpoint = current
@@ -131,21 +127,21 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def allowed_control_modes(self):
         """ Get supported control modes
-        
+
             @return list(): list of supported ControlMode
         """
         return [ControlMode.POWER, ControlMode.CURRENT]
 
     def get_control_mode(self):
-        """ Get the currently active control mode 
-        
+        """ Get the currently active control mode
+
             @return ControlMode: active control mode
         """
         return self.mode
 
     def set_control_mode(self, control_mode):
         """ Set the active control mode
-        
+
             @param ControlMode control_mode: desired control mode
 
             @return ControlMode: actual active ControlMode
@@ -155,7 +151,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def on(self):
         """ Turn on laser.
-        
+
             @return LaserState: actual laser state
         """
         time.sleep(1)
@@ -164,7 +160,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def off(self):
         """ Turn off laser.
-        
+
             @return LaserState: actual laser state
         """
         time.sleep(1)
@@ -173,14 +169,14 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_laser_state(self):
         """ Get laser state
-        
+
             @return LaserState: actual laser state
         """
         return self.lstate
 
     def set_laser_state(self, state):
         """ Set laser state.
-        
+
             @param LaserState state: desired laser state
 
             @return LaserState: actual laser state
@@ -191,14 +187,14 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_shutter_state(self):
         """ Get laser shutter state
-        
+
             @return ShutterState: actual laser shutter state
         """
         return self.shutter
 
     def set_shutter_state(self, state):
         """ Set laser shutter state.
-        
+
             @param ShutterState state: desired laser shutter state
 
             @return ShutterState: actual laser shutter state
@@ -209,7 +205,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_temperatures(self):
         """ Get all available temperatures.
-        
+
             @return dict: dict of temperature namce and value in degrees Celsius
         """
         return {
@@ -233,7 +229,7 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     def get_extra_info(self):
         """ Multiple lines of dignostic information
-        
+
             @return str: much laser, very useful
         """
         return "Dummy laser v0.9.9\nnot used very much\nvery cheap price very good quality"

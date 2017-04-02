@@ -41,10 +41,8 @@ class PolarisationDepLogic(GenericLogic):
     signal_rotation_finished = QtCore.Signal()
     signal_start_rotation = QtCore.Signal()
 
-    def on_activate(self,e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-          @param object e: Fysom state change event
         """
 
         self._counter_logic = self.get_connector('counterlogic')
@@ -63,10 +61,8 @@ class PolarisationDepLogic(GenericLogic):
         self.signal_start_rotation.connect(self.rotate_polarisation, QtCore.Qt.QueuedConnection)
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-          @param object e: Fysom state change event
         """
         return
 

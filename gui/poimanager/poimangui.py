@@ -235,19 +235,10 @@ class PoiManagerGui(GUIBase):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Initializes the overall GUI, and establishes the connectors.
 
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
-
-        This method executes the init methods for each of the GUIs and passes
-        the event argument from fysom to these methods.
+        This method executes the init methods for each of the GUIs.
         """
 
         # Connectors
@@ -257,8 +248,8 @@ class PoiManagerGui(GUIBase):
         self.log.debug("Confocal logic is {0}".format(self._confocal_logic))
 
         # Initializing the GUIs
-        self.initMainUI(e)
-        self.initReorientRoiDialogUI(e)
+        self.initMainUI()
+        self.initReorientRoiDialogUI()
 
         # There could be POIs created in the logic already, so update lists and map
         self.populate_poi_list()
@@ -287,12 +278,8 @@ class PoiManagerGui(GUIBase):
                 mouse_point.x()* 1e-6 - cur_poi_pos[0],
                 mouse_point.y()* 1e-6 - cur_poi_pos[1]))
 
-    def initMainUI(self, e=None):
+    def initMainUI(self):
         """ Definition, configuration and initialisation of the POI Manager GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
-
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
         """
@@ -495,11 +482,8 @@ class PoiManagerGui(GUIBase):
 
         self._mw.show()
 
-    def initReorientRoiDialogUI(self, e):
+    def initReorientRoiDialogUI(self):
         """ Definition, configuration and initialization fo the Reorient ROI Dialog GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules which were created in the
         *.ui file and configures event handling.
@@ -531,11 +515,8 @@ class PoiManagerGui(GUIBase):
         self._rrd.ref_c_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
         self._rrd.ref_c_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._mw.close()
 
@@ -782,7 +763,7 @@ class PoiManagerGui(GUIBase):
         # Set the new maximum for the progress bar
         self._mw.time_till_next_update_ProgressBar.setMaximum(new_track_period)
 
-        # If the tracker is not active, then set the value of the progress bar to the 
+        # If the tracker is not active, then set the value of the progress bar to the
         # new maximum
         if not self._mw.track_poi_Action.isChecked():
             self._mw.time_till_next_update_ProgressBar.setValue(new_track_period)
