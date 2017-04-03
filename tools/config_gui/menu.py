@@ -20,31 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 from qtpy import QtCore, QtWidgets
 
-class ModuleObject(QtCore.QObject):
-    """ This class represents a Qudi module.
-    """
-
-    sigAddModule = QtCore.Signal(object)
-
-    def __init__(self, path, moddef):
-        super().__init__()
-        self.path = path
-        if path.startswith('hardware'):
-            self.base = 'hardware'
-        elif path.startswith('logic'):
-            self.base = 'logic'
-        elif path.startswith('gui'):
-            self.base = 'gui'
-        else:
-            base = ''
-        self.conn = moddef['conn']
-        self.ifaces = moddef['if']
-
-    def addModule(self):
-        """ Add this module to the config.
-        """
-        self.sigAddModule.emit(self)
-
 class ModMenu(QtWidgets.QMenu):
     """ This class represents the module selection menu.
     """
@@ -90,7 +65,7 @@ class ModMenu(QtWidgets.QMenu):
         for k,v in sorted(m['gui'].items()):
             self.build_submenu(self.guimenuitems, k, v)
 
-    def build_submenu(self, mlist, modpath, moddef) :
+    def build_submenu(self, mlist, modpath, module) :
         """ Create a submenu from a module list, a module path and a module definition.
 
             @param dict mlist: module list dict
@@ -112,7 +87,6 @@ class ModMenu(QtWidgets.QMenu):
                     mlist = mlist['children'][part]
         action = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
         mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = action
-        module = ModuleObject(modpath, moddef)
         action.triggered.connect(module.addModule)
         self.modules.append(module)
 
