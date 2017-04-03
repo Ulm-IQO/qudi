@@ -147,16 +147,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # a dictionary with all predefined generator methods and measurement sequence names
         self.generate_methods = None
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self._get_blocks_from_file()
         self._get_ensembles_from_file()
@@ -179,11 +171,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
                                      self.amplitude_dict, self.waveform_format)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self._statusVariables['activation_config'] = self.activation_config
         self._statusVariables['laser_channel'] = self.laser_channel

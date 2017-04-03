@@ -42,14 +42,14 @@ class TreeItem:
 
     def appendChild(self, item):
         """ Append child node to tree item.
-        
+
             @param item :
         """
         self.childItems.append(item)
 
     def child(self, row):
         """ Get child item for specific index
-        
+
             @param row int: row index for child item
 
             @return : child item in given row
@@ -84,7 +84,7 @@ class TreeItem:
 
     def parent(self):
         """ Get parent item.
-        
+
             @return TreeItem: parent item
         """
         return self.parentItem
@@ -113,7 +113,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def columnCount(self, parent):
         """ Return number of columns.
-            
+
             @param parent TreeModel: prent model
         """
         if parent.isValid():
@@ -123,7 +123,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def data(self, index, role):
         """ Retrieve data from model.
-            
+
             @param index QModelIndex: index of data
             @param role QtRole: role for data
         """
@@ -219,7 +219,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def loadExecTree(self, tree, parent=None):
         """ Load a tree from a nested dictionary into the model.
-        
+
             @param tree dict: dictionary tree to be loaded
             @param parent TreeItem: root item for loaded tree
         """
@@ -231,7 +231,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
     def recursiveLoad(self, tree, parent):
         """ Recursively load a tree from a nested dictionary into the model.
-        
+
             @param tree dict: dictionary for (sub)tree to be loaded
             @param parent TreeItem: root item for loaded (sub)tree
         """
@@ -269,10 +269,8 @@ class AutomationLogic(GenericLogic):
 
     sigRepeat = QtCore.Signal()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare logic module for work.
-
-          @param object e: Fysom state change information
         """
         self._taskrunner = self.get_connector('taskrunner')
         #stuff = "a\txyz\n    b\tx\n    c\ty\n        d\tw\ne\tm\n"
@@ -292,10 +290,8 @@ class AutomationLogic(GenericLogic):
         #self.model.loadExecTree(tr)
         self.loadAutomation('auto.cfg')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate modeule.
-
-          @param object e: Fysom state change information
         """
         print(self.model.recursiveSave(self.model.rootItem))
 

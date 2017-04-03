@@ -217,7 +217,7 @@ class PoiManagerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
@@ -249,7 +249,7 @@ class PoiManagerLogic(GenericLogic):
         # A POI is active if the scanner is at that POI
         self.active_poi = None
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         return
 
     def user_move_deactivates_poi(self, tag):

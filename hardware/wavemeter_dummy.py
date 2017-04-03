@@ -94,10 +94,8 @@ class WavemeterDummy(Base, WavemeterInterface):
             self.log.warning('No measurement_timing configured, '
                     'using {} instead.'.format(self._measurement_timing))
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
@@ -112,10 +110,8 @@ class WavemeterDummy(Base, WavemeterInterface):
         # start the event loop for the hardware
         self.hardware_thread.start()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
 
         self.stop_acqusition()

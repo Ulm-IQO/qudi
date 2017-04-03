@@ -50,16 +50,8 @@ class AWG5002C(Base, PulserInterface):
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
         self.current_loaded_asset = ''
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         config = self.getConfiguration()
@@ -133,11 +125,8 @@ class AWG5002C(Base, PulserInterface):
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.connected = False
         self.soc.close()

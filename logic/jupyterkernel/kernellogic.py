@@ -45,20 +45,16 @@ class QudiKernelLogic(GenericLogic):
         self.kernellist = dict()
         self.modules = set()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare logic module for work.
-
-          @param object e: Fysom state change notification
         """
         self.kernellist = dict()
         self.modules = set()
         self._manager.sigModulesChanged.connect(self.updateModuleList)
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-          @param object e: Fysom state change notification
         """
         kernels = tuple(self.kernellist.keys())
         for k in kernels:

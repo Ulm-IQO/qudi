@@ -179,16 +179,8 @@ class MagnetGui(GUIBase):
         self._continue_2d_fluorescence_alignment = False
 
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Definition and initialisation of the GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self._magnet_logic = self.get_connector('magnetlogic1')
         self._save_logic = self.get_connector('savelogic')
@@ -241,7 +233,7 @@ class MagnetGui(GUIBase):
         # written by someone who has no clue what he is doing). Eventually with
         # that you have the possibility of stopping an ongoing movement!
         self._interactive_mode = True
-        self._activate_magnet_settings(e)
+        self._activate_magnet_settings()
 
         # connect the actions of the toolbar:
         self._mw.magnet_settings_Action.triggered.connect(self.open_magnet_settings)
@@ -491,11 +483,8 @@ class MagnetGui(GUIBase):
         return 0
 
 
-    def _activate_magnet_settings(self, e):
+    def _activate_magnet_settings(self):
         """ Activate magnet settings.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._ms = MagnetSettingsWindow()
         # default config is normal_mode
@@ -529,11 +518,8 @@ class MagnetGui(GUIBase):
 
 
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Deactivate the module properly.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._statusVariables['measurement_type'] = self.measurement_type
         self._statusVariables['alignment_2d_cb_GraphicsView_text'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText

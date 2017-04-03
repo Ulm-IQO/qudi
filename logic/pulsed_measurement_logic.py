@@ -143,16 +143,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         # get all the connectors:
         self._pulse_analysis_logic = self.get_connector('pulseanalysislogic')
@@ -241,11 +233,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.recalled_raw_data = None
         return
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the module properly.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
 
         if self.getState() != 'idle' and self.getState() != 'deactivated':

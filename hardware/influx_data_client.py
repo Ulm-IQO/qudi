@@ -32,10 +32,8 @@ class InfluxDataClient(Base, ProcessInterface):
     _modclass = 'InfluxDataClient'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param e object: Fysom state transition information
         """
         config = self.getConfiguration()
 
@@ -67,10 +65,8 @@ class InfluxDataClient(Base, ProcessInterface):
 
         self.connect_db()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param e object: Fysom state transition information
         """
         del self.conn
 
@@ -87,7 +83,7 @@ class InfluxDataClient(Base, ProcessInterface):
 
     def getProcessUnit(self):
         """ Return the unit that the value is measured in
-        
+
             @return (str, str): a tuple of ('abreviation', 'full unit name')
         """
         return '°C', ' degrees Celsius'
