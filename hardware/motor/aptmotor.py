@@ -790,16 +790,8 @@ class APTStage(Base, MotorInterface):
         module, then overwrite it in the class, which inherited that class.
      """
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialize instance variables and connect to hardware as configured.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
 
         # create the magnet dump folder
@@ -869,31 +861,25 @@ class APTStage(Base, MotorInterface):
                         'coincide with the label given in the config!\n'
                         'Restart the program!')
 
-        self.custom_activation(e)
+        self.custom_activation()
 
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         pass
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Disconnect from hardware and clean up.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
 
         for label_axis in self._axis_dict:
             self._axis_dict[label_axis].cleanUpAPT()
 
-        self.custom_deactivation(e)
+        self.custom_deactivation()
 
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -1146,13 +1132,8 @@ class APTOneAxisStage(APTStage):
     _modclass = 'APTOneAxis'
     _modtype = 'hardware'
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation of the
-                         parent class APTStage.
-
         """
         # my specific settings for the stage can be set here.
         # remember to set the units to degree if you want to use it as a
@@ -1193,12 +1174,8 @@ class APTOneAxisStage(APTStage):
             # preciser than the backward:
             self._axis_dict[label_axis].set_backlash(backlash_correction)
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation of the
-                         parent class APTStage.
         """
         pass
 
@@ -1263,12 +1240,8 @@ class APTThreeAxisStage(APTStage):
     _modclass = 'APTThreeAxis'
     _modtype = 'hardware'
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation of the
-                         parent class APTStage.
 
         """
 
@@ -1305,12 +1278,8 @@ class APTThreeAxisStage(APTStage):
             # preciser than the backward:
             self._axis_dict[label_axis].set_backlash(backlash_correction)
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation of the
-                         parent class APTStage.
         """
         pass
 
@@ -1408,13 +1377,8 @@ class APTFourAxisStage(APTStage):
     _modclass = 'APTThreeAxis'
     _modtype = 'hardware'
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation of the
-                         parent class APTStage.
-
         """
 
         # my specific settings for the stage:
@@ -1455,12 +1419,8 @@ class APTFourAxisStage(APTStage):
                                                 limits_dict[label_axis]['vel_max'])
                 self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max']/2)
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation of the
-                         parent class APTStage.
         """
         pass
 

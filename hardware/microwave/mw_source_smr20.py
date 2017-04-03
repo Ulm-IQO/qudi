@@ -42,16 +42,8 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     _modclass = 'MicrowaveSMR20'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         # checking for the right configuration
@@ -94,11 +86,8 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         self._POWER_MAX = float(self._gpib_connection.ask('POWER? MAX'))
         self._POWER_MIN = float(self._gpib_connection.ask('POWER? MIN'))
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
 
         self.off()  # turn the device off in case it is running

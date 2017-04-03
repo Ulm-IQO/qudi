@@ -2,7 +2,7 @@
 """
 Use Swabian Instruments PulseStreamer8/2 as a pulse generator.
 
-Protobuf (pb2) and grpc files generated from pulse_streamer.proto 
+Protobuf (pb2) and grpc files generated from pulse_streamer.proto
 file available at https://www.swabianinstruments.com/static/documentation/PulseStreamer/sections/interface.html#grpc-interface.
 
 Regenerate files for an update proto file using the following:
@@ -64,14 +64,14 @@ class PulseStreamer(Base, PulserInterface):
         if 'pulsestreamer_ip' in config.keys():
             self._pulsestreamer_ip = config['pulsestreamer_ip']
         else:
-            self._pulsestreamer_ip = '192.168.1.100' 
+            self._pulsestreamer_ip = '192.168.1.100'
             self.log.warning('No value set for "pulsestreamer_ip" in configuration. The default value '
                              '"192.168.1.100" will be used.')
 
         if 'laser_channel' in config.keys():
             self._laser_channel = config['laser_channel']
         else:
-            self._laser_channel = 0 
+            self._laser_channel = 0
             self.log.warning('No value set for "laser_channel" in configuration. The default value '
                              'channel 0 will be used.')
 
@@ -90,13 +90,13 @@ class PulseStreamer(Base, PulserInterface):
 
         self._channel = grpc.insecure_channel(self._pulsestreamer_ip + ':50051')
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Establish connection to pulse streamer and tell it to cancel all operations """
         self.pulse_streamer = pulse_streamer_pb2.PulseStreamerStub(self._channel)
         self.pulser_off()
         self.current_status = 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         del self.pulse_streamer
 
     def get_constraints(self):

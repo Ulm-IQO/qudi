@@ -202,16 +202,8 @@ class SaveLogic(GenericLogic):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Definition, configuration and initialisation of the SaveLogic.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look
-                         in the Base Class). This object contains the passed
-                         event the state before the event happens and the
-                         destination of the state which should be reached
-                         after the event has happen.
         """
         if self.log_into_daily_directory:
             # adds a log handler for logging into daily directory
@@ -225,7 +217,7 @@ class SaveLogic(GenericLogic):
         else:
             self._daily_loghandler = None
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         if self._daily_loghandler is not None:
             # removes the log handler logging into the daily directory
             logging.getLogger().removeHandler(self._daily_loghandler)

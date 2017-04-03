@@ -69,8 +69,8 @@ class Base(QtCore.QObject, Fysom):
             callbacks = {}
 
         default_callbacks = {
-            'onactivate': self.on_activate,
-            'ondeactivate': self.on_deactivate
+            'onactivate': lambda e: self.on_activate(),
+            'ondeactivate': lambda e: self.on_deactivate()
             }
         default_callbacks.update(callbacks)
 
@@ -165,20 +165,17 @@ class Base(QtCore.QObject, Fysom):
             return False
         return True
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Method called when module is activated. If not overridden
             this method returns an error.
 
-        @param object e: Fysom state change descriptor
         """
         self.log.error('Please implement and specify the activation method '
                          'for {0}.'.format(self.__class__.__name__))
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Method called when module is deactivated. If not overridden
             this method returns an error.
-
-        @param object e: Fysom state change descriptor
         """
         self.log.error('Please implement and specify the deactivation '
                          'method {0}.'.format(self.__class__.__name__))

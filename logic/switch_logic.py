@@ -44,10 +44,8 @@ class SwitchLogic(GenericLogic):
                 self.connectors[connector]['class'] = 'SwitchInterface'
                 self.connectors[connector]['object'] = None
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare logic module for work.
-
-          @param object e: Fysom state change notification
         """
         self.switches = dict()
         for connector in self.connectors:
@@ -56,10 +54,8 @@ class SwitchLogic(GenericLogic):
             for i in range(self.get_connector(connector).getNumberOfSwitches()):
                 self.switches[hwname][i] = self.get_connector(connector)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate modeule.
-
-          @param object e: Fysom state change notification
         """
         self.switches = dict()
 

@@ -63,16 +63,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._internal_clock_hz = 950e6     # that is a fixed number, 950MHz
         self.statusvar = -1                 # fast counter state
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Connect and configure the access to the FPGA.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
 
         config = self.getConfiguration()
@@ -124,11 +116,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._set_dac_voltages()
         return
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the FPGA.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.stop_measure()
         self.statusvar = 0

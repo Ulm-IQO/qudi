@@ -41,10 +41,8 @@ class NIPulser(Base, PulserInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module
-
-            @param e object: Fysom state transition information
         """
         config = self.getConfiguration()
         if 'pulsed_file_dir' in config.keys():
@@ -91,10 +89,8 @@ class NIPulser(Base, PulserInterface):
             k: True for k in self.constraints['activation_config']['analog_only']})
         #self.sample_rate = self.get_sample_rate()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module
-
-            @param e object: Fysom state transition information
         """
         self.close_pulser_task()
 

@@ -75,10 +75,8 @@ class OptimizerLogic(GenericLogic):
         # Keep track of who called the refocus
         self._caller_tag = ''
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """
@@ -187,10 +185,8 @@ class OptimizerLogic(GenericLogic):
         self._initialize_z_refocus_image()
         return 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """
@@ -259,7 +255,7 @@ class OptimizerLogic(GenericLogic):
         """Starts the optimization scan around initial_pos
 
             @param [float, float, float] initial_pos:
-            @param str caller_tag: 
+            @param str caller_tag:
             @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos

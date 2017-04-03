@@ -37,16 +37,8 @@ class AutomationGui(GUIBase):
     sigPauseTaskFromList = QtCore.Signal(object)
     sigStopTaskFromList = QtCore.Signal(object)
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """Create all UI objects and show the window.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self._mw = AutomationMainWindow()
         self.restoreWindowPos(self._mw)
@@ -67,11 +59,8 @@ class AutomationGui(GUIBase):
         """
         self._mw.show()
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Hide window and stop ipython console.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self.saveWindowPos(self._mw)
         self._mw.close()

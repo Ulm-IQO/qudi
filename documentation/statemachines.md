@@ -38,6 +38,25 @@ unexpected behaviour!
 * runlock:
   * locked -> running
 
+## Default event handler and fysom event objects
+
+In a module the default event handler called after the state has transitioned to activate or deactivate are the methods called `on_activate` and `on_deactivate`. Both methods don't take any parameters as default. For debugging purposes it is sometimes useful to access to the fysom event object. This is possible by defining new callback methods in the constructor:
+
+```python
+def __init__(self, **kwargs):
+    super().__init__(
+        self,
+        callbacks={'onactivate': self.on_activate}, 
+        **kwargs)
+```
+
+and adding the fysom event object as parameter to the event handler:
+
+```python
+def on_activate(self, e):
+    do_something_with_fysom_event_object(e)
+```
+
 ## Interruptable task state machine
 
 

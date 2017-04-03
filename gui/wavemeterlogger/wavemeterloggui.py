@@ -70,16 +70,8 @@ class WavemeterLogGui(GUIBase):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Definition and initialisation of the GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         self._wm_logger_logic = self.get_connector('wavemeterloggerlogic1')
@@ -173,11 +165,8 @@ class WavemeterLogGui(GUIBase):
 
         self._wm_logger_logic.sig_data_updated.connect(self.updateData)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the module properly.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._mw.close()
 
