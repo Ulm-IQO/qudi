@@ -37,16 +37,8 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
     _modclass = 'hardware'
 
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Start up TimeTagger interface
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         self._tagger = tt.createTimeTagger()
@@ -85,11 +77,8 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         else:
             self._mode = 2
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Shut down the TimeTagger.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         #self.reset_hardware()
         pass

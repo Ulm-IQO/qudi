@@ -53,7 +53,7 @@ class PIDLogic(GenericLogic):
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._controller = self.get_connector('controller')
@@ -80,7 +80,7 @@ class PIDLogic(GenericLogic):
         self.timer.setInterval(self.timestep)
         self.timer.timeout.connect(self.loop)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Perform required deactivation. """
 
         # save parameters stored in ap state store
@@ -152,7 +152,7 @@ class PIDLogic(GenericLogic):
 
     def set_kp(self, kp):
         """ Set the proportional constant of the PID controller.
-            
+
             @prarm float kp: proportional constant of PID controller
         """
         return self._controller.set_kp(kp)
@@ -165,7 +165,7 @@ class PIDLogic(GenericLogic):
         return self._controller.get_ki()
 
     def set_ki(self, ki):
-         """ Set the integration constant of the PID controller.
+        """ Set the integration constant of the PID controller.
 
             @param float ki: integration constant of the PID controller
         """

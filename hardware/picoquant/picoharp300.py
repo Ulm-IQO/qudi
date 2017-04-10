@@ -144,16 +144,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self.threadlock = Mutex()
 
 
-    def on_activate(self, fysom_e=None):
+    def on_activate(self):
         """ Activate and establish the connection to Picohard and initialize.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
         self.open_connection()
         self.initialize(self._mode)
@@ -172,11 +164,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self.result = []
 
 
-    def on_deactivate(self, fysom_e=None):
+    def on_deactivate(self):
         """ Deactivates and disconnects the device.
-
-        @param object e: Event class object from Fysom. Detailed explanation
-                         see in method 'activation'.
         """
 
         self.close_connection()

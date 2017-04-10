@@ -1238,6 +1238,12 @@ class Manager(QtCore.QObject):
         """ Stop all modules, no questions asked. """
         deps = self.getAllRecursiveModuleDependencies(self.tree['loaded'])
         sorteddeps = toposort(deps)
+        for b, mods in self.tree['loaded'].items():
+            for m in mods.keys():
+                if m not in sorteddeps:
+                    sorteddeps.append(m)
+
+        logger.debug('Deactivating {}'.format(sorteddeps))
 
         for module in reversed(sorteddeps):
             base = self.findBase(module)

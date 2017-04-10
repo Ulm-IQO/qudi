@@ -143,10 +143,8 @@ class PulsedMasterLogic(GenericLogic):
             self.direct_write = False
 
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-          @param object e: Fysom state change event
         """
         self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
         self._generator_logic = self.get_connector('sequencegeneratorlogic')
@@ -313,10 +311,9 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['measurement_running'] = False
         self.status_dict['microwave_running'] = False
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """
 
-        @param e:
         @return:
         """
         # Save status variables

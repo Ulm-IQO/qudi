@@ -28,8 +28,6 @@ before_install:
   - ./tools/install-python-modules-linux.sh
   - source activate qudi
   - mkdir -p $HOME/bin
-  - echo -e "#!/bin/bash\ndoxypypy -a -c \$1" > $HOME/bin/py_filter
-  - chmod +x $HOME/bin/py_filter
 
 install:
   - python -c "import matplotlib.pyplot" # generate matplotlib font cache
@@ -40,5 +38,8 @@ script:
   - ./tools/test.sh
 
 after_success:
+  - pip install doxypypy
+  - echo -e "#!/bin/bash\ndoxypypy -a -c \$1" > $HOME/bin/py_filter
+  - chmod +x $HOME/bin/py_filter
   - ./tools/travis-publish-doxygen.sh
 

@@ -164,6 +164,7 @@ class ConfocalSettingDialog(QtWidgets.QDialog):
 
 
 class OptimizerSettingDialog(QtWidgets.QDialog):
+    """ User configurable settings for the optimizer embedded in cofocal gui"""
 
     def __init__(self):
         # Get the path to the *.ui file
@@ -208,16 +209,8 @@ class ConfocalGui(GUIBase):
         self.slider_small_step = 10e-9         # initial value in meter
         self.slider_big_step = 100e-9          # initial value in meter
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Initializes all needed UI files and establishes the connectors.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
 
         This method executes the all the inits for the differnt GUIs and passes
         the event argument from fysom to the methods.
@@ -230,15 +223,12 @@ class ConfocalGui(GUIBase):
 
         self._hardware_state = True
 
-        self.initMainUI(e)      # initialize the main GUI
-        self.initSettingsUI(e)  # initialize the settings GUI
-        self.initOptimizerSettingsUI(e)  # initialize the optimizer settings GUI
+        self.initMainUI()      # initialize the main GUI
+        self.initSettingsUI()  # initialize the settings GUI
+        self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
 
-    def initMainUI(self, e=None):
+    def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -724,11 +714,8 @@ class ConfocalGui(GUIBase):
 
         self.show()
 
-    def initSettingsUI(self, e=None):
+    def initSettingsUI(self):
         """ Definition, configuration and initialisation of the settings GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -745,11 +732,8 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
 
-    def initOptimizerSettingsUI(self, e=None):
+    def initOptimizerSettingsUI(self):
         """ Definition, configuration and initialisation of the optimizer settings GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -774,11 +758,8 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -1157,7 +1138,8 @@ class ConfocalGui(GUIBase):
 
     def roi_xy_bounds_check(self, roi):
         """ Check if the focus cursor is oputside the allowed range after drag
-            and set its position to the limit """
+            and set its position to the limit
+        """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
@@ -1227,6 +1209,8 @@ class ConfocalGui(GUIBase):
         self.roi_xy.setPos([roi_x_view, roi_y_view])
 
     def update_roi_xy_size(self):
+        """ Update the cursor size showing the optimizer scan area for the XY image.
+        """
         xpos = self.roi_xy.pos()[0]
         ypos = self.roi_xy.pos()[1]
         xsize = self.roi_xy.size()[0]
@@ -1238,6 +1222,8 @@ class ConfocalGui(GUIBase):
         self.roi_xy.setPos([xcenter-newsize / 2, ycenter-newsize / 2])
 
     def update_roi_depth_size(self):
+        """ Update the cursor size showing the optimizer scan area for the X-depth image.
+        """
         xpos = self.roi_depth.pos()[0]
         ypos = self.roi_depth.pos()[1]
         xsize = self.roi_depth.size()[0]
@@ -1495,12 +1481,18 @@ class ConfocalGui(GUIBase):
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
     def update_xy_channel(self, index):
-        """ """
+        """ The displayed channel for the XY image was changed, refresh the displayed image.
+
+            @param index int: index of selected channel item in combo box
+        """
         self.xy_channel = int(self._mw.xy_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
         self.refresh_xy_image()
 
     def update_depth_channel(self, index):
-        """ """
+        """ The displayed channel for the X-depth image was changed, refresh the displayed image.
+
+            @param index int: index of selected channel item in combo box
+        """
         self.depth_channel = int(self._mw.depth_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
         self.refresh_depth_image()
 
@@ -1616,10 +1608,13 @@ class ConfocalGui(GUIBase):
         ##########
         # Set the optimized position label
         self._mw.refocus_position_label.setText(
-            '({0:.3e}, {1:.3e}, {2:.3e})'.format(
+            '({0:.3e}, {1:.3e}, {2:.3e}) sigma: ({3:.3e}, {4:.3e}, {5:.3e})'.format(
                 self._optimizer_logic.optim_pos_x,
                 self._optimizer_logic.optim_pos_y,
-                self._optimizer_logic.optim_pos_z
+                self._optimizer_logic.optim_pos_z,
+                self._optimizer_logic.optim_sigma_x,
+                self._optimizer_logic.optim_sigma_y,
+                self._optimizer_logic.optim_sigma_z
             )
         )
 
@@ -2107,18 +2102,27 @@ class ConfocalGui(GUIBase):
             self._mw.action_scan_xy_start.setIcon(self._scan_xy_single_icon)
             self._mw.action_scan_depth_start.setIcon(self._scan_depth_single_icon)
 
-    def logic_started_scanning(self,tag):
+    def logic_started_scanning(self, tag):
+        """ Disable icons if a scan was started.
+
+            @param tag str: tag indicating command source
+        """
         if tag == 'logic':
             self.disable_scan_actions()
 
-    def logic_continued_scanning(self,tag):
+    def logic_continued_scanning(self, tag):
+        """ Disable icons if a scan was continued.
+
+            @param tag str: tag indicating command source
+        """
         if tag == 'logic':
             self.disable_scan_actions()
 
-    def logic_started_refocus(self,tag):
+    def logic_started_refocus(self, tag):
+        """ Disable icons if a refocus was started.
+
+            @param tag str: tag indicating command source
+        """
         if tag == 'logic':
             self.disable_scan_actions()
 
-
-    # def logic_stopped_scanning(self,tag):
-    #     if tag == 'logic':

@@ -40,10 +40,8 @@ class PiPWM(Base, ProcessControlInterface):
         #locking for thread safety
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         config = self.getConfiguration()
 
@@ -81,10 +79,8 @@ class PiPWM(Base, ProcessControlInterface):
         self.setupPins()
         self.startPWM()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         self.stopPWM()
 
@@ -142,7 +138,7 @@ class PiPWM(Base, ProcessControlInterface):
 
     def setControlValue(self, value):
         """ Set control value for this controller.
-        
+
             @param float value: control value, in this case duty cycle in percent
         """
         with self.threadlock:
@@ -150,7 +146,7 @@ class PiPWM(Base, ProcessControlInterface):
 
     def getControlValue(self):
         """ Get control value for this controller.
-        
+
             @return float: control value, in this case duty cycle in percent
         """
         return self.dutycycle
@@ -173,12 +169,9 @@ class PiPWM(Base, ProcessControlInterface):
 class PiPWMHalf(PiPWM):
     """ PWM controller restricted to positive values.
     """
-    
-    def __init__(self, manager, name, config = None, **kwargs):
-        if config is None:
-            config = {}
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        PiPWM.__init__(self, manager, name, **kwargs)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         #locking for thread safety
         self.threadlock = Mutex()
 

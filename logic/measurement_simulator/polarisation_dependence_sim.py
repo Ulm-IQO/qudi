@@ -42,7 +42,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 
     _move_signal = QtCore.Signal()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activation of the class
         """
         # name connected modules
@@ -64,7 +64,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         # Signals
         self._move_signal.connect(self._move_step, QtCore.Qt.QueuedConnection)
 
-    def on_deactivate(self,e):
+    def on_deactivate(self):
         self._counter_hw.close_counter()
         self._counter_hw.close_clock()
 

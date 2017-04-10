@@ -41,6 +41,7 @@ class SamplesWriteMethods():
         self._write_to_file['seq'] = self._write_seq
         self._write_to_file['seqx'] = self._write_seqx
         self._write_to_file['fpga'] = self._write_fpga
+        self._write_to_file['pstream'] = self._write_pstream
         return
 
     def _write_wfmx(self, name, analog_samples, digital_samples, total_number_of_samples,
@@ -356,6 +357,62 @@ class SamplesWriteMethods():
 
         return created_files
 
+    def _write_pstream(self, name, analog_samples, digital_samples, total_number_of_samples,
+                    is_first_chunk, is_last_chunk):
+        """
+        Appends a sampled chunk of a whole waveform to a fpga-file. Create the file
+        if it is the first chunk.
+        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
+        that the whole ensemble is written as a whole in one big chunk.
+
+        @param name: string, represents the name of the sampled ensemble
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
+                                       are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples
+                                      for the digital channels that
+                                      are to be written by this function call.
+        @param total_number_of_samples: int, The total number of samples in the
+                                        entire waveform. Has to be known it advance.
+        @param is_first_chunk: bool, indicates if the current chunk is the
+                               first write to this file.
+        @param is_last_chunk: bool, indicates if the current chunk is the last
+                              write to this file.
+
+        @return list: the list contains the string names of the created files for the passed
+                      presampled arrays
+        """
+        import dill
+
+        # record the name of the created files
+        created_files = []
+
+        channel_number = digital_samples.shape[0]
+        digital_samples = np.transpose(digital_samples)
+
+        if channel_number != 8:
+            self.log.error('Pulse streamer needs 8 digital channels. {0} is not allowed!'
+                           ''.format(channel_number))
+            return -1
+
+        new_channel_indices = np.where(digital_samples[:-1,:] != digital_samples[1:,:])[0]
+        new_channel_indices = new_channel_indices[np.where(new_channel_indices[:-1] != new_channel_indices[1:])[0]] #get rid of repeats
+        new_channel_indices = np.insert(new_channel_indices, 0, [-1])
+
+        pulses = []
+        for new_channel_index in range(1, new_channel_indices.size):
+            pulse = [new_channel_indices[new_channel_index] - new_channel_indices[new_channel_index - 1], _convert_to_bitmask(digital_samples[new_channel_indices[new_channel_index - 1] + 1,:])]
+            pulses.append(pulse)
+
+        # append samples to file
+        filename = name + '.pstream'
+        created_files.append(filename)
+
+        filepath = os.path.join(self.waveform_dir, filename)
+        dill.dump(pulses, open(filepath, 'wb'))
+
+        return created_files
+
     def _write_seq(self, name, sequence_param):
         """
         Write a sequence to a seq-file.
@@ -517,3 +574,40 @@ class SamplesWriteMethods():
         f = open(filepath, "wb")
         f.write(text[39:-1])
         f.close()
+
+def _convert_to_bitmask(active_channels):
+    """ Convert a list of channels into a bitmask.
+    @param numpy.array active_channels: the list of active channels like
+                        e.g. [0,4,7]. Note that the channels start from 0.
+    @return int: The channel-list is converted into a bitmask (an sequence
+                 of 1 and 0). The returned integer corresponds to such a
+                 bitmask.
+    Note that you can get a binary representation of an integer in python
+    if you use the command bin(<integer-value>). All higher unneeded digits
+    will be dropped, i.e. 0b00100 is turned into 0b100. Examples are
+        bin(0) =    0b0
+        bin(1) =    0b1
+        bin(8) = 0b1000
+    Each bit value (read from right to left) corresponds to the fact that a
+    channel is on or off. I.e. if you have
+        0b001011
+    then it would mean that only channel 0, 1 and 3 are switched to on, the
+    others are off.
+    Helper method for write_pulse_form.
+    """
+    bits = 0  # that corresponds to: 0b0
+    active_channels = np.where(active_channels == True)
+    for channel in active_channels[0]:
+        # go through each list element and create the digital word out of
+        # 0 and 1 that represents the channel configuration. In order to do
+        # that a bitwise shift to the left (<< operator) is performed and
+        # the current channel configuration is compared with a bitwise OR
+        # to check whether the bit was already set. E.g.:
+        #   0b1001 | 0b0110: compare elementwise:
+        #           1 | 0 => 1
+        #           0 | 1 => 1
+        #           0 | 1 => 1
+        #           1 | 1 => 1
+        #                   => 0b1111
+        bits = bits | (1 << channel)
+    return bits
