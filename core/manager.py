@@ -356,7 +356,7 @@ class Manager(QtCore.QObject):
                                 logger.warning('Global ''path'' '
                                                'configuration is neither str '
                                                ' nor list. Ignoring.')
-                        if (m == 'startup'):
+                        elif (m == 'startup'):
                             self.tree['global']['startup'] = cfg[
                                 'global']['startup']
                         elif (m == 'stylesheet' and self.hasGui):
