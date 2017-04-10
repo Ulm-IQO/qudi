@@ -2,13 +2,9 @@
 """
 This tool creates the folder structure for a qudi extension.
 
-- __init__.py
 - gui
-  - __init__.py
 - logic
-  - __init__.py
 - hardware
-  - __init__.py
 
 It prepares the __init__.py files such that this python package works as
 qudi extension.
