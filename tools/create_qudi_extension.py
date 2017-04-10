@@ -46,18 +46,13 @@ if (os.path.exists(args.directory)):
 else:
     # directory doesn't exist. Create folder structure
     os.makedirs(args.directory)
-    # place __init__.py
-    with open('{0}/__init__.py'.format(args.directory), 'w'):
-        pass
     for subdir in ['gui', 'logic', 'hardware']:
         # create subdirectory
         os.makedirs('{0}/{1}'.format(args.directory, subdir))
-        # place __init__.py
-        with open('{0}/{1}/__init__.py'.format(args.directory, subdir),
-                  'w') as f:
-            f.write('import pkgutil\n')
-            f.write('__path__ = pkgutil.extend_path(__path__, __name__)\n')
+
     print('Finished creating folder structure for qudi extension.')
+    print('')
+    print('Important notice: Do not use __init__.py files.')
     print('')
     print('You can include your extension into qudi by adding its path')
     print('in the configuration file:')
