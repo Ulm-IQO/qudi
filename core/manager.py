@@ -16,11 +16,13 @@ You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
-top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+top-level directory of this distribution and at
+<https://github.com/Ulm-IQO/qudi/>
 
 Derived form ACQ4:
 Copyright 2010  Luke Campagnola
-Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
+Originally distributed under MIT/X11 license. See documentation/MITLicense.txt
+for more infomation.
 """
 
 import logging
@@ -29,14 +31,12 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 import re
-import time
 import importlib
 
 from qtpy import QtCore
 from . import config
 
-from .util import ptime
-from .util.mutex import Mutex   # Mutex provides access serialization between threads
+from .util.mutex import Mutex
 from .util.modules import toposort, isBase
 from collections import OrderedDict
 from .logger import register_exception_handler
@@ -52,9 +52,11 @@ class Manager(QtCore.QObject):
       - Making sure all devices/modules are properly shut down
         at the end of the program
 
-      @signal sigConfigChanged: the configuration has changed, please reread your configuration
+      @signal sigConfigChanged: the configuration has changed, please reread
+                                your configuration
       @signal sigModulesChanged: the available modules have changed
-      @signal sigModuleHasQuit: the module whose name is passed is now deactivated
+      @signal sigModuleHasQuit: the module whose name is passed is now
+                                deactivated
       @signal sigAbortAll: abort all running things as quicly as possible
       @signal sigManagerQuit: the manager is quitting
       @signal sigManagerShow: show whatever part of the GUI is important
@@ -110,7 +112,8 @@ class Manager(QtCore.QObject):
 
             # Thread management
             self.tm = ThreadManager()
-            logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThreadId()))
+            logger.debug('Main thread is {0}'.format(
+                QtCore.QThread.currentThreadId()))
 
             # Task runner
             self.tr = None
@@ -119,7 +122,8 @@ class Manager(QtCore.QObject):
             if self.hasGui:
                 import core.gui
                 self.gui = core.gui.Gui()
-                self.gui.setTheme('qudiTheme', os.path.join(self.getMainDir(), 'artwork', 'icons'))
+                self.gui.setTheme('qudiTheme', os.path.join(
+                    self.getMainDir(), 'artwork', 'icons'))
                 self.gui.setAppIcon()
 
             # Read in configuration file
@@ -261,8 +265,8 @@ class Manager(QtCore.QObject):
 
           @param string configFile: path to configuration file
         """
-        print("============= Starting Manager configuration from {0} =================".format(
-            configFile))
+        print('============= Starting Manager configuration from {0} ======='
+              '=========='.format(configFile))
         logger.info("Starting Manager configuration from {0}".format(
             configFile))
         cfg = config.load(configFile)
@@ -270,7 +274,8 @@ class Manager(QtCore.QObject):
         self.configure(cfg)
 
         self.configFile = configFile
-        print("\n============= Manager configuration complete =================\n")
+        print('\n============= Manager configuration complete =============='
+              '===\n')
         logger.info('Manager configuration complete.')
 
     @QtCore.Slot(dict)
@@ -326,20 +331,47 @@ class Manager(QtCore.QObject):
                 # global config
                 elif key == 'global' and cfg['global'] is not None:
                     for m in cfg['global']:
-                        if m == 'startup':
+                        if (m == 'extensions'):
+                            if (isinstance(cfg['global'][m], list)):
+                                for ii in range(len(cfg['global'][m])):
+                                    if (os.path.isdir(cfg['global'][m][ii])):
+                                        sys.path.insert(
+                                            1+ii, cfg['global'][m][ii])
+                                    else:
+                                        logger.warning(
+                                            'Error while adding qudi '
+                                            'extension: Directory \'{0}\' '
+                                            'does not exist.'
+                                            ''.format(cfg['global'][m][ii]))
+                            elif (isinstance(cfg['global'][m], str)):
+                                if (os.path.isdir(cfg['global'][m])):
+                                    sys.path.insert(1, cfg['global'][m][ii])
+                                else:
+                                    logger.warning(
+                                        'Error while adding qudi extension: '
+                                        'Directory \'{0}\' does not exist.'
+                                        ''.format(cfg['global'][m]))
+
+                            else:
+                                logger.warning('Global ''path'' '
+                                               'configuration is neither str '
+                                               ' nor list. Ignoring.')
+                        if (m == 'startup'):
                             self.tree['global']['startup'] = cfg[
                                 'global']['startup']
-                        elif m == 'stylesheet' and self.hasGui:
-                            self.tree['global']['stylesheet'] = cfg['global']['stylesheet']
+                        elif (m == 'stylesheet' and self.hasGui):
+                            self.tree['global']['stylesheet'] = cfg[
+                                'global']['stylesheet']
                             stylesheetpath = os.path.join(
                                 self.getMainDir(),
                                 'artwork',
                                 'styles',
                                 'application',
                                 cfg['global']['stylesheet'])
-                            if not os.path.isfile(stylesheetpath):
+                            if (not os.path.isfile(stylesheetpath)):
                                 logger.warning(
-                                    'Stylesheet not found at {0}'.format(stylesheetpath))
+                                    'Stylesheet not found at {0}'.format(
+                                        stylesheetpath))
                                 continue
                             self.gui.setStyleSheet(stylesheetpath)
                         else:
@@ -446,14 +478,18 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def reloadConfigPart(self, base, mod):
-        """Reread the configuration file and update the internal configuration of module
+        """
+        Reread the configuration file and update the internal configuration
+        of module
 
-        @params str modname: name of module where config file should be reloaded.
+        @params str modname: name of module where config file should be
+                             reloaded.
         """
         configFile = self._getConfigFile()
         cfg = self.readConfigFile(configFile)
         try:
-            if cfg[base][mod]['module.Class'] == self.tree['defined'][base][mod]['module.Class']:
+            if (cfg[base][mod]['module.Class'] == self.tree['defined'][base][
+                    mod]['module.Class']):
                 self.tree['defined'][base][mod] = cfg[base][mod]
         except KeyError:
             pass
@@ -465,7 +501,8 @@ class Manager(QtCore.QObject):
     def importModule(self, baseName, module):
         """Load a python module that is a loadable Qudi module.
 
-          @param string baseName: the module base package (hardware, logic, or gui)
+          @param string baseName: the module base package (hardware, logic,
+                                  or gui)
           @param string module: the python module name inside the base package
 
           @return object: the loaded python module
@@ -491,8 +528,8 @@ class Manager(QtCore.QObject):
           @param string baseName: module base package (hardware, logic or gui)
           @param string className: name of the class we want an object from
                                  (same as module name usually)
-          @param string instanceName: unique name thet the Qudi module instance
-                                 was given in the configuration
+          @param string instanceName: unique name thet the Qudi module
+                                      instance was given in the configuration
           @param dict configuration: configuration options for the Qudi module
 
           @return object: Qudi module instance (object of the class derived
@@ -509,25 +546,28 @@ class Manager(QtCore.QObject):
             if isBase(baseName):
                 if self.isModuleLoaded(baseName, instanceName):
                     raise Exception(
-                        '{0} already exists with name {1}'.format(baseName, instanceName))
+                        '{0} already exists with name {1}'.format(
+                            baseName, instanceName))
             else:
-                raise Exception('You are trying to cheat the system with some '
-                                'category {0}'.format(baseName))
+                raise Exception('You are trying to cheat the system with '
+                                'some category {0}'.format(baseName))
 
         if configuration is None:
             configuration = {}
 
         # get class from module by name
-        #print(moduleObject, className)
         modclass = getattr(moduleObject, className)
 
         # FIXME: Check if the class we just obtained has the right inheritance
         if not issubclass(modclass, Base):
-            raise Exception('Bad inheritance, for instance {0!s} from {1!s}.{2!s}.'.format(
-                instanceName, baseName, className))
+            raise Exception('Bad inheritance, for instance {0!s} from '
+                            '{1!s}.{2!s}.'.format(
+                                instanceName, baseName, className))
 
         # Create object from class
-        instance = modclass(manager=self, name=instanceName, config=configuration)
+        instance = modclass(manager=self,
+                            name=instanceName,
+                            config=configuration)
 
         with self.lock:
             self.tree['loaded'][baseName][instanceName] = instance
@@ -607,12 +647,12 @@ class Manager(QtCore.QObject):
                 destmod = connections[c]
             destbase = ''
             # check if module exists at all
-            if (not destmod in self.tree['loaded']['gui'] and
-                    not destmod in self.tree['loaded']['hardware'] and
-                    not destmod in self.tree['loaded']['logic']):
+            if (destmod not in self.tree['loaded']['gui'] and
+                    destmod not in self.tree['loaded']['hardware'] and
+                    destmod not in self.tree['loaded']['logic']):
                 logger.error('Cannot connect {0}.{1}.{2} to module {3}. '
                              'Module does not exist.'.format(
-                             base, mkey, c, destmod))
+                                 base, mkey, c, destmod))
                 continue
             # check that module exists only once
             if not ((destmod in self.tree['loaded']['gui']) ^
@@ -657,49 +697,60 @@ class Manager(QtCore.QObject):
         if 'module.Class' in defined_module:
             if 'remote' in defined_module:
                 if not self.remoteServer:
-                    logger.error('Remote functionality not working, check your log.')
+                    logger.error('Remote functionality not working, check '
+                                 'your log.')
                     return -1
                 if not isinstance(defined_module['remote'], str):
-                    logger.error('Remote URI of {0} module {1} not a string.'.format(base, key))
+                    logger.error('Remote URI of {0} module {1} not a '
+                                 'string.'.format(base, key))
                     return -1
                 try:
-                    instance = self.rm.getRemoteModuleUrl(defined_module['remote'])
+                    instance = self.rm.getRemoteModuleUrl(
+                        defined_module['remote'])
                     logger.info('Remote module {0} loaded as .{1}.{2}.'
-                        ''.format(defined_module['remote'], base, key))
+                                ''.format(
+                                    defined_module['remote'], base, key))
                     with self.lock:
                         if isBase(base):
                             self.tree['loaded'][base][key] = instance
                             self.sigModulesChanged.emit()
                         else:
                             raise Exception(
-                                'You are trying to cheat the system with some category {0}'
-                                ''.format(base))
+                                'You are trying to cheat the system with '
+                                'some category {0}'.format(base))
                 except:
-                    logger.exception('Error while loading {0} module: {1}'.format(base, key))
+                    logger.exception('Error while loading {0} module: {1}'
+                                     ''.format(base, key))
                     return -1
             else:
                 try:
                     # class_name is the last part of the config entry
-                    class_name = re.split('\.', defined_module['module.Class'])[-1]
-                    # module_name is the whole line without this last part (and
-                    # with the trailing dot removed also)
+                    class_name = re.split('\.',
+                                          defined_module['module.Class'])[-1]
+                    # module_name is the whole line without this last part
+                    # (and with the trailing dot removed also)
                     module_name = re.sub(
                         '.' + class_name + '$',
                         '',
                         defined_module['module.Class'])
 
                     modObj = self.importModule(base, module_name)
-                    self.configureModule(modObj, base, class_name, key, defined_module)
-                    if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
+                    self.configureModule(modObj, base, class_name, key,
+                                         defined_module)
+                    if ('remoteaccess' in defined_module and defined_module[
+                            'remoteaccess']):
                         if not self.remoteServer:
-                            logger.error('Remote module sharing does not work '
-                                         'as server startup failed earlier, check '
-                                         'your log.')
+                            logger.error(
+                                'Remote module sharing does not work '
+                                'as server startup failed earlier, check '
+                                'your log.')
                             return 1
-                        self.rm.shareModule(key, self.tree['loaded'][base][key])
+                        self.rm.shareModule(
+                            key, self.tree['loaded'][base][key])
                 except:
                     logger.exception(
-                        'Error while loading {0} module: {1}'.format(base, key))
+                        'Error while loading {0} module: {1}'.format(
+                            base, key))
                     return -1
         else:
             logger.error('Missing module declaration in configuration: '
@@ -718,10 +769,12 @@ class Manager(QtCore.QObject):
         defined_module = self.tree['defined'][base][key]
         if 'remote' in defined_module:
             if not self.remoteServer:
-                logger.error('Remote functionality not working, check your log.')
+                logger.error(
+                    'Remote functionality not working, check your log.')
                 return -1
             if not isinstance(defined_module['remote'], str):
-                logger.error('Remote URI of {0} module {1} not a string.'.format(base, key))
+                logger.error('Remote URI of {0} module {1} not a string.'
+                             ''.format(base, key))
                 return -1
             try:
                 instance = self.rm.getRemoteModuleUrl(defined_module['remote'])
@@ -733,10 +786,11 @@ class Manager(QtCore.QObject):
                         self.sigModulesChanged.emit()
                     else:
                         raise Exception(
-                            'You are trying to cheat the system with some category {0}'
-                            ''.format(base))
+                            'You are trying to cheat the system with some '
+                            'category {0}'.format(base))
             except:
-                logger.exception('Error while loading {0} module: {1}'.format(base, key))
+                logger.exception('Error while loading {0} module: {1}'
+                                 ''.format(base, key))
         elif (key in self.tree['loaded'][base]
                 and 'module.Class' in defined_module):
             try:
@@ -744,7 +798,8 @@ class Manager(QtCore.QObject):
                 if self.isModuleActive(base, key):
                     self.deactivateModule(base, key)
             except:
-                logger.exception('Error while deactivating {0} module: {1}'.format(base, key))
+                logger.exception('Error while deactivating {0} module: {1}'
+                                 ''.format(base, key))
                 return -1
             try:
                 with self.lock:
@@ -763,13 +818,16 @@ class Manager(QtCore.QObject):
                 modObj = self.importModule(base, module_name)
                 # des Pudels Kern
                 importlib.reload(modObj)
-                self.configureModule(modObj, base, class_name, key, defined_module)
+                self.configureModule(modObj, base, class_name, key,
+                                     defined_module)
             except:
-                logger.exception('Error while reloading {0} module: {1}'.format(base, key))
+                logger.exception(
+                    'Error while reloading {0} module: {1}'.format(base, key))
                 return -1
         else:
             logger.error('Module not loaded or not loadable (missing module '
-                         'declaration in configuration): {0}.{1}'.format(base, key))
+                         'declaration in configuration): {0}.{1}'.format(
+                             base, key))
         return 0
 
     def isModuleDefined(self, base, name):
@@ -805,7 +863,8 @@ class Manager(QtCore.QObject):
         if not self.isModuleLoaded(base, name):
             logger.error('{0} module {1} not loaded.'.format(base, name))
             return False
-        return self.tree['loaded'][base][name].getState() in ('idle', 'running', 'locked')
+        return self.tree['loaded'][base][name].getState() in (
+            'idle', 'running', 'locked')
 
     def findBase(self, name):
         """ Find base for a given module name.
@@ -834,7 +893,8 @@ class Manager(QtCore.QObject):
                 self.isModuleDefined(base, name)
                 and 'remote' in self.tree['defined'][base][name]
                 and self.remoteServer):
-            logger.debug('No need to activate remote module {0}.{1}.'.format(base, name))
+            logger.debug('No need to activate remote module {0}.{1}.'.format(
+                base, name))
             return
         if module.getState() != 'deactivated':
             logger.error('{0} module {1} not deactivated'.format(base, name))
@@ -874,12 +934,13 @@ class Manager(QtCore.QObject):
         module = self.tree['loaded'][base][name]
         try:
             if not self.isModuleActive(base, name):
-                logger.error('{0} module {1} not isModuleActive.'.format(base, name))
+                logger.error('{0} module {1} not isModuleActive.'.format(
+                    base, name))
                 return
         except:
             logger.exception(
-                'Error while getting status of {0}, removing reference without deactivation.'
-                ''.format(name))
+                'Error while getting status of {0}, removing reference '
+                'without deactivation.'.format(name))
             with self.lock:
                 self.tree['loaded'][base].pop(name)
             return
@@ -902,22 +963,28 @@ class Manager(QtCore.QObject):
             self.saveStatusVariables(base, name, module.getStatusVariables())
             logger.debug('Deactivation success: {}'.format(success))
         except:
-            logger.exception('{0} module {1}: error during deactivation:'.format(base, name))
+            logger.exception('{0} module {1}: error during deactivation:'
+                             ''.format(base, name))
         QtCore.QCoreApplication.instance().processEvents()
 
     @QtCore.Slot(str, str)
     def getReverseRecursiveModuleDependencies(self, base, module, deps=None):
-        """ Based on input connector declarations, determine in which other modules need to be removed when stopping.
+        """
+        Based on input connector declarations, determine in which other
+        modules need to be removed when stopping.
 
-          @param str base: Module category
-          @param str key: Unique configured module name for module where we want the dependencies
+        @param str base: Module category
+        @param str key: Unique configured module name for module where we
+                        want the dependencies
 
-          @return dict: module dependencies in the right format for the toposort function
+        @return dict: module dependencies in the right format for the
+                      toposort function
         """
         if deps is None:
             deps = dict()
         if not self.isModuleDefined(base, module):
-            logger.error('{0} module {1}: no such module defined'.format(base, module))
+            logger.error('{0} module {1}: no such module defined'.format(
+                base, module))
             return None
 
         deplist = set()
@@ -927,7 +994,9 @@ class Manager(QtCore.QObject):
                     continue
                 connections = mod['connect']
                 if not isinstance(connections, OrderedDict):
-                    logger.error('{0} module {1}: connect is not a dictionary'.format(bname, mname))
+                    logger.error(
+                        '{0} module {1}: connect is not a dictionary'.format(
+                            bname, mname))
                     continue
                 for cname, connection in connections.items():
                     conn = connection
@@ -944,7 +1013,8 @@ class Manager(QtCore.QObject):
 
         for name in deplist:
             if name not in deps:
-                subdeps = self.getReverseRecursiveModuleDependencies(self.findBase(name), name, deps)
+                subdeps = self.getReverseRecursiveModuleDependencies(
+                    self.findBase(name), name, deps)
                 if subdeps is not None:
                     deps.update(subdeps)
 
@@ -952,22 +1022,28 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def getRecursiveModuleDependencies(self, base, key):
-        """ Based on input connector declarations, determine in which other modules are needed for a specific module to run.
+        """
+        Based on input connector declarations, determine in which other
+        modules are needed for a specific module to run.
 
-          @param str base: Module category
-          @param str key: Unique configured module name for module where we want the dependencies
+        @param str base: Module category
+        @param str key: Unique configured module name for module where we
+                        want the dependencies
 
-          @return dict: module dependencies in the right format for the toposort function
+        @return dict: module dependencies in the right format for the
+                      toposort function
         """
         deps = dict()
         if not self.isModuleDefined(base, key):
-            logger.error('{0} module {1}: no such module defined'.format(base, key))
+            logger.error('{0} module {1}: no such module defined'.format(
+                base, key))
             return None
-        defined_module =  self.tree['defined'][base][key]
+        defined_module = self.tree['defined'][base][key]
         if 'connect' not in defined_module:
             return dict()
         if not isinstance(defined_module['connect'], OrderedDict):
-            logger.error('{0} module {1}: connect is not a dictionary'.format(base, key))
+            logger.error('{0} module {1}: connect is not a dictionary'.format(
+                base, key))
             return None
         connections = defined_module['connect']
         deplist = set()
@@ -983,10 +1059,12 @@ class Manager(QtCore.QObject):
             else:
                 destmod = connections[c]
             destbase = ''
-            if destmod in self.tree['defined']['hardware'] and destmod in self.tree['defined']['logic']:
-                logger.error('Unique name {0} is in both hardware and '
-                             'logic module list. Connection is not well defined.'
-                             ''.format(destmod))
+            if (destmod in self.tree['defined']['hardware'] and
+                    destmod in self.tree['defined']['logic']):
+                logger.error(
+                    'Unique name {0} is in both hardware and '
+                    'logic module list. Connection is not well defined.'
+                    ''.format(destmod))
                 return None
             elif destmod in self.tree['defined']['hardware']:
                 destbase = 'hardware'
@@ -1008,10 +1086,14 @@ class Manager(QtCore.QObject):
         return deps
 
     def getAllRecursiveModuleDependencies(self, allmods):
-        """ Build a dependency tre for defined or loaded modules.
-          @param dict allmods: dictionary containing module bases (self.tree['loaded'] equivalent)
+        """
+        Build a dependency tre for defined or loaded modules.
 
-          @return dict:  module dependencies in the right format for the toposort function
+        @param dict allmods: dictionary containing module bases
+                             (self.tree['loaded'] equivalent)
+
+        @return dict: module dependencies in the right format for the
+                      toposort function
         """
         deps = {}
         for mbase, bdict in allmods.items():
@@ -1021,12 +1103,14 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def startModule(self, base, key):
-        """ Figure out the module dependencies in terms of connections, load and activate module.
+        """
+        Figure out the module dependencies in terms of connections, load and
+        activate module.
 
-          @param str base: Module category
-          @param str key: Unique module name
+        @param str base: Module category
+        @param str key: Unique module name
 
-          @return int: 0 on success, -1 on error
+        @return int: 0 on success, -1 on error
 
             If the module is already loaded, just activate it.
             If the module is an active GUI module, show its window.
@@ -1038,34 +1122,41 @@ class Manager(QtCore.QObject):
 
         for mkey in sorteddeps:
             for mbase in ('hardware', 'logic', 'gui'):
-                if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
+                if (mkey in self.tree['defined'][mbase] and
+                        mkey not in self.tree['loaded'][mbase]):
                     success = self.loadConfigureModule(mbase, mkey)
-                    if success < 0:
-                        logger.warning('Stopping module loading after loading failure.')
+                    if (success < 0):
+                        logger.warning(
+                            'Stopping module loading after loading failure.')
                         return -1
-                    elif success > 0:
+                    elif (success > 0):
                         logger.warning('Nonfatal loading error, going on.')
                     success = self.connectModule(mbase, mkey)
-                    if success < 0:
-                        logger.warning('Stopping loading module {0}.{1} after '
-                                       'connection failure.'.format(mbase, mkey))
+                    if (success < 0):
+                        logger.warning(
+                            'Stopping loading module {0}.{1} after '
+                            'connection failure.'.format(mbase, mkey))
                         return -1
-                    if mkey in self.tree['loaded'][mbase]:
+                    if (mkey in self.tree['loaded'][mbase]):
                         self.activateModule(mbase, mkey)
-                elif mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
-                    if self.tree['loaded'][mbase][mkey].getState() == 'deactivated':
+                elif (mkey in self.tree['defined'][mbase] and
+                      mkey in self.tree['loaded'][mbase]):
+                    if (self.tree['loaded'][mbase][mkey].getState(
+                            ) == 'deactivated'):
                         self.activateModule(mbase, mkey)
-                    elif self.tree['loaded'][mbase][mkey].getState() != 'deactivated' and mbase == 'gui':
+                    elif (self.tree['loaded'][mbase][mkey].getState(
+                            ) != 'deactivated' and mbase == 'gui'):
                         self.tree['loaded'][mbase][mkey].show()
         return 0
 
     @QtCore.Slot(str, str)
     def stopModule(self, base, key):
-        """ Figure out the module dependencies in terms of connections and deactivate module.
+        """
+        Figure out the module dependencies in terms of connections and
+        deactivate module.
 
-          @param str base: Module category
-          @param str key: Unique module name
-
+        @param str base: Module category
+        @param str key: Unique module name
         """
         deps = self.getRecursiveModuleDependencies(base, key)
         sorteddeps = toposort(deps)
@@ -1074,22 +1165,26 @@ class Manager(QtCore.QObject):
 
         for mkey in reversed(sorteddeps):
             for mbase in ('hardware', 'logic', 'gui'):
-                if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
+                if (mkey in self.tree['defined'][mbase] and
+                        mkey in self.tree['loaded'][mbase]):
                     try:
-                        deact = self.tree['loaded'][mbase][mkey].can('deactivate')
+                        deact = self.tree['loaded'][mbase][mkey].can(
+                            'deactivate')
                     except:
                         deact = True
                     if deact:
-                        logger.info('Deactivating module {0}.{1}'.format(mbase, mkey))
+                        logger.info('Deactivating module {0}.{1}'.format(
+                            mbase, mkey))
                         self.deactivateModule(mbase, mkey)
 
     @QtCore.Slot(str, str)
     def restartModuleRecursive(self, base, key):
-        """ Figure out the module dependencies in terms of connections, reload and activate module.
+        """
+        Figure out the module dependencies in terms of connections, reload
+        and activate module.
 
-          @param str base: Module category
-          @param str key: Unique configured module name
-
+        @param str base: Module category
+        @param str key: Unique configured module name
         """
         unload_deps = self.getReverseRecursiveModuleDependencies(base, key)
         sorted_u_deps = toposort(unload_deps)
@@ -1103,13 +1198,14 @@ class Manager(QtCore.QObject):
                 success = self.reloadConfigureModule(mbase, mkey)
                 if success < 0:
                     logger.warning('Stopping loading module {0}.{1} after '
-                        'loading error'.format(mbase, mkey))
+                                   'loading error'.format(mbase, mkey))
                     return -1
                 unloaded_mods.append(mkey)
 
         for mkey in reversed(unloaded_mods):
             mbase = self.findBase(mkey)
-            if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
+            if (mkey in self.tree['defined'][mbase] and
+                    mkey not in self.tree['loaded'][mbase]):
                 success = self.loadConfigureModule(mbase, mkey)
                 if success < 0:
                     logger.warning('Stopping loading module {0}.{1} after '
@@ -1125,16 +1221,18 @@ class Manager(QtCore.QObject):
                 if mkey in self.tree['loaded'][mbase]:
                     success = self.connectModule(mbase, mkey)
                     if success < 0:
-                        logger.warning('Stopping loading module {0}.{1} after '
-                                       'connection error'.format(mbase, mkey))
+                        logger.warning(
+                            'Stopping loading module {0}.{1} after '
+                            'connection error'.format(mbase, mkey))
                         return -1
                     self.activateModule(mbase, mkey)
         return 0
 
     @QtCore.Slot()
     def startAllConfiguredModules(self):
-        """Connect all Qudi modules from the currently loaded configuration and
-            activate them.
+        """
+        Connect all Qudi modules from the currently loaded configuration and
+        activate them.
         """
         deps = self.getAllRecursiveModuleDependencies(self.tree['defined'])
         sorteddeps = toposort(deps)
@@ -1147,9 +1245,11 @@ class Manager(QtCore.QObject):
         logger.info('Start all modules finished.')
 
     def getStatusDir(self):
-        """ Get the directory where the app state is saved, create it if necessary.
+        """
+        Get the directory where the app state is saved, create it if
+        necessary.
 
-          @return str: path of application status directory
+        @return str: path of application status directory
         """
         appStatusDir = os.path.join(self.configDir, 'app_status')
         if not os.path.isdir(appStatusDir):
@@ -1158,23 +1258,29 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot(str, str, dict)
     def saveStatusVariables(self, base, module, variables):
-        """ If a module has status variables, save them to a file in the application status directory.
+        """
+        If a module has status variables, save them to a file in the
+        application status directory.
 
-          @param str base: the module category
-          @param str module: the unique module name
-          @param dict variables: a dictionary of status variable names and values
+        @param str base: the module category
+        @param str module: the unique module name
+        @param dict variables: a dictionary of status variable names and
+                               values
         """
         if len(variables) > 0:
             try:
                 statusdir = self.getStatusDir()
-                classname = self.tree['loaded'][base][module].__class__.__name__
-                filename = os.path.join(statusdir,
+                classname = self.tree['loaded'][base][
+                    module].__class__.__name__
+                filename = os.path.join(
+                    statusdir,
                     'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
                 config.save(filename, variables)
             except:
                 print(variables)
-                logger.exception('Failed to save status variables of module '
-                        '{0}.{1}:\n{2}'.format(base, module, repr(variables)))
+                logger.exception(
+                    'Failed to save status variables of module '
+                    '{0}.{1}:\n{2}'.format(base, module, repr(variables)))
 
     def loadStatusVariables(self, base, module):
         """ If a status variable file exists for a module, load it into a dictionary.
@@ -1188,7 +1294,8 @@ class Manager(QtCore.QObject):
             statusdir = self.getStatusDir()
             classname = self.tree['loaded'][base][module].__class__.__name__
             filename = os.path.join(
-                statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+                statusdir,
+                'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
             if os.path.isfile(filename):
                 variables = config.load(filename)
             else:
@@ -1205,7 +1312,8 @@ class Manager(QtCore.QObject):
             classname = self.tree['defined'][base][
                 module]['module.Class'].split('.')[-1]
             filename = os.path.join(
-                statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+                statusdir,
+                'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
             if os.path.isfile(filename):
                 os.remove(filename)
         except:
@@ -1259,15 +1367,18 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot()
     def restart(self):
-        """Nicely request that all modules shut down for application restart."""
-        for mbase,bdict in self.tree['loaded'].items():
+        """
+        Nicely request that all modules shut down for application restart.
+        """
+        for mbase, bdict in self.tree['loaded'].items():
             for module in bdict:
                 try:
                     if self.isModuleActive(mbase, module):
                         self.deactivateModule(mbase, module)
                 except:
                     logger.exception(
-                        'Module {0} failed to stop, continuing anyway.'.format(module))
+                        'Module {0} failed to stop, continuing anyway.'
+                        ''.format(module))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 
@@ -1277,7 +1388,8 @@ class Manager(QtCore.QObject):
 
         @param object reference: reference to a task runner or null class
 
-        If a reference is passed that is not None, it is kept and passed out as the task runner instance.
+        If a reference is passed that is not None, it is kept and passed out
+        as the task runner instance.
         If a None is passed, the reference is discarded.
         Id another reference is passed, the current one is replaced.
 
@@ -1289,7 +1401,8 @@ class Manager(QtCore.QObject):
             elif self.tr is not None and reference is None:
                 logger.info('Task runner removed.')
             elif self.tr is None and reference is None:
-                logger.error('You tried to remove the task runner but none was registered.')
+                logger.error('You tried to remove the task runner but none '
+                             'was registered.')
             else:
                 logger.warning('Replacing task runner.')
 
