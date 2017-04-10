@@ -28,6 +28,7 @@ from qtpy import QtCore
 from collections import OrderedDict
 import inspect
 import importlib
+import sys
 
 from logic.pulse_objects import PulseBlockElement
 from logic.pulse_objects import PulseBlock
@@ -125,6 +126,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                              'memory overflow during sampling/writing of Pulse objects you must '
                              'set "overhead_bytes".')
 
+        # directory for additional generate methods to import
+        # (other than qudi/logic/predefined_methods)
+        if 'additional_methods_dir' in config.keys():
+            if os.path.exists(config['additional_methods_dir']):
+                self.additional_methods_dir = config['additional_methods_dir']
+            else:
+                self.additional_methods_dir = None
+                self.log.error('Specified path "{0}" for import of additional generate methods '
+                               'does not exist.'.format(config['additional_methods_dir']))
+        else:
+            self.additional_methods_dir = None
+
 
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
@@ -187,15 +200,25 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @return:
         """
         self.generate_methods = OrderedDict()
-        filename_list = []
+        filenames_list = []
+        additional_filenames_list = []
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
         path = os.path.join(self.get_main_dir(), 'logic', 'predefined_methods')
         for entry in os.listdir(path):
-            if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
-                filename_list.append(entry[:-3])
+            filepath = os.path.join(path, entry)
+            if os.path.isfile(filepath) and entry.endswith('.py'):
+                filenames_list.append(entry[:-3])
+        # Also attach methods from the non-default additional methods directory if defined in config
+        if self.additional_methods_dir is not None:
+            # attach to path
+            sys.path.append(self.additional_methods_dir)
+            for entry in os.listdir(self.additional_methods_dir):
+                filepath = os.path.join(self.additional_methods_dir, entry)
+                if os.path.isfile(filepath) and entry.endswith('.py'):
+                    additional_filenames_list.append(entry[:-3])
 
-        for filename in filename_list:
+        for filename in filenames_list:
             mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
             for method in dir(mod):
                 try:
@@ -210,6 +233,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'SequenceGenerationLogic.'.format(method, filename))
+
+        for filename in additional_filenames_list:
+            mod = importlib.import_module(filename)
+            for method in dir(mod):
+                try:
+                    # Check for callable function or method:
+                    ref = getattr(mod, method)
+                    if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
+                        # Bind the method as an attribute to the Class
+                        setattr(SequenceGeneratorLogic, method, getattr(mod, method))
+                        # Add method to dictionary if it is a generator method
+                        if method.startswith('generate_'):
+                            self.generate_methods[method[9:]] = eval('self.'+method)
+                except:
+                    self.log.error('It was not possible to import element {0} from {1} into '
+                                   'SequenceGenerationLogic.'.format(method, filepath))
+
         self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
