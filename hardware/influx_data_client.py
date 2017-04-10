@@ -26,10 +26,15 @@ from interface.process_interface import ProcessInterface
 
 
 class InfluxDataClient(Base, ProcessInterface):
+    """ Retrieve live data from InfluxDB as if the measurement device was connected directly.
+    """
+
     _modclass = 'InfluxDataClient'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
+        """ Activate module.
+        """
         config = self.getConfiguration()
 
         if 'user' in config:
@@ -60,10 +65,13 @@ class InfluxDataClient(Base, ProcessInterface):
 
         self.connect_db()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
+        """ Deactivate module.
+        """
         del self.conn
 
     def connect_db(self):
+        """ Connect to Influx database """
         self.conn = InfluxDBClient(self.host, self.port, self.user, self.pw, self.dbname)
 
     def getProcessValue(self):
@@ -74,6 +82,9 @@ class InfluxDataClient(Base, ProcessInterface):
         return list(res[('{0}'.format(self.series), None)])[0]['last']
 
     def getProcessUnit(self):
-        """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
+        """ Return the unit that the value is measured in
+
+            @return (str, str): a tuple of ('abreviation', 'full unit name')
+        """
         return '°C', ' degrees Celsius'
 

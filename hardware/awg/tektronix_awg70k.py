@@ -41,16 +41,8 @@ class AWG70K(Base, PulserInterface):
     _modclass = 'awg70k'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         config = self.getConfiguration()
 
@@ -131,11 +123,8 @@ class AWG70K(Base, PulserInterface):
         self._init_loaded_asset()
         self.current_status = 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Required tasks to be performed during deactivation of the module.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in method activation.
         """
         # Closes the connection to the AWG
         try:

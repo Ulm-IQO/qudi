@@ -26,7 +26,6 @@ import time
 
 from .qzmqkernel import QZMQKernel
 from core.util.network import netobtain
-import logging
 #-----------------------------------------------------------------------------
 # The Qudi logic module
 #-----------------------------------------------------------------------------
@@ -46,30 +45,26 @@ class QudiKernelLogic(GenericLogic):
         self.kernellist = dict()
         self.modules = set()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare logic module for work.
-
-          @param object e: Fysom state change notification
         """
-        logging.basicConfig(
-            format='%(asctime)s %(levelname)s: %(message)s',
-            datefmt='%Y-%m-%d %I:%M:%S %p',
-            level=logging.DEBUG)
-
         self.kernellist = dict()
         self.modules = set()
         self._manager.sigModulesChanged.connect(self.updateModuleList)
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-          @param object e: Fysom state change notification
         """
-        while len(self.kernellist) > 0:
-            self.stopKernel(tuple(self.kernellist.keys())[0])
+        kernels = tuple(self.kernellist.keys())
+        for k in kernels:
+            self.stopKernel(k)
+
+        i = 0
+        while len(self.kernellist) > 0 and i < 100:
             QtCore.QCoreApplication.processEvents()
             time.sleep(0.05)
+            i += 1
 
     def startKernel(self, config, external=None):
         """Start a qudi inprocess jupyter kernel.
@@ -79,7 +74,7 @@ class QudiKernelLogic(GenericLogic):
           @return str: uuid of the started kernel
         """
         realconfig = netobtain(config)
-        self.log.info('Start {0}'.format(realconfig))
+        self.log.debug('Start {0}'.format(realconfig))
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
@@ -90,7 +85,7 @@ class QudiKernelLogic(GenericLogic):
             'manager': self._manager
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
-        self.log.info('Kernel is {0}'.format(kernel.engine_id))
+        self.log.debug('Kernel is {0}'.format(kernel.engine_id))
         QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
         self.log.info('Finished starting Kernel {0}'.format(kernel.engine_id))
@@ -102,7 +97,7 @@ class QudiKernelLogic(GenericLogic):
           @param str kernelid: uuid of kernel to be stopped
         """
         realkernelid = netobtain(kernelid)
-        self.log.info('Stopping {0}'.format(realkernelid))
+        self.log.info('Stopping kernel {0}'.format(realkernelid))
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
 

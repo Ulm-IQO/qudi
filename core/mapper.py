@@ -97,7 +97,7 @@ class Mapper():
     In the on_activate method of the GUI module, we define the following
     mapping between the line edit and the logic property:
     ```
-    def on_activate(self, e):
+    def on_activate(self):
         self.mapper = Mapper()
         self.mapper.add_mapping(self.lineedit, self.logic_module,
                 'some_value', 'some_value_changed')
@@ -108,7 +108,7 @@ class Mapper():
 
     If the GUI module is deactivated we should delete all mappings:
     ```
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self.mapper.clear_mapping()
     ```
     """

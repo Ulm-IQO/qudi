@@ -146,23 +146,15 @@ class FitLogic(GenericLogic):
         self.log.info('Methods were included to FitLogic, but only if naming is right: check the'
                          ' doxygen documentation if you added a new method and it does not show.')
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         # FIXME: load all the fits here, otherwise reloading this module is really questionable
         fitversion = LooseVersion(lmfit.__version__)
         if fitversion < LooseVersion('0.9.2'):
             raise Exception('lmfit needs to be at least version 0.9.2!')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ """
         pass
 
@@ -252,7 +244,7 @@ class FitLogic(GenericLogic):
         return self.validate_load_fits(fits)
 
     def save_fits(self, filename, fits):
-        """ Save a collection of configured fits to YAML file. 
+        """ Save a collection of configured fits to YAML file.
             @param fits dict: dictionay with fits, function references and parameter objects
 
             @return dict: storable dictionary with fit description
@@ -332,7 +324,7 @@ class FitContainer(QtCore.QObject):
 
     def save_to_dict(self):
         """ Convert self.fit_list to a storable dictionary.
-            
+
             @return dict: storable configured fits dictionary
         """
         prep = self.fit_logic.prepare_save_fits({self.dimension: self.fit_list})

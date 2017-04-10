@@ -39,7 +39,9 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
 
-    def on_activate(self,e=None):
+    def on_activate(self):
+        """ Initialisation performed during activation of the module.
+        """
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
@@ -72,7 +74,9 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self.log.info('Anritsu {} initialised and connected to hardware.'
                 ''.format(self.model))
 
-    def on_deactivate(self,e=None):
+    def on_deactivate(self):
+        """ Deinitialisation performed during deactivation of the module.
+        """
         self._gpib_connection.close()
         self.rm.close()
 
@@ -240,13 +244,13 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start, stop, step, power):
-        """
+        """ Activate sweep mode on the microwave source
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
+        @param start float: start frequency
+        @param stop float: stop frequency
+        @param step float: frequency step
+        @param power float: output power
+        @return int: number of frequency steps generated
         """
         self.set_power(power)
         self._gpib_connection.write('F1 {0} Hz, SYZ {1} Hz, F2 {2} Hz, SF1'.format(start - step, step, stop))

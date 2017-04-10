@@ -168,16 +168,8 @@ class PulsedMeasurementGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Initialize, connect and configure the pulsed measurement GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
 
         Establish general connectivity and activate the different tabs of the
         GUI.
@@ -199,32 +191,29 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
         self.setup_toolbar()
-        self._activate_analysis_settings_ui(e)
-        self._activate_analysis_ui(e)
+        self._activate_analysis_settings_ui()
+        self._activate_analysis_ui()
         self.setup_extraction_ui()
 
-        self._activate_generator_settings_ui(e)
-        self._activate_pulse_generator_ui(e)
+        self._activate_generator_settings_ui()
+        self._activate_pulse_generator_ui()
 
         self.show()
 
         self._pa.ext_control_mw_freq_DoubleSpinBox.setMaximum(999999999999)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Undo the Definition, configuration and initialisation of the pulsed
             measurement GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
-        self._deactivate_analysis_settings_ui(e)
-        self._deactivate_analysis_ui(e)
+        self._deactivate_analysis_settings_ui()
+        self._deactivate_analysis_ui()
 
-        self._deactivate_generator_settings_ui(e)
-        self._deactivate_pulse_generator_ui(e)
+        self._deactivate_generator_settings_ui()
+        self._deactivate_pulse_generator_ui()
 
         self._mw.close()
 
@@ -237,12 +226,9 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     ###   Methods related to Settings for the 'Pulse Generator' tab:        ###
     ###########################################################################
-    def _activate_generator_settings_ui(self, e):
+    def _activate_generator_settings_ui(self):
         """ Initialize, connect and configure the pulse generator settings to be displayed in the
         editor.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._gs = GeneratorSettingsDialog()
         self._gs.accepted.connect(self.apply_generator_settings)
@@ -281,11 +267,8 @@ class PulsedMeasurementGui(GUIBase):
         self._create_function_config()
         return
 
-    def _deactivate_generator_settings_ui(self, e):
+    def _deactivate_generator_settings_ui(self):
         """ Disconnects the configuration of the Settings for the 'Pulse Generator' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._statusVariables['predefined_methods_to_show'] = self._predefined_methods_to_show
         self._statusVariables['functions_to_show'] = self._functions_to_show
@@ -520,11 +503,8 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
     ###########################################################################
-    def _activate_pulse_generator_ui(self, e):
+    def _activate_pulse_generator_ui(self):
         """ Initialize, connect and configure the 'Pulse Generator' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         # connect signals of input widgets
         self._pg.gen_sample_freq_DSpinBox.editingFinished.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
@@ -585,11 +565,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.request_generator_init_values()
         return
 
-    def _deactivate_pulse_generator_ui(self, e):
+    def _deactivate_pulse_generator_ui(self):
         """ Disconnects the configuration for 'Pulse Generator Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         # disconnect signals of input widgets
         self._pg.gen_sample_freq_DSpinBox.editingFinished.disconnect()
@@ -1132,11 +1109,8 @@ class PulsedMeasurementGui(GUIBase):
     ###        Methods related to Settings for the 'Analysis' Tab:          ###
     ###########################################################################
     #FIXME: Implement the setting for 'Analysis' tab.
-    def _activate_analysis_settings_ui(self, e):
+    def _activate_analysis_settings_ui(self):
         """ Initialize, connect and configure the Settings of 'Analysis' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._as = AnalysisSettingDialog()
         self._as.accepted.connect(self.update_analysis_settings)
@@ -1163,11 +1137,8 @@ class PulsedMeasurementGui(GUIBase):
         self.update_analysis_settings()
         return
 
-    def _deactivate_analysis_settings_ui(self, e):
+    def _deactivate_analysis_settings_ui(self):
         """ Disconnects the configuration of the Settings for 'Analysis' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._statusVariables['ana_param_x_axis_name_LineEdit'] = self._as.ana_param_x_axis_name_LineEdit.text()
         self._statusVariables['ana_param_x_axis_unit_LineEdit'] = self._as.ana_param_x_axis_unit_LineEdit.text()
@@ -1271,11 +1242,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_PlotWidget.addItem(self.ref_end_line)
         self._pe.laserpulses_PlotWidget.setLabel('bottom', 'bins')
 
-    def _activate_analysis_ui(self, e):
+    def _activate_analysis_ui(self):
         """ Initialize, connect and configure the 'Analysis' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         if 'ana_param_errorbars_CheckBox' in self._statusVariables:
             self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
@@ -1432,11 +1400,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.request_measurement_init_values()
         return
 
-    def _deactivate_analysis_ui(self, e):
+    def _deactivate_analysis_ui(self):
         """ Disconnects the configuration for 'Analysis' Tab.
-
-       @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self.measurement_run_stop_clicked(False)
 

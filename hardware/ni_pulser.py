@@ -41,7 +41,9 @@ class NIPulser(Base, PulserInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-    def on_activate(self, e):
+    def on_activate(self):
+        """ Activate module
+        """
         config = self.getConfiguration()
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -87,10 +89,14 @@ class NIPulser(Base, PulserInterface):
             k: True for k in self.constraints['activation_config']['analog_only']})
         #self.sample_rate = self.get_sample_rate()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
+        """ Deactivate module
+        """
         self.close_pulser_task()
 
     def init_constraints(self):
+        """ Build a pulser constraints dictionary with information from the NI card.
+        """
         device = self.device
         constraints = {}
         ch_map = OrderedDict()

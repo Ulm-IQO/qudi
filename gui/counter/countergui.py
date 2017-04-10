@@ -46,6 +46,7 @@ class CounterMainWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
+
 class CounterGui(GUIBase):
 
     """ FIXME: Please document
@@ -68,16 +69,8 @@ class CounterGui(GUIBase):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Definition and initialisation of the GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         self._counting_logic = self.get_connector('counterlogic1')
@@ -150,16 +143,17 @@ class CounterGui(GUIBase):
         self.sigStartCounter.connect(self._counting_logic.startCount)
         self.sigStopCounter.connect(self._counting_logic.stopCount)
 
-        ################### Handling signals from the logic
+        ##################
+        # Handling signals from the logic
 
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
 
-        #ToDo:
-        #self._counting_logic.sigCountContinuousNext.connect()
-        #self._counting_logic.sigCountGatedNext.connect()
-        #self._counting_logic.sigCountFiniteGatedNext.connect()
-        #self._counting_logic.sigGatedCounterFinished.connect()
-        #self._counting_logic.sigGatedCounterContinue.connect()
+        # ToDo:
+        # self._counting_logic.sigCountContinuousNext.connect()
+        # self._counting_logic.sigCountGatedNext.connect()
+        # self._counting_logic.sigCountFiniteGatedNext.connect()
+        # self._counting_logic.sigGatedCounterFinished.connect()
+        # self._counting_logic.sigGatedCounterContinue.connect()
 
         self._counting_logic.sigCountingSamplesChanged.connect(self.update_oversampling_SpinBox)
         self._counting_logic.sigCountLengthChanged.connect(self.update_count_length_SpinBox)
@@ -178,12 +172,9 @@ class CounterGui(GUIBase):
         self._mw.raise_()
         return
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         # FIXME: !
         """ Deactivate the module
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         # disconnect signals
         self._mw.start_counter_Action.triggered.disconnect()
@@ -218,8 +209,10 @@ class CounterGui(GUIBase):
                 / self._counting_logic.get_count_frequency())
 
             for i, ch in enumerate(self._counting_logic.get_channels()):
-                self.curves[2*i].setData(y=self._counting_logic.countdata[i], x=x_vals)
-                self.curves[2*i+1].setData(y=self._counting_logic.countdata_smoothed[i], x=x_vals)
+                self.curves[2 * i].setData(y=self._counting_logic.countdata[i], x=x_vals)
+                self.curves[2 * i + 1].setData(y=self._counting_logic.countdata_smoothed[i],
+                                               x=x_vals
+                                               )
 
         if self._counting_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Save')
@@ -264,7 +257,8 @@ class CounterGui(GUIBase):
             self._counting_logic.start_saving()
         return self._counting_logic.get_saving_state()
 
-    ######### Input parameters changed via GUI
+    ########
+    # Input parameters changed via GUI
 
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
@@ -276,7 +270,6 @@ class CounterGui(GUIBase):
         )
         return self._mw.count_length_SpinBox.value()
 
-
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
@@ -286,7 +279,6 @@ class CounterGui(GUIBase):
             self._counting_logic.get_count_length() / self._counting_logic.get_count_frequency()
         )
         return self._mw.count_freq_SpinBox.value()
-
 
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
@@ -298,7 +290,8 @@ class CounterGui(GUIBase):
         )
         return self._mw.oversampling_SpinBox.value()
 
-    ######### Restore default values
+    ########
+    # Restore default values
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
@@ -325,9 +318,10 @@ class CounterGui(GUIBase):
                             self._mw.counting_control_ToolBar)
         return 0
 
-########### Handle signals from logic
+    ##########
+    # Handle signals from logic
 
-    def update_oversampling_SpinBox(self,oversampling):
+    def update_oversampling_SpinBox(self, oversampling):
         """Function to ensure that the GUI displays the current value of the logic
 
         @param int oversampling: adjusted oversampling to update in the GUI in bins
@@ -338,7 +332,7 @@ class CounterGui(GUIBase):
         self._mw.oversampling_SpinBox.blockSignals(False)
         return oversampling
 
-    def update_count_freq_SpinBox(self,count_freq):
+    def update_count_freq_SpinBox(self, count_freq):
         """Function to ensure that the GUI displays the current value of the logic
 
         @param float count_freq: adjusted count frequency in Hz
@@ -346,11 +340,11 @@ class CounterGui(GUIBase):
         """
         self._mw.count_freq_SpinBox.blockSignals(True)
         self._mw.count_freq_SpinBox.setValue(count_freq)
-        self._pw.setXRange(0,self._counting_logic.get_count_length() / count_freq)
+        self._pw.setXRange(0, self._counting_logic.get_count_length() / count_freq)
         self._mw.count_freq_SpinBox.blockSignals(False)
         return count_freq
 
-    def update_count_length_SpinBox(self,count_length):
+    def update_count_length_SpinBox(self, count_length):
         """Function to ensure that the GUI displays the current value of the logic
 
         @param int count_length: adjusted count length in bins
@@ -358,11 +352,11 @@ class CounterGui(GUIBase):
         """
         self._mw.count_length_SpinBox.blockSignals(True)
         self._mw.count_length_SpinBox.setValue(count_length)
-        self._pw.setXRange(0,count_length / self._counting_logic.get_count_frequency())
+        self._pw.setXRange(0, count_length / self._counting_logic.get_count_frequency())
         self._mw.count_length_SpinBox.blockSignals(False)
         return count_length
 
-    def update_saving_Action(self,start):
+    def update_saving_Action(self, start):
         """Function to ensure that the GUI-save_action displays the current status
 
         @param bool start: True if the measurment saving is started
@@ -378,7 +372,7 @@ class CounterGui(GUIBase):
             self._mw.oversampling_SpinBox.setEnabled(True)
         return start
 
-    def update_count_status_Action(self,running):
+    def update_count_status_Action(self, running):
         """Function to ensure that the GUI-save_action displays the current status
 
         @param bool running: True if the counting is started
@@ -390,13 +384,12 @@ class CounterGui(GUIBase):
             self._mw.start_counter_Action.setText('Start counter')
         return running
 
-    #TODO:
+    # TODO:
     def update_counting_mode_ComboBox(self):
         self.log.warning('Not implemented yet')
         return 0
 
-    #TODO:
+    # TODO:
     def update_smoothing_ComboBox(self):
         self.log.warning('Not implemented yet')
         return 0
-
