@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>862</width>
-    <height>516</height>
+    <width>917</width>
+    <height>490</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,8 +19,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>862</width>
-     <height>21</height>
+     <width>917</width>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -145,7 +145,7 @@
   <widget class="QDockWidget" name="pid_parameters_DockWidget">
    <property name="minimumSize">
     <size>
-     <width>756</width>
+     <width>917</width>
      <height>116</height>
     </size>
    </property>
@@ -185,7 +185,7 @@
       </widget>
      </item>
      <item row="0" column="15">
-      <widget class="QDoubleSpinBox" name="D_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="D_DoubleSpinBox">
        <property name="toolTip">
         <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
 Use for extremely fast counting, since all the raw data is saved. 
@@ -195,10 +195,13 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
         <number>3</number>
        </property>
        <property name="minimum">
-        <double>-999.000000000000000</double>
+        <double>-999999999.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>999.000000000000000</double>
+        <double>999999999.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.001000000000000</double>
        </property>
       </widget>
      </item>
@@ -210,15 +213,18 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
       </widget>
      </item>
      <item row="1" column="3">
-      <widget class="QDoubleSpinBox" name="manualDoubleSpinBox">
+      <widget class="ScienDSpinBox" name="manualDoubleSpinBox">
        <property name="decimals">
         <number>3</number>
        </property>
        <property name="minimum">
-        <double>-999.000000000000000</double>
+        <double>-99999999.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>999.000000000000000</double>
+        <double>999999999.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.001000000000000</double>
        </property>
       </widget>
      </item>
@@ -299,28 +305,37 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
       </widget>
      </item>
      <item row="0" column="3">
-      <widget class="QDoubleSpinBox" name="setpointDoubleSpinBox">
+      <widget class="ScienDSpinBox" name="setpointDoubleSpinBox">
        <property name="decimals">
         <number>3</number>
        </property>
        <property name="minimum">
-        <double>0.000000000000000</double>
+        <double>-999999999.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>999.000000000000000</double>
+        <double>999999999.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.001000000000000</double>
        </property>
       </widget>
      </item>
      <item row="0" column="7">
-      <widget class="QDoubleSpinBox" name="P_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="P_DoubleSpinBox">
        <property name="decimals">
         <number>3</number>
        </property>
        <property name="minimum">
-        <double>-999.000000000000000</double>
+        <double>-999999999.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>999.000000000000000</double>
+        <double>999999999.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.001000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -338,15 +353,18 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
       </spacer>
      </item>
      <item row="0" column="11">
-      <widget class="QDoubleSpinBox" name="I_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="I_DoubleSpinBox">
        <property name="decimals">
         <number>3</number>
        </property>
        <property name="minimum">
-        <double>-999.000000000000000</double>
+        <double>-999999999.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>999.000000000000000</double>
+        <double>999999999.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.001000000000000</double>
        </property>
       </widget>
      </item>
@@ -527,6 +545,11 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
