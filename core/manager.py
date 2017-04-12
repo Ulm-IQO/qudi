@@ -270,10 +270,10 @@ class Manager(QtCore.QObject):
         logger.info("Starting Manager configuration from {0}".format(
             configFile))
         cfg = config.load(configFile)
+        self.configFile = configFile
         # Read modules, devices, and stylesheet out of config
         self.configure(cfg)
 
-        self.configFile = configFile
         print('\n============= Manager configuration complete =============='
               '===\n')
         logger.info('Manager configuration complete.')
@@ -338,11 +338,21 @@ class Manager(QtCore.QObject):
                                         sys.path.insert(
                                             1+ii, cfg['global'][m][ii])
                                     else:
-                                        logger.warning(
-                                            'Error while adding qudi '
-                                            'extension: Directory \'{0}\' '
-                                            'does not exist.'
-                                            ''.format(cfg['global'][m][ii]))
+                                        # relative path?
+                                        dirname = os.path.abspath(
+                                            '{0}/{1}'.format(
+                                                os.path.dirname(
+                                                    self.configFile),
+                                                cfg['global'][m][ii]))
+                                        if (os.path.isdir(dirname)):
+                                            sys.path.insert(1+ii, dirname)
+                                        else:
+                                            logger.warning(
+                                                'Error while adding qudi '
+                                                'extension: Directory \'{0}\' '
+                                                'does not exist.'
+                                                ''.format(
+                                                    cfg['global'][m][ii]))
                             elif (isinstance(cfg['global'][m], str)):
                                 if (os.path.isdir(cfg['global'][m])):
                                     sys.path.insert(1, cfg['global'][m][ii])
