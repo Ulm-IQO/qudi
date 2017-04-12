@@ -9,6 +9,7 @@
     * [Jupyter Notebook integration](@ref jupyterkernel)
     * [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
+* [Extensions](@ref extensions)
 * [Programming style](@ref programming-style)
 * [How to use the logger](@ref logger_usage)
 * [Graphical User Interface Design Concept](@ref uiguidelines)
