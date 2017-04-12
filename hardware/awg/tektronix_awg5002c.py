@@ -377,14 +377,20 @@ class AWG5002C(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+
         if load_dict is None:
             load_dict = {}
+
 
         path = self.ftp_root_directory + self.get_asset_dir_on_device()
 
         # Find all files associated with the specified asset name
         file_list = self._get_filenames_on_device()
         filename = []
+
+        # Be careful which asset_name to specify as the current_loaded_asset
+        # because a loaded sequence contains also individual waveforms, which
+        # should not be used as the current asset!!
 
         if (asset_name + '.seq') in file_list:
             file_name = asset_name + '.seq'
@@ -399,12 +405,21 @@ class AWG5002C(Base, PulserInterface):
             for file in file_list:
                 if file == asset_name+'_ch1.wfm':
                     self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name+'_ch1.wfm'))
-
+                    # if the asset is not a sequence file, then it must be a wfm
+                    # file and either both or one of the channels should contain
+                    # the asset name:
+                    self.current_loaded_asset = asset_name
 
                     filename.append(file)
                 elif file == asset_name+'_ch2.wfm':
                     self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name+'_ch2.wfm'))
                     filename.append(file)
+                    # if the asset is not a sequence file, then it must be a wfm
+                    # file and either both or one of the channels should contain
+                    # the asset name:
+                    self.current_loaded_asset = asset_name
+
+
 
 
             if load_dict == {} and filename == []:
@@ -415,7 +430,7 @@ class AWG5002C(Base, PulserInterface):
             file_name = str(load_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
             self.tell('SOUR{0}:FUNC:USER "{1}/{2}"\n'.format(channel_num, path, file_name))
 
-        if len(list(load_dict))>0:
+        if len(load_dict) > 0:
             self.current_loaded_asset = asset_name
 
         return 0
