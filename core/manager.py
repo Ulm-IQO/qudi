@@ -332,40 +332,46 @@ class Manager(QtCore.QObject):
                 elif key == 'global' and cfg['global'] is not None:
                     for m in cfg['global']:
                         if (m == 'extensions'):
-                            if (isinstance(cfg['global'][m], list)):
-                                for ii in range(len(cfg['global'][m])):
-                                    if (os.path.isdir(cfg['global'][m][ii])):
-                                        sys.path.insert(
-                                            1+ii, cfg['global'][m][ii])
-                                    else:
-                                        # relative path?
-                                        dirname = os.path.abspath(
-                                            '{0}/{1}'.format(
-                                                os.path.dirname(
-                                                    self.configFile),
-                                                cfg['global'][m][ii]))
-                                        if (os.path.isdir(dirname)):
-                                            sys.path.insert(1+ii, dirname)
-                                        else:
-                                            logger.warning(
-                                                'Error while adding qudi '
-                                                'extension: Directory \'{0}\' '
-                                                'does not exist.'
-                                                ''.format(
-                                                    cfg['global'][m][ii]))
-                            elif (isinstance(cfg['global'][m], str)):
-                                if (os.path.isdir(cfg['global'][m])):
-                                    sys.path.insert(1, cfg['global'][m][ii])
-                                else:
-                                    logger.warning(
-                                        'Error while adding qudi extension: '
-                                        'Directory \'{0}\' does not exist.'
-                                        ''.format(cfg['global'][m]))
-
+                            # deal with str, list and unknown types
+                            if (isinstance(cfg['global'][m], str)):
+                                dirnames = [cfg['global'][m]]
+                            elif (isinstance(cfg['global'][m], list)):
+                                dirnames = cfg['global'][m]
                             else:
                                 logger.warning('Global ''path'' '
                                                'configuration is neither str '
                                                ' nor list. Ignoring.')
+                                continue
+                            # add specified directories
+                            for ii in range(len(dirnames)):
+                                # absolute or relative path? Existing?
+                                if (os.path.isdir(dirnames[ii])):
+                                    path = dirnames[ii]
+                                else:
+                                    # relative path?
+                                    path = os.path.abspath(
+                                        '{0}/{1}'.format(
+                                            os.path.dirname(self.configFile),
+                                            dirnames[ii]))
+                                    if (not os.path.isdir(path)):
+                                        logger.warning(
+                                            'Error while adding qudi '
+                                            'extension: Directory \'{0}\' '
+                                            'does not exist.'
+                                            ''.format(
+                                                cfg['global'][m][ii]))
+                                        continue
+                                # check for __init__.py files within extension
+                                # and issue warning if existing
+                                for paths, dirs, files in os.walk(path):
+                                    if ('__init__.py' in files):
+                                        logger.warning(
+                                            'Warning: Extension {0} contains '
+                                            '__init__.py. Expect unexpected '
+                                            'behaviour.'.format(path))
+                                        break
+                                # add directory to search path
+                                sys.path.insert(1+ii, path)
                         elif (m == 'startup'):
                             self.tree['global']['startup'] = cfg[
                                 'global']['startup']
