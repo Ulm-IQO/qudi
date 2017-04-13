@@ -339,8 +339,10 @@ class Manager(QtCore.QObject):
                                 continue
                             # add specified directories
                             for ii in range(len(dirnames)):
+                                path = ''
                                 # absolute or relative path? Existing?
-                                if (os.path.isdir(dirnames[ii])):
+                                if (os.path.isabs(dirnames[ii]) and
+                                        os.path.isdir(dirnames[ii])):
                                     path = dirnames[ii]
                                 else:
                                     # relative path?
@@ -349,13 +351,15 @@ class Manager(QtCore.QObject):
                                             os.path.dirname(self.configFile),
                                             dirnames[ii]))
                                     if (not os.path.isdir(path)):
-                                        logger.warning(
-                                            'Error while adding qudi '
-                                            'extension: Directory \'{0}\' '
-                                            'does not exist.'
-                                            ''.format(
-                                                cfg['global'][m][ii]))
-                                        continue
+                                        path = ''
+                                if (path == ''):
+                                    logger.warning(
+                                        'Error while adding qudi '
+                                        'extension: Directory \'{0}\' '
+                                        'does not exist.'
+                                        ''.format(
+                                            cfg['global'][m][ii]))
+                                    continue
                                 # check for __init__.py files within extension
                                 # and issue warning if existing
                                 for paths, dirs, files in os.walk(path):
@@ -363,9 +367,12 @@ class Manager(QtCore.QObject):
                                         logger.warning(
                                             'Warning: Extension {0} contains '
                                             '__init__.py. Expect unexpected '
-                                            'behaviour.'.format(path))
+                                            'behaviour. Hope you know what '
+                                            'you are doing.'.format(path))
                                         break
                                 # add directory to search path
+                                logger.debug('Adding extension path: {0}'
+                                             ''.format(path))
                                 sys.path.insert(1+ii, path)
                         elif m == 'startup':
                             self.tree['global']['startup'] = cfg[
