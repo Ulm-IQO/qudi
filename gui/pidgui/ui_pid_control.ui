@@ -6,22 +6,35 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>917</width>
-    <height>490</height>
+    <width>833</width>
+    <height>512</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>qudi: PID Control</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>917</width>
+     <width>833</width>
      <height>30</height>
     </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -43,15 +56,46 @@
    </widget>
    <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+  </widget>
   <widget class="QDockWidget" name="pid_trace_DockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>100</width>
+     <height>100</height>
+    </size>
+   </property>
    <property name="windowTitle">
-    <string>PID display</string>
+    <string>&amp;PID display</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>100</width>
+      <height>100</height>
+     </size>
+    </property>
     <layout class="QGridLayout" name="gridLayout">
      <item row="0" column="5">
       <widget class="QLabel" name="control_value_Label">
@@ -71,7 +115,20 @@
       </widget>
      </item>
      <item row="3" column="1" colspan="5">
-      <widget class="PlotWidget" name="trace_PlotWidget"/>
+      <widget class="PlotWidget" name="trace_PlotWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>100</height>
+        </size>
+       </property>
+      </widget>
      </item>
      <item row="0" column="4">
       <spacer name="horizontalSpacer_2">
@@ -79,11 +136,11 @@
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
+        <enum>QSizePolicy::Expanding</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -95,11 +152,11 @@
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
+        <enum>QSizePolicy::Expanding</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -143,9 +200,15 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="pid_parameters_DockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="minimumSize">
     <size>
-     <width>917</width>
+     <width>100</width>
      <height>116</height>
     </size>
    </property>
@@ -156,7 +219,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>PID parameters</string>
+    <string>PID para&amp;meters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -186,6 +249,12 @@
      </item>
      <item row="0" column="15">
       <widget class="ScienDSpinBox" name="D_DoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="toolTip">
         <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
 Use for extremely fast counting, since all the raw data is saved. 
@@ -214,6 +283,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
      </item>
      <item row="1" column="3">
       <widget class="ScienDSpinBox" name="manualDoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -235,7 +310,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>64</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -258,7 +333,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>65</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -281,7 +356,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>64</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -306,6 +381,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
      </item>
      <item row="0" column="3">
       <widget class="ScienDSpinBox" name="setpointDoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -322,6 +403,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
      </item>
      <item row="0" column="7">
       <widget class="ScienDSpinBox" name="P_DoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -344,9 +431,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>65</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -354,6 +444,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
      </item>
      <item row="0" column="11">
       <widget class="ScienDSpinBox" name="I_DoubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -373,9 +469,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>64</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -422,9 +521,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>64</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -437,7 +539,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>1</width>
          <height>20</height>
         </size>
        </property>
@@ -449,6 +551,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
   <widget class="QToolBar" name="pid_control_ToolBar">
    <property name="enabled">
     <bool>true</bool>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <property name="windowTitle">
     <string>PID Controls</string>
