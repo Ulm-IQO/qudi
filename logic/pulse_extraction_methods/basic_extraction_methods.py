@@ -26,13 +26,14 @@ def gated_conv_deriv(self, count_data):
     # Check for that and return also only zeros to indicate a failed pulse extraction.
     if len(conv_deriv.nonzero()[0]) == 0:
         laser_arr = np.zeros(count_data.shape, dtype=int)
-        return laser_arr
+        # return laser_arr
 
     # get indices of rising and falling flank
     rising_ind = conv_deriv.argmax()
     falling_ind = conv_deriv.argmin()
     # slice the data array to cut off anything but laser pulses
     laser_arr = count_data[:, rising_ind:falling_ind]
+
     # Create return dictionary
     return_dict = dict()
     return_dict['laser_counts_arr'] = laser_arr.astype(int)
