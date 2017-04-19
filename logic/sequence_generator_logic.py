@@ -745,8 +745,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # check for old files associated with the new ensemble and delete them from host PC
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
-            filename_list = [f for f in os.listdir(self.waveform_dir) if
-                             f.startswith(filename + '_ch')]
+
+            # be careful, in contrast to linux os, windows os is in general case
+            # insensitive! Therefore one needs to check and remove all files
+            # matching the case insensitive case for windows os.
+
+            if 'win' in sys.platform:
+                # make it simple and make everything lowercase.
+                filename_list = [f for f in os.listdir(self.waveform_dir) if
+                                 f.lower().startswith(filename.lower() + '_ch')]
+
+
+            else:
+                filename_list = [f for f in os.listdir(self.waveform_dir) if
+                                 f.startswith(filename + '_ch')]
             # delete all filenames in the list
             for file in filename_list:
                 os.remove(os.path.join(self.waveform_dir, file))
@@ -873,6 +885,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # a whole.
             self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
                           'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
+
             if not sequence_sampling_in_progress:
                 self.unlock()
             self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
