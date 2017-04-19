@@ -251,10 +251,10 @@ class OptimizerLogic(GenericLogic):
         self.refocus_Z_size = size
         self.sigRefocusZSizeChanged.emit()
 
-    def start_refocus(self, initial_pos=None, caller_tag='unknown',tag='logic'):
-        """Starts the optimization scan around initial_pos
+    def start_refocus(self, initial_pos=None, caller_tag='unknown', tag='logic'):
+        """ Starts the optimization scan around initial_pos
 
-            @param [float, float, float] initial_pos:
+            @param list initial_pos: with the structure [float, float, float]
             @param str caller_tag:
             @param str tag:
         """
