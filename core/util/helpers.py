@@ -95,16 +95,17 @@ def import_check():
     """
     err_code = 0
 
-    vital_pkg = ['ruamel.yaml', 'rpyc', 'fysom']
-    opt_pkg = ['pyqtgraph', 'gitpython']
+    # encode like: (python-package-name, repository-name)
+    vital_pkg = [('ruamel.yaml','ruamel.yaml'), ('rpyc','rpyc'), ('fysom','fysom')]
+    opt_pkg = [('pyqtgraph','pyqtgraph'), ('git','gitpython')]
 
-    for package in vital_pkg:
+    for pkg_name, repo_name in vital_pkg:
         try:
-            importlib.import_module(package)
+            importlib.import_module(pkg_name)
         except ImportError:
             logger.error('No Package "{0}" installed! Perform e.g.\n\n'
-                         '    pip install {0}\n\n'
-                         'in the console to install the missing package.'.format(package))
+                         '    pip install {1}\n\n'
+                         'in the console to install the missing package.'.format(pkg_name, repo_name))
             err_code = err_code | 4
 
     try:
@@ -115,13 +116,13 @@ def import_check():
                      'in the console to install the missing package.')
         err_code = err_code | 4
 
-    for package in opt_pkg:
+    for pkg_name, repo_name in opt_pkg:
         try:
-            importlib.import_module(package)
+            importlib.import_module(pkg_name)
         except ImportError:
             logger.warning('No Package "{0}" installed! It is recommended to '
                            'have this package installed. Perform e.g.\n\n'
-                           '    pip install {0}\n\n'
-                           'in the console to install the missing package.'.format(package))
+                           '    pip install {1}\n\n'
+                           'in the console to install the missing package.'.format(pkg_name, repo_name))
 
     return err_code
