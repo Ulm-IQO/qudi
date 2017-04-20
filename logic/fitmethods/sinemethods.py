@@ -25,8 +25,6 @@ import numpy as np
 from lmfit.models import Model
 from core.util.units import compute_dft
 
-# add
-Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 ################################################################################
 #                                                                              #
@@ -83,15 +81,6 @@ def make_baresine_model(self, prefix=None):
         model = Model(bare_sine_function, independent_vars='x')
     else:
         model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
-
-    user_data = {'unit':'1/x_val', 'nice_name': 'Frequency'}
-    model.set_param_hint('frequency', user_data=user_data)
-
-    user_data = {'unit':'rad', 'nice_name': 'Phase'}
-    model.set_param_hint('phase', user_data=user_data)
-
-    user_data = {'unit':'x_val', 'nice_name': 'Periode'}
-    model.set_param_hint('periode', expr='abs(1/frequency)', user_data=user_data)
 
     params = model.make_params()
 
@@ -558,8 +547,7 @@ def estimate_sinewithoutoffset(self, x_axis, data, params):
 # Sine #
 ########
 
-def make_sine_fit(self, x_axis, data, estimator, units=("arb. u.", "arb. u."),
-                  add_params=None):
+def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
     """ Perform a sine fit with a constant offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -588,8 +576,6 @@ def make_sine_fit(self, x_axis, data, estimator, units=("arb. u.", "arb. u."),
         result = sine.fit(data, x=x_axis, params=params)
         self.log.error('The sine fit did not work.\n'
                      'Error message: {0}\n'.format(result.message))
-
-    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -1066,7 +1052,7 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
         result = two_sine_offset.fit(data, x=x_axis, params=params)
     except:
         self.log.warning('The threesineexpdecayoffset fit did not work. '
-                         'Error message: {}'.format(str(result.message)))
+                       'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
     return result
