@@ -541,3 +541,50 @@ def _check_1D_input(self, x_axis, data, params):
 
     return error
 
+
+def _create_result_str_dict(self, result, units):
+    """ Create a result_str_dict from the result object
+    
+    @param obj result: 
+    @return: 
+    """
+
+    result_str_dict = OrderedDict()
+    params = result.params
+
+    for param_name, param_obj in params.items() :
+
+        # if the user_data attribute is not set at all:
+        if param_obj.user_data is None or isinstance(param_obj.user_data, dict):
+
+            result_str_dict[param_name] = {'value': param_obj.value,
+                                           'error': param_obj.stderr,
+                                           'unit': units[0]}
+        else:
+
+            par_name = param_name
+            if param_obj.user_data.get('nice_name') is not None:
+                par_name = param_obj.user_data['nice_name']
+
+            if param_obj.user_data.get('unit') is not None:
+                unit_text = param_obj.user_data['unit'].replace('x_val',units[0])
+                unit_text = unit_text.replace('y_val', units[1])
+
+                # detect very special cases:
+                if unit_text == '1/s':
+                    unit_text = 'Hz'
+                elif unit_text == '1/Hz':
+                    unit_text = 's'
+            else:
+                self.log.warning('For the parameter "{0}" no unit relation '
+                                 'was specified in the Fit Model. Taking '
+                                 'therefore the x_value "{1}" as '
+                                 'default.'.format(par_name, units[0]))
+                unit_text = units[0]
+
+            result_str_dict[par_name] = {'value': params[par_name].value,
+                                         'error': params[par_name].stderr,
+                                         'unit': unit_text}
+    return result_str_dict
+
+
