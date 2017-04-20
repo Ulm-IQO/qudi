@@ -34,6 +34,10 @@ try:
 except ImportError:
     pass
 
+import importlib
+import logging
+logger = logging.getLogger(__name__)
+
 # Optional function for exiting immediately (with some manual teardown)
 
 
@@ -77,3 +81,47 @@ def exit(exitcode=0):
         os.closerange(3, 4096)
 
     os._exit(exitcode)
+
+
+
+def import_check():
+    """ Checks whether all the necessary modules are present upon start of qudi.
+    
+    Check also whether some recommended packages exists. Return err_code=0 if
+    all vital packages are installed and err_code=4 if vital packages are
+    missing.
+    Make a warning about missing packages.
+    """
+    err_code = 0
+
+    vital_pkg = ['ruamel.yaml', 'rpyc', 'fysom']
+    opt_pkg = ['pyqtgraph', 'gitpython']
+
+    for package in vital_pkg:
+        try:
+            importlib.import_module(package)
+        except ImportError:
+            logger.error('No Package "{0}" installed! Perform e.g.\n\n'
+                         '    pip install {0}\n\n'
+                         'in the console to install the missing package.'.format(package))
+            err_code = err_code|4
+
+    try:
+        from qtpy.QtCore import Qt
+    except ImportError:
+        logger.error('No Qt bindungs detected! Perform e.g.\n\n'
+                     '    pip install PyQt5\n\n'
+                     'in the console to install the missing package.')
+        err_code = err_code|4
+
+    for package in opt_pkg:
+        try:
+            importlib.import_module(package)
+        except ImportError:
+            msg = ('No Package "{0}" installed! It is recommended to have this '
+                   'package installed. Perform e.g.\n\n'
+                   '    pip install {0}\n\n'
+                   'in the console to install the missing package.'.format(package))
+            logger.warning(msg)
+
+    return err_code
