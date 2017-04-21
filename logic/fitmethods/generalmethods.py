@@ -387,7 +387,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
                 if abs(threshold/absolute_min)<abs(minimal_threshold):
                     if make_prints:
                         print('h16')
-                    lself.log.warning('Threshold to minimum ratio was too '
+                    self.log.warning('Threshold to minimum ratio was too '
                             'small to estimate two minima. So both '
                             'are set to the same value')
                     error=-1
@@ -533,10 +533,10 @@ def _check_1D_input(self, x_axis, data, params):
             self.log.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            lself.log.error('Given parameter is no one dimensional array.')
+            self.log.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        lself.log.error('Parameters object is not valid in estimate_gaussian.')
+        self.log.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     return error

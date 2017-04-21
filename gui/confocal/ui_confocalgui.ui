@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1403</width>
-    <height>1362</height>
+    <width>1261</width>
+    <height>1207</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -27,8 +27,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1403</width>
-     <height>30</height>
+     <width>1261</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -564,11 +564,17 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
        </property>
        <property name="maximum">
         <double>200.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
        </property>
       </widget>
      </item>
@@ -612,6 +618,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="decimals">
+        <number>3</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -776,6 +785,9 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
        </property>
@@ -824,6 +836,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="decimals">
+        <number>3</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -1042,6 +1057,9 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
        </property>
@@ -1090,6 +1108,9 @@
        </property>
        <property name="accelerated">
         <bool>true</bool>
+       </property>
+       <property name="decimals">
+        <number>3</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
