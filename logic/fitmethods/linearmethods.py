@@ -24,6 +24,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from lmfit.models import Model
 import numpy as np
 
+# add user_data as hint_name
+Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
+
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -66,12 +69,16 @@ def make_constant_model(self, prefix=None):
         return offset
 
     if not isinstance(prefix, str) and prefix is not None:
-        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
-                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
-                                                                                    type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string '
+                       'and cannot be used as a prefix and will be ignored '
+                       'for now. Correct that!'.format(prefix, type(prefix)))
         model = Model(constant_function, independent_vars='x')
     else:
         model = Model(constant_function, independent_vars='x', prefix=prefix)
+        # extract number from prefix:
+
+    user_data = {'unit': 'y_val'}
+    model.set_param_hint('offset', user_data=user_data)
 
     params = model.make_params()
 
@@ -102,12 +109,15 @@ def make_amplitude_model(self, prefix=None):
         return amplitude
 
     if not isinstance(prefix, str) and prefix is not None:
-        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
-                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
-                                                                                    type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string '
+                       'and cannot be used as a prefix and will be ignored for '
+                       'now. Correct that!'.format(prefix, type(prefix)))
         model = Model(amplitude_function, independent_vars='x')
     else:
         model = Model(amplitude_function, independent_vars='x', prefix=prefix)
+
+    user_data = {'unit': 'y_val'}
+    model.set_param_hint('amplitude', user_data=user_data)
 
     params = model.make_params()
 
@@ -138,12 +148,15 @@ def make_slope_model(self, prefix=None):
         return slope
 
     if not isinstance(prefix, str) and prefix is not None:
-        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
-                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
-                                                                                    type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string '
+                       'and cannot be used as a prefix and will be ignored for '
+                       'now. Correct that!'.format(prefix, type(prefix)))
         model = Model(slope_function, independent_vars='x')
     else:
         model = Model(slope_function, independent_vars='x', prefix=prefix)
+
+    user_data = {'unit': 'y_val/x_val'}
+    model.set_param_hint('slope', user_data=user_data)
 
     params = model.make_params()
 
@@ -173,9 +186,9 @@ def make_linear_model(self, prefix=None):
         return x
 
     if not isinstance(prefix, str) and prefix is not None:
-        self.log.error('The passed prefix <{0}> of type {1} is not a string and cannot be used as '
-                       'a prefix and will be ignored for now. Correct that!'.format(prefix,
-                                                                                    type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string '
+                       'and cannot be used as a prefix and will be ignored for '
+                       'now. Correct that!'.format(prefix, type(prefix)))
         linear_mod = Model(linear_function, independent_vars='x')
     else:
         linear_mod = Model(linear_function, independent_vars='x', prefix=prefix)
@@ -210,7 +223,8 @@ def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
 
     error, params = estimator(x_axis, data, params)
 
-    params = self._substitute_params(initial_params=params, update_params=add_params)
+    params = self._substitute_params(initial_params=params,
+                                     update_params=add_params)
 
     try:
         result = linear.fit(data, x=x_axis, params=params)
@@ -218,6 +232,8 @@ def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
         self.log.warning('The linear fit did not work. lmfit result Message:\n'
                          '{0}'.format(str(result.message)))
         result = linear.fit(data, x=x_axis, params=params)
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
