@@ -387,7 +387,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         start_time = time.time()
         while True:
             status_messages = self._get_status_messages()
-            if len(status_messages) == 1 and ('running' in status_messages):
+            if len(status_messages) <= 2 and ('running' in status_messages):
                 self.log.info('FPGA-timetagger measurement started.')
                 self.statusvar = 2
                 break
