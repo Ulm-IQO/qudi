@@ -25,6 +25,9 @@ import numpy as np
 from lmfit.models import Model
 from scipy.ndimage import filters
 
+# add user_data as hint_name
+Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
+
 ############################################################################
 #                                                                          #
 #               Defining Exponential Models                                #
@@ -79,6 +82,12 @@ def make_barestretchedexponentialdecay_model(self, prefix=None):
         model = Model(barestretchedexponentialdecay_function,
                       independent_vars='x', prefix=prefix)
 
+    user_data = {'unit': ''}
+    model.set_param_hint(name='beta', user_data=user_data)
+
+    user_data = {'unit': 'x_val'}
+    model.set_param_hint(name='lifetime', user_data=user_data)
+
     params = model.make_params()
 
     return model, params
@@ -128,7 +137,7 @@ def make_decayexponential_model(self, prefix=None):
     return exponentialdecay_model, params
 
 #################################
-#  Stretched exponential decay  # 
+#  Stretched exponential decay  #
 #################################
 
 def make_decayexponentialstretched_model(self, prefix=None):
@@ -187,7 +196,10 @@ def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_par
     except:
         result = exponentialdecay.fit(data, x=x_axis, params=params)
         self.log.warning('The exponentialdecay with offset fit did not work. '
-                       'Message: {}'.format(str(result.message)))
+                         'Message: {}'.format(str(result.message)))
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
+
     return result
 
 def estimate_decayexponential(self, x_axis, data, params):
@@ -266,7 +278,8 @@ def estimate_decayexponential(self, x_axis, data, params):
 #  stretched exponential decay with offset  #
 #############################################
 
-def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None,
+                                       add_params=None):
     """ Performes a stretched exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -292,8 +305,11 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
-        self.log.warning('The double exponentialdecay with offset fit did not work. '
-                       'Message: {}'.format(str(result.message)))
+        self.log.warning('The double exponentialdecay with offset fit did not '
+                         'work. Message: {}'.format(str(result.message)))
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
+
     return result
 
 def estimate_decayexponentialstretched(self, x_axis, data, params):
