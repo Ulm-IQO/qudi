@@ -84,12 +84,15 @@ def make_baresine_model(self, prefix=None):
                        'and cannot be used as a prefix and will be ignored for '
                        'now. Correct that!'.format(prefix, type(prefix)))
         model = Model(bare_sine_function, independent_vars='x')
+        prefix = ''
 
     else:
         model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
         # extract number from prefix:
         if prefix is not None:
             num = ' ' + re.findall('\d+|$', prefix)[0]
+        else:
+            prefix = ''
 
 
     # each parameter has a user_data attribute, which can be used to store
@@ -97,16 +100,19 @@ def make_baresine_model(self, prefix=None):
     # extraction and nice_names. These can be overwritten in new models.
 
     user_data = {'unit': '1/x_val', 'nice_name': 'Frequency'+num}
-    model.set_param_hint('frequency', user_data=user_data)
+    model.set_param_hint('{0}frequency'.format(prefix), user_data=user_data)
 
     user_data = {'unit': 'rad', 'nice_name': 'Phase_r'+num}
-    model.set_param_hint('phase', user_data=user_data)
+    model.set_param_hint('{0}phase'.format(prefix), user_data=user_data)
 
     user_data = {'unit': '°', 'nice_name': 'Phase_d'+num}
-    model.set_param_hint('phase_d', user_data=user_data, expr='(phase*180)/pi')
+    model.set_param_hint('{0}phase_d'.format(prefix), user_data=user_data,
+                         expr='({0}phase*180)/pi'.format(prefix))
 
     user_data = {'unit': 'x_val', 'nice_name': 'Periode'+num}
-    model.set_param_hint('periode', expr='abs(1/frequency)', user_data=user_data)
+    model.set_param_hint('{0}periode'.format(prefix),
+                         expr='abs(1/{0}frequency)'.format(prefix),
+                         user_data=user_data)
 
     params = model.make_params()
 
@@ -829,7 +835,8 @@ def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
 # Sum of two individual Sinus with offset #
 ###########################################
 
-def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedouble_fit(self, x_axis, data, estimator, units=None,
+                        add_params=None):
     """ Perform a two sine with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -883,10 +890,12 @@ def estimate_sinedouble(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    result1 = self.make_sine_fit(x_axis=x_axis, data=data, estimator=self.estimate_sine)
+    result1 = self.make_sine_fit(x_axis=x_axis, data=data,
+                                 estimator=self.estimate_sine)
     data_sub = data - result1.best_fit
 
-    result2 = self.make_sine_fit(x_axis=x_axis, data=data_sub, estimator=self.estimate_sine)
+    result2 = self.make_sine_fit(x_axis=x_axis, data=data_sub,
+                                 estimator=self.estimate_sine)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -905,7 +914,8 @@ def estimate_sinedouble(self, x_axis, data, params):
 #    Sum of two individual Sinus with offset and single exponential decay      #
 ################################################################################
 
-def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None,
+                                    add_params=None):
     """ Perform a two sine with one exponential decay offset fit on the provided
         data.
 
@@ -961,10 +971,12 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    result1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    result1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data,
+                                                 estimator=self.estimate_sineexponentialdecay)
     data_sub = data - result1.best_fit
 
-    result2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub)
+    result2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub,
+                                                 estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -986,7 +998,8 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
 # Sum of two individual Sinus exponential decays (and offset) #
 ###############################################################
 
-def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None,
+                                       add_params=None):
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
 
@@ -1042,10 +1055,12 @@ def estimate_sinedoublewithtwoexpdecay(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    result1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    result1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data,
+                                                 estimator=self.estimate_sineexponentialdecay)
     data_sub = data - result1.best_fit
 
-    result2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub)
+    result2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub,
+                                                 estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['e1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -1207,13 +1222,16 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
     # sine exponential decay with offset fits where for the next fit the
     # previous is subtracted to delete its contribution in the data.
 
-    res1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    res1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data,
+                                              estimator=self.estimate_sineexponentialdecay)
     data_sub1 = data - res1.best_fit
 
-    res2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
+    res2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1,
+                                              estimator=self.estimate_sineexponentialdecay)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
+    res3 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2,
+                                              estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=res1.params['amplitude'].value)
@@ -1302,13 +1320,16 @@ def estimate_sinetriplewiththreeexpdecay(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    res1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    res1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data,
+                                              estimator=self.estimate_sineexponentialdecay)
     data_sub1 = data - res1.best_fit
 
-    res2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
+    res2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1,
+                                              estimator=self.estimate_sineexponentialdecay)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
+    res3 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2,
+                                              estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['e1_amplitude'].set(value=res1.params['amplitude'].value)
