@@ -53,9 +53,9 @@ import os
 #import peakutils
 #from peakutils.plot import plot as pplot
 
-#matplotlib.rcParams.update({'font.size': 12})
+plt.rcParams.update({'font.size': 12})
 
-from core.util.units import compute_dft
+from core.util.units import compute_dft, create_formatted_output
 
 
 class FitLogic():
@@ -2269,14 +2269,12 @@ def sine_testing2():
 #        print('diff_array',diff_array)
 
     update_dict = {}
-    update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
+    #update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
 
     result = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_noisy,
                                         add_params=update_dict, 
                                         estimator=qudi_fitting.estimate_sine,
                                         units=('Hz','counts'))
-
-    qudi_fitting.res = result
 
     plt.figure()
 #    plt.plot(x_axis, data, 'simulate data')
@@ -2289,7 +2287,10 @@ def sine_testing2():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
     
-    print(result.result_str_dict)
+    fit_text = create_formatted_output(result.result_str_dict)
+    print(fit_text)
+    
+    qudi_fitting.res = result
 
 
 def sine_testing_data():
@@ -2683,7 +2684,7 @@ def exponentialdecay_testing():
     #generation of data for testing
     x_axis = np.linspace(1, 51, 20)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
-    mod, params = qudi_fitting.make_exponentialdecayoffset_model()
+    mod, params = qudi_fitting.make_decayexponential_model()
     print('Parameters of the model', mod.param_names,
           ' with the independet variable', mod.independent_vars)
 
@@ -2695,7 +2696,13 @@ def exponentialdecay_testing():
 
     data_noisy = (mod.eval(x=x_axis, params=params)
                       + 10* np.random.normal(size=x_axis.shape))
-    result = qudi_fitting.make_exponentialdecayoffset_fit(x_axis=x_axis, data=data_noisy, add_parameters=None)
+    
+    units = ('s','counts/s')
+    result = qudi_fitting.make_decayexponential_fit(x_axis=x_axis, 
+                                                    data=data_noisy,
+                                                    units=units,
+                                                    estimator=qudi_fitting.estimate_decayexponential,
+                                                    add_params=None)
     data = data_noisy
     offset = data[-max(1,int(len(x_axis)/10)):].mean()
 
@@ -2708,25 +2715,44 @@ def exponentialdecay_testing():
         if data_level[i] <= data_level.std():
             break
     print(i)
-    try:
-        data_level_log = np.log(data_level[0:i])
-        linear_result = qudi_fitting.make_linear_fit(axis=x_axis[0:i], data=data_level_log, add_parameters=None)
-        plt.plot(x_axis[0:i], data_level_log, 'ob')
-        plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
-        plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
-        plt.show()
-    except:#
-        plt.plot(x_axis, np.log(data_level), 'or')
-        plt.show()
-        print("linear fitting poorly conditioned")
-    plt.plot(x_axis, data_noisy, 'ob')
-    plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
-    print(result.fit_report())
-    plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
-    plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
-
-        # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
+#    try:
+    data_level_log = np.log(data_level[0:i])
+    linear_result = qudi_fitting.make_linear_fit(x_axis=x_axis[0:i], 
+                                                 data=data_level_log, 
+                                                 estimator=qudi_fitting.estimate_linear,
+                                                 add_params=None)
+    plt.figure()
+    plt.plot(x_axis[0:i], data_level_log, 'ob', label='data_level_log')
+    plt.plot(x_axis[0:i], linear_result.best_fit,'-r',label='best_fit')
+    plt.plot(x_axis[0:i], linear_result.init_fit,'-y', label='init_val')
+    plt.xlabel('Time ({0})'.format(units[0]))
+    plt.ylabel('log(Signal) ({0})'.format(units[1]))
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
+#    except:#
+#        plt.figure()
+#        plt.plot(x_axis, np.log(data_level), 'or', label='data_level_log')
+#        plt.show()
+#        print("linear fitting poorly conditioned")
+        
+    plt.figure()
+    plt.plot(x_axis, data_noisy, 'ob', label='data')
+    plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g', label='model data')
+    plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0, label='init_fit')
+    plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, label='best_fit')
+    plt.xlabel('Time ({0})'.format(units[0]))
+    plt.ylabel('Signal ({0})'.format(units[1]))
+        # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.)
+    plt.show()
+    
+    print(result.fit_report())
+    
+    fit_text = create_formatted_output(result.result_str_dict)
+    print(fit_text)
+    
 ###########################################################################################
 def bareexponentialdecay_testing():
     #generation of data for testing
@@ -2811,7 +2837,7 @@ def sineexponentialdecay_testing():
     x_axis = np.linspace(0, 100, 100)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
 
-    mod, params = qudi_fitting.make_sineexpdecaywithoutoffset_model()
+    mod, params = qudi_fitting.make_sineexponentialdecay_model()
     print('Parameters of the model', mod.param_names,
           ' with the independet variable', mod.independent_vars)
 
@@ -2847,28 +2873,37 @@ def sineexponentialdecay_testing():
     plt.xlim(0, 0.5)
     plt.show()
 
-
-
-
-
+    units = ('s','counts/s')
     result = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis,
                                                         data=data_noisy,
-                                                        add_parameters=None)
-    plt.plot(x_axis, data_noisy, 'o--b')
-    plt.plot(x_nice,mod.eval(x=x_nice, params=params),'-g')
+                                                        estimator=qudi_fitting.estimate_sineexponentialdecay,
+                                                        units=units,
+                                                        add_params=None)
     print(result.fit_report())
-    plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0, )
-    plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, )
+    
+    plt.figure()
+    plt.plot(x_axis, data_noisy, 'o--b', label='noisy data')
+    plt.plot(x_nice,mod.eval(x=x_nice, params=params),'-g', label='created model')
+    plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0, label='init fit')
+    plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, label='best fit')
+    plt.xlabel('Time ({0})'.format(units[0]))
+    plt.ylabel('Signal ({0})'.format(units[1]))
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+               ncol=2, mode="expand", borderaxespad=0.,
+               prop={'size':12}, title='sine exponential decay')
     #plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
-
     plt.show()
+    
+    
+    fit_text = create_formatted_output(result.result_str_dict)
+    print(fit_text)
 
-    units = dict()
-    units['frequency'] = 'GHz'
-    units['phase'] = 'rad'
-    #nits['offset'] = 'arb. u.'
-    units['amplitude']='arb. u.'
-    print(qudi_fitting.create_fit_string(result, mod, units))
+#    units = dict()
+#    units['frequency'] = 'GHz'
+#    units['phase'] = 'rad'
+#    #nits['offset'] = 'arb. u.'
+#    units['amplitude']='arb. u.'
+#    print(qudi_fitting.create_fit_string(result, mod, units))
 
 def sineexponentialdecay_testing_data():
     """ With read in data and seld.  """
@@ -3262,20 +3297,32 @@ def double_exponential_testing2():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.3
 
-    res = qudi_fitting.make_doubleexponentialdecayoffset_fit(x_axis=x_axis,
-                                                             data=noisy_data)
+    # invoke the double exponential decay:
+    add_params={}
+    add_params['beta']= {'vary': False, 'value': 2}
+
+    units = ('s','counts')
+
+    res = qudi_fitting.make_decayexponentialstretched_fit(x_axis=x_axis,
+                                                          data=noisy_data,
+                                                          estimator=qudi_fitting.estimate_decayexponentialstretched,
+                                                          units=units,
+                                                          add_params=add_params)
 
     plt.figure()
     plt.plot(x_axis, res.best_fit,'-', label='fit')
     plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
     plt.plot(x_axis, data,'-', label='ideal data')
-    plt.xlabel('Time micro-s')
-    plt.ylabel('signal')
+    plt.xlabel('Time micro-s ({0})'.format(units[0]))
+    plt.ylabel('Signal ({0})'.format(units[1]))
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-    print(res.fit_report())
-    return
+#    print(res.fit_report())
+    
+    fit_text = create_formatted_output(res.result_str_dict)
+    print(fit_text)
+    
 
 
 def stretched_exponential_decay_testing():
@@ -3291,21 +3338,27 @@ def stretched_exponential_decay_testing():
 
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.05
+                                 
+    units = ('s','counts')
 
-    res = qudi_fitting.make_stretchedexponentialdecayoffset_fit(x_axis=x_axis,
-                                                             data=noisy_data)
+    res = qudi_fitting.make_decayexponentialstretched_fit(x_axis=x_axis,
+                                                          data=noisy_data,
+                                                          estimator=qudi_fitting.estimate_decayexponentialstretched,
+                                                          units=units)
 
     plt.figure()
     plt.plot(x_axis, res.best_fit,'-', label='fit')
     plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
     plt.plot(x_axis, data,'-', label='ideal data')
-    plt.xlabel('Time micro-s')
-    plt.ylabel('signal')
+    plt.xlabel('Time micro-s ({0})'.format(units[0]))
+    plt.ylabel('Signal ({0})'.format(units[1]))
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-    print(res.fit_report())
-    return
+#    print(res.fit_report())
+    
+    fit_text = create_formatted_output(res.result_str_dict)
+    print(fit_text)
 
 def two_sine_offset_testing():
     """ Testing procedure for the estimator for a double sine with offset fit. """
@@ -4121,7 +4174,7 @@ if __name__ == "__main__":
 #    N15_testing2()
 #    powerfluorescence_testing()
 #    sine_testing()
-    sine_testing2()
+#    sine_testing2()
 #    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
 #    poissonian_testing()
@@ -4141,7 +4194,7 @@ if __name__ == "__main__":
 #    linear_testing()
 #    double_exponential_testing()
 #    double_exponential_testing2()
-#    stretched_exponential_decay_testing()
+    stretched_exponential_decay_testing()
 #    two_sine_offset_testing()
 #    two_sine_offset_testing2()
 #    two_sine_exp_decay_offset_testing()
