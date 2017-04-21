@@ -555,7 +555,7 @@ def _create_result_str_dict(self, result, units):
     for param_name, param_obj in params.items() :
 
         # if the user_data attribute is not set at all:
-        if param_obj.user_data is None or isinstance(param_obj.user_data, dict):
+        if param_obj.user_data is None or not isinstance(param_obj.user_data, dict):
 
             result_str_dict[param_name] = {'value': param_obj.value,
                                            'error': param_obj.stderr,
@@ -579,11 +579,11 @@ def _create_result_str_dict(self, result, units):
                 self.log.warning('For the parameter "{0}" no unit relation '
                                  'was specified in the Fit Model. Taking '
                                  'therefore the x_value "{1}" as '
-                                 'default.'.format(par_name, units[0]))
+                                 'default.'.format(param_name, units[0]))
                 unit_text = units[0]
 
-            result_str_dict[par_name] = {'value': params[par_name].value,
-                                         'error': params[par_name].stderr,
+            result_str_dict[par_name] = {'value': params[param_name].value,
+                                         'error': params[param_name].stderr,
                                          'unit': unit_text}
     return result_str_dict
 
