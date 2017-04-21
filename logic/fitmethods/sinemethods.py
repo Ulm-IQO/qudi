@@ -22,10 +22,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import numpy as np
+import re
 from lmfit.models import Model
 from core.util.units import compute_dft
 
-# add
+# add user_data as hint_name
 Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 ################################################################################
@@ -76,21 +77,35 @@ def make_baresine_model(self, prefix=None):
 
         return np.sin(2*np.pi*frequency*x+phase)
 
+    num = ''
+
     if not isinstance(prefix, str) and prefix is not None:
-        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
-                     'cannot be used as a prefix and will be ignored for now.'
-                     'Correct that!'.format(prefix, type(prefix)))
+        self.log.error('The passed prefix <{0}> of type {1} is not a string '
+                       'and cannot be used as a prefix and will be ignored for '
+                       'now. Correct that!'.format(prefix, type(prefix)))
         model = Model(bare_sine_function, independent_vars='x')
+
     else:
         model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
+        # extract number from prefix:
+        if prefix is not None:
+            num = ' ' + re.findall('\d+|$', prefix)[0]
 
-    user_data = {'unit':'1/x_val', 'nice_name': 'Frequency'}
+
+    # each parameter has a user_data attribute, which can be used to store
+    # additional information. Save here x and y axis relation for unit
+    # extraction and nice_names. These can be overwritten in new models.
+
+    user_data = {'unit': '1/x_val', 'nice_name': 'Frequency'+num}
     model.set_param_hint('frequency', user_data=user_data)
 
-    user_data = {'unit':'rad', 'nice_name': 'Phase'}
+    user_data = {'unit': 'rad', 'nice_name': 'Phase_r'+num}
     model.set_param_hint('phase', user_data=user_data)
 
-    user_data = {'unit':'x_val', 'nice_name': 'Periode'}
+    user_data = {'unit': '°', 'nice_name': 'Phase_d'+num}
+    model.set_param_hint('phase_d', user_data=user_data, expr='(phase*180)/pi')
+
+    user_data = {'unit': 'x_val', 'nice_name': 'Periode'+num}
     model.set_param_hint('periode', expr='abs(1/frequency)', user_data=user_data)
 
     params = model.make_params()
@@ -587,7 +602,7 @@ def make_sine_fit(self, x_axis, data, estimator, units=("arb. u.", "arb. u."),
     except:
         result = sine.fit(data, x=x_axis, params=params)
         self.log.error('The sine fit did not work.\n'
-                     'Error message: {0}\n'.format(result.message))
+                       'Error message: {0}\n'.format(result.message))
 
     result.result_str_dict = self._create_result_str_dict(result, units)
 
@@ -616,7 +631,9 @@ def estimate_sine(self, x_axis, data, params):
     # level data
     data_level = data - offset
 
-    error, params = self.estimate_sinewithoutoffset(x_axis=x_axis, data=data_level, params=params)
+    error, params = self.estimate_sinewithoutoffset(x_axis=x_axis,
+                                                    data=data_level,
+                                                    params=params)
 
     params['offset'].set(value=offset)
 
@@ -626,7 +643,8 @@ def estimate_sine(self, x_axis, data, params):
 # Sine exponential decay #
 ##########################
 
-def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None,
+                                  add_params=None):
     """ Perform a sine exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -654,8 +672,9 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
 
         result = sine_exp_decay_offset.fit(data, x=x_axis, params=params)
         self.log.error('The sineexponentialdecayoffset fit did not work.\n'
-                     'Error message: {0}'.format(result.message))
+                       'Error message: {0}'.format(result.message))
 
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -751,7 +770,8 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
 # Sinus with stretched exponential decay fitting  #
 ###################################################
 
-def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator,
+                                           units=None, add_params=None):
     """ Perform a sine stretched exponential decay fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -778,7 +798,9 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
     except:
         result = sine_stretched_exp_decay.fit(data, x=x_axis, params=params)
         self.log.error('The sineexponentialdecay fit did not work.\n'
-                     'Error message: {0}'.format(result.message))
+                       'Error message: {0}'.format(result.message))
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -833,8 +855,10 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
         result = two_sine_offset.fit(data, x=x_axis, params=params)
     except:
         self.log.warning('The twosineexpdecayoffset fit did not work. '
-                       'Error message: {}'.format(str(result.message)))
+                         'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -908,8 +932,10 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
         result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
         self.log.warning('The sinedoublewithexpdecay fit did not work. '
-                'Error message: {}'.format(str(result.message)))
+                         'Error message: {}'.format(str(result.message)))
         result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -987,8 +1013,10 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
         self.log.warning('The sinedoublewithtwoexpdecay fit did not work. '
-                'Error message: {}'.format(str(result.message)))
+                         'Error message: {}'.format(str(result.message)))
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -1068,6 +1096,8 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
         self.log.warning('The threesineexpdecayoffset fit did not work. '
                          'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
@@ -1151,6 +1181,8 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                        'Error message: {}'.format(str(result.message)))
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
 
+    result.result_str_dict = self._create_result_str_dict(result, units)
+
     return result
 
 def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
@@ -1196,7 +1228,10 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
     params['s3_frequency'].set(value=res3.params['frequency'].value)
     params['s3_phase'].set(value=res3.params['phase'].value)
 
-    lifetime = (res1.params['lifetime'].value + res2.params['lifetime'].value + res3.params['lifetime'].value)/3
+    lifetime = (res1.params['lifetime'].value +
+                res2.params['lifetime'].value +
+                res3.params['lifetime'].value)/3
+
     params['lifetime'].set(value=lifetime,
                            min=2*(x_axis[1]-x_axis[0]))
     params['offset'].set(value=data.mean())
@@ -1208,7 +1243,8 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
 # Sum of three individual Sinus with offset and three exponential decay #
 #########################################################################
 
-def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator,
+                                         units=None, add_params=None):
     """ Perform a three sine with three exponential decay and offset fit on the
         provided data.
 
@@ -1232,11 +1268,15 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis,
+                                                       params=params)
     except:
         self.log.warning('The twosinetwoexpdecayoffset fit did not work. '
-                'Error message: {}'.format(str(result.message)))
-        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+                         'Error message: {}'.format(str(result.message)))
+        result = three_sine_three_exp_decay_offset.fit(data, x=x_axis,
+                                                       params=params)
+
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
     return result
 
