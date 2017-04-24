@@ -27,3 +27,10 @@ build: false
 test_script:
     - sh "%APPVEYOR_BUILD_FOLDER%\\tools\\test.sh"
 
+artifacts:
+  - path: qudi.log
+    name: Qudi log file
+
+  - path: notebooks
+    name: test notebooks
+    type: zip
