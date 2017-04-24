@@ -60,69 +60,71 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._internal_clock_hz = 950e6     # that is a fixed number, 950MHz
         self.statusvar = -1                 # fast counter state
         # The following is the encoding (status flags and errors) of the FPGA status register
-        self._status_encoding = {1: 'initialization',
-                                 2: 'pulling_data',
-                                 4: 'idle_ready',
-                                 8: 'running',
-                                 2147483648: 'TDC_in_reset'}
-        self._error_encoding = {32: 'Init/output FSM in FPGA hardware encountered an error. '
-                                    'Please reset the device to recover from this state.',
-                                64: 'Histogram FSM in FPGA hardware encountered an error. '
-                                    'Please reset the device to recover from this state.',
-                                128: 'One or more histogram bins have overflown (32 bit unsigned '
-                                     'integer). Time tagger will not continue to accumulate more ev'
-                                     'ents. Please save current data and start a new measurement.',
-                                512: 'Output buffer FIFO for pipe transfer via USB has overflown. '
-                                     'This should not happen under any circumstance. '
-                                     'Please contact hardware manufacturer.',
-                                1024: 'Output buffer FIFO for pipe transfer via USB has underrun. '
-                                      'This should not happen under any circumstance. '
-                                      'Please contact hardware manufacturer.',
-                                2048: 'Power-On self calibration of DDR2 interface not successful. '
-                                      'Please contact hardware manufacturer.',
-                                4096: 'Read buffer of init/output memory interface port has '
-                                      'overflown. This should not happen under any circumstance. '
-                                      'Please contact hardware manufacturer.',
-                                8192: 'Write buffer of init/output memory interface port has '
-                                      'underrun. This should not happen under any circumstance. '
-                                      'Please contact hardware manufacturer.',
-                                16384: 'Init/output memory interface read port has encountered a '
-                                       'fatal error. Please contact hardware manufacturer.',
-                                32768: 'Init/output memory interface write port has encountered a '
-                                       'fatal error. Please contact hardware manufacturer.',
-                                65536: 'Read buffer of histogram memory interface port has '
-                                       'overflown. This should not happen under any circumstance. '
-                                       'Please contact hardware manufacturer.',
-                                131072: 'Write buffer of histogram memory interface port has '
-                                        'underrun. This should not happen under any circumstance. '
-                                        'Please contact hardware manufacturer.',
-                                262144: 'Histogram memory interface read port has encountered a '
-                                        'fatal error. Please contact hardware manufacturer.',
-                                524288: 'Histogram memory interface write port has encountered a '
-                                        'fatal error. Please contact hardware manufacturer.',
-                                1048576: 'Idle memory interface port encountered an error. '
-                                         'This should not happen under any circumstance. '
-                                         'Please contact hardware manufacturer.',
-                                2097152: 'Idle memory interface port encountered an error. '
-                                         'This should not happen under any circumstance. '
-                                         'Please contact hardware manufacturer.',
-                                4194304: 'Idle memory interface port encountered an error. '
-                                         'This should not happen under any circumstance. '
-                                         'Please contact hardware manufacturer.',
-                                8388608: 'Idle memory interface port encountered an error. '
-                                         'This should not happen under any circumstance. '
-                                         'Please contact hardware manufacturer.',
-                                16777216: 'Bandwidth of Timetagger buffer memory exceeded. This '
-                                          'can happen if the rate of detector events is too high '
-                                          'and/or the data requests are too frequent. Timetrace is '
-                                          'not reliable since it may contain strange features.',
-                                268435456: 'Timetagger event buffer has encountered an overflow. '
-                                           'This should not happen under any circumstance. '
-                                           'Please contact hardware manufacturer.',
-                                536870912: 'Timetagger event buffer has encountered an underrun. '
-                                           'This should not happen under any circumstance. '
-                                           'Please contact hardware manufacturer.',
-                                1073741824: 'Power-On self calibration of TDC not successful. '
+        self._status_encoding = {0x00000001: 'initialization',
+                                 0x00000002: 'pulling_data',
+                                 0x00000004: 'idle_ready',
+                                 0x00000008: 'running',
+                                 0x80000000: 'TDC_in_reset'}
+        self._error_encoding = {0x00000020: 'Init/output FSM in FPGA hardware encountered an error.'
+                                            ' Please reset the device to recover from this state.',
+                                0x00000040: 'Histogram FSM in FPGA hardware encountered an error. '
+                                            'Please reset the device to recover from this state.',
+                                0x00000080: 'One or more histogram bins have overflown (32 bit '
+                                            'unsigned integer). Time tagger will not continue to '
+                                            'accumulate more events. Please save current data and '
+                                            'start a new measurement.',
+                                0x00000200: 'Output buffer FIFO for pipe transfer via USB has '
+                                            'overflown. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00000400: 'Output buffer FIFO for pipe transfer via USB has '
+                                            'underrun. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00000800: 'Power-On self calibration of DDR2 interface not '
+                                            'successful. Please contact hardware manufacturer.',
+                                0x00001000: 'Read buffer of init/output memory interface port has '
+                                            'overflown. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00002000: 'Write buffer of init/output memory interface port has '
+                                            'underrun. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00004000: 'Init/output memory interface read port has encountered'
+                                            ' a fatal error. Please contact hardware manufacturer.',
+                                0x00008000: 'Init/output memory interface write port has '
+                                            'encountered a fatal error. Please contact hardware '
+                                            'manufacturer.',
+                                0x00010000: 'Read buffer of histogram memory interface port has '
+                                            'overflown. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00020000: 'Write buffer of histogram memory interface port has '
+                                            'underrun. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00040000: 'Histogram memory interface read port has encountered a'
+                                            ' fatal error. Please contact hardware manufacturer.',
+                                0x00080000: 'Histogram memory interface write port has encountered '
+                                            'a fatal error. Please contact hardware manufacturer.',
+                                0x00100000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x00200000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x00400000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x00800000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x01000000: 'Bandwidth of Timetagger buffer memory exceeded. This '
+                                            'can happen if the rate of detector events is too high '
+                                            'and/or the data requests are too frequent. Timetrace '
+                                            'is not reliable.',
+                                0x10000000: 'Timetagger event buffer has encountered an overflow. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x20000000: 'Timetagger event buffer has encountered an underrun. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x40000000: 'Power-On self calibration of TDC not successful. '
                                             'Please contact hardware manufacturer.'}
 
     def on_activate(self):
