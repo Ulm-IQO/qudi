@@ -14,12 +14,12 @@ platform:
     -x64
 
 install:
-    - "powershell tools/setup_conda_windows.ps"
+    - "powershell %~dp0\\setup_conda_windows.ps"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "conda env remove --yes --name qudi"
     - "conda env create -f %~dp0\\conda-env-win8-qt5.yml"
     - "activate qudi"
-    - "python tools\\qudikernel.py install"
+    - "python %~dp0\\qudikernel.py install"
 
 # Not a .NET project, we build in the install step instead
 build: false
