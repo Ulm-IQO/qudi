@@ -65,6 +65,9 @@ while True:
         elif retval == -6:
             # called if QFatal occurs
             break
+        elif retval == 4:
+            print('Import Error: Qudi could not be started due to missing packages.')
+            sys.exit(retval)
         else:
             print('Unexpected return value {0}. Exiting.'.format(retval))
             sys.exit(retval)
