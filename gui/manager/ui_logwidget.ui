@@ -20,7 +20,16 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <property name="margin">
+   <property name="leftMargin">
+    <number>3</number>
+   </property>
+   <property name="topMargin">
+    <number>3</number>
+   </property>
+   <property name="rightMargin">
+    <number>3</number>
+   </property>
+   <property name="bottomMargin">
     <number>3</number>
    </property>
    <property name="spacing">
@@ -117,7 +126,7 @@
         <number>3</number>
        </property>
        <item>
-        <widget class="TreeWidget" name="filterTree">
+        <widget class="QTreeWidget" name="filterTree">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -241,13 +250,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>TreeWidget</class>
-   <extends>QTreeWidget</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
