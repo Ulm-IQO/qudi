@@ -14,7 +14,7 @@ platform:
     -x64
 
 install:
-    - "powershell %~dp0\\setup_conda_windows.ps"
+    - "powershell %~dp0\\tools\\setup_conda_windows.ps"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "conda env remove --yes --name qudi"
     - "conda env create -f %~dp0\\conda-env-win8-qt5.yml"
