@@ -14,16 +14,16 @@ platform:
     -x64
 
 install:
-    - "powershell %~dp0\\tools\\setup_conda_windows.ps"
+    - "powershell %APPVEYOR_BUILD_FOLDER%\\tools\\setup_conda_windows.ps"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "conda env remove --yes --name qudi"
-    - "conda env create -f %~dp0\\conda-env-win8-qt5.yml"
+    - "conda env create -f %APPVEYOR_BUILD_FOLDER%\\tools\\conda-env-win8-qt5.yml"
     - "activate qudi"
-    - "python %~dp0\\qudikernel.py install"
+    - "python %APPVEYOR_BUILD_FOLDER%\\tools\\qudikernel.py install"
 
 # Not a .NET project, we build in the install step instead
 build: false
 
 test_script:
-    - sh "tools\\test.sh"
+    - sh "%APPVEYOR_BUILD_FOLDER%\\tools\\test.sh"
 
