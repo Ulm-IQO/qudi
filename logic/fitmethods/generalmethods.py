@@ -387,7 +387,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3,
                 if abs(threshold/absolute_min)<abs(minimal_threshold):
                     if make_prints:
                         print('h16')
-                    lself.log.warning('Threshold to minimum ratio was too '
+                    self.log.warning('Threshold to minimum ratio was too '
                             'small to estimate two minima. So both '
                             'are set to the same value')
                     error=-1
