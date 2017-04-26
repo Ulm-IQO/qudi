@@ -533,10 +533,10 @@ def _check_1D_input(self, x_axis, data, params):
             self.log.error('Given parameter is no array.')
             error = -1
         elif len(np.shape(var)) != 1:
-            lself.log.error('Given parameter is no one dimensional array.')
+            self.log.error('Given parameter is no one dimensional array.')
             error = -1
     if not isinstance(params, Parameters):
-        lself.log.error('Parameters object is not valid in estimate_gaussian.')
+        self.log.error('Parameters object is not valid in estimate_gaussian.')
         error = -1
 
     return error
@@ -552,7 +552,9 @@ def _create_result_str_dict(self, result, units):
     
     @return: dict, with the keys as the parameter name and items as another dict
                    with the keys 'value', 'error', 'unit'.
+                   
     """
+    #FIXME: implement that also for 3D models, i.e. with 3 entries in units
 
     # just to be save:
     if units is None:

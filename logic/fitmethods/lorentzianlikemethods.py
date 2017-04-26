@@ -26,10 +26,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from lmfit import Parameters
 from lmfit.models import Model
-from collections import OrderedDict
 
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
+
+# add user_data as hint_name
+Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 
 ################################################################################
@@ -152,6 +154,13 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
     else:
         lorentz_model = Model(physical_lorentzian, independent_vars='x',
                               prefix=prefix)
+    # set the relative unit relations, which will be replaced in the fit by the
+    # proper units:
+    user_data = {'unit': 'x_val'}
+    lorentz_model.set_param_hint(name='sigma', user_data=user_data)
+
+    user_data = {'unit': 'x_val'}
+    lorentz_model.set_param_hint(name='center', user_data=user_data)
 
     full_lorentz_model = amplitude_model * lorentz_model
     params = full_lorentz_model.make_params()
@@ -160,12 +169,9 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
     # will be not optimized:
     if prefix is None:
         prefix = ''
+
     full_lorentz_model.set_param_hint('{0!s}fwhm'.format(prefix),
                                       expr="2*{0!s}sigma".format(prefix))
-    # full_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
-    #                                   expr='(-100.0)')
-                                      # expr='({0!s}amplitude/offset)*100'.format(prefix))
-    # params.add('{0}contrast'.format(prefix), expr='({0!s}amplitude/offset)*100'.format(prefix))
 
     return full_lorentz_model, params
 
@@ -194,8 +200,11 @@ def make_lorentzian_model(self, prefix=None):
     if prefix is None:
         prefix = ''
 
+    # this value is independent of the units for x and y axes.
+    user_data = {'unit': '%'}
     lorentz_offset_model.set_param_hint('{0}contrast'.format(prefix),
-                                        expr='({0}amplitude/offset)*100'.format(prefix))
+                                        expr='abs({0}amplitude/offset)*100'.format(prefix),
+                                        user_data=user_data)
 
     params = lorentz_offset_model.make_params()
 
@@ -225,15 +234,18 @@ def make_multiplelorentzian_model(self, no_of_functions=1):
         constant_model, params = self.make_constant_model()
         multi_lorentz_model = multi_lorentz_model + constant_model
 
+        user_data = {'unit': '%'}
         multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
-                                           expr='({0}amplitude/offset)*100'.format(prefix))
+                                           expr='abs({0}amplitude/offset)*100'.format(prefix),
+                                           user_data=user_data)
 
 
         for ii in range(1, no_of_functions):
             prefix = 'l{0:d}_'.format(ii)
             multi_lorentz_model += self.make_lorentzianwithoutoffset_model(prefix=prefix)[0]
             multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
-                                               expr='({0}amplitude/offset)*100'.format(prefix))
+                                               expr='abs({0}amplitude/offset)*100'.format(prefix),
+                                               user_data=user_data)
 
     params = multi_lorentz_model.make_params()
 
@@ -249,8 +261,16 @@ def make_lorentziandouble_model(self):
     @return tuple: (object model, object params), for more description see in
                    the method make_lorentzian_model.
     """
+    dl_model, dl_params = self.make_multiplelorentzian_model(no_of_functions=2)
 
-    return self.make_multiplelorentzian_model(no_of_functions=2)
+    # introduce the splitting as new variable:
+    user_data = {'unit': 'x_val'}
+    dl_model.set_param_hint('splitting', expr='abs(l0_center-l1_center)',
+                            user_data=user_data)
+
+    dl_params = dl_model.make_params()
+
+    return dl_model, dl_params
 
 #################################################
 #       Triple Lorentzian model with offset     #
@@ -263,7 +283,18 @@ def make_lorentziantriple_model(self):
                    the method make_lorentzian_model.
     """
 
-    return self.make_multiplelorentzian_model(no_of_functions=3)
+    tl_model, tl_params = self.make_multiplelorentzian_model(no_of_functions=3)
+
+    # introduce the splitting as new variable:
+    user_data = {'unit': 'x_val'}
+    tl_model.set_param_hint('l0_splitting', expr='abs(l0_center-l1_center)',
+                            user_data=user_data)
+    tl_model.set_param_hint('l1_splitting', expr='abs(l1_center-l2_center)',
+                            user_data=user_data)
+
+    tl_params = tl_model.make_params()
+
+    return tl_model, tl_params
 
 ################################################################################
 #                                                                              #
@@ -306,27 +337,14 @@ def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
         self.log.warning('The 1D lorentzian fit did not work. Error '
                          'message: {0}\n'.format(result.message))
 
-    # Write the parameters to allow human-readable output to be generated
-    result_str_dict = OrderedDict()
-
     if units is None:
-        units = ["arb. units"]
+        units = ("arb. units", "arb. units")
 
-    result_str_dict['Position'] = {'value': result.params['center'].value,
-                                   'error': result.params['center'].stderr,
-                                   'unit': units[0]}
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
-    result_str_dict['Contrast'] = {'value': abs(result.params['contrast'].value),
-                                   'error': result.params['contrast'].stderr,
-                                   'unit': '%'}
+    # add also the chi squared value of the fit
+    result.result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
-    result_str_dict['FWHM'] = {'value': result.params['fwhm'].value,
-                               'error': result.params['fwhm'].stderr,
-                               'unit': units[0]}
-
-    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-    result.result_str_dict = result_str_dict
     return result
 
 def estimate_lorentzian_dip(self, x_axis, data, params):
@@ -448,47 +466,16 @@ def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_par
     except:
         result = model.fit(data, x=x_axis, params=params)
         self.log.error('The double lorentzian fit did not '
-                     'work: {0}'.format(result.message))
-
-    # Write the parameters to allow human-readable output to be generated
-    result_str_dict = OrderedDict()
+                       'work: {0}'.format(result.message))
 
     if units is None:
-        units = ["arb. u."]
+        units = ("arb. units", "arb. units")
 
-    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit': units[0]}
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
-    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit': units[0]}
+    # add also the chi squared value of the fit
+    result.result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
-    result_str_dict['Splitting'] = {'value': (result.params['l1_center'].value -
-                                              result.params['l0_center'].value),
-                                    'error': (result.params['l0_center'].stderr +
-                                              result.params['l1_center'].stderr),
-                                    'unit': units[0]}
-
-    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                     'error': result.params['l0_contrast'].stderr,
-                                     'unit': '%'}
-
-    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                     'error': result.params['l1_contrast'].stderr,
-                                     'unit': '%'}
-
-    result_str_dict['FWHM 0'] = {'value': result.params['l0_fwhm'].value,
-                                 'error': result.params['l0_fwhm'].stderr,
-                                 'unit': units[0]}
-
-    result_str_dict['FWHM 1'] = {'value': result.params['l1_fwhm'].value,
-                                 'error': result.params['l1_fwhm'].stderr,
-                                 'unit': units[0]}
-
-    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-    result.result_str_dict = result_str_dict
     return result
 
 def estimate_lorentziandouble_dip(self, x_axis, data, params,
@@ -509,7 +496,7 @@ def estimate_lorentziandouble_dip(self, x_axis, data, params,
         Parameters object params: set parameters of initial values
     """
 
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+    error_c = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
     # smooth with gaussian filter and find offset:
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
@@ -523,6 +510,7 @@ def estimate_lorentziandouble_dip(self, x_axis, data, params,
                                       sigma_threshold_fraction)
 
     error = ret_val[0]
+    error = error | error_c
     sigma0_argleft, dip0_arg, sigma0_argright = ret_val[1:4]
     sigma1_argleft, dip1_arg, sigma1_argright = ret_val[4:7]
 
@@ -862,51 +850,14 @@ def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
         self.log.error('The triple lorentzian fit did not '
                        'work: {0}'.format(result.message))
 
-    # Write the parameters to allow human-readable output to be generated
-    result_str_dict = OrderedDict()
-
     if units is None:
-        units = ["arb. units"]
+        units = ("arb. units", "arb. units")
 
-    result_str_dict['Position 0'] = {'value': result.params['l0_center'].value,
-                                     'error': result.params['l0_center'].stderr,
-                                     'unit': units[0]}
+    result.result_str_dict = self._create_result_str_dict(result, units)
 
-    result_str_dict['Position 1'] = {'value': result.params['l1_center'].value,
-                                     'error': result.params['l1_center'].stderr,
-                                     'unit': units[0]}
+    # add also the chi squared value of the fit
+    result.result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
-    result_str_dict['Position 2'] = {'value': result.params['l2_center'].value,
-                                     'error': result.params['l2_center'].stderr,
-                                     'unit': units[0]}
-
-    result_str_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-                                     'error': result.params['l0_contrast'].stderr,
-                                     'unit': '%'}
-
-    result_str_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-                                     'error': result.params['l1_contrast'].stderr,
-                                     'unit': '%'}
-
-    result_str_dict['Contrast 2'] = {'value': abs(result.params['l2_contrast'].value),
-                                     'error': result.params['l2_contrast'].stderr,
-                                     'unit': '%'}
-
-    result_str_dict['FWHM 0'] = {'value': result.params['l0_sigma'].value,
-                                 'error': result.params['l0_sigma'].stderr,
-                                 'unit': units[0]}
-
-    result_str_dict['FWHM 1'] = {'value': result.params['l1_sigma'].value,
-                                 'error': result.params['l1_sigma'].stderr,
-                                 'unit': units[0]}
-
-    result_str_dict['FWHM 2'] = {'value': result.params['l2_sigma'].value,
-                                 'error': result.params['l2_sigma'].stderr,
-                                 'unit': units[0]}
-
-    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
-    result.result_str_dict = result_str_dict
     return result
 
 def estimate_lorentziantriple_N14(self, x_axis, data, params):
