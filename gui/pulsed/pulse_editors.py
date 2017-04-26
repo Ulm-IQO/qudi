@@ -2,6 +2,8 @@ from qtpy import QtCore
 from qtpy import QtWidgets
 import numpy as np
 from collections import OrderedDict
+import re
+import copy
 
 from logic.pulse_objects import PulseBlockElement
 from logic.pulse_objects import PulseBlock
@@ -51,11 +53,11 @@ class BlockEditor:
         self.be_widget = block_editor_widget
         self.parameter_dict = OrderedDict()
         self.parameter_dict['length'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                                         'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
+                                         'view_stepsize': 1e-9, 'dec': 8, 'type': float}
         self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -999999999.99, 'max': np.inf,
-                                            'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
+                                            'view_stepsize': 1e-9, 'dec': 8, 'type': float}
         self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1, 'view_stepsize': 1,
-                                               'dec': 0, 'unit_prefix': '', 'type': bool}
+                                               'dec': 0, 'type': bool}
         self.activation_config = None
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
@@ -150,7 +152,7 @@ class BlockEditor:
                                                                                         parameter, item_dict['unit']))
                     self.be_widget.setColumnWidth(column_count, 100)
 
-                    # extract the classname from the _param_a_ch list to be able to deligate:
+                    # extract the classname from the _param_a_ch list to be able to delegate:
                     delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
                     self.be_widget.setItemDelegateForColumn(column_count, delegate)
                     column_count += 1
@@ -218,6 +220,50 @@ class BlockEditor:
                 cfg_param_pbe[split_text[0]] = column
         self._cfg_param_pbe = cfg_param_pbe
         return
+
+    def _get_headernames(self):
+        """ Get the names of the current header.
+        
+        @return: dict with keys being the header names and items being the column number 
+        """
+        headers = OrderedDict()
+        for column in range(self.be_widget.columnCount()):
+            text = self.be_widget.horizontalHeaderItem(column).text()
+            headers[text] = column
+        return headers
+
+    def set_displayed_analog_amplitude(self, ampl_dict):
+        """ Update the maximal amplitudes of the current pulse block editor.
+
+        @param dict ampl_dict: 
+        @return: list, with integers representing the column indices which have
+                 changed
+        """
+
+        if ampl_dict == {}:
+            return
+
+        headers = self._get_headernames()
+        columns_changes = []
+
+        for amplitude in ampl_dict:
+            chan_name = amplitude.replace('_','')
+            found_cols = []
+            for entry in headers:
+                check = re.search('.*'+chan_name+'.*amplitude', entry, re.IGNORECASE | re.DOTALL)
+
+                if check is not None:
+                    found_cols.append(headers[entry])
+
+            for col in found_cols:
+                delegate = self.be_widget.itemDelegateForColumn(col)
+                delegate.item_dict['max'] = ampl_dict[amplitude]/2.0
+
+            columns_changes.extend(found_cols)
+
+
+        return columns_changes
+
 
     def set_activation_config(self, activation_config):
         """
@@ -316,6 +362,15 @@ class BlockEditor:
         access = self.be_widget.itemDelegateForColumn(column).model_data_access
         data = self.be_widget.model().index(row, column).data(access)
         return data
+
+    def get_column_delegate(self, column):
+        """ Get the delegate object, which is responsible for the specific column
+        
+        @param int column: column index 
+        
+        @return: QDelegate 
+        """
+        return self.be_widget.itemDelegate(column)
 
     def load_pulse_block(self, block):
         """
@@ -443,7 +498,7 @@ class BlockOrganizer:
         self.parameter_dict = OrderedDict()
         self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': 0,
                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                              'unit_prefix': '', 'type': int}
+                                              'type': int}
         self._cfg_param_pb = None
         self.block_dict = None
 
@@ -518,7 +573,7 @@ class BlockOrganizer:
         for column, parameter in enumerate(self.parameter_dict):
             # add the new properties to the whole column through delegate:
             item_dict = self.parameter_dict[parameter]
-            unit_text = item_dict['unit_prefix'] + item_dict['unit']
+            unit_text = item_dict['unit']
             self.bo_widget.insertColumn(1+column)
             self.bo_widget.setHorizontalHeaderItem(1+column, QtWidgets.QTableWidgetItem())
             self.bo_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,unit_text))
@@ -686,16 +741,16 @@ class SequenceEditor:
         self.parameter_dict = OrderedDict()
         self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': -1,
                                               'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                              'unit_prefix': '', 'type': int}
+                                              'type': int}
         self.parameter_dict['trigger_wait'] = {'unit': '', 'init_val': False, 'min': 0,
                                                'max': 1, 'view_stepsize': 1, 'dec': 0,
-                                               'unit_prefix': '', 'type': bool}
+                                               'type': bool}
         self.parameter_dict['go_to'] = {'unit': '', 'init_val': 0, 'min': -1,
                                         'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                        'unit_prefix': '', 'type': int}
+                                        'type': int}
         self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': -1,
                                                 'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                                'unit_prefix': '', 'type': int}
+                                                'type': int}
         self._cfg_param_ps = None
         self.ensemble_dict = None
         self.se_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
@@ -769,7 +824,7 @@ class SequenceEditor:
         for column, parameter in enumerate(self.parameter_dict):
             # add the new properties to the whole column through delegate:
             item_dict = self.parameter_dict[parameter]
-            unit_text = item_dict['unit_prefix'] + item_dict['unit']
+            unit_text = item_dict['unit']
             self.se_widget.insertColumn(1+column)
             self.se_widget.setHorizontalHeaderItem(1+column, QtWidgets.QTableWidgetItem())
             if item_dict['unit'] == '':
