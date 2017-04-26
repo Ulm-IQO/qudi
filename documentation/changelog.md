@@ -17,9 +17,38 @@ Changes/New features:
  * Much faster savelogic
  * Remove 'Out' connectors, connection is now by module name only
  * Pulse analysis supports multiple methods
+ * Module loading and unloading now definitely happens in the correct order
+ * Locked modules are only deactivated after prompting the user
 
 Config changes:
- * No more 'Out' connectors
+ * No more 'Out' connectors:
+
+ Old style, produces lots of warnings:
+ 
+ logic:
+    counter:
+        module.Class: 'counter_logic.CounterLogic'
+        connect:
+            counter1: 'mynicard.counter'
+            savelogic: 'savelogic.savelogic'
+    save:
+        module.Class: 'save_logic.SaveLogic'
+        win_data_directory: 'C:/Data'
+        unix_data_directory: 'Data/'
+
+ New style:
+ 
+ logic:
+    counter:
+        module.Class: 'counter_logic.CounterLogic'
+        connect:
+            counter1: 'mynicard'
+            savelogic: 'save'
+    save:
+        module.Class: 'save_logic.SaveLogic'
+        win_data_directory: 'C:/Data'
+        unix_data_directory: 'Data/'
+
 
 ## Release 0.7
 
