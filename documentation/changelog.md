@@ -1,5 +1,25 @@
 # Changelog {#changelog}
 
+## Release 0.8
+
+Released on 30 Apr 2017.
+Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.8
+
+Changes/New features:
+
+ * The Qudi paper was published: http://doi.org/10.1016/j.softx.2017.02.001
+ * Move everything to Qt5 only (no more Qt4 support) and pyqtgraph 0.10.0
+ * Scienific notation input for PID GUI
+ * Support for [Extensions](@ref extensions) (out-of-tree modules) 
+ * Removed the fysom event parameter (usually called e) from on_activae and on_deactivate functions
+ * Swabian Instruments TimeTagger / PulseStreamer hardware modules
+ * Much faster savelogic
+ * Remove 'Out' connectors, connection is now by module name only
+ * Pulse analysis supports multiple methods
+
+Config changes:
+ * No more 'Out' connectors
+
 ## Release 0.7
 
 Released on 01 Feb 2017.

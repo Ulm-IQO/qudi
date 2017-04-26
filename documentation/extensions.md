@@ -1,4 +1,4 @@
-# Extensions
+# Extensions {#extensions}
 
 With a Qudi extension it is possible to add custom gui, logic and hardware modules as well as interfaces.
 
