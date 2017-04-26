@@ -1,0 +1,36 @@
+
+#branches:
+#  only:
+#    - master
+
+environment:
+  global:
+      PYTHON: "C:\\miniconda"
+      PYTHON_ARCH: "64" # needs to be set for CMD_IN_ENV to succeed. If a mix
+                        # of 32 bit and 64 bit builds are needed, move this
+                        # to the matrix section.
+
+platform:
+    -x64
+
+install:
+    - "powershell %APPVEYOR_BUILD_FOLDER%\\tools\\setup_conda_windows.ps1"
+    - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+    - 'conda env remove --yes --name qudi || exit 0'
+    - "conda env create -f %APPVEYOR_BUILD_FOLDER%\\tools\\conda-env-win8-qt5.yml"
+    - "activate qudi"
+    - "python %APPVEYOR_BUILD_FOLDER%\\tools\\qudikernel.py install"
+
+# Not a .NET project, we build in the install step instead
+build: false
+
+test_script:
+    - sh "%APPVEYOR_BUILD_FOLDER%\\tools\\test.sh"
+
+artifacts:
+  - path: qudi.log
+    name: Qudi log file
+
+  - path: notebooks
+    name: test notebooks
+    type: zip
