@@ -54,15 +54,16 @@ class SamplingFunctions():
         # limitations, then use these.
         # Moreover, the display Widget in the GUI will depend on the
         # contraints you are setting here.
+        # FIXME: This GUI dependancy has to move to other places
 
         # predefine a general range for the frequency, amplitude and phase
         # <general_parameter> = {}
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 1.0, 'dec': 10, 'unit_prefix': 'M', 'type':float}
+                    'view_stepsize': 1.0, 'dec': 10, 'type': float}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
-                    'view_stepsize': 0.001, 'dec': 3, 'unit_prefix': '', 'type': float}
+                    'view_stepsize': 0.01, 'dec': 3, 'type': float}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 0.1, 'dec': 3, 'unit_prefix': '', 'type':float}
+                    'view_stepsize': 0.1, 'dec': 3, 'type': float}
 
         # the following keywords are known to the GUI elements, and you should
         # use only those to define you own limitation. Here is an explanation
@@ -77,28 +78,8 @@ class SamplingFunctions():
         #                   value.
         # 'hard_stepsize' : optional, the accepted value will be a multiple of
         #                   this. Normally, this will be dictate by hardware.
-        # 'dec' : number of decimals to be used for representation, this will
-        #         be related to the parameter 'unit_prefix'.
-        # 'unit_prefix' : desired metric prefix of the value, string, one of the
-        #               list:
-        #               [ 'p', 'n', 'micro','', 'm', 'k', 'M', 'G', 'T']
-        #               with the obvious meaning:
-        #        ['pico','nano','micro','milli','','kilo','Mega','Giga','Tera']
         # 'type' : the type of the parameter, either int, float, bool
 
-
-        self._unit_prefix={}
-        self._unit_prefix['f'] = 10**(-15)
-        self._unit_prefix['p'] = 10**(-12)
-        self._unit_prefix['n'] = 10**(-9)
-        self._unit_prefix['micro'] = 10**(-6)
-        self._unit_prefix['m'] = 10**(-3)
-        self._unit_prefix[''] = 10**(0)
-        self._unit_prefix['k'] = 10**(+3)
-        self._unit_prefix['M'] = 10**(+6)
-        self._unit_prefix['G'] = 10**(+9)
-        self._unit_prefix['T'] = 10**(+12)
-        self._unit_prefix['P'] = 10**(+15)
 
         # Configure also the parameter for the defined functions so that it is
         # know which input parameters the function desires:

@@ -22,22 +22,26 @@ def gated_conv_deriv(self, count_data):
     # apply gaussian filter to remove noise and compute the gradient of the timetrace sum
     conv_deriv = self._convolve_derive(timetrace_sum.astype(float), self.conv_std_dev)
 
-    # if gaussian smoothing or derivative failed, the returned array only contains zeros.
-    # Check for that and return also only zeros to indicate a failed pulse extraction.
-    if len(conv_deriv.nonzero()[0]) == 0:
-        laser_arr = np.zeros(count_data.shape, dtype=int)
-        return laser_arr
-
     # get indices of rising and falling flank
     rising_ind = conv_deriv.argmax()
     falling_ind = conv_deriv.argmin()
-    # slice the data array to cut off anything but laser pulses
-    laser_arr = count_data[:, rising_ind:falling_ind]
+
+    # If gaussian smoothing or derivative failed, the returned array only
+    # contains zeros. Check for that and return also only zeros to indicate a
+    # failed pulse extraction.
+    if len(conv_deriv.nonzero()[0]) == 0:
+        laser_arr = np.zeros(count_data.shape, dtype=int)
+    else:
+        # slice the data array to cut off anything but laser pulses
+        laser_arr = count_data[:, rising_ind:falling_ind]
+
     # Create return dictionary
     return_dict = dict()
+
     return_dict['laser_counts_arr'] = laser_arr.astype(int)
     return_dict['laser_indices_rising'] = rising_ind
     return_dict['laser_indices_falling'] = falling_ind
+
     return return_dict
 
 
