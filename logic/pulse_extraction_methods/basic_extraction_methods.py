@@ -266,7 +266,6 @@ def ungated_threshold(self, count_data):
 
     # determine max length of laser pulse and initialize laser array
     max_laser_length = max([index_array.size for index_array in consecutive_indices])
-    print(max_laser_length)
     return_dict['laser_counts_arr'] = np.zeros([self.number_of_lasers, max_laser_length], dtype=int)
     # fill laser array with slices of raw data array. Also populate the rising/falling index arrays
     for i, index_group in enumerate(consecutive_indices):
