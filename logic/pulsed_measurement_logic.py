@@ -49,8 +49,11 @@ class PulsedMeasurementLogic(GenericLogic):
         'pulsegenerator': 'PulserInterface',
     }
 
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                         np.ndarray, np.ndarray, np.ndarray)
+
+
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
@@ -96,13 +99,13 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_ignore_list = []
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
-        self.loaded_asset_name = None
+        self.loaded_asset_name = ''
         self.alternating = False
 
         # Pulse generator parameters
-        self.current_channel_config_name = None
+        self.current_channel_config_name = ''
         self.sample_rate = 25e9
-        self.analogue_amplitude = None
+        self.analogue_amplitude = dict()
         self.interleave_on = False
 
         # timer for data analysis
@@ -118,17 +121,18 @@ class PulsedMeasurementLogic(GenericLogic):
         self.threadlock = Mutex()
 
         # plot data
-        self.signal_plot_x = None
-        self.signal_plot_y = None
-        self.signal_plot_y2 = None
-        self.signal_fft_x = None
-        self.signal_fft_y = None
-        self.signal_fft_y2 = None
-        self.measuring_error_plot_x = None
-        self.measuring_error_plot_y = None
-        self.measuring_error_plot_y2 = None
-        self.laser_plot_x = None
-        self.laser_plot_y = None
+        self.signal_plot_x = np.array([])
+        self.signal_plot_y = np.array([])
+        self.signal_plot_y2 = np.array([])
+        self.signal_fft_x = np.array([])
+        self.signal_fft_y = np.array([])
+        self.signal_fft_y2 = np.array([])
+        self.measuring_error_plot_x = np.array([])
+        self.measuring_error_plot_y = np.array([])
+        self.measuring_error_plot_y2 = np.array([])
+        self.laser_plot_x = np.array([])
+        self.laser_plot_y = np.array([])
+
 
         # raw data
         self.laser_data = np.zeros((10, 20))
@@ -202,7 +206,7 @@ class PulsedMeasurementLogic(GenericLogic):
         avail_activation_configs = self.get_pulser_constraints().activation_config
         if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
-        if self.analogue_amplitude is None:
+        if len(self.analogue_amplitude)==0:
             self.analogue_amplitude, dummy = self._pulse_generator_device.get_analog_level()
         if self.interleave_on is None:
             self.interleave_on = self._pulse_generator_device.get_interleave()
@@ -557,7 +561,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Delete all loaded files in the device's current memory. """
         self.pulse_generator_off()
         err = self._pulse_generator_device.clear_all()
-        self.loaded_asset_name = None
+        self.loaded_asset_name = ''
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         return err
 

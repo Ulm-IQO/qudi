@@ -18,7 +18,7 @@ except ImportError:
     from thread import interrupt_main  # Py 2
 from threading import Thread
 
-from IPython.utils.warn import warn
+from warnings import warn
 
 
 class ParentPollerUnix:
