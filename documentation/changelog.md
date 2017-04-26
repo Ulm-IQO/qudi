@@ -9,6 +9,7 @@ Changes/New features:
 
  * The Qudi paper was published: http://doi.org/10.1016/j.softx.2017.02.001
  * Move everything to Qt5 only (no more Qt4 support) and pyqtgraph 0.10.0
+ * Re-usable/configurable fit GUI components
  * Scienific notation input for PID GUI
  * Support for [Extensions](@ref extensions) (out-of-tree modules) 
  * Removed the fysom event parameter (usually called e) from on_activae and on_deactivate functions
