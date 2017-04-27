@@ -731,9 +731,7 @@ class ConfocalLogic(GenericLogic):
                 # the starting position of the first scan line of the scan
                 rs = self.return_slowness
                 lsx = np.linspace(self._current_x, image[self._scan_counter, 0, 0], rs)
-                self.log.info(lsx)
                 lsy = np.linspace(self._current_y, image[self._scan_counter, 0, 1], rs)
-                self.log.info(lsy)
                 lsz = np.linspace(self._current_z, image[self._scan_counter, 0, 2], rs)
                 if n_ch <= 3:
                     start_line = np.vstack([lsx, lsy, lsz][0:n_ch])

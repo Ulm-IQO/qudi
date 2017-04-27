@@ -71,14 +71,16 @@ class NOVAMotor:
 
     command_dict = {}
     command_dict['GETPOSITION'] = 51
-    command_dict['MOVEABS'] = 7
+    # command_dict['MOVEABS'] = 7
     command_dict['VELZERO'] = 13
     command_dict['SERVOMODE'] = 50
     command_dict['STOP'] = 16
     command_dict['MOVEREL'] = 4
-    command_dict['LIMITS'] = 60
+    # command_dict['LIMITS'] = 60
     command_dict['ECHO'] = 17
-    command_dict['REFERENCE'] = 53
+    command_dict['GOTOREFERENCE'] = 53
+    command_dict['MOVETOSTEP'] = 7
+    command_dict['MOVESTEPS'] = 4
 
     eeid_dict = {}
     eeid_dict['x-axis'] = 1
@@ -143,11 +145,11 @@ class NOVAMotor:
                            self.byte_array.b7[0], self.timeout, byref(self.error))
         #self.log.info('Writing command {0} with position {1} and velocity {2}'.format(self.command.value,
         #                                                                             self.byte_array.position,
-        #                                                                             self.byte_array.velocity))
+        #                                                                            self.byte_array.velocity))
 
         if self.error.value != 0:
             self.log.error(self.error_code[self.error.value])
-        time.sleep(0.02)
+        #time.sleep(0.02)
 
     def read_from_server(self):
         self.novadll.read(self.eepromid, self.deviceid, self.eeid, self.command, byref(self.count), byref(self.flags),
@@ -158,13 +160,13 @@ class NOVAMotor:
                           byref(self.byte_array.b4), byref(self.byte_array.b5), byref(self.byte_array.b6),
                           byref(self.byte_array.b7), self.timeout,
                           byref(self.error))
-        #self.log.info('Reading command {0} with position {1} and velocity {2}'.format(self.command.value,
-        #                                                                                      self.byte_array.position,
+        # self.log.info('Reading command {0} with position {1} and velocity {2}'.format(self.command.value,
+        #                                                                               self.byte_array.position,
         #                                                                               self.byte_array.velocity))
         if self.error.value != 0:
             self.log.error(self.error_code[self.error.value])
 
-        time.sleep(0.01)
+        #time.sleep(0.01)
 
     def clear_bits(self):
         self.byte_array.longlong = 0
@@ -175,7 +177,7 @@ class NOVAMotor:
         self.command.value = self.command_dict.get('GETPOSITION')
 
         self.write_to_server()
-
+        time.sleep(0.02)
         self.read_from_server()
         #        self.log.info(self.byte_array.b[1])
         #       self.log.info(self.byte_array.b[0])
@@ -188,7 +190,7 @@ class NOVAMotor:
         @param float vel: velocity of the stage in m/s.
         """
 
-        self.byte_array.velocity = int(vel * 32767000)  # max range is 32767
+        self.byte_array.velocity = int(vel * 32767000)-1  # max range is 32767
         # self.log.info(self.byte_array.velocity)
         # self.log.info("b0 is {0}".format(self.byte_array.b1[0]))
         # self.log.info("b1 is {0}".format(self.byte_array.b2[0]))
@@ -248,12 +250,15 @@ class NOVAMotor:
         self.write_to_server()
         # if self.error.value != 0:
         #     self.log.error(self.error_code[self.error.value])
-
+        time.sleep(0.02)
         self.read_from_server()
         # if self.error.value != 0:
         #     self.log.error(self.error_code[self.error.value])
         # position = 4
         # read the position off the stack
+
+
+
         position = self.byte_array.position
         #self.log.info('Getting position at {0}'.format(self.time_stamp()))
        # self.log.info('Controller records {0} reads'.format(self.nreads.value))
@@ -279,21 +284,121 @@ class NOVAMotor:
         self.write_to_server()
         return True
 
+    def move_to_step(self, step):
+        self.command.value = self.command_dict.get('MOVETOSTEP')
+
+        if self.byte_array.velocity is 0:
+            self.set_velocity(0.5e-3)
+
+        self.byte_array.position = step
+        self.log.info('Step is {0}'.format(step))
+
+        self.write_to_server()
+
+    def move_steps(self, delta_step):
+        self.command.value = self.command_dict.get('MOVESTEPS')
+
+        if self.byte_array.velocity is 0:
+            self.set_velocity(0.5e-3)
+
+        self.byte_array.position = delta_step
+
+        self.log.info('Moving {0}'.format(delta_step))
+
+        self.write_to_server()
+
+    def get_step(self):
+        self.command.value = self.command_dict.get('GETSTEP')
+        self.clear_bits()
+        self.write_to_server()
+        time.sleep(0.02)
+        self.read_from_server()
+
     def move_abs(self, position):
         """ Moves the motor to the Absolute position specified using servo mode
 
         @param float absPosition: absolute Position desired, in m or degree.
         """
 
-        if self.byte_array.velocity is 0:
-            self.set_velocity(0.5e-3)
+        #if self.byte_array.velocity is 0:
+         #   self.set_velocity(0.5e-3)
 
+        self.byte_array.velocity = 5900
         self.byte_array.position = int(position * 1000000000)  # to nm
 
         # position = self.twos_comp(((self.byte_array.b[5].value << 24) | (self.byte_array.b[4].value << 16) | (self.byte_array.b[3].value << 8) | self.byte_array.b[2].value), 32)
         self.command.value = self.command_dict.get('SERVOMODE')
         self.write_to_server()
         # self.log.info(self.twos_comp((self.byte_array.b[5].value << 24) | (self.byte_array.b[4].value << 16) | (self.byte_array.b[3].value << 8) | self.byte_array.b[2].value,32))
+
+
+        #1 step is around 500 nm
+
+        #curr_pos = self.get_pos()
+        #delta_pos = position - curr_pos
+        #self.log.info('delta pos is {0}'.format(delta_pos))
+        #self.move_steps(int((delta_pos/16) /500e-9))
+
+        #curr_pos = self.get_pos()
+        #delta_pos = (position - self.get_pos())
+        #self.set_velocity(delta_pos / 20e-3)
+        #delta_steps = int(delta_pos * 62000000)
+        #self.move_steps(delta_steps)
+        #
+        #self.byte_array.position = int(position * 1000000000)  # to nm
+        #self.command.value = self.command_dict.get('SERVOMODE')
+        #self.write_to_server()
+        #
+         #self.i = 0
+         #self.delta_pos = position - self.get_pos()
+        #
+        # while self.delta_pos > 0.1e-6 and self.i < 5:
+        #     self.delta_pos = position - self.get_pos()
+        #     self.log.info('Difference is {0} mm'.format(self.delta_pos*1e3))
+        #     self.i = self.i + 1
+        #     #time.sleep(0.2)
+        #     self.log.info(self.i)
+        #
+        # self.command.value = self.command_dict.get('STOP')
+        # self.clear_bits()
+        # self.byte_array.b0[0] = 1
+        # self.write_to_server()
+
+        #    self.log.info('Improve your control, accurate to {0} m'.format(delta_pos))
+
+        # GET CURRENT POSITION, STEPS   (WRITE) (WRITE)  sleep some time..  (READ) (READ)
+        # self.command.value = self.command_dict.get('GETPOSITION')
+        # self.write_to_server()
+        # self.command.value = self.command_dict.get('GETSTEP')
+        # self.write_to_server()
+        #
+        # time.sleep(0.01)
+        #
+        # self.command.value = self.command_dict.get('GETPOSITION')
+        # self.read_from_server()
+        # curr_pos = self.byte_array.position / 1000000000
+        #
+        # self.command.value = self.command_dict.get('GETSTEP')
+        # self.read_from_server()
+        # step = self.byte_array.position
+        #
+        # velocity = (curr_pos-position) /
+
+
+        # WORK OUT VELOCITY AND STEPS
+
+        # MOVE STEPS WITH SET VELOCITY (WRITE)
+
+        # CHECK IF MOVED MORE OR LESS TO STEPS (READ READ WRITE WRITE)
+
+        # YES ???
+        # GET NEW POSITION
+
+        # REPEAT IF NOT ACCURATE ENOUGH
+
+
+
+
         return True
 
     # --------------------------- Miscellaneous --------------------------------
@@ -361,11 +466,26 @@ class NOVAMotor:
 
     def go_home(self):
 
-        if not self.Connected:
-            raise Exception('Please connect first! Use initializeHardwareDevice')
-
         # TODO: a proper home position has to be set, not just zero.
-        self.move_abs(0.0)
+        #self.move_abs(0.0)
+        self.command.value = self.command_dict.get('GOTOREFERENCE')
+        self.clear_bits()
+
+        #direction of search for reference
+        if self.get_pos() > 0:
+            self.byte_array.b0[0] = -1
+        else:
+            self.byte_array.b0[0] = 1
+
+        self.write_to_server()
+
+        pos = self.get_pos()
+        posnew = 0
+        while abs(pos-posnew) > 100:
+            posnew= self.get_pos()
+            print(posnew)
+            pos = posnew
+
 
     def _test_bit(self, int_val, offset):
         """ Check a bit in an integer number at position offset.
@@ -631,6 +751,7 @@ class NOVAStage(Base, MotorInterface):
                                      ''.format(label_axis, desired_pos, constr['pos_min'], constr['pos_max']))
                 else:
                     self._save_pos({label_axis: desired_pos})
+                    #self.log.info('desired pos is {0}'.format(desired_pos))
                     self._axis_dict[label_axis].move_abs(desired_pos)
 
     def abort(self):
@@ -706,7 +827,7 @@ class NOVAStage(Base, MotorInterface):
         zero point for the passed axis. The calibration procedure will be
         different for each stage.
         """
-        raise InterfaceImplementationError('MagnetStageInterface>calibrate')
+        #raise InterfaceImplementationError('MagnetStageInterface>calibrate')
 
         # TODO: read out a saved home position in file and compare that with the
         #      last position saved also in file. The difference between these
@@ -719,6 +840,7 @@ class NOVAStage(Base, MotorInterface):
         else:
             for label_axis in self._axis_dict:
                 self._axis_dict[label_axis].go_home()
+
 
     def _save_pos(self, param_dict):
         """ Save after each move the parameters to file, since the motor stage
@@ -1034,8 +1156,8 @@ class NOVATwoAxisStage(NOVAStage):
         # way of identifying the used axes.
         axis1['unit'] = 'm'  # the SI units, only possible mm or degree
         axis1['ramp'] = ['Trapez']  # a possible list of ramps
-        axis1['scan_min'] = -3.0e-3
-        axis1['scan_max'] = 3.0e-3
+        axis1['scan_min'] = -4e-3
+        axis1['scan_max'] = 4e-3
         axis1['pos_min'] = -6.5e-3  # in m
         axis1['pos_max'] = 6.5e-3  # that is basically the traveling range
         axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)

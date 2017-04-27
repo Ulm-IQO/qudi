@@ -55,7 +55,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #    self.log.warning('No clock_frequency configured taking 100 Hz '
         #            'instead.')
 
-        self._clock_frequency = 500
+        self._clock_frequency = 100
 
         # Internal parameters
         self._line_length = None
@@ -83,6 +83,11 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         self.tilt_reference_x = 0
         self.tilt_reference_y = 0
 
+
+        #Goto reference of motors
+
+        #self._motor_hw.calibrate()
+
         self._count_frequency = 50
 
         self._clock_frequency_default = 100             # in Hz
@@ -91,6 +96,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         self._motor_hw.set_velocity({'x-axis':1e-3,'y-axis':1e-3,'z-axis':1e-3})
 
         constraints = self._motor_hw.get_constraints()
+
         self.position_range = []
         for label_axis in constraints:
             self.position_range.append([constraints[label_axis]['scan_min'],constraints[label_axis]['scan_max']])
@@ -213,6 +219,9 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #self.log.info(move_dict)
         self._motor_hw.move_abs(move_dict)
 
+        #self.log.info('We want to be {0}'.format(move_dict))
+        #self.log.info('We are {0}'.format(self._motor_hw.get_pos()))
+
         return 0
 
     def get_scanner_position(self):
@@ -230,7 +239,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
             if position_dict.get(k) is not None:
                 position_vect.append(position_dict[k])
         #y, z, x
-        #Stupid random a channel
+        #Add random a channel
         position_vect.append(0)
         #self.log.info('Current position in (x,y,z,a) is {0}'.format(position_vect))
         return position_vect
@@ -287,15 +296,25 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
                 (self._line_length, 1),
         dtype = np.uint32)
 
+        #if dir == 1:
+         #   line_path
+          #  dir = -1
+
         for i in range(self._line_length):
-            coords = line_path[:,i]
+            coords = line_path[:, i]
+
+
             if len(coords) == 2: #  xy scan
                 self.scanner_set_position(x=coords[0], y=coords[1])
+
             if len(coords) == 1: #  depth scan
                 self.scanner_set_position(z=coords[0])
             # record counts
             #self.log.info(self._confocal_hw.get_counter())
             count = self._confocal_hw.get_counter()
+
+            #self.log.info(self.get_scanner_position())
+
             count_data[i,0] = np.mean(count) # could be say, 10 values
 
         self._confocal_hw.close_counter(scanner=False)

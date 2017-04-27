@@ -144,6 +144,7 @@ class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
         if not self._magnet_idle:
             if move_xz != {}:
                 self._motor_device_xz.move_abs(move_xz)
+                #self.log.info(move_xz)
             if move_y != {}:
                 self._motor_device_y.move_abs(move_y)
         else:
@@ -235,21 +236,21 @@ class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
         different for each stage.
         """
         if not self._magnet_idle:
-            if param_list==None:
+            if param_list is None:
                 pos_xz = self._motor_device_xz.calibrate()
                 pos_y = self._motor_device_y.calibrate()
             else:
                 list_xz, list_y = self._split_list(param_list)
-                if list_xz != []:
-                    pos_y = self._motor_device_xz.calibrate(list_xz)
+                if list_xz is not []:
+                    pos_xz = self._motor_device_xz.calibrate(list_xz)
                 else:
                     pos_xz = {}
-                if list_y != []:
-                    pos_y= self._motor_device_ycalibrate(list_y)
+                if list_y is not []:
+                    pos_y = self._motor_device_y.calibrate(list_y)
                 else:
                     pos_y = {}
-            pos_xz.update(pos_y)
-            return pos_xz
+                #pos_xz.update(pos_y)
+            #return pos_xz
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
                     'perform "calibrate" commands. Couple the Motor to '

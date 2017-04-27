@@ -110,19 +110,30 @@ class MotorStageMicosOne(Base, MotorInterface):
                     'instead.'.format(self._baud_rate))
 
         self._micos = self.rm.open_resource(self._com_port)  # x, y
-        self._micos.read_termination = '\r\n' #self._term_chars
-        self._micos.write_termination = '\r\n'
+        self._micos.read_termination = '\n' #self._term_chars
+        self._micos.write_termination = '\n'
         self._micos.baud_rate = self._baud_rate
         self._micos.label = label     # attach a label attribute
         self._micos.write("1 setdim")
 
-        try:
-            pos_str = self._micos.ask('pos')
-            self.pos = float(pos_str) / 1000 - 24e-3
+        # import logging
+        # visa.logger.setLevel(logging.DEBUG)
+        # ch = logging.StreamHandler()
+        # ch.setLevel(logging.DEBUG)
+        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # ch.setFormatter(formatter)
+        # visa.logger.addHandler(ch)
 
-        except visa.VisaIOError:
-            self.log.error(visa.VisaIOERROR)
-            self.pos = 0
+        # try:
+        #     pos_str = self._micos.ask('pos')
+        #     self.pos = float(pos_str) / 1000 - 24e-3
+        #
+        # except visa.VisaIOError:
+        #     self.log.error(visa.VisaIOERROR)
+        #     self.pos = 0
+
+        pos_str = self._micos.ask('pos')
+        self.pos = float(pos_str) / 1000 - 24e-3
 
     def on_deactivate(self, e):
         """ Disconnect from hardware and clean up """
@@ -157,8 +168,8 @@ class MotorStageMicosOne(Base, MotorInterface):
         axis0['ramp'] = ['Sinus','Linear']  # a possible list of ramps
         axis0['pos_min'] = -24e-3
         axis0['pos_max'] = 5e-3  # that is basically the traveling range
-        axis0['scan_min'] = -3e-3
-        axis0['scan_max'] = 3e-3
+        axis0['scan_min'] = -10e-3
+        axis0['scan_max'] = 6e-3
         axis0['pos_step'] = 1e-6
         axis0['vel_min'] = 0
         axis0['vel_max'] = 10
@@ -346,7 +357,7 @@ class MotorStageMicosOne(Base, MotorInterface):
         """
 
         self._micos.write('1 setdim')
-        self._micos.write('cal')
+        self._micos.write('cal') # takes too long... TODO wait for movement to finish
 
 
     def get_velocity(self, param_list=None):
