@@ -26,7 +26,7 @@ from core.base import Base
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
-class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
+class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
     """This is the Interface class to define the controls for the simple
     microwave hardware.
@@ -36,8 +36,8 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     # connectors
     _in = {'fitlogic': 'FitLogic',
            'confocalscanner1': 'ConfocalScannerInterface',
-           'spectrometer1': 'SpectrometerInterface'}
-    _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
+           'magnetinterface': 'MagnetInterface'}
+    _out = {'motorscanner': 'ConfocalScannerInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -48,20 +48,21 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
-        else:
-            self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
+        # if 'clock_frequency' in config.keys():
+        #    self._clock_frequency = config['clock_frequency']
+        # else:
+        #    self._clock_frequency = 100
+        #    self.log.warning('No clock_frequency configured taking 100 Hz '
+        #            'instead.')
 
+        self._clock_frequency = 100
 
         # Internal parameters
         self._line_length = None
         self._scanner_counter_daq_task = None
-        self._voltage_range = [-10., 10.]
+        self._voltage_range = [-1., 1.]
 
-        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
+        self._position_range = [[0., 1.], [0., 1.], [0., 1.], [0., 0]]
         self._current_position = [0., 0., 0., 0.]
 
         self._num_points = 500
@@ -71,9 +72,36 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """
 
         self._fit_logic = self.get_in_connector('fitlogic')
-        self._scanner_hw = self.get_in_connector('confocalscanner1')
-        self._spectrometer_hw = self.get_in_connector('spectrometer1')
+        self._confocal_hw = self.get_in_connector('confocalscanner1')
+        self._motor_hw = self.get_in_connector('magnetinterface')
 
+
+        #have to add these tilt variables for the logic to not give error
+        self.tilt_variable_ax = 1
+        self.tilt_variable_ay = 1
+        self.tiltcorrection = False
+        self.tilt_reference_x = 0
+        self.tilt_reference_y = 0
+
+
+        #Goto reference of motors
+
+        #self._motor_hw.calibrate()
+
+        self._count_frequency = 50
+
+        self._clock_frequency_default = 100             # in Hz
+
+        #must set these bits, especially for Nova Stage
+        self._motor_hw.set_velocity({'x-axis':1e-3,'y-axis':1e-3,'z-axis':1e-3})
+
+        constraints = self._motor_hw.get_constraints()
+
+        self.position_range = []
+        for label_axis in constraints:
+            self.position_range.append([constraints[label_axis]['scan_min'],constraints[label_axis]['scan_max']])
+
+        self.position_range.append([0,0])
 
     def on_deactivate(self, e):
         self.reset_hardware()
@@ -84,15 +112,21 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.warning('Scanning Device will be reset.')
+
         return 0
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
-        This is a direct pass-through to the scanner HW.
+        This is a direct pass-through to the scanner HW.l;;
 
         @return float [4][2]: array of 4 ranges with an array containing lower and upper limit
         """
-        return self._scanner_hw.get_position_range()
+
+        #check if this needs micrometres!
+
+        #self.log.info('Scan range is {0}'.format(position_range))
+
+        return self.position_range
 
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
@@ -102,10 +136,12 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if myrange is None:
-            myrange = [[0,1],[0,1],[0,1],[0,1]]
+        self.log.warning('Setting position range not currently implemented')
 
-        self._scanner_hw.set_position_range(myrange=myrange)
+
+
+
+
 
         return 0
 
@@ -117,10 +153,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if myrange is None:
-            myrange = [-10.,10.]
 
-        self._scanner_hw.set_voltage_range(myrange=myrange)
         return 0
 
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
@@ -132,7 +165,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
+        #self.log.info('No scanner clock on motor')
         #return self._scanner_hw.set_up_scanner_clock(clock_frequency=clock_frequency, clock_channel=clock_channel)
         return 0
 
@@ -148,12 +181,17 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
+        #self.log.warning('set_up_scanner')
         return 0
 
     def get_scanner_axes(self):
         """ Pass through scanner axes. """
-        return self._scanner_hw.get_scanner_axes()
+
+        n = 2
+
+        possible_channels = ['x', 'y', 'z', 'a']
+
+        return possible_channels[0:int(n)]
 
     def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
@@ -167,7 +205,23 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._scanner_hw.scanner_set_position(x=x, y=y, z=z, a=a)
+        #self._scanner_hw.scanner_set_position(x=x, y=y, z=z, a=a)
+
+        # TODO: make this not hardcoded to axis name?
+        move_dict = {}
+        if x is not None:
+            move_dict.update({'x-axis': x})
+        if y is not None:
+            move_dict.update({'y-axis': y})
+        if z is not None:
+            move_dict.update({'z-axis': z})
+
+        #self.log.info(move_dict)
+        self._motor_hw.move_abs(move_dict)
+
+        #self.log.info('We want to be {0}'.format(move_dict))
+        #self.log.info('We are {0}'.format(self._motor_hw.get_pos()))
+
         return 0
 
     def get_scanner_position(self):
@@ -175,8 +229,20 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return float[]: current position in (x, y, z, a).
         """
+        position_dict = self._motor_hw.get_pos()
+        position_vect = []
+        #self.log.info('motor interfuse reports {0}'.format(position_dict))
 
-        return self._scanner_hw.get_scanner_position()
+        label_dict = {'x-axis','y-axis','z-axis'}
+
+        for k in sorted(label_dict):
+            if position_dict.get(k) is not None:
+                position_vect.append(position_dict[k])
+        #y, z, x
+        #Add random a channel
+        position_vect.append(0)
+        #self.log.info('Current position in (x,y,z,a) is {0}'.format(position_vect))
+        return position_vect
 
     def set_up_line(self, length=100):
         """ Set the line length
@@ -208,21 +274,51 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
             self.log.error('Given voltage list is no array type.')
             return np.array([-1.])
 
+        # setting up the counter
+
+
+        clock_status = self._confocal_hw.set_up_clock(clock_frequency=self._count_frequency)
+        if clock_status < 0:
+            return np.array([-1.])
+
+        counter_status = self._confocal_hw.set_up_counter()
+        if counter_status < 0:
+            self._confocal_hw.close_clock()
+            return np.array([-1.])
+
         self.set_up_line(np.shape(line_path)[1])
 
-        count_data = np.zeros(self._line_length)
+        #count_data = np.empty(
+        #        (len(self.get_scanner_count_channels()), self._line_length),
+        #       dtype=np.uint32)
 
-        for i in xrange(self._line_length):
-            coords = line_path[:,i]
-            self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2], a=coords[3])
-            print(coords)
-            print(i)
+        count_data = np.empty(
+                (self._line_length, 1),
+        dtype = np.uint32)
 
-            # record spectral data
-            this_spectrum_data = self._spectrometer_hw.recordSpectrum()
-            #this_spectrum_data = [1,2,3,4,5]
-            count_data[i] = np.sum(this_spectrum_data)
-            time.sleep(0.2)
+        #if dir == 1:
+         #   line_path
+          #  dir = -1
+
+        for i in range(self._line_length):
+            coords = line_path[:, i]
+
+
+            if len(coords) == 2: #  xy scan
+                self.scanner_set_position(x=coords[0], y=coords[1])
+
+            if len(coords) == 1: #  depth scan
+                self.scanner_set_position(z=coords[0])
+            # record counts
+            #self.log.info(self._confocal_hw.get_counter())
+            count = self._confocal_hw.get_counter()
+
+            #self.log.info(self.get_scanner_position())
+
+            count_data[i,0] = np.mean(count) # could be say, 10 values
+
+        self._confocal_hw.close_counter(scanner=False)
+        self._confocal_hw.close_clock(scanner=False)
 
         return count_data
 
@@ -231,7 +327,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
+        self._motor_hw.abort()
         #self._scanner_hw.close_scanner()
 
         return 0
@@ -243,3 +339,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         """
         #self._scanner_hw.close_scanner_clock()
         return 0
+
+    def  get_scanner_count_channels(self):
+
+        return ['Ctr1']

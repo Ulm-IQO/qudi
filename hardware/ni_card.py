@@ -871,6 +871,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         for channel in chanlist:
             if channel is None:
                 continue
+            self.log.info(channel)
             match = re.match(
                 '^/(?P<dev>[0-9A-Za-z\- ]+[0-9A-Za-z\-_ ]*)/(?P<chan>[0-9A-Za-z]+)',
                 channel)
@@ -2076,9 +2077,7 @@ class SlowGatedNICard(NICard):
         # count on rising edge mainly used for gated counter
         self._counting_edge_default = True
 
-        self._counter_channels = []
-
-        self._counter_channel = '/NIDAQ/Ctr0'
+        self._counter_channel = '/Dev1/Ctr0'
 
         config = self.getConfiguration()
 

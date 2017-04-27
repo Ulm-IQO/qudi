@@ -92,7 +92,7 @@ class MotorStageMicos(Base, MotorInterface):
             self.log.error('No parameter "com_port_micos_xy" found in '
                     'config.\n'
                     'Cannot connect to motorized stage! Enter the '
-                    'parameter with the following scheme:/n'
+                    'parameter with the following scheme:'
                     '("<COM-PORT>","<lable_x_axis>","label_y_axis")')
 
 
