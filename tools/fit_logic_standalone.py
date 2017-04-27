@@ -1864,7 +1864,7 @@ def lorentziandip_testing2():
 
     data_nice = mod.eval(x=x_axis,params=params)
     data_noisy = data_nice + 2.0*np.random.normal(size=x_axis.shape)
-
+    
     print(qudi_fitting.estimate_lorentzian_dip)
 
 
@@ -1880,7 +1880,7 @@ def lorentziandip_testing2():
 
     print(result.fit_report())
     print(result.result_str_dict)
-
+    
 
 def lorentzianpeak_testing2():
     """ Test the lorentzian fit directy with simulated data. """
@@ -2216,7 +2216,7 @@ def sine_testing():
     params['frequency'].set(value=frequency_max, min=0.0, max=1/(stepsize)*3)
     params['phase'].set(value=phase, min=-np.pi, max=np.pi)
     params['offset'].set(value=offset)
-    
+
     # perform fit:
     result = mod.fit(data_noisy, x=x_axis, params=params)
 
@@ -2232,7 +2232,7 @@ def sine_testing():
 
     plt.show()
 
-    print(result.fit_report())
+#    print(result.fit_report())
 
 def sine_testing2():
     """ Sinus fit testing with the direct fit method. """
@@ -2272,9 +2272,7 @@ def sine_testing2():
     #update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
 
     result = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_noisy,
-                                        add_params=update_dict, 
-                                        estimator=qudi_fitting.estimate_sine,
-                                        units=('Hz','counts'))
+                                              add_params=update_dict)
 
     plt.figure()
 #    plt.plot(x_axis, data, 'simulate data')
@@ -4167,11 +4165,11 @@ if __name__ == "__main__":
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    N14_testing()
-#    N14_testing2()
+    N14_testing2()
 #    N14_testing_data()
 #    N14_testing_data2()
 #    N15_testing()
-#    N15_testing2()
+    N15_testing2()
 #    powerfluorescence_testing()
 #    sine_testing()
 #    sine_testing2()

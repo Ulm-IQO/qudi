@@ -34,6 +34,10 @@ try:
 except ImportError:
     pass
 
+import importlib
+import logging
+logger = logging.getLogger(__name__)
+
 # Optional function for exiting immediately (with some manual teardown)
 
 
@@ -77,3 +81,48 @@ def exit(exitcode=0):
         os.closerange(3, 4096)
 
     os._exit(exitcode)
+
+
+
+def import_check():
+    """ Checks whether all the necessary modules are present upon start of qudi.
+    
+    @return: int, error code either 0 or 4.
+    
+    Check also whether some recommended packages exists. Return err_code=0 if
+    all vital packages are installed and err_code=4 if vital packages are
+    missing. Make a warning about missing packages.
+    """
+    err_code = 0
+
+    # encode like: (python-package-name, repository-name)
+    vital_pkg = [('ruamel.yaml','ruamel.yaml'), ('rpyc','rpyc'), ('fysom','fysom')]
+    opt_pkg = [('pyqtgraph','pyqtgraph'), ('git','gitpython')]
+
+    for pkg_name, repo_name in vital_pkg:
+        try:
+            importlib.import_module(pkg_name)
+        except ImportError:
+            logger.error('No Package "{0}" installed! Perform e.g.\n\n'
+                         '    pip install {1}\n\n'
+                         'in the console to install the missing package.'.format(pkg_name, repo_name))
+            err_code = err_code | 4
+
+    try:
+        from qtpy.QtCore import Qt
+    except ImportError:
+        logger.error('No Qt bindungs detected! Perform e.g.\n\n'
+                     '    pip install PyQt5\n\n'
+                     'in the console to install the missing package.')
+        err_code = err_code | 4
+
+    for pkg_name, repo_name in opt_pkg:
+        try:
+            importlib.import_module(pkg_name)
+        except ImportError:
+            logger.warning('No Package "{0}" installed! It is recommended to '
+                           'have this package installed. Perform e.g.\n\n'
+                           '    pip install {1}\n\n'
+                           'in the console to install the missing package.'.format(pkg_name, repo_name))
+
+    return err_code

@@ -105,7 +105,7 @@ def make_baresine_model(self, prefix=None):
     user_data = {'unit': 'rad', 'nice_name': 'Phase_r'+num}
     model.set_param_hint('{0}phase'.format(prefix), user_data=user_data)
 
-    user_data = {'unit': 'Â°', 'nice_name': 'Phase_d'+num}
+    user_data = {'unit': '°', 'nice_name': 'Phase_d'+num}
     model.set_param_hint('{0}phase_d'.format(prefix), user_data=user_data,
                          expr='({0}phase*180)/pi'.format(prefix))
 
