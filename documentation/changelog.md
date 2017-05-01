@@ -2,8 +2,12 @@
 
 ## Release 0.8
 
-Released on 30 Apr 2017.
+Released on 2 Mar 2017.
 Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.8
+
+Caution: fits need to be configured in the respective settings dialog and
+may not include printed results or may be just broken.
+If you find a defective fit, consider fixing it and submitting a pull request.
 
 Changes/New features:
 
