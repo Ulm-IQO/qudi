@@ -21,10 +21,13 @@ Changes/New features:
  * Much faster savelogic
  * Remove 'Out' connectors, connection is now by module name only
  * Pulse analysis supports multiple methods
+ * Predefined pulse sequences can now be imported from a custom path 
+ (in addition to /logic/predefined_methods)
  * Module loading and unloading now definitely happens in the correct order
  * Locked modules are only deactivated after prompting the user
 
 Config changes:
+ * New optional parameter "additional_methods_dir" for SequenceGeneratorLogic
  * No more 'Out' connectors:
 
  Old style, produces lots of warnings:
