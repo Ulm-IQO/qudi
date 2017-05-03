@@ -71,6 +71,14 @@ else:
 # define a global variable for the manager
 man = None
 
+# Until here every module is in the python standard library.
+# Check vital packages for qudi, otherwise qudi will not even start.
+from core.util.helpers import import_check
+err_code = import_check()
+
+if err_code != 0:
+    sys.exit(err_code)
+
 
 # install logging facility for Qt errors
 import qtpy
@@ -180,7 +188,7 @@ class AppWatchdog(QtCore.QObject):
             self.poller.start()
         else:
             logger.warning('Qudi running unsupervised, restart wiill not work.')
-            
+
 
     def quitProxy(self, obj):
         """ Helper function to emit doQuit signal
