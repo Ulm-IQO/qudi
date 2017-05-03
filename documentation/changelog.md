@@ -1,5 +1,62 @@
 # Changelog {#changelog}
 
+## Release 0.8
+
+Released on 2 Mar 2017.
+Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.8
+
+Caution: fits need to be configured in the respective settings dialog and
+may not include printed results or may be just broken.
+If you find a defective fit, consider fixing it and submitting a pull request.
+
+Changes/New features:
+
+ * The Qudi paper was published: http://doi.org/10.1016/j.softx.2017.02.001
+ * Move everything to Qt5 only (no more Qt4 support) and pyqtgraph 0.10.0
+ * Re-usable/configurable fit GUI components
+ * Scienific notation input for PID GUI
+ * Support for [Extensions](@ref extensions) (out-of-tree modules) 
+ * Removed the fysom event parameter (usually called e) from on_activae and on_deactivate functions
+ * Swabian Instruments TimeTagger / PulseStreamer hardware modules
+ * Much faster savelogic
+ * Remove 'Out' connectors, connection is now by module name only
+ * Pulse analysis supports multiple methods
+ * Predefined pulse sequences can now be imported from a custom path 
+ (in addition to /logic/predefined_methods)
+ * Module loading and unloading now definitely happens in the correct order
+ * Locked modules are only deactivated after prompting the user
+
+Config changes:
+ * New optional parameter "additional_methods_dir" for SequenceGeneratorLogic
+ * No more 'Out' connectors:
+
+ Old style, produces lots of warnings:
+ 
+ logic:
+    counter:
+        module.Class: 'counter_logic.CounterLogic'
+        connect:
+            counter1: 'mynicard.counter'
+            savelogic: 'savelogic.savelogic'
+    save:
+        module.Class: 'save_logic.SaveLogic'
+        win_data_directory: 'C:/Data'
+        unix_data_directory: 'Data/'
+
+ New style:
+ 
+ logic:
+    counter:
+        module.Class: 'counter_logic.CounterLogic'
+        connect:
+            counter1: 'mynicard'
+            savelogic: 'save'
+    save:
+        module.Class: 'save_logic.SaveLogic'
+        win_data_directory: 'C:/Data'
+        unix_data_directory: 'Data/'
+
+
 ## Release 0.7
 
 Released on 01 Feb 2017.

@@ -266,10 +266,10 @@ class Manager(QtCore.QObject):
         logger.info("Starting Manager configuration from {0}".format(
             configFile))
         cfg = config.load(configFile)
+        self.configFile = configFile
         # Read modules, devices, and stylesheet out of config
         self.configure(cfg)
 
-        self.configFile = configFile
         print("\n============= Manager configuration complete =================\n")
         logger.info('Manager configuration complete.')
 
@@ -326,7 +326,55 @@ class Manager(QtCore.QObject):
                 # global config
                 elif key == 'global' and cfg['global'] is not None:
                     for m in cfg['global']:
-                        if m == 'startup':
+                        if (m == 'extensions'):
+                            # deal with str, list and unknown types
+                            if (isinstance(cfg['global'][m], str)):
+                                dirnames = [cfg['global'][m]]
+                            elif (isinstance(cfg['global'][m], list)):
+                                dirnames = cfg['global'][m]
+                            else:
+                                logger.warning('Global ''path'' '
+                                               'configuration is neither str '
+                                               ' nor list. Ignoring.')
+                                continue
+                            # add specified directories
+                            for ii in range(len(dirnames)):
+                                path = ''
+                                # absolute or relative path? Existing?
+                                if (os.path.isabs(dirnames[ii]) and
+                                        os.path.isdir(dirnames[ii])):
+                                    path = dirnames[ii]
+                                else:
+                                    # relative path?
+                                    path = os.path.abspath(
+                                        '{0}/{1}'.format(
+                                            os.path.dirname(self.configFile),
+                                            dirnames[ii]))
+                                    if (not os.path.isdir(path)):
+                                        path = ''
+                                if (path == ''):
+                                    logger.warning(
+                                        'Error while adding qudi '
+                                        'extension: Directory \'{0}\' '
+                                        'does not exist.'
+                                        ''.format(
+                                            cfg['global'][m][ii]))
+                                    continue
+                                # check for __init__.py files within extension
+                                # and issue warning if existing
+                                for paths, dirs, files in os.walk(path):
+                                    if ('__init__.py' in files):
+                                        logger.warning(
+                                            'Warning: Extension {0} contains '
+                                            '__init__.py. Expect unexpected '
+                                            'behaviour. Hope you know what '
+                                            'you are doing.'.format(path))
+                                        break
+                                # add directory to search path
+                                logger.debug('Adding extension path: {0}'
+                                             ''.format(path))
+                                sys.path.insert(1+ii, path)
+                        elif m == 'startup':
                             self.tree['global']['startup'] = cfg[
                                 'global']['startup']
                         elif m == 'stylesheet' and self.hasGui:
@@ -607,9 +655,9 @@ class Manager(QtCore.QObject):
                 destmod = connections[c]
             destbase = ''
             # check if module exists at all
-            if (not destmod in self.tree['loaded']['gui'] and
-                    not destmod in self.tree['loaded']['hardware'] and
-                    not destmod in self.tree['loaded']['logic']):
+            if (destmod not in self.tree['loaded']['gui'] and
+                    destmod not in self.tree['loaded']['hardware'] and
+                    destmod not in self.tree['loaded']['logic']):
                 logger.error('Cannot connect {0}.{1}.{2} to module {3}. '
                              'Module does not exist.'.format(
                              base, mkey, c, destmod))
@@ -1038,7 +1086,7 @@ class Manager(QtCore.QObject):
 
         for mkey in sorteddeps:
             for mbase in ('hardware', 'logic', 'gui'):
-                if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
+                if mkey in self.tree['defined'][mbase] and mkey not in self.tree['loaded'][mbase]:
                     success = self.loadConfigureModule(mbase, mkey)
                     if success < 0:
                         logger.warning('Stopping module loading after loading failure.')
@@ -1109,7 +1157,7 @@ class Manager(QtCore.QObject):
 
         for mkey in reversed(unloaded_mods):
             mbase = self.findBase(mkey)
-            if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
+            if mkey in self.tree['defined'][mbase] and mkey not in self.tree['loaded'][mbase]:
                 success = self.loadConfigureModule(mbase, mkey)
                 if success < 0:
                     logger.warning('Stopping loading module {0}.{1} after '

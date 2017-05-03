@@ -22,22 +22,26 @@ def gated_conv_deriv(self, count_data):
     # apply gaussian filter to remove noise and compute the gradient of the timetrace sum
     conv_deriv = self._convolve_derive(timetrace_sum.astype(float), self.conv_std_dev)
 
-    # if gaussian smoothing or derivative failed, the returned array only contains zeros.
-    # Check for that and return also only zeros to indicate a failed pulse extraction.
-    if len(conv_deriv.nonzero()[0]) == 0:
-        laser_arr = np.zeros(count_data.shape, dtype=int)
-        return laser_arr
-
     # get indices of rising and falling flank
     rising_ind = conv_deriv.argmax()
     falling_ind = conv_deriv.argmin()
-    # slice the data array to cut off anything but laser pulses
-    laser_arr = count_data[:, rising_ind:falling_ind]
+
+    # If gaussian smoothing or derivative failed, the returned array only
+    # contains zeros. Check for that and return also only zeros to indicate a
+    # failed pulse extraction.
+    if len(conv_deriv.nonzero()[0]) == 0:
+        laser_arr = np.zeros(count_data.shape, dtype=int)
+    else:
+        # slice the data array to cut off anything but laser pulses
+        laser_arr = count_data[:, rising_ind:falling_ind]
+
     # Create return dictionary
     return_dict = dict()
+
     return_dict['laser_counts_arr'] = laser_arr.astype(int)
     return_dict['laser_indices_rising'] = rising_ind
     return_dict['laser_indices_falling'] = falling_ind
+
     return return_dict
 
 
@@ -221,71 +225,58 @@ def ungated_threshold(self, count_data):
         Values above the trehold are considered to belong to a laser pulse.
         If the length of a pulse would be below the minium length the pulse is discarded
     """
-    if self.min_laser_length is None:
-        self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
-                       'min_laser_length defined in class PulseExtractionLogic.')
-        return np.ndarray([], dtype=int)
+    return_dict = dict()
+
     if self.number_of_lasers is None:
         self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
                        'number_of_lasers defined in class PulseExtractionLogic.')
-        return np.ndarray([], dtype=int)
+        return_dict['laser_indices_rising'] = np.zeros(1, dtype=int)
+        return_dict['laser_indices_falling'] = np.zeros(1, dtype=int)
+        return_dict['laser_counts_arr'] = np.zeros([1, 3000], dtype=int)
+        return return_dict
+    else:
+        return_dict['laser_indices_rising'] = np.zeros(self.number_of_lasers, dtype=int)
+        return_dict['laser_indices_falling'] = np.zeros(self.number_of_lasers, dtype=int)
+        return_dict['laser_counts_arr'] = np.zeros([self.number_of_lasers, 3000], dtype=int)
+
+    if self.min_laser_length is None:
+        self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
+                       'min_laser_length defined in class PulseExtractionLogic.')
+        return return_dict
     if self.count_treshold is None:
         self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
                        'count_treshold defined in class PulseExtractionLogic.')
-        return np.ndarray([], dtype=int)
+        return return_dict
     if self.threshold_tolerance_bins is None:
         self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
                        'threshold_tolerance_bins defined in class PulseExtractionLogic.')
-        return np.ndarray([], dtype=int)
+        return return_dict
 
-    # initialize
-    x_data = []
-    y_data = []
-    laser_x = []
-    laser_y = []
-    excep=0
+    # get all bin indices with counts > threshold value
+    bigger_indices = np.where(count_data > self.count_treshold)[0]
+    # get all indices with consecutive numbering (bin chains not interrupted by values < threshold
+    consecutive_indices = self._find_consecutive(np.array(bigger_indices))
+    # sort out all groups shorter than minimum laser length
+    for i, index_group in enumerate(consecutive_indices):
+        if len(index_group) < self.min_laser_length:
+            del consecutive_indices[i]
 
-    for index, count_bin in enumerate(count_data):
+    # Check if the number of lasers matches the number of remaining index groups
+    if self.number_of_lasers != len(consecutive_indices):
+        self.log.warning('Pulse extraction method "ungated_threshold" failed. Found number of laser'
+                         ' pulses {0:d} does not match the required number of {1:d}'
+                         ''.format(len(consecutive_indices), self.number_of_lasers))
+        return return_dict
 
-            if count_bin >= self.count_treshold:
-                x_data.append(index)
-                y_data.append(count_bin)
-            else:
-                if excep < self.threshold_tolerance_bins:
-                    x_data.append(index)
-                    y_data.append(count_bin)
-                    excep += 1
-                elif len(x_data) > self.min_laser_length:
-                    laser_x.append(np.array(x_data))
-                    laser_y.append(np.array(y_data))
-                    x_data = []
-                    y_data = []
-                    excep = 0
-                else:
-                    x_data = []
-                    y_data = []
-                    excep = 0
+    # determine max length of laser pulse and initialize laser array
+    max_laser_length = max([index_array.size for index_array in consecutive_indices])
+    return_dict['laser_counts_arr'] = np.zeros([self.number_of_lasers, max_laser_length], dtype=int)
+    # fill laser array with slices of raw data array. Also populate the rising/falling index arrays
+    for i, index_group in enumerate(consecutive_indices):
+        return_dict['laser_indices_rising'][i] = index_group[0]
+        return_dict['laser_indices_falling'][i] = index_group[-1]
+        return_dict['laser_counts_arr'][i, :index_group.size] = count_data[index_group]
 
-    # find the longest laser pulse
-    length = np.zeros(len(laser_y))
-    for laser_index, laser_step in enumerate(laser_y):
-        length[laser_index] = len(laser_step)
-    longest = np.max(length)
-
-    # symmetrize all pulses so that they have the same length
-    for laser_index, laser_step in enumerate(laser_y):
-        while len(laser_step) < longest:
-            laser_x[laser_index] = np.append(laser_x[laser_index], laser_x[laser_index][-1]+1)
-            laser_y[laser_index] = np.append(laser_step, laser_step[-1])
-
-    laser_arr = np.asarray(laser_y)
-    rising_ind = np.array([i[0] for i in laser_x])
-    falling_ind = np.array([i[-1] for i in laser_y])
-    # Create return dictionary
-    return_dict = dict()
-    return_dict['laser_counts_arr'] = laser_arr.astype(int)
-    return_dict['laser_indices_rising'] = rising_ind
-    return_dict['laser_indices_falling'] = falling_ind
     return return_dict
 
 
@@ -318,3 +309,7 @@ def _convolve_derive(self, data, std_dev):
                        'Probably NaN encountered in data array.')
         conv_deriv = np.zeros(conv.size)
     return conv_deriv
+
+
+def _find_consecutive(self, data):
+    return np.split(data, np.where(np.diff(data) != 1)[0]+1)
