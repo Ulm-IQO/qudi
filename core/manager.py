@@ -338,27 +338,25 @@ class Manager(QtCore.QObject):
                                                ' nor list. Ignoring.')
                                 continue
                             # add specified directories
-                            for ii in range(len(dirnames)):
+                            for ii, dir_name in enumerate(dirnames):
                                 path = ''
                                 # absolute or relative path? Existing?
-                                if (os.path.isabs(dirnames[ii]) and
-                                        os.path.isdir(dirnames[ii])):
-                                    path = dirnames[ii]
+                                if (os.path.isabs(dir_name) and os.path.isdir(dir_name)):
+                                    path = dir_name
                                 else:
                                     # relative path?
                                     path = os.path.abspath(
                                         '{0}/{1}'.format(
                                             os.path.dirname(self.configFile),
-                                            dirnames[ii]))
-                                    if (not os.path.isdir(path)):
+                                            dir_name))
+                                    if not os.path.isdir(path):
                                         path = ''
-                                if (path == ''):
+                                if path == '':
                                     logger.warning(
                                         'Error while adding qudi '
                                         'extension: Directory \'{0}\' '
                                         'does not exist.'
-                                        ''.format(
-                                            cfg['global'][m][ii]))
+                                        ''.format(dir_name))
                                     continue
                                 # check for __init__.py files within extension
                                 # and issue warning if existing
