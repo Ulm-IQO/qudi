@@ -29,6 +29,13 @@ fi
 
 jupyter-nbconvert --execute notebooks/debug.ipynb
 jupyter-nbconvert --execute notebooks/matplotlib.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_exponential.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_gaussian.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_lorentzian.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_N14.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_N15.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_poissonian.ipynb
+jupyter-nbconvert --execute notebooks/fit_testing_sine.ipynb
 
 
 if ! kill -0 $QUDIPID; then
