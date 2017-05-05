@@ -26,6 +26,7 @@ from socket import socket, AF_INET, SOCK_STREAM
 import os
 from collections import OrderedDict
 from fnmatch import fnmatch
+import re
 
 from core.base import Base
 from interface.pulser_interface import PulserInterface, PulserConstraints
@@ -50,16 +51,8 @@ class AWG5002C(Base, PulserInterface):
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
         self.current_loaded_asset = ''
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         config = self.getConfiguration()
@@ -74,7 +67,7 @@ class AWG5002C(Base, PulserInterface):
             self.port = config['awg_port']
         else:
             self.log.error('No port parameter "awg_port" found in the config '
-                    'for the AWG5002C! Correct that!')
+                           'for the AWG5002C! Correct that!')
 
         if 'timeout' in config.keys():
             self._timeout = config['timeout']
@@ -84,13 +77,22 @@ class AWG5002C(Base, PulserInterface):
             self._timeout = 10
 
 
-        # connect ethernet socket and FTP
+        # Use a socket connection via IPv4 connection and use a the most common
+        # stream socket.
         self.soc = socket(AF_INET, SOCK_STREAM)
-        self.soc.settimeout(self._timeout)  # set the timeout to 5 seconds
+        self.soc.settimeout(self._timeout)  # set the timeout if no answer comes
+
+        # Use connect and not the bind method. Bind is always performed by the
+        # server where connect is done by the client!
         self.soc.connect((self.ip_address, self.port))
         self.connected = True
-        self.input_buffer = int(2 * 1024)   # buffer length for received text
 
+        # choose the buffer size appropriated, have a look here:
+        #   https://docs.python.org/3/library/socket.html#socket.socket.recv
+        self.input_buffer = int(4096)   # buffer length for received text
+
+        # the ftp connection will be established during runtime if needed and
+        # closed directly afterwards. This makes the connection stable.
 
         if 'default_sample_rate' in config.keys():
             self._sample_rate = self.set_sample_rate(config['default_sample_rate'])
@@ -100,11 +102,15 @@ class AWG5002C(Base, PulserInterface):
                     'used instead.')
             self._sample_rate = self.get_constraints().sample_rate.max
 
-        if 'awg_ftp_path' in config.keys():
-            self.ftp_path = config['awg_ftp_path']
+        if 'ftp_root_dir' in config.keys():
+            self.ftp_root_directory = config['ftp_root_dir']
         else:
-            self.log.error('No parameter "awg_ftp_path" found in the config '
-                    'for the AWG5002C! State the FTP folder of this device!')
+            self.ftp_root_directory = 'C:\\inetpub\\ftproot'
+            self.log.warning('No parameter "ftp_root_dir" was specified in the '
+                             'config for tektronix_AWG5002C as directory for '
+                             'the FTP server root on the AWG!\n'
+                             'The default root directory\n{0}\nwill be assumed '
+                             'instead.'.format(self.ftp_root_directory))
 
         # settings for remote access on the AWG PC
         self.asset_directory = '\\waves'
@@ -132,14 +138,23 @@ class AWG5002C(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
+        self.user = 'anonymous'
+        self.passwd = 'anonymous@'
+        if 'ftp_login' in config.keys() and 'ftp_passwd' in config.keys():
+            self.user = config['ftp_login']
+            self.passwd = config['ftp_passwd']
 
-    def on_deactivate(self, e):
+
+        self.awg_model = self._get_model_ID()[1]
+        self.log.debug('Found the following model: {0}'.format(self.awg_model))
+
+
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.connected = False
+        self.soc.shutdown(0) # tell the connection that the host will not listen
+                             # any more to messages from it.
         self.soc.close()
 
     # =========================================================================
@@ -182,7 +197,7 @@ class AWG5002C(Base, PulserInterface):
 
         constraints.sample_rate.min = 10.0e6
         constraints.sample_rate.max = 600.0e6
-        constraints.sample_rate.step = 10.0e6
+        constraints.sample_rate.step = 1.0e6
         constraints.sample_rate.default = 600.0e6
 
         constraints.a_ch_amplitude.min = 0.02
@@ -362,14 +377,20 @@ class AWG5002C(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+
         if load_dict is None:
             load_dict = {}
 
-        path = self.ftp_path + self.get_asset_dir_on_device()
+
+        path = self.ftp_root_directory + self.get_asset_dir_on_device()
 
         # Find all files associated with the specified asset name
         file_list = self._get_filenames_on_device()
         filename = []
+
+        # Be careful which asset_name to specify as the current_loaded_asset
+        # because a loaded sequence contains also individual waveforms, which
+        # should not be used as the current asset!!
 
         if (asset_name + '.seq') in file_list:
             file_name = asset_name + '.seq'
@@ -384,12 +405,21 @@ class AWG5002C(Base, PulserInterface):
             for file in file_list:
                 if file == asset_name+'_ch1.wfm':
                     self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name+'_ch1.wfm'))
-
+                    # if the asset is not a sequence file, then it must be a wfm
+                    # file and either both or one of the channels should contain
+                    # the asset name:
+                    self.current_loaded_asset = asset_name
 
                     filename.append(file)
                 elif file == asset_name+'_ch2.wfm':
                     self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name+'_ch2.wfm'))
                     filename.append(file)
+                    # if the asset is not a sequence file, then it must be a wfm
+                    # file and either both or one of the channels should contain
+                    # the asset name:
+                    self.current_loaded_asset = asset_name
+
+
 
 
             if load_dict == {} and filename == []:
@@ -400,7 +430,7 @@ class AWG5002C(Base, PulserInterface):
             file_name = str(load_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
             self.tell('SOUR{0}:FUNC:USER "{1}/{2}"\n'.format(channel_num, path, file_name))
 
-        if len(list(load_dict))>0:
+        if len(load_dict) > 0:
             self.current_loaded_asset = asset_name
 
         return 0
@@ -539,6 +569,8 @@ class AWG5002C(Base, PulserInterface):
         amp = {}
         off = {}
 
+        pattern = re.compile('[0-9]+')
+
         if (amplitude == []) and (offset == []):
 
             # since the available channels are not going to change for this
@@ -550,25 +582,14 @@ class AWG5002C(Base, PulserInterface):
             off['a_ch2'] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
 
         else:
+
             for a_ch in amplitude:
-                if 0 <= a_ch <= self._get_num_a_ch():
-                    amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
-                else:
-                    self.log.warning('The device does not have that many '
-                            'analog channels! A channel number "{0}" was '
-                            'passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'.format(
-                                a_ch, self._get_num_a_ch()))
+                ch_num = int(re.search(pattern, a_ch).group(0))
+                amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(ch_num)))
 
             for a_ch in offset:
-                if 0 <= a_ch <= self._get_num_a_ch():
-                    off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
-                else:
-                    self.log.warning('The device does not have that many '
-                            'analog channels! A channel number "{0}" was '
-                            'passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'.format(
-                                a_ch, self._get_num_a_ch()))
+                ch_num = int(re.search(pattern, a_ch).group(0))
+                off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(ch_num)))
 
         return amp, off
 
@@ -609,39 +630,33 @@ class AWG5002C(Base, PulserInterface):
 
         constraints = self.get_constraints()
 
-        for a_ch in amplitude:
-            if 0 <= a_ch <= self._get_num_a_ch():
-                constr = constraints.a_ch_amplitude
+        pattern = re.compile('[0-9]+')
 
-                if not(constr.min <= amplitude[a_ch] <= constr.max):
-                    self.log.warning('Not possible to set for analog channel {0} the amplitude '
-                                     'value {1}Vpp, since it is not within the interval [{2},{3}]! '
-                                     'Command will be ignored.'.format(a_ch, amplitude[a_ch],
-                                                                       constr.min, constr.max))
-                else:
-                    self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
+        for a_ch in amplitude:
+            constr = constraints.a_ch_amplitude
+
+            ch_num = int(re.search(pattern, a_ch).group(0))
+
+            if not(constr.min <= amplitude[a_ch] <= constr.max):
+                self.log.warning('Not possible to set for analog channel {0} the amplitude '
+                                 'value {1}Vpp, since it is not within the interval [{2},{3}]! '
+                                 'Command will be ignored.'.format(a_ch, amplitude[a_ch],
+                                                                   constr.min, constr.max))
             else:
-                self.log.warning('The device does not support that much analog '
-                        'channels! A channel number "{0}" was passed, but '
-                        'only "{1}" channels are available!\nCommand will '
-                        'be ignored.'.format(a_ch, self._get_num_a_ch()))
+                self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(ch_num, amplitude[a_ch]))
 
         for a_ch in offset:
-            if 0 <= a_ch <= self._get_num_a_ch():
-                constr = constraints.a_ch_offset
+            constr = constraints.a_ch_offset
 
-                if not(constr.min <= offset[a_ch] <= constr.max):
-                    self.log.warning('Not possible to set for analog channel {0} the offset value '
-                                     '{1}V, since it is not within the interval [{2},{3}]! Command '
-                                     'will be ignored.'.format(a_ch, offset[a_ch], constr.min,
-                                                               constr.max))
-                else:
-                    self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
+            ch_num = int(re.search(pattern, a_ch).group(0))
+
+            if not(constr.min <= offset[a_ch] <= constr.max):
+                self.log.warning('Not possible to set for analog channel {0} the offset value '
+                                 '{1}V, since it is not within the interval [{2},{3}]! Command '
+                                 'will be ignored.'.format(a_ch, offset[a_ch], constr.min,
+                                                           constr.max))
             else:
-                self.log.warning('The device does not support that much analog '
-                        'channels! A channel number "{0}" was passed, but '
-                        'only "{1}" channels are available!\nCommand will '
-                        'be ignored.'.format(a_ch, self._get_num_a_ch()))
+                self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(ch_num, offset[a_ch]))
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
@@ -702,22 +717,16 @@ class AWG5002C(Base, PulserInterface):
         else:
 
             for d_ch in low:
-                if 0 <= d_ch <= self._get_num_d_ch():
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch-2) <= 0:
-                        # the conversion to integer is just for safety.
-                        low_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch))))
-                    else:
-                        low_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch-2))))
+                # a fast way to map from a channel list [1, 2, 3, 4] to  a
+                # list like [[1,2], [1,2]]:
+                if (d_ch-2) <= 0:
+                    # the conversion to integer is just for safety.
+                    low_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch))))
                 else:
-                    self.log.warning('The device does not have that much '
-                            'digital channels! A channel number "{0}" was '
-                            'passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
+                    low_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch-2))))
+
 
             for d_ch in high:
-                if 0 <= d_ch <= self._get_num_d_ch():
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
                     # list like [[1,2], [1,2]]:
                     if (d_ch-2) <= 0:
@@ -725,11 +734,6 @@ class AWG5002C(Base, PulserInterface):
                         high_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch))))
                     else:
                         high_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch-2))))
-                else:
-                    self.log.warning('The device does not have that much '
-                            'digital channels! A channel number "{0}" was '
-                            'passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'.format(d_ch, self._get_num_d_ch()))
 
         return low_val, high_val
 
@@ -767,47 +771,43 @@ class AWG5002C(Base, PulserInterface):
 
         constraints = self.get_constraints()
 
-        for d_ch in low:
-            if 0 <= d_ch <= self._get_num_d_ch():
-                constr = constraints.d_ch_low
+        pattern = re.compile('[0-9]+')
 
-                if not(constr.min <= low[d_ch] <= constr.max):
-                    self.log.warning('Not possible to set for analog channel {0} the amplitude '
-                                     'value {1}Vpp, since it is not within the interval [{2},{3}]! '
-                                     'Command will be ignored.'.format(d_ch, low[d_ch], constr.min,
-                                                                       constr.max))
-                else:
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch-2) <= 0:
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
-                    else:
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch-2, low[d_ch]))
+        for d_ch in low:
+            constr = constraints.d_ch_low
+
+            ch_num = int(re.search(pattern, d_ch).group(0))
+
+            if not(constr.min <= low[d_ch] <= constr.max):
+                self.log.warning('Not possible to set for analog channel {0} the amplitude '
+                                 'value {1}Vpp, since it is not within the interval [{2},{3}]! '
+                                 'Command will be ignored.'.format(d_ch, low[d_ch], constr.min,
+                                                                   constr.max))
             else:
-                self.log.warning('The device does not support that much digital channels! A channel'
-                                 ' number "{0}" was passed, but only "{1}" channels are available!'
-                                 '\nCommand will be ignored.'.format(d_ch, self._get_num_d_ch()))
+                # a fast way to map from a channel list [1, 2, 3, 4] to  a
+                # list like [[1,2], [1,2]]:
+                if (ch_num-2) <= 0:
+                    self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(ch_num, low[d_ch]))
+                else:
+                    self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(ch_num-2, low[d_ch]))
 
         for d_ch in high:
-            if 0 <= d_ch <= self._get_num_d_ch():
-                constr = constraints.d_ch_high
+            constr = constraints.d_ch_high
 
-                if not(constr.min <= high[d_ch] <= constr.max):
-                    self.log.warning('Not possible to set for analog channel {0} the amplitude '
-                                     'value {1}Vpp, since it is not within the interval [{2},{3}]! '
-                                     'Command will be ignored.'.format(d_ch, high[d_ch], constr.min,
-                                                                       constr.max))
-                else:
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch-2) <= 0:
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
-                    else:
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch-2, high[d_ch]))
+            ch_num = int(re.search(pattern, d_ch).group(0))
+
+            if not(constr.min <= high[d_ch] <= constr.max):
+                self.log.warning('Not possible to set for analog channel {0} the amplitude '
+                                 'value {1}Vpp, since it is not within the interval [{2},{3}]! '
+                                 'Command will be ignored.'.format(d_ch, high[d_ch], constr.min,
+                                                                   constr.max))
             else:
-                self.log.warning('The device does not support that much digital channels! A channel'
-                                 ' number "{0}" was passed, but only "{1}" channels are available!'
-                                 '\nCommand will be ignored.'.format(d_ch, self._get_num_d_ch()))
+                # a fast way to map from a channel list [1, 2, 3, 4] to  a
+                # list like [[1,2], [1,2]]:
+                if (ch_num-2) <= 0:
+                    self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(ch_num, high[d_ch]))
+                else:
+                    self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(ch_num-2, high[d_ch]))
 
         return self.get_digital_level(low=list(low), high=list(high))
 
@@ -1136,8 +1136,8 @@ class AWG5002C(Base, PulserInterface):
                     'The question text must be wrong.'.format(question))
             message = str(-1)
 
-        message = message.replace('\n', '')  # cut away the characters\r and \n.
-        message = message.replace('\r', '')
+        # cut away the characters\r and \n.
+        message = message.strip()
 
         return message
 
@@ -1155,8 +1155,17 @@ class AWG5002C(Base, PulserInterface):
     # and establishment of a connection.
     # ========================================================================
 
+    def _get_model_ID(self):
+        """ Obtain the device identification.
+
+        @return: str representing the model id of the AWG.
+        """
+
+        model_id = self.ask('*IDN?').replace('\n', '').split(',')
+        return model_id
+
     def set_lowpass_filter(self, a_ch, cutoff_freq):
-        """ Set a lowpass filter to the analog channels of the AWG.
+        """ Set a lowpass filter to the analog channels ofawg    the AWG.
 
         @param int a_ch: To which channel to apply, either 1 or 2.
         @param cutoff_freq: Cutoff Frequency of the lowpass filter in Hz.
@@ -1241,8 +1250,8 @@ class AWG5002C(Base, PulserInterface):
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
 
-        @param name: string, name of the folder
-        @return: string, absolute path to the directory with folder 'name'.
+        @param str name:  name of the folder
+        @return: str, absolute path to the directory with folder 'name'.
         """
 
         path = os.path.join(self.pulsed_file_dir, name)

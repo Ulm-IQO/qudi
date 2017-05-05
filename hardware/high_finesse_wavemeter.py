@@ -113,7 +113,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
                         'using {} instead.'.format(self._measurement_timing))
 
 
-    def on_activate(self, e):
+    def on_activate(self):
         #############################################
         # Initialisation to access external DLL
         #############################################
@@ -169,7 +169,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self.hardware_thread.start()
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         if self.getState() != 'idle' and self.getState() != 'deactivated':
             self.stop_acqusition()
         self.hardware_thread.quit()

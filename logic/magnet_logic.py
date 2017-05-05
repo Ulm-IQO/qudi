@@ -141,16 +141,8 @@ class MagnetLogic(GenericLogic):
 
         self._stop_measure = False
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Definition and initialisation of the GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self._magnet_device = self.get_connector('magnetstage')
         self._save_logic = self.get_connector('savelogic')
@@ -468,11 +460,8 @@ class MagnetLogic(GenericLogic):
             self.nuclear_2d_num_ssr = 3000
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the module properly.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
 
         constraints=self.get_hardware_constraints()

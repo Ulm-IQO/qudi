@@ -166,26 +166,15 @@ class FastComtec(Base, FastCounterInterface):
         #in the fastcomtec it can be on "stopped" or "halt"
         self.stopped_or_halt = "stopped"
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
 
         return
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
         return
 

@@ -36,18 +36,14 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
     _connectors = {'fitlogic': 'FitLogic'}
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         self._fitLogic = self.get_connector('fitlogic')
         self.exposure = 0.1
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         pass
 
@@ -85,7 +81,7 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
     def saveSpectrum(self, path, postfix = ''):
         """ Dummy save function.
-        
+
             @param str path: path of saved spectrum
             @param str postfix: postfix of saved spectrum file
         """

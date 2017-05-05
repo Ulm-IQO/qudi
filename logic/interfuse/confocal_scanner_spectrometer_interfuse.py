@@ -67,7 +67,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
@@ -76,7 +76,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._spectrometer_hw = self.get_connector('spectrometer1')
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self.reset_hardware()
 
     def reset_hardware(self):

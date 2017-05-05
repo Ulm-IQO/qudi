@@ -49,8 +49,11 @@ class PulsedMeasurementLogic(GenericLogic):
         'pulsegenerator': 'PulserInterface',
     }
 
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                         np.ndarray, np.ndarray, np.ndarray)
+
+
+    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray, np.ndarray,
+                                         np.ndarray, np.ndarray)
     sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
     sigLaserToShowUpdated = QtCore.Signal(int, bool)
     sigElapsedTimeUpdated = QtCore.Signal(float, str)
@@ -96,13 +99,13 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_ignore_list = []
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
-        self.loaded_asset_name = None
+        self.loaded_asset_name = ''
         self.alternating = False
 
         # Pulse generator parameters
-        self.current_channel_config_name = None
+        self.current_channel_config_name = ''
         self.sample_rate = 25e9
-        self.analogue_amplitude = None
+        self.analogue_amplitude = dict()
         self.interleave_on = False
 
         # timer for data analysis
@@ -118,17 +121,18 @@ class PulsedMeasurementLogic(GenericLogic):
         self.threadlock = Mutex()
 
         # plot data
-        self.signal_plot_x = None
-        self.signal_plot_y = None
-        self.signal_plot_y2 = None
-        self.signal_fft_x = None
-        self.signal_fft_y = None
-        self.signal_fft_y2 = None
-        self.measuring_error_plot_x = None
-        self.measuring_error_plot_y = None
-        self.measuring_error_plot_y2 = None
-        self.laser_plot_x = None
-        self.laser_plot_y = None
+        self.signal_plot_x = np.array([])
+        self.signal_plot_y = np.array([])
+        self.signal_plot_y2 = np.array([])
+        self.signal_fft_x = np.array([])
+        self.signal_fft_y = np.array([])
+        self.signal_fft_y2 = np.array([])
+        self.measuring_error_plot_x = np.array([])
+        self.measuring_error_plot_y = np.array([])
+        self.measuring_error_plot_y2 = np.array([])
+        self.laser_plot_x = np.array([])
+        self.laser_plot_y = np.array([])
+
 
         # raw data
         self.laser_data = np.zeros((10, 20))
@@ -143,16 +147,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         # get all the connectors:
         self._pulse_analysis_logic = self.get_connector('pulseanalysislogic')
@@ -210,7 +206,7 @@ class PulsedMeasurementLogic(GenericLogic):
         avail_activation_configs = self.get_pulser_constraints().activation_config
         if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
-        if self.analogue_amplitude is None:
+        if len(self.analogue_amplitude)==0:
             self.analogue_amplitude, dummy = self._pulse_generator_device.get_analog_level()
         if self.interleave_on is None:
             self.interleave_on = self._pulse_generator_device.get_interleave()
@@ -241,11 +237,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.recalled_raw_data = None
         return
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the module properly.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
 
         if self.getState() != 'idle' and self.getState() != 'deactivated':
@@ -568,7 +561,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Delete all loaded files in the device's current memory. """
         self.pulse_generator_off()
         err = self._pulse_generator_device.clear_all()
-        self.loaded_asset_name = None
+        self.loaded_asset_name = ''
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         return err
 

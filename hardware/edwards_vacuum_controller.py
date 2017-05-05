@@ -188,15 +188,13 @@ class EdwardsVacuumController(Base):
 
 
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate modeule
-
-            @param object e: fysom state transition information
         """
         config = self.getConfiguration()
         self.connect_tic(config['interface'])
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate modeule
 
             @param object e: fysom state transition information

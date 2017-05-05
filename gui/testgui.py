@@ -43,9 +43,8 @@ class TestGui(GUIBase):
         if 'text' in config:
             self.buttonText = config['text']
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """This creates all the necessary UI elements.
-          @param object e: Fysom state change
         """
         self._mw = QtWidgets.QMainWindow()
         self._mw.setGeometry(300,300,500,100)
@@ -65,9 +64,8 @@ class TestGui(GUIBase):
         self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """
-          @param object e: Fysom state change
         """
         pass
 

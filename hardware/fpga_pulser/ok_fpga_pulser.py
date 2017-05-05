@@ -88,13 +88,13 @@ class OkFpgaPulser(Base, PulserInterface):
         self.sample_rate = 950e6
         self.current_loaded_asset = ''
 
-    def on_activate(self, e):
+    def on_activate(self):
         self.current_loaded_asset = ''
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
         self.sample_rate = self.get_sample_rate()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self._disconnect_fpga()
 
     def get_constraints(self):

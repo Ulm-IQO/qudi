@@ -165,7 +165,7 @@ class ConfocalSettingDialog(QtWidgets.QDialog):
 
 class OptimizerSettingDialog(QtWidgets.QDialog):
     """ User configurable settings for the optimizer embedded in cofocal gui"""
-    
+
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -209,16 +209,8 @@ class ConfocalGui(GUIBase):
         self.slider_small_step = 10e-9         # initial value in meter
         self.slider_big_step = 100e-9          # initial value in meter
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Initializes all needed UI files and establishes the connectors.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
 
         This method executes the all the inits for the differnt GUIs and passes
         the event argument from fysom to the methods.
@@ -231,15 +223,12 @@ class ConfocalGui(GUIBase):
 
         self._hardware_state = True
 
-        self.initMainUI(e)      # initialize the main GUI
-        self.initSettingsUI(e)  # initialize the settings GUI
-        self.initOptimizerSettingsUI(e)  # initialize the optimizer settings GUI
+        self.initMainUI()      # initialize the main GUI
+        self.initSettingsUI()  # initialize the settings GUI
+        self.initOptimizerSettingsUI()  # initialize the optimizer settings GUI
 
-    def initMainUI(self, e=None):
+    def initMainUI(self):
         """ Definition, configuration and initialisation of the confocal GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -469,6 +458,11 @@ class ConfocalGui(GUIBase):
         self._mw.y_current_InputWidget.setRange(self._scanning_logic.y_range[0], self._scanning_logic.y_range[1])
         self._mw.z_current_InputWidget.setRange(self._scanning_logic.z_range[0], self._scanning_logic.z_range[1])
 
+        # set minimal steps for the current value
+        self._mw.x_current_InputWidget.setOpts(minStep=1e-6)
+        self._mw.y_current_InputWidget.setOpts(minStep=1e-6)
+        self._mw.z_current_InputWidget.setOpts(minStep=1e-6)
+
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
         self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
@@ -478,6 +472,7 @@ class ConfocalGui(GUIBase):
         self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
         self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
 
+
         # set the maximal ranges for the imagerange from the logic:
         self._mw.x_min_InputWidget.setRange(self._scanning_logic.x_range[0], self._scanning_logic.x_range[1])
         self._mw.x_max_InputWidget.setRange(self._scanning_logic.x_range[0], self._scanning_logic.x_range[1])
@@ -485,6 +480,14 @@ class ConfocalGui(GUIBase):
         self._mw.y_max_InputWidget.setRange(self._scanning_logic.y_range[0], self._scanning_logic.y_range[1])
         self._mw.z_min_InputWidget.setRange(self._scanning_logic.z_range[0], self._scanning_logic.z_range[1])
         self._mw.z_max_InputWidget.setRange(self._scanning_logic.z_range[0], self._scanning_logic.z_range[1])
+
+        # set the minimal step size
+        self._mw.x_min_InputWidget.setOpts(minStep=1e-6)
+        self._mw.x_max_InputWidget.setOpts(minStep=1e-6)
+        self._mw.y_min_InputWidget.setOpts(minStep=1e-6)
+        self._mw.y_max_InputWidget.setOpts(minStep=1e-6)
+        self._mw.z_min_InputWidget.setOpts(minStep=1e-6)
+        self._mw.z_max_InputWidget.setOpts(minStep=1e-6)
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
@@ -711,11 +714,8 @@ class ConfocalGui(GUIBase):
 
         self.show()
 
-    def initSettingsUI(self, e=None):
+    def initSettingsUI(self):
         """ Definition, configuration and initialisation of the settings GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -732,11 +732,8 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
 
-    def initOptimizerSettingsUI(self, e=None):
+    def initOptimizerSettingsUI(self):
         """ Definition, configuration and initialisation of the optimizer settings GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -761,11 +758,8 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -1488,7 +1482,7 @@ class ConfocalGui(GUIBase):
 
     def update_xy_channel(self, index):
         """ The displayed channel for the XY image was changed, refresh the displayed image.
-            
+
             @param index int: index of selected channel item in combo box
         """
         self.xy_channel = int(self._mw.xy_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
@@ -1496,7 +1490,7 @@ class ConfocalGui(GUIBase):
 
     def update_depth_channel(self, index):
         """ The displayed channel for the X-depth image was changed, refresh the displayed image.
-            
+
             @param index int: index of selected channel item in combo box
         """
         self.depth_channel = int(self._mw.depth_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
@@ -1614,10 +1608,13 @@ class ConfocalGui(GUIBase):
         ##########
         # Set the optimized position label
         self._mw.refocus_position_label.setText(
-            '({0:.3e}, {1:.3e}, {2:.3e})'.format(
+            '({0:.3e}, {1:.3e}, {2:.3e}) sigma: ({3:.3e}, {4:.3e}, {5:.3e})'.format(
                 self._optimizer_logic.optim_pos_x,
                 self._optimizer_logic.optim_pos_y,
-                self._optimizer_logic.optim_pos_z
+                self._optimizer_logic.optim_pos_z,
+                self._optimizer_logic.optim_sigma_x,
+                self._optimizer_logic.optim_sigma_y,
+                self._optimizer_logic.optim_sigma_z
             )
         )
 

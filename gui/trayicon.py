@@ -32,22 +32,16 @@ class TrayIcon(GUIBase):
     Right-clicking this icon will bring up a Quit button that will colse the whole application.
     """
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Set up tray icon UI .
-
-          @param e: Fysom state change
-
-            This method is automatically called by changing the Base state through activate().
         """
         self._tray = SystemTrayIcon()
         self._tray.show()
         self._tray.quitAction.triggered.connect(self._manager.quit)
         self._tray.managerAction.triggered.connect(lambda: self._manager.sigShowManager.emit())
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Remove all the stuff that we set up.
-
-          @param object e: Fysom state change notification
         """
         self._tray.hide()
         self._tray.quitAction.triggered.disconnect()

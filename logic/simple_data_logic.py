@@ -30,24 +30,20 @@ class SimpleDataLogic(GenericLogic):
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
-    _connectors = {'simpledata': 'SimpleData'}
+    _connectors = {'simpledata': 'SimpleDataInterface'}
 
     sigRepeat = QtCore.Signal()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare logic module for work.
-
-          @param object e: Fysom state change notification
         """
         self._data_logic = self.get_connector('simpledata')
         self.stopRequest = False
         self.bufferLength = 10000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate modeule.
-
-          @param object e: Fysom state change notification
         """
         self.stopMeasure()
 

@@ -282,10 +282,8 @@ class ConfocalLogic(GenericLogic):
         self.depth_scan_dir_is_xz = True
         self.permanent_scan = False
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param e: error code
         """
         self._scanning_device = self.get_connector('confocalscanner1')
         self._save_logic = self.get_connector('savelogic')
@@ -345,10 +343,8 @@ class ConfocalLogic(GenericLogic):
 
         self._change_position('activation')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """

@@ -59,16 +59,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self._current_position = [0, 0, 0, 0][0:len(self.get_scanner_axes())]
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
 
         self._fit_logic = self.get_connector('fitlogic')
@@ -130,11 +122,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # offset
         self._points_z[:, 3] = 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate properly the confocal scanner dummy.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.reset_hardware()
 

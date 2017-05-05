@@ -64,21 +64,16 @@ class VoltScanGui(GUIBase):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """
         self._mw.close()
         return 0
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Definition, configuration and initialisation of the ODMR GUI.
-
-          @param class e: event class from Fysom
-
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.

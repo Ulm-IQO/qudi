@@ -28,6 +28,7 @@ from qtpy import QtCore
 from collections import OrderedDict
 import inspect
 import importlib
+import sys
 
 from logic.pulse_objects import PulseBlockElement
 from logic.pulse_objects import PulseBlock
@@ -125,6 +126,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                              'memory overflow during sampling/writing of Pulse objects you must '
                              'set "overhead_bytes".')
 
+        # directory for additional generate methods to import
+        # (other than qudi/logic/predefined_methods)
+        if 'additional_methods_dir' in config.keys():
+            if os.path.exists(config['additional_methods_dir']):
+                self.additional_methods_dir = config['additional_methods_dir']
+            else:
+                self.additional_methods_dir = None
+                self.log.error('Specified path "{0}" for import of additional generate methods '
+                               'does not exist.'.format(config['additional_methods_dir']))
+        else:
+            self.additional_methods_dir = None
+
 
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
@@ -147,16 +160,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # a dictionary with all predefined generator methods and measurement sequence names
         self.generate_methods = None
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self._get_blocks_from_file()
         self._get_ensembles_from_file()
@@ -179,11 +184,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
                                      self.amplitude_dict, self.waveform_format)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self._statusVariables['activation_config'] = self.activation_config
         self._statusVariables['laser_channel'] = self.laser_channel
@@ -198,15 +200,25 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @return:
         """
         self.generate_methods = OrderedDict()
-        filename_list = []
+        filenames_list = []
+        additional_filenames_list = []
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
         path = os.path.join(self.get_main_dir(), 'logic', 'predefined_methods')
         for entry in os.listdir(path):
-            if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
-                filename_list.append(entry[:-3])
+            filepath = os.path.join(path, entry)
+            if os.path.isfile(filepath) and entry.endswith('.py'):
+                filenames_list.append(entry[:-3])
+        # Also attach methods from the non-default additional methods directory if defined in config
+        if self.additional_methods_dir is not None:
+            # attach to path
+            sys.path.append(self.additional_methods_dir)
+            for entry in os.listdir(self.additional_methods_dir):
+                filepath = os.path.join(self.additional_methods_dir, entry)
+                if os.path.isfile(filepath) and entry.endswith('.py'):
+                    additional_filenames_list.append(entry[:-3])
 
-        for filename in filename_list:
+        for filename in filenames_list:
             mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
             for method in dir(mod):
                 try:
@@ -221,6 +233,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'SequenceGenerationLogic.'.format(method, filename))
+
+        for filename in additional_filenames_list:
+            mod = importlib.import_module(filename)
+            for method in dir(mod):
+                try:
+                    # Check for callable function or method:
+                    ref = getattr(mod, method)
+                    if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
+                        # Bind the method as an attribute to the Class
+                        setattr(SequenceGeneratorLogic, method, getattr(mod, method))
+                        # Add method to dictionary if it is a generator method
+                        if method.startswith('generate_'):
+                            self.generate_methods[method[9:]] = eval('self.'+method)
+                except:
+                    self.log.error('It was not possible to import element {0} from {1} into '
+                                   'SequenceGenerationLogic.'.format(method, filepath))
+
         self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
@@ -716,8 +745,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # check for old files associated with the new ensemble and delete them from host PC
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
-            filename_list = [f for f in os.listdir(self.waveform_dir) if
-                             f.startswith(filename + '_ch')]
+
+            # be careful, in contrast to linux os, windows os is in general case
+            # insensitive! Therefore one needs to check and remove all files
+            # matching the case insensitive case for windows os.
+
+            if 'win' in sys.platform:
+                # make it simple and make everything lowercase.
+                filename_list = [f for f in os.listdir(self.waveform_dir) if
+                                 f.lower().startswith(filename.lower() + '_ch')]
+
+
+            else:
+                filename_list = [f for f in os.listdir(self.waveform_dir) if
+                                 f.startswith(filename + '_ch')]
             # delete all filenames in the list
             for file in filename_list:
                 os.remove(os.path.join(self.waveform_dir, file))
@@ -844,6 +885,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # a whole.
             self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
                           'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
+
             if not sequence_sampling_in_progress:
                 self.unlock()
             self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))

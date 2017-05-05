@@ -36,10 +36,8 @@ class HBridge(Base, SwitchInterface):
         super().__init__(**kwargs)
         self.lock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate module.
-
-            @param object e: fysom state transition information
         """
         config = self.getConfiguration()
         if not 'interface' in config:
@@ -54,10 +52,8 @@ class HBridge(Base, SwitchInterface):
                 send_end=True
         )
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module.
-
-            @param object e: fysom state transition information
         """
         self.inst.close()
 

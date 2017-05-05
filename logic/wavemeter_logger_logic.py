@@ -149,10 +149,8 @@ class WavemeterLoggerLogic(GenericLogic):
         self.intern_xmin = 1.0e10
         self.current_wavelength = 0
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-          @param object e: Fysom state change event
         """
         self._wavelength_data = []
 
@@ -190,10 +188,8 @@ class WavemeterLoggerLogic(GenericLogic):
         self.hardware_thread.start()
         self.last_point_time = time.time()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-          @param object e: Fysom state change event
         """
         if self.getState() != 'idle' and self.getState() != 'deactivated':
             self.stop_scanning()

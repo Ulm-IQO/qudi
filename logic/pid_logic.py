@@ -53,7 +53,7 @@ class PIDLogic(GenericLogic):
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._controller = self.get_connector('controller')
@@ -80,7 +80,7 @@ class PIDLogic(GenericLogic):
         self.timer.setInterval(self.timestep)
         self.timer.timeout.connect(self.loop)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Perform required deactivation. """
 
         # save parameters stored in ap state store
