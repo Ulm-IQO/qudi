@@ -56,7 +56,8 @@ failed=0
 test_notebook notebooks/matplotlib.ipynb
 
 for notebook in notebooks/fit_testing_*.ipynb; do
-    test_notebook $notebook
+    test_notebook $notebook;
+done
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
