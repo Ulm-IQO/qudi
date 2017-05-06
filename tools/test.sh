@@ -3,7 +3,7 @@
 function test_notebook () {
     let "total += 1"
     jupyter-nbconvert --execute $1;
-    grep '<div.*output_stderr' "notebooks/"`basename $1 .ipynb`".html"
+    grep '<div.*output_stderr' "notebooks/"`basename $1 .ipynb`".html" > /dev/null
     retcode=$?
 
     if ! kill -0 $QUDIPID; then
@@ -16,7 +16,7 @@ function test_notebook () {
         return 0;
     else
         let "failed += 1"
-        echo "Failed / Total: $failed / $total"
+        echo "Failed / Total: $failed / $total" >&2
         return 1;
     fi;
 }
@@ -69,7 +69,7 @@ if kill $QUDIPID; then
     exit 1
 fi
 
-grep "^....-..-.. ..:..:.. error" qudi.log
+grep "^....-..-.. ..:..:.. error" qudi.log > /dev/null
 if [ $? -eq 0 ]; then
     let "failed += 1"
 fi
