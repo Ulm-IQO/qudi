@@ -54,14 +54,9 @@ total=0
 failed=0
 
 test_notebook notebooks/matplotlib.ipynb
-test_notebook notebooks/fit_testing_exponential.ipynb
-test_notebook notebooks/fit_testing_gaussian.ipynb
-test_notebook notebooks/fit_testing_lorentzian.ipynb
-test_notebook notebooks/fit_testing_N14.ipynb
-test_notebook notebooks/fit_testing_N15.ipynb
-test_notebook notebooks/fit_testing_poissonian.ipynb
-test_notebook notebooks/fit_testing_sine.ipynb
 
+for notebook in notebooks/fit_testing_*.ipynb; do
+    test_notebook $notebook
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
