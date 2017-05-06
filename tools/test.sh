@@ -3,7 +3,7 @@
 function test_notebook () {
     let "total += 1"
     jupyter-nbconvert --execute $1;
-    grep '<div.*output_stderr' `basename $1 .ipynb`".html"
+    grep '<div.*output_stderr' "notebooks/"`basename $1 .ipynb`".html"
     retcode=$?
 
     if ! kill -0 $QUDIPID; then
@@ -77,6 +77,8 @@ grep "^....-..-.. ..:..:.. error" qudi.log
 if [ $? -eq 0 ]; then
     let "failed += 1"
 fi
+
+print_log
 
 exit $failed
 
