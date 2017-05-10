@@ -577,6 +577,26 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
         self.log.error('The sine fit did not work.\n'
                      'Error message: {0}\n'.format(result.message))
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()
+
+    result_str_dict['Period'] = {'value': 1./result.params['frequency'].value,
+                                 'error': 1./result.params['frequency'].stderr,
+                                 'unit': units[0]}
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}
+    result_str_dict['Phase'] = {'value': result.params['phase'].value,
+                                'error': result.params['phase'].stderr,
+                                'unit': 'deg'}
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
+
     return result
 
 def estimate_sine(self, x_axis, data, params):
