@@ -172,33 +172,39 @@ class WavemeterLoggerLogic(GenericLogic):
             self.fc.load_from_dict(self._statusVariables['fits'])
         else:
             d1 = OrderedDict()
-            d1['Lorentzian dip'] = {
+            d1['Lorentzian peak'] = {
                 'fit_function': 'lorentzian',
-                'estimator': 'dip'
+                'estimator': 'peak'
                 }
-            d1['Two Lorentzian dips'] = {
+            d1['Two Lorentzian peaks'] = {
                 'fit_function': 'lorentziandouble',
-                'estimator': 'dip'
+                'estimator': 'peak'
                 }
-            d1['Two Gaussian dips'] = {
+            d1['Two Gaussian peaks'] = {
                 'fit_function': 'gaussiandouble',
-                'estimator': 'dip'
+                'estimator': 'peak'
                 }
             default_fits = OrderedDict()
             default_fits['1d'] = d1
             self.fc.load_from_dict(default_fits)
 
         # create a new x axis from xmin to xmax with bins points
-        self.histogram_axis = np.arange(self._xmin,
-                                        self._xmax,
-                                        (self._xmax - self._xmin) / self._bins
-                                        )
+        self.histogram_axis = np.arange(
+            self._xmin,
+            self._xmax,
+            (self._xmax - self._xmin) / self._bins
+            )
         self.histogram = np.zeros(self.histogram_axis.shape)
         self.envelope_histogram = np.zeros(self.histogram_axis.shape)
 
-        self.sig_update_histogram_next.connect(self._attach_counts_to_wavelength,
-                                               QtCore.Qt.QueuedConnection
-                                               )
+        self.sig_update_histogram_next.connect(
+            self._attach_counts_to_wavelength,
+            QtCore.Qt.QueuedConnection
+            )
+
+        # fit data
+        self.wlog_fit_x = np.linspace(self._xmin, self._xmax, self._bins*5)
+        self.wlog_fit_y = np.zeros(self.wlog_fit_x.shape)
 
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
@@ -276,10 +282,10 @@ class WavemeterLoggerLogic(GenericLogic):
     def do_fit(self):
         """ Execute the currently configured fit
         """
-        x_data = self._
-        y_data = self.
-
-        self.wlog_fit_x, self.wlog_fit_y, result = self.fc.do_fit(x_data, y_data)
+        self.wlog_fit_x, self.wlog_fit_y, result = self.fc.do_fit(
+            self.histogram_axis,
+            self.histogram
+            )
 
         self.sig_fit_updated.emit()
         self.sig_data_updated.emit()
