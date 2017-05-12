@@ -97,6 +97,7 @@ class WavemeterLoggerLogic(GenericLogic):
     sig_update_histogram_next = QtCore.Signal(bool)
     sig_handle_timer = QtCore.Signal(bool)
     sig_new_data_point = QtCore.Signal(list)
+    sig_fit_updated = QtCore.Signal()
 
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
@@ -104,8 +105,9 @@ class WavemeterLoggerLogic(GenericLogic):
     # declare connectors
     _connectors = {
         'wavemeter1': 'WavemeterInterface',
+        'counterlogic': 'CounterLogic',
         'savelogic': 'SaveLogic',
-        'counterlogic': 'CounterLogic'
+        'fitlogic': 'FitLogic'
     }
 
     def __init__(self, config, **kwargs):
@@ -162,6 +164,30 @@ class WavemeterLoggerLogic(GenericLogic):
         self._save_logic = self.get_connector('savelogic')
         self._counter_logic = self.get_connector('counterlogic')
 
+        self._fit_logic = self.get_connector('fitlogic')
+        self.fc = self._fit_logic.make_fit_container('Wavemeter counts', '1d')
+        self.fc.set_units(['Hz', 'c/s'])
+
+        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
+            self.fc.load_from_dict(self._statusVariables['fits'])
+        else:
+            d1 = OrderedDict()
+            d1['Lorentzian dip'] = {
+                'fit_function': 'lorentzian',
+                'estimator': 'dip'
+                }
+            d1['Two Lorentzian dips'] = {
+                'fit_function': 'lorentziandouble',
+                'estimator': 'dip'
+                }
+            d1['Two Gaussian dips'] = {
+                'fit_function': 'gaussiandouble',
+                'estimator': 'dip'
+                }
+            default_fits = OrderedDict()
+            default_fits['1d'] = d1
+            self.fc.load_from_dict(default_fits)
+
         # create a new x axis from xmin to xmax with bins points
         self.histogram_axis = np.arange(self._xmin,
                                         self._xmax,
@@ -195,6 +221,9 @@ class WavemeterLoggerLogic(GenericLogic):
             self.stop_scanning()
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
+
+        if len(self.fc.fit_list) > 0:
+            self._statusVariables['fits'] = self.fc.save_to_dict()
 
     def get_max_wavelength(self):
         """ Current maximum wavelength of the scan.
@@ -237,6 +266,23 @@ class WavemeterLoggerLogic(GenericLogic):
         self.sumhisto = np.ones(self._bins) * 1.0e-10
         self.histogram_axis = np.linspace(self._xmin, self._xmax, self._bins)
         self.sig_update_histogram_next.emit(True)
+
+    def get_fit_functions(self):
+        """ Return the names of all ocnfigured fit functions.
+        @return list(str): list of fit function names
+        """
+        return self.fc.fit_list.keys()
+
+    def do_fit(self):
+        """ Execute the currently configured fit
+        """
+        x_data = self._
+        y_data = self.
+
+        self.wlog_fit_x, self.wlog_fit_y, result = self.fc.do_fit(x_data, y_data)
+
+        self.sig_fit_updated.emit()
+        self.sig_data_updated.emit()
 
     def start_scanning(self, resume=False):
         """ Prepare to start counting:
