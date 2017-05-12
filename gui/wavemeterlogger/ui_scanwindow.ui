@@ -70,7 +70,7 @@
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
-     <string>Settings</string>
+     <string>Setti&amp;ngs</string>
     </property>
     <addaction name="actionFit_settings"/>
    </widget>
@@ -98,7 +98,7 @@
   </widget>
   <widget class="QDockWidget" name="scanParametersDockWidget">
    <property name="windowTitle">
-    <string>Scan parameters</string>
+    <string>Scan &amp;parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -234,60 +234,51 @@ High bin number gives noisy but detailed data.</string>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout_3">
      <item row="0" column="0">
-      <layout class="QGridLayout" name="gridLayout_10">
-       <item row="0" column="0">
-        <widget class="QLabel" name="functionLabel">
-         <property name="maximumSize">
-          <size>
-           <width>65</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Fit Function :</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
-         <property name="minimumSize">
-          <size>
-           <width>150</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>150</width>
-           <height>16777215</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="resultsLabel">
-         <property name="maximumSize">
-          <size>
-           <width>65</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Fit Results   :</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1" colspan="2">
-        <widget class="QTextBrowser" name="fit_results_DisplayWidget"/>
-       </item>
-       <item row="0" column="2">
-        <widget class="QPushButton" name="do_fit_PushButton">
-         <property name="text">
-          <string>Fit</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <widget class="QLabel" name="functionLabel">
+       <property name="text">
+        <string>Fit Function :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="do_fit_PushButton">
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Fit</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="resultsLabel">
+       <property name="text">
+        <string>Fit Results   :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" colspan="2">
+      <widget class="QTextBrowser" name="fit_results_DisplayWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -369,7 +360,7 @@ High bin number gives noisy but detailed data.</string>
   </action>
   <action name="actionFit_settings">
    <property name="text">
-    <string>Fit settings</string>
+    <string>&amp;Fit settings</string>
    </property>
   </action>
   <action name="actionFit">
@@ -380,7 +371,7 @@ High bin number gives noisy but detailed data.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Fit</string>
+    <string>&amp;Fit</string>
    </property>
   </action>
  </widget>
