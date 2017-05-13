@@ -49,6 +49,8 @@ class ConfocalHistoryEntry(QtCore.QObject):
         """ Make a confocal data setting with default values. """
         super().__init__()
 
+        self.depth_scan_dir_is_xz = True
+
         self.xy_line_pos = 0
         self.depth_line_pos = 0
 
@@ -109,6 +111,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal.image_z_range = np.copy(self.image_z_range)
         confocal.xy_resolution = self.xy_resolution
         confocal.z_resolution = self.z_resolution
+        confocal.depth_scan_dir_is_xz = self.depth_scan_dir_is_xz
         confocal._xy_line_pos = self.xy_line_position
         confocal._depth_line_pos = self.depth_line_position
         confocal._xyscan_continuable = self.xy_scan_continuable
@@ -149,6 +152,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.image_z_range = np.copy(confocal.image_z_range)
         self.xy_resolution = confocal.xy_resolution
         self.z_resolution = confocal.z_resolution
+        self.depth_scan_dir_is_xz = confocal.depth_scan_dir_is_xz
         self.xy_line_position = confocal._xy_line_pos
         self.depth_line_position = confocal._depth_line_pos
         self.xy_scan_continuable = confocal._xyscan_continuable
@@ -173,6 +177,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         serialized['z_range'] = list(self.image_z_range)
         serialized['xy_resolution'] = self.xy_resolution
         serialized['z_resolution'] = self.z_resolution
+        serialized['depth_is_xz'] = self.depth_scan_dir_is_xz
         serialized['xy_line_position'] = self.xy_line_position
         serialized['depth_line_position'] = self.depth_line_position
         serialized['xy_scan_cont'] = self.xy_scan_continuable
@@ -204,6 +209,8 @@ class ConfocalHistoryEntry(QtCore.QObject):
             self.xy_resolution = serialized['xy_resolution']
         if 'z_resolution' in serialized:
             self.z_resolution = serialized['z_resolution']
+        if 'depth_is_xz' in serialized:
+            self.depth_scan_dir_is_xz = serialized['depth_is_xz']
         if 'tilt_correction' in serialized:
             self.tilt_correction = serialized['tilt_correction']
         if 'tilt_reference' in serialized and len(serialized['tilt_reference']) == 2:
@@ -487,43 +494,71 @@ class ConfocalLogic(GenericLogic):
         self._return_AL = np.zeros(self._return_XL.shape)
 
         if self._zscan:
+            self._image_vert_axis = self._Z
+            # depth scan is in xz plane
             if self.depth_scan_dir_is_xz:
-                self._image_vert_axis = self._Z
+                #self._image_horz_axis = self._X
                 # creates an image where each pixel will be [x,y,z,counts]
-                self.depth_image = np.zeros(
-                    (len(self._image_vert_axis),
-                    len(self._X),
-                    3 +  len(self.get_scanner_count_channels())))
-                self.depth_image[:, : ,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
-                self.depth_image[:, :, 1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
+                self.depth_image = np.zeros((
+                        len(self._image_vert_axis),
+                        len(self._X),
+                        3 + len(self.get_scanner_count_channels())
+                    ))
+
+                self.depth_image[:, :, 0] = np.full(
+                    (len(self._image_vert_axis), len(self._X)), self._XL)
+
+                self.depth_image[:, :, 1] = self._current_y * np.ones(
+                    (len(self._image_vert_axis), len(self._X)))
+
                 z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
                 self.depth_image[:, :, 2] = z_value_matrix.transpose()
-            else: # depth scan is yz instead of xz
-                self._image_vert_axis = self._Z
+
+            # depth scan is yz plane instead of xz plane
+            else:
+                #self._image_horz_axis = self._Y
                 # creats an image where each pixel will be [x,y,z,counts]
-                self.depth_image = np.zeros(
-                    (len(self._image_vert_axis),
-                    len(self._Y),
-                    3 +  len(self.get_scanner_count_channels())))
-                self.depth_image[:, :, 0] = self._current_x * np.ones((len(self._image_vert_axis), len(self._Y)))
-                self.depth_image[:, :, 1] = np.full((len(self._image_vert_axis), len(self._Y)), self._YL)
+                self.depth_image = np.zeros((
+                        len(self._image_vert_axis),
+                        len(self._Y),
+                        3 + len(self.get_scanner_count_channels())
+                    ))
+
+                self.depth_image[:, :, 0] = self._current_x * np.ones(
+                    (len(self._image_vert_axis), len(self._Y)))
+
+                self.depth_image[:, :, 1] = np.full(
+                    (len(self._image_vert_axis), len(self._Y)), self._YL)
+
                 z_value_matrix = np.full((len(self._Y), len(self._image_vert_axis)), self._Z)
                 self.depth_image[:, :, 2] = z_value_matrix.transpose()
+
                 # now we are scanning along the y-axis, so we need a new return line along Y:
                 self._return_YL = np.linspace(self._YL[-1], self._YL[0], self.return_slowness)
                 self._return_AL = np.zeros(self._return_YL.shape)
+
             self.sigImageDepthInitialized.emit()
+
+        # xy scan is in xy plane
         else:
+            #self._image_horz_axis = self._X
             self._image_vert_axis = self._Y
             # creats an image where each pixel will be [x,y,z,counts]
-            self.xy_image = np.zeros(
-                (len(self._image_vert_axis),
-                len(self._X),
-                3 + len(self.get_scanner_count_channels())))
-            self.xy_image[:, :, 0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
+            self.xy_image = np.zeros((
+                    len(self._image_vert_axis),
+                    len(self._X),
+                    3 + len(self.get_scanner_count_channels())
+                ))
+
+            self.xy_image[:, :, 0] = np.full(
+                (len(self._image_vert_axis), len(self._X)), self._XL)
+
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
             self.xy_image[:, :, 1] = y_value_matrix.transpose()
-            self.xy_image[:, :, 2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
+
+            self.xy_image[:, :, 2] = self._current_z * np.ones(
+                (len(self._image_vert_axis), len(self._X)))
+
             self.sigImageXYInitialized.emit()
         return 0
 
@@ -748,33 +783,33 @@ class ConfocalLogic(GenericLogic):
                 return
 
             # make a line to go to the starting position of the next scan line
-            if self.depth_scan_dir_is_xz:
+            if self.depth_scan_dir_is_xz or not self._zscan:
                 if n_ch <= 3:
-                    return_line = np.vstack([
-                    self._return_XL,
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
-                        ][0:n_ch])
-                else:
                     return_line = np.vstack([
                         self._return_XL,
                         image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                        np.ones(self._return_XL.shape) * self._current_a
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
+                    ][0:n_ch])
+                else:
+                    return_line = np.vstack([
+                            self._return_XL,
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
+                            np.ones(self._return_XL.shape) * self._current_a
                         ])
             else:
                 if n_ch <= 3:
                     return_line = np.vstack([
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                    self._return_YL,
-                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                            self._return_YL,
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
                         ][0:n_ch])
                 else:
                     return_line = np.vstack([
-                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                        self._return_YL,
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
-                        np.ones(self._return_YL.shape) * self._current_a
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                            self._return_YL,
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
+                            np.ones(self._return_YL.shape) * self._current_a
                         ])
 
             # return the scanner to the start of next line, counts are thrown away
