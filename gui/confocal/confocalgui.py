@@ -1608,13 +1608,15 @@ class ConfocalGui(GUIBase):
         ##########
         # Set the optimized position label
         self._mw.refocus_position_label.setText(
-            '({0:.3e}, {1:.3e}, {2:.3e}) sigma: ({3:.3e}, {4:.3e}, {5:.3e})'.format(
-                self._optimizer_logic.optim_pos_x,
-                self._optimizer_logic.optim_pos_y,
-                self._optimizer_logic.optim_pos_z,
-                self._optimizer_logic.optim_sigma_x,
-                self._optimizer_logic.optim_sigma_y,
-                self._optimizer_logic.optim_sigma_z
+            'µ = ({0:.3f}, {1:.3f}, {2:.3f}) µm   '
+            'σ = ({3:.3f}, {4:.3f}, {5:.3f}) µm '
+            ''.format(
+                self._optimizer_logic.optim_pos_x * 1e6,
+                self._optimizer_logic.optim_pos_y * 1e6,
+                self._optimizer_logic.optim_pos_z * 1e6,
+                self._optimizer_logic.optim_sigma_x * 1e6,
+                self._optimizer_logic.optim_sigma_y * 1e6,
+                self._optimizer_logic.optim_sigma_z * 1e6
             )
         )
 
@@ -1685,8 +1687,15 @@ class ConfocalGui(GUIBase):
 
         depth_viewbox = self.depth_image.getViewBox()
 
-        xMin = self._scanning_logic.image_x_range[0]
-        xMax = self._scanning_logic.image_x_range[1]
+        if self._scanning_logic.depth_scan_dir_is_xz:
+            self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='m')
+            xMin = self._scanning_logic.image_x_range[0]
+            xMax = self._scanning_logic.image_x_range[1]
+        else:
+            self._mw.depth_ViewWidget.setLabel('bottom', 'Y position', units='m')
+            xMin = self._scanning_logic.image_y_range[0]
+            xMax = self._scanning_logic.image_y_range[1]
+
         zMin = self._scanning_logic.image_z_range[0]
         zMax = self._scanning_logic.image_z_range[1]
 
