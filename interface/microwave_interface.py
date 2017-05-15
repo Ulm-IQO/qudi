@@ -105,11 +105,11 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_cw(self, freq=None, power=None, useinterleave=None):
+    def set_cw(self, frequency=None, power=None, useinterleave=None):
         """ 
         Configures the device for cw-mode and optionally sets frequency and/or power
 
-        @param float freq: frequency to set in Hz
+        @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
         @param bool useinterleave: If this mode exists you can choose it.
 
@@ -130,11 +130,11 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_list(self, freq=None, power=None):
+    def set_list(self, frequency=None, power=None):
         """ 
         Configures the device for list-mode and optionally sets frequencies and/or power
 
-        @param list freq: list of frequencies in Hz
+        @param list frequency: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
 
         @return list, float, str: current frequencies in Hz, current power in dBm, current mode
