@@ -54,7 +54,6 @@ class ODMRLogic(GenericLogic):
     # Update signals, e.g. for GUI module
     sigParameterUpdated = QtCore.Signal(dict)
     sigOutputStateUpdated = QtCore.Signal(str, bool)
-    sigOdmrRunning = QtCore.Signal(bool)
     sigOdmrPlotsUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray)
     sigOdmrFitUpdated = QtCore.Signal(np.ndarray, np.ndarray, str, str)
     sigOdmrElapsedTimeUpdated = QtCore.Signal(float, int)
@@ -226,7 +225,7 @@ class ODMRLogic(GenericLogic):
         # Disconnect signals
         self.sigNextLine.disconnect()
         # save parameters stored in app state store
-        self._statusVariables['clock_frequency'] = self._clock_frequency
+        self._statusVariables['clock_frequency'] = self.clock_frequency
         self._statusVariables['mw_frequency'] = self.mw_frequency
         self._statusVariables['mw_power'] = self.mw_power
         self._statusVariables['mw_start'] = self.mw_start
@@ -285,6 +284,41 @@ class ODMRLogic(GenericLogic):
         update_dict = {'clock_frequency': self.clock_frequency}
         self.sigParameterChanged.emit(update_dict)
         return self.clock_frequency
+
+    def set_matrix_line_number(self, number_of_lines):
+        """
+        Sets the number of lines in the ODMR matrix
+
+        @param int number_of_lines: desired number of matrix lines
+
+        @return int: actually set number of matrix lines
+        """
+        if isinstance(number_of_lines, int):
+            self.number_of_lines = number_of_lines
+        else:
+            self.log.warning('set_matrix_line_number failed. '
+                             'Input parameter number_of_lines is no integer.')
+
+        update_dict = {'number_of_lines': self.number_of_lines}
+        self.sigParameterChanged.emit(update_dict)
+        return self.number_of_lines
+
+    def set_runtime(self, runtime):
+        """
+        Sets the runtime for ODMR measurement
+
+        @param float runtime: desired runtime in seconds
+
+        @return float: actually set runtime in seconds
+        """
+        if isinstance(runtime, (int, float)):
+            self.run_time = runtime
+        else:
+            self.log.warning('set_runtime failed. Input parameter runtime is no integer or float.')
+
+        update_dict = {'runtime': self.run_time}
+        self.sigParameterChanged.emit(update_dict)
+        return self.run_time
 
     def set_power(self, power):
         """ Forwarding the desired new power from the GUI to the MW source.
@@ -650,7 +684,7 @@ class ODMRLogic(GenericLogic):
         """
         return list(self.fc.fit_list)
 
-    def do_fit(self, x_data=None, y_data=None, fit_function=None):
+    def do_fit(self, fit_function=None, x_data=None, y_data=None):
         """ 
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
@@ -709,7 +743,7 @@ class ODMRLogic(GenericLogic):
         parameters['Start Frequency (Hz)'] = self.mw_start
         parameters['Stop Frequency (Hz)'] = self.mw_stop
         parameters['Step size (Hz)'] = self.mw_step
-        parameters['Clock Frequency (Hz)'] = self._clock_frequency
+        parameters['Clock Frequency (Hz)'] = self.clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
         if self.fc.current_fit != 'No Fit':
             parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
