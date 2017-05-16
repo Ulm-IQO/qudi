@@ -95,7 +95,13 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False] 
         """
-        return self.current_output_mode, self.output_active
+        if self.current_output_mode == MicrowaveMode.CW:
+            mode = 'cw'
+        elif self.current_output_mode == MicrowaveMode.LIST:
+            mode = 'list'
+        elif self.current_output_mode == MicrowaveMode.SWEEP:
+            mode = 'sweep'
+        return mode, self.output_active
 
     def off(self):
         """ Switches off any microwave output.
@@ -173,7 +179,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.mw_power = power
         self.current_output_mode = MicrowaveMode.CW
         self.output_active = False
-        return self.mw_cw_frequency, self.mw_power, self.current_output_mode
+        return self.mw_cw_frequency, self.mw_power, 'cw'
 
     def list_on(self):
         """
@@ -203,7 +209,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.mw_power = power
         self.current_output_mode = MicrowaveMode.LIST
         self.output_active = False
-        return self.mw_frequency_list, self.mw_power, self.current_output_mode
+        return self.mw_frequency_list, self.mw_power, 'list'
 
     def reset_listpos(self):
         """ 
@@ -243,8 +249,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.mw_power = power
         self.current_output_mode = MicrowaveMode.SWEEP
         self.output_active = False
-        return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq, self.mw_power, \
-               self.current_output_mode
+        return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq, self.mw_power, 'sweep'
 
     def reset_sweeppos(self):
         """ 
