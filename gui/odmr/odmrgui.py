@@ -183,10 +183,6 @@ class ODMRGui(GUIBase):
         my_colors = ColorScaleInferno()
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
-        # Configuration of the microwave mode comboWidget
-        self._mw.mode_ComboBox.addItem('Off')
-        self._mw.mode_ComboBox.addItem('CW')
-
         ########################################################################
         #                  Configuration of the Colorbar                       #
         ########################################################################
@@ -210,6 +206,7 @@ class ODMRGui(GUIBase):
 
         self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
         self._mw.elapsed_time_DisplayWidget.display(int(np.rint(self._odmr_logic.elapsed_time)))
+        self._mw.elapsed_sweeps_DisplayWidget.display(self._odmr_logic.elapsed_sweeps)
 
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
@@ -234,13 +231,13 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
         self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
         self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
-        self._mw.mode_ComboBox.activated[str].connect(self.change_cw_mode)
         # Internal trigger signals
         self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.refresh_odmr_colorbar)
         self._mw.odmr_cb_centiles_RadioButton.clicked.connect(self.refresh_odmr_colorbar)
         self._mw.clear_odmr_PushButton.clicked.connect(self.clear_odmr_data)
         self._mw.action_run_stop.triggered.connect(self.run_stop_odmr)
         self._mw.action_resume_odmr.triggered.connect(self.resume_odmr)
+        self._mw.action_toggle_cw.triggered.connect(self.toggle_cw_mode)
         self._mw.action_Save.triggered.connect(self.save_data)
         self._mw.action_RestoreDefault.triggered.connect(self.restore_defaultview)
         self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
@@ -319,6 +316,7 @@ class ODMRGui(GUIBase):
         self._mw.action_run_stop.triggered.disconnect()
         self._mw.action_resume_odmr.triggered.disconnect()
         self._mw.action_Save.triggered.disconnect()
+        self._mw.action_toggle_cw.triggered.disconnect()
         self._mw.action_RestoreDefault.triggered.disconnect()
         self._mw.do_fit_PushButton.clicked.disconnect()
         self._mw.frequency_DoubleSpinBox.editingFinished.disconnect()
@@ -331,7 +329,6 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.disconnect()
         self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
         self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.disconnect()
-        self._mw.mode_ComboBox.activated[str].disconnect()
         self._fsd.sigFitsUpdated.disconnect()
         self._mw.action_FitSettings.triggered.disconnect()
         self._mw.close()
@@ -354,6 +351,7 @@ class ODMRGui(GUIBase):
             # change the axes appearance according to input values:
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.action_toggle_cw.setEnabled(False)
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
             self._mw.power_DoubleSpinBox.setEnabled(False)
             self._mw.frequency_DoubleSpinBox.setEnabled(False)
@@ -362,11 +360,11 @@ class ODMRGui(GUIBase):
             self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
             self._mw.runtime_DoubleSpinBox.setEnabled(False)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-            self._mw.mode_ComboBox.setEnabled(False)
             self.sigStartOdmrScan.emit()
         else:
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.action_toggle_cw.setEnabled(False)
             self.sigStopOdmrScan.emit()
         return
 
@@ -374,6 +372,7 @@ class ODMRGui(GUIBase):
         if is_checked:
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.action_toggle_cw.setEnabled(False)
             self._mw.power_DoubleSpinBox.setEnabled(False)
             self._mw.frequency_DoubleSpinBox.setEnabled(False)
             self._mw.start_freq_DoubleSpinBox.setEnabled(False)
@@ -381,22 +380,26 @@ class ODMRGui(GUIBase):
             self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
             self._mw.runtime_DoubleSpinBox.setEnabled(False)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-            self._mw.mode_ComboBox.setEnabled(False)
             self.sigContinueOdmrScan.emit()
         else:
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.action_toggle_cw.setEnabled(False)
             self.sigStopOdmrScan.emit()
         return
 
-    def change_cw_mode(self, txt):
+    def toggle_cw_mode(self, is_checked):
         """ Starts or stops CW microwave output if no measurement is running. """
-        if txt == 'Off':
-            self.sigMwOff.emit()
-        if txt == 'CW':
+        if is_checked:
+            self._mw.action_run_stop.setEnabled(False)
+            self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.action_toggle_cw.setEnabled(False)
             self._mw.power_DoubleSpinBox.setEnabled(False)
             self._mw.frequency_DoubleSpinBox.setEnabled(False)
             self.sigCwMwOn.emit()
+        else:
+            self._mw.action_toggle_cw.setEnabled(False)
+            self.sigMwOff.emit()
         return
 
     def update_status(self, mw_mode, is_running):
@@ -406,65 +409,60 @@ class ODMRGui(GUIBase):
         @param str mw_mode: is the microwave output active?
         @param bool is_running: is the microwave output active?
         """
-        # Update measurement status
-        if mw_mode != 'cw' and is_running:
+        # Block signals from firing
+        self._mw.action_run_stop.blockSignals(True)
+        self._mw.action_resume_odmr.blockSignals(True)
+        self._mw.action_toggle_cw.blockSignals(True)
+
+        # Update measurement status (activate/deactivate widgets/actions)
+        if is_running:
             self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.clear_odmr_PushButton.setEnabled(True)
-            self._mw.action_run_stop.setEnabled(True)
             self._mw.power_DoubleSpinBox.setEnabled(False)
             self._mw.frequency_DoubleSpinBox.setEnabled(False)
-            self._mw.start_freq_DoubleSpinBox.setEnabled(False)
-            self._mw.step_freq_DoubleSpinBox.setEnabled(False)
-            self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
-            self._mw.runtime_DoubleSpinBox.setEnabled(False)
-            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-            self._mw.mode_ComboBox.setEnabled(False)
-            if not self._mw.action_run_stop.isChecked():
-                self._mw.action_run_stop.blockSignals(True)
+            if mw_mode != 'cw':
+                self._mw.clear_odmr_PushButton.setEnabled(True)
+                self._mw.action_run_stop.setEnabled(True)
+                self._mw.action_toggle_cw.setEnabled(False)
+                self._mw.start_freq_DoubleSpinBox.setEnabled(False)
+                self._mw.step_freq_DoubleSpinBox.setEnabled(False)
+                self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
+                self._mw.runtime_DoubleSpinBox.setEnabled(False)
+                self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
                 self._mw.action_run_stop.setChecked(True)
-                self._mw.action_run_stop.blockSignals(False)
-            if not self._mw.action_resume_odmr.isChecked():
-                self._mw.action_resume_odmr.blockSignals(True)
                 self._mw.action_resume_odmr.setChecked(True)
-                self._mw.action_resume_odmr.blockSignals(False)
+                self._mw.action_toggle_cw.setChecked(False)
+            else:
+                self._mw.clear_odmr_PushButton.setEnabled(False)
+                self._mw.action_run_stop.setEnabled(False)
+                self._mw.action_toggle_cw.setEnabled(True)
+                self._mw.start_freq_DoubleSpinBox.setEnabled(True)
+                self._mw.step_freq_DoubleSpinBox.setEnabled(True)
+                self._mw.stop_freq_DoubleSpinBox.setEnabled(True)
+                self._mw.runtime_DoubleSpinBox.setEnabled(True)
+                self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
+                self._mw.action_run_stop.setChecked(False)
+                self._mw.action_resume_odmr.setChecked(False)
+                self._mw.action_toggle_cw.setChecked(True)
         else:
             self._mw.action_resume_odmr.setEnabled(True)
+            self._mw.power_DoubleSpinBox.setEnabled(True)
+            self._mw.frequency_DoubleSpinBox.setEnabled(True)
             self._mw.clear_odmr_PushButton.setEnabled(False)
             self._mw.action_run_stop.setEnabled(True)
+            self._mw.action_toggle_cw.setEnabled(True)
             self._mw.start_freq_DoubleSpinBox.setEnabled(True)
             self._mw.step_freq_DoubleSpinBox.setEnabled(True)
             self._mw.stop_freq_DoubleSpinBox.setEnabled(True)
             self._mw.runtime_DoubleSpinBox.setEnabled(True)
-            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
-            self._mw.mode_ComboBox.setEnabled(True)
-            if self._mw.action_run_stop.isChecked():
-                self._mw.action_run_stop.blockSignals(True)
-                self._mw.action_run_stop.setChecked(False)
-                self._mw.action_run_stop.blockSignals(False)
-            if self._mw.action_resume_odmr.isChecked():
-                self._mw.action_resume_odmr.blockSignals(True)
-                self._mw.action_resume_odmr.setChecked(False)
-                self._mw.action_resume_odmr.blockSignals(False)
+            self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
+            self._mw.action_run_stop.setChecked(False)
+            self._mw.action_resume_odmr.setChecked(False)
+            self._mw.action_toggle_cw.setChecked(False)
 
-        if is_running:
-            self._mw.power_DoubleSpinBox.setEnabled(False)
-            self._mw.frequency_DoubleSpinBox.setEnabled(False)
-        else:
-            self._mw.power_DoubleSpinBox.setEnabled(True)
-            self._mw.frequency_DoubleSpinBox.setEnabled(True)
-
-        # Update CW mode combobox
-        self._mw.mode_ComboBox.blockSignals(True)
-        if mw_mode == 'cw' and is_running:
-            text = 'CW'
-        else:
-            text = 'Off'
-        index = self._mw.mode_ComboBox.findText(text)
-        if index >= 0:
-            self._mw.mode_ComboBox.setCurrentIndex(index)
-        else:
-            self.log.warning('No proper state to display was found in the CW mode combobox!')
-        self._mw.mode_ComboBox.blockSignals(False)
+        # Unblock signal firing
+        self._mw.action_run_stop.blockSignals(False)
+        self._mw.action_resume_odmr.blockSignals(False)
+        self._mw.action_toggle_cw.blockSignals(False)
         return
 
     def clear_odmr_data(self):
@@ -527,6 +525,7 @@ class ODMRGui(GUIBase):
     def update_elapsedtime(self, elapsed_time, scanned_lines):
         """ Updates current elapsed measurement time and completed frequency sweeps """
         self._mw.elapsed_time_DisplayWidget.display(int(np.rint(elapsed_time)))
+        self._mw.elapsed_sweeps_DisplayWidget.display(scanned_lines)
         return
 
     def update_settings(self):
