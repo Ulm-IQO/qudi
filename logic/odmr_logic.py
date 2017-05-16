@@ -628,9 +628,7 @@ class ODMRLogic(GenericLogic):
             # if during the scan a clearing of the ODMR data is needed:
             if self._clearOdmrData:
                 self.elapsed_sweeps = 0
-                self.odmr_plot_y[:] = 0
-                self.odmr_raw_data[:, :] = 0
-                self._clearOdmrData = False
+                self._startTime = time.time()
 
             # reset position so every line starts from the same frequency
             self.reset_sweep()
@@ -643,14 +641,20 @@ class ODMRLogic(GenericLogic):
                 return
 
             # Add new count data to mean signal
+            if self._clearOdmrData:
+                self.odmr_plot_y[:] = 0
             self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
                 self.elapsed_sweeps + 1)
 
             # Add new count data to raw_data array and append if array is too small
+            if self._clearOdmrData:
+                self.odmr_raw_data[:, :] = 0
+                self._clearOdmrData = False
             if self.elapsed_sweeps == (self.odmr_raw_data.shape[0] - 1):
                 expanded_array = np.zeros([self.odmr_raw_data.shape[0] + self.number_of_lines,
                                            self.odmr_raw_data.shape[1]])
-                expanded_array[:self.elapsed_sweeps,:] = self.odmr_raw_data[:self.elapsed_sweeps,:]
+                expanded_array[:self.elapsed_sweeps, :] = self.odmr_raw_data[
+                                                          :self.elapsed_sweeps, :]
                 self.odmr_raw_data = expanded_array
                 self.log.warning('raw data array in ODMRLogic was not big enough for the entire '
                                  'measurement. Array will be expanded.\nOld array shape was '
