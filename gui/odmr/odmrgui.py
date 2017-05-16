@@ -135,7 +135,8 @@ class ODMRGui(GUIBase):
 
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
-        self._mw.save_tag_LineEdit.setMaximumWidth(200)
+        self._mw.save_tag_LineEdit.setMaximumWidth(500)
+        self._mw.save_tag_LineEdit.setMinimumWidth(200)
         self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
                                               'added to the filename.')
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
@@ -146,7 +147,7 @@ class ODMRGui(GUIBase):
         self._mw.clear_odmr_PushButton.setToolTip('Clear the data of the\n'
                                                   'current ODMR measurements.')
         self._mw.clear_odmr_PushButton.setEnabled(False)
-        self._mw.save_ToolBar.addWidget(self._mw.clear_odmr_PushButton)
+        self._mw.toolBar.addWidget(self._mw.clear_odmr_PushButton)
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.odmr_plot_xy.transpose())
