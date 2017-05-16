@@ -741,36 +741,33 @@ class ODMRLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data2 = OrderedDict()
-        freq_data = self.ODMR_plot_x
-        count_data = self.ODMR_plot_y
-        matrix_data = self.ODMR_plot_xy  # the data in the matrix plot
-        data['frequency values (Hz)'] = np.array(freq_data)
-        data['count data (counts/s)'] = np.array(count_data)
-        data2['count data (counts/s)'] = np.array(matrix_data)  # saves the raw data used in the matrix NOT all only the size of the matrix
+        data['frequency (Hz)'] = self.odmr_plot_x
+        data['count data (counts/s)'] = self.odmr_plot_y
+        data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, :]
 
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.mw_power
         parameters['Run Time (s)'] = self.run_time
+        parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
         parameters['Start Frequency (Hz)'] = self.mw_start
         parameters['Stop Frequency (Hz)'] = self.mw_stop
         parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self.clock_frequency
-        parameters['Number of matrix lines (#)'] = self.number_of_lines
         if self.fc.current_fit != 'No Fit':
-            parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
+            parameters['Fit function'] = self.fc.current_fit
 
         # add all fit parameter to the saved data:
         for name, param in self.fc.current_fit_param.items():
             parameters[name] = str(param)
 
-        fig = self.draw_figure(cbar_range=colorscale_range,
-                               percentile_range=percentile_range
-                               )
+        fig = self.draw_figure(cbar_range=colorscale_range, percentile_range=percentile_range)
 
         self._save_logic.save_data(data,
                                    filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t',
                                    timestamp=timestamp,
                                    plotfig=fig)
 
@@ -778,22 +775,12 @@ class ODMRLogic(GenericLogic):
                                    filepath=filepath2,
                                    parameters=parameters,
                                    filelabel=filelabel2,
+                                   fmt='%.6e',
+                                   delimiter='\t',
                                    timestamp=timestamp)
 
         self.log.info('ODMR data saved to:\n{0}'.format(filepath))
-
-        if self._saveRawData:
-            raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
-            data3['count data'] = np.array(raw_data)  # saves the raw data, ALL of it so keep an eye on performance
-            self._save_logic.save_data(data3,
-                                       filepath=filepath3,
-                                       parameters=parameters,
-                                       filelabel=filelabel3,
-                                       timestamp=timestamp)
-
-            self.log.info('Raw data succesfully saved.')
-        else:
-            self.log.info('Raw data is NOT saved')
+        return
 
     def draw_figure(self, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
@@ -806,18 +793,17 @@ class ODMRLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        freq_data = self.ODMR_plot_x
-        count_data = self.ODMR_plot_y
-        fit_freq_vals = self.ODMR_fit_x
-        fit_count_vals = self.ODMR_fit_y
-        matrix_data = self.ODMR_plot_xy
+        freq_data = self.odmr_plot_x
+        count_data = self.odmr_plot_y
+        fit_freq_vals = self.odmr_fit_x
+        fit_count_vals = self.odmr_fit_y
+        matrix_data = self.odmr_plot_xy
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
-            cbar_range = [np.min(matrix_data), np.max(matrix_data)]
-
-        # Convert cbar_range to numpy array for division in the SI prefix calculation
-        cbar_range = np.array(cbar_range)
+            cbar_range = np.array([np.min(matrix_data), np.max(matrix_data)])
+        else:
+            cbar_range = np.array(cbar_range)
 
         prefix = ['', 'k', 'M', 'G', 'T']
         prefix_index = 0
