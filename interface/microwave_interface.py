@@ -58,7 +58,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     def off(self):
         """ 
         Switches off any microwave output.
-        Must return AFTER the device is actually running.
+        Must return AFTER the device is actually stopped.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -99,7 +99,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """ 
         Gets the frequency of the microwave output.
         Returns single float value if the device is in cw mode. 
-        Returns list if the device is in either list or sweep mode.
+        Returns list like [start, stop, step] if the device is in either list or sweep mode.
 
         @return [float, list]: frequency(s) currently set for this device in Hz
         """
