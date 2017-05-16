@@ -906,47 +906,47 @@ class ODMRLogic(GenericLogic):
 
         return fig
 
-    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power,
-                                 runtime, fit_function='No Fit',
-                                 save_after_meas=True, name_tag=''):
+    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power, runtime,
+                                 fit_function='No Fit', save_after_meas=True, name_tag=''):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
 
-        @return dict: a parameter container, containing all measurement results
-                      of the ODMR measurement.
+        @return 
         """
-
+        timeout = 30
+        start_time = time.time()
         while self.getState() != 'idle':
-            time.sleep(1)
+            time.sleep(0.5)
+            timeout -= (time.time() - start_time)
+            if timeout <= 0:
+                self.log.error('perform_odmr_measurement failed. Logic module was still locked '
+                               'and 30 sec timeout has been reached.')
+                return {}
 
         # set all relevant parameter:
-        self.mw_start = freq_start
-        self.mw_step = freq_step
-        self.mw_stop = freq_stop
-        self.mw_power = power
-        self.run_time = runtime
+        self.set_power(power)
+        self.set_sweep_frequencies(freq_start, freq_stop, freq_step)
+        self.set_runtime(runtime)
 
         # start the scan
         self.start_odmr_scan()
 
-        # check just the state of the optimizer
-        while self.getState() != 'idle' and not self.stopRequested:
+        # wait until the scan has started
+        while self.getState() != 'locked':
+            time.sleep(1)
+        # wait until the scan has finished
+        while self.getState() == 'locked':
             time.sleep(1)
 
-        old_fit = self.fc.current_fit
-        self.fc.set_current_fit(fit_function)
-        self.do_fit()
-        meas_param['ODMR frequency start (Hz)'] = self.mw_start
-        meas_param['ODMR frequency step (Hz)'] = self.mw_step
-        meas_param['ODMR frequency stop (Hz)'] = self.mw_stop
-        meas_param['ODMR power (dBm)'] = self.mw_power
-        meas_param['ODMR run time (s)'] = self.run_time
-        meas_param['ODMR measurement saved separetely'] = save_after_meas
+        # Perform fit if requested
+        if fit_function != 'No Fit':
+            self.do_fit(fit_function)
+            fit_params = self.fc.current_fit_param
+        else:
+            fit_params = None
 
+        # Save data if requested
         if save_after_meas:
-            timestamp = datetime.datetime.now()
-            self.save_ODMR_Data(tag=name_tag)
-            meas_param['ODMR measurement saved at time'] = timestamp
+            self.save_odmr_data(tag=name_tag)
 
-        self.fc.set_current_fit(old_fit)
-        return meas_param
+        return self.odmr_plot_x, self.odmr_plot_y, fit_params
