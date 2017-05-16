@@ -180,11 +180,6 @@ class ODMRLogic(GenericLogic):
         self._stopRequested = False
         # for clearing the ODMR data during a measurement
         self._clearOdmrData = False
-        # for saving of raw data
-        if 'saveRawData' in self._statusVariables:
-            self._saveRawData = self._statusVariables['saveRawData']
-        else:
-            self._saveRawData = False
 
         # Set/recall number of lines in the raw data matrix
         if 'number_of_lines' in self._statusVariables:
@@ -194,6 +189,8 @@ class ODMRLogic(GenericLogic):
 
         # Initalize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_plots()
+        # Raw data array
+        self.odmr_raw_data = np.zeros([self.number_of_lines, self.odmr_plot_x.size])
 
         # Switch off microwave and set CW frequency and power
         self.mw_off()
@@ -201,7 +198,7 @@ class ODMRLogic(GenericLogic):
         self.set_power(self.mw_power)
 
         # Connect signals
-        self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
+        self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -231,7 +228,6 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['mw_stop'] = self.mw_stop
         self._statusVariables['mw_step'] = self.mw_step
         self._statusVariables['run_time'] = self.run_time
-        self._statusVariables['saveRawData'] = self._saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
@@ -533,11 +529,6 @@ class ODMRLogic(GenericLogic):
             self._startTime = time.time()
             self.sigOdmrElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_sweeps)
 
-            if self._saveRawData:
-                self.log.info('Raw data saving...')
-            else:
-                self.log.info('Raw data NOT saved.')
-
             odmr_status = self._start_odmr_counter()
             if odmr_status < 0:
                 mode, is_running = self._mw_device.get_status()
@@ -552,6 +543,14 @@ class ODMRLogic(GenericLogic):
                 return -1
 
             self._initialize_odmr_plots()
+            # initialize raw_data array
+            estimated_number_of_lines = self.run_time * self.clock_frequency / self.odmr_plot_x.size
+            estimated_number_of_lines = int(1.5 * estimated_number_of_lines)  # Safety
+            if estimated_number_of_lines < self.number_of_lines:
+                estimated_number_of_lines = self.number_of_lines
+            self.log.warning('Estimated number of raw data lines: {0:d}'
+                             ''.format(estimated_number_of_lines))
+            self.odmr_raw_data = np.zeros([estimated_number_of_lines, self.odmr_plot_x.size])
             self.sigNextLine.emit()
             return 0
 
@@ -571,11 +570,6 @@ class ODMRLogic(GenericLogic):
 
             self._startTime = time.time() - self.elapsed_time
             self.sigOdmrElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_sweeps)
-
-            if self._saveRawData:
-                self.log.info('Raw data saving...')
-            else:
-                self.log.info('Raw data NOT saved.')
 
             odmr_status = self._start_odmr_counter()
             if odmr_status < 0:
@@ -607,13 +601,13 @@ class ODMRLogic(GenericLogic):
         """¨Set the option to clear the curret ODMR data.
 
         The clear operation has to be performed within the method
-        _scan_ODMR_line. This method just sets the flag for that. """
+        _scan_odmr_line. This method just sets the flag for that. """
         with self.threadlock:
             if self.getState() == 'locked':
                 self._clearOdmrData = True
         return
 
-    def _scan_ODMR_line(self):
+    def _scan_odmr_line(self):
         """ Scans one line in ODMR
 
         (from mw_start to mw_stop in steps of mw_step)
@@ -634,7 +628,8 @@ class ODMRLogic(GenericLogic):
             # if during the scan a clearing of the ODMR data is needed:
             if self._clearOdmrData:
                 self.elapsed_sweeps = 0
-                self._initialize_odmr_plots()
+                self.odmr_plot_y[:] = 0
+                self.odmr_raw_data[:, :] = 0
                 self._clearOdmrData = False
 
             # reset position so every line starts from the same frequency
@@ -651,21 +646,27 @@ class ODMRLogic(GenericLogic):
             self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
                 self.elapsed_sweeps + 1)
 
-            # React on the case, when the number of matrix lines have changed during the scan.
-            # Essentially, there are three cases which can happen:
-            curr_num_lines = self.odmr_plot_xy.shape[0]
-            if curr_num_lines > self.number_of_lines:
-                self.odmr_plot_xy = np.vstack(
-                    (new_counts, self.odmr_plot_xy[:self.number_of_lines - 1, :]))
-            elif curr_num_lines < self.number_of_lines:
-                self.odmr_plot_xy = np.vstack((new_counts, self.odmr_plot_xy, np.zeros(
-                    [self.number_of_lines - curr_num_lines - 1, new_counts.size])))
-            else:
-                self.odmr_plot_xy = np.vstack((new_counts, self.odmr_plot_xy[:-1, :]))
+            # Add new count data to raw_data array and append if array is too small
+            if self.elapsed_sweeps == (self.odmr_raw_data.shape[0] - 1):
+                expanded_array = np.zeros([self.odmr_raw_data.shape[0] + self.number_of_lines,
+                                           self.odmr_raw_data.shape[1]])
+                expanded_array[:self.elapsed_sweeps,:] = self.odmr_raw_data[:self.elapsed_sweeps,:]
+                self.odmr_raw_data = expanded_array
+                self.log.info('raw data array in ODMRLogic was not big enough for the entire '
+                              'measurement. Array will be expanded.\nOld array shape was '
+                              '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
+                              ''.format(self.odmr_raw_data.shape[0]-self.number_of_lines,
+                                        self.odmr_raw_data.shape[1],
+                                        self.odmr_raw_data.shape[0],
+                                        self.odmr_raw_data.shape[1]))
 
-            # Save raw data
-            #if self.saveRawData:
-            #    self.ODMR_raw_data[:, self._odmrscan_counter] = new_counts  # adds the ne odmr line to the overall np.array
+            # shift data in the array "up" and add new data at the "bottom"
+            self.odmr_raw_data[1:self.elapsed_sweeps + 1, :] = self.odmr_raw_data[
+                                                               :self.elapsed_sweeps, :]
+            self.odmr_raw_data[0, :] = new_counts
+
+            # Set plot slice of matrix
+            self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :]
 
             # Update elapsed time/sweeps
             self.elapsed_sweeps += 1
@@ -719,30 +720,27 @@ class ODMRLogic(GenericLogic):
                                     result_str_dict, self.fc.current_fit)
         return
 
-    def save_ODMR_Data(self, tag=None, colorscale_range=None, percentile_range=None):
+    def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
+        if tag is None:
+            tag = ''
 
-        # three paths to save the raw data (if desired), the odmr scan data and
-        # the matrix data.
+        # two paths to save the raw data and the odmr scan data.
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
         filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
-        filepath3 = self._save_logic.get_path_for_module(module_name='ODMR')
 
         timestamp = datetime.datetime.now()
 
-        if tag is not None and len(tag) > 0:
+        if len(tag) > 0:
             filelabel = tag + '_ODMR_data'
-            filelabel2 = tag + '_ODMR_data_matrix'
-            filelabel3 = tag + '_ODMR_data_raw'
+            filelabel2 = tag + '_ODMR_data_raw'
         else:
             filelabel = 'ODMR_data'
-            filelabel2 = 'ODMR_data_matrix'
-            filelabel3 = 'ODMR_data_raw'
+            filelabel2 = 'ODMR_data_raw'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data2 = OrderedDict()
-        data3 = OrderedDict()
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
         matrix_data = self.ODMR_plot_xy  # the data in the matrix plot
