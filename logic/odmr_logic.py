@@ -548,8 +548,8 @@ class ODMRLogic(GenericLogic):
             estimated_number_of_lines = int(1.5 * estimated_number_of_lines)  # Safety
             if estimated_number_of_lines < self.number_of_lines:
                 estimated_number_of_lines = self.number_of_lines
-            self.log.warning('Estimated number of raw data lines: {0:d}'
-                             ''.format(estimated_number_of_lines))
+            self.log.debug('Estimated number of raw data lines: {0:d}'
+                           ''.format(estimated_number_of_lines))
             self.odmr_raw_data = np.zeros([estimated_number_of_lines, self.odmr_plot_x.size])
             self.sigNextLine.emit()
             return 0
@@ -652,13 +652,13 @@ class ODMRLogic(GenericLogic):
                                            self.odmr_raw_data.shape[1]])
                 expanded_array[:self.elapsed_sweeps,:] = self.odmr_raw_data[:self.elapsed_sweeps,:]
                 self.odmr_raw_data = expanded_array
-                self.log.info('raw data array in ODMRLogic was not big enough for the entire '
-                              'measurement. Array will be expanded.\nOld array shape was '
-                              '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
-                              ''.format(self.odmr_raw_data.shape[0]-self.number_of_lines,
-                                        self.odmr_raw_data.shape[1],
-                                        self.odmr_raw_data.shape[0],
-                                        self.odmr_raw_data.shape[1]))
+                self.log.warning('raw data array in ODMRLogic was not big enough for the entire '
+                                 'measurement. Array will be expanded.\nOld array shape was '
+                                 '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
+                                 ''.format(self.odmr_raw_data.shape[0]-self.number_of_lines,
+                                           self.odmr_raw_data.shape[1],
+                                           self.odmr_raw_data.shape[0],
+                                           self.odmr_raw_data.shape[1]))
 
             # shift data in the array "up" and add new data at the "bottom"
             self.odmr_raw_data[1:self.elapsed_sweeps + 1, :] = self.odmr_raw_data[
@@ -932,7 +932,6 @@ class ODMRLogic(GenericLogic):
 
         while self.getState() != 'idle':
             time.sleep(1)
-            print('wait until ready')
 
         # set all relevant parameter:
         self.mw_start = freq_start

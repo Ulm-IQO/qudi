@@ -501,7 +501,6 @@ class ODMRGui(GUIBase):
         Determines the cb_min and cb_max values for the matrix plot
         """
         matrix_image = self.odmr_matrix_image.image
-        print(type(matrix_image[0,0]))
 
         # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
         # Otherwise, calculate cb range from percentiles.
