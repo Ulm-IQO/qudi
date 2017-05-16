@@ -352,6 +352,14 @@ class ODMRGui(GUIBase):
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
+            self._mw.power_DoubleSpinBox.setEnabled(False)
+            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.start_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.step_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.runtime_DoubleSpinBox.setEnabled(False)
+            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.mode_ComboBox.setEnabled(False)
             self.sigStartOdmrScan.emit()
         else:
             self._mw.action_run_stop.setEnabled(False)
@@ -363,11 +371,19 @@ class ODMRGui(GUIBase):
         if is_checked:
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
+            self._mw.power_DoubleSpinBox.setEnabled(False)
+            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.start_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.step_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.runtime_DoubleSpinBox.setEnabled(False)
+            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.mode_ComboBox.setEnabled(False)
             self.sigContinueOdmrScan.emit()
         else:
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
-            self.sigStopODMRScan.emit()
+            self.sigStopOdmrScan.emit()
         return
 
     def change_cw_mode(self, txt):
@@ -375,6 +391,8 @@ class ODMRGui(GUIBase):
         if txt == 'Off':
             self.sigMwOff.emit()
         if txt == 'CW':
+            self._mw.power_DoubleSpinBox.setEnabled(False)
+            self._mw.frequency_DoubleSpinBox.setEnabled(False)
             self.sigCwMwOn.emit()
         return
 
@@ -390,6 +408,14 @@ class ODMRGui(GUIBase):
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.clear_odmr_PushButton.setEnabled(True)
             self._mw.action_run_stop.setEnabled(True)
+            self._mw.power_DoubleSpinBox.setEnabled(False)
+            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.start_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.step_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.runtime_DoubleSpinBox.setEnabled(False)
+            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.mode_ComboBox.setEnabled(False)
             if not self._mw.action_run_stop.isChecked():
                 self._mw.action_run_stop.blockSignals(True)
                 self._mw.action_run_stop.setChecked(True)
@@ -402,6 +428,12 @@ class ODMRGui(GUIBase):
             self._mw.action_resume_odmr.setEnabled(True)
             self._mw.clear_odmr_PushButton.setEnabled(False)
             self._mw.action_run_stop.setEnabled(True)
+            self._mw.start_freq_DoubleSpinBox.setEnabled(True)
+            self._mw.step_freq_DoubleSpinBox.setEnabled(True)
+            self._mw.stop_freq_DoubleSpinBox.setEnabled(True)
+            self._mw.runtime_DoubleSpinBox.setEnabled(True)
+            self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.mode_ComboBox.setEnabled(True)
             if self._mw.action_run_stop.isChecked():
                 self._mw.action_run_stop.blockSignals(True)
                 self._mw.action_run_stop.setChecked(False)
@@ -410,6 +442,13 @@ class ODMRGui(GUIBase):
                 self._mw.action_resume_odmr.blockSignals(True)
                 self._mw.action_resume_odmr.setChecked(False)
                 self._mw.action_resume_odmr.blockSignals(False)
+
+        if is_running:
+            self._mw.power_DoubleSpinBox.setEnabled(False)
+            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+        else:
+            self._mw.power_DoubleSpinBox.setEnabled(True)
+            self._mw.frequency_DoubleSpinBox.setEnabled(True)
 
         # Update CW mode combobox
         self._mw.mode_ComboBox.blockSignals(True)
@@ -462,10 +501,11 @@ class ODMRGui(GUIBase):
         Determines the cb_min and cb_max values for the matrix plot
         """
         matrix_image = self.odmr_matrix_image.image
+        print(type(matrix_image[0,0]))
 
         # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
         # Otherwise, calculate cb range from percentiles.
-        if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.max(matrix_image) == 0.0:
+        if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.max(matrix_image) < 0.1:
             cb_min = self._mw.odmr_cb_min_DoubleSpinBox.value()
             cb_max = self._mw.odmr_cb_max_DoubleSpinBox.value()
         else:
