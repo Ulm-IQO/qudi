@@ -88,6 +88,7 @@ class ODMRGui(GUIBase):
     sigNumberOfLinesChanged = QtCore.Signal(int)
     sigRuntimeChanged = QtCore.Signal(float)
     sigDoFit = QtCore.Signal(str)
+    sigSaveMeasurement = QtCore.Signal(str, list, list)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -261,6 +262,7 @@ class ODMRGui(GUIBase):
         self.sigRuntimeChanged.connect(self._odmr_logic.set_runtime, QtCore.Qt.QueuedConnection)
         self.sigNumberOfLinesChanged.connect(self._odmr_logic.set_matrix_line_number,
                                              QtCore.Qt.QueuedConnection)
+        self.sigSaveMeasurement.connect(self._odmr_logic.save_odmr_data, QtCore.Qt.QueuedConnection)
 
         # Update signals coming from logic:
         self._odmr_logic.sigParameterUpdated.connect(self.update_parameter,
@@ -310,6 +312,7 @@ class ODMRGui(GUIBase):
         self.sigMwSweepFreqChanged.disconnect()
         self.sigRuntimeChanged.disconnect()
         self.sigNumberOfLinesChanged.disconnect()
+        self.sigSaveMeasurement.disconnect()
         self._mw.odmr_cb_manual_RadioButton.clicked.disconnect()
         self._mw.odmr_cb_centiles_RadioButton.clicked.disconnect()
         self._mw.clear_odmr_PushButton.clicked.disconnect()
@@ -696,7 +699,8 @@ class ODMRGui(GUIBase):
             high_centile = self._mw.odmr_cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
-        self._odmr_logic.save_ODMR_Data(filetag, colorscale_range=cb_range, percentile_range=pcile_range)
+        self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
+        return
 
     def restore_defaultview(self):
         self._mw.restoreGeometry(self.mwsettings.value("geometry", ""))
