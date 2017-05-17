@@ -228,13 +228,13 @@ class ODMRGui(GUIBase):
         self._mw.stop_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_freq)
         self._mw.power_DoubleSpinBox.editingFinished.connect(self.change_power)
         self._mw.runtime_DoubleSpinBox.editingFinished.connect(self.change_runtime)
-        self._mw.odmr_cb_max_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
-        self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
-        self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
-        self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.refresh_odmr_colorbar)
+        self._mw.odmr_cb_max_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
+        self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
+        self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
+        self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
         # Internal trigger signals
-        self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.refresh_odmr_colorbar)
-        self._mw.odmr_cb_centiles_RadioButton.clicked.connect(self.refresh_odmr_colorbar)
+        self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.colorscale_changed)
+        self._mw.odmr_cb_centiles_RadioButton.clicked.connect(self.colorscale_changed)
         self._mw.clear_odmr_PushButton.clicked.connect(self.clear_odmr_data)
         self._mw.action_run_stop.triggered.connect(self.run_stop_odmr)
         self._mw.action_resume_odmr.triggered.connect(self.resume_odmr)
@@ -477,25 +477,33 @@ class ODMRGui(GUIBase):
         self.odmr_image.setData(odmr_data_x, odmr_data_y)
         # Update raw data matrix plot
         cb_range = self.get_matrix_cb_range()
+        self.update_colorbar(cb_range)
         self.odmr_matrix_image.setRect(QtCore.QRectF(odmr_data_x[0],
                                                      0,
                                                      np.abs(odmr_data_x[-1] - odmr_data_x[0]),
                                                      odmr_matrix.shape[0]))
         self.odmr_matrix_image.setImage(image=odmr_matrix.transpose(),
                                         levels=(cb_range[0], cb_range[1]))
-        self.refresh_odmr_colorbar()
+
         return
 
-    def refresh_odmr_colorbar(self):
-        """ 
-        Update the colorbar to a new scaling.
-        Calls the refresh method from colorbar.
+    def colorscale_changed(self):
+        """
+        Updates the range of the displayed colorscale in both the colorbar and the matrix plot.
         """
         cb_range = self.get_matrix_cb_range()
-        self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
+        self.update_colorbar(cb_range)
+        matrix_image = self.odmr_matrix_image.image
+        self.odmr_matrix_image.setImage(image=matrix_image, levels=(cb_range[0], cb_range[1]))
+        return
 
-        # TODO: Is this necessary?  It is not in refresh_xy_colorbar in confocal gui
-        self._mw.odmr_cb_PlotWidget.update()
+    def update_colorbar(self, cb_range):
+        """ 
+        Update the colorbar to a new range.
+        
+        @param list cb_range: List or tuple containing the min and max values for the cb range
+        """
+        self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
         return
 
     def get_matrix_cb_range(self):
@@ -522,6 +530,10 @@ class ODMRGui(GUIBase):
 
         cb_range = [cb_min, cb_max]
         return cb_range
+
+    def restore_defaultview(self):
+        self._mw.restoreGeometry(self.mwsettings.value("geometry", ""))
+        self._mw.restoreState(self.mwsettings.value("windowState", ""))
 
     def update_elapsedtime(self, elapsed_time, scanned_lines):
         """ Updates current elapsed measurement time and completed frequency sweeps """
@@ -635,28 +647,6 @@ class ODMRGui(GUIBase):
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
         return
 
-
-
-    def update_matrix_axes(self):
-        """ Adjust the x and y axes in the image according to the input. """
-
-        self.odmr_matrix_image.setRect(
-            QtCore.QRectF(
-                self._odmr_logic.mw_start,
-                0,
-                self._odmr_logic.mw_stop - self._odmr_logic.mw_start,
-                self._odmr_logic.number_of_lines
-            ))
-
-
-
-
-
-
-
-
-
-
     ############################################################################
     #                           Change Methods                                 #
     ############################################################################
@@ -701,7 +691,3 @@ class ODMRGui(GUIBase):
 
         self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
         return
-
-    def restore_defaultview(self):
-        self._mw.restoreGeometry(self.mwsettings.value("geometry", ""))
-        self._mw.restoreState(self.mwsettings.value("windowState", ""))
