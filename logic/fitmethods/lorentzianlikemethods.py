@@ -343,9 +343,14 @@ def estimate_lorentzian_dip(self, x_axis, data, params):
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
-
     # check if parameters make sense
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # check if input x-axis is ordered and increasing
+    sorted_indices = np.argsort(x_axis)
+    if not np.all(sorted_indices == np.arange(len(x_axis))):
+        x_axis = x_axis[sorted_indices]
+        data = data[sorted_indices]
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
