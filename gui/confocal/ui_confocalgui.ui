@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1261</width>
-    <height>1207</height>
+    <height>1362</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1261</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1434,6 +1434,8 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_zoom"/>
+   <addaction name="action_full_range_xy"/>
+   <addaction name="action_full_range_z"/>
    <addaction name="action_TiltCorrection"/>
   </widget>
   <widget class="QDockWidget" name="tilt_correction_dockWidget">
@@ -2186,6 +2188,30 @@
    </property>
    <property name="toolTip">
     <string>Show or hide scan line display</string>
+   </property>
+  </action>
+  <action name="action_full_range_xy">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
+   </property>
+   <property name="text">
+    <string>Full range XY</string>
+   </property>
+   <property name="toolTip">
+    <string>Set X and Y directions to full scan range</string>
+   </property>
+  </action>
+  <action name="action_full_range_z">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
+   </property>
+   <property name="text">
+    <string>Full range Z</string>
+   </property>
+   <property name="toolTip">
+    <string>Set Z direction to full scan range</string>
    </property>
   </action>
  </widget>
