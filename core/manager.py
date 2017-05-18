@@ -134,18 +134,13 @@ class Manager(QtCore.QObject):
             try:
                 if 'serverport' in self.tree['global']:
                     remotePort = self.tree['global']['serverport']
-                    logger.info('Remote port is configured to {0}'.format(
-                        remotePort))
+                    logger.info('Remote port is configured to {0}'.format(remotePort))
                 else:
                     remotePort = 12345
-                    logger.info('Remote port is the standard {0}'.format(
-                        remotePort))
+                    logger.info('Remote port is the standard {0}'.format(remotePort))
                 serveraddress = 'localhost'
                 if 'serveraddress' in self.tree['global']:
                     serveraddress = self.tree['global']['serveraddress']
-                else:
-                    # bind to all available interfaces
-                    serveraddress = ''
                 if 'certfile' in self.tree['global']:
                     certfile = self.tree['global']['certfile']
                 else:
