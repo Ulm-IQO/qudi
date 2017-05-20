@@ -303,10 +303,10 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Get the image for the display from the logic:
-        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
+        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3]
 
         # Load the image in the display:
-        self.roi_map_image = pg.ImageItem(self.roi_xy_image_data)
+        self.roi_map_image = pg.ImageItem(image=self.roi_xy_image_data, axisOrder='row-major')
         self.roi_map_image.setRect(
             QtCore.QRectF(
                 self._confocal_logic.image_x_range[0],
@@ -536,8 +536,8 @@ class PoiManagerGui(GUIBase):
 
     def _redraw_roi_image(self):
 
-        # the image data is the fluorescence part, transposed for appropriate plotting
-        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
+        # the image data is the fluorescence part
+        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3]
 
         # Also get the x and y range limits and hold them locally
         self.roi_map_xmin = np.min(self._poi_manager_logic.roi_map_data[:, :, 0])
