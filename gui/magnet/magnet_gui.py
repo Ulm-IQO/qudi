@@ -218,12 +218,12 @@ class MagnetGui(GUIBase):
        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.move_rel_DockWidget)
        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(3), self._mw.move_abs_DockWidget)
         self.set_default_view_main_window()
-        arr01 = self._magnet_logic.get_2d_data_matrix()[:, :].transpose()
+        raw_data_2d = self._magnet_logic.get_2d_data_matrix()
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
-        ini_pos_x_crosshair = len(arr01) / 2
-        ini_pos_y_crosshair = len(arr01) / 2
+        ini_pos_x_crosshair = len(raw_data_2d) / 2
+        ini_pos_y_crosshair = len(raw_data_2d) / 2
 
         # After a movement command, the device should not block the program, at
         # least on the hardware level. That meant that the dll (or whatever
@@ -269,7 +269,10 @@ class MagnetGui(GUIBase):
         self._set_vel_display_axis0()
         self._set_vel_display_axis1()
 
-        self._2d_alignment_ImageItem = pg.ImageItem(self._magnet_logic.get_2d_data_matrix())
+        self._2d_alignment_ImageItem = pg.ImageItem(
+            image=self._magnet_logic.get_2d_data_matrix())
+          #  axisOrder='row-major')
+
         axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
         self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0[0],
                                                            axis1[0],
