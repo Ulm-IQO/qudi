@@ -848,8 +848,8 @@ class MagnetLogic(GenericLogic):
 
         # that is for the matrix image. +1 because number of points and not
         # number of steps are needed:
-        num_points_axis0 = (axis0_range//axis0_step) + 1
-        num_points_axis1 = (axis1_range//axis1_step) + 1
+        num_points_axis0 = int(axis0_range // axis0_step) + 1
+        num_points_axis1 = int(axis1_range // axis1_step) + 1
         matrix = np.zeros((num_points_axis0, num_points_axis1))
 
         # data axis0:
@@ -971,14 +971,17 @@ class MagnetLogic(GenericLogic):
             axis0_start = self._backmap[0][self.align_2d_axis0_name]
             axis1_start = self._backmap[0][self.align_2d_axis1_name]
 
-            self._2D_data_matrix, \
-            self._2D_axis0_data,\
-            self._2D_axis1_data = self._prepare_2d_graph(axis0_start, self.align_2d_axis0_range,
-                                                      self.align_2d_axis0_step, axis1_start,
-                                                      self.align_2d_axis1_range, self.align_2d_axis1_step)
+            prepared_graph = self._prepare_2d_graph(
+                axis0_start,
+                self.align_2d_axis0_range,
+                self.align_2d_axis0_step,
+                axis1_start,
+                self.align_2d_axis1_range,
+                self.align_2d_axis1_step)
+
+            self._2D_data_matrix, self._2D_axis0_data, self._2D_axis1_data = prepared_graph
 
             self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
-
 
             if stepwise_meas:
                 # just make it to an empty dict
@@ -1378,8 +1381,8 @@ class MagnetLogic(GenericLogic):
         #FIXME: that should be run through the TaskRunner! Implement the call
         #       by not using this connection!
 
-        if self._counter_logic.get_counting_mode() != 'continuous':
-            self._counter_logic.set_counting_mode(mode='continuous')
+        if self._counter_logic.get_counting_mode() != 'CONTINUOUS':
+            self._counter_logic.set_counting_mode(mode='CONTINUOUS')
 
         self._counter_logic.start_saving()
         time.sleep(self._fluorescence_integration_time)
