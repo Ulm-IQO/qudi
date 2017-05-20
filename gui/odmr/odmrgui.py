@@ -145,7 +145,9 @@ class ODMRGui(GUIBase):
         self.sigClearPlots.connect(self._odmr_logic.clear_odmr_plots)
 
         # Get the image from the logic
-        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
+        self.odmr_matrix_image = pg.ImageItem(
+            image=self._odmr_logic.ODMR_plot_xy,
+            axisOrder='row-major')
         self.odmr_matrix_image.setRect(
             QtCore.QRectF(
                 self._odmr_logic.mw_start,
@@ -437,7 +439,7 @@ class ODMRGui(GUIBase):
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
-        odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
+        odmr_image_data = self._odmr_logic.ODMR_plot_xy
 
         cb_range = self.get_matrix_cb_range()
 
