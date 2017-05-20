@@ -88,7 +88,9 @@ class VoltScanGui(GUIBase):
         self._mw = VoltScanMainWindow()
 
         # Get the image from the logic
-        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
+        self.odmr_matrix_image = pg.ImageItem(
+            image=self._odmr_logic.ODMR_plot_xy,
+            axisOrder='row-major')
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,0,self._odmr_logic.mw_stop-self._odmr_logic.mw_start,self._odmr_logic.number_of_lines))
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y,
@@ -285,12 +287,7 @@ class VoltScanGui(GUIBase):
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
-#        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,0,self._odmr_logic.mw_stop-self._odmr_logic.mw_start,self._odmr_logic.number_of_lines))
-#        self.refresh_odmr_colorbar()
-
-
-        odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
+        odmr_image_data = self._odmr_logic.ODMR_plot_xy
 
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
