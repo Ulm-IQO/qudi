@@ -49,7 +49,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
     sigStateChanged = QtCore.Signal(object)  # (module name, state change)
     _modclass = 'base'
     _modtype = 'base'
-    _in = dict() # legacy
     _connectors = dict()
 
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
@@ -115,11 +114,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
             self.connectors[con] = OrderedDict()
             self.connectors[con]['class'] = self._connectors[con]
             self.connectors[con]['object'] = None
-        # really very much legacy (deprecated soon)
-        for con in self._in:
-            self.connectors[con] = OrderedDict()
-            self.connectors[con]['class'] = self._in[con]
-            self.connectors[con]['object'] = None
 
         # add config options
         for oname, opt in self._config_options.items():
@@ -131,6 +125,7 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
 
         # add status var defaults
         for vname, var in self._stat_vars.items():
+            print('varinit', vname, var.var_name, var.name, var.default)
             setattr(self, var.var_name, var.default)
 
         self._manager = manager
@@ -166,10 +161,10 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
     @QtCore.Slot(result=bool)
     def _wrap_activation(self):
         """ Restore vars and catch exceptions during activation. """
-        print(self._stat_vars)
         # add status vars
         for vname, var in self._stat_vars.items():
             if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
+                print('varact', vname, var.var_name, var.name, var.default, self._statusVariables[var.name])
                 setattr(self, var.var_name, self._statusVariables[var.name])
 
         self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
@@ -187,14 +182,16 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         # save status vars
         for vname, var in self._stat_vars.items():
             if hasattr(self, var.var_name):
+                print('varde', vname, var.var_name, var.name, var.default, getattr(self, var.var_name))
                 self._statusVariables[var.name] = getattr(self, var.var_name)
 
         self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
         try:
             self.deactivate()
         except:
-            self.log.exception('Error during activation:')
+            self.log.exception('Error during deactivation:')
             return False
+        print('desv', self._statusVariables)
         return True
 
     def on_activate(self):
