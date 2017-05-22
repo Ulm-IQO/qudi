@@ -143,6 +143,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         """
         is_running = bool(int(float(self._gpib_connection.query('OUTP:STAT?'))))
         mode = self._gpib_connection.query(':FREQ:MODE?').strip('\n').lower()
+        if mode == 'swe':
+            mode = 'sweep'
         return mode, is_running
 
     def get_power(self):
@@ -178,9 +180,11 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         actual_power = self.get_power()
 
         if original_mode == 'list':
-            self.set_list()
+            self._gpib_connection.write(':FREQ:MODE LIST')
+            self._gpib_connection.write('*WAI')
         elif original_mode == 'sweep':
-            self.set_sweep()
+            self._gpib_connection.write(':FREQ:MODE SWEEP')
+            self._gpib_connection.write('*WAI')
         return actual_power
 
     def get_frequency(self):
@@ -198,8 +202,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         elif 'sweep' in mode:
             start = float(self._gpib_connection.query(':FREQ:STAR?'))
             stop = float(self._gpib_connection.query(':FREQ:STOP?'))
-            step = float(self._gpib_connection.query(':SWE:FREQ:STEP?'))
-            return_val = [start, stop, step]
+            step = float(self._gpib_connection.query(':SWE:STEP?'))
+            return_val = [start+step, stop, step]
         elif 'list' in mode:
             # Exclude first frequency entry (duplicate due to trigger issues)
             frequency_str = self._gpib_connection.query(':LIST:FREQ?').split(',', 1)[1]
@@ -336,8 +340,17 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':FREQ:MODE SWEEP')
-        self._gpib_connection.write('*WAI')
+        current_mode, is_running = self.get_status()
+        if is_running:
+            if current_mode == 'sweep':
+                return 0
+            else:
+                self.off()
+
+        if current_mode != 'sweep':
+            self._gpib_connection.write(':FREQ:MODE SWEEP')
+            self._gpib_connection.write('*WAI')
+
         self._gpib_connection.write(':OUTP:STAT ON')
         dummy, is_running = self.get_status()
         while not is_running:
@@ -358,49 +371,25 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         """
         self._gpib_connection.write(':FREQ:MODE SWEEP')
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':SWE:GEN STEP')
-        self._gpib_connection.write('*WAI')
+
 
         if start is not None and stop is not None and step is not None:
-            self._gpib_connection.write(':FREQ:START {0}'.format(start - step))
-            self._gpib_connection.write(':FREQ:STOP {0}'.format(stop))
-            self._gpib_connection.write(':SWE:FREQ:STEP {0}'.format(step))
+            self._gpib_connection.write(':SWE:MODE STEP')
+            self._gpib_connection.write(':SWE:SPAC LIN')
+            self._gpib_connection.write('*WAI')
+            self._gpib_connection.write(':FREQ:START {0:f}'.format(start - step))
+            self._gpib_connection.write(':FREQ:STOP {0:f}'.format(stop))
+            self._gpib_connection.write(':SWE:STEP:LIN {0:f}'.format(step))
             self._gpib_connection.write('*WAI')
 
         if power is not None:
-            actual_power = self.set_power(power)
-        else:
-            actual_power = self.get_power()
+            self._gpib_connection.write(':POW {0:f}'.format(power))
+            self._gpib_connection.write('*WAI')
 
+        actual_power = self.get_power()
         freq_list = self.get_frequency()
         mode, dummy = self.get_status()
         return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
-
-    # def set_sweep(self, start, stop, step, power):
-    #     """ Activate sweep mode on the microwave source
-    #
-    #     @param start float: start frequency
-    #     @param stop float: stop frequency
-    #     @param step float: frequency step
-    #     @param power float: output power
-    #     @return int: number of frequency steps generated
-    #     """
-    #     self._gpib_connection.write(':SOUR:POW ' + str(power))
-    #     self._gpib_connection.write('*WAI')
-    #
-    #     self._gpib_connection.write(':SWE:MODE STEP')
-    #     self._gpib_connection.write(':SOUR:FREQ:STAR ' + str(start-step))
-    #     self._gpib_connection.write(':SOUR:FREQ:STOP ' + str(stop))
-    #     self._gpib_connection.write(':SOUR:SWE:SPAC LIN')
-    #     self._gpib_connection.write(':SOUR:SWE:STEP ' + str(step))
-    #     self._gpib_connection.write(':TRIG1:SWE:SOUR EXT')
-    #     self._gpib_connection.write(':TRIG1:SLOP POS')
-    #     self._gpib_connection.write('*WAI')
-    #     n = int(np.round(float(self._gpib_connection.query(':SWE:FREQ:POIN?'))))
-    #     # print(n)
-    #     # if n != len(self._mw_frequency_list):
-    #     #     return -1
-    #     return n - 1
 
     def reset_sweeppos(self):
         """ 
