@@ -287,6 +287,8 @@ class AWG7122C(Base, PulserInterface):
                                  class variable status_dic.)
         """
         self.tell('AWGC:RUN\n')
+        while not self.get_status()[0]==1:
+            time.sleep(0.25)
         return self.get_status()[0]
 
     def pulser_off(self):
