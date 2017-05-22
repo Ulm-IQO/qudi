@@ -42,24 +42,20 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     _modtype = 'hardware'
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.log.error(
-                'This is MWSMIQ: did not find >>gpib_address<< in '
-                'configration.')
+            self.log.error('Did not find >>gpib_address<< in configration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
             self._gpib_timeout = 10*1000
-            self.log.error(
-                'This is MWSMIQ: did not find >>gpib_timeout<< in '
-                'configration. I will set it to 10 seconds.')
+            self.log.warning('Did not find >>gpib_timeout<< in configration. '
+                             'Will set it to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -67,20 +63,19 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            self.log.error(
-                'This is MWSMIQ: could not connect to the GPIB '
-                'address >>{}<<.'.format(self._gpib_address))
+            self.log.error('This is MWSMIQ: could not connect to GPIB address >>{}<<.'
+                           ''.format(self._gpib_address))
             raise
 
         self.log.info('MWSMIQ initialised and connected to hardware.')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
+        return
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
-        """
-
+        """ Cleanup performed during deactivation of the module. """
         self._gpib_connection.close()
         self.rm.close()
+        return
 
     def get_limits(self):
         """ Create an object containing parameter limits for this microwave source.
@@ -125,56 +120,77 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         limits.sweep_maxstep = limits.max_frequency
         return limits
 
-    def on(self):
-        """ Switches on any preconfigured microwave output.
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
-
-        return 0
-
     def off(self):
-        """ Switches off any microwave output.
+        """ 
+        Switches off any microwave output.
+        Must return AFTER the device is actually stopped.
 
         @return int: error code (0:OK, -1:error)
         """
-
-        if self._gpib_connection.query(':FREQ:MODE?') != 'CW':
-            self._gpib_connection.write(':FREQ:MODE CW')
-        self._gpib_connection.write(':OUTP OFF')
+        self._gpib_connection.write('OUTP:STAT OFF')
         self._gpib_connection.write('*WAI')
-
+        while int(float(self._gpib_connection.query('OUTP:STAT?'))) != 0:
+            time.sleep(0.2)
         return 0
+
+    def get_status(self):
+        """ 
+        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and 
+        the output state (stopped, running)
+
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False] 
+        """
+        is_running = bool(int(float(self._gpib_connection.query('OUTP:STAT?'))))
+        mode = self._gpib_connection.query(':FREQ:MODE?').strip('\n').lower()
+        return mode, is_running
 
     def get_power(self):
-        """ Gets the microwave output power.
+        """ 
+        Gets the microwave output power. 
 
         @return float: the power set at the device in dBm
         """
         return float(self._gpib_connection.query(':POW?'))
 
-    def set_power(self, power=0.):
-        """ Sets the microwave output power.
+    def set_power(self, power):
+        """ 
+        Sets the microwave output power. 
 
-        @param float power: the power (in dBm) set for this device
+        @param float power: The power to set in dBm
 
-        @return int: error code (0:OK, -1:error)
+        @return float: the power set at the device in dBm
         """
-        if power is not None:
-            self._gpib_connection.write(':POW {0:f}'.format(power))
-            return 0
-        else:
-            return -1
+        self._gpib_connection.write(':POW {0:f}'.format(power))
+        while int(float(self._gpib_connection.query('*OPC?'))) != 1:
+            time.sleep(0.2)
+        return self.get_power()
 
     def get_frequency(self):
-        """ Gets the frequency of the microwave output.
+        """ 
+        Gets the frequency of the microwave output.
+        Returns single float value if the device is in cw mode. 
+        Returns list like [start, stop, step] if the device is in sweep mode.
+        Returns list of frequencies if the device is in list mode.
 
-        @return float: frequency (in Hz), which is currently set for this device
+        @return [float, list]: frequency(s) currently set for this device in Hz
         """
-        return float(self._gpib_connection.query(':FREQ?'))
+        mode, is_running = self.get_status()
+        if 'cw' in mode:
+            return_val = float(self._gpib_connection.query(':FREQ?'))
+        elif 'sweep' in mode:
+            start = float(self._gpib_connection.query(':FREQ:STAR?'))
+            stop = float(self._gpib_connection.query(':FREQ:STOP?'))
+            step = float(self._gpib_connection.query(':SWE:FREQ:STEP?'))
+            return_val = [start, stop, step]
+        elif 'list' in mode:
+            stop_index = int(float(self._gpib_connection.query(':LIST:STOP?')))
+            self._gpib_connection.write(':LIST:IND {0:d}'.format(stop_index))
+            stop = float(self._gpib_connection.query(':LIST:FREQ?'))
+            self._gpib_connection.write(':LIST:IND 0')
+            start = float(self._gpib_connection.query(':LIST:FREQ?'))
+            step = (stop - start) / stop_index
+            return_val = np.arange(start, stop + step, step)
+        return return_val
 
     def set_frequency(self, freq=None):
         """ Sets the frequency of the microwave output.
@@ -189,77 +205,163 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         else:
             return -1
 
-    def set_cw(self, freq=None, power=None, useinterleave=None):
-        """ Sets the MW mode to cw and additionally frequency and power
+    def cw_on(self):
+        """ 
+        Switches on cw microwave output. 
+        Must return AFTER the device is actually running.
 
-        @param float freq: frequency to set in Hz
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connection.write(':OUTP:STAT ON')
+        self._gpib_connection.write('*WAI')
+        dummy, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            dummy, is_running = self.get_status()
+        return 0
+
+    def set_cw(self, frequency=None, power=None):
+        """ 
+        Configures the device for cw-mode and optionally sets frequency and/or power
+
+        @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
         @param bool useinterleave: If this mode exists you can choose it.
 
-        @return int: error code (0:OK, -1:error)
+        @return float, float, str: current frequency in Hz, current power in dBm, current mode
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        error = 0
         self._gpib_connection.write(':FREQ:MODE CW')
+        self._gpib_connection.write('*WAI')
 
-        if freq is not None:
-            error = self.set_frequency(freq)
-        else:
-            return -1
+        if frequency is not None:
+            self._gpib_connection.write(':FREQ {0:f}'.format(frequency))
+            while int(float(self._gpib_connection.query('*OPC?'))) != 1:
+                time.sleep(0.2)
+
         if power is not None:
-            error = self.set_power(power)
-        else:
-            return -1
-        return error
+            actual_power = self.set_power(power)
 
-    def set_list(self, freq=None, power=None):
-        """ Sets the MW mode to list mode
+        mode, dummy = self.get_status()
+        actual_freq = self.get_frequency()
+        return actual_freq, actual_power, mode
 
-        @param list freq: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
+    def list_on(self):
+        """
+        Switches on the list mode microwave output.
+        Must return AFTER the device is actually running.
 
         @return int: error code (0:OK, -1:error)
         """
-        error = 0
-#        if self.set_cw(freq[0],power) != 0:
-#            error = -1
+        self._gpib_connection.write(':FREQ:MODE LIST')
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:DEL:ALL')
+        self._gpib_connection.write(':OUTP:STAT ON')
+        dummy, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            dummy, is_running = self.get_status()
+        return 0
+
+    # def list_on(self):
+    #     """ Switches on the list mode.
+    #
+    #     @return int: error code (1: ready, 0:not ready, -1:error)
+    #     """
+    #     self._gpib_connection.write(':OUTP ON')
+    #     self._gpib_connection.write('*WAI')
+    #     self._gpib_connection.write(':LIST:LEARN')
+    #     self._gpib_connection.write('*WAI')
+    #     # If there are timeout  problems after this command, update the smiq
+    #     # firmware to > 5.90 as there was a problem with excessive wait times
+    #     # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
+    #     self._gpib_connection.write(':FREQ:MODE LIST')
+    #     self._gpib_connection.write('*WAI')
+    #     return int(self._gpib_connection.query('*OPC?'))
+
+    def set_list(self, frequency=None, power=None):
+        """ 
+        Configures the device for list-mode and optionally sets frequencies and/or power
+
+        @param list frequency: list of frequencies in Hz
+        @param float power: MW power of the frequency list in dBm
+
+        @return list, float, str: current frequencies in Hz, current power in dBm, current mode
+        """
+        self._gpib_connection.write(':FREQ:MODE LIST')
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(":LIST:SEL 'ODMR'")
+        self._gpib_connection.write(':LIST:TYPE FREQ')
+        self._gpib_connection.write(':LIST:IND 0')
 
-        # put al frequencies into a string, first element is doubled
-        # so there are n+1 list entries for scanning n frequencies
-        # due to counter/trigger issues
-        freqstring = ' {0:f},'.format(freq[0])
-        for f in freq[:-1]:
-            freqstring += ' {0:f},'.format(f)
-        freqstring += ' {0:f}'.format(freq[-1])
+        if frequency is not None:
+            s = ' {0:f},'.format(frequency[0])
+            for f in frequency[:-1]:
+                s += ' {0:f},'.format(f)
+            s += ' {0:f}'.format(frequency[-1])
+            self._gpib_connection.write(':LIST:FREQ' + s)
+            self._gpib_connection.write(':LIST:STAR 0')
+            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)))
+            self._gpib_connection.write(':LIST:MODE MAN')
+            self._gpib_connection.write(':LIST:IND 0')
+            self._gpib_connection.write('*WAI')
+        actual_freq = self.get_frequency()
 
-        freqcommand = ':LIST:FREQ' + freqstring
-        #print(freqcommand)
-        self._gpib_connection.write(freqcommand)
-        self._gpib_connection.write('*WAI')
+        if power is not None:
+            actual_power = self.set_power(power)
+        else:
+            actual_power = self.get_power()
 
-        # there are n+1 list entries for scanning n frequencies
-        # due to counter/trigger issues
-        powcommand = ':LIST:POW {0}{1}'.format(power, (', ' + str(power)) * len(freq))
-        #print(powcommand)
-        self._gpib_connection.write(powcommand)
+        mode, dummy = self.get_status()
+        return actual_freq, actual_power, mode
 
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:MODE STEP')
-        self._gpib_connection.write('*WAI')
-
-        n = int(np.round(float(self._gpib_connection.query(':LIST:FREQ:POIN?'))))
-
-        if n != len(freq) + 1:
-            error = -1
-        return error
+#     def set_list(self, freq=None, power=None):
+#         """ Sets the MW mode to list mode
+#
+#         @param list freq: list of frequencies in Hz
+#         @param float power: MW power of the frequency list in dBm
+#
+#         @return int: error code (0:OK, -1:error)
+#         """
+#         error = 0
+# #        if self.set_cw(freq[0],power) != 0:
+# #            error = -1
+#         self._gpib_connection.write('*WAI')
+#         self._gpib_connection.write(':LIST:DEL:ALL')
+#         self._gpib_connection.write('*WAI')
+#         self._gpib_connection.write(":LIST:SEL 'ODMR'")
+#
+#         # put al frequencies into a string, first element is doubled
+#         # so there are n+1 list entries for scanning n frequencies
+#         # due to counter/trigger issues
+#         freqstring = ' {0:f},'.format(freq[0])
+#         for f in freq[:-1]:
+#             freqstring += ' {0:f},'.format(f)
+#         freqstring += ' {0:f}'.format(freq[-1])
+#
+#         freqcommand = ':LIST:FREQ' + freqstring
+#         #print(freqcommand)
+#         self._gpib_connection.write(freqcommand)
+#         self._gpib_connection.write('*WAI')
+#
+#         # there are n+1 list entries for scanning n frequencies
+#         # due to counter/trigger issues
+#         powcommand = ':LIST:POW {0}{1}'.format(power, (', ' + str(power)) * len(freq))
+#         #print(powcommand)
+#         self._gpib_connection.write(powcommand)
+#
+#         self._gpib_connection.write('*WAI')
+#         self._gpib_connection.write(':LIST:MODE STEP')
+#         self._gpib_connection.write('*WAI')
+#
+#         n = int(np.round(float(self._gpib_connection.query(':LIST:FREQ:POIN?'))))
+#
+#         if n != len(freq) + 1:
+#             error = -1
+#         return error
 
     def reset_listpos(self):
-        """ Reset of MW List Mode position to start from first given frequency
+        """ 
+        Reset of MW list mode position to start (first frequency step)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -267,34 +369,80 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
         return 0
 
-    def set_sweep(self, start, stop, step, power):
-        """ Activate sweep mode on the microwave source
+    def sweep_on(self):
+        """ Switches on the sweep mode.
 
-        @param start float: start frequency
-        @param stop float: stop frequency
-        @param step float: frequency step
-        @param power float: output power
-        @return int: number of frequency steps generated
+        @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':SOUR:POW ' + str(power))
+        self._gpib_connection.write(':FREQ:MODE SWEEP')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':OUTP:STAT ON')
+        dummy, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            dummy, is_running = self.get_status()
+        return 0
+
+    def set_sweep(self, start=None, stop=None, step=None, power=None):
+        """ 
+        Configures the device for sweep-mode and optionally sets frequency start/stop/step 
+        and/or power
+
+        @return float, float, float, float, str: current start frequency in Hz, 
+                                                 current stop frequency in Hz,
+                                                 current frequency step in Hz,
+                                                 current power in dBm, 
+                                                 current mode
+        """
+        self._gpib_connection.write(':FREQ:MODE SWEEP')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':SWE:GEN STEP')
         self._gpib_connection.write('*WAI')
 
-        self._gpib_connection.write(':SWE:MODE STEP')
-        self._gpib_connection.write(':SOUR:FREQ:STAR ' + str(start-step))
-        self._gpib_connection.write(':SOUR:FREQ:STOP ' + str(stop))
-        self._gpib_connection.write(':SOUR:SWE:SPAC LIN')
-        self._gpib_connection.write(':SOUR:SWE:STEP ' + str(step))
-        self._gpib_connection.write(':TRIG1:SWE:SOUR EXT')
-        self._gpib_connection.write(':TRIG1:SLOP POS')
-        self._gpib_connection.write('*WAI')
-        n = int(np.round(float(self._gpib_connection.query(':SWE:FREQ:POIN?'))))
-        # print(n)
-        # if n != len(self._mw_frequency_list):
-        #     return -1
-        return n - 1
+        if start is not None and stop is not None and step is not None:
+            self._gpib_connection.write(':FREQ:START {0}'.format(start - step))
+            self._gpib_connection.write(':FREQ:STOP {0}'.format(stop))
+            self._gpib_connection.write(':SWE:FREQ:STEP {0}'.format(step))
+            self._gpib_connection.write('*WAI')
 
-    def reset_sweep(self):
-        """ Reset of MW List Mode position to start from first given frequency
+        if power is not None:
+            actual_power = self.set_power(power)
+        else:
+            actual_power = self.get_power()
+
+        freq_list = self.get_frequency()
+        mode, dummy = self.get_status()
+        return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
+
+    # def set_sweep(self, start, stop, step, power):
+    #     """ Activate sweep mode on the microwave source
+    #
+    #     @param start float: start frequency
+    #     @param stop float: stop frequency
+    #     @param step float: frequency step
+    #     @param power float: output power
+    #     @return int: number of frequency steps generated
+    #     """
+    #     self._gpib_connection.write(':SOUR:POW ' + str(power))
+    #     self._gpib_connection.write('*WAI')
+    #
+    #     self._gpib_connection.write(':SWE:MODE STEP')
+    #     self._gpib_connection.write(':SOUR:FREQ:STAR ' + str(start-step))
+    #     self._gpib_connection.write(':SOUR:FREQ:STOP ' + str(stop))
+    #     self._gpib_connection.write(':SOUR:SWE:SPAC LIN')
+    #     self._gpib_connection.write(':SOUR:SWE:STEP ' + str(step))
+    #     self._gpib_connection.write(':TRIG1:SWE:SOUR EXT')
+    #     self._gpib_connection.write(':TRIG1:SLOP POS')
+    #     self._gpib_connection.write('*WAI')
+    #     n = int(np.round(float(self._gpib_connection.query(':SWE:FREQ:POIN?'))))
+    #     # print(n)
+    #     # if n != len(self._mw_frequency_list):
+    #     #     return -1
+    #     return n - 1
+
+    def reset_sweeppos(self):
+        """ 
+        Reset of MW sweep mode position to start (start frequency)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -302,54 +450,28 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write('*WAI')
         return 0
 
-    def sweep_on(self):
-        """ Switches on the list mode.
-
-        @return int: error code (1: ready, 0:not ready, -1:error)
-        """
-        self._gpib_connection.write(':FREQ:MODE SWE')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
-        # If there are timeout  problems after this command, update the smiq
-        # firmware to > 5.90 as there was a problem with excessive wait times
-        # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
-        return int(self._gpib_connection.query('*OPC?'))
-
-    def list_on(self):
-        """ Switches on the list mode.
-
-        @return int: error code (1: ready, 0:not ready, -1:error)
-        """
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:LEARN')
-        self._gpib_connection.write('*WAI')
-        # If there are timeout  problems after this command, update the smiq
-        # firmware to > 5.90 as there was a problem with excessive wait times
-        # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
-        self._gpib_connection.write(':FREQ:MODE LIST')
-        self._gpib_connection.write('*WAI')
-        return int(self._gpib_connection.query('*OPC?'))
-
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
-                        falling edge)
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
 
-        @return int: error code (0:OK, -1:error)
+        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
         """
         if pol == TriggerEdge.RISING:
             edge = 'POS'
         elif pol == TriggerEdge.FALLING:
             edge = 'NEG'
         else:
-            return -1
-        try:
+            self.log.warning('No valid trigger polarity passed to microwave hardware module.')
+            edge = None
+
+        if edge is not None:
             self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
             self._gpib_connection.write(':TRIG1:SLOP {0}'.format(edge))
-        except:
-            return -1
-        return 0
+            self._gpib_connection.write('*WAI')
 
+        polarity = self._gpib_connection.query(':TRIG1:SLOP?')
+        if 'NEG' in polarity:
+            return TriggerEdge.FALLING
+        else:
+            return TriggerEdge.RISING

@@ -117,17 +117,14 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_cw(self, frequency=None, power=None, useinterleave=None):
+    def set_cw(self, frequency=None, power=None):
         """ 
         Configures the device for cw-mode and optionally sets frequency and/or power
 
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
 
         @return float, float, str: current frequency in Hz, current power in dBm, current mode
-
-        Interleave option is used for arbitrary waveform generator devices.
         """
         pass
 
