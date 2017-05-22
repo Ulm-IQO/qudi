@@ -24,6 +24,8 @@ from qtpy import QtCore
 from collections import OrderedDict
 from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
+from core.module_meta import Connector, ConfigOption, StatusVar
+
 import numpy as np
 import time
 import datetime
@@ -38,18 +40,31 @@ class ODMRLogic(GenericLogic):
     """This is the Logic class for ODMR."""
     _modclass = 'odmrlogic'
     _modtype = 'logic'
+
     # declare connectors
-    _connectors = {
-        'odmrcounter': 'ODMRCounterInterface',
-        'fitlogic': 'FitLogic',
-        'microwave1': 'mwsourceinterface',
-        'savelogic': 'SaveLogic',
-        'taskrunner': 'TaskRunner'
-    }
+    odmrcounter = Connector(interface_name='ODMRCounterInterface')
+    fitlogic = Connector(interface_name='FitLogic')
+    microwave1 = Connector(interface_name='mwsourceinterface')
+    savelogic = Connector(interface_name='SaveLogic')
+    taskrunner = Connector(interface_name='TaskRunner')
+
+    # config options
+
+
+    # status vars
+
+    clock_frequency = StatusVar(default=200)
+    mw_frequency = StatusVar(default=2870e6)
+    mw_power = StatusVar(default=-30)
+    mw_start = StatusVar(default=2800e6)
+    mw_stop = StatusVar(default=2950e6)
+    mw_step = StatusVar(defaults=2e6)
+    run_time = StatusVar(default=60)
+    number_of_lines = StatusVar(default=50)
+
 
     # Internal signals
     sigNextLine = QtCore.Signal()
-
 
     # Update signals, e.g. for GUI module
     sigParameterUpdated = QtCore.Signal(dict)
@@ -115,35 +130,35 @@ class ODMRLogic(GenericLogic):
             self.fc.load_from_dict(default_fits)
 
         # Set/recall clock frequency for ODMR counting device in Hz
-        if 'clock_frequency' in self._statusVariables:
-            self.clock_frequency = self._statusVariables['clock_frequency']
-        else:
-            self.clock_frequency = 200
+        #if 'clock_frequency' in self._statusVariables:
+        #    self.clock_frequency = self._statusVariables['clock_frequency']
+        #else:
+        #    self.clock_frequency = 200
 
-        # Get hardware constraints
-        limits = self.get_hw_constraints()
+        ## Get hardware constraints
+        #limits = self.get_hw_constraints()
 
-        # Set/recall microwave source parameters
-        if 'mw_frequency' in self._statusVariables:
-            self.mw_frequency = limits.frequency_in_range(self._statusVariables['mw_frequency'])
-        else:
-            self.mw_frequency = limits.frequency_in_range(2870e6)
-        if 'mw_power' in self._statusVariables:
-            self.mw_power = limits.power_in_range(self._statusVariables['mw_power'])
-        else:
-            self.mw_power = limits.power_in_range(-30)
-        if 'mw_start' in self._statusVariables:
-            self.mw_start = limits.frequency_in_range(self._statusVariables['mw_start'])
-        else:
-            self.mw_start = limits.frequency_in_range(2800e6)
-        if 'mw_stop' in self._statusVariables:
-            self.mw_stop = limits.frequency_in_range(self._statusVariables['mw_stop'])
-        else:
-            self.mw_stop = limits.frequency_in_range(2950e6)
-        if 'mw_step' in self._statusVariables:
-            self.mw_step = limits.list_step_in_range(self._statusVariables['mw_step'])
-        else:
-            self.mw_step = limits.list_step_in_range(2e6)
+        ## Set/recall microwave source parameters
+        #if 'mw_frequency' in self._statusVariables:
+        #    self.mw_frequency = limits.frequency_in_range(self._statusVariables['mw_frequency'])
+        #else:
+        #    self.mw_frequency = limits.frequency_in_range(2870e6)
+        #if 'mw_power' in self._statusVariables:
+        #    self.mw_power = limits.power_in_range(self._statusVariables['mw_power'])
+        #else:
+        #    self.mw_power = limits.power_in_range(-30)
+        #if 'mw_start' in self._statusVariables:
+        #    self.mw_start = limits.frequency_in_range(self._statusVariables['mw_start'])
+        #else:
+        #    self.mw_start = limits.frequency_in_range(2800e6)
+        #if 'mw_stop' in self._statusVariables:
+        #    self.mw_stop = limits.frequency_in_range(self._statusVariables['mw_stop'])
+        #else:
+        #    self.mw_stop = limits.frequency_in_range(2950e6)
+        #if 'mw_step' in self._statusVariables:
+        #    self.mw_step = limits.list_step_in_range(self._statusVariables['mw_step'])
+        #else:
+        #    self.mw_step = limits.list_step_in_range(2e6)
 
         # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
         # theoretically this can be changed, but the current counting scheme will not support that
@@ -165,11 +180,11 @@ class ODMRLogic(GenericLogic):
             self.log.warning('No scanmode defined in config for odmr_logic module.\n'
                              'Falling back to list mode.')
 
-        # Set/recall ODMR runtime in seconds
-        if 'run_time' in self._statusVariables:
-            self.run_time = self._statusVariables['run_time']
-        else:
-            self.run_time = 60
+        ## Set/recall ODMR runtime in seconds
+        #if 'run_time' in self._statusVariables:
+        #    self.run_time = self._statusVariables['run_time']
+        #else:
+        #    self.run_time = 60
 
         # Elapsed measurement time and number of sweeps
         self.elapsed_time = 0.0
@@ -181,11 +196,11 @@ class ODMRLogic(GenericLogic):
         # for clearing the ODMR data during a measurement
         self._clearOdmrData = False
 
-        # Set/recall number of lines in the raw data matrix
-        if 'number_of_lines' in self._statusVariables:
-            self.number_of_lines = self._statusVariables['number_of_lines']
-        else:
-            self.number_of_lines = 50
+        ## Set/recall number of lines in the raw data matrix
+        #if 'number_of_lines' in self._statusVariables:
+        #    self.number_of_lines = self._statusVariables['number_of_lines']
+        #else:
+        #    self.number_of_lines = 50
 
         # Initalize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_plots()
@@ -221,14 +236,14 @@ class ODMRLogic(GenericLogic):
         # Disconnect signals
         self.sigNextLine.disconnect()
         # save parameters stored in app state store
-        self._statusVariables['clock_frequency'] = self.clock_frequency
-        self._statusVariables['mw_frequency'] = self.mw_frequency
-        self._statusVariables['mw_power'] = self.mw_power
-        self._statusVariables['mw_start'] = self.mw_start
-        self._statusVariables['mw_stop'] = self.mw_stop
-        self._statusVariables['mw_step'] = self.mw_step
-        self._statusVariables['run_time'] = self.run_time
-        self._statusVariables['number_of_lines'] = self.number_of_lines
+        #self._statusVariables['clock_frequency'] = self.clock_frequency
+        #self._statusVariables['mw_frequency'] = self.mw_frequency
+        #self._statusVariables['mw_power'] = self.mw_power
+        #self._statusVariables['mw_start'] = self.mw_start
+        #self._statusVariables['mw_stop'] = self.mw_stop
+        #self._statusVariables['mw_step'] = self.mw_step
+        #self._statusVariables['run_time'] = self.run_time
+        #self._statusVariables['number_of_lines'] = self.number_of_lines
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
 

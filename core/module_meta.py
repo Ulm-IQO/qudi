@@ -7,9 +7,7 @@ class StatusVar:
 
     def __init__(self, name=None, default=None, var_name=None, **kwargs):
         self.var_name = var_name
-        if name is None and var_name is None:
-            self.name = ''
-        elif name is None:
+        if name is None:
             self.name = var_name
         else:
             self.name = name
@@ -33,9 +31,7 @@ class ConfigOption:
 
     def __init__(self, name=None, default=None, var_name=None, **kwargs):
         self.var_name = var_name
-        if name is None and var_name is None:
-            self.name = ''
-        elif name is None:
+        if name is None:
             self.name = var_name
         else:
             self.name = name
