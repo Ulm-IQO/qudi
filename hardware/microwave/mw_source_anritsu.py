@@ -138,7 +138,6 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @return float: the power set at the device in dBm
         """
         self._gpib_connection.write(':POW {0:f}'.format(power))
-        self._gpib_connection.write('*OPC')
         while int(float(self._gpib_connection.query('*OPC?'))) != 1:
             time.sleep(0.2)
         return self.get_power()
@@ -183,7 +182,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             dummy, is_running = self.get_status()
         return 0
 
-    def set_cw(self, frequency=None, power=None, useinterleave=None):
+    def set_cw(self, frequency=None, power=None):
         """ 
         Configures the device for cw-mode and optionally sets frequency and/or power
 
