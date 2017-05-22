@@ -31,6 +31,7 @@ from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
+from core.module_meta import Connector, ConfigOption, StatusVar
 
 
 class OldConfigFileError(Exception):
@@ -255,10 +256,12 @@ class ConfocalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'savelogic': 'SaveLogic'
-        }
+    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
+    savelogic = Connector(interface_name='SaveLogic')
+
+    # status vars
+    _clock_frequency = StatusVar('clock_frequency', 500)
+    return_slowness = StatusVar(default=50)
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -308,14 +311,14 @@ class ConfocalLogic(GenericLogic):
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
-        if 'clock_frequency' in self._statusVariables:
-            self._clock_frequency = self._statusVariables['clock_frequency']
-        else:
-            self._clock_frequency = 500
-        if 'return_slowness' in self._statusVariables:
-            self.return_slowness = self._statusVariables['return_slowness']
-        else:
-            self.return_slowness = 50
+        #if 'clock_frequency' in self._statusVariables:
+        #    self._clock_frequency = self._statusVariables['clock_frequency']
+        #else:
+        #    self._clock_frequency = 500
+        #if 'return_slowness' in self._statusVariables:
+        #    self.return_slowness = self._statusVariables['return_slowness']
+        #else:
+        #    self.return_slowness = 50
 
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
@@ -366,8 +369,8 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._statusVariables['clock_frequency'] = self._clock_frequency
-        self._statusVariables['return_slowness'] = self.return_slowness
+        #self._statusVariables['clock_frequency'] = self._clock_frequency
+        #self._statusVariables['return_slowness'] = self.return_slowness
         self._statusVariables['max_history_length'] = self.max_history_length
         closing_state = ConfocalHistoryEntry(self)
         closing_state.snapshot(self)

@@ -23,13 +23,13 @@ import logging
 import qtpy
 from qtpy import QtCore
 from .FysomAdapter import Fysom  # provides a final state machine
+from .module_meta import ModuleMeta
 from collections import OrderedDict
 
 import os
 import sys
 
-
-class Base(QtCore.QObject, Fysom):
+class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
     """
     Base class for all loadable modules
 
@@ -103,17 +103,35 @@ class Base(QtCore.QObject, Fysom):
         else:
             super().__init__(cfg=_baseStateList, **kwargs)
 
-        # add connection base
+        # add connectors
         self.connectors = OrderedDict()
+        for cname, con in self._conn.items():
+            self.connectors[con.name] = OrderedDict()
+            self.connectors[con.name]['class'] = con.ifname
+            self.connectors[con.name]['object'] = None
+
+        # add connection base (legacy)
         for con in self._connectors:
             self.connectors[con] = OrderedDict()
             self.connectors[con]['class'] = self._connectors[con]
             self.connectors[con]['object'] = None
-        # legacy (deprecated soon)
+        # really very much legacy (deprecated soon)
         for con in self._in:
             self.connectors[con] = OrderedDict()
             self.connectors[con]['class'] = self._in[con]
             self.connectors[con]['object'] = None
+
+        # add config options
+        for oname, opt in self._config_options.items():
+            if opt.name in config:
+                cfg_val = config[opt_name]
+            else:
+                cfg_val = opt.default
+            setattr(self, opt.var_name, cfg_val)
+
+        # add status var defaults
+        for vname, var in self._stat_vars.items():
+            setattr(self, var.var_name, var.default)
 
         self._manager = manager
         self._name = name
@@ -147,6 +165,13 @@ class Base(QtCore.QObject, Fysom):
 
     @QtCore.Slot(result=bool)
     def _wrap_activation(self):
+        """ Restore vars and catch exceptions during activation. """
+        print(self._stat_vars)
+        # add status vars
+        for vname, var in self._stat_vars.items():
+            if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
+                setattr(self, var.var_name, self._statusVariables[var.name])
+
         self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
         try:
             self.activate()
@@ -157,6 +182,13 @@ class Base(QtCore.QObject, Fysom):
 
     @QtCore.Slot(result=bool)
     def _wrap_deactivation(self):
+        """ Save vars and catch exceptions during deactivation. """
+
+        # save status vars
+        for vname, var in self._stat_vars.items():
+            if hasattr(self, var.var_name):
+                self._statusVariables[var.name] = getattr(self, var.var_name)
+
         self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
         try:
             self.deactivate()
