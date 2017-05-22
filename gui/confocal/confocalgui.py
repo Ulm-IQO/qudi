@@ -248,23 +248,20 @@ class ConfocalGui(GUIBase):
         self.depth_channel = 0
         self.opt_channel = 0
 
-        # Get the image for the display from the logic. Transpose the received
-        # matrix to get the proper scan. The graphig widget displays vector-
-        # wise the lines and the lines are normally columns, but in our
-        # measurement we scan rows per row. That's why it has to be transposed.
-        arr01 = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
-        arr02 = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
+        # Get the image for the display from the logic
+        raw_data_xy = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
+        raw_data_depth = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
-        ini_pos_x_crosshair = len(arr01) / 2
-        ini_pos_y_crosshair = len(arr01) / 2
-        ini_pos_z_crosshair = len(arr02) / 2
+        ini_pos_x_crosshair = len(raw_data_xy) / 2
+        ini_pos_y_crosshair = len(raw_data_xy) / 2
+        ini_pos_z_crosshair = len(raw_data_depth) / 2
 
 
         # Load the images for xy and depth in the display:
-        self.xy_image = pg.ImageItem(arr01)
-        self.depth_image = pg.ImageItem(arr02)
+        self.xy_image = pg.ImageItem(image=raw_data_xy, axisOrder='row-major')
+        self.depth_image = pg.ImageItem(image=raw_data_depth, axisOrder='row-major')
 
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -288,7 +285,8 @@ class ConfocalGui(GUIBase):
         ###################################################################
         # Load the image for the optimizer tab
         self.xy_refocus_image = pg.ImageItem(
-            self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel].transpose())
+            image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
+            axisOrder='row-major')
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
                 self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
@@ -1564,7 +1562,7 @@ class ConfocalGui(GUIBase):
         """
         self.xy_image.getViewBox().updateAutoRange()
 
-        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
+        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
 
         cb_range = self.get_xy_cb_range()
 
@@ -1585,7 +1583,7 @@ class ConfocalGui(GUIBase):
 
         self.depth_image.getViewBox().enableAutoRange()
 
-        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
+        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
         cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -1600,7 +1598,7 @@ class ConfocalGui(GUIBase):
         """Refreshes the xy image, the crosshair and the colorbar. """
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
-        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel].transpose()
+        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel]
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
         if np.max(xy_optimizer_image) != 0:

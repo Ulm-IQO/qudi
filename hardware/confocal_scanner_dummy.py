@@ -338,7 +338,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         return np.array([
                 count_data,
                 5e5 - count_data,
-                np.ones(count_data.shape) * line_path[1, 0]
+                np.ones(count_data.shape) * line_path[1, 0] * 100
             ]).transpose()
 
     def close_scanner(self):
