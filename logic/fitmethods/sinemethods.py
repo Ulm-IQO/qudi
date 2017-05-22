@@ -577,6 +577,26 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
         self.log.error('The sine fit did not work.\n'
                      'Error message: {0}\n'.format(result.message))
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()
+
+    result_str_dict['Period'] = {'value': 1./result.params['frequency'].value,
+                                 'error': 1./result.params['frequency'].stderr,
+                                 'unit': units[0]}
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}
+    result_str_dict['Phase'] = {'value': result.params['phase'].value,
+                                'error': result.params['phase'].stderr,
+                                'unit': 'deg'}
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
+
     return result
 
 def estimate_sine(self, x_axis, data, params):
@@ -921,10 +941,16 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    result1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    result1 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
     data_sub = data - result1.best_fit
 
-    result2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub)
+    result2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub,
+        estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -1000,10 +1026,16 @@ def estimate_sinedoublewithtwoexpdecay(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    result1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    result1 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
     data_sub = data - result1.best_fit
 
-    result2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub)
+    result2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub,
+        estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['e1_amplitude'].set(value=result1.params['amplitude'].value)
@@ -1128,8 +1160,7 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     error, params = estimator(x_axis, data, params)
 
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
+    params = self._substitute_params(initial_params=params, update_params=add_params)
     try:
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:
@@ -1161,13 +1192,24 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
     # sine exponential decay with offset fits where for the next fit the
     # previous is subtracted to delete its contribution in the data.
 
-    res1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    res1 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
+
     data_sub1 = data - res1.best_fit
 
-    res2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
+    res2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub1,
+        estimator=self.estimate_sineexponentialdecay)
+
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
+    res3 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub2,
+        estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['s1_amplitude'].set(value=res1.params['amplitude'].value)
@@ -1248,13 +1290,22 @@ def estimate_sinetriplewiththreeexpdecay(self, x_axis, data, params):
     # sine offset fits where for the second the first fit is subtracted to
     # delete the first sine in the data.
 
-    res1 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data)
+    res1 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
     data_sub1 = data - res1.best_fit
 
-    res2 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
+    res2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub1,
+        estimator=self.estimate_sineexponentialdecay)
     data_sub2 = data_sub1 - res2.best_fit
 
-    res3 = self.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
+    res3 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data_sub2,
+        estimator=self.estimate_sineexponentialdecay)
 
     # Fill the parameter dict:
     params['e1_amplitude'].set(value=res1.params['amplitude'].value)
