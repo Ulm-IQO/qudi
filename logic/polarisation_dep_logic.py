@@ -19,6 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
@@ -32,11 +33,9 @@ class PolarisationDepLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _connectors = {
-        'counterlogic': 'CounterLogic',
-        'savelogic': 'SaveLogic',
-        'motor':'MotorInterface'
-    }
+    counterlogic = Connector(interface_name='CounterLogic')
+    savelogic = Connector(interface_name='SaveLogic')
+    motor = Connector(interface_name='MotorInterface')
 
     signal_rotation_finished = QtCore.Signal()
     signal_start_rotation = QtCore.Signal()

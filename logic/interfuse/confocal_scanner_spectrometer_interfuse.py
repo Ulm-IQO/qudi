@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.module import Base
+from core.module import Base, Connector
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -34,11 +34,9 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _connectors = {
-        'fitlogic': 'FitLogic',
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'spectrometer1': 'SpectrometerInterface'
-    }
+    fitlogic = Connector(interface_name='FitLogic')
+    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
+    spectrometer1 = Connector(interface_name='SpectrometerInterface')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

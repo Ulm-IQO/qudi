@@ -20,19 +20,20 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
 import os
+import pyqtgraph as pg
 
+from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
-from core.util import units
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 
 class ODMRMainWindow(QtWidgets.QMainWindow):
@@ -71,8 +72,8 @@ class ODMRGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'odmrlogic1': 'ODMRLogic',
-           'savelogic': 'SaveLogic'}
+    odmrlogic1 = Connector(interface_name='ODMRLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     sigStartOdmrScan = QtCore.Signal()
     sigStopOdmrScan = QtCore.Signal()

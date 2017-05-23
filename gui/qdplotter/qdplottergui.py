@@ -25,6 +25,7 @@ from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
 
+from core.module import Connector
 from gui.guibase import GUIBase
 
 
@@ -51,7 +52,7 @@ class QdplotterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'qdplotlogic1': 'QdplotLogic'}
+    qdplotlogic1 = Connector(interface_name='QdplotLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()

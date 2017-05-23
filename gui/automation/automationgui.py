@@ -20,6 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+
+from core.module import Connector
 from gui.guibase import GUIBase
 from qtpy import QtCore
 from qtpy import QtWidgets
@@ -31,7 +33,8 @@ class AutomationGui(GUIBase):
     _modclass = 'AutomationGui'
     _modtype = 'gui'
     ## declare connectors
-    _connectors = {'automationlogic': 'AutomationLogic'}
+
+    automationlogic = Connector(interface_name='AutomationLogic')
 
     sigRunTaskFromList = QtCore.Signal(object)
     sigPauseTaskFromList = QtCore.Signal(object)

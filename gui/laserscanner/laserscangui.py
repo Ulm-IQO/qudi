@@ -20,14 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import os
+import pyqtgraph as pg
+import pyqtgraph.exporters
+import time
+
+from core.module import Connector
 from gui.guibase import GUIBase
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-import pyqtgraph as pg
-import pyqtgraph.exporters
-import time
-import os
+
 
 class LaserScanWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -48,9 +51,8 @@ class LaserScanningGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = { 'laserscanninglogic1': 'LaserScanningLogic',
-            'savelogic': 'SaveLogic'
-            }
+    laserscanninglogic1 = Connector(interface_name='LaserScanningLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
