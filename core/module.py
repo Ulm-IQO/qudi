@@ -32,7 +32,7 @@ from qtpy import QtCore
 
 class StatusVar:
 
-    def __init__(self, name=None, default=None, var_name=None, **kwargs):
+    def __init__(self, name=None, default=None, var_name=None):
         self.var_name = var_name
         if name is None:
             self.name = var_name
@@ -56,7 +56,7 @@ class StatusVar:
 
 class ConfigOption:
 
-    def __init__(self, name=None, default=None, var_name=None, **kwargs):
+    def __init__(self, name=None, default=None, var_name=None):
         self.var_name = var_name
         if name is None:
             self.name = var_name
@@ -80,7 +80,7 @@ class ConfigOption:
 
 class Connector:
 
-    def __init__(self, name=None, interface_name=None, **kwargs):
+    def __init__(self, name=None, interface_name=None):
         self.name = name
         self.ifname = interface_name
         self.obj = None
@@ -218,6 +218,7 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         # add connectors
         self.connectors = OrderedDict()
         for cname, con in self._conn.items():
+            print('Connector', cname, con.name, con.ifname)
             self.connectors[con.name] = OrderedDict()
             self.connectors[con.name]['class'] = con.ifname
             self.connectors[con.name]['object'] = None
