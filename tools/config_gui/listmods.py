@@ -89,7 +89,7 @@ def find_pyfiles(path):
     return pyfiles
 
 def check_qudi_modules(filelist):
-    from core.base import Base
+    from core.module import Base
     from core.util.interfaces import InterfaceMetaclass
     from gui.guibase import GUIBase
     from logic.generic_logic import GenericLogic

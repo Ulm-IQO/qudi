@@ -26,7 +26,7 @@ import os
 
 import PyDAQmx as daq
 
-from core.base import Base
+from core.module import Base
 from interface.pulser_interface import PulserInterface
 from collections import OrderedDict
 

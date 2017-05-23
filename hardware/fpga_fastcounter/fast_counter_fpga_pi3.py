@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import thirdparty.stuttgart_counter.TimeTagger as tt
-from core.base import Base
+from core.module import Base
 import os
 
 

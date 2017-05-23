@@ -24,7 +24,7 @@ import time
 import os
 import numpy as np
 
-from core.base import Base
+from core.module import Base
 from interface.fast_counter_interface import FastCounterInterface
 
 

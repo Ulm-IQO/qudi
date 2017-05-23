@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 
-from core.base import Base
+from core.module import Base
 from interface.simple_data_interface import SimpleDataInterface
 
 

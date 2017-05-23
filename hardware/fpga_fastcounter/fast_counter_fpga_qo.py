@@ -26,7 +26,7 @@ import os
 import time
 
 from interface.fast_counter_interface import FastCounterInterface
-from core.base import Base
+from core.module import Base
 import okfrontpanel as ok
 from core.util.mutex import Mutex
 

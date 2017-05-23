@@ -24,7 +24,7 @@ import numpy as np
 import time
 from qtpy import QtCore
 
-from core.base import Base
+from core.module import Base
 from core.util.mutex import Mutex
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints

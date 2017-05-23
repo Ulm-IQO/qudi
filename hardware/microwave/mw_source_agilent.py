@@ -26,7 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 import numpy as np
 
-from core.base import Base
+from core.module import Base
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
