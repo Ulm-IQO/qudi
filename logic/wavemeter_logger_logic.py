@@ -29,6 +29,7 @@ import datetime
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from core.module import Connector, ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -103,12 +104,14 @@ class WavemeterLoggerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'wavemeter1': 'WavemeterInterface',
-        'counterlogic': 'CounterLogic',
-        'savelogic': 'SaveLogic',
-        'fitlogic': 'FitLogic'
-    }
+    wavemeter1 = Connector(interface_name='WavemeterInterface')
+    counterlogic = Connector(interface_name='CounterLogic')
+    savelogic = Connector(interface_name='SaveLogic')
+    fitlogic = Connector(interface_name='FitLogic')
+
+    # config opts
+    _logic_acquisition_timing = ConfigOption('logic_acquisition_timing', 20.0, warn=True)
+    _logic_update_timing = ConfigOption('logic_update_timing', 100.0, warn=True)
 
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
@@ -121,21 +124,21 @@ class WavemeterLoggerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-        if 'logic_acquisition_timing' in config.keys():
-            self._logic_acquisition_timing = config['logic_acquisition_timing']
-        else:
-            self._logic_acquisition_timing = 20.
-            self.log.warning('No logic_acquisition_timing configured, '
-                             'using {} instead.'.format(self._logic_acquisition_timing)
-                             )
+        #if 'logic_acquisition_timing' in config.keys():
+        #    self._logic_acquisition_timing = config['logic_acquisition_timing']
+        #else:
+        #    self._logic_acquisition_timing = 20.
+        #    self.log.warning('No logic_acquisition_timing configured, '
+        #                     'using {} instead.'.format(self._logic_acquisition_timing)
+        #                     )
 
-        if 'logic_update_timing' in config.keys():
-            self._logic_update_timing = config['logic_update_timing']
-        else:
-            self._logic_update_timing = 100.
-            self.log.warning('No logic_update_timing configured, '
-                             'using {} instead.'.format(self._logic_update_timing)
-                             )
+        #if 'logic_update_timing' in config.keys():
+        #    self._logic_update_timing = config['logic_update_timing']
+        #else:
+        #    self._logic_update_timing = 100.
+        #    self.log.warning('No logic_update_timing configured, '
+        #                     'using {} instead.'.format(self._logic_update_timing)
+        #                     )
 
         self._acqusition_start_time = 0
         self._bins = 200

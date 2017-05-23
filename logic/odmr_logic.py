@@ -58,7 +58,7 @@ class ODMRLogic(GenericLogic):
     mw_power = StatusVar(default=-30)
     mw_start = StatusVar(default=2800e6)
     mw_stop = StatusVar(default=2950e6)
-    mw_step = StatusVar(defaults=2e6)
+    mw_step = StatusVar(default=2e6)
     run_time = StatusVar(default=60)
     number_of_lines = StatusVar(default=50)
 

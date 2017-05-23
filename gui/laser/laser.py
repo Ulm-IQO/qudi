@@ -20,16 +20,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
+import os
+import pyqtgraph as pg
+import time
+
+from core.module import Connector
+from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from interface.simple_laser_interface import ControlMode, ShutterState, LaserState
-from gui.colordefs import QudiPalettePale as palette
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-import numpy as np
-import pyqtgraph as pg
-import time
-import os
 
 
 class TimeAxisItem(pg.AxisItem):
@@ -67,7 +69,7 @@ class LaserGUI(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'laserlogic': 'LaserLogic'}
+    laserlogic = Connector(interface_name='LaserLogic')
 
     sigLaser = QtCore.Signal(bool)
     sigShutter = QtCore.Signal(bool)

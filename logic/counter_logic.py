@@ -25,6 +25,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
+from core.module import Connector, StatusVar
 from logic.generic_logic import GenericLogic
 from interface.slow_counter_interface import CountingMode
 from core.util.mutex import Mutex
@@ -58,9 +59,16 @@ class CounterLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _connectors = {
-        'counter1': 'SlowCounterInterface',
-        'savelogic': 'SaveLogic'}
+    counter1 = Connector(interface_name='SlowCounterInterface')
+    savelogic = Connector(interface_name='SaveLogic')
+
+    # status vars
+    _count_length = StatusVar('count_length', 300)
+    _smooth_window_length = StatusVar('smooth_window_length', 10)
+    _counting_samples = StatusVar('counting_samples', 1)
+    _count_frequency = StatusVar('count_frequency', 50)
+    _saving = StatusVar('saving', False)
+
 
     def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
@@ -100,18 +108,18 @@ class CounterLogic(GenericLogic):
         self._save_logic = self.get_connector('savelogic')
 
         # Recall saved app-parameters
-        if 'count_length' in self._statusVariables:
-            self._count_length = self._statusVariables['count_length']
-        if 'smooth_window_length' in self._statusVariables:
-            self._smooth_window_length = self._statusVariables['smooth_window_length']
-        if 'counting_samples' in self._statusVariables:
-            self._counting_samples = self._statusVariables['counting_samples']
-        if 'count_frequency' in self._statusVariables:
-            self._count_frequency = self._statusVariables['count_frequency']
+        #if 'count_length' in self._statusVariables:
+        #    self._count_length = self._statusVariables['count_length']
+        #if 'smooth_window_length' in self._statusVariables:
+        #    self._smooth_window_length = self._statusVariables['smooth_window_length']
+        #if 'counting_samples' in self._statusVariables:
+        #    self._counting_samples = self._statusVariables['counting_samples']
+        #if 'count_frequency' in self._statusVariables:
+        #    self._count_frequency = self._statusVariables['count_frequency']
         if 'counting_mode' in self._statusVariables:
             self._counting_mode = CountingMode[self._statusVariables['counting_mode']]
-        if 'saving' in self._statusVariables:
-            self._saving = self._statusVariables['saving']
+        #if 'saving' in self._statusVariables:
+        #    self._saving = self._statusVariables['saving']
 
         constraints = self.get_hardware_constraints()
         number_of_detectors = constraints.max_detectors
@@ -136,12 +144,12 @@ class CounterLogic(GenericLogic):
         """ Deinitialisation performed during deactivation of the module.
         """
         # Save parameters to disk
-        self._statusVariables['count_length'] = self._count_length
-        self._statusVariables['smooth_window_length'] = self._smooth_window_length
-        self._statusVariables['counting_samples'] = self._counting_samples
-        self._statusVariables['count_frequency'] = self._count_frequency
+        #self._statusVariables['count_length'] = self._count_length
+        #self._statusVariables['smooth_window_length'] = self._smooth_window_length
+        #self._statusVariables['counting_samples'] = self._counting_samples
+        #self._statusVariables['count_frequency'] = self._count_frequency
         self._statusVariables['counting_mode'] = self._counting_mode.name
-        self._statusVariables['saving'] = self._saving
+        #self._statusVariables['saving'] = self._saving
 
         # Stop measurement
         if self.getState() == 'locked':
