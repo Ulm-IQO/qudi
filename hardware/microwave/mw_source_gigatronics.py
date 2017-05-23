@@ -27,7 +27,7 @@ import visa
 import numpy as np
 import time
 
-from core.base import Base
+from core.module import Base
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode

@@ -42,7 +42,7 @@ from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
-from .base import Base
+from .module import Base
 
 
 class Manager(QtCore.QObject):

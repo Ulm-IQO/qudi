@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import socket
-from core.base import Base
+from core.module import Base
 import numpy as np
 import time
 from interface.magnet_interface import MagnetInterface

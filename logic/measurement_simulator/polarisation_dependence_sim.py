@@ -24,7 +24,7 @@ import time
 import random
 import numpy as np
 
-from core.base import Base
+from core.module import Base
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.motor_interface import MotorInterface
 

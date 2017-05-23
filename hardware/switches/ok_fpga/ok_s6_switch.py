@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import okfrontpanel as ok
-from core.base import Base
+from core.module import Base
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
 

@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 

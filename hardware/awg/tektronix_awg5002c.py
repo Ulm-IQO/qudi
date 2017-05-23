@@ -28,7 +28,7 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 import re
 
-from core.base import Base
+from core.module import Base
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 

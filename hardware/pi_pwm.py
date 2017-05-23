@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from core.base import Base
+from core.module import Base
 from interface.process_control_interface import ProcessControlInterface
 from core.util.mutex import Mutex
 

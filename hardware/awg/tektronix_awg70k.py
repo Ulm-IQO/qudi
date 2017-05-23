@@ -30,7 +30,7 @@ from ftplib import FTP
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-from core.base import Base
+from core.module import Base
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 

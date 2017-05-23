@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from collections import OrderedDict
 
-from core.base import Base
+from core.module import Base
 from interface.magnet_interface import MagnetInterface
 
 
