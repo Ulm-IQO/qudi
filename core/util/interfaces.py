@@ -23,7 +23,7 @@ top-level directory of this distribution and at
 
 import abc
 from qtpy.QtCore import QObject
-from core.module_meta import ModuleMeta
+from core.module import ModuleMeta
 
 QObjectMeta = type(QObject)
 

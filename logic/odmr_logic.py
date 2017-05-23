@@ -24,7 +24,7 @@ from qtpy import QtCore
 from collections import OrderedDict
 from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
-from core.module_meta import Connector, ConfigOption, StatusVar
+from core.module import Connector, ConfigOption, StatusVar
 
 import numpy as np
 import time

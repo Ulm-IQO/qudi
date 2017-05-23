@@ -31,7 +31,7 @@ from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module_meta import Connector, ConfigOption, StatusVar
+from core.module import Connector, ConfigOption, StatusVar
 
 
 class OldConfigFileError(Exception):
