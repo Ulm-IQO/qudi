@@ -619,16 +619,20 @@ class Manager(QtCore.QObject):
                              'class.'.format(c, base, mkey))
                 continue
             if (not isinstance(connectors[c], OrderedDict)):
-                logger.error('Connector is no dictionary.')
+                logger.error('{0}.{1}.{2}: Connector is no dictionary.'
+                    ''.format(c, base, mkey))
                 continue
             if ('class' not in connectors[c]):
-                logger.error('No class key in connection declaration.')
+                logger.error('{0}.{1}.{2}: No class key in connection declaration.'
+                    ''.format(c, base, mkey))
                 continue
             if (not isinstance(connectors[c]['class'], str)):
-                logger.error('Value for class key is not a string.')
+                logger.error('{0}.{1}.{2}: Value {3} for class key is not a string.'
+                    ''.format(c, base, mkey, connectors[c]['class']))
                 continue
             if ('object' not in connectors[c]):
-                logger.error('No object key in connection declaration.')
+                logger.error('{0}.{1}.{2}: No object key in connection declaration.'
+                    ''.format(c, base, mkey))
                 continue
             if (connectors[c]['object'] is not None):
                 logger.warning('Connector {0}.{1}.{2} is already connected.'
