@@ -50,7 +50,6 @@ class ODMRLogic(GenericLogic):
     # Internal signals
     sigNextLine = QtCore.Signal()
 
-
     # Update signals, e.g. for GUI module
     sigParameterUpdated = QtCore.Signal(dict)
     sigOutputStateUpdated = QtCore.Signal(str, bool)
@@ -124,14 +123,19 @@ class ODMRLogic(GenericLogic):
         limits = self.get_hw_constraints()
 
         # Set/recall microwave source parameters
-        if 'mw_frequency' in self._statusVariables:
-            self.mw_frequency = limits.frequency_in_range(self._statusVariables['mw_frequency'])
+        if 'cw_mw_frequency' in self._statusVariables:
+            self.cw_mw_frequency = limits.frequency_in_range(
+                self._statusVariables['cw_mw_frequency'])
         else:
-            self.mw_frequency = limits.frequency_in_range(2870e6)
-        if 'mw_power' in self._statusVariables:
-            self.mw_power = limits.power_in_range(self._statusVariables['mw_power'])
+            self.cw_mw_frequency = limits.frequency_in_range(2870e6)
+        if 'cw_mw_power' in self._statusVariables:
+            self.cw_mw_power = limits.power_in_range(self._statusVariables['cw_mw_power'])
         else:
-            self.mw_power = limits.power_in_range(-30)
+            self.cw_mw_power = limits.power_in_range(-30)
+        if 'sweep_mw_power' in self._statusVariables:
+            self.sweep_mw_power = limits.power_in_range(self._statusVariables['sweep_mw_power'])
+        else:
+            self.sweep_mw_power = limits.power_in_range(-30)
         if 'mw_start' in self._statusVariables:
             self.mw_start = limits.frequency_in_range(self._statusVariables['mw_start'])
         else:
@@ -194,8 +198,7 @@ class ODMRLogic(GenericLogic):
 
         # Switch off microwave and set CW frequency and power
         self.mw_off()
-        self.set_cw_frequency(self.mw_frequency)
-        self.set_power(self.mw_power)
+        self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
 
         # Connect signals
         self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
@@ -222,8 +225,9 @@ class ODMRLogic(GenericLogic):
         self.sigNextLine.disconnect()
         # save parameters stored in app state store
         self._statusVariables['clock_frequency'] = self.clock_frequency
-        self._statusVariables['mw_frequency'] = self.mw_frequency
-        self._statusVariables['mw_power'] = self.mw_power
+        self._statusVariables['cw_mw_frequency'] = self.cw_mw_frequency
+        self._statusVariables['cw_mw_power'] = self.cw_mw_power
+        self._statusVariables['sweep_mw_power'] = self.sweep_mw_power
         self._statusVariables['mw_start'] = self.mw_start
         self._statusVariables['mw_stop'] = self.mw_stop
         self._statusVariables['mw_step'] = self.mw_step
@@ -315,50 +319,38 @@ class ODMRLogic(GenericLogic):
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
-    def set_power(self, power):
-        """ Forwarding the desired new power from the GUI to the MW source.
-
-        @param float power: power set at the GUI
-
-        @return float: currently set power in dBm
-        """
-        if self.getState() != 'locked' and isinstance(power, (int, float)):
-            power_to_set = self.get_hw_constraints().power_in_range(power)
-            self.mw_power = self._mw_device.set_power(power_to_set)
-        else:
-            self.log.warning('set_power failed. Logic is either locked or input value is '
-                             'no integer or float.')
-
-        param_dict = {'mw_power': self.mw_power}
-        self.sigParameterUpdated.emit(param_dict)
-        return self.mw_power
-
-    def set_cw_frequency(self, frequency):
-        """ Set the desired new cw mode frequency.
+    def set_cw_parameters(self, frequency, power):
+        """ Set the desired new cw mode parameters.
 
         @param float frequency: frequency to set in Hz
+        @param float power: power to set in dBm
 
-        @return float: actually set frequency in Hz
+        @return (float, float): actually set frequency in Hz, actually set power in dBm
         """
-        if self.getState() != 'locked' and isinstance(frequency, (int, float)):
-            frequency_to_set = self.get_hw_constraints().frequency_in_range(frequency)
-            self.mw_frequency, dummy1, dummy2 = self._mw_device.set_cw(frequency=frequency_to_set)
+        if self.getState() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
+            constraints = self.get_hw_constraints()
+            frequency_to_set = constraints.frequency_in_range(frequency)
+            power_to_set = constraints.power_in_range(power)
+            self.cw_mw_frequency, self.cw_mw_power, dummy = self._mw_device.set_cw(frequency_to_set,
+                                                                                   power_to_set)
         else:
             self.log.warning('set_cw_frequency failed. Logic is either locked or input value is '
                              'no integer or float.')
 
-        param_dict = {'mw_frequency': self.mw_frequency}
+        param_dict = {'cw_mw_frequency': self.cw_mw_frequency, 'cw_mw_power': self.cw_mw_power}
         self.sigParameterUpdated.emit(param_dict)
-        return self.mw_frequency
+        return self.cw_mw_frequency, self.cw_mw_power
 
-    def set_sweep_frequencies(self, start, stop, step):
+    def set_sweep_parameters(self, start, stop, step, power):
         """ Set the desired frequency parameters for list and sweep mode
 
         @param float start: start frequency to set in Hz
         @param float stop: stop frequency to set in Hz
         @param float step: step frequency to set in Hz
+        @param float power: mw power to set in dBm
 
-        @return float, float, float: current start_freq, current stop_freq, current freq_step
+        @return float, float, float, float: current start_freq, current stop_freq, 
+                                            current freq_step, current power
         """
         limits = self.get_hw_constraints()
         if self.getState() != 'locked':
@@ -371,12 +363,15 @@ class ODMRLogic(GenericLogic):
                     self.mw_step = limits.list_step_in_range(step)
                 elif self.mw_scanmode == MicrowaveMode.SWEEP:
                     self.mw_step = limits.sweep_step_in_range(step)
+            if isinstance(power, (int, float)):
+                self.sweep_mw_power = limits.power_in_range(power)
         else:
-            self.log.warning('set_list_parameters failed. Logic is locked.')
+            self.log.warning('set_sweep_parameters failed. Logic is locked.')
 
-        param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop, 'mw_step': self.mw_step}
+        param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop, 'mw_step': self.mw_step,
+                      'sweep_mw_power': self.sweep_mw_power}
         self.sigParameterUpdated.emit(param_dict)
-        return self.mw_start, self.mw_stop, self.mw_step
+        return self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power
 
     def mw_cw_on(self):
         """ 
@@ -385,11 +380,12 @@ class ODMRLogic(GenericLogic):
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
         """
         if self.getState() == 'locked':
-            self.log.error('Can not start microwave in CW mode. Odmr_logic is already locked.')
+            self.log.error('Can not start microwave in CW mode. ODMRLogic is already locked.')
         else:
-            self.mw_frequency, self.mw_power, mode = self._mw_device.set_cw(self.mw_frequency,
-                                                                            self.mw_power)
-            param_dict = {'mw_frequency': self.mw_frequency, 'mw_power': self.mw_power}
+            self.cw_mw_frequency, \
+            self.cw_mw_power, \
+            mode = self._mw_device.set_cw(self.cw_mw_frequency, self.cw_mw_power)
+            param_dict = {'cw_mw_frequency': self.cw_mw_frequency, 'cw_mw_power': self.cw_mw_power}
             self.sigParameterUpdated.emit(param_dict)
             if mode != 'cw':
                 self.log.error('Switching to CW microwave output mode failed.')
@@ -426,15 +422,16 @@ class ODMRLogic(GenericLogic):
             self.mw_start, \
             self.mw_stop, \
             self.mw_step, \
-            self.mw_power, \
+            self.sweep_mw_power, \
             mode = self._mw_device.set_sweep(self.mw_start, self.mw_stop,
-                                             self.mw_step, self.mw_power)
+                                             self.mw_step, self.sweep_mw_power)
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
-                          'mw_step': self.mw_step, 'mw_power': self.mw_power}
+                          'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         else:
             freq_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
-            freq_list, self.mw_power, mode = self._mw_device.set_list(freq_list, self.mw_power)
-            param_dict = {'mw_power': self.mw_power}
+            freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(freq_list,
+                                                                            self.sweep_mw_power)
+            param_dict = {'sweep_mw_power': self.sweep_mw_power}
         self.sigParameterUpdated.emit(param_dict)
 
         if mode != 'list' and mode != 'sweep':
