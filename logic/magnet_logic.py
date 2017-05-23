@@ -28,6 +28,7 @@ from collections import OrderedDict
 from core.module import Connector, ConfigOption, StatusVar
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
+from interface.slow_counter_interface import CountingMode
 
 
 class MagnetLogic(GenericLogic):
@@ -1430,8 +1431,8 @@ class MagnetLogic(GenericLogic):
         #FIXME: that should be run through the TaskRunner! Implement the call
         #       by not using this connection!
 
-        if self._counter_logic.get_counting_mode() != 'CONTINUOUS':
-            self._counter_logic.set_counting_mode(mode='CONTINUOUS')
+        if self._counter_logic.get_counting_mode() != CountingMode.CONTINUOUS:
+            self._counter_logic.set_counting_mode(mode=CountingMode.CONTINUOUS)
 
         self._counter_logic.start_saving()
         time.sleep(self._fluorescence_integration_time)
