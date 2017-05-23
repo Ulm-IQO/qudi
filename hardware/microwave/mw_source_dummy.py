@@ -49,7 +49,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.mw_power = -120
+        self.mw_cw_power = -120.0
+        self.mw_sweep_power = 0.0
         self.mw_cw_frequency = 2.87e9
         self.mw_frequency_list = list()
         self.mw_start_freq = 2.5e9
@@ -118,19 +119,10 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return float: the power set at the device in dBm
         """
         self.log.debug('MicrowaveDummy>get_power')
-        return self.mw_power
-
-    def set_power(self, power):
-        """ 
-        Sets the microwave output power. 
-
-        @param float power: The power to set in dBm
-
-        @return float: the power set at the device in dBm
-        """
-        self.mw_power = power
-        self.log.debug('MicrowaveDummy>set_power, power: {0:f}'.format(power))
-        return self.mw_power
+        if self.current_output_mode == MicrowaveMode.CW:
+            return self.mw_cw_power
+        else:
+            return self.mw_sweep_power
 
     def get_frequency(self):
         """ 
@@ -161,7 +153,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.log.info('MicrowaveDummy>CW output on')
         return 0
 
-    def set_cw(self, frequency=None, power=None, useinterleave=None):
+    def set_cw(self, frequency=None, power=None):
         """ 
         Configures the device for cw-mode and optionally sets frequency and/or power
 
@@ -175,11 +167,13 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(frequency,
                                                                                       power))
-        self.mw_cw_frequency = frequency
-        self.mw_power = power
-        self.current_output_mode = MicrowaveMode.CW
         self.output_active = False
-        return self.mw_cw_frequency, self.mw_power, 'cw'
+        self.current_output_mode = MicrowaveMode.CW
+        if frequency is not None:
+            self.mw_cw_frequency = frequency
+        if power is not None:
+            self.mw_cw_power = power
+        return self.mw_cw_frequency, self.mw_cw_power, 'cw'
 
     def list_on(self):
         """
@@ -205,11 +199,13 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         self.log.debug('MicrowaveDummy>set_list, frequency_list: {0}, power: {1:f}'
                        ''.format(frequency, power))
-        self.mw_frequency_list = frequency
-        self.mw_power = power
-        self.current_output_mode = MicrowaveMode.LIST
         self.output_active = False
-        return self.mw_frequency_list, self.mw_power, 'list'
+        self.current_output_mode = MicrowaveMode.LIST
+        if frequency is not None:
+            self.mw_frequency_list = frequency
+        if power is not None:
+            self.mw_cw_power = power
+        return self.mw_frequency_list, self.mw_cw_power, 'list'
 
     def reset_listpos(self):
         """ 
@@ -243,13 +239,16 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         self.log.debug('MicrowaveDummy>set_sweep, start: {0:f}, stop: {1:f}, step: {2:f}, '
                        'power: {3:f}'.format(start, stop, step, power))
-        self.mw_start_freq = start
-        self.mw_stop_freq = stop
-        self.mw_step_freq = step
-        self.mw_power = power
-        self.current_output_mode = MicrowaveMode.SWEEP
         self.output_active = False
-        return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq, self.mw_power, 'sweep'
+        self.current_output_mode = MicrowaveMode.SWEEP
+        if (start is not None) and (stop is not None) and (step is not None):
+            self.mw_start_freq = start
+            self.mw_stop_freq = stop
+            self.mw_step_freq = step
+        if power is not None:
+            self.mw_sweep_power = power
+        return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq, self.mw_sweep_power, \
+               'sweep'
 
     def reset_sweeppos(self):
         """ 
