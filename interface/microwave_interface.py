@@ -77,20 +77,9 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def get_power(self):
         """ 
-        Gets the microwave output power. 
+        Gets the microwave output power for the currently active mode.
 
-        @return float: the power set at the device in dBm
-        """
-        pass
-
-    @abc.abstractmethod
-    def set_power(self, power):
-        """ 
-        Sets the microwave output power. 
-        
-        @param float power: The power to set in dBm
-
-        @return float: the power set at the device in dBm
+        @return float: the output power in dBm
         """
         pass
 
