@@ -20,11 +20,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
 import numpy as np
 
-from logic.generic_logic import GenericLogic
+from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class PIDLogic(GenericLogic):
@@ -33,12 +34,16 @@ class PIDLogic(GenericLogic):
     """
     _modclass = 'pidlogic'
     _modtype = 'logic'
-    ## declare connectors
-    _connectors = {
-        'controller': 'PIDControllerInterface',
-        'savelogic': 'SaveLogic'
-    }
 
+    ## declare connectors
+    controller = Connector(interface_name='PIDControllerInterface')
+    savelogic = Connector(interface_name='SaveLogic')
+
+    # status vars
+    bufferLength = StatusVar('bufferlength', 1000)
+    timestep = StatusVar(default=100)
+
+    # signals
     sigUpdateDisplay = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
@@ -62,15 +67,15 @@ class PIDLogic(GenericLogic):
         config = self.getConfiguration()
 
         # load parameters stored in app state store
-        if 'bufferlength' in self._statusVariables:
-            self.bufferLength = self._statusVariables['bufferlength']
-        else:
-            self.bufferLength = 1000
+        #if 'bufferlength' in self._statusVariables:
+        #    self.bufferLength = self._statusVariables['bufferlength']
+        #else:
+        #    self.bufferLength = 1000
 
-        if 'timestep' in self._statusVariables:
-            self.timestep = self._statusVariables['timestep']
-        else:
-            self.timestep = 100
+        #if 'timestep' in self._statusVariables:
+        #    self.timestep = self._statusVariables['timestep']
+        #else:
+        #    self.timestep = 100
 
         self.history = np.zeros([3, self.bufferLength])
         self.savingState = False
@@ -82,10 +87,10 @@ class PIDLogic(GenericLogic):
 
     def on_deactivate(self):
         """ Perform required deactivation. """
-
+        pass
         # save parameters stored in ap state store
-        self._statusVariables['bufferlength'] = self.bufferLength
-        self._statusVariables['timestep'] = self.timestep
+        #self._statusVariables['bufferlength'] = self.bufferLength
+        #self._statusVariables['timestep'] = self.timestep
 
     def getBufferLength(self):
         """ Get the current data buffer length.
