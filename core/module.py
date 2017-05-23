@@ -56,7 +56,8 @@ class StatusVar:
 
 class ConfigOption:
 
-    def __init__(self, name=None, default=None, var_name=None):
+    def __init__(self, name=None, default=None, var_name=None, warn=False):
+        self.warn = warn
         self.var_name = var_name
         if name is None:
             self.name = var_name
@@ -74,6 +75,7 @@ class ConfigOption:
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
         newargs['var_name'] = copy.copy(self.var_name)
+        newargs['warn'] = copy.copy(self.warn)
         newargs.update(kwargs)
         return ConfigOption(**newargs)
 
@@ -232,9 +234,13 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         # add config options
         for oname, opt in self._config_options.items():
             if opt.name in config:
-                cfg_val = config[opt_name]
+                cfg_val = config[opt.name]
             else:
                 cfg_val = opt.default
+                if opt.warn:
+                    self.log.warn(
+                        'No {0} configured, using default value {1} instead.'
+                         ''.format(opt.name, opt.default))
             setattr(self, opt.var_name, cfg_val)
 
         # add status var defaults
