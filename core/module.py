@@ -63,7 +63,7 @@ class ConfigOption:
             self.name = var_name
         else:
             self.name = name
- 
+
         self.default = default
 
     #def __repr__(self):
@@ -136,7 +136,7 @@ class ModuleMeta(type(QtCore.QObject)):
         attrs.update(config_options)
         attrs.update(status_vars)
 
-        new_class = type.__new__(mcs, name, bases, attrs)
+        new_class = super().__new__(mcs, name, bases, attrs)
         new_class._conn = connectors
         new_class._config_options = config_options
         new_class._stat_vars = status_vars

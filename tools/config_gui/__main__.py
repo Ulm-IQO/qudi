@@ -136,9 +136,9 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         node.setColor(self.colors[module.base])
 
         # check where the module belongs and what it can connect to
-        for conn in module.connections:
-            port_type = QudiPortType('in', module.base, [conn[1]])
-            node.addPort(InputPort(node, g, conn[0], palette.c3, port_type))
+        for cname, conn in module.connections.items():
+            port_type = QudiPortType('in', module.base, [conn.ifname])
+            node.addPort(InputPort(node, g, conn.name, palette.c3, port_type))
 
         if module.base != 'gui':
             port_type = QudiPortType('out', module.base, module.interfaces)
@@ -231,7 +231,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
                                 'Target module {} not present while connecting {} to {}'
                                 ''.format(k, conn_in, src))
                             continue
-                        if conn_in not in [c[0] for c in self.mods[k]['module'].connections]:
+                        if conn_in not in [c.name for cn, c in self.mods[k]['module'].connections.items()]:
                             self.log.error(
                                 'Target connector {} not present while connecting {} to {}.{}'
                                 ''.format(conn_in, src, k, conn_in))

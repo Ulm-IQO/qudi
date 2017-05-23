@@ -33,7 +33,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    fitlogic Connector(interface_name='FitLogic')
+    fitlogic = Connector(interface_name='FitLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
