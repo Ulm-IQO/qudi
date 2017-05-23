@@ -28,6 +28,7 @@ import scipy.integrate as integrate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from collections import OrderedDict
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 
 
@@ -38,11 +39,9 @@ class TraceAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'counterlogic1': 'CounterLogic',
-        'savelogic': 'SaveLogic',
-        'fitlogic': 'FitLogic',
-    }
+    counterlogic1 = Connector(interface_name='CounterLogic')
+    savelogic = Connector(interface_name='SaveLogic')
+    fitlogic = Connector(interface_name='FitLogic')
 
     sigHistogramUpdated = QtCore.Signal()
 

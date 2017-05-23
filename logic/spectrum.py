@@ -24,6 +24,7 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
+from core.module import Connector
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
@@ -41,11 +42,9 @@ class SpectrumLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'spectrometer': 'SpectrometerInterface',
-        'odmrlogic1': 'ODMRLogic',
-        'savelogic': 'SaveLogic'
-    }
+    spectrometer = Connector(interface_name='SpectrometerInterface')
+    odmrlogic1 = Connector(interface_name='ODMRLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.

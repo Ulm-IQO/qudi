@@ -23,6 +23,7 @@ import time
 import numpy as np
 from qtpy import QtCore
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from interface.simple_laser_interface import ControlMode, ShutterState, LaserState
 
@@ -32,7 +33,8 @@ class LaserLogic(GenericLogic):
     """
     _modclass = 'laser'
     _modtype = 'logic'
-    _connectors = {'laser': 'SimpleLaserInterface'}
+
+    laser = Connector(interface_name='SimpleLaserInterface')
 
     sigUpdate = QtCore.Signal()
 

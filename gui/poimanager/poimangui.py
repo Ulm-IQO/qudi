@@ -20,18 +20,19 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
-import time
 import os
+import pyqtgraph as pg
+import time
 
+from core.module import Connector
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
@@ -222,9 +223,8 @@ class PoiManagerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'poimanagerlogic1': 'PoiManagerLogic',
-           'confocallogic1': 'ConfocalLogic'
-           }
+    poimanagerlogic1 = Connector(interface_name='PoiManagerLogic')
+    confocallogic1 = Connector(interface_name='ConfocalLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

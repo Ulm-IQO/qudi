@@ -19,13 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
 import datetime
+import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
-from qtpy import QtGui, QtWidgets, QtCore, uic
 
+from core.module import Connector
 from gui.guibase import GUIBase
+from qtpy import QtGui, QtWidgets, QtCore, uic
 
 
 class NuclearOperationsMainWindow(QtWidgets.QMainWindow):
@@ -46,8 +47,8 @@ class NuclearOperationsGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'nuclearoperationslogic': 'NuclearOperationsLogic',
-           'savelogic': 'SaveLogic'}
+    nuclearoperationslogic = Connector(interface_name='NuclearOperationsLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions

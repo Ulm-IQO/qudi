@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 from collections import OrderedDict
@@ -111,10 +112,8 @@ class PulsedMasterLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-        'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-    }
+    pulsedmeasurementlogic = Connector(interface_name='PulsedMeasurementLogic')
+    sequencegeneratorlogic = Connector(interface_name='SequenceGeneratorLogic')
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.

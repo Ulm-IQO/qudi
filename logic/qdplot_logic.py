@@ -25,6 +25,7 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
+from core.module import Connector
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
 
@@ -45,9 +46,7 @@ class QdplotLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'savelogic': 'SaveLogic'
-    }
+    savelogic = Connector(interface_name='SaveLogic')
 
     def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.
