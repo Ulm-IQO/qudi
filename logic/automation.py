@@ -20,11 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-from collections import OrderedDict
-from qtpy import QtCore
 import pyqtgraph.configfile as configfile
 
+from collections import OrderedDict
+from core.module import Connector
 from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class TreeItem:
@@ -265,7 +266,8 @@ class AutomationLogic(GenericLogic):
     """
     _modclass = 'AutomationLogic'
     _modtype = 'logic'
-    _connectors = {'taskrunner': 'TaskRunner'}
+    
+    taskrunner = Connector(interface_name='TaskRunner')
 
     sigRepeat = QtCore.Signal()
 

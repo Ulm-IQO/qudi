@@ -19,16 +19,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
-from qtpy import QtCore
-from core.util.network import netobtain
-from logic.generic_logic import GenericLogic
-import time
+import copy
 import datetime
-from collections import OrderedDict
+import numpy as np
 import os
 import pylab as pb
-import copy
+import time
+
+from collections import OrderedDict
+from core.module import Connector
+from core.util.network import netobtain
+from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class SingleShotLogic(GenericLogic):
@@ -40,19 +42,17 @@ class SingleShotLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'savelogic': 'SaveLogic',
-        'fitlogic': 'FitLogic',
-        'fastcounter': 'FastCounterInterface',
-        'pulseextractionlogic': 'PulseExtractionLogic',
-        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-        'traceanalysislogic1': 'TraceAnalysisLogic',
-        'pulsegenerator': 'PulserInterface',
-        'scannerlogic': 'ScannerLogic',
-        'optimizerlogic': 'OptimizerLogic',
-        'pulsedmasterlogic': 'PulsedMasterLogic',
-        'odmrlogic': 'ODMRLogic'
-    }
+    savelogic = Connector(interface_name='SaveLogic')
+    fitlogic = Connector(interface_name='FitLogic')
+    fastcounter = Connector(interface_name='FastCounterInterface')
+    pulseextractionlogic = Connector(interface_name='PulseExtractionLogic')
+    pulsedmeasurementlogic = Connector(interface_name='PulsedMeasurementLogic')
+    traceanalysislogic1 = Connector(interface_name='TraceAnalysisLogic')
+    pulsegenerator = Connector(interface_name='PulserInterface')
+    scannerlogic = Connector(interface_name='ScannerLogic')
+    optimizerlogic = Connector(interface_name='OptimizerLogic')
+    pulsedmasterlogic = Connector(interface_name='PulsedMasterLogic')
+    odmrlogic = Connector(interface_name='ODMRLogic')
 
     # add possible signals here
     sigHistogramUpdated = QtCore.Signal()

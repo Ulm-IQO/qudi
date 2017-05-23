@@ -19,10 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
 import numpy as np
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class SimpleDataLogic(GenericLogic):
@@ -30,7 +31,8 @@ class SimpleDataLogic(GenericLogic):
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
-    _connectors = {'simpledata': 'SimpleDataInterface'}
+
+    simpledata = Connector(interface_name='SimpleDataInterface')
 
     sigRepeat = QtCore.Signal()
 

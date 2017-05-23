@@ -21,15 +21,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-import pyqtgraph as pg
 import os
+import pyqtgraph as pg
 
+from core.module import Connector
+from gui.colordefs import QudiPalettePale as palette
+from gui.guibase import GUIBase
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
 
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
 
 
 class CounterMainWindow(QtWidgets.QMainWindow):
@@ -55,7 +56,7 @@ class CounterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'counterlogic1': 'CounterLogic'}
+    counterlogic1 = Connector(interface_name='CounterLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()

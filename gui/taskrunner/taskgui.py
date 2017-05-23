@@ -20,6 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+
+from core.module import Connector
 from gui.guibase import GUIBase
 from qtpy import QtWidgets
 from qtpy import QtCore
@@ -32,7 +34,7 @@ class TaskGui(GUIBase):
     _modclass = 'TaskGui'
     _modtype = 'gui'
     ## declare connectors
-    _connectors = {'tasklogic': 'TaskRunner'}
+    tasklogic = Connector(interface_name='TaskRunner')
 
     sigRunTaskFromList = QtCore.Signal(object)
     sigPauseTaskFromList = QtCore.Signal(object)

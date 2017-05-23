@@ -20,29 +20,30 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import datetime
+import inspect
+import numpy as np
+import os
+import pyqtgraph as pg
+import re
+
+
+from collections import OrderedDict
+from core.module import Connector
+from core.util import units
+from core.util.mutex import Mutex
+from gui.colordefs import QudiPalettePale as palette
+from gui.colordefs import QudiPalette as palettedark
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
+from gui.guibase import GUIBase
+from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
+#from gui.pulsed.pulse_editor import PulseEditor
+from logic.sampling_functions import SamplingFunctions
 from qtpy import QtGui
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-import numpy as np
-import os
-from collections import OrderedDict
-import pyqtgraph as pg
-import re
-import inspect
-import datetime
-
-
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
-from gui.colordefs import QudiPalette as palettedark
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-#from gui.pulsed.pulse_editor import PulseEditor
-from core.util.mutex import Mutex
-from core.util import units
-from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
-from logic.sampling_functions import SamplingFunctions
-from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 
 
 #FIXME: Display the Pulse
@@ -156,8 +157,8 @@ class PulsedMeasurementGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'pulsedmasterlogic': 'PulsedMasterLogic',
-           'savelogic': 'SaveLogic'}
+    pulsedmasterlogic = Connector(interface_name='PulsedMasterLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

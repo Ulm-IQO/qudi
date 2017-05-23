@@ -18,9 +18,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import copy
+
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
-import copy
 
 
 class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
@@ -30,7 +32,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
-    _connectors = {'confocalscanner1': 'ConfocalScannerInterface'}
+    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

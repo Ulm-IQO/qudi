@@ -19,18 +19,19 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
+import os
+import pyqtgraph as pg
+
+from collections import OrderedDict
+from core.module import Connector
+from gui.colordefs import ColorScaleInferno
+from gui.guibase import GUIBase
+from gui.guiutils import ColorBar
 from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
-import pyqtgraph as pg
-import numpy as np
-import os
-
-from collections import OrderedDict
-from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
-from gui.colordefs import ColorScaleInferno
 
 
 class VoltScanMainWindow(QtWidgets.QMainWindow):
@@ -52,8 +53,7 @@ class VoltScanGui(GUIBase):
     _modclass = 'VoltScanGui'
     _modtype = 'gui'
     ## declare connectors
-    _connectors = {'voltagescannerlogic1': 'VoltageScannerLogic',
-          }
+    voltagescannerlogic1 = Connector(interface_name='VoltageScannerLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

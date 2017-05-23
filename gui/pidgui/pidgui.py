@@ -20,14 +20,16 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from gui.guibase import GUIBase
+import numpy as np
+import os
+import pyqtgraph as pg
+
+from core.module import Connector
 from gui.colordefs import QudiPalettePale as palette
+from gui.guibase import GUIBase
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-import numpy as np
-import pyqtgraph as pg
-import os
 
 
 class PIDMainWindow(QtWidgets.QMainWindow):
@@ -51,7 +53,7 @@ class PIDGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'pidlogic': 'PIDLogic'}
+    pidlogic = Connector(interface_name='PIDLogic')
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()

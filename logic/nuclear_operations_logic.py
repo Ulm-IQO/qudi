@@ -20,14 +20,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import datetime
 import numpy as np
 import time
-from collections import OrderedDict
-from qtpy import QtCore
-import datetime
 
-from logic.generic_logic import GenericLogic
+from collections import OrderedDict
+from core.module import Connector
 from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class NuclearOperationsLogic(GenericLogic):
@@ -61,15 +62,13 @@ class NuclearOperationsLogic(GenericLogic):
     # declare connectors
     #TODO: Use rather the task runner instead directly the module!
 
-    _connectors = {
-        'sequencegenerationlogic': 'SequenceGenerationLogic',
-        'traceanalysislogic': 'TraceAnalysisLogic',
-        'gatedcounterlogic': 'CounterLogic',
-        'odmrlogic': 'ODMRLogic',
-        'optimizerlogic': 'OptimizerLogic',
-        'scannerlogic':'ScannerLogic',
-        'savelogic': 'SaveLogic'
-    }
+    sequencegenerationlogic = Connector(interface_name='SequenceGenerationLogic')
+    traceanalysislogic = Connector(interface_name='TraceAnalysisLogic')
+    gatedcounterlogic = Connector(interface_name='CounterLogic')
+    odmrlogic = Connector(interface_name='ODMRLogic')
+    optimizerlogic = Connector(interface_name='OptimizerLogic')
+    scannerlogic = Connector(interface_name='ScannerLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     sigNextMeasPoint = QtCore.Signal()
     sigCurrMeasPointUpdated = QtCore.Signal()

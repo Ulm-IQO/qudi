@@ -20,6 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+
+from core.module import Connector
 from gui.guibase import GUIBase
 from qtpy import QtWidgets
 from qtpy import QtCore
@@ -32,7 +34,7 @@ class SwitchGui(GUIBase):
     _modclass = 'SwitchGui'
     _modtype = 'gui'
     ## declare connectors
-    _connectors = {'switchlogic': 'SwitchLogic'}
+    switchlogic = Connector(interface_name='SwitchLogic')
 
     def on_activate(self):
         """Create all UI objects and show the window.

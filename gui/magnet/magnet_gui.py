@@ -20,21 +20,23 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
-import numpy as np
-import pyqtgraph as pg
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
 import datetime
+import numpy as np
+import os
+import pyqtgraph as pg
+import pyqtgraph.exporters
+from qtpy import uic
 
-from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
+from core.module import Connector
+from core.util.units import get_unit_prefix_dict
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from core.util.units import get_unit_prefix_dict
+from gui.guibase import GUIBase
+from gui.guiutils import ColorBar
+from qtpy import QtCore
+from qtpy import QtWidgets
 from qtwidgets.scientific_spinbox import ScienDSpinBox
-import pyqtgraph.exporters
+
 
 class CrossROI(pg.ROI):
 
@@ -164,8 +166,8 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'magnetlogic1': 'MagnetLogic',
-           'savelogic': 'SaveLogic'}
+    magnetlogic1 = Connector(interface_name='MagnetLogic')
+    savelogic = Connector(interface_name='SaveLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

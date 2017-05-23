@@ -23,14 +23,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
 from collections import OrderedDict
+import datetime
 import numpy as np
 import time
-import datetime
 
-from logic.generic_logic import GenericLogic
+from core.module import Connector
 from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class LaserScannerLogic(GenericLogic):
@@ -45,10 +46,8 @@ class LaserScannerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'savelogic': 'SaveLogic',
-    }
+    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
+    savelogic = Connector(interface_name='SaveLogic')
 
     signal_change_voltage = QtCore.Signal(float)
     signal_scan_next_line = QtCore.Signal()

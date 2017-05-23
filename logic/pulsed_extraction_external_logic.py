@@ -20,13 +20,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
-from collections import OrderedDict
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
+from collections import OrderedDict
+from core.module import Connector
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class PulsedExtractionExternalLogic(GenericLogic):
@@ -43,11 +44,9 @@ class PulsedExtractionExternalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'savelogic': 'SaveLogic',
-        'pulseextractionlogic': 'PulseExtractionLogic',
-        'pulseanalysislogic': 'PulseAnalysisLogic'
-    }
+    savelogic = Connector(interface_name='SaveLogic')
+    pulseextractionlogic = Connector(interface_name='PulseExtractionLogic')
+    pulseanalysislogic = Connector(interface_name='PulseAnalysisLogic')
 
     def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.
