@@ -81,8 +81,8 @@ class ODMRGui(GUIBase):
     sigCwMwOn = QtCore.Signal()
     sigMwOff = QtCore.Signal()
     sigMwPowerChanged = QtCore.Signal(float)
-    sigCwMwFreqChanged = QtCore.Signal(float)
-    sigMwSweepFreqChanged = QtCore.Signal(float, float, float)
+    sigMwCwParamsChanged = QtCore.Signal(float, float)
+    sigMwSweepParamsChanged = QtCore.Signal(float, float, float, float)
     sigClockFreqChanged = QtCore.Signal(float)
     sigFitChanged = QtCore.Signal(str)
     sigNumberOfLinesChanged = QtCore.Signal(int)
@@ -121,17 +121,20 @@ class ODMRGui(GUIBase):
         constraints = self._odmr_logic.get_hw_constraints()
 
         # Adjust range of scientific spinboxes above what is possible in Qt Designer
-        self._mw.frequency_DoubleSpinBox.setMaximum(constraints.max_frequency)
-        self._mw.frequency_DoubleSpinBox.setMinimum(constraints.min_frequency)
+        self._mw.cw_frequency_DoubleSpinBox.setMaximum(constraints.max_frequency)
+        self._mw.cw_frequency_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.start_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         self._mw.start_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.step_freq_DoubleSpinBox.setMaximum(100e9)
         self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0)  # set the minimal step to 1Hz
         self._mw.stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         self._mw.stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
-        self._mw.power_DoubleSpinBox.setMaximum(constraints.max_power)
-        self._mw.power_DoubleSpinBox.setMinimum(constraints.min_power)
-        self._mw.power_DoubleSpinBox.setOpts(minStep=0.1)
+        self._mw.cw_power_DoubleSpinBox.setMaximum(constraints.max_power)
+        self._mw.cw_power_DoubleSpinBox.setMinimum(constraints.min_power)
+        self._mw.cw_power_DoubleSpinBox.setOpts(minStep=0.1)
+        self._mw.sweep_power_DoubleSpinBox.setMaximum(constraints.max_power)
+        self._mw.sweep_power_DoubleSpinBox.setMinimum(constraints.min_power)
+        self._mw.sweep_power_DoubleSpinBox.setOpts(minStep=0.1)
 
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
@@ -199,11 +202,12 @@ class ODMRGui(GUIBase):
         #          Configuration of the various display Widgets                #
         ########################################################################
         # Take the default values from logic:
-        self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.mw_frequency)
+        self._mw.cw_frequency_DoubleSpinBox.setValue(self._odmr_logic.cw_mw_frequency)
         self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start)
         self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop)
         self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step)
-        self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.mw_power)
+        self._mw.cw_power_DoubleSpinBox.setValue(self._odmr_logic.cw_mw_power)
+        self._mw.sweep_power_DoubleSpinBox.setValue(self._odmr_logic.sweep_mw_power)
 
         self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
         self._mw.elapsed_time_DisplayWidget.display(int(np.rint(self._odmr_logic.elapsed_time)))
@@ -222,11 +226,12 @@ class ODMRGui(GUIBase):
         #                       Connect signals                                #
         ########################################################################
         # Internal user input changed signals
-        self._mw.frequency_DoubleSpinBox.editingFinished.connect(self.change_frequency)
-        self._mw.start_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_freq)
-        self._mw.step_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_freq)
-        self._mw.stop_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_freq)
-        self._mw.power_DoubleSpinBox.editingFinished.connect(self.change_power)
+        self._mw.cw_frequency_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
+        self._mw.start_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
+        self._mw.step_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
+        self._mw.stop_freq_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
+        self._mw.sweep_power_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
+        self._mw.cw_power_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
         self._mw.runtime_DoubleSpinBox.editingFinished.connect(self.change_runtime)
         self._mw.odmr_cb_max_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
         self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
@@ -252,11 +257,10 @@ class ODMRGui(GUIBase):
         self.sigContinueOdmrScan.connect(self._odmr_logic.continue_odmr_scan,
                                          QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(self._odmr_logic.do_fit, QtCore.Qt.QueuedConnection)
-        self.sigCwMwFreqChanged.connect(self._odmr_logic.set_cw_frequency,
-                                        QtCore.Qt.QueuedConnection)
-        self.sigMwPowerChanged.connect(self._odmr_logic.set_power, QtCore.Qt.QueuedConnection)
-        self.sigMwSweepFreqChanged.connect(self._odmr_logic.set_sweep_frequencies,
-                                           QtCore.Qt.QueuedConnection)
+        self.sigMwCwParamsChanged.connect(self._odmr_logic.set_cw_parameters,
+                                          QtCore.Qt.QueuedConnection)
+        self.sigMwSweepParamsChanged.connect(self._odmr_logic.set_sweep_parameters,
+                                             QtCore.Qt.QueuedConnection)
         self.sigRuntimeChanged.connect(self._odmr_logic.set_runtime, QtCore.Qt.QueuedConnection)
         self.sigNumberOfLinesChanged.connect(self._odmr_logic.set_matrix_line_number,
                                              QtCore.Qt.QueuedConnection)
@@ -305,9 +309,8 @@ class ODMRGui(GUIBase):
         self.sigStopOdmrScan.disconnect()
         self.sigContinueOdmrScan.disconnect()
         self.sigDoFit.disconnect()
-        self.sigCwMwFreqChanged.disconnect()
-        self.sigMwPowerChanged.disconnect()
-        self.sigMwSweepFreqChanged.disconnect()
+        self.sigMwCwParamsChanged.disconnect()
+        self.sigMwSweepParamsChanged.disconnect()
         self.sigRuntimeChanged.disconnect()
         self.sigNumberOfLinesChanged.disconnect()
         self.sigSaveMeasurement.disconnect()
@@ -320,11 +323,12 @@ class ODMRGui(GUIBase):
         self._mw.action_toggle_cw.triggered.disconnect()
         self._mw.action_RestoreDefault.triggered.disconnect()
         self._mw.do_fit_PushButton.clicked.disconnect()
-        self._mw.frequency_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.cw_frequency_DoubleSpinBox.editingFinished.disconnect()
         self._mw.start_freq_DoubleSpinBox.editingFinished.disconnect()
         self._mw.step_freq_DoubleSpinBox.editingFinished.disconnect()
         self._mw.stop_freq_DoubleSpinBox.editingFinished.disconnect()
-        self._mw.power_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.cw_power_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.sweep_power_DoubleSpinBox.editingFinished.disconnect()
         self._mw.runtime_DoubleSpinBox.editingFinished.disconnect()
         self._mw.odmr_cb_max_DoubleSpinBox.valueChanged.disconnect()
         self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.disconnect()
@@ -354,8 +358,9 @@ class ODMRGui(GUIBase):
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.action_toggle_cw.setEnabled(False)
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-            self._mw.power_DoubleSpinBox.setEnabled(False)
-            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
+            self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
             self._mw.start_freq_DoubleSpinBox.setEnabled(False)
             self._mw.step_freq_DoubleSpinBox.setEnabled(False)
             self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
@@ -374,8 +379,9 @@ class ODMRGui(GUIBase):
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.action_toggle_cw.setEnabled(False)
-            self._mw.power_DoubleSpinBox.setEnabled(False)
-            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
+            self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
             self._mw.start_freq_DoubleSpinBox.setEnabled(False)
             self._mw.step_freq_DoubleSpinBox.setEnabled(False)
             self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
@@ -395,8 +401,8 @@ class ODMRGui(GUIBase):
             self._mw.action_run_stop.setEnabled(False)
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.action_toggle_cw.setEnabled(False)
-            self._mw.power_DoubleSpinBox.setEnabled(False)
-            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
             self.sigCwMwOn.emit()
         else:
             self._mw.action_toggle_cw.setEnabled(False)
@@ -418,8 +424,8 @@ class ODMRGui(GUIBase):
         # Update measurement status (activate/deactivate widgets/actions)
         if is_running:
             self._mw.action_resume_odmr.setEnabled(False)
-            self._mw.power_DoubleSpinBox.setEnabled(False)
-            self._mw.frequency_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_power_DoubleSpinBox.setEnabled(False)
+            self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
             if mw_mode != 'cw':
                 self._mw.clear_odmr_PushButton.setEnabled(True)
                 self._mw.action_run_stop.setEnabled(True)
@@ -427,6 +433,7 @@ class ODMRGui(GUIBase):
                 self._mw.start_freq_DoubleSpinBox.setEnabled(False)
                 self._mw.step_freq_DoubleSpinBox.setEnabled(False)
                 self._mw.stop_freq_DoubleSpinBox.setEnabled(False)
+                self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
                 self._mw.runtime_DoubleSpinBox.setEnabled(False)
                 self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
                 self._mw.action_run_stop.setChecked(True)
@@ -439,6 +446,7 @@ class ODMRGui(GUIBase):
                 self._mw.start_freq_DoubleSpinBox.setEnabled(True)
                 self._mw.step_freq_DoubleSpinBox.setEnabled(True)
                 self._mw.stop_freq_DoubleSpinBox.setEnabled(True)
+                self._mw.sweep_power_DoubleSpinBox.setEnabled(True)
                 self._mw.runtime_DoubleSpinBox.setEnabled(True)
                 self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
                 self._mw.action_run_stop.setChecked(False)
@@ -446,8 +454,9 @@ class ODMRGui(GUIBase):
                 self._mw.action_toggle_cw.setChecked(True)
         else:
             self._mw.action_resume_odmr.setEnabled(True)
-            self._mw.power_DoubleSpinBox.setEnabled(True)
-            self._mw.frequency_DoubleSpinBox.setEnabled(True)
+            self._mw.cw_power_DoubleSpinBox.setEnabled(True)
+            self._mw.sweep_power_DoubleSpinBox.setEnabled(True)
+            self._mw.cw_frequency_DoubleSpinBox.setEnabled(True)
             self._mw.clear_odmr_PushButton.setEnabled(False)
             self._mw.action_run_stop.setEnabled(True)
             self._mw.action_toggle_cw.setEnabled(True)
@@ -651,24 +660,20 @@ class ODMRGui(GUIBase):
     #                           Change Methods                                 #
     ############################################################################
 
-    def change_frequency(self):
-        """ Change CW frequency of microwave source """
-        frequency = self._mw.frequency_DoubleSpinBox.value()
-        self.sigCwMwFreqChanged.emit(frequency)
+    def change_cw_params(self):
+        """ Change CW frequency and power of microwave source """
+        frequency = self._mw.cw_frequency_DoubleSpinBox.value()
+        power = self._mw.cw_power_DoubleSpinBox.value()
+        self.sigMwCwParamsChanged.emit(frequency, power)
         return
 
-    def change_sweep_freq(self):
+    def change_sweep_params(self):
         """ Change start, stop and step frequency of frequency sweep """
         start = self._mw.start_freq_DoubleSpinBox.value()
         stop = self._mw.stop_freq_DoubleSpinBox.value()
         step = self._mw.step_freq_DoubleSpinBox.value()
-        self.sigMwSweepFreqChanged.emit(start, stop, step)
-        return
-
-    def change_power(self):
-        """ Change microwave power """
-        power = self._mw.power_DoubleSpinBox.value()
-        self.sigMwPowerChanged.emit(power)
+        power = self._mw.sweep_power_DoubleSpinBox.value()
+        self.sigMwSweepParamsChanged.emit(start, stop, step, power)
         return
 
     def change_runtime(self):
