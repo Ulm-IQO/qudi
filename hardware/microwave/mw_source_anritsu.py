@@ -383,7 +383,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             edge = None
 
         if edge is not None:
-            self._command_wait(':TRIG:SLOP {0}'.format(edge))
+            self._command_wait(':TRIG:SEQ3:SLOP {0}'.format(edge))
 
         polarity = self._gpib_connection.query(':TRIG:SEQ3:SLOPE?')
         if 'NEG' in polarity:
