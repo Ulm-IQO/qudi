@@ -58,7 +58,7 @@ class NuclearOperationsGui(GUIBase):
                          config,
                          c_dict)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():

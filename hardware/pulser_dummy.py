@@ -41,7 +41,7 @@ class PulserDummy(Base, PulserInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
