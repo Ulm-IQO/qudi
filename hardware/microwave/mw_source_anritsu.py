@@ -132,6 +132,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         """
         is_running = bool(int(float(self._gpib_connection.query('OUTP:STAT?'))))
         mode = self._gpib_connection.query(':FREQ:MODE?').strip('\n').lower()
+        if mode == 'swe':
+            mode = 'sweep'
         return mode, is_running
 
     def get_power(self):
@@ -158,14 +160,14 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             start = float(self._gpib_connection.query(':FREQ:STAR?'))
             stop = float(self._gpib_connection.query(':FREQ:STOP?'))
             step = float(self._gpib_connection.query(':SWE:FREQ:STEP?'))
-            return_val = [start, stop, step]
+            return_val = [start+step, stop, step]
         elif 'list' in mode:
             stop_index = int(float(self._gpib_connection.query(':LIST:STOP?')))
             self._gpib_connection.write(':LIST:IND {0:d}'.format(stop_index))
             stop = float(self._gpib_connection.query(':LIST:FREQ?'))
             self._gpib_connection.write(':LIST:IND 0')
             start = float(self._gpib_connection.query(':LIST:FREQ?'))
-            step = (stop - start) / stop_index
+            step = (stop - start) / (stop_index-1)
             return_val = np.arange(start, stop + step, step)
         return return_val
 
@@ -267,7 +269,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         if frequency is not None:
             s = ' {0:f},'.format(frequency[0])
-            for f in frequency[:-1]:
+            for f in frequency[:-2]:
                 s += ' {0:f},'.format(f)
             s += ' {0:f}'.format(frequency[-1])
             self._gpib_connection.write(':LIST:FREQ' + s)
@@ -381,7 +383,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             edge = None
 
         if edge is not None:
-            self._command_wait(':TRIG:SLOP {0}'.format(edge))
+            self._command_wait(':TRIG:SEQ3:SLOP {0}'.format(edge))
 
         polarity = self._gpib_connection.query(':TRIG:SEQ3:SLOPE?')
         if 'NEG' in polarity:
