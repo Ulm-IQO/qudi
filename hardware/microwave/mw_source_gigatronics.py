@@ -121,94 +121,194 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         return limits
 
-    def on(self):
+    # def on(self):
+    #     """ Switches on any preconfigured microwave output.
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #     """
+    #     self._gpib_connection.write(':OUTP ON')
+    #     return 0
+
+    def off(self):
+        """ 
+        Switches off any microwave output.
+        Must return AFTER the device is actually stopped.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connection.write(':OUTP:STAT OFF')
+        while int(float(self._gpib_connection.query(':OUTP:STAT?'))) != 0:
+            time.sleep(0.2)
+        return 0
+
+    def get_status(self):
+        """ 
+        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and 
+        the output state (stopped, running)
+
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False] 
+        """
+        is_running = bool(int(float(self._gpib_connection.query(':OUTP:STAT?'))))
+        mode = self._gpib_connection.query(':FREQ:MODE?').strip('\n').lower()
+        return mode, is_running
+
+    def get_power(self):
+        """ 
+        Gets the microwave output power. 
+
+        @return float: the power set at the device in dBm
+        """
+        return float(self._gpib_connection.query(':POW?'))
+
+    # def set_power(self, power=None):
+    #     """ Sets the microwave output power.
+    #
+    #     @param float power: the power (in dBm) set for this device
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #     """
+    #     if power is not None:
+    #         self._gpib_connection.write(':POW {:f} DBM'.format(power))
+    #         return 0
+    #     else:
+    #         return -1
+
+    def get_frequency(self):
+        """ 
+        Gets the frequency of the microwave output.
+        Returns single float value if the device is in cw mode. 
+        Returns list like [start, stop, step] if the device is in sweep mode.
+        Returns list of frequencies if the device is in list mode.
+
+        @return [float, list]: frequency(s) currently set for this device in Hz
+        """
+        mode, is_running = self.get_status()
+        if 'cw' in mode:
+            return_val = float(self._gpib_connection.query(':FREQ?'))
+        elif 'list' in mode:
+            freq_str = float(self._gpib_connection.query(':LIST:FREQ?'))
+            return_val = np.array([float(freq) for freq in freq_str.split(',')])
+        else:
+            return_val = -1
+        return return_val
+
+    def cw_on(self):
         """ Switches on any preconfigured microwave output.
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':OUTP ON')
+        mode, is_running = self.get_status()
+        if is_running:
+            if mode == 'cw':
+                return 0
+            else:
+                self.off()
+
+        if mode != 'cw':
+            self._command_wait(':FREQ:MODE CW')
+
+        self._gpib_connection.write(':OUTP:STAT ON')
+        dummy, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            dummy, is_running = self.get_status()
         return 0
 
+    def set_cw(self, frequency=None, power=None):
+        """ 
+        Configures the device for cw-mode and optionally sets frequency and/or power
 
-    def off(self):
-        """ Switches off any microwave output.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self._gpib_connection.write(':OUTP OFF')
-        self._gpib_connection.write(':MODE CW')
-        return 0
-
-
-    def get_power(self):
-        """ Gets the microwave output power.
-
-        @return float: the power set at the device in dBm
-        """
-        return float(self._gpib_connection.ask(':POW?'))
-
-
-    def set_power(self, power=None):
-        """ Sets the microwave output power.
-
-        @param float power: the power (in dBm) set for this device
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if power is not None:
-            self._gpib_connection.write(':POW {:f} DBM'.format(power))
-            return 0
-        else:
-            return -1
-
-
-    def get_frequency(self):
-        """ Gets the frequency of the microwave output.
-
-        @return float: frequency (in Hz), which is currently set for this device
-        """
-
-        return float(self._gpib_connection.ask(':FREQ?'))
-
-
-    def set_frequency(self, freq=None):
-        """ Sets the frequency of the microwave output.
-
-        @param float freq: the frequency (in Hz) set for this device
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if freq is not None:
-            self._gpib_connection.write(':FREQ {0:e}'.format(freq))
-            return 0
-        else:
-            return -1
-
-
-    def set_cw(self, freq=None, power=None, useinterleave=None):
-        """ Sets the MW mode to cw and additionally frequency and power
-
-        @param float freq: frequency to set in Hz
+        @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
         @param bool useinterleave: If this mode exists you can choose it.
 
-        @return int: error code (0:OK, -1:error)
+        @return float, float, str: current frequency in Hz, current power in dBm, current mode
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        error = 0
-        self._gpib_connection.write(':MODE CW')
+        mode, is_running = self.get_status()
+        if is_running:
+            self.off()
 
-        if freq is not None:
-            error = self.set_frequency(freq)
-        else:
-            return -1
+        if mode != 'cw':
+            self._command_wait(':FREQ:MODE CW')
+
+        if frequency is not None:
+            self._command_wait(':FREQ {0:e}'.format(frequency))
+
         if power is not None:
-            error = self.set_power(power)
-        else:
-            return -1
+            self._command_wait(':POW {0:f} DBM'.format(power))
 
-        return error
+        mode, dummy = self.get_status()
+        actual_freq = self.get_frequency()
+        actual_power = self.get_power()
+        return actual_freq, actual_power, mode
+
+    def list_on(self):
+        """
+        Switches on the list mode microwave output.
+        Must return AFTER the device is actually running.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        mode, is_running = self.get_status()
+        if is_running:
+            if mode == 'list':
+                return 0
+            else:
+                self.off()
+
+        if mode != 'list':
+            self._command_wait(':FREQ:MODE LIST')
+
+        self._gpib_connection.write(':OUTP:STAT ON')
+        dummy, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.2)
+            dummy, is_running = self.get_status()
+        return 0
+
+    def set_list(self, frequency=None, power=None):
+        """ 
+        Configures the device for list-mode and optionally sets frequencies and/or power
+
+        @param list frequency: list of frequencies in Hz
+        @param float power: MW power of the frequency list in dBm
+
+        @return list, float, str: current frequencies in Hz, current power in dBm, current mode
+        """
+        mode, is_running = self.get_status()
+
+        if is_running:
+            self.off()
+
+        if mode != 'list':
+            self._command_wait(':FREQ:MODE LIST')
+
+        self._gpib_connection.write(':LIST:TYPE FREQ')
+        self._gpib_connection.write(':LIST:IND 0')
+
+        if frequency is not None:
+            s = ' {0:f},'.format(frequency[0])
+            for f in frequency[:-2]:
+                s += ' {0:f},'.format(f)
+            s += ' {0:f}'.format(frequency[-1])
+            self._gpib_connection.write(':LIST:FREQ' + s)
+            self._gpib_connection.write(':LIST:STAR 0')
+            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)))
+            self._gpib_connection.write(':LIST:MODE MAN')
+            self._gpib_connection.write('*WAI')
+            self._command_wait(':LIST:IND 0')
+
+        if power is not None:
+            self._command_wait(':POW {0:f}'.format(power))
+
+        self._command_wait(':TRIG:SOUR EXT')
+
+        actual_power = self.get_power()
+        actual_freq = self.get_frequency()
+        mode, dummy = self.get_status()
+        return actual_freq, actual_power, mode
 
     def set_list(self, freq=None, power=None):
         """ Sets the MW mode to list mode
