@@ -197,7 +197,7 @@ class MagnetLogic(GenericLogic):
         self._magnet_device = self.get_connector('magnetstage')
         self._save_logic = self.get_connector('savelogic')
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
         # checking for the right configuration
         config = self.getConfiguration()
         for key in config.keys():

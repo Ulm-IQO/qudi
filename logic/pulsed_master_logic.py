@@ -122,11 +122,11 @@ class PulsedMasterLogic(GenericLogic):
         """
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
         if 'direct_write' in config.keys():
             if isinstance(config['direct_write'], bool):

@@ -53,9 +53,9 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
         self.threadlock = Mutex()
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
         self._internal_clock_hz = 950e6     # that is a fixed number, 950MHz
         self.statusvar = -1                 # fast counter state

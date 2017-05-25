@@ -155,7 +155,7 @@ class SaveLogic(GenericLogic):
         # locking for thread safety
         self.lock = Mutex()
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # name of active POI, default to empty string
         self.active_poi_name = ''
@@ -200,7 +200,7 @@ class SaveLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Definition, configuration and initialisation of the SaveLogic.

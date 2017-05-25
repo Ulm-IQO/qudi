@@ -81,11 +81,11 @@ class CounterLogic(GenericLogic):
         #locking for thread safety
         self.threadlock = Mutex()
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
         # in bins
         self._count_length = 300
