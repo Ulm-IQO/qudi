@@ -25,7 +25,7 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.module import Connector
+from core.module import Connector, ConfigOption, StatusVar
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -189,6 +189,19 @@ class ConfocalGui(GUIBase):
     savelogic = Connector(interface_name='SaveLogic')
     optimizerlogic1 = Connector(interface_name='OptimizerLogic')
 
+    # config options for gui
+    fixed_aspect_ratio_xy = ConfigOption('fixed_aspect_ratio_xy', True)
+    fixed_aspect_ratio_depth = ConfigOption('fixed_aspect_ratio_depth', True)
+    image_x_padding = ConfigOption('image_x_padding', 0.02)
+    image_y_padding = ConfigOption('image_y_padding', 0.02)
+    image_z_padding = ConfigOption('image_z_padding', 0.02)
+
+    # status var
+    adjust_cursor_roi = StatusVar(default=True)
+    slider_small_step = StatusVar(default=10e-9)    # initial value in meter
+    slider_big_step = StatusVar(default=100e-9)     # initial value in meter
+
+    # signals
     sigStartOptimizer = QtCore.Signal(list, str)
 
     def __init__(self, config, **kwargs):
@@ -199,15 +212,6 @@ class ConfocalGui(GUIBase):
         # checking for the right configuration
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
-
-        self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
-        self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
-        self.image_x_padding = config['image_x_padding']
-        self.image_y_padding = config['image_y_padding']
-        self.image_z_padding = config['image_z_padding']
-
-        self.slider_small_step = 10e-9         # initial value in meter
-        self.slider_big_step = 100e-9          # initial value in meter
 
     def on_activate(self):
         """ Initializes all needed UI files and establishes the connectors.
@@ -735,9 +739,6 @@ class ConfocalGui(GUIBase):
         self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self._sd.hardware_switch.clicked.connect(self.switch_hardware)
 
-        if 'adjust_cursor_roi' in self._statusVariables:
-            self.adjust_cursor_roi = self._statusVariables['adjust_cursor_roi']
-
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
 
@@ -772,7 +773,6 @@ class ConfocalGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._statusVariables['adjust_cursor_roi'] = self.adjust_cursor_roi
         self._mw.close()
         return 0
 
