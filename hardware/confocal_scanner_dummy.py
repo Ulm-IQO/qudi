@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import time
 
-from core.module import Base
+from core.module import Base, Connector
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -33,8 +33,9 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     """
     _modclass = 'ConfocalScannerDummy'
     _modtype = 'hardware'
+
     # connectors
-    _connectors = {'fitlogic': 'FitLogic'}
+    fitlogic = Connector(interface_name='FitLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
