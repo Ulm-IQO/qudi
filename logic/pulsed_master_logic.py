@@ -20,10 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Connector
+from collections import OrderedDict
+from core.module import Connector, ConfigOption, StatusVar
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
-from collections import OrderedDict
 import numpy as np
 
 
@@ -33,6 +33,21 @@ class PulsedMasterLogic(GenericLogic):
     sequence_generator_logic and pulsed measurements via pulsed_measurement_logic.
     Basically glue logic to pass information between logic modules.
     """
+
+    _modclass = 'pulsedmasterlogic'
+    _modtype = 'logic'
+
+    # declare connectors
+    pulsedmeasurementlogic = Connector(interface_name='PulsedMeasurementLogic')
+    sequencegeneratorlogic = Connector(interface_name='SequenceGeneratorLogic')
+
+    # config options
+    direct_write = ConfigOption('direct_write', False, warn=True)
+
+    # status vars
+    invoke_settings = StatusVar('invoke_settings', False)
+    couple_generator_hw = StatusVar('couple_generator_hw', True)
+
     # pulsed_measurement_logic signals
     sigLaserToShowChanged = QtCore.Signal(int, bool)
     sigDoFit = QtCore.Signal(str)
@@ -108,13 +123,6 @@ class PulsedMasterLogic(GenericLogic):
     sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
-    _modclass = 'pulsedmasterlogic'
-    _modtype = 'logic'
-
-    # declare connectors
-    pulsedmeasurementlogic = Connector(interface_name='PulsedMeasurementLogic')
-    sequencegeneratorlogic = Connector(interface_name='SequenceGeneratorLogic')
-
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
 
@@ -122,43 +130,13 @@ class PulsedMasterLogic(GenericLogic):
         """
         super().__init__(config=config, **kwargs)
 
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.debug('{0}: {1}'.format(key, config[key]))
-
-        if 'direct_write' in config.keys():
-            if isinstance(config['direct_write'], bool):
-                self.direct_write = config['direct_write']
-            else:
-                self.log.warning('The "direct_write" parameter in config is non-bool type\n'
-                                 'Using "False" as default.')
-                self.direct_write = False
-        else:
-            self.log.warning('The "direct_write" parameter in config is not defined.\n'
-                             'If you want to use direct write, set this parameter to "True". '
-                             'Default is "False".')
-            self.direct_write = False
-
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
         self._generator_logic = self.get_connector('sequencegeneratorlogic')
 
-        # Recall status variables
-        if 'invoke_settings' in self._statusVariables:
-            self.invoke_settings = self._statusVariables['invoke_settings']
-        else:
-            self.invoke_settings = False
-        if 'couple_generator_hw' in self._statusVariables:
-            self.couple_generator_hw = self._statusVariables['couple_generator_hw']
-        else:
-            self.couple_generator_hw = True
-
-            # Signals controlling the pulsed_measurement_logic
+        # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
                                                      QtCore.Qt.QueuedConnection)
         self.sigMeasurementSequenceSettingsChanged.connect(
@@ -315,10 +293,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        # Save status variables
-        self._statusVariables['invoke_settings'] = self.invoke_settings
-        self._statusVariables['couple_generator_hw'] = self.couple_generator_hw
-
         # Disconnect all signals
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.disconnect()

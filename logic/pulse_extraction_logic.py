@@ -56,10 +56,6 @@ class PulseExtractionLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # recall saved variables from file
-        #if 'number_of_lasers' in self._statusVariables:
-        #    self.number_of_lasers = self._statusVariables['number_of_lasers']
-
         self.gated_extraction_methods = OrderedDict()
         self.ungated_extraction_methods = OrderedDict()
         self.extraction_methods = OrderedDict()
@@ -95,8 +91,6 @@ class PulseExtractionLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        # Save variables to file
-        #self._statusVariables['number_of_lasers'] = self.number_of_lasers
         return
 
     def extract_laser_pulses(self, count_data, is_gated=False):
