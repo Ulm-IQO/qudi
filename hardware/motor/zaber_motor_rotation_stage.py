@@ -35,7 +35,7 @@ class MotorRotationZaber(Base, MotorInterface):
     _modclass = 'MotorRotation'
     _modtype = 'hardware'
 
-    _com_port_rot = ConfigOpton('com_port_zaber', 'ASRL1::INSTR', warn=True)
+    _com_port_rot = ConfigOption('com_port_zaber', 'ASRL1::INSTR', warn=True)
     _rot_baud_rate = ConfigOption('zaber_baud_rate', 9600, warn=True)
     _rot_timeout = ConfigOption('zaber_timeout', 5000, warn=True)     #TIMEOUT shorter?
     _rot_term_char = ConfigOption('zaber_term_char', '\n', warn=True)

@@ -58,10 +58,10 @@ class MotorStagePI(Base, MotorInterface):
     step_second_axis = ConfigOption('pi_second_axis_step', 1e-7, warn=True)
     step_third_axis = ConfigOption('pi_third_axis_step', 1e-7, warn=True)
 
-    _vel_min_first = ConfigOption('vel_first_min',  1e-5, warn=True)
+    _vel_min_first = ConfigOption('vel_first_min', 1e-5, warn=True)
     _vel_max_first = ConfigOption('vel_first_max', 5e-2, warn=True)
     _vel_min_second = ConfigOption('vel_second_min', 1e-5, warn=True)
-    _vel_max_second = ConfigOption'vel_second_max', 5e-2, warn=True)
+    _vel_max_second = ConfigOption('vel_second_max', 5e-2, warn=True)
     _vel_min_third = ConfigOption('vel_third_min', 1e-5, warn=True)
     _vel_max_third = ConfigOption('vel_third_max', 5e-2, warn=True)
 
