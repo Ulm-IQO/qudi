@@ -38,7 +38,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     fitlogic = Connector(interface_name='FitLogic')
 
     # config
-    _clock_frequency = ConfigOption('clock_frequency', 100, warn=True)
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

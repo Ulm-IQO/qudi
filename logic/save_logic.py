@@ -125,7 +125,7 @@ class SaveLogic(GenericLogic):
 
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
-    log_into_daily_directory = ConfigOption('log_into_daily_directory', False, warn=True)
+    log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')
 
     # Matplotlib style definition for saving plots
     mpl_qd_style = {

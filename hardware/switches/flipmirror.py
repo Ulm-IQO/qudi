@@ -33,7 +33,7 @@ class FlipMirror(Base, SwitchInterface):
     _modclass = 'switchinterface'
     _modtype = 'hardware'
 
-    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', warn=True)
+    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
 
     def __init__(self, config, **kwargs):
         """ Creae flip mirror control module

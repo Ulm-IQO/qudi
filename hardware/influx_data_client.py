@@ -32,14 +32,14 @@ class InfluxDataClient(Base, ProcessInterface):
     _modclass = 'InfluxDataClient'
     _modtype = 'hardware'
 
-    user = ConfigOption('user', '', error=True)
-    pw = ConfigOption('password', '', error=True)
-    dbname = ConfigOption('dbname', '', error=True)
-    host = ConfigOption('host', '', error=True)
+    user = ConfigOption('user', '', missing='error')
+    pw = ConfigOption('password', '', missing='error')
+    dbname = ConfigOption('dbname', '', missing='error')
+    host = ConfigOption('host', '', missing='error')
     port = ConfigOption('port', 8086)
-    series = ConfigOption('dataseries', '', error=True)
-    field = ConfigOption('field', '', error=True)
-    cr = ConfigOption('criterion', '', error=True)
+    series = ConfigOption('dataseries', '', missing='error')
+    field = ConfigOption('field', '', missing='error')
+    cr = ConfigOption('criterion', '', missing='error')
 
     def on_activate(self):
         """ Activate module.

@@ -110,8 +110,8 @@ class WavemeterLoggerLogic(GenericLogic):
     fitlogic = Connector(interface_name='FitLogic')
 
     # config opts
-    _logic_acquisition_timing = ConfigOption('logic_acquisition_timing', 20.0, warn=True)
-    _logic_update_timing = ConfigOption('logic_update_timing', 100.0, warn=True)
+    _logic_acquisition_timing = ConfigOption('logic_acquisition_timing', 20.0, missing='warn')
+    _logic_update_timing = ConfigOption('logic_update_timing', 100.0, missing='warn')
 
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
