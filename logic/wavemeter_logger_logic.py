@@ -124,22 +124,6 @@ class WavemeterLoggerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-        #if 'logic_acquisition_timing' in config.keys():
-        #    self._logic_acquisition_timing = config['logic_acquisition_timing']
-        #else:
-        #    self._logic_acquisition_timing = 20.
-        #    self.log.warning('No logic_acquisition_timing configured, '
-        #                     'using {} instead.'.format(self._logic_acquisition_timing)
-        #                     )
-
-        #if 'logic_update_timing' in config.keys():
-        #    self._logic_update_timing = config['logic_update_timing']
-        #else:
-        #    self._logic_update_timing = 100.
-        #    self.log.warning('No logic_update_timing configured, '
-        #                     'using {} instead.'.format(self._logic_update_timing)
-        #                     )
-
         self._acqusition_start_time = 0
         self._bins = 200
         self._data_index = 0
