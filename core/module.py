@@ -298,6 +298,12 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
     @QtCore.Slot(result=bool)
     def _wrap_deactivation(self):
         """ Save vars and catch exceptions during deactivation. """
+        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
+        try:
+            self.deactivate()
+        except:
+            self.log.exception('Error during deactivation:')
+            return False
 
         # save status vars
         for vname, var in self._stat_vars.items():
@@ -305,12 +311,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
                 print('varde', vname, var.var_name, var.name, var.default, getattr(self, var.var_name))
                 self._statusVariables[var.name] = getattr(self, var.var_name)
 
-        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.deactivate()
-        except:
-            self.log.exception('Error during deactivation:')
-            return False
         print('desv', self._statusVariables)
         return True
 
