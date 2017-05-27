@@ -229,12 +229,6 @@ class PoiManagerGui(GUIBase):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.debug('{0}: {1}'.format(key, config[key]))
-
     def on_activate(self):
         """ Initializes the overall GUI, and establishes the connectors.
 
