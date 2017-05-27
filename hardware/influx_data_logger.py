@@ -30,14 +30,14 @@ class InfluxLogger(Base, DataLoggerInterface):
     _modclass = 'InfluxLogger'
     _modtype = 'hardware'
 
-    user = ConfigOption('user', '', missing='error')
-    pw = ConfigOption('password', '', missing='error')
-    dbname = ConfigOption('dbname', '', missing='error')
-    host = ConfigOption('host', '', missing='error')
+    user = ConfigOption('user', missing='error')
+    pw = ConfigOption('password', missing='error')
+    dbname = ConfigOption('dbname', missing='error')
+    host = ConfigOption('host', missing='error')
     port = ConfigOption('port', 8086)
-    series = ConfigOption('dataseries', '', missing='error')
-    field = ConfigOption('field', '', missing='error')
-    cr = ConfigOption('criterion', '', missing='error')
+    series = ConfigOption('dataseries', missing='error')
+    field = ConfigOption('field', missing='error')
+    cr = ConfigOption('criterion', missing='error')
 
 
     def __init__(self, **kwargs):
