@@ -181,36 +181,8 @@ class PulsedMeasurementLogic(GenericLogic):
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
             self._pulse_extraction_logic.number_of_lasers = self.number_of_lasers
-        #if 'fast_counter_record_length' in self._statusVariables:
-        #    self.fast_counter_record_length = self._statusVariables['fast_counter_record_length']
-        #if 'sequence_length_s' in self._statusVariables:
-        #    self.sequence_length_s = self._statusVariables['sequence_length_s']
         if 'controlled_vals' in self._statusVariables:
             self.controlled_vals = np.array(self._statusVariables['controlled_vals'])
-        #if 'fast_counter_binwidth' in self._statusVariables:
-        #    self.fast_counter_binwidth = self._statusVariables['fast_counter_binwidth']
-        #if 'microwave_power' in self._statusVariables:
-        #    self.microwave_power = self._statusVariables['microwave_power']
-        #if 'microwave_freq' in self._statusVariables:
-        #    self.microwave_freq = self._statusVariables['microwave_freq']
-        #if 'use_ext_microwave' in self._statusVariables:
-        #    self.use_ext_microwave = self._statusVariables['use_ext_microwave']
-        #if 'current_channel_config_name' in self._statusVariables:
-        #    self.current_channel_config_name = self._statusVariables['current_channel_config_name']
-        #if 'sample_rate' in self._statusVariables:
-        #    self.sample_rate = self._statusVariables['sample_rate']
-        #if 'analogue_amplitude' in self._statusVariables:
-        #    self.analogue_amplitude = self._statusVariables['analogue_amplitude']
-        #if 'interleave_on' in self._statusVariables:
-        #    self.interleave_on = self._statusVariables['interleave_on']
-        #if 'timer_interval' in self._statusVariables:
-        #    self.timer_interval = self._statusVariables['timer_interval']
-        #if 'alternating' in self._statusVariables:
-        #    self.alternating = self._statusVariables['alternating']
-        #if 'show_raw_data' in self._statusVariables:
-        #    self.show_raw_data = self._statusVariables['show_raw_data']
-        #if 'show_laser_index' in self._statusVariables:
-        #    self.show_laser_index = self._statusVariables['show_laser_index']
         if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
             self.fc.load_from_dict(self._statusVariables['fits'])
 
@@ -259,21 +231,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.stop_pulsed_measurement()
 
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        #self._statusVariables['fast_counter_record_length'] = self.fast_counter_record_length
-        #self._statusVariables['sequence_length_s'] = self.sequence_length_s
         self._statusVariables['controlled_vals'] = list(self.controlled_vals)
-        #self._statusVariables['fast_counter_binwidth'] = self.fast_counter_binwidth
-        #self._statusVariables['microwave_power'] = self.microwave_power
-        #self._statusVariables['microwave_freq'] = self.microwave_freq
-        #self._statusVariables['use_ext_microwave'] = self.use_ext_microwave
-        #self._statusVariables['current_channel_config_name'] = self.current_channel_config_name
-        #self._statusVariables['sample_rate'] = self.sample_rate
-        #self._statusVariables['analogue_amplitude'] = self.analogue_amplitude
-        #self._statusVariables['interleave_on'] = self.interleave_on
-        #self._statusVariables['timer_interval'] = self.timer_interval
-        #self._statusVariables['alternating'] = self.alternating
-        #self._statusVariables['show_raw_data'] = self.show_raw_data
-        #self._statusVariables['show_laser_index'] = self.show_laser_index
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
         return
