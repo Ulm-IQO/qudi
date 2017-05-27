@@ -26,6 +26,7 @@ import qtpy
 import sys
 
 from collections import OrderedDict
+from enum import Enum
 from .FysomAdapter import Fysom  # provides a final state machine
 from qtpy import QtCore
 
@@ -53,11 +54,16 @@ class StatusVar:
     def type_check(self, check_this):
         return True
 
+class MissingOption(Enum):
+    error = -3
+    warn = -2
+    info = -1
+    nothing = 0
 
 class ConfigOption:
 
-    def __init__(self, name=None, default=None, var_name=None, warn=False):
-        self.warn = warn
+    def __init__(self, name=None, default=None, var_name=None, missing='none'):
+        self.missing = MissingOption[missing]
         self.var_name = var_name
         if name is None:
             self.name = var_name
@@ -75,7 +81,7 @@ class ConfigOption:
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
         newargs['var_name'] = copy.copy(self.var_name)
-        newargs['warn'] = copy.copy(self.warn)
+        newargs['missing'] = copy.copy(self.missing.name)
         newargs.update(kwargs)
         return ConfigOption(**newargs)
 
@@ -236,11 +242,19 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
             if opt.name in config:
                 cfg_val = config[opt.name]
             else:
-                cfg_val = opt.default
-                if opt.warn:
-                    self.log.warn(
+                if opt.missing == MissingOption.error:
+                    raise Exception(
+                        'Required variable >> {0} << not given in configuration.\n'
+                        'Configuration is: {1}'.format(opt.name, config))
+                elif opt.missing == MissingOption.warn:
+                    self.log.warning(
                         'No {0} configured, using default value {1} instead.'
                          ''.format(opt.name, opt.default))
+                elif opt.missing == MissingOption.info:
+                    self.log.info(
+                        'No {0} configured, using default value {1} instead.'
+                         ''.format(opt.name, opt.default))
+                cfg_val = opt.default
             setattr(self, opt.var_name, cfg_val)
 
         # add status var defaults

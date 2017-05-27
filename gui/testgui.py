@@ -33,6 +33,9 @@ class TestGui(GUIBase):
     """
 
     buttonText = ConfigOption('text', 'No Text configured')
+    infoOption = ConfigOption('info', 'Info Option', missing='info')
+    warningOption = ConfigOption('warning', 'Warning Option', missing='warn')
+    errorOption = ConfigOption('error', missing='error')
 
     def __init__(self, config, **kwargs):
         """Create a TestWindow object.
