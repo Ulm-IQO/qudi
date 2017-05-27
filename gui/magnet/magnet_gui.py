@@ -27,7 +27,7 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 from qtpy import uic
 
-from core.module import Connector
+from core.module import Connector, StatusVar
 from core.util.units import get_unit_prefix_dict
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
@@ -169,14 +169,13 @@ class MagnetGui(GUIBase):
     magnetlogic1 = Connector(interface_name='MagnetLogic')
     savelogic = Connector(interface_name='SaveLogic')
 
+    # status var
+    _alignment_2d_cb_label = StatusVar('alignment_2d_cb_GraphicsView_text', 'Fluorescence')
+    _alignment_2d_cb_units = StatusVar('alignment_2d_cb_GraphicsView_units', 'counts/s')
+
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self._continue_2d_fluorescence_alignment = False
 
@@ -188,8 +187,6 @@ class MagnetGui(GUIBase):
         self._save_logic = self.get_connector('savelogic')
 
         self._mw = MagnetMainWindow()
-
-        config = self.getConfiguration()
 
         # create all the needed control elements. They will manage the
         # connection with each other themselves. Note some buttons are also
@@ -333,18 +330,9 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_GraphicsView.addItem(self.hline_magnet)
         self._mw.alignment_2d_GraphicsView.addItem(self.vline_magnet)
 
-        if 'alignment_2d_cb_GraphicsView_text' in self._statusVariables:
-            textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_text']
-
-        else:
-            textlabel = 'Fluorescence'
-
-        if 'alignment_2d_cb_GraphicsView_units' in self._statusVariables:
-            units = self._statusVariables['alignment_2d_cb_GraphicsView_units']
-        else:
-            units = 'counts/s'
-
-        self._mw.alignment_2d_cb_GraphicsView.setLabel('right', textlabel, units=units)
+        self._mw.alignment_2d_cb_GraphicsView.setLabel('right',
+            self._alignment_2d_cb_label,
+            units=self._alignment_2d_cb_units)
 
 
         #FIXME: that should be actually set in the logic
@@ -527,8 +515,8 @@ class MagnetGui(GUIBase):
         """ Deactivate the module properly.
         """
         self._statusVariables['measurement_type'] = self.measurement_type
-        self._statusVariables['alignment_2d_cb_GraphicsView_text'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
-        self._statusVariables['alignment_2d_cb_GraphicsView_units'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
+        self._alignment_2d_cb_label =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
+        self._alignment_2d_cb_units = self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
 
 
         self._mw.close()
