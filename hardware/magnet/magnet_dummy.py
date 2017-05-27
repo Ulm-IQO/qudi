@@ -45,12 +45,6 @@ class MagnetDummy(Base, MagnetInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
         #these label should be actually set by the config.
         self._x_axis = MagnetAxisDummy('x')
         self._y_axis = MagnetAxisDummy('y')
@@ -59,13 +53,10 @@ class MagnetDummy(Base, MagnetInterface):
 
     #TODO: Checks if configuration is set and is reasonable
 
-
-
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
         pass
-
 
     def on_deactivate(self):
         """ Deactivate the module properly.
