@@ -31,8 +31,8 @@ class SimpleAcq(Base, SimpleDataInterface):
     _modclass = 'simple'
     _modtype = 'hardware'
 
-    resource = ConfigOption('interface', 'ASRL1::INSTR', warn=True)
-    baudrate = ConfigOption('baudrate', 115200, warn=True)
+    resource = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
+    baudrate = ConfigOption('baudrate', 115200, missing='warn')
 
     def on_activate(self):
         """ Activate module.

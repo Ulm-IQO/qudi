@@ -62,7 +62,7 @@ class MissingOption(Enum):
 
 class ConfigOption:
 
-    def __init__(self, name=None, default=None, var_name=None, missing='none'):
+    def __init__(self, name=None, default=None, var_name=None, missing='nothing'):
         self.missing = MissingOption[missing]
         self.var_name = var_name
         if name is None:
@@ -248,11 +248,11 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
                         'Configuration is: {1}'.format(opt.name, config))
                 elif opt.missing == MissingOption.warn:
                     self.log.warning(
-                        'No {0} configured, using default value {1} instead.'
+                        'No variable >> {0} << configured, using default value {1} instead.'
                          ''.format(opt.name, opt.default))
                 elif opt.missing == MissingOption.info:
                     self.log.info(
-                        'No {0} configured, using default value {1} instead.'
+                        'No variable >> {0} << configured, using default value {1} instead.'
                          ''.format(opt.name, opt.default))
                 cfg_val = opt.default
             setattr(self, opt.var_name, cfg_val)

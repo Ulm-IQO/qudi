@@ -42,12 +42,12 @@ class AWG70K(Base, PulserInterface):
     _modtype = 'hardware'
 
     # config options
-    visa_address = ConfigOption('awg_visa_address', error=True)
-    ip_address = ConfigOption('awg_ip_address', error=True)
-    ftp_root_directory = ConfigOption('ftp_root_dir', 'C:\\inetpub\\ftproot', warn=True)
+    visa_address = ConfigOption('awg_visa_address', missing='error')
+    ip_address = ConfigOption('awg_ip_address', missing='error')
+    ftp_root_directory = ConfigOption('ftp_root_dir', 'C:\\inetpub\\ftproot', missing='warn')
 
-    user = ConfigOption('ftp_login', 'anonymous', warn=True)
-    passwd = ConfigOption('ftp_passwd', 'anonymous@', warn=True)
+    user = ConfigOption('ftp_login', 'anonymous', missing='warn')
+    passwd = ConfigOption('ftp_passwd', 'anonymous@', missing='warn')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.

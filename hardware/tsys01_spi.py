@@ -36,8 +36,8 @@ class TSYS01SPI(Base, ProcessInterface):
     _modtype = 'hardware'
 
     # config opts
-    bus = ConfigOption('bus', 0, warn=True)
-    device = ConfigOption('device', 0, warn=True)
+    bus = ConfigOption('bus', 0, missing='warn')
+    device = ConfigOption('device', 0, missing='warn')
 
     # commands to chip (constants)
     READ_ADC  = 0x00

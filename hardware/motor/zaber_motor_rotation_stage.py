@@ -35,22 +35,22 @@ class MotorRotationZaber(Base, MotorInterface):
     _modclass = 'MotorRotation'
     _modtype = 'hardware'
 
-    _com_port_rot = ConfigOption('com_port_zaber', 'ASRL1::INSTR', warn=True)
-    _rot_baud_rate = ConfigOption('zaber_baud_rate', 9600, warn=True)
-    _rot_timeout = ConfigOption('zaber_timeout', 5000, warn=True)     #TIMEOUT shorter?
-    _rot_term_char = ConfigOption('zaber_term_char', '\n', warn=True)
+    _com_port_rot = ConfigOption('com_port_zaber', 'ASRL1::INSTR', missing='warn')
+    _rot_baud_rate = ConfigOption('zaber_baud_rate', 9600, missing='warn')
+    _rot_timeout = ConfigOption('zaber_timeout', 5000, missing='warn')     #TIMEOUT shorter?
+    _rot_term_char = ConfigOption('zaber_term_char', '\n', missing='warn')
 
-    _axis_label = ConfigOption('zaber_axis_label', 'phi', warn=True)
-    _min_angle = ConfigOption('zaber_angle_min', -1e5, warn=True)
-    _max_angle = ConfigOption('zaber_angle_max', 1e5, warn=True)
-    _min_step = ConfigOption('zaber_angle_step', 1e-5, warn=True)
+    _axis_label = ConfigOption('zaber_axis_label', 'phi', missing='warn')
+    _min_angle = ConfigOption('zaber_angle_min', -1e5, missing='warn')
+    _max_angle = ConfigOption('zaber_angle_max', 1e5, missing='warn')
+    _min_step = ConfigOption('zaber_angle_step', 1e-5, missing='warn')
 
-    _min_vel = ConfigOption('zaber_velocity_min', 1e-3, warn=True)
-    _max_vel = ConfigOption('zaber_velocity_max', 10, warn=True)
-    _step_vel = ConfigOption('zaber_velocity_step', 1e-3, warn=True)
+    _min_vel = ConfigOption('zaber_velocity_min', 1e-3, missing='warn')
+    _max_vel = ConfigOption('zaber_velocity_max', 10, missing='warn')
+    _step_vel = ConfigOption('zaber_velocity_step', 1e-3, missing='warn')
 
-    _micro_step_size = ConfigOption('zaber_micro_step_size', 234.375e-6, warn=True)
-    velocity_conversion = ConfigOption('zaber_speed_conversion', 9.375, warn=True)
+    _micro_step_size = ConfigOption('zaber_micro_step_size', 234.375e-6, missing='warn')
+    velocity_conversion = ConfigOption('zaber_speed_conversion', 9.375, missing='warn')
 
 
     def __init__(self, **kwargs):

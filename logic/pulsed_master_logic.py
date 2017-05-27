@@ -42,7 +42,7 @@ class PulsedMasterLogic(GenericLogic):
     sequencegeneratorlogic = Connector(interface_name='SequenceGeneratorLogic')
 
     # config options
-    direct_write = ConfigOption('direct_write', False, warn=True)
+    direct_write = ConfigOption('direct_write', False, missing='warn')
 
     # status vars
     invoke_settings = StatusVar('invoke_settings', False)

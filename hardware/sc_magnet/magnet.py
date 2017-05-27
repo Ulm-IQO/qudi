@@ -42,11 +42,11 @@ class Magnet(Base, MagnetInterface):
     _modclass = 'hardware'
 
     # config opts
-    port = ConfigOption('magnet_port', error=True)
+    port = ConfigOption('magnet_port', missing='error')
 
-    ip_addr_x = ConfigOption('magnet_IP_address_x', error=True)
-    ip_addr_y = ConfigOption('magnet_IP_address_y', error=True)
-    ip_addr_z = ConfigOption('magnet_IP_address_z', error=True)
+    ip_addr_x = ConfigOption('magnet_IP_address_x', missing='error')
+    ip_addr_y = ConfigOption('magnet_IP_address_y', missing='error')
+    ip_addr_z = ConfigOption('magnet_IP_address_z', missing='error')
 
     # default waiting time of the pc after a message was sent to the magnet
     waitingtime = ConfigOption('magnet_waitingtime', 0.01)

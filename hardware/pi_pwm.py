@@ -34,7 +34,7 @@ class PiPWM(Base, ProcessControlInterface):
     _modclass = 'ProcessControlInterface'
     _modtype = 'hardware'
 
-    channel = ConfigOption('channel', 0, warn=True)
+    channel = ConfigOption('channel', 0, missing='warn')
     freq = ConfigOption('frequency', 100)
 
     def __init__(self, **kwargs):

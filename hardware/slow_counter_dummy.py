@@ -39,9 +39,9 @@ class SlowCounterDummy(Base, SlowCounterInterface):
     _modtype = 'hardware'
 
     # config
-    _clock_frequency = ConfigOption('clock_frequency', 100, warn=True)
-    _samples_number = ConfigOption('samples_number', 10, warn=True)
-    source_channels = ConfigOption('source_channels', 2, warn=True)
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
+    _samples_number = ConfigOption('samples_number', 10, missing='warn')
+    source_channels = ConfigOption('source_channels', 2, missing='warn')
     dist = ConfigOption('count_distribution', 'dark_bright_gaussian')
 
     # 'No parameter "count_distribution" given in the configuration for the'
