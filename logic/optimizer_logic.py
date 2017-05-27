@@ -95,62 +95,6 @@ class OptimizerLogic(GenericLogic):
         self._scanning_device = self.get_connector('confocalscanner1')
         self._fit_logic = self.get_connector('fitlogic')
 
-        # default values for clock frequency and slowness
-        # slowness: steps during retrace line
-        #if 'clock_frequency' in self._statusVariables:
-        #    self._clock_frequency = self._statusVariables['clock_frequency']
-        #else:
-        #    self._clock_frequency = 50
-        #if 'return_slowness' in self._statusVariables:
-        #    self.return_slowness = self._statusVariables['return_slowness']
-        #else:
-        #    self.return_slowness = 20
-
-        #if 'xy_size' in self._statusVariables:
-        #    self.refocus_XY_size = self._statusVariables['xy_size']
-        #else:
-        #    self.refocus_XY_size = 0.6e-6  # meters
-
-        #if 'xy_resolution' in self._statusVariables:
-        #    self.optimizer_XY_res = self._statusVariables['xy_resolution']
-        #else:
-        #    self.optimizer_XY_res = 10
-
-        #if 'z_size' in self._statusVariables:
-        #    self.refocus_Z_size = self._statusVariables['z_size']
-        #else:
-        #    self.refocus_Z_size = 2e-6  # meters
-
-        #if 'z_resolution' in self._statusVariables:
-        #    self.optimizer_Z_res = self._statusVariables['z_resolution']
-        #else:
-        #    self.optimizer_Z_res = 30
-
-        #if 'settle_time' in self._statusVariables:
-        #    self.hw_settle_time = self._statusVariables['settle_time']
-        #else:
-        #    self.hw_settle_time = 0.1  # seconds
-
-        #if 'optimization_sequence' in self._statusVariables:
-        #    self.optimization_sequence = self._statusVariables['optimization_sequence']
-        #else:
-        #    self.optimization_sequence = ['XY', 'Z']
-
-        #if 'surface_subtraction' in self._statusVariables:
-        #    self.do_surface_subtraction = self._statusVariables['surface_subtraction']
-        #else:
-        #    self.do_surface_subtraction = False
-
-        #if 'surface_subtraction_offset' in self._statusVariables:
-        #    self.surface_subtr_scan_offset = self._statusVariables['surface_subtraction_offset']
-        #else:
-        #    self.surface_subtr_scan_offset = 1  # micron
-
-        #if 'optimization_channel' in self._statusVariables:
-        #    self.opt_channel = self._statusVariables['optimization_channel']
-        #else:
-        #    self.opt_channel = 0
-
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
@@ -202,17 +146,6 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        #self._statusVariables['optimization_channel'] = self.opt_channel
-        #self._statusVariables['clock_frequency'] = self._clock_frequency
-        #self._statusVariables['return_slowness'] = self.return_slowness
-        #self._statusVariables['xy_size'] = self.refocus_XY_size
-        #self._statusVariables['xy_resolution'] = self.optimizer_XY_res
-        #self._statusVariables['z_size'] = self.refocus_Z_size
-        #self._statusVariables['z_resolution'] = self.optimizer_Z_res
-        #self._statusVariables['settle_time'] = self.hw_settle_time
-        #self._statusVariables['optimization_sequence'] = self.optimization_sequence
-        #self._statusVariables['surface_subtraction'] = self.do_surface_subtraction
-        #self._statusVariables['surface_subtraction_offset'] = self.surface_subtr_scan_offset
         return 0
 
     def check_optimization_sequence(self):

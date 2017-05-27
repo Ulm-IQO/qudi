@@ -50,10 +50,6 @@ class PIDLogic(GenericLogic):
         super().__init__(config=config, **kwargs)
         self.log.debug('The following configuration was found.')
 
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
         self.threadlock = Mutex()
@@ -63,19 +59,6 @@ class PIDLogic(GenericLogic):
         """
         self._controller = self.get_connector('controller')
         self._save_logic = self.get_connector('savelogic')
-
-        config = self.getConfiguration()
-
-        # load parameters stored in app state store
-        #if 'bufferlength' in self._statusVariables:
-        #    self.bufferLength = self._statusVariables['bufferlength']
-        #else:
-        #    self.bufferLength = 1000
-
-        #if 'timestep' in self._statusVariables:
-        #    self.timestep = self._statusVariables['timestep']
-        #else:
-        #    self.timestep = 100
 
         self.history = np.zeros([3, self.bufferLength])
         self.savingState = False
@@ -88,9 +71,6 @@ class PIDLogic(GenericLogic):
     def on_deactivate(self):
         """ Perform required deactivation. """
         pass
-        # save parameters stored in ap state store
-        #self._statusVariables['bufferlength'] = self.bufferLength
-        #self._statusVariables['timestep'] = self.timestep
 
     def getBufferLength(self):
         """ Get the current data buffer length.
