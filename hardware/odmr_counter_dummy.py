@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import time
 
-from core.module import Base, Connector
+from core.module import Base, Connector, ConfigOption
 from interface.odmr_counter_interface import ODMRCounterInterface
 
 class ODMRCounterDummy(Base, ODMRCounterInterface):
@@ -34,21 +34,11 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     # connectors
     fitlogic = Connector(interface_name='FitLogic')
 
+    # config options
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency=config['clock_frequency']
-        else:
-            self._clock_frequency=100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
 
         self._scanner_counter_daq_task = None
         self._odmr_length = None
