@@ -194,7 +194,7 @@ class PoiManagerLogic(GenericLogic):
     signal_periodic_opt_duration_changed = QtCore.Signal()
     signal_periodic_opt_stopped = QtCore.Signal()
 
-    def __init__(self, onfig, **kwargs):
+    def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self.roi_name = ''

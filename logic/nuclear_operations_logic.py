@@ -194,8 +194,11 @@ class NuclearOperationsLogic(GenericLogic):
     def initialize_x_axis(self):
         """ Initialize the x axis. """
 
-        stop = self.x_axis_start + self.x_axis_step*self.x_axis_num_points
-        self.x_axis_list = np.arange(self.x_axis_start, stop+(self.x_axis_step/2), self.x_axis_step)
+        stop = self.x_axis_start + self.x_axis_step * self.x_axis_num_points
+        self.x_axis_list = np.arange(
+            self.x_axis_start,
+            stop + (self.x_axis_step / 2),
+            self.x_axis_step)
         self.current_meas_point = self.x_axis_start
 
     def initialize_y_axis(self):
