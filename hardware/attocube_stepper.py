@@ -25,7 +25,7 @@ import telnetlib
 
 from core.base import Base
 from interface.confocal_scanner_interface import ConfocalScannerInterface
-
+import numpy as np
 
 _mode_list = ["gnd", "inp", "cap", "stp", "off", "stp+", "stp-"]
 
@@ -39,10 +39,10 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
     _modclass = 'hardware'
 
     # connectors
-    #_out = {'confocalscanner': 'ConfocalScannerInterface'
-       #     }
+    # _out = {'confocalscanner': 'ConfocalScannerInterface'
+    #     }
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -57,17 +57,15 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         # some default values for the hardware:
         self._voltage_range_coarse = [0., 60.]
-        self._voltage_range_fine = [0.,100.]
-        self._voltage_range_res = [0.,2.]
+        self._voltage_range_fine = [0., 100.]
+        self._voltage_range_res = [0., 2.]
         self._position_range = [[0., 5000.], [0., 5000.], [0., 5000.], [0., 5000.]]
-        self._current_position = [2500., 2500., 2500., 0.]
         self._frequency_range = [0, 10000]
+        # Todo get rid of all fine/coarse deifnition stuff, only stepvoltage will remain
 
-        self._password = b"123456"
+        self._password = b"1234765356"
         self._port = "7230"
         self._host = "134.60.31.214"
-
-
 
         if 'attocube_axis' in config.keys():
             self._attocube_axis = config['attocube_axis']
@@ -112,7 +110,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         if 'voltage_range_coarse' in config.keys():
             if float(config['voltage_range_coarse'][0]) < float(config['voltage_range_coarse'][1]):
                 self._voltage_range_coarse = [float(config['voltage_range_coarse'][0]),
-                                       float(config['voltage_range_coarse'][1])]
+                                              float(config['voltage_range_coarse'][1])]
             else:
                 self.log.warning(
                     'Configuration ({}) of voltage_range incorrect, taking [0,60] instead.'
@@ -123,7 +121,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         if 'voltage_range_fine' in config.keys():
             if float(config['voltage_range_fine'][0]) < float(config['voltage_range_fine'][1]):
                 self._voltage_range_fine = [float(config['voltage_range_fine'][0]),
-                                       float(config['voltage_range_fine'][1])]
+                                            float(config['voltage_range_fine'][1])]
             else:
                 self.log.warning(
                     'Configuration ({}) of voltage_range_fine incorrect, taking [0,60] instead.'
@@ -134,14 +132,13 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         if 'frequency_range' in config.keys():
             if int(config['frequency_range'][0]) < int(config['frequency_range'][1]):
                 self._frequency_range = [int(config['frequency_range'][0]),
-                                       int(config['frequency_range'][1])]
+                                         int(config['frequency_range'][1])]
             else:
                 self.log.warning(
                     'Configuration ({}) of frequency_range incorrect, taking [0,60] instead.'
                     ''.format(config['frequency_range']))
         else:
             self.log.warning('No frequency_range configured taking [0,60] instead.')
-
 
         if 'password' in config.keys():
             self._password = str(config['password']).encode('ascii')
@@ -159,7 +156,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.tn.read_until(b"Authorization code: ")
         self.tn.write(self._password + b"\n")
         value = self.tn.read_until(b'success')
-        #Todo check readout value (need binary split for this)
+        # Todo check readout value (need binary split for this)
 
 
         self.tn.read_eager()
@@ -174,10 +171,9 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.tn.close()
         self.connected = False
 
-
     # =================== Attocube Communication ========================
 
-    def _send_cmd(self, cmd, expected_response=b"\r\nOK\r\n"):
+    def _send_cmd(self, cmd, read = False, expected_response=b"\r\nOK\r\n"):
         """Sends a command to the attocube steppers and checks repsonse value
 
         @param str cmd: Attocube ANC300 command
@@ -185,6 +181,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0: OK, -1:error)
         """
+        #Todo change return, this is too flat
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
         junk = self.tn.read_eager()  # diregard old print outs
         self.tn.write(full_cmd)  # send command
@@ -192,6 +189,10 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         value = self.tn.read_eager()
         # TODO: here needs to be an error check, if not working, return 1, if -1 return
         # attocube response
+        #this needs to return 0 if only ok recieved and was to be expected (set commands)
+        # or -1 if wrong command, or the response -OK if a get was used
+        if read:
+            return value
         return 0
 
     def _send_cmd_silent(self, cmd):
@@ -224,33 +225,30 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
             self.log.error("mode {} not in list of possible modes".format(mode))
             return -1
 
-    def move_attocube(self, axis, mode, direction, steps=1):
+    def move_attocube(self, axis, mode=True, direction=True, steps=1):
         """Moves attocubes either continuously or by a number of steps
         in the up or down direction.
 
         @param str axis: axis to be moved, can only be part of dictionary axes
-        @param str mode: continuous or stepping mode
-        @param str direction: "up" or "down" for z, "out" or "in" for in plane movement
-        @param int steps: number of steps to be moved, ignore for continous mode
+        @param bool mode: Set if attocubes steps an amount of steps (True) or moves continuously until stopped (False)
+        @param bool direction: True for up or out, False for down or "in" movement direction
+        @param int steps: number of steps to be moved, ignore for continuous mode
         @return int:  error code (0: OK, -1:error)
         """
-        if mode in ["continuous", "stepping"]:
-            if axis in ["x", "y", "z"]:
-                if direction == "up" or direction == "out":
-                    command = "stepu " + self._attocube_axis[axis] + " "
-                else:
-                    command = "stepd " + self._attocube_axis[axis] + " "
 
-                if mode == "continuous":
-                    command = command + "c"
-                else:
-                    command = command + str(steps)
-                return self._send_cmd(command)
+        if axis in ["x", "y", "z"]:
+            if direction:
+                command = "stepu " + self._attocube_axis[axis] + " "
             else:
-                self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
-                return -1
+                command = "stepd " + self._attocube_axis[axis] + " "
+
+            if not mode:
+                command += "c"
+            else:
+                command += str(steps)
+            return self._send_cmd(command)
         else:
-            self.log.error("mode {} not in list of possible modes".format(mode))
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
             return -1
 
     def stop_attocube_movement(self, axis):
@@ -293,19 +291,83 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
         pass
         # Todo: This needs to get a certain kind of change, as this then depends on
-            # temperature. also maybe method name is not appropriate
+        # temperature. also maybe method name is not appropriate
 
-    def change_step_size(self, stepsize, temp):
+    def change_step_size(self, axis, stepsize, temp):
         """Changes the step size of the attocubes according to a list give in the config file
+        @param str  axis: axis  for which steps size is to be changed
         @param float stepsize: The wanted stepsize in nm
         @param float temp: The estimated temperature of the attocubes
 
         @return: float, float : Actual stepsize and used temperature"""
-
+        voltage = stepsize
+        # Todo here needs to be a conversion done
+        self.change_step_amplitude(axis, voltage)
         pass
 
-    # =================== ConfocalScannerInterface Commands ========================
-    @abc.abstractmethod
+    def change_step_amplitude(self, axis=None, voltage=None):
+        """
+
+        @param str axis:
+        @param float voltage:
+        @return int: error code (0:OK, -1:error)
+        """
+        # Todo this need to have a check added if voltage is inside voltage range
+        # Todo I need to add decide how to save the voltages for the three axis and if decided update the current voltage
+
+
+        if voltage is not None:
+            if axis in ["x", "y", "z"]:
+                command = "setv " + self._attocube_axis[axis] + " " + str(voltage)
+                return self._send_cmd(command)
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+            return -1
+
+    def get_step_amplitude(self, axis):
+        """
+
+        @param str axis:
+        @return int: error code (0:OK, -1:error)
+        """
+        if axis in ["x", "y", "z"]:
+            command = "getv " + self._attocube_axis[axis]
+            result = self._send_cmd(command, read = True)
+        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+        return -1
+
+    def set_step_freq(self, axis, freq):
+        """
+
+        @param str axis:
+        @param int freq:
+        @return int: error code (0:OK, -1:error)
+        """
+        # Todo this need to have a check added if freq is inside freq range
+        # Todo I need to add decide how to save the freq for the three axis and if decided update the current freq
+
+        if freq is not None:
+            if axis in ["x", "y", "z"]:
+                command = "setf " + self._attocube_axis[axis] + " " + str(freq)
+                return self._send_cmd(command)
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+            return -1
+
+    def get_step_amplitude(self, axis):
+        """
+
+        @param str axis:
+        @return int: error code (0:OK, -1:error)
+        """
+        if axis in ["x", "y", "z"]:
+            command = "getv " + self._attocube_axis[axis]
+            result =  self._send_cmd(command, read =  True)
+            #Todo write new freq into variable
+            return 0
+        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+        return -1
+
+
+    # =================== ConfocalStepperInterface Commands ========================
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs
             can access it.
@@ -315,18 +377,6 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self.log.warning('Attocube Device does not need to be reset.')
         pass
 
-    @abc.abstractmethod
-    def get_position_range(self):
-        """ Returns the physical range of the scanner.
-
-        @return float [4][2]: array of 4 ranges with an array containing lower
-                              and upper limit
-        """
-
-        pass
-
-
-    @abc.abstractmethod
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
@@ -362,7 +412,6 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self._position_range = myrange
         return 0
 
-    @abc.abstractmethod
     def set_voltage_range_coarse(self, myrange=None):
         """ Sets the voltage range of the attocubes.
 
@@ -390,122 +439,12 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         self._voltage_range_coarse = myrange
         return 0
 
-    @abc.abstractmethod
-    def set_voltage_range_fine(self, myrange=None):
-        """ Sets the voltage range of the attocubes.
-
-        @param float [2] myrange: array containing lower and upper limit
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if myrange is None:
-            myrange = [0, 100.]
-
-        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray,)):
-            self.log.error('Given range is no array type.')
-            return -1
-
-        if len(myrange) != 2:
-            self.log.error(
-                'Given range should have dimension 2, but has {0:d} instead.'
-                ''.format(len(myrange)))
-            return -1
-
-        if myrange[0] > myrange[1]:
-            self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
-            return -1
-
-        self._voltage_range_fine = myrange
-        return 0
-
-    @abc.abstractmethod
-    def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
-        """ Configures the hardware clock of the NiDAQ card to give the timing.
-
-        @param float clock_frequency: if defined, this sets the frequency of the
-                                      clock
-        @param str clock_channel: if defined, this is the physical channel of
-                                  the clock
-
-        @return int: error code (0:OK, -1:error)
-        """
-        # This hardware does not need a clock
-        return 0
-
-    @abc.abstractmethod
-    def set_up_scanner(self, counter_channel=None, photon_source=None,
-                       clock_channel=None, scanner_ao_channels=None):
-        """ Configures the actual scanner with a given clock.
-
-        @param str counter_channel: if defined, this is the physical channel
-                                    of the counter
-        @param str photon_source: if defined, this is the physical channel where
-                                  the photons are to count from
-        @param str clock_channel: if defined, this specifies the clock for the
-                                  counter
-        @param str scanner_ao_channels: if defined, this specifies the analoque
-                                        output channels
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def scanner_set_position(self, x=None, y=None, z=None, a=None):
-        """Move stage to x, y, z, a (where a is the fourth voltage channel).
-
-        @param float x: postion in x-direction (volts)
-        @param float y: postion in y-direction (volts)
-        @param float z: postion in z-direction (volts)
-        @param float a: postion in a-direction (volts)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        print "Changing the scanner position does not work yet"
-        return -1
-
-    @abc.abstractmethod
     def get_scanner_position(self):
-        """ Get the current position of the scanner hardware.
-
-        @return float[]: current position in (x, y, z, a).
-        """
         pass
 
-    @abc.abstractmethod
-    def set_up_line(self, length=100):
-        """ Sets up the analoque output for scanning a line.
-
-        @param int length: length of the line in pixel
-
-        @return int: error code (0:OK, -1:error)
-        """
+    def set_voltage_range(self, myrange=None):
         pass
 
-    @abc.abstractmethod
-    def scan_line(self, line_path=None):
-        """ Scans a line and returns the counts on that line.
-
-        @param float[][4] line_path: array of 4-part tuples defining the
-                                     positions pixels
-
-        @return float[]: the photon counts per second
-        """
+    def get_scanner_axes(self):
+        # Todo check if this is possivle with attocubes
         pass
-
-    @abc.abstractmethod
-    def close_scanner(self):
-        """ Closes the scanner and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def close_scanner_clock(self, power=0):
-        """ Closes the clock and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        print "As there is no scanner clock it does not need to be closed "
-        return 0
