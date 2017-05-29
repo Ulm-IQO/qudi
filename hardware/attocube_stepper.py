@@ -20,27 +20,22 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
 import telnetlib
+import time
 
 from core.base import Base
-from interface.confocal_scanner_interface import ConfocalScannerInterface
+from interface.confocal_stepper_interface import ConfocalStepperInterface
 import numpy as np
 
 _mode_list = ["gnd", "inp", "cap", "stp", "off", "stp+", "stp-"]
 
 
-class AttoCubeStepper(Base, ConfocalScannerInterface):
-    """ This is the Interface class to define the controls for the simple
-    microwave hardware.
+class AttoCubeStepper(Base, ConfocalStepperInterface):
+    """ 
     """
 
     _modtype = 'AttoCubeStepper'
     _modclass = 'hardware'
-
-    # connectors
-    # _out = {'confocalscanner': 'ConfocalScannerInterface'
-    #     }
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -56,84 +51,58 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         config = self.getConfiguration()
 
         # some default values for the hardware:
-        self._voltage_range_coarse = [0., 60.]
-        self._voltage_range_fine = [0., 100.]
+        self._voltage_range_stepper_default = [0, 60]
+        self._frequency_range_default = [0, 10000]
+        self._password_default = b"123456"
+        self._port_default = 7230
+
         self._voltage_range_res = [0., 2.]
-        self._position_range = [[0., 5000.], [0., 5000.], [0., 5000.], [0., 5000.]]
-        self._frequency_range = [0, 10000]
-        # Todo get rid of all fine/coarse deifnition stuff, only stepvoltage will remain
+        # Todo get rid of all fine/coarse definition stuff, only step voltage will remain
 
-        self._password = b"1234765356"
-        self._port = "7230"
-        self._host = "134.60.31.214"
 
-        if 'attocube_axis' in config.keys():
-            self._attocube_axis = config['attocube_axis']
+        # handle all the parameters given by the config
+
+        self._attocube_axis = {}  # dictionary contains the axes and the specific controller
+        if 'x' in config.keys():
+            self._attocube_axis["x"] = config['x']
         else:
             self.log.error(
-                'No parameter "attocube_axis" found in configuration!\n'
+                'No axis "x" found in configuration!\n'
                 'Assign to that parameter an appropriated channel sorting!')
 
-        if 'x_range' in config.keys():
-            if float(config['x_range'][0]) < float(config['x_range'][1]):
-                self._position_range[0] = [float(config['x_range'][0]),
-                                           float(config['x_range'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of x_range incorrect, taking [0,5000] instead.'
-                    ''.format(config['x_range']))
+        if 'y' in config.keys():
+            self._attocube_axis["y"] = config['y']
         else:
-            self.log.warning('No x_range configured taking [0,5000] instead.')
+            self.log.error(
+                'No axis "y" found in configuration!\n'
+                'Assign to that parameter an appropriated channel sorting!')
 
-        if 'y_range' in config.keys():
-            if float(config['y_range'][0]) < float(config['y_range'][1]):
-                self._position_range[1] = [float(config['y_range'][0]),
-                                           float(config['y_range'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of y_range incorrect, taking [0,5000] instead.'
-                    ''.format(config['y_range']))
+        if 'z' in config.keys():
+            self._attocube_axis["z"] = config['z']
         else:
-            self.log.warning('No y_range configured taking [0,5000] instead.')
+            self.log.error(
+                'No axis "z" found in configuration!\n'
+                'Assign to that parameter an appropriated channel sorting!')
 
-        if 'z_range' in config.keys():
-            if float(config['z_range'][0]) < float(config['z_range'][1]):
-                self._position_range[2] = [float(config['z_range'][0]),
-                                           float(config['z_range'][1])]
+        if 'voltage_range_stepper' in config.keys():
+            if float(config['voltage_range_stepper'][0]) < float(
+                    config['voltage_range_stepper'][1]):
+                self._voltage_range_stepper = [float(config['voltage_range_stepper'][0]),
+                                               float(config['voltage_range_stepper'][1])]
             else:
+                self._voltage_range_stepper = self._voltage_range_stepper_default
                 self.log.warning(
-                    'Configuration ({}) of z_range incorrect, taking [0,5000] instead.'
-                    ''.format(config['z_range']))
+                    'Configuration ({}) of voltage_range_stepper incorrect, taking [0,60] instead.'
+                    ''.format(config['voltage_range_stepper']))
         else:
-            self.log.warning('No z_range configured taking [0,7000] instead.')
-
-        if 'voltage_range_coarse' in config.keys():
-            if float(config['voltage_range_coarse'][0]) < float(config['voltage_range_coarse'][1]):
-                self._voltage_range_coarse = [float(config['voltage_range_coarse'][0]),
-                                              float(config['voltage_range_coarse'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of voltage_range incorrect, taking [0,60] instead.'
-                    ''.format(config['voltage_range_coarse']))
-        else:
-            self.log.warning('No voltage_range_coarse configured taking [0,60] instead.')
-
-        if 'voltage_range_fine' in config.keys():
-            if float(config['voltage_range_fine'][0]) < float(config['voltage_range_fine'][1]):
-                self._voltage_range_fine = [float(config['voltage_range_fine'][0]),
-                                            float(config['voltage_range_fine'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of voltage_range_fine incorrect, taking [0,60] instead.'
-                    ''.format(config['voltage_range_fine']))
-        else:
-            self.log.warning('No voltage_range_fine configured taking [0,60] instead.')
+            self.log.warning('No voltage_range_stepper configured taking [0,60] instead.')
 
         if 'frequency_range' in config.keys():
             if int(config['frequency_range'][0]) < int(config['frequency_range'][1]):
                 self._frequency_range = [int(config['frequency_range'][0]),
                                          int(config['frequency_range'][1])]
             else:
+                self._frequency_range = self._frequency_range_default
                 self.log.warning(
                     'Configuration ({}) of frequency_range incorrect, taking [0,60] instead.'
                     ''.format(config['frequency_range']))
@@ -143,24 +112,36 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         if 'password' in config.keys():
             self._password = str(config['password']).encode('ascii')
         else:
+            self._password = self._password_default
             self.log.warning('No password configured taking standard instead.')
 
         if 'host' in config.keys():
-            self._password = str(config['host'])
+            self._host = str(config['host'])
         else:
-            self.log.warning('No host configured taking standard instead.')
+            self.log.error('No IP address configured taking standard instead.\n'
+                           'Assign to that parameter an appropriated IP address!')
+
+        if 'port' in config.keys():
+            self._port = config['port']
+        else:
+            self._port = self._port_default
+            self.log.warning('No port configured taking standard instead.')
 
         # connect ethernet socket and FTP
         self.tn = telnetlib.Telnet(self._host, self._port)
         self.tn.open(self._host, self._port)
         self.tn.read_until(b"Authorization code: ")
         self.tn.write(self._password + b"\n")
-        value = self.tn.read_until(b'success')
-        # Todo check readout value (need binary split for this)
+        time.sleep(0.1)  # the ANC300 needs time to answer
+        value_binary = self.tn.read_very_eager()
+        value = value_binary.decode().split()
+        if value[1] == 'Authorization success':  # Checks if connection was successful
+            self.connected = True
+        else:
+            self.log.error('Connection to attocube could not be established.\n'
+                           'Check password, physical connection, host etc. and try again.')
 
-
-        self.tn.read_eager()
-        self.connected = True
+        self.tn.read_very_eager()
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -173,7 +154,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
     # =================== Attocube Communication ========================
 
-    def _send_cmd(self, cmd, read = False, expected_response=b"\r\nOK\r\n"):
+    def _send_cmd(self, cmd, read=False, expected_response=b"\r\nOK\r\n"):
         """Sends a command to the attocube steppers and checks repsonse value
 
         @param str cmd: Attocube ANC300 command
@@ -181,15 +162,20 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
 
         @return int: error code (0: OK, -1:error)
         """
-        #Todo change return, this is too flat
+        # Todo change return, this is too flat
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
         junk = self.tn.read_eager()  # diregard old print outs
         self.tn.write(full_cmd)  # send command
         # self.tn.read_until(full_cmd + b" = ") #read answer
-        value = self.tn.read_eager()
+        value_binary = self.tn.read_very_eager()
+        value = value_binary.decode().split("\r\n")  # transform into string and split at linefeed
+        if value[-2] == "ERROR":
+            self.log.warning('The command {} did not work but produced an {}'.format(value[-3],
+                                                                                     value[-2]))
+            return -1
         # TODO: here needs to be an error check, if not working, return 1, if -1 return
         # attocube response
-        #this needs to return 0 if only ok recieved and was to be expected (set commands)
+        # this needs to return 0 if only ok recieved and was to be expected (set commands)
         # or -1 if wrong command, or the response -OK if a get was used
         if read:
             return value
@@ -331,7 +317,7 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
         if axis in ["x", "y", "z"]:
             command = "getv " + self._attocube_axis[axis]
-            result = self._send_cmd(command, read = True)
+            result = self._send_cmd(command, read=True)
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
 
@@ -360,12 +346,11 @@ class AttoCubeStepper(Base, ConfocalScannerInterface):
         """
         if axis in ["x", "y", "z"]:
             command = "getv " + self._attocube_axis[axis]
-            result =  self._send_cmd(command, read =  True)
-            #Todo write new freq into variable
+            result = self._send_cmd(command, read=True)
+            # Todo write new freq into variable
             return 0
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
-
 
     # =================== ConfocalStepperInterface Commands ========================
     def reset_hardware(self):
