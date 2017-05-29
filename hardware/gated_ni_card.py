@@ -45,19 +45,7 @@ class SlowGatedNICard(NICard):
         """ Starts up the NI Card at activation.
         """
         self._gated_counter_daq_task = None
-        # used as a default for expected maximum counts
-        self._max_counts = 3e7
-        # timeout for the Read or/and write process in s
-        self._RWTimeout = 5
-        # in Hz
-        self._clock_frequency_default = 100
-        # number of readout samples mainly used for gated counter
-        self._samples_number_default = 50
-        # count on rising edge mainly used for gated counter
-        self._counting_edge_default = True
-
         self._counter_channels = []
-
         self._counter_channel = '/NIDAQ/Ctr0'
 
         config = self.getConfiguration()
@@ -68,35 +56,6 @@ class SlowGatedNICard(NICard):
             self.log.error(
                 'No parameter "photon_source" configured.\n'
                 'Assign to that parameter an appropriated channel from your NI Card!')
-
-        if 'gate_in_channel' in config.keys():
-            self._gate_in_channel = config['gate_in_channel']
-        else:
-            self.log.error(
-                'No parameter "gate_in_channel" configured. '
-                'Choose the proper channel on your NI Card and assign it to that parameter!')
-
-        if 'counting_edge_rising' in config.keys():
-            if config['counting_edge_rising']:
-                self._counting_edge = daq.DAQmx_Val_Rising
-            else:
-                self._counting_edge = daq.DAQmx_Val_Falling
-        else:
-            self.log.warning(
-                'No parameter "counting_edge_rising" configured.\n'
-                'Set this parameter either to True (rising edge) or to False (falling edge).\n'
-                'Taking the default value {0}'.format(self._counting_edge_default))
-
-            self._counting_edge = self._counting_edge_default
-
-        if 'samples_number' in config.keys():
-            self._samples_number = config['samples_number']
-        else:
-            self._samples_number = self._samples_number_default
-            self.log.warning(
-                'No parameter "samples_number" configured taking the default value "{0}" instead.'
-                ''.format(self._samples_number_default))
-            self._samples_number = self._samples_number_default
 
     def get_constraints(self):
         """ Get hardware limits of NI device.
