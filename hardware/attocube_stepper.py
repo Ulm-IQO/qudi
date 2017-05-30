@@ -154,36 +154,41 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
     # =================== Attocube Communication ========================
 
-    def _send_cmd(self, cmd, read=False, expected_response=b"\r\nOK\r\n"):
-        """Sends a command to the attocube steppers and checks repsonse value
+    def _send_cmd(self, cmd, expected_response="OK", read=False):
+        """Sends a command to the attocube steppers and checks response value
 
         @param str cmd: Attocube ANC300 command
-        @param str expected_response: expected attocube response to command
-
+        @param list(str) expected_response: expected attocube response to command as list per 
+        expected line
+        @param bool read: if True actually checks for expected result, else only checks for "OK"
+        
         @return int: error code (0: OK, -1:error)
         """
-        # Todo change return, this is too flat
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
-        junk = self.tn.read_eager()  # diregard old print outs
+        self.tn.read_eager()  # disregard old print outs
         self.tn.write(full_cmd)  # send command
+        time.sleep(0.03)  # this exists because the ANC has response time of 30ms
         # self.tn.read_until(full_cmd + b" = ") #read answer
         value_binary = self.tn.read_very_eager()
         value = value_binary.decode().split("\r\n")  # transform into string and split at linefeed
         if value[-2] == "ERROR":
+            if read:
+                return -1, value
             self.log.warning('The command {} did not work but produced an {}'.format(value[-3],
                                                                                      value[-2]))
             return -1
-        # TODO: here needs to be an error check, if not working, return 1, if -1 return
-        # attocube response
-        # this needs to return 0 if only ok recieved and was to be expected (set commands)
-        # or -1 if wrong command, or the response -OK if a get was used
-        if read:
-            return value
-        return 0
+        elif value == expected_response and read:
+            return 0, value
+        elif value[-2] == "OK":
+            if read:
+                return 0, value
+            return 0
+        return -1
 
     def _send_cmd_silent(self, cmd):
         """Sends a command to the attocube steppers and without checking the response. +
-        Only use, when quick execution is necessary. Always returns 0
+        Only use, when quick execution is necessary. Always returns 0. It saves at least 30ms (
+        response time ANC300) per call
 
         @param str cmd: Attocube ANC300 command
         """
@@ -221,7 +226,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @param int steps: number of steps to be moved, ignore for continuous mode
         @return int:  error code (0: OK, -1:error)
         """
-
+        # TODO still needs to decide if necessary to use send_cmd or if silent_cmd is sufficient,
+        #  or if option in call. Also needs to check response from attocube if moved.
         if axis in ["x", "y", "z"]:
             if direction:
                 command = "stepu " + self._attocube_axis[axis] + " "
@@ -298,9 +304,15 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @param float voltage:
         @return int: error code (0:OK, -1:error)
         """
-        # Todo this need to have a check added if voltage is inside voltage range
-        # Todo I need to add decide how to save the voltages for the three axis and if decided update the current voltage
 
+        # Todo I need to add decide how to save the voltages for the three axis and if decided
+        # update the current voltage
+
+        if voltage < self._voltage_range_stepper[0] or voltage > self._voltage_range_stepper[1]:
+            self.log.error(
+                'Voltages {0} exceed the limit, the positions have to '
+                'be adjusted to stay in the given range.'.format(voltage))
+            return -1
 
         if voltage is not None:
             if axis in ["x", "y", "z"]:
@@ -318,6 +330,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         if axis in ["x", "y", "z"]:
             command = "getv " + self._attocube_axis[axis]
             result = self._send_cmd(command, read=True)
+            result[-3]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
 
@@ -347,7 +360,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         if axis in ["x", "y", "z"]:
             command = "getv " + self._attocube_axis[axis]
             result = self._send_cmd(command, read=True)
-            # Todo write new freq into variable
+            if result[0] == -1:
+                return -1
+            voltage_line = result[1][-3].split()
+            voltage = voltage_line[-2]
+            # Todo the now read voltage now needs to be written in current voltage value
             return 0
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
@@ -397,7 +414,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self._position_range = myrange
         return 0
 
-    def set_voltage_range_coarse(self, myrange=None):
+    def set_voltage_range_stepper(self, myrange=None):
         """ Sets the voltage range of the attocubes.
 
         @param float [2] myrange: array containing lower and upper limit
@@ -421,15 +438,25 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             self.log.error('Given range limit {0:d} has the wrong order.'.format(myrange))
             return -1
 
-        self._voltage_range_coarse = myrange
+        self._voltage_range_stepper = myrange
         return 0
 
     def get_scanner_position(self):
         pass
 
-    def set_voltage_range(self, myrange=None):
-        pass
-
     def get_scanner_axes(self):
-        # Todo check if this is possivle with attocubes
+        # Todo check if this is possible with
+        # This should be possible by asking for modes of the axis, if no error is returned, it
+        # normally means the axis exists, if it doesnt an error is returned by ANC 300
+        axis = {}
+        for i in range(5):
+            command = "getm "
+            result = self._send_cmd(command + str(i), read)
+            if result[0] == -1:
+                if result[1].split()[-3] == "Wrong axis type":
+                    axis.append(False)
+                else:
+                    self.log.error('The command {} did the expected axis response, '
+                                   'but{}'.format(command+str(i),result[1].split()[-3]))
+        #TODO not finished yet
         pass
