@@ -41,10 +41,11 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    # ============================== Stepper Commands ====================================
 
     @abc.abstractmethod
-    def set_voltage_range(self, myrange=None):
-        """ Sets the voltage range of the NI Card.
+    def set_voltage_range_stepper(self, myrange=None):
+        """ Sets the voltage range of the attocubes.
 
         @param float [2] myrange: array containing lower and upper limit
 
@@ -53,7 +54,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_scanner_axes(self):
+    def get_stepper_axes(self):
         """ Find out how many axes the scanning device is using for confocal and their names.
 
         @return list(str): list of axis names
@@ -69,6 +70,62 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def get_stepper_axes(self):
+        """"
+        Checks which axes of the hardware have a reaction by the hardware
+
+         @return list: list of booleans for each possible axis, if true axis exists
+
+         On error, return empty list
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_stepper_axes_use(self):
+        """ Find out how the axes of the stepping device are used for confocal and their names.
+
+        @return list(str): list of axis dictionary
+
+        Example:
+          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible 
+          value.
+          If you only care about the number of axes and not the assignment and names 
+          use get_stepper_axes
+          On error, return an empty list.
+        """
+        pass
+
+    @abc.abstractmethod
+    def move_attocube(self, axis, mode=True, direction=True, steps=1):
+        """Moves steppers either continuously or by a number of steps
+        in one off 2 directions
+
+        @param str axis: axis to be moved, can only be part of dictionary axes
+        @param bool mode: Sets mode of stepper. True: Stepping, False: Continuous 
+        @param bool direction: True for one, False for other movement direction
+        @param int steps: number of steps to be moved, ignore for continuous mode
+        @return int:  error code (0: OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def stop_attocube_movement(self, axis):
+        """Stops motion on specified axis
+
+        @param str axis: can only be part of dictionary axes
+        @return int: error code (0: OK, -1:error)"""
+        pass
+
+    @abc.abstractmethod
+    def stop_all_attocube_motion(self):
+        """Stops any motion of the steppers
+        @return 0 
+        """
+        pass
+
+    # ============================== Counter Commands ====================================
+
+    @abc.abstractmethod
     def get_scanner_count_channels(self):
         """ Returns the list of channels that are recorded while scanning an image.
 
@@ -77,6 +134,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         Most methods calling this might just care about the number of channels.
         """
         pass
+        # Todo this is connected to NIDAQ not attocube and has to be checked later
 
     @abc.abstractmethod
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
@@ -90,8 +148,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)
         """
         pass
-
-
+        # Todo this is connected to NIDAQ not attocube and has to be checked later
 
     @abc.abstractmethod
     def close_scanner_clock(self, power=0):
@@ -101,3 +158,4 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+        # ============================== Mixed Commands ====================================
