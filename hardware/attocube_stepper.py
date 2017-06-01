@@ -620,9 +620,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
     def get_stepper_axes(self):
         """"
-        Checks for the at most 5 possible axis of the ANC which ones exists
-         
-         @return list: list of 5 bools for each axis, if true axis exists
+        Checks which axes of the hardware have a reaction by the hardware
+
+         @return list: list of booleans for each possible axis, if true axis exists
+
+         On error, return empty list
         """
         axis = {}
         for i in range(5):
@@ -637,3 +639,73 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             else:
                 axis.append(True)
         return axis
+
+    def get_stepper_axes_use(self):
+        """ Find out how the axes of the stepping device are used for confocal and their names.
+
+        @return list(str): list of axis dictionary
+
+        Example:
+          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible 
+          value.
+          If you only care about the number of axes and not the assignment and names 
+          use get_stepper_axes
+          On error, return an empty list.
+        """
+        return self._attocube_axis
+
+    def move_attocube(self, axis, mode=True, direction=True, steps=1):
+        """Moves attocubes either continuously or by a number of steps
+        in the up or down direction.
+
+        @param str axis: axis to be moved, can only be part of dictionary axes
+        @param bool mode: Set if attocubes steps an amount of steps (True) or moves continuously until stopped (False)
+        @param bool direction: True for up or out, False for down or "in" movement direction
+        @param int steps: number of steps to be moved, ignore for continuous mode
+        @return int:  error code (0: OK, -1:error)
+        """
+        # TODO still needs to decide if necessary to use send_cmd or if silent_cmd is sufficient,
+        #  or if option in call. Also needs to check response from attocube if moved.
+        if axis in self._attocube_axis.keys():
+            if direction:
+                command = "stepu " + self._attocube_axis[axis] + " "
+            else:
+                command = "stepd " + self._attocube_axis[axis] + " "
+
+            if not mode:
+                command += "c"
+            else:
+                command += str(steps)
+            return self._send_cmd(command)
+        else:
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+            return -1
+
+    def stop_attocube_movement(self, axis):
+        """Stops attocube motion on specified axis,
+        only necessary if attocubes are stepping in continuous mode
+
+        @param str axis: axis to be moved, can only be part of dictionary axes
+        @return int: error code (0: OK, -1:error)
+        """
+        if axis in self._attocube_axis.keys():
+            command = "stop" + self._attocube_axis[axis]
+            return self._send_cmd(command)
+        else:
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+            return -1
+
+    def stop_all_attocube_motion(self):
+        """Stops any attocube motion
+
+        @return 0
+        """
+        self._send_cmd_silent("stop 1")
+        self._send_cmd_silent("stop 2")
+        self._send_cmd_silent("stop 3")
+        self._send_cmd_silent("stop 4")
+        self._send_cmd_silent("stop 5")
+        # There are at maximum 5 stepper axis per ANC300 module.
+        # If existing any motion on the axis is stopped
+        self.log.info("any attocube stepper motion has been stopped")
+        return 0
