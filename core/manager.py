@@ -42,7 +42,7 @@ from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
-from .base import Base
+from .base import BaseMixin
 
 
 class Manager(QtCore.QObject):
@@ -565,7 +565,7 @@ class Manager(QtCore.QObject):
         modclass = getattr(moduleObject, className)
 
         # FIXME: Check if the class we just obtained has the right inheritance
-        if not issubclass(modclass, Base):
+        if not issubclass(modclass, BaseMixin):
             raise Exception('Bad inheritance, for instance {0!s} from {1!s}.{2!s}.'.format(
                 instanceName, baseName, className))
 
@@ -889,13 +889,7 @@ class Manager(QtCore.QObject):
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
-                success = QtCore.QMetaObject.invokeMethod(
-                    module,
-                    "_wrap_activation",
-                    QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_RETURN_ARG(bool))
-            else:
-                success = module._wrap_activation()
+            success = module.activate() # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(success))
         except:
             logger.exception(
@@ -927,21 +921,10 @@ class Manager(QtCore.QObject):
                 self.tree['loaded'][base].pop(name)
             return
         try:
+            success = module.deactivate() # runs on_deactivate in main thread
             if base == 'logic':
-                success = QtCore.QMetaObject.invokeMethod(
-                    module,
-                    '_wrap_deactivation',
-                    QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_RETURN_ARG(bool))
-                QtCore.QMetaObject.invokeMethod(
-                    module,
-                    'moveToThread',
-                    QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_ARG(QtCore.QThread, self.tm.thread))
                 self.tm.quitThread('mod-{0}-{1}'.format(base, name))
                 self.tm.joinThread('mod-{0}-{1}'.format(base, name))
-            else:
-                success = module._wrap_deactivation()
             self.saveStatusVariables(base, name, module.getStatusVariables())
             logger.debug('Deactivation success: {}'.format(success))
         except:
