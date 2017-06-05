@@ -923,6 +923,11 @@ class Manager(QtCore.QObject):
         try:
             success = module.deactivate() # runs on_deactivate in main thread
             if base == 'logic':
+                QtCore.QMetaObject.invokeMethod(
+                    module,
+                    'moveToThread',
+                    QtCore.Qt.BlockingQueuedConnection,
+                    QtCore.Q_ARG(QtCore.QThread, self.tm.thread))
                 self.tm.quitThread('mod-{0}-{1}'.format(base, name))
                 self.tm.joinThread('mod-{0}-{1}'.format(base, name))
             self.saveStatusVariables(base, name, module.getStatusVariables())
