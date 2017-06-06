@@ -145,7 +145,7 @@ def make_poissonianmultiple_model(self, no_of_functions=1):
     return multi_poisson_model, params
 
 def make_poissoniandouble_model(self):
-    return self.make_multiplepoissonian_model(2)
+    return self.make_poissonianmultiple_model(2)
 
 ################################################################################
 #                                                                              #
