@@ -274,7 +274,6 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
             flist = '{0:f} HZ'.format(frequency[0])
             for f in frequency:
                 flist += ', {0:f} HZ'.format(f)
-            print(flist)
             self._gpib_connection.write('LF ' + flist)
             self._freq_list = frequency
 
