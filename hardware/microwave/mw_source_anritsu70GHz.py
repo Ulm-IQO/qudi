@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import visa
+import time
 
 from core.base import Base
 from interface.microwave_interface import MicrowaveInterface
@@ -80,6 +81,8 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self._current_mode = 'cw'
         self._freq_list = list()
         self._list_power = -20
+        self._cw_freq = 2.0e9
+        self._cw_power = -20
         return
 
     def on_deactivate(self):
@@ -165,9 +168,13 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write('RF0')
-        self._gpib_connection.write('ACW')
-        self._current_mode = 'cw'
+        mode, is_running = self.get_status()
+
+        if mode != 'cw':
+            self.set_cw()
+        elif is_running:
+            return 0
+
         self._gpib_connection.write('RF1')
         self._is_running = True
         # FIXME: Due to a missing output state query command one can not WAIT until it's running
@@ -186,15 +193,21 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         if is_running:
             self.off()
-        if mode != 'cw':
-            self._gpib_connection.write('ACW')
-            self._current_mode = 'cw'
 
-        if frequency is not None:
+        if frequency is None:
+            self._gpib_connection.write('F0 {0:f} HZ'.format(self._cw_freq))
+        else:
             self._gpib_connection.write('F0 {0:f} HZ'.format(frequency))
+            self._cw_freq = frequency
 
-        if power is not None:
+        if power is None:
+            self._gpib_connection.write('L0 {0:f} DM'.format(self._cw_power))
+        else:
             self._gpib_connection.write('L0 {0:f} DM'.format(power))
+            self._cw_power = power
+
+        self._gpib_connection.write('ACW')
+        self._current_mode = 'cw'
 
         mode, dummy = self.get_status()
         actual_frequency = self.get_frequency()
@@ -261,6 +274,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
             flist = '{0:f} HZ'.format(frequency[0])
             for f in frequency:
                 flist += ', {0:f} HZ'.format(f)
+            print(flist)
             self._gpib_connection.write('LF ' + flist)
             self._freq_list = frequency
 
