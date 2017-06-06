@@ -116,8 +116,7 @@ class RemoteObjectManager(QObject):
                 certfile=self.certfile)
         else:
             if self.host != 'localhost':
-                logger.warning('Remote connection not secured! Use a '
-                        'certificate!')
+                logger.warning('Remote connection not secured! Use a certificate!')
             self.server = RPyCServer(self.makeRemoteService(), self.host, self.port)
         self.server.moveToThread(thread)
         thread.started.connect(self.server.run)

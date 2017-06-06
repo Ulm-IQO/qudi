@@ -101,15 +101,15 @@ def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add
     error, params = estimator(x_axis, data, params)
 
     # overwrite values of additional parameters
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
-    try:
-        result = mod_final.fit(data, x=x_axis, params=params)
-    except:
-        self.log.error('The Powerfluorescence fit did not work. Here the fit '
-                     'result message:\n'
-                     '{0}'.format(result.message))
-        result = mod_final.fit(data, x=x_axis, params=params)
+    params = self._substitute_params(
+        initial_params=params,
+        update_params=add_params)
+
+    result = mod_final.fit(data, x=x_axis, params=params)
+
+    self.log.error(
+        'The Powerfluorescence fit did not work. Here the fit '
+        'result message:\n {0}'.format(result.message))
 
     return result
 
