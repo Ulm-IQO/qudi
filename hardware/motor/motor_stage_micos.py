@@ -33,8 +33,8 @@ class MotorStageMicos(Base, MotorInterface):
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
 
-    _term_chars_xy = ConfigOption('micos_term_chars_xy', '\n', missing='warn'
-    _term_chars_zphi = ConfigOption('micos_term_chars_zphi', '\n', missing='warn'
+    _term_chars_xy = ConfigOption('micos_term_chars_xy', '\n', missing='warn')
+    _term_chars_zphi = ConfigOption('micos_term_chars_zphi', '\n', missing='warn')
     _baud_rate_xy = ConfigOption('micos_baud_rate_xy', 57600, missing='warn')
     _baud_rate_zphi = ConfigOption('micos_baud_rate_zphi', 57600, missing='warn')
 

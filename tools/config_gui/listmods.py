@@ -82,6 +82,12 @@ class Module(QtCore.QObject):
                 print('    {}: {}'.format(var.name, var.default))
             print('')
 
+    def print_all(self):
+        self.print_connectors()
+        self.print_interfaces()
+        self.print_options()
+        self.print_vars()
+
 
 def find_pyfiles(path):
     """ Find all python files in a path that qualify as qudi modules and return in pyton module form"""
@@ -210,24 +216,15 @@ if __name__ == '__main__':
 
     for k, v in m['hardware'].items():
         print('MODULE {}'.format(k))
-        v.print_connectors()
-        v.print_interfaces()
-        v.print_options()
-        v.print_vars()
+        v.print_all()
 
     for k, v in m['logic'].items():
         print('MODULE {}'.format(k))
-        v.print_connectors()
-        v.print_interfaces()
-        v.print_options()
-        v.print_vars()
+        v.print_all()
 
     for k, v in m['gui'].items():
         print('MODULE {}'.format(k))
-        v.print_connectors()
-        v.print_interfaces()
-        v.print_options()
-        v.print_vars()
+        v.print_all()
 
     for k, v in m['pptask'].items():
         print('PPTASK {}'.format(k))
