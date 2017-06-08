@@ -68,7 +68,7 @@ class OkFpgaPulser(Base, PulserInterface):
             self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
                              'OkFpgaPulser as directory for the pulsed files!\nThe default home '
                              'directory\n{0}\nwill be taken instead.'.format(self.pulsed_file_dir))
-           self.log.warning(
+            self.log.warning(
                 'No parameter "fpga_type" specified in the config!\n'
                 'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
                 'Taking the type "{0}" as default.'.format(self._fpga_type))

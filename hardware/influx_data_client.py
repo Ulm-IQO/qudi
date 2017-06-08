@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from influxdb import InfluxDBClient
 
-from core.module import Base, ConfigOption)
+from core.module import Base, ConfigOption
 from interface.process_interface import ProcessInterface
 
 

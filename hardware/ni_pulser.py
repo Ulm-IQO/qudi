@@ -38,7 +38,7 @@ class NIPulser(Base, PulserInterface):
     _modtype = 'PulserInterface'
     _modclass = 'hardware'
 
-    self.device = ConfigOption['device', 'Dev0', missing='warn')
+    self.device = ConfigOption('device', 'Dev0', missing='warn')
 
     def on_activate(self):
         """ Activate module
