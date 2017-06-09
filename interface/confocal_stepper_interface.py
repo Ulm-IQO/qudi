@@ -44,6 +44,80 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
     # ============================== Stepper Commands ====================================
 
     @abc.abstractmethod
+    def get_step_freq(self, f):
+        """ Checks the step frequency for a specific axis
+
+        @param str axis: the axis for which the frequency is to be checked
+        @return float: the step amplitude of the axis
+        """
+        pass
+
+    @abc.abstractmethod
+    def change_step_size(self, axis, stepsize, temp):
+        """Changes the step size of the attocubes according to a list give in the config file
+        @param str  axis: axis  for which steps size is to be changed
+        @param float stepsize: The wanted stepsize in nm
+        @param float temp: The estimated temperature of the attocubes
+
+        @return: float, float : Actual stepsize and used temperature"""
+        pass
+
+    @abc.abstractmethod
+    def set_step_amplitude(self, axis=None, voltage=None):
+        """
+
+        @param str axis:
+        @param float voltage:
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_step_amplitude(self, axis):
+        """ Checks the amplitude of a step for a specific axis
+
+        @param str axis: the axis for which the step amplitude is to be checked
+        @return float: the step amplitude of the axis
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_step_freq(self, axis, freq):
+        """
+
+        @param str axis:
+        @param int freq:
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    def get_step_freq(self, axis):
+        """ Checks the step frequency for a specific axis
+
+        @param str axis: the axis for which the frequency is to be checked
+        @return float: the step amplitude of the axis
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_axis_mode(self, axis, mode):
+        """Changes Attocube axis mode
+
+        @param str axis: axis to be changed, can only be part of dictionary axes
+        @param str mode: mode to be set
+        @return int: error code (0: OK, -1:error)
+        """
+        pass
+
+    def get_axis_mode(self, axis):
+        """ Checks the mode for a specific axis
+
+        @param str axis: the axis for which the frequency is to be checked
+        @return float: the step amplitude of the axis, -1 for error
+        """
+        pass
+
+    @abc.abstractmethod
     def set_voltage_range_stepper(self, myrange=None):
         """ Sets the voltage range of the attocubes.
 

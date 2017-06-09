@@ -32,6 +32,9 @@ from io import BytesIO
 from logic.generic_logic import GenericLogic
 
 
+# Todo make a confocal stepper History class for this logic as exists in confocal logic. This is neede for restarting and
+# for back and forward movement in images
+
 class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     """
     This is the Logic class for confocal stepping.
@@ -41,13 +44,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     _connectors = {
         'confocalstepper1': 'ConfocalStepperInterface',
-        'savelogic': 'SaveLogic'
+        'savelogic': 'SaveLogic',
+        'confocalcounter': 'ConfocalCounterInterface'
     }
 
-    # Todo: add connectors adn QTCore Signals
+    # Todo I need a confocalocunterinterface, like a slow counter Interface which uses someting like a slow counter to
+    # aqucire the counts used for the stepper logic
+    # Todo: For steppers with hardware realtime info like res readout of attocubes clock synchronisation and readout needs to be written
+    # Therefore a new interface (ConfocalReadInterface o.ä.) needs to be made
+
+    # Todo: add connectors and QTCore Signals
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+
+    def on_activate(self):
+        """ Initialisation performed during activation of the module.
+        """
 
         # counter for scan_image
         self._step_counter = 0
@@ -55,12 +68,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.stopRequested = False
         self.depth_scan_dir_is_xz = True
 
-    def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        # Todo: Add initalisation from _statusVariable
+
+        # Connectors
         self._stepping_device = self.get_connector('confocalstepper1')
-        # Todo add connectors
-        pass
+        self._couting_device = self.get_connector('confocalcounter')
+        self._save_logic = self.get_connector('savelogic')
+
+        self.axis = self._stepping_device.get_stepper_axes_use()
+        self.step_voltage = dict()
+        self._step_freq = dict()
+        self._axis_mode = dict()
+        for i in self.axis:
+            self.step_voltage[i] = self._stepping_device.get_step_voltage(i)
+            self._step_freq[i] = self._stepping_device.get_step_freq(i)
+            self._axis_mode[i] = self._stepping_device.get_axis_mode(i)
+
+            # Todo add connectors
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -83,8 +107,19 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         else:
             return 0
 
-    def _check_freq(self, freq):
-        pass
+    def _check_freq(self, axis):
+        """ Checks if the voltage in te device is the same as set by the program
+        If the voltages are different the voltage in the device is changed to the set voltage
+
+        @return int: error code (0:OK, -1:error)
+        """
+        freq = self._stepping_device.get_step_freq()
+        if freq != self._step_freq(axis):
+            self.log.warning(
+                "the device has different voltage of {} then the set voltage {}. The voltage will be changed to the set voltage".format(
+                    freq, self._step_freq))
+            return self._stepping_device.set_step_freq(self, axis, self._step_freq)
+        return 0
 
     ##################################### Control Stepper ########################################
 
@@ -113,7 +148,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         # Todo throw a waring, that without position feedback this is very imprecise
 
-        #Check if freq and voltage are set as set in GUI
+        # Check if freq and voltage are set as set in GUI
 
         if x is not None and x != self._current_x:
             out = True

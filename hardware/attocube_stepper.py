@@ -51,14 +51,13 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         config = self.getConfiguration()
 
         # some default values for the hardware:
+        # Todo: This needs to be calculated by a more complicated formula depnding on the measured capacitance.
         self._voltage_range_stepper_default = [0, 60]
         self._frequency_range_default = [0, 10000]
         self._password_default = b"123456"
         self._port_default = 7230
-        self._axis_amplitude = {"x": 0.0, "y": 0.0, "z": 0.0}
         # Todo this needs to be update with checking every time it is started.
 
-        self._voltage_range_res = [0., 2.]
         # Todo get rid of all fine/coarse definition stuff, only step voltage will remain
 
 
@@ -130,6 +129,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             self.log.warning('No port configured taking standard instead.')
 
         # connect ethernet socket and FTP
+        # Todo: Add a loop here which tries connecting sveral times and olny throws error after failing x times.
         self.tn = telnetlib.Telnet(self._host, self._port)
         self.tn.open(self._host, self._port)
         self.tn.read_until(b"Authorization code: ")
@@ -144,6 +144,9 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                            'Check password, physical connection, host etc. and try again.')
 
         self.tn.read_very_eager()
+
+        # This reads all the values from the hardware and checks if values ly inside defined boundaries
+        self._get_all_hardwaresettings()
 
     def on_deactivate(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -202,26 +205,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
     # =================== General Methods ==========================================
 
-    def set_axis_mode(self, axis, mode):
-        """Changes Attocube axis mode
-
-        @param str axis: axis to be changed, can only be part of dictionary axes
-        @param str mode: mode to be set
-        @return int: error code (0: OK, -1:error)
-        """
-        if mode in _mode_list:
-            if axis in self._attocube_axis.keys():
-                command = "setm " + self._attocube_axis[axis] + mode
-                result = self._send_cmd(command)
-                if result == 0:
-                    self._axis_mode[axis] = mode
-                return 0
-            else:
-                self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
-                return -1
-        else:
-            self.log.error("mode {} not in list of possible modes".format(mode))
-            return -1
 
     def _temperature_change(self, new_temp):
         """
@@ -289,6 +272,10 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 return -1
             voltage_line = result[1][-3].split()
             self._axis_amplitude[axis] = voltage_line[-2]
+            if (self._voltage_range_stepper[0] > self._axis_amplitude[axis] or self._axis_aamplitude[axis] >
+                self._voltage_range_stepper[1]):
+                self.log.error("The value of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
+                    self._axis_amplitde[axis], axis, self._voltage_range_stepper[0], self._voltage_range_stepper[1]))
             return self._axis_amplitude[axis]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
@@ -323,33 +310,13 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 return -1
             frequency_line = result[1][-3].split()
             self._axis_frequency[axis] = frequency_line[-2]
+            if (self._frequency_range[0] > self._axis_frequency[axis] or self._axis_frequency[axis] >
+                self._frequency_range[1]):
+                self.log.error("The value of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
+                    self._axis_frequency[axis], axis, self._frequency_range[0], self._frequency_range[1]))
             return self._axis_frequency[axis]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
-
-    def set_axis_mode(self, axis, mode):
-        """Changes Attocube axis mode
-
-        @param str axis: axis to be changed, can only be part of dictionary axes
-        @param str mode: mode to be set
-        @return int: error code (0: OK, -1:error)
-        """
-        if mode in _mode_list:
-            if axis in self._attocube_axis.keys():
-                command = "setm " + self._attocube_axis[axis] + " " + mode
-                result = self._send_cmd(command)
-                if result == 0:
-                    self._axis_mode[axis] = mode
-                    if mode == "gnd":  # this automatically turns the inputs off
-                        self._axis_dci = "off"
-                        self._axis_aci = "off"
-                return 0
-            else:
-                self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
-                return -1
-        else:
-            self.log.error("mode {} not in list of possible modes".format(mode))
-            return -1
 
     def _measure_capacitance(self, axis):
         """ Measures the attocube capacitance for a given axis
@@ -428,6 +395,27 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             return self._axis_capacitance[axis]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
+
+    def set_axis_mode(self, axis, mode):
+        """Changes Attocube axis mode
+
+        @param str axis: axis to be changed, can only be part of dictionary axes
+        @param str mode: mode to be set
+        @return int: error code (0: OK, -1:error)
+        """
+        if mode in _mode_list:
+            if axis in self._attocube_axis.keys():
+                command = "setm " + self._attocube_axis[axis] + mode
+                result = self._send_cmd(command)
+                if result == 0:
+                    self._axis_mode[axis] = mode
+                return 0
+            else:
+                self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+                return -1
+        else:
+            self.log.error("mode {} not in list of possible modes".format(mode))
+            return -1
 
     def get_axis_mode(self, axis):
         """ Checks the mode for a specific axis
@@ -615,6 +603,10 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self._voltage_range_stepper = myrange
         return 0
 
+    def get_voltage_range_stepper(self):
+        """Returns the corrent possible stepping voltage range of the Stepping device"""
+        return self._voltage_range_stepper
+
     def get_scanner_position(self):
         pass
 
@@ -629,7 +621,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         axis = {}
         for i in range(5):
             command = "getm "
-            result = self._send_cmd(command + str(i), read)
+            result = self._send_cmd(command + str(i), read=True)
             if result[0] == -1:
                 if result[1].split()[-3] == "Wrong axis type":
                     axis.append(False)
