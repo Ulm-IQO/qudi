@@ -1187,8 +1187,7 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     error, params = estimator(x_axis, data, params)
 
-    params = self._substitute_params(initial_params=params,
-                                     update_params=add_params)
+    params = self._substitute_params(initial_params=params, update_params=add_params)
     try:
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
     except:

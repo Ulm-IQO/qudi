@@ -323,19 +323,11 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
         #TODO: Change the gaussian function here to the one from fitlogic and delete the local modules to calculate
         #the gaussian functions
-        if line_path[0, 0] != line_path[0, 1]:
-            x_data, y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
-            for i in range(self._num_points):
-                count_data += self.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data),
-                              *(self._points_z[i]))))
-        else:
-            x_data, y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])
-            for i in range(self._num_points):
-                count_data += self.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self.gaussian_function(z_data,
-                              *(self._points_z[i]))))
-
+        x_data = np.array(line_path[0, :])
+        y_data = np.array(line_path[1, :])
+        for i in range(self._num_points):
+            count_data += self.twoD_gaussian_function((x_data, y_data), *(self._points[i])
+                ) * self.gaussian_function(np.array(z_data), *(self._points_z[i]))
 
         time.sleep(self._line_length * 1. / self._clock_frequency)
         time.sleep(self._line_length * 1. / self._clock_frequency)
@@ -343,7 +335,11 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # update the scanner position instance variable
         self._current_position = list(line_path[:, -1])
 
-        return np.array([count_data, 5e5-count_data, np.ones(count_data.shape) * line_path[1, 0]]).transpose()
+        return np.array([
+                count_data,
+                5e5 - count_data,
+                np.ones(count_data.shape) * line_path[1, 0]
+            ]).transpose()
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.

@@ -162,7 +162,6 @@ class FitSettingsDialog(QtWidgets.QDialog):
             self.tabs[name] = FitParametersWidget(params)
             self._tabWidget.addTab(self.tabs[name], name)
             self.updateParameters(name, fit['parameters'])
-
         # build fit list and send update signals
         self.applySettings()
 
@@ -225,6 +224,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
         # add tabs for new fits, replace tabs for changed fits
         for name, widget in self.currentFitWidgets.items():
             oldfit = widget.fit
+            oldest = widget.estimator
             widget.applySettings()
 
             if name in self.tabs and widget.fit != oldfit:
@@ -417,7 +417,7 @@ class FitConfigWidget(QtWidgets.QWidget):
                 self.estimatorChanged(self.estComboBox.findText(estimator))
                 self.applySettings()
 
-        if self.fitComboBox.count() > 0:
+        elif self.fitComboBox.count() > 0:
             self.fitChanged(self.fitComboBox.currentIndex())
             if self.estComboBox.count() > 0:
                 self.estimatorChanged(self.estComboBox.currentIndex())
