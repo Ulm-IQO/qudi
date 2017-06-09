@@ -34,8 +34,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     _modclass = 'ConfocalScannerDummy'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'confocalscanner': 'ConfocalScannerInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -60,19 +59,11 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self._current_position = [0, 0, 0, 0][0:len(self.get_scanner_axes())]
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])
@@ -131,11 +122,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # offset
         self._points_z[:, 3] = 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate properly the confocal scanner dummy.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.reset_hardware()
 
@@ -232,7 +220,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
     def get_scanner_count_channels(self):
         """ 3 counting channels in dummy confocal: normal, negative and a ramp."""
-        return ['Norm', 'Neg', 'Ramp'] 
+        return ['Norm', 'Neg', 'Ramp']
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -301,7 +289,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         """
         return self._current_position[0:len(self.get_scanner_axes())]
 
-    def set_up_line(self, length=100):
+    def _set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.
 
         @param int length: length of the line in pixel
@@ -312,15 +300,13 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self._line_length = length
 
 #        self.log.debug('ConfocalScannerInterfaceDummy>set_up_line')
-
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
-        @param float[][4] line_path: array of 4-part tuples defining the voltage
-                                      points
+        @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
@@ -330,26 +316,18 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
             return np.array([[-1.]])
 
         if np.shape(line_path)[1] != self._line_length:
-            self.set_up_line(np.shape(line_path)[1])
+            self._set_up_line(np.shape(line_path)[1])
 
         count_data = np.random.uniform(0, 2e4, self._line_length)
         z_data = line_path[2, :]
 
         #TODO: Change the gaussian function here to the one from fitlogic and delete the local modules to calculate
         #the gaussian functions
-        if line_path[0, 0] != line_path[0, 1]:
-            x_data, y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
-            for i in range(self._num_points):
-                count_data += self.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data),
-                              *(self._points_z[i]))))
-        else:
-            x_data, y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])
-            for i in range(self._num_points):
-                count_data += self.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self.gaussian_function(z_data,
-                              *(self._points_z[i]))))
-
+        x_data = np.array(line_path[0, :])
+        y_data = np.array(line_path[1, :])
+        for i in range(self._num_points):
+            count_data += self.twoD_gaussian_function((x_data, y_data), *(self._points[i])
+                ) * self.gaussian_function(np.array(z_data), *(self._points_z[i]))
 
         time.sleep(self._line_length * 1. / self._clock_frequency)
         time.sleep(self._line_length * 1. / self._clock_frequency)
@@ -357,7 +335,11 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         # update the scanner position instance variable
         self._current_position = list(line_path[:, -1])
 
-        return np.array([count_data, 5e5-count_data, np.ones(count_data.shape) * line_path[1, 0]]).transpose()
+        return np.array([
+                count_data,
+                5e5 - count_data,
+                np.ones(count_data.shape) * line_path[1, 0]
+            ]).transpose()
 
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
@@ -423,8 +405,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         b = -(np.sin(2 * theta)) / (4 * sigma_x**2) + (np.sin(2 * theta)) / (4 * sigma_y**2)
         c = (np.sin(theta)**2) / (2 * sigma_x**2) + (np.cos(theta)**2) / (2 * sigma_y**2)
         g = offset + amplitude * np.exp(
-            - (a * ((x - x_zero)**2) 
-                + 2 * b * (x - x_zero) * (y - y_zero) 
+            - (a * ((x - x_zero)**2)
+                + 2 * b * (x - x_zero) * (y - y_zero)
                 + c * ((y - y_zero)**2)))
         return g.ravel()
 

@@ -35,23 +35,13 @@ class MotorStagePI(Base, MotorInterface):
     """
     _modclass = 'MotorStagePI'
     _modtype = 'hardware'
-    # connectors
-    _out = {'motorstage': 'MotorInterface'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         @return: error code
         """
         # Read configs from config-file
@@ -266,11 +256,8 @@ class MotorStagePI(Base, MotorInterface):
         return 0
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         @return: error code
         """
         self._serial_connection_xyz.close()
@@ -356,15 +343,24 @@ class MotorStagePI(Base, MotorInterface):
 
         @return dict pos: dictionary with the current magnet position
         """
-        try:
-            for axis_label in param_dict:
-                step = param_dict[axis_label]
-                self._do_move_rel(axis_label, step)
-        except:
-            self.log.error('Magnet cannot move!')
 
-        pos = self.get_pos()
-        return pos
+        # There are sometimes connections problems therefore up to 3 attempts are started
+        for attempt in range(3):
+            try:
+                for axis_label in param_dict:
+                    step = param_dict[axis_label]
+                    self._do_move_rel(axis_label, step)
+            except:
+                self.log.warning('Motor connection problem! Try again...')
+            else:
+                break
+        else:
+            self.log.error('Motor cannot move!')
+
+        #The following two lines have been commented out to speed up
+        #pos = self.get_pos()
+        #return pos
+        return param_dict
 
     def move_abs(self, param_dict):
         """Moves stage to absolute position
@@ -379,22 +375,26 @@ class MotorStagePI(Base, MotorInterface):
 
         @return dict pos: dictionary with the current axis position
         """
-        try:
-            for axis_label in param_dict:
-                move = param_dict[axis_label]
-                self._do_move_abs(axis_label, move)
+        # There are sometimes connections problems therefore up to 3 attempts are started
+        for attept in range(3):
+            try:
+                for axis_label in param_dict:
+                    move = param_dict[axis_label]
+                    self._do_move_abs(axis_label, move)
+                while not self._motor_stopped():
+                    time.sleep(0.02)
 
-            while not self._motor_stopped():
-                print('xyz-stage moving...')
-                time.sleep(0.2)
+            except:
+                self.log.warning('Motor connection problem! Try again...')
+            else:
+                break
+        else:
+            self.log.error('Motor cannot move!')
 
-            print('stage ready')
-
-        except:
-            self.log.error('Magnet cannot move!')
-
-        pos = self.get_pos()
-        return pos
+        #The following two lines have been commented out to speed up
+        #pos = self.get_pos()
+        #return pos
+        return param_dict
 
 
     def abort(self):
@@ -567,8 +567,11 @@ class MotorStagePI(Base, MotorInterface):
             for axis_label in param_dict:
                 vel = int(param_dict[axis_label] * 1.0e7)
                 self._write_xyz(axis_label, 'SV{0:d}'.format((vel)))
-            param_dict2 = self.get_velocity()
-            return param_dict2
+
+            #The following two lines have been commented out to speed up
+            #param_dict2 = self.get_velocity()
+            #retrun param_dict2
+            return param_dict
 
         except:
             self.log.error('Could not set axis velocity')

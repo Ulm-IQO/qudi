@@ -19,12 +19,12 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-
+import abc
+import sys
 import logging
 from qtpy import QtCore
-import sys
 
-from core.util.customexceptions import InterfaceImplementationError
+from core.util.interfaces import TaskMetaclass
 from core.util.mutex import Mutex
 from core.FysomAdapter import Fysom
 
@@ -39,7 +39,7 @@ class TaskResult(QtCore.QObject):
         self.data = data
         self.success = success
 
-class InterruptableTask(QtCore.QObject, Fysom):
+class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
     """ This class represents a task in a module that can be safely executed by checking preconditions
         and pausing other tasks that are being executed as well.
         The task can also be paused, given that the preconditions for pausing are met.
@@ -311,35 +311,39 @@ class InterruptableTask(QtCore.QObject, Fysom):
         """
         return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
 
+    @abc.abstractmethod
     def startTask(self):
         """ Implement the operation to start your task here.
         """
-        raise InterfaceImplementationError('startTask needs to be implemented in subclasses!')
+        pass
 
+    @abc.abstractmethod
     def runTaskStep(self):
         """ Implement one work step of your task here.
           @return bool: True if the task should continue running, False if it should finish.
         """
-        raise InterfaceImplementationError('runTaskStep needs to be implemented in subclasses!')
         return False
 
+    @abc.abstractmethod
     def pauseTask(self):
         """ Implement the operations necessary to pause your task here.
         """
-        raise InterfaceImplementationError('pauseTask may need to be implemented in subclasses!')
+        pass
 
+    @abc.abstractmethod
     def resumeTask(self):
         """ Implement the operations necessary to resume your task from being paused here.
         """
-        raise InterfaceImplementationError('resumeTask may need to be implemented in subclasses!')
+        pass
 
+    @abc.abstractmethod
     def cleanupTask(self):
         """ If your task leaves behind any undesired state, take care to remove it in this function.
             It is called after a task has finished.
         """
-        raise InterfaceImplementationError('cleanupTask needs to be implemented in subclasses!')
+        pass
 
-class PrePostTask(QtCore.QObject, Fysom):
+class PrePostTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
     """ Represents a task that creates the necessary conditions for a different task
         and reverses its own actions afterwards.
     """
@@ -411,17 +415,19 @@ class PrePostTask(QtCore.QObject, Fysom):
         """
         self.sigStateChanged.emit(e)
 
+    @abc.abstractmethod
     def preExecute(self):
         """ This method contains any action that should be done before some task.
             It needs to be overwritten in every subclass.
         """
-        raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
+        pass
 
+    @abc.abstractmethod
     def postExecute(self):
         """ This method needs to undo any actions in preExecute() after a task has been finished.
             It needs to be overwritten in every subclass.
         """
-        raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
+        pass
 
     def _pre(self, e):
         """ Actually call preExecute with the appropriate safeguards amd emit singals before and afterwards.

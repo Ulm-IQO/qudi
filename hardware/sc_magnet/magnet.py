@@ -41,9 +41,6 @@ class Magnet(Base, MagnetInterface):
     _modtype = 'Magnet'
     _modclass = 'hardware'
 
-    _out = {'magnetstage': 'magnet_interface'}
-
-
     def __init__(self, **kwargs):
         """Here the connections to the power supplies and to the counter are established"""
         super().__init__(**kwargs)
@@ -88,7 +85,7 @@ class Magnet(Base, MagnetInterface):
         self.z_constr = 3.0
         self.rho_constr = 1.2
 
-    def on_activate(self, e):
+    def on_activate(self):
         """
         loads the config file and extracts the necessary configurations for the
         superconducting magnet
@@ -149,7 +146,7 @@ class Magnet(Base, MagnetInterface):
         tell_dict = {'x': 'CONF:FIELD:UNITS 1', 'y': 'CONF:FIELD:UNITS 1', 'z': 'CONF:FIELD:UNITS 1'}
         self.tell(tell_dict)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self.soc_x.close()
         self.soc_y.close()
         self.soc_z.close()

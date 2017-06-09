@@ -45,9 +45,9 @@ class QdplotLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'savelogic': 'SaveLogic'
-           }
-    _out = {'qdplotlogic': 'QdplotLogic'}
+    _connectors = {
+        'savelogic': 'SaveLogic'
+    }
 
     def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.
@@ -59,16 +59,8 @@ class QdplotLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
         self.indep_vals = np.zeros((10,))
         self.depen_vals = np.zeros((10,))
@@ -79,13 +71,10 @@ class QdplotLogic(GenericLogic):
         self.set_hlabel()
         self.set_vlabel()
 
-        self._save_logic = self.get_in_connector('savelogic')
+        self._save_logic = self.get_connector('savelogic')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         return
 
@@ -108,7 +97,7 @@ class QdplotLogic(GenericLogic):
         return
 
     def set_domain(self, newdomain=None):
-        """Set the plot domain
+        """Set the plot domain, to match the data (default) or to a specified new domain.
 
         @param float newdomain: 2-element list containing min and max x-values
         """
@@ -116,13 +105,13 @@ class QdplotLogic(GenericLogic):
         if newdomain is not None:
             self.plot_domain = newdomain
         else:
-            return -1
+            self.plot_domain = [min(self.indep_vals), max(self.indep_vals)]
 
         self.sigPlotParamsUpdated.emit()
         return 0
 
     def set_range(self, newrange=None):
-        """Set the plot range
+        """Set the plot range, to match the data (default) or to a specified new range
 
         @param float newrange: 2-element list containing min and max y-values
         """
@@ -130,7 +119,7 @@ class QdplotLogic(GenericLogic):
         if newrange is not None:
             self.plot_range = newrange
         else:
-            return -1
+            self.plot_range = [min(self.depen_vals), max(self.depen_vals)]
 
         self.sigPlotParamsUpdated.emit()
         return 0
@@ -216,11 +205,10 @@ class QdplotLogic(GenericLogic):
 
         # Call save logic to write everything to file
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
-                                   as_text=True,
-                                   plotfig=fig
-                                   )
+                                   plotfig=fig,
+                                   delimiter='\t')
         plt.close(fig)
         self.log.debug('Data saved to:\n{0}'.format(filepath))

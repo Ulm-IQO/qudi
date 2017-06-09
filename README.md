@@ -17,7 +17,7 @@ Originally built around a confocal fluorescence microscope experiments, it has g
 
 ## Citation
 If you are publishing scientific results, mentioning Qudi in your methods decscription is the least you can do as good scientific practice.
-Until we have a proper peer-reviewed paper published, you should cite  the preprint [arXiv:1611.09146](https://arxiv.org/abs/1611.09146) \[quant-ph\] for this purpose.
+You should cite our paper [Qudi: A modular python suite for experiment control and data processing](http://doi.org/10.1016/j.softx.2017.02.001) for this purpose.
 
 ## Documentation
 User and code documentation about Qudi is located at http://ulm-iqo.github.io/qudi-generated-docs/html-docs/ .
@@ -29,6 +29,11 @@ User and code documentation about Qudi is located at http://ulm-iqo.github.io/qu
 [![Code Issues](https://www.quantifiedcode.com/api/v1/project/d31724e4b9704732ac1f508c7de1999d/badge.svg)](https://www.quantifiedcode.com/app/project/d31724e4b9704732ac1f508c7de1999d)
 
 ## Collaboration
+For development-related questions and discussion, please use the [qudi-dev mailing list](http://www.freelists.org/list/qudi-dev).
+
+If you just want updates about releases and breaking changes to Qudi without discussion or issue reports,
+subscribe to the [qudi-announce mailing list](http://www.freelists.org/list/qudi-announce).
+
 Feel free to add issues and pull requests for improvements on github at https://github.com/Ulm-IQO/qudi .
 
 The code in pull requests should be clean, PEP8-compliant and commented, as with every academic institution in Germany,

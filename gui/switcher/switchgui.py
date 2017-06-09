@@ -32,21 +32,13 @@ class SwitchGui(GUIBase):
     _modclass = 'SwitchGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'switchlogic': 'SwitchLogic'}
+    _connectors = {'switchlogic': 'SwitchLogic'}
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """Create all UI objects and show the window.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         self._mw = SwitchMainWindow()
-        lsw =  self.get_in_connector('switchlogic')
+        lsw =  self.get_connector('switchlogic')
         # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
             frame = QtWidgets.QGroupBox(hw, self._mw.scrollAreaWidgetContents)
@@ -66,11 +58,8 @@ class SwitchGui(GUIBase):
         """
         self._mw.show()
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Hide window and stop ipython console.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self.saveWindowPos(self._mw)
         self._mw.close()

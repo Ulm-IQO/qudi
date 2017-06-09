@@ -32,7 +32,7 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         """
         @param QWidget parent: the parent QWidget which hosts this child widget
         @param dict item_dict: dict with the following keys which give
-                                informations about the current viewbox:
+                               informations about the current viewbox:
                                     'unit', 'init_val', 'min', 'max',
                                     'view_stepsize', 'dec', 'unit_prefix'
 
@@ -40,24 +40,11 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         super().__init__(parent)
         self.item_dict = item_dict
 
-        unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
-                            'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
-                            'T':1e12, 'P':1e15}
-
-        # determine the value to normalized the constraints for that:
-        self.norm_val = unit_prefix_dict[self.item_dict['unit_prefix']]
+        # Note, the editor used in this delegate creates the unit prefix by
+        # itself, therefore no handling for that is implemented.
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.EditRole
-
-
-    def get_unit_prefix(self):
-        """ Return the unit prefix of that view element to determine the
-            magnitude.
-
-        @return str: unit prefic
-        """
-        return self.item_dict['unit_prefix']
 
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
@@ -96,12 +83,12 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         needed any longer.
         """
         editor = ScienDSpinBox(parent=parent)
-        editor.setMinimum(self.item_dict['min']/self.norm_val)
-        editor.setMaximum(self.item_dict['max']/self.norm_val)
-        editor.setSingleStep(self.item_dict['view_stepsize']/self.norm_val)
+        editor.setMinimum(self.item_dict['min'])
+        editor.setMaximum(self.item_dict['max'])
+        editor.setSingleStep(self.item_dict['view_stepsize'])
         editor.setDecimals(self.item_dict['dec'])
         editor.installEventFilter(self)
-        editor.setValue(self.item_dict['init_val']/self.norm_val)
+        editor.setValue(self.item_dict['init_val'])
         editor.setMaximumHeight(100)
         return editor
 
@@ -119,7 +106,7 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         value = index.data(self.model_data_access)
 
         if not isinstance(value, float):
-            value = self.item_dict['init_val']/self.norm_val
+            value = self.item_dict['init_val']
         editor.setValue(value)
         editor.selectNumber()   # that is specific for the ScientificSpinBox
 

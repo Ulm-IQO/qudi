@@ -20,22 +20,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 from qtpy import QtCore, QtWidgets
 
-class ModuleObject(QtCore.QObject):
-
-    sigAddModule = QtCore.Signal(object)
-
-    def __init__(self, path, conn_in, conn_out):
-        super().__init__()
-        self.path = path
-        self.conn_in = conn_in
-        self.conn_out = conn_out
-
-    def addModule(self):
-        self.sigAddModule.emit(self)
-
 class ModMenu(QtWidgets.QMenu):
+    """ This class represents the module selection menu.
+    """
 
     def __init__(self, m):
+        """ Create new menu from module tree.
+
+            @param dict m: module tree
+        """
         super().__init__()
 
         self.modules = []
@@ -65,14 +58,20 @@ class ModMenu(QtWidgets.QMenu):
 
         for k,v in sorted(m['hardware'].items()):
             self.build_submenu(self.hwmenuitems, k, v)
-            
+
         for k,v in sorted(m['logic'].items()):
             self.build_submenu(self.logicmenuitems, k, v)
 
         for k,v in sorted(m['gui'].items()):
             self.build_submenu(self.guimenuitems, k, v)
 
-    def build_submenu(self, mlist, modpath, moddef) :
+    def build_submenu(self, mlist, modpath, module) :
+        """ Create a submenu from a module list, a module path and a module definition.
+
+            @param dict mlist: module list dict
+            @param str modpath: Qudi module path
+            @param dict moddef: module definition dict
+        """
         k_parts = modpath.split('.')
         if len(k_parts) > 3:
             for part in k_parts[1:-2]:
@@ -88,13 +87,24 @@ class ModMenu(QtWidgets.QMenu):
                     mlist = mlist['children'][part]
         action = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
         mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = action
-        module = ModuleObject(modpath, moddef['in'], moddef['out'])
         action.triggered.connect(module.addModule)
         self.modules.append(module)
 
     def hasModule(self, modpath):
+        """ Return whther module with given path is present
+        
+            @param str modpath: Qudi module path
+
+            @return bool: wether a module has the given path
+        """
         return modpath in (x.path for x in self.modules)
 
     def getModule(self, modpath):
+        """ Get module corresponding to module path.
+
+            @prarm str modpath: Qudi module path
+
+            @return ModuleObject: module object
+        """
         return next(x for x in self.modules if x.path == modpath)
 

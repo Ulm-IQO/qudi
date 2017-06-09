@@ -138,12 +138,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _modtype = 'NICard'
     _modclass = 'hardware'
 
-    # connectors
-    _out = {'counter': 'SlowCounterInterface',
-            'confocalscanner': 'ConfocalScannerInterface',
-            'odmrcounter': 'ODMRCounterInterface'
-            }
-
     def on_activate(self, e=None):
         """ Starts up the NI Card at activation.
 
@@ -269,6 +263,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error(
                 'No parameter "scanner_clock_channel" configured.\n'
                 'Assign to that parameter an appropriate channel from your NI Card!')
+
+        if 'pixel_clock_channel' in config.keys():
+            self._pixel_clock_channel = config['pixel_clock_channel']
+        else:
+            self._pixel_clock_channel = None
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency = config['clock_frequency']
@@ -432,11 +431,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error('Failed to start analog output.')
             raise Exception('Failed to start NI Card module due to analog output failure.')
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Shut down the NI card.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.reset_hardware()
 
@@ -1309,7 +1305,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         return self._current_position
 
-    def set_up_line(self, length=100):
+    def _set_up_line(self, length=100):
         """ Sets up the analog output for scanning a line.
 
         Connect the timing of the Analog scanning task with the timing of the
@@ -1400,12 +1396,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
         return 0
 
-    def scan_line(self, line_path=None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and return the counts on that line.
 
-        @param float[][n] line_path: array of n-part tuples defining the voltage points
+        @param float[c][m] line_path: array of c-tuples defining the voltage points
+            (m = samples per line)
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
-        @return float[]: the photon counts per second
+        @return float[m][n]: m (samples per line) n-channel photon counts per second
 
         The input array looks for a xy scan of 5x5 points at the position z=-2
         like the following:
@@ -1425,7 +1423,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # specify how the Data of the selected task is collected, i.e. set it
             # now to be sampled by a hardware (clock) signal.
             daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_SampClk)
-            self.set_up_line(np.shape(line_path)[1])
+            self._set_up_line(np.shape(line_path)[1])
             line_volts = self._scanner_position_to_volt(line_path)
             # write the positions to the analog output
             written_voltages = self._write_scanner_ao(
@@ -1440,6 +1438,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 daq.DAQmxStopTask(task)
 
             daq.DAQmxStopTask(self._scanner_clock_daq_task)
+
+            if pixel_clock and self._pixel_clock_channel is not None:
+                daq.DAQmxConnectTerms(
+                    self._scanner_clock_channel + 'InternalOutput',
+                    self._pixel_clock_channel,
+                    daq.DAQmx_Val_DoNotInvertPolarity)
 
             # start the scanner counting task that acquires counts synchroneously
             for i, task in enumerate(self._scanner_counter_daq_tasks):
@@ -1495,6 +1499,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
             # stop the analog output task
             self._stop_analog_output()
+
+            if pixel_clock and self._pixel_clock_channel is not None:
+                daq.DAQmxDisconnectTerms(
+                    self._scanner_clock_channel + 'InternalOutput',
+                    self._pixel_clock_channel)
 
             # create a new array for the final data (this time of the length
             # number of samples):
@@ -2052,19 +2061,8 @@ class SlowGatedNICard(NICard):
     _modtype = 'SlowGatedNICard'
     _modclass = 'hardware'
 
-    # connectors
-    _out = {'gatedslowcounter1' : 'SlowCounterInterface'}
-
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Starts up the NI Card at activation.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
         self._gated_counter_daq_task = None
         # used as a default for expected maximum counts

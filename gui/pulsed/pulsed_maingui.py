@@ -42,12 +42,12 @@ from core.util.mutex import Mutex
 from core.util import units
 from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
 from logic.sampling_functions import SamplingFunctions
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 
 
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
-#FIXME: Later that should be able to round up the values directly within
 
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
@@ -156,7 +156,7 @@ class PulsedMeasurementGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'pulsedmasterlogic': 'PulsedMasterLogic',
+    _connectors = {'pulsedmasterlogic': 'PulsedMasterLogic',
            'savelogic': 'SaveLogic'}
 
     def __init__(self, config, **kwargs):
@@ -168,22 +168,14 @@ class PulsedMeasurementGui(GUIBase):
         for key in config.keys():
             self.log.info('{}: {}'.format(key,config[key]))
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Initialize, connect and configure the pulsed measurement GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
 
         Establish general connectivity and activate the different tabs of the
         GUI.
         """
-        self._pulsed_master_logic = self.get_in_connector('pulsedmasterlogic')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._pulsed_master_logic = self.get_connector('pulsedmasterlogic')
+        self._save_logic = self.get_connector('savelogic')
 
         self._mw = PulsedMeasurementMainWindow()
         self._pa = PulseAnalysisTab()
@@ -199,32 +191,29 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
         self.setup_toolbar()
-        self._activate_analysis_settings_ui(e)
-        self._activate_analysis_ui(e)
+        self._activate_analysis_settings_ui()
+        self._activate_analysis_ui()
         self.setup_extraction_ui()
 
-        self._activate_generator_settings_ui(e)
-        self._activate_pulse_generator_ui(e)
+        self._activate_generator_settings_ui()
+        self._activate_pulse_generator_ui()
 
         self.show()
 
         self._pa.ext_control_mw_freq_DoubleSpinBox.setMaximum(999999999999)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Undo the Definition, configuration and initialisation of the pulsed
             measurement GUI.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
-        self._deactivate_analysis_settings_ui(e)
-        self._deactivate_analysis_ui(e)
+        self._deactivate_analysis_settings_ui()
+        self._deactivate_analysis_ui()
 
-        self._deactivate_generator_settings_ui(e)
-        self._deactivate_pulse_generator_ui(e)
+        self._deactivate_generator_settings_ui()
+        self._deactivate_pulse_generator_ui()
 
         self._mw.close()
 
@@ -237,12 +226,9 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     ###   Methods related to Settings for the 'Pulse Generator' tab:        ###
     ###########################################################################
-    def _activate_generator_settings_ui(self, e):
+    def _activate_generator_settings_ui(self):
         """ Initialize, connect and configure the pulse generator settings to be displayed in the
         editor.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._gs = GeneratorSettingsDialog()
         self._gs.accepted.connect(self.apply_generator_settings)
@@ -281,11 +267,8 @@ class PulsedMeasurementGui(GUIBase):
         self._create_function_config()
         return
 
-    def _deactivate_generator_settings_ui(self, e):
+    def _deactivate_generator_settings_ui(self):
         """ Disconnects the configuration of the Settings for the 'Pulse Generator' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._statusVariables['predefined_methods_to_show'] = self._predefined_methods_to_show
         self._statusVariables['functions_to_show'] = self._functions_to_show
@@ -319,7 +302,6 @@ class PulsedMeasurementGui(GUIBase):
         # based on the list from the Logic. Right now, the GUI objects are inserted the 'hard' way,
         # like it is done in the Qt-Designer.
         # FIXME: Make a nicer way of displaying the available functions, maybe with a Table!
-        _encoding = QtWidgets.QApplication.UnicodeUTF8
         objectname = self._gs.objectName()
         for index, func_name in enumerate(list(SamplingFunctions().func_config)):
             name_label = 'func_' + str(index)
@@ -327,14 +309,14 @@ class PulsedMeasurementGui(GUIBase):
             label = getattr(self._gs, name_label)
             label.setObjectName(name_label)
             self._gs.gridLayout_3.addWidget(label, index, 0, 1, 1)
-            label.setText(QtWidgets.QApplication.translate(objectname, func_name, None, _encoding))
+            label.setText(QtWidgets.QApplication.translate(objectname, func_name, None))
 
             name_checkbox = 'checkbox_' + str(index)
             setattr(self._gs, name_checkbox, QtWidgets.QCheckBox(self._gs.groupBox))
             checkbox = getattr(self._gs, name_checkbox)
             checkbox.setObjectName(name_checkbox)
             self._gs.gridLayout_3.addWidget(checkbox, index, 1, 1, 1)
-            checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None, _encoding))
+            checkbox.setText(QtWidgets.QApplication.translate(objectname, '', None))
         # Check all functions that are in the _functions_to_show list.
         # If no such list is present take the first 3 functions as default
         if len(self._functions_to_show) > 0:
@@ -521,11 +503,8 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
     ###########################################################################
-    def _activate_pulse_generator_ui(self, e):
+    def _activate_pulse_generator_ui(self):
         """ Initialize, connect and configure the 'Pulse Generator' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         # connect signals of input widgets
         self._pg.gen_sample_freq_DSpinBox.editingFinished.connect(self.generator_settings_changed, QtCore.Qt.QueuedConnection)
@@ -586,11 +565,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.request_generator_init_values()
         return
 
-    def _deactivate_pulse_generator_ui(self, e):
+    def _deactivate_pulse_generator_ui(self):
         """ Disconnects the configuration for 'Pulse Generator Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         # disconnect signals of input widgets
         self._pg.gen_sample_freq_DSpinBox.editingFinished.disconnect()
@@ -647,10 +623,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
         # apply constraints
         pulser_constr, dummy = self._pulsed_master_logic.get_hardware_constraints()
-        self._pg.gen_activation_config_ComboBox.addItems(list(pulser_constr['activation_config']))
-        self._pg.gen_sample_freq_DSpinBox.setMinimum(pulser_constr['sample_rate']['min'])
-        self._pg.gen_sample_freq_DSpinBox.setMaximum(pulser_constr['sample_rate']['max'])
-        self._pg.gen_sample_freq_DSpinBox.setSingleStep(pulser_constr['sample_rate']['step'])
+        self._pg.gen_activation_config_ComboBox.addItems(list(pulser_constr.activation_config))
+        self._pg.gen_sample_freq_DSpinBox.setMinimum(pulser_constr.sample_rate.min)
+        self._pg.gen_sample_freq_DSpinBox.setMaximum(pulser_constr.sample_rate.max)
+        self._pg.gen_sample_freq_DSpinBox.setSingleStep(pulser_constr.sample_rate.step)
         # unblock signals
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
@@ -1133,11 +1109,8 @@ class PulsedMeasurementGui(GUIBase):
     ###        Methods related to Settings for the 'Analysis' Tab:          ###
     ###########################################################################
     #FIXME: Implement the setting for 'Analysis' tab.
-    def _activate_analysis_settings_ui(self, e):
+    def _activate_analysis_settings_ui(self):
         """ Initialize, connect and configure the Settings of 'Analysis' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._as = AnalysisSettingDialog()
         self._as.accepted.connect(self.update_analysis_settings)
@@ -1160,14 +1133,12 @@ class PulsedMeasurementGui(GUIBase):
             self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_name_LineEdit'])
         if 'ana_param_second_plot_y_axis_unit_LineEdit' in self._statusVariables:
             self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'])
+        self._as.ana_param_couple_settings_checkBox.setChecked(self._pulsed_master_logic.couple_generator_hw)
         self.update_analysis_settings()
         return
 
-    def _deactivate_analysis_settings_ui(self, e):
+    def _deactivate_analysis_settings_ui(self):
         """ Disconnects the configuration of the Settings for 'Analysis' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._statusVariables['ana_param_x_axis_name_LineEdit'] = self._as.ana_param_x_axis_name_LineEdit.text()
         self._statusVariables['ana_param_x_axis_unit_LineEdit'] = self._as.ana_param_x_axis_unit_LineEdit.text()
@@ -1201,6 +1172,21 @@ class PulsedMeasurementGui(GUIBase):
             axis='bottom',
             text=self._as.ana_param_x_axis_name_LineEdit.text(),
             units=self._as.ana_param_x_axis_unit_LineEdit.text())
+        couple_settings = self._as.ana_param_couple_settings_checkBox.isChecked()
+        self._pulsed_master_logic.couple_generator_hw = couple_settings
+        if couple_settings:
+            self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
+            self._pg.gen_activation_config_ComboBox.blockSignals(True)
+            self._pg.gen_sample_freq_DSpinBox.setEnabled(False)
+            self._pg.gen_activation_config_ComboBox.setEnabled(False)
+        else:
+            self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
+            self._pg.gen_activation_config_ComboBox.blockSignals(False)
+            self._pg.gen_sample_freq_DSpinBox.setEnabled(True)
+            self._pg.gen_activation_config_ComboBox.setEnabled(True)
+        # FIXME: Not very elegant
+        self._pulsed_master_logic._measurement_logic.fc.set_units([self._as.ana_param_x_axis_unit_LineEdit.text(),
+                                                                   self._as.ana_param_y_axis_unit_LineEdit.text()])
         return
 
     def keep_former_analysis_settings(self):
@@ -1256,11 +1242,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_PlotWidget.addItem(self.ref_end_line)
         self._pe.laserpulses_PlotWidget.setLabel('bottom', 'bins')
 
-    def _activate_analysis_ui(self, e):
+    def _activate_analysis_ui(self):
         """ Initialize, connect and configure the 'Analysis' Tab.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         if 'ana_param_errorbars_CheckBox' in self._statusVariables:
             self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
@@ -1270,6 +1253,11 @@ class PulsedMeasurementGui(GUIBase):
 
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
+
+        # Fit settings dialog
+        self._fsd = FitSettingsDialog(self._pulsed_master_logic._measurement_logic.fc)
+        self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
+        self._fsd.applySettings()
 
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
@@ -1281,8 +1269,6 @@ class PulsedMeasurementGui(GUIBase):
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem(pen=palette.c2)
         self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
-        self._pa.fit_param_fit_func_ComboBox.clear()
-        self._pa.fit_param_fit_func_ComboBox.addItems(self._pulsed_master_logic.get_fit_functions())
 
         # Configure the errorbars of the data in the main pulse analysis display:
         self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
@@ -1298,14 +1284,14 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the lasertrace plot display:
-        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3), movable=True)
-        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c2))
-        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3), movable=True)
-        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c2))
-        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
-        self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4))
-        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4), movable=True)
-        self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4))
+        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
+        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3))
+        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
+        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3))
+        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
+        self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
+        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
+        self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         # Configure the measuring error display:
         self.measuring_error_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10),
                                                      pen=palette.c1)
@@ -1358,6 +1344,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_pull_data.triggered.connect(self.pull_data_clicked)
         self._mw.action_save.triggered.connect(self.save_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
+        self._mw.action_FitSettings.triggered.connect(self._fsd.show)
 
         # connect checkbox click signals
         self._pa.ext_control_use_mw_CheckBox.stateChanged.connect(self.ext_mw_params_changed)
@@ -1413,11 +1400,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.request_measurement_init_values()
         return
 
-    def _deactivate_analysis_ui(self, e):
+    def _deactivate_analysis_ui(self):
         """ Disconnects the configuration for 'Analysis' Tab.
-
-       @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self.measurement_run_stop_clicked(False)
 
@@ -1489,6 +1473,7 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_start_line.sigPositionChangeFinished.disconnect()
         self.ref_end_line.sigPositionChangeFinished.disconnect()
         self._pe.extract_param_conv_std_dev_slider.sliderReleased.disconnect()
+        self._fsd.sigFitsUpdated.disconnect()
         return
 
     def _analysis_apply_hardware_constraints(self):
@@ -1501,14 +1486,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_fc_bins_ComboBox.blockSignals(True)
         # apply constraints
         pulser_constr, fastcounter_constr = self._pulsed_master_logic.get_hardware_constraints()
-        sample_min = pulser_constr['sample_rate']['min']
-        sample_max = pulser_constr['sample_rate']['max']
-        sample_step = pulser_constr['sample_rate']['step']
-        self._pa.pulser_sample_freq_DSpinBox.setMinimum(sample_min)
-        self._pa.pulser_sample_freq_DSpinBox.setMaximum(sample_max)
-        self._pa.pulser_sample_freq_DSpinBox.setSingleStep(sample_step)
+        self._pa.pulser_sample_freq_DSpinBox.setMinimum(pulser_constr.sample_rate.min)
+        self._pa.pulser_sample_freq_DSpinBox.setMaximum(pulser_constr.sample_rate.max)
+        self._pa.pulser_sample_freq_DSpinBox.setSingleStep(pulser_constr.sample_rate.step)
         self._pa.pulser_activation_config_ComboBox.clear()
-        self._pa.pulser_activation_config_ComboBox.addItems(list(pulser_constr['activation_config']))
+        self._pa.pulser_activation_config_ComboBox.addItems(list(pulser_constr.activation_config))
         self._pa.ana_param_fc_bins_ComboBox.clear()
         for binwidth in fastcounter_constr['hardware_binwidth_list']:
             self._pa.ana_param_fc_bins_ComboBox.addItem(str(binwidth))
@@ -1669,24 +1651,24 @@ class PulsedMeasurementGui(GUIBase):
         """Saves the current data"""
         self._mw.action_save.setEnabled(False)
         save_tag = self._mw.save_tag_LineEdit.text()
+        with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
-        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag)
+        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
         self._mw.action_save.setEnabled(True)
         return
 
     def fit_clicked(self):
         """Fits the current data"""
-        current_fit_function = self._pa.fit_param_fit_func_ComboBox.currentText()
-        self._pulsed_master_logic.do_fit(current_fit_function)
+        current_fit_method = self._pa.fit_param_fit_func_ComboBox.getCurrentFit()[0]
+        self._pulsed_master_logic.do_fit(current_fit_method)
         return
 
-    def fit_data_updated(self, fit_function, fit_data_x, fit_data_y, param_dict, result_dict):
+    def fit_data_updated(self, fit_method, fit_data_x, fit_data_y, result_dict):
         """
 
-        @param fit_function:
+        @param fit_method:
         @param fit_data_x:
         @param fit_data_y:
-        @param param_dict:
         @param result_dict:
         @return:
         """
@@ -1694,17 +1676,22 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.fit_param_fit_func_ComboBox.blockSignals(True)
         # set widgets
         self._pa.fit_param_results_TextBrowser.clear()
-        fit_text = units.create_formatted_output(param_dict)
-        self._pa.fit_param_results_TextBrowser.setPlainText(fit_text)
+        if fit_method == 'No Fit':
+            formatted_fitresult = 'No Fit'
+        else:
+            try:
+                formatted_fitresult = units.create_formatted_output(result_dict.result_str_dict)
+            except:
+                formatted_fitresult = 'This fit does not return formatted results'
+        self._pa.fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
+
         self.fit_image.setData(x=fit_data_x, y=fit_data_y)
-        if fit_function == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
+        if fit_method == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
             self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
-        elif fit_function != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
+        elif fit_method != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
             self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
-        if self._pa.fit_param_fit_func_ComboBox.currentText() != fit_function:
-            index = self._pa.fit_param_fit_func_ComboBox.findText(fit_function)
-            if index >= 0:
-                self._pa.fit_param_fit_func_ComboBox.setCurrentIndex(index)
+        if fit_method is not None:
+            self._pa.fit_param_fit_func_ComboBox.setCurrentFit(fit_method)
         # unblock signals
         self._pa.fit_param_fit_func_ComboBox.blockSignals(False)
         return
@@ -1882,6 +1869,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
+
         if self._mw.action_run_stop.isChecked():
             return
         laser_ignore_list = []
@@ -1893,7 +1881,6 @@ class PulsedMeasurementGui(GUIBase):
         num_of_lasers = self._pa.ana_param_num_laser_pulse_SpinBox.value()
         controlled_vals_start = self._pa.ana_param_x_axis_start_ScienDSpinBox.value()
         controlled_vals_incr = self._pa.ana_param_x_axis_inc_ScienDSpinBox.value()
-        laser_trigger_delay = self._as.ana_param_lasertrigger_delay_ScienDSpinBox.value()
         # FIXME: properly implement sequence_length_s
         sequence_length_s = self._pulsed_master_logic._measurement_logic.sequence_length_s
         num_of_ticks = num_of_lasers - len(laser_ignore_list)
@@ -1907,13 +1894,11 @@ class PulsedMeasurementGui(GUIBase):
                                                                         num_of_lasers,
                                                                         sequence_length_s,
                                                                         laser_ignore_list,
-                                                                        alternating,
-                                                                        laser_trigger_delay)
+                                                                        alternating)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating,
-                                              laser_trigger_delay):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -1921,7 +1906,6 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param laser_trigger_delay:
         @return:
         """
         # block signals
@@ -1931,21 +1915,23 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_num_laser_pulse_SpinBox.blockSignals(True)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(True)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(True)
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.blockSignals(True)
         self._pe.laserpulses_ComboBox.blockSignals(True)
         # set widgets
         self._pa.ana_param_ignore_first_CheckBox.setChecked(0 in laser_ignore_list)
         self._pa.ana_param_ignore_last_CheckBox.setChecked(-1 in laser_ignore_list)
         self._pa.ana_param_alternating_CheckBox.setChecked(alternating)
         self._pa.ana_param_num_laser_pulse_SpinBox.setValue(number_of_lasers)
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(laser_trigger_delay)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(controlled_vals[0])
         if len(controlled_vals) > 1:
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
                 (controlled_vals[-1] - controlled_vals[0]) / (len(controlled_vals)-1))
-        else:
+        elif controlled_vals[0] > 0.0:
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(controlled_vals[0])
-        self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(number_of_lasers+1)])
+        else:
+            self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(1.0)
+        self._pe.laserpulses_ComboBox.clear()
+        self._pe.laserpulses_ComboBox.addItem('sum')
+        self._pe.laserpulses_ComboBox.addItems([str(i) for i in range(1, number_of_lasers+1)])
         # change plots accordingly
         if alternating:
             if self.signal_image2 not in self._pa.pulse_analysis_PlotWidget.items():
@@ -1972,7 +1958,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_num_laser_pulse_SpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(False)
-        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
         return
 
@@ -2342,29 +2327,3 @@ class PulsedMeasurementGui(GUIBase):
             self._sg.sauplo_sequence_PushButton.setEnabled(True)
             self._sg.saup_sequence_PushButton.setEnabled(True)
         return
-
-
-    # def save_plots(self):
-    #     """ Save plot from analysis graph as a picture. """
-    #     timestamp = datetime.datetime.now()
-    #     filetag = self._mw.save_tag_LineEdit.text()
-    #     filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
-    #     if len(filetag) > 0:
-    #         filename = os.path.join(filepath, '{}_{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
-    #     else:
-    #         filename = os.path.join(filepath, '{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
-    #
-    #     # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
-    #     # pulse plot
-    #     # exporter = pg.exporters.SVGExporter(self._pa.pulse_analysis_PlotWidget.plotItem.scene())
-    #     # exporter.export(filename+'.svg')
-    #     #
-    #     # # auxiliary plot
-    #     # if 'None' not in self._mw.second_plot_ComboBox.currentText():
-    #     #     exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
-    #     #     exporter_aux.export(filename + '_aux' + '.svg')
-    #
-    #     self._pulsed_meas_logic._save_data(filetag, timestamp)
-
-
-

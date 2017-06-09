@@ -36,10 +36,10 @@ class OptimizerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'confocalscanner1': 'ConfocalScannerInterface',
-           'fitlogic': 'FitLogic'
-           }
-    _out = {'optimizerlogic': 'OptimizerLogic'}
+    _connectors = {
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'fitlogic': 'FitLogic'
+    }
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -75,15 +75,13 @@ class OptimizerLogic(GenericLogic):
         # Keep track of who called the refocus
         self._caller_tag = ''
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._scanning_device = self.get_connector('confocalscanner1')
+        self._fit_logic = self.get_connector('fitlogic')
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
@@ -152,6 +150,9 @@ class OptimizerLogic(GenericLogic):
         self.optim_pos_x = self._initial_pos_x
         self.optim_pos_y = self._initial_pos_y
         self.optim_pos_z = self._initial_pos_z
+        self.optim_sigma_x = 0.
+        self.optim_sigma_y = 0.
+        self.optim_sigma_z = 0.
 
         self._max_offset = 3.
 
@@ -163,7 +164,7 @@ class OptimizerLogic(GenericLogic):
 
         ###########################
         # Fit Params and Settings #
-        model, params = self._fit_logic.make_gausslinearoffset_model()
+        model, params = self._fit_logic.make_gaussianlinearoffset_model()
         self.z_params = params
         self.use_custom_params = {name: False for name, param in params.items()}
 
@@ -184,10 +185,8 @@ class OptimizerLogic(GenericLogic):
         self._initialize_z_refocus_image()
         return 0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """
@@ -237,17 +236,27 @@ class OptimizerLogic(GenericLogic):
         return 0
 
     def set_refocus_XY_size(self, size):
+        """ Set the number of pixels in the refocus image for X and Y directions
+
+            @param int size: XY image size in pixels
+        """
         self.refocus_XY_size = size
         self.sigRefocusXySizeChanged.emit()
 
     def set_refocus_Z_size(self, size):
+        """ Set the number of values for Z refocus
+
+            @param int size: number of values for Z refocus
+        """
         self.refocus_Z_size = size
         self.sigRefocusZSizeChanged.emit()
 
-    def start_refocus(self, initial_pos=None, caller_tag='unknown',tag='logic'):
-        """Starts the optimization scan around initial_pos
+    def start_refocus(self, initial_pos=None, caller_tag='unknown', tag='logic'):
+        """ Starts the optimization scan around initial_pos
 
-        @param initial_pos
+            @param list initial_pos: with the structure [float, float, float]
+            @param str caller_tag:
+            @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
@@ -269,6 +278,9 @@ class OptimizerLogic(GenericLogic):
         self.optim_pos_x = self._initial_pos_x
         self.optim_pos_y = self._initial_pos_y
         self.optim_pos_z = self._initial_pos_z
+        self.optim_sigma_x = 0.
+        self.optim_sigma_y = 0.
+        self.optim_sigma_z = 0.
 
         self._xy_scan_line_count = 0
         self._optimization_step = 0
@@ -297,7 +309,7 @@ class OptimizerLogic(GenericLogic):
         x0 = self.optim_pos_x
         y0 = self.optim_pos_y
 
-        # defining position intervals for refocus
+        # defining position intervals for refocushttp://www.spiegel.de/
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         xmax = np.clip(x0 + 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         ymin = np.clip(y0 - 0.5 * self.refocus_XY_size, self.y_range[0], self.y_range[1])
@@ -437,8 +449,11 @@ class OptimizerLogic(GenericLogic):
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(xy_axes=axes,
-                                                               data=xy_fit_data)
+        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
+            xy_axes=axes,
+            data=xy_fit_data,
+            estimator=self._fit_logic.estimate_twoDgaussian
+        )
         # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
@@ -446,6 +461,8 @@ class OptimizerLogic(GenericLogic):
             print('2D gaussian fit not successfull')
             self.optim_pos_x = self._initial_pos_x
             self.optim_pos_y = self._initial_pos_y
+            self.optim_sigma_x = 0.
+            self.optim_sigma_y = 0.
             # hier abbrechen
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
@@ -454,9 +471,13 @@ class OptimizerLogic(GenericLogic):
                     if result_2D_gaus.best_values['center_y'] >= self.y_range[0] and result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
                         self.optim_pos_x = result_2D_gaus.best_values['center_x']
                         self.optim_pos_y = result_2D_gaus.best_values['center_y']
+                        self.optim_sigma_x = result_2D_gaus.best_values['sigma_x']
+                        self.optim_sigma_y = result_2D_gaus.best_values['sigma_y']
             else:
                 self.optim_pos_x = self._initial_pos_x
                 self.optim_pos_y = self._initial_pos_y
+                self.optim_sigma_x = 0.
+                self.optim_sigma_y = 0.
 
         # emit image updated signal so crosshair can be updated from this fit
         self.sigImageUpdated.emit()
@@ -466,8 +487,6 @@ class OptimizerLogic(GenericLogic):
         """ Do the z axis optimization."""
         # z scaning
         self._scan_z_line()
-
-        self.sigImageUpdated.emit()
 
         # z-fit
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
@@ -490,14 +509,18 @@ class OptimizerLogic(GenericLogic):
                     # Todo: It is required that the changed parameters are given as a dictionary or parameter object
                     add_params=None)
             else:
-                result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                result = self._fit_logic.make_gaussianlinearoffset_fit(
                     x_axis=self._zimage_Z_values,
-                    data=self.z_refocus_line[:, self.opt_channel])
+                    data=self.z_refocus_line[:, self.opt_channel],
+                    units='m',
+                    estimator=self._fit_logic.estimate_gaussianlinearoffset_peak
+                    )
         self.z_params = result.params
 
         if result.success is False:
             self.log.error('error in 1D Gaussian Fit.')
             self.optim_pos_z = self._initial_pos_z
+            self.optim_sigma_z = 0.
             # interrupt here?
         else:  # move to new position
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
@@ -506,11 +529,13 @@ class OptimizerLogic(GenericLogic):
                 # checks if new pos is within the scanner range
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
-                    gauss, params = self._fit_logic.make_gausslinearoffset_model()
+                    self.optim_sigma_z = result.best_values['sigma']
+                    gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
                     self.z_fit_data = gauss.eval(
                         x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
                     # checks if new pos is too high
+                    self.optim_sigma_z = 0.
                     if result.best_values['center'] > self._initial_pos_z:
                         if self._initial_pos_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
                             # moves to higher edge of scan range
@@ -524,6 +549,7 @@ class OptimizerLogic(GenericLogic):
                         else:
                             self.optim_pos_z = self.z_range[0]  # moves to lowest possible value
 
+        self.sigImageUpdated.emit()
         self._sigDoNextOptimizationStep.emit()
 
     def finish_refocus(self):
@@ -673,7 +699,14 @@ class OptimizerLogic(GenericLogic):
             self._sigScanZLine.emit()
 
     def set_position(self, tag, x=None, y=None, z=None, a=None):
+        """ Set focus position.
 
+            @param str tag: sting indicating who caused position change
+            @param float x: x axis position in m
+            @param float y: y axis position in m
+            @param float z: z axis position in m
+            @param float a: a axis position in m
+        """
         if x is not None:
             self._current_x = x
         if y is not None:

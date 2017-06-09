@@ -61,15 +61,15 @@ class NuclearOperationsLogic(GenericLogic):
     # declare connectors
     #TODO: Use rather the task runner instead directly the module!
 
-    _in = {'sequencegenerationlogic': 'SequenceGenerationLogic',
-           'traceanalysislogic': 'TraceAnalysisLogic',
-           'gatedcounterlogic': 'CounterLogic',
-           'odmrlogic': 'ODMRLogic',
-           'optimizerlogic': 'OptimizerLogic',
-           'scannerlogic':'ScannerLogic',
-           'savelogic': 'SaveLogic'}
-
-    _out = {'nuclearoperationlogic': 'NuclearOperationsLogic'}
+    _connectors = {
+        'sequencegenerationlogic': 'SequenceGenerationLogic',
+        'traceanalysislogic': 'TraceAnalysisLogic',
+        'gatedcounterlogic': 'CounterLogic',
+        'odmrlogic': 'ODMRLogic',
+        'optimizerlogic': 'OptimizerLogic',
+        'scannerlogic':'ScannerLogic',
+        'savelogic': 'SaveLogic'
+    }
 
     sigNextMeasPoint = QtCore.Signal()
     sigCurrMeasPointUpdated = QtCore.Signal()
@@ -88,16 +88,8 @@ class NuclearOperationsLogic(GenericLogic):
 
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         # Retrieve the status variables or use default values:
@@ -307,26 +299,23 @@ class NuclearOperationsLogic(GenericLogic):
         self.initialize_meas_param()
 
         # establish the access to all connectors:
-        self._save_logic = self.get_in_connector('savelogic')
+        self._save_logic = self.get_connector('savelogic')
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._seq_gen_logic = self.get_in_connector('sequencegenerationlogic')
-        self._trace_ana_logic = self.get_in_connector('traceanalysislogic')
-        self._gc_logic = self.get_in_connector('gatedcounterlogic')
-        self._odmr_logic = self.get_in_connector('odmrlogic')
-        self._optimizer_logic = self.get_in_connector('optimizerlogic')
-        self._confocal_logic = self.get_in_connector('scannerlogic')
+        self._seq_gen_logic = self.get_connector('sequencegenerationlogic')
+        self._trace_ana_logic = self.get_connector('traceanalysislogic')
+        self._gc_logic = self.get_connector('gatedcounterlogic')
+        self._odmr_logic = self.get_connector('odmrlogic')
+        self._optimizer_logic = self.get_connector('optimizerlogic')
+        self._confocal_logic = self.get_connector('scannerlogic')
 
 
         # connect signals:
         self.sigNextMeasPoint.connect(self._meas_point_loop, QtCore.Qt.QueuedConnection)
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the module properly.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
 
 
@@ -1164,29 +1153,25 @@ class NuclearOperationsLogic(GenericLogic):
         param['Start of measurement'] = self.start_time.strftime('%Y-%m-%d %H:%M:%S')
 
         self._save_logic.save_data(data1,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=param,
                                    filelabel=filelabel1,
-                                   timestamp=timestamp,
-                                   as_text=True)
+                                   timestamp=timestamp)
 
         self._save_logic.save_data(data2,
-                                   filepath,
+                                   filepath=filepath,
                                    filelabel=filelabel2,
-                                   timestamp=timestamp,
-                                   as_text=True)
+                                   timestamp=timestamp)
 
         self._save_logic.save_data(data4,
-                                   filepath,
+                                   filepath=filepath,
                                    filelabel=filelabel4,
-                                   timestamp=timestamp,
-                                   as_text=True)
+                                   timestamp=timestamp)
 
         # self._save_logic.save_data(data3,
-        #                            filepath,
+        #                            filepath=filepath,
         #                            filelabel=filelabel3,
-        #                            timestamp=timestamp,
-        #                            as_text=True)
+        #                            timestamp=timestamp)
 
         self.log.info('Nuclear Operation data saved to:\n{0}'.format(filepath))
 

@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 from collections import OrderedDict
 from copy import copy
-from datetime import datetime
+import time
+import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -32,19 +33,11 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
 
-def numpy_from_b(compressed_b):
-    f = BytesIO(bytes(compressed_b))
-    np_file = np.load(f)
-    redict = dict()
-    for name in np_file.files:
-        redict.update({name: np_file[name]})
-    f.close()
-    return redict
-
-
 class OldConfigFileError(Exception):
+    """ Exception that is thrown when an old config file is loaded.
+    """
     def __init__(self):
-        super().__init__('Old configuration file detected. Ignoring history.')
+        super().__init__('Old configuration file detected. Ignoring confocal history.')
 
 
 class ConfocalHistoryEntry(QtCore.QObject):
@@ -55,6 +48,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
     def __init__(self, confocal):
         """ Make a confocal data setting with default values. """
         super().__init__()
+
+        self.depth_scan_dir_is_xz = True
+        self.depth_img_is_xz = True
 
         self.xy_line_pos = 0
         self.depth_line_pos = 0
@@ -84,6 +80,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.depth_line_position = 0
 
         # Variable to check if a scan is continuable
+        self.scan_counter = 0
         self.xy_scan_continuable = False
         self.depth_scan_continuable = False
 
@@ -116,10 +113,13 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal.image_z_range = np.copy(self.image_z_range)
         confocal.xy_resolution = self.xy_resolution
         confocal.z_resolution = self.z_resolution
+        confocal.depth_img_is_xz = self.depth_img_is_xz
+        confocal.depth_scan_dir_is_xz = self.depth_scan_dir_is_xz
         confocal._xy_line_pos = self.xy_line_position
         confocal._depth_line_pos = self.depth_line_position
         confocal._xyscan_continuable = self.xy_scan_continuable
         confocal._zscan_continuable = self.depth_scan_continuable
+        confocal._scan_counter = self.scan_counter
         confocal.point1 = np.copy(self.point1)
         confocal.point2 = np.copy(self.point2)
         confocal.point3 = np.copy(self.point3)
@@ -156,10 +156,13 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.image_z_range = np.copy(confocal.image_z_range)
         self.xy_resolution = confocal.xy_resolution
         self.z_resolution = confocal.z_resolution
+        self.depth_scan_dir_is_xz = confocal.depth_scan_dir_is_xz
+        self.depth_img_is_xz = confocal.depth_img_is_xz
         self.xy_line_position = confocal._xy_line_pos
         self.depth_line_position = confocal._depth_line_pos
         self.xy_scan_continuable = confocal._xyscan_continuable
         self.depth_scan_continuable = confocal._zscan_continuable
+        self.scan_counter = confocal._scan_counter
         self.tilt_correction = confocal._scanning_device.tiltcorrection
         self.tilt_slope_x = confocal._scanning_device.tilt_variable_ax
         self.tilt_slope_y = confocal._scanning_device.tilt_variable_ay
@@ -180,10 +183,13 @@ class ConfocalHistoryEntry(QtCore.QObject):
         serialized['z_range'] = list(self.image_z_range)
         serialized['xy_resolution'] = self.xy_resolution
         serialized['z_resolution'] = self.z_resolution
+        serialized['depth_img_is_xz'] = self.depth_img_is_xz
+        serialized['depth_dir_is_xz'] = self.depth_scan_dir_is_xz
         serialized['xy_line_position'] = self.xy_line_position
         serialized['depth_line_position'] = self.depth_line_position
         serialized['xy_scan_cont'] = self.xy_scan_continuable
         serialized['depth_scan_cont'] = self.depth_scan_continuable
+        serialized['scan_counter'] = self.scan_counter
         serialized['tilt_correction'] = self.tilt_correction
         serialized['tilt_point1'] = list(self.point1)
         serialized['tilt_point2'] = list(self.point2)
@@ -211,6 +217,10 @@ class ConfocalHistoryEntry(QtCore.QObject):
             self.xy_resolution = serialized['xy_resolution']
         if 'z_resolution' in serialized:
             self.z_resolution = serialized['z_resolution']
+        if 'depth_img_is_xz' in serialized:
+            self.depth_img_is_xz = serialized['depth_img_is_xz']
+        if 'depth_dir_is_xz' in serialized:
+            self.depth_scan_dir_is_xz = serialized['depth_dir_is_xz']
         if 'tilt_correction' in serialized:
             self.tilt_correction = serialized['tilt_correction']
         if 'tilt_reference' in serialized and len(serialized['tilt_reference']) == 2:
@@ -229,20 +239,12 @@ class ConfocalHistoryEntry(QtCore.QObject):
             if isinstance(serialized['xy_image'], np.ndarray):
                 self.xy_image = serialized['xy_image']
             else:
-                try:
-                    self.xy_image = numpy_from_b(
-                            eval(serialized['xy_image']))['image']
-                except:
-                    raise OldConfigFileError()
+                raise OldConfigFileError()
         if 'depth_image' in serialized:
             if isinstance(serialized['depth_image'], np.ndarray):
                 self.depth_image = serialized['depth_image'].copy()
             else:
-                try:
-                    self.depth_image = numpy_from_b(
-                            eval(serialized['depth_image']))['image']
-                except:
-                    raise OldConfigFileError()
+                raise OldConfigFileError()
 
 
 class ConfocalLogic(GenericLogic):
@@ -253,11 +255,10 @@ class ConfocalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _in = {
+    _connectors = {
         'confocalscanner1': 'ConfocalScannerInterface',
         'savelogic': 'SaveLogic'
         }
-    _out = {'scannerlogic': 'ConfocalLogic'}
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -296,15 +297,14 @@ class ConfocalLogic(GenericLogic):
         self._zscan = False
         self.stopRequested = False
         self.depth_scan_dir_is_xz = True
+        self.depth_img_is_xz = True
         self.permanent_scan = False
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param e: error code
         """
-        self._scanning_device = self.get_in_connector('confocalscanner1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._scanning_device = self.get_connector('confocalscanner1')
+        self._save_logic = self.get_connector('savelogic')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -361,10 +361,8 @@ class ConfocalLogic(GenericLogic):
 
         self._change_position('activation')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param e: error code
 
         @return int: error code (0:OK, -1:error)
         """
@@ -507,43 +505,73 @@ class ConfocalLogic(GenericLogic):
         self._return_AL = np.zeros(self._return_XL.shape)
 
         if self._zscan:
-            if self.depth_scan_dir_is_xz:
-                self._image_vert_axis = self._Z
+            self._image_vert_axis = self._Z
+            # update image scan direction from setting
+            self.depth_img_is_xz = self.depth_scan_dir_is_xz
+            # depth scan is in xz plane
+            if self.depth_img_is_xz:
+                #self._image_horz_axis = self._X
                 # creates an image where each pixel will be [x,y,z,counts]
-                self.depth_image = np.zeros(
-                    (len(self._image_vert_axis),
-                    len(self._X),
-                    3 +  len(self.get_scanner_count_channels())))
-                self.depth_image[:, : ,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
-                self.depth_image[:, :, 1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
+                self.depth_image = np.zeros((
+                        len(self._image_vert_axis),
+                        len(self._X),
+                        3 + len(self.get_scanner_count_channels())
+                    ))
+
+                self.depth_image[:, :, 0] = np.full(
+                    (len(self._image_vert_axis), len(self._X)), self._XL)
+
+                self.depth_image[:, :, 1] = self._current_y * np.ones(
+                    (len(self._image_vert_axis), len(self._X)))
+
                 z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
                 self.depth_image[:, :, 2] = z_value_matrix.transpose()
-            else: # depth scan is yz instead of xz
-                self._image_vert_axis = self._Z
+
+            # depth scan is yz plane instead of xz plane
+            else:
+                #self._image_horz_axis = self._Y
                 # creats an image where each pixel will be [x,y,z,counts]
-                self.depth_image = np.zeros(
-                    (len(self._image_vert_axis),
-                    len(self._Y),
-                    3 +  len(self.get_scanner_count_channels())))
-                self.depth_image[:, :, 0] = self._current_x * np.ones((len(self._image_vert_axis), len(self._Y)))
-                self.depth_image[:, :, 1] = np.full((len(self._image_vert_axis), len(self._Y)), self._YL)
+                self.depth_image = np.zeros((
+                        len(self._image_vert_axis),
+                        len(self._Y),
+                        3 + len(self.get_scanner_count_channels())
+                    ))
+
+                self.depth_image[:, :, 0] = self._current_x * np.ones(
+                    (len(self._image_vert_axis), len(self._Y)))
+
+                self.depth_image[:, :, 1] = np.full(
+                    (len(self._image_vert_axis), len(self._Y)), self._YL)
+
                 z_value_matrix = np.full((len(self._Y), len(self._image_vert_axis)), self._Z)
                 self.depth_image[:, :, 2] = z_value_matrix.transpose()
+
                 # now we are scanning along the y-axis, so we need a new return line along Y:
                 self._return_YL = np.linspace(self._YL[-1], self._YL[0], self.return_slowness)
                 self._return_AL = np.zeros(self._return_YL.shape)
+
             self.sigImageDepthInitialized.emit()
+
+        # xy scan is in xy plane
         else:
+            #self._image_horz_axis = self._X
             self._image_vert_axis = self._Y
             # creats an image where each pixel will be [x,y,z,counts]
-            self.xy_image = np.zeros(
-                (len(self._image_vert_axis),
-                len(self._X),
-                3 + len(self.get_scanner_count_channels())))
-            self.xy_image[:, :, 0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
+            self.xy_image = np.zeros((
+                    len(self._image_vert_axis),
+                    len(self._X),
+                    3 + len(self.get_scanner_count_channels())
+                ))
+
+            self.xy_image[:, :, 0] = np.full(
+                (len(self._image_vert_axis), len(self._X)), self._XL)
+
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
             self.xy_image[:, :, 1] = y_value_matrix.transpose()
-            self.xy_image[:, :, 2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
+
+            self.xy_image[:, :, 2] = self._current_z * np.ones(
+                (len(self._image_vert_axis), len(self._X)))
+
             self.sigImageXYInitialized.emit()
         return 0
 
@@ -671,7 +699,7 @@ class ConfocalLogic(GenericLogic):
 
         for i, ch in enumerate(self.get_scanner_axes()):
             pos_dict[ch_array[i]] = pos_array[i]
- 
+
         self._scanning_device.scanner_set_position(**pos_dict)
         return 0
 
@@ -727,7 +755,7 @@ class ConfocalLogic(GenericLogic):
 
         try:
             if self._scan_counter == 0:
-                # make a line from the current cursor position to 
+                # make a line from the current cursor position to
                 # the starting position of the first scan line of the scan
                 rs = self.return_slowness
                 lsx = np.linspace(self._current_x, image[self._scan_counter, 0, 0], rs)
@@ -761,42 +789,42 @@ class ConfocalLogic(GenericLogic):
                     [lsx, lsy, lsz, np.ones(lsx.shape) * self._current_a])
 
             # scan the line in the scan
-            line_counts = self._scanning_device.scan_line(line)
+            line_counts = self._scanning_device.scan_line(line, pixel_clock=True)
             if np.any(line_counts == -1):
                 self.stopRequested = True
                 self.signal_scan_lines_next.emit()
                 return
 
             # make a line to go to the starting position of the next scan line
-            if self.depth_scan_dir_is_xz:
+            if self.depth_img_is_xz or not self._zscan:
                 if n_ch <= 3:
-                    return_line = np.vstack([
-                    self._return_XL,
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
-                        ][0:n_ch])
-                else:
                     return_line = np.vstack([
                         self._return_XL,
                         image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
-                        np.ones(self._return_XL.shape) * self._current_a
+                        image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape)
+                    ][0:n_ch])
+                else:
+                    return_line = np.vstack([
+                            self._return_XL,
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_XL.shape),
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_XL.shape),
+                            np.ones(self._return_XL.shape) * self._current_a
                         ])
             else:
                 if n_ch <= 3:
                     return_line = np.vstack([
-                    image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                    self._return_YL,
-                        image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                            self._return_YL,
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape)
                         ][0:n_ch])
                 else:
                     return_line = np.vstack([
-                        image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
-                        self._return_YL,
-                    image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
-                        np.ones(self._return_YL.shape) * self._current_a
+                            image[self._scan_counter, 0, 1] * np.ones(self._return_YL.shape),
+                            self._return_YL,
+                            image[self._scan_counter, 0, 2] * np.ones(self._return_YL.shape),
+                            np.ones(self._return_YL.shape) * self._current_a
                         ])
- 
+
             # return the scanner to the start of next line, counts are thrown away
             return_line_counts = self._scanning_device.scan_line(return_line)
             if np.any(return_line_counts == -1):
@@ -806,7 +834,7 @@ class ConfocalLogic(GenericLogic):
 
             # update image with counts from the line we just scanned
             if self._zscan:
-                if self.depth_scan_dir_is_xz:
+                if self.depth_img_is_xz:
                     self.depth_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
                 else:
                     self.depth_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
@@ -849,10 +877,8 @@ class ConfocalLogic(GenericLogic):
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
-        save_time = datetime.now()
-
-        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-
+        filepath = self._save_logic.get_path_for_module('Confocal')
+        timestamp = datetime.datetime.now()
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
@@ -870,51 +896,41 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
-
         # Prepare a figure to be saved
         figure_data = self.xy_image[:, :, 3]
-        image_extent = [
-            self.image_x_range[0],
-            self.image_x_range[1],
-            self.image_y_range[0],
-            self.image_y_range[1]
-            ]
+        image_extent = [self.image_x_range[0],
+                        self.image_x_range[1],
+                        self.image_y_range[0],
+                        self.image_y_range[1]]
         axes = ['X', 'Y']
         crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
-        figs = {
-            ch: self.draw_figure(
-                    data=self.xy_image[:, :, 3 + n],
-                    image_extent=image_extent,
-                    scan_axis=axes,
-                    cbar_range=colorscale_range,
-                    percentile_range=percentile_range,
-                    crosshair_pos=crosshair_pos
-                )
-            for n, ch in enumerate(self.get_scanner_count_channels())
-            }
+        figs = {ch: self.draw_figure(data=self.xy_image[:, :, 3 + n],
+                                     image_extent=image_extent,
+                                     scan_axis=axes,
+                                     cbar_range=colorscale_range,
+                                     percentile_range=percentile_range,
+                                     crosshair_pos=crosshair_pos)
+                for n, ch in enumerate(self.get_scanner_count_channels())}
 
         # Save the image data and figure
         for n, ch in enumerate(self.get_scanner_count_channels()):
             # data for the text-array "image":
             image_data = OrderedDict()
             image_data['Confocal pure XY scan image data without axis.\n'
-                '# The upper left entry represents the signal at the upper left pixel position.\n'
-                '# A pixel-line in the image corresponds to a row '
+                'The upper left entry represents the signal at the upper left pixel position.\n'
+                'A pixel-line in the image corresponds to a row '
                 'of entries where the Signal is in counts/s:'] = self.xy_image[:, :, 3 + n]
 
             filelabel = 'confocal_xy_image_{0}'.format(ch.replace('/', ''))
-            self._save_logic.save_data(
-                image_data,
-                filepath,
-                parameters=parameters,
-                filelabel=filelabel,
-                as_text=True,
-                timestamp=save_time,
-                precision=':.3e',
-                plotfig=figs[ch]
-                )
-            plt.close(figs[ch])
+            self._save_logic.save_data(image_data,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       plotfig=figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -927,18 +943,17 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_xy_data'
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True,
-            precision=':.3e',
-            timestamp=save_time
-            )
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
 
-        self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.log.debug('Confocal Image saved.')
         self.signal_xy_data_saved.emit()
+        return
 
     def save_depth_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal depth data to file.
@@ -948,10 +963,8 @@ class ConfocalLogic(GenericLogic):
 
         The second file saves the full raw data with x, y, z, and counts at every pixel.
         """
-        save_time = datetime.now()
-
-        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-
+        filepath = self._save_logic.get_path_for_module('Confocal')
+        timestamp = datetime.datetime.now()
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
@@ -971,7 +984,7 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
-        if self.depth_scan_dir_is_xz:
+        if self.depth_img_is_xz:
             horizontal_range = [self.image_x_range[0], self.image_x_range[1]]
             axes = ['X', 'Z']
             crosshair_pos = [self.get_position()[0], self.get_position()[2]]
@@ -980,46 +993,37 @@ class ConfocalLogic(GenericLogic):
             axes = ['Y', 'Z']
             crosshair_pos = [self.get_position()[1], self.get_position()[2]]
 
-        image_extent = [
-            horizontal_range[0],
-            horizontal_range[1],
-            self.image_z_range[0],
-            self.image_z_range[1]
-            ]
+        image_extent = [horizontal_range[0],
+                        horizontal_range[1],
+                        self.image_z_range[0],
+                        self.image_z_range[1]]
 
-        figs = {
-            ch: self.draw_figure(
-                    data=self.depth_image[:, :, 3 + n],
-                    image_extent=image_extent,
-                    scan_axis=axes,
-                    cbar_range=colorscale_range,
-                    percentile_range=percentile_range,
-                    crosshair_pos=crosshair_pos
-                )
-            for n, ch in enumerate(self.get_scanner_count_channels())
-            }
+        figs = {ch: self.draw_figure(data=self.depth_image[:, :, 3 + n],
+                                     image_extent=image_extent,
+                                     scan_axis=axes,
+                                     cbar_range=colorscale_range,
+                                     percentile_range=percentile_range,
+                                     crosshair_pos=crosshair_pos)
+                for n, ch in enumerate(self.get_scanner_count_channels())}
 
         # Save the image data and figure
         for n, ch in enumerate(self.get_scanner_count_channels()):
             # data for the text-array "image":
             image_data = OrderedDict()
             image_data['Confocal pure depth scan image data without axis.\n'
-                '# The upper left entry represents the signal at the upper left pixel position.\n'
-                '# A pixel-line in the image corresponds to a row in '
+                'The upper left entry represents the signal at the upper left pixel position.\n'
+                'A pixel-line in the image corresponds to a row in '
                 'of entries where the Signal is in counts/s:'] = self.depth_image[:, :, 3 + n]
 
             filelabel = 'confocal_depth_image_{0}'.format(ch.replace('/', ''))
-            self._save_logic.save_data(
-                image_data,
-                filepath,
-                parameters=parameters,
-                filelabel=filelabel,
-                as_text=True,
-                timestamp=save_time,
-                precision=':.3e',
-                plotfig=figs[ch]
-                )
-            plt.close(figs[ch])
+            self._save_logic.save_data(image_data,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       plotfig=figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -1032,18 +1036,17 @@ class ConfocalLogic(GenericLogic):
 
         # Save the raw data to file
         filelabel = 'confocal_depth_data'
-        self._save_logic.save_data(
-            data,
-            filepath,
-            parameters=parameters,
-            filelabel=filelabel,
-            as_text=True,
-            precision=':.3e',
-            timestamp=save_time
-            )
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
 
-        self.log.debug('Confocal Image saved to:\n{0}'.format(filepath))
+        self.log.debug('Confocal Image saved.')
         self.signal_depth_data_saved.emit()
+        return
 
     def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None, percentile_range=None,  crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image.
@@ -1075,6 +1078,7 @@ class ConfocalLogic(GenericLogic):
         prefix_count = 0
         image_data = data
         draw_cb_range = np.array(cbar_range)
+        image_dimension = image_extent.copy()
 
         while draw_cb_range[1] > 1000:
             image_data = image_data/1000
@@ -1082,6 +1086,25 @@ class ConfocalLogic(GenericLogic):
             prefix_count = prefix_count + 1
 
         c_prefix = prefix[prefix_count]
+
+
+        # Scale axes values using SI prefix
+        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        x_prefix_count = 0
+        y_prefix_count = 0
+
+        while np.abs(image_dimension[1]-image_dimension[0]) < 1:
+            image_dimension[0] = image_dimension[0] * 1000.
+            image_dimension[1] = image_dimension[1] * 1000.
+            x_prefix_count = x_prefix_count + 1
+
+        while np.abs(image_dimension[3] - image_dimension[2]) < 1:
+            image_dimension[2] = image_dimension[2] * 1000.
+            image_dimension[3] = image_dimension[3] * 1000.
+            y_prefix_count = y_prefix_count + 1
+
+        x_prefix = axes_prefix[x_prefix_count]
+        y_prefix = axes_prefix[y_prefix_count]
 
         # Use qudi style
         plt.style.use(self._save_logic.mpl_qd_style)
@@ -1096,12 +1119,12 @@ class ConfocalLogic(GenericLogic):
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],
                             interpolation='none',
-                            extent=image_extent
+                            extent=image_dimension
                             )
 
         ax.set_aspect(1)
-        ax.set_xlabel(scan_axis[0] + ' position (m)')
-        ax.set_ylabel(scan_axis[1] + ' position (m)')
+        ax.set_xlabel(scan_axis[0] + ' position (' + x_prefix + 'm)')
+        ax.set_ylabel(scan_axis[1] + ' position (' + y_prefix + 'm)')
         ax.spines['bottom'].set_position(('outward', 10))
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
@@ -1119,11 +1142,13 @@ class ConfocalLogic(GenericLogic):
                 ax.transAxes,
                 ax.transData)
 
-            ax.annotate('', xy=(crosshair_pos[0], 0), xytext=(crosshair_pos[0], -0.01), xycoords=trans_xmark,
+            ax.annotate('', xy=(crosshair_pos[0]*np.power(1000,x_prefix_count), 0),
+                        xytext=(crosshair_pos[0]*np.power(1000,x_prefix_count), -0.01), xycoords=trans_xmark,
                         arrowprops=dict(facecolor='#17becf', shrink=0.05),
                         )
 
-            ax.annotate('', xy=(0, crosshair_pos[1]), xytext=(-0.01, crosshair_pos[1]), xycoords=trans_ymark,
+            ax.annotate('', xy=(0, crosshair_pos[1]*np.power(1000,y_prefix_count)),
+                        xytext=(-0.01, crosshair_pos[1]*np.power(1000,y_prefix_count)), xycoords=trans_ymark,
                         arrowprops=dict(facecolor='#17becf', shrink=0.05),
                         )
 
@@ -1191,12 +1216,18 @@ class ConfocalLogic(GenericLogic):
 
     @QtCore.Slot(bool)
     def set_tilt_correction(self, enabled):
+        """ Set tilt correction in tilt interfuse.
+
+            @param bool enabled: whether we want to use tilt correction
+        """
         self._scanning_device.tiltcorrection = enabled
         self._scanning_device.tilt_reference_x = self._scanning_device.get_scanner_position()[0]
         self._scanning_device.tilt_reference_y = self._scanning_device.get_scanner_position()[1]
         self.signal_tilt_correction_active.emit(enabled)
 
     def history_forward(self):
+        """ Move forward in confocal image history.
+        """
         if self.history_index < len(self.history) - 1:
             self.history_index += 1
             self.history[self.history_index].restore(self)
@@ -1209,6 +1240,8 @@ class ConfocalLogic(GenericLogic):
             self.signal_history_event.emit()
 
     def history_back(self):
+        """ Move backwards in confocal image history.
+        """
         if self.history_index > 0:
             self.history_index -= 1
             self.history[self.history_index].restore(self)

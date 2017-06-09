@@ -66,6 +66,7 @@ class ManagerGui(GUIBase):
     sigStopModule = QtCore.Signal(str, str)
     sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
+    sigRealQuit = QtCore.Signal()
 
     def __init__(self, **kwargs):
         """Create an instance of the module.
@@ -78,16 +79,8 @@ class ManagerGui(GUIBase):
         self.modlist = list()
         self.modules = set()
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Activation method called on change to active state.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look
-                         in the Base Class). This object contains the passed
-                         event, the state before the event happened and the
-                         destination of the state which should be reached
-                         after the event had happened.
 
         This method creates the Manager main window.
         """
@@ -136,6 +129,7 @@ class ManagerGui(GUIBase):
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
+        self._manager.sigShutdownAcknowledge.connect(self.promptForShutdown)
         # Log widget
         self._mw.logwidget.setManager(self._manager)
         for loghandler in logging.getLogger().handlers:
@@ -143,11 +137,12 @@ class ManagerGui(GUIBase):
                 loghandler.sigLoggedMessage.connect(self.handleLogEntry)
         # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
-        self.sigReloadModule.connect(self._manager.restartModuleSimple)
+        self.sigReloadModule.connect(self._manager.restartModuleRecursive)
         self.sigCleanupStatus.connect(self._manager.removeStatusFile)
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
+        self.sigRealQuit.connect(self._manager.realQuit)
         # Module state display
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
@@ -173,11 +168,8 @@ class ManagerGui(GUIBase):
         self._mw.threadDockWidget.hide()
         self._mw.show()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """Close window and remove connections.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
         self.stopIPythonWidget()
         self.stopIPython()
@@ -209,6 +201,20 @@ class ManagerGui(GUIBase):
         """Show a dialog with details about Qudi.
         """
         self._about.show()
+
+    @QtCore.Slot(bool, bool)
+    def promptForShutdown(self, locked, broken):
+        """ Display a dialog, asking the user to confirm shutdown. """
+        text = "Some modules are locked right now, really quit?"
+        result = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Qudi: Really Quit?',
+            text,
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No
+            )
+        if result == QtWidgets.QMessageBox.Yes:
+            self.sigRealQuit.emit()
 
     def resetToDefaultLayout(self):
         """ Return the dockwidget layout and visibility to its default state """
@@ -471,7 +477,7 @@ Go, play.
             self._mw,
             'Load Configration',
             defaultconfigpath,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if filename != '':
             reply = QtWidgets.QMessageBox.question(
                 self._mw,
@@ -492,7 +498,7 @@ Go, play.
             self._mw,
             'Save Configration',
             defaultconfigpath,
-            'Configuration files (*.cfg)')
+            'Configuration files (*.cfg)')[0]
         if filename != '':
             self.sigSaveConfig.emit(filename)
 
