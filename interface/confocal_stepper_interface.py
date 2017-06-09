@@ -63,38 +63,38 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_step_amplitude(self, axis=None, voltage=None):
-        """
+    def set_step_amplitude(self, axis, voltage=None):
+        """Sets the step voltage/amplitude for an axis
 
-        @param str axis:
-        @param float voltage:
+        @param str axis: the axis to be changed
+        @param int voltage: the stepping amplitude/voltage the axis should be set to
         @return int: error code (0:OK, -1:error)
         """
         pass
 
     @abc.abstractmethod
     def get_step_amplitude(self, axis):
-        """ Checks the amplitude of a step for a specific axis
+        """ Reads the amplitude of a step for a specific axis from the device
 
-        @param str axis: the axis for which the step amplitude is to be checked
+        @param str axis: the axis for which the step amplitude is to be read
         @return float: the step amplitude of the axis
         """
         pass
 
     @abc.abstractmethod
-    def set_step_freq(self, axis, freq):
-        """
+    def set_step_freq(self, axis, freq=None):
+        """Sets the step frequency for an axis
 
-        @param str axis:
-        @param int freq:
+        @param str axis: the axis to be changed
+        @param int freq: the stepping frequency the axis should be set to
         @return int: error code (0:OK, -1:error)
         """
         pass
 
     def get_step_freq(self, axis):
-        """ Checks the step frequency for a specific axis
+        """ Reads the step frequency for a specific axis from the device
 
-        @param str axis: the axis for which the frequency is to be checked
+        @param str axis: the axis for which the frequency is to be read
         @return float: the step amplitude of the axis
         """
         pass
@@ -113,7 +113,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """ Checks the mode for a specific axis
 
         @param str axis: the axis for which the frequency is to be checked
-        @return float: the step amplitude of the axis, -1 for error
+        @return float: the mode of the axis, -1 for error
         """
         pass
 

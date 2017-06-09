@@ -27,8 +27,6 @@ from core.base import Base
 from interface.confocal_stepper_interface import ConfocalStepperInterface
 import numpy as np
 
-_mode_list = ["gnd", "inp", "stp", "off", "stp+", "stp-"]
-
 
 class AttoCubeStepper(Base, ConfocalStepperInterface):
     """ 
@@ -61,8 +59,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # Todo get rid of all fine/coarse definition stuff, only step voltage will remain
 
 
-        # handle all the parameters given by the config
+        self._attocube_modes = {"stepping": "stp", "ground": "gnd", "Input": "inp", "off": "off"}
+        # Todo finish attocube modes with sensible names
+        # mode_list = ["gnd", "inp", "stp", "off", "stp+", "stp-"]
 
+        # handle all the parameters given by the config
         self._attocube_axis = {}  # dictionary contains the axes and the specific controller
         if 'x' in config.keys():
             self._attocube_axis["x"] = config['x']
@@ -235,11 +236,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self.set_step_amplitude(axis, voltage)
         pass
 
-    def set_step_amplitude(self, axis=None, voltage=None):
-        """
+    def set_step_amplitude(self, axis, voltage=None):
+        """Sets the step voltage/amplitude for axis for the ANC300
 
-        @param str axis:
-        @param float voltage:
+        @param str axis: key of the dictionary self._attocube_axis for the axis to be changed
+        @param int voltage: the stepping amplitude/voltage the axis should be set to
         @return int: error code (0:OK, -1:error)
         """
 
@@ -279,12 +280,13 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             return self._axis_amplitude[axis]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
+        #Todo: Do better error handling
 
-    def set_step_freq(self, axis, freq):
-        """
+    def set_step_freq(self, axis, freq=None):
+        """Sets the step frequency for axis for the ANC300
 
-        @param str axis:
-        @param int freq:
+        @param str axis: key of the dictionary self._attocube_axis for the axis to be changed
+        @param int freq: the stepping frequency the axis should be set to
         @return int: error code (0:OK, -1:error)
         """
         # Todo this need to have a check added if freq is inside freq range
@@ -403,7 +405,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @param str mode: mode to be set
         @return int: error code (0: OK, -1:error)
         """
-        if mode in _mode_list:
+        if mode in self._attocube_modes.keys():
             if axis in self._attocube_axis.keys():
                 command = "setm " + self._attocube_axis[axis] + mode
                 result = self._send_cmd(command)

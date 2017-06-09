@@ -76,12 +76,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._save_logic = self.get_connector('savelogic')
 
         self.axis = self._stepping_device.get_stepper_axes_use()
-        self.step_voltage = dict()
+        self.step_amplitude = dict()
         self._step_freq = dict()
         self._axis_mode = dict()
         for i in self.axis:
-            self.step_voltage[i] = self._stepping_device.get_step_voltage(i)
-            self._step_freq[i] = self._stepping_device.get_step_freq(i)
+            #Todo: Add error check here or in method else it tries to write non existing value into itself
+            self.step_amplitude[i] = self.get_stepper_amplitude(i)
+            self._step_freq[i] = self.get_stepper_frequency(i)
+            #Todo: write method that enquires stepping device mode
             self._axis_mode[i] = self._stepping_device.get_axis_mode(i)
 
             # Todo add connectors
@@ -101,24 +103,119 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         self._clock_frequency = int(clock_frequency)
-        # checks if scanner is still running
+        # checks if stepper is still running
         if self.getState() == 'locked':
             return -1
         else:
             return 0
 
+    def set_stepper_frequency(self, axis, frequency):
+        """
+        Sets the stepping frequency for a specific axis to frequency
+
+        :param axis: The axis for the desired frequency
+        :param frequency: desired frequency
+
+        :return int: error code (0:OK, -1:error)
+        """
+        self._step_freq[axis] = frequency
+
+        # checks if stepper is still running
+        if self.getState() == 'locked':
+            return -1
+        else:
+            return 0
+        return self._stepping_device.set_step_freq(axis, frequency)
+
+    def get_stepper_frequency(self, axis):
+        freq = self._stepping_device.get_step_freq(axis)
+        if freq == -1:
+            self.log.warning("The Stepping device could not read out the frequency")
+            return self._step_freq
+        #Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
+        # this is better
+        self._step_freq = freq
+        return freq
+
+    def set_stepper_amplitude(self, axis, amplitude):
+        """
+        Sets the stepping amplitude for a specific axis to amplitude
+
+        :param axis: The axis for the desired frequency
+        :param amplitude: desired amplitude (V)
+
+        :return int: error code (0:OK, -1:error)
+        """
+        self.step_amplitude[axis] = amplitude
+        # checks if stepper is still running
+        if self.getState() == 'locked':
+            return -1
+        else:
+            return 0
+        return self._stepping_device.set_step_amplitude(axis, amplitude)
+
+    def get_stepper_amplitude(self, axis):
+        amp = self._stepping_device.get_step_amplitude(axis)
+        if amp == -1:
+            self.log.warning("The Stepping device could not read out the amplitude")
+            return self.step_amplitude
+        #Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
+        # this is better
+        self.step_amplitude = amp
+        return amp
+
+    def set_mode_stepping(self, axis):
+        """Sets the mode of the stepping device to stepping
+
+        :param axis: The axis for which the mode is to be set
+        :return int: error code (0:OK, -1:error)
+        """
+        self._axis_mode[axis] = "stepping"
+        return self._stepping_device.set_axis_mode(axis, "stepping")
+
+    def set_mode_ground(self, axis):
+        """Sets the mode of the stepping device to grounded
+
+        :param axis: The axis for which the mode is to be set
+        :return int: error code (0:OK, -1:error)
+        """
+        self._axis_mode[axis] = "ground"
+        return self._stepping_device.set_axis_mode(axis, "ground")
+
     def _check_freq(self, axis):
+        """ Checks if the frequency in te device is the same as set by the program
+        If the frequencies are different the frequency in the device is changed to the set frequency
+
+        @return int: error code (0:OK, -1:error)
+        """
+        freq = self._stepping_device.get_step_freq(axis)
+        if freq != self._step_freq(axis):
+            self.log.warning(
+                "The device has different frequency of {} then the set frequency {}. "
+                "The frequency will be changed to the set frequency".format(freq, self._step_freq))
+            # checks if stepper is still running
+            if self.getState() == 'locked':
+                self.log.warning("The stepper is still running")
+                return -1
+            return self._stepping_device.set_step_freq(self, axis, self._step_freq)
+        return 0
+
+    def _check_amplitude(self, axis):
         """ Checks if the voltage in te device is the same as set by the program
         If the voltages are different the voltage in the device is changed to the set voltage
 
         @return int: error code (0:OK, -1:error)
         """
-        freq = self._stepping_device.get_step_freq()
-        if freq != self._step_freq(axis):
+        amp = self._stepping_device.get_step_amplitude(axis)
+        if amp != self.step_amplitude(axis):
             self.log.warning(
-                "the device has different voltage of {} then the set voltage {}. The voltage will be changed to the set voltage".format(
-                    freq, self._step_freq))
-            return self._stepping_device.set_step_freq(self, axis, self._step_freq)
+                "The device has different voltage of {} then the set voltage {}. "
+                "The voltage will be changed to the set voltage".format(amp, self.step_amplitude))
+            # checks if stepper is still running
+            if self.getState() == 'locked':
+                self.log.warning("The stepper is still running")
+                return -1
+            return self._stepping_device.set_step_amplitude(self, axis, self.step_amplitude)
         return 0
 
     ##################################### Control Stepper ########################################
@@ -128,6 +225,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
+        # Check the parameters of the device
+        self._check_freq()
+        self._check_amplitude()
         pass
 
     def continue_stepper(self):
@@ -135,6 +235,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
+        # Check the parameters of the device
+        self._check_freq()
+        self._check_amplitude()
         pass
 
     def move_to_position(self, x=None, y=None, z=None):
