@@ -37,8 +37,6 @@ class SlowCounterDummy(Base, SlowCounterInterface):
     """
     _modclass = 'SlowCounterDummy'
     _modtype = 'hardware'
-    # connectors
-    _out = {'counter': 'SlowCounterInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -49,16 +47,8 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         config = self.getConfiguration()
@@ -114,13 +104,10 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         self.curr_state_b = True
         self.total_time = 0.0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
-        pass
+        self.log.warning('slowcounterdummy>deactivation')
 
     def get_constraints(self):
         """ Return a constraints class for the slow counter."""
@@ -175,7 +162,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         @return float: the photon counts per second
         """
         count_data = np.array(
-            [self._simulate_counts(samples) + i * self.mean_signal 
+            [self._simulate_counts(samples) + i * self.mean_signal
                 for i, ch in enumerate(self.get_counter_channels())]
             )
 

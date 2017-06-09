@@ -97,16 +97,18 @@ class WavemeterLoggerLogic(GenericLogic):
     sig_update_histogram_next = QtCore.Signal(bool)
     sig_handle_timer = QtCore.Signal(bool)
     sig_new_data_point = QtCore.Signal(list)
+    sig_fit_updated = QtCore.Signal()
 
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
 
     # declare connectors
-    _in = {'wavemeter1': 'WavemeterInterface',
-           'savelogic': 'SaveLogic',
-           'counterlogic': 'CounterLogic'
-           }
-    _out = {'wavemeterloggerlogic': 'WavemeterLoggerLogic'}
+    _connectors = {
+        'wavemeter1': 'WavemeterInterface',
+        'counterlogic': 'CounterLogic',
+        'savelogic': 'SaveLogic',
+        'fitlogic': 'FitLogic'
+    }
 
     def __init__(self, config, **kwargs):
         """ Create WavemeterLoggerLogic object with connectors.
@@ -149,32 +151,60 @@ class WavemeterLoggerLogic(GenericLogic):
         self.intern_xmin = 1.0e10
         self.current_wavelength = 0
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-          @param object e: Fysom state change event
         """
         self._wavelength_data = []
 
         self.stopRequested = False
 
-        self._wavemeter_device = self.get_in_connector('wavemeter1')
+        self._wavemeter_device = self.get_connector('wavemeter1')
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.get_in_connector('savelogic')
-        self._counter_logic = self.get_in_connector('counterlogic')
+        self._save_logic = self.get_connector('savelogic')
+        self._counter_logic = self.get_connector('counterlogic')
+
+        self._fit_logic = self.get_connector('fitlogic')
+        self.fc = self._fit_logic.make_fit_container('Wavemeter counts', '1d')
+        self.fc.set_units(['Hz', 'c/s'])
+
+        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
+            self.fc.load_from_dict(self._statusVariables['fits'])
+        else:
+            d1 = OrderedDict()
+            d1['Lorentzian peak'] = {
+                'fit_function': 'lorentzian',
+                'estimator': 'peak'
+                }
+            d1['Two Lorentzian peaks'] = {
+                'fit_function': 'lorentziandouble',
+                'estimator': 'peak'
+                }
+            d1['Two Gaussian peaks'] = {
+                'fit_function': 'gaussiandouble',
+                'estimator': 'peak'
+                }
+            default_fits = OrderedDict()
+            default_fits['1d'] = d1
+            self.fc.load_from_dict(default_fits)
 
         # create a new x axis from xmin to xmax with bins points
-        self.histogram_axis = np.arange(self._xmin,
-                                        self._xmax,
-                                        (self._xmax - self._xmin) / self._bins
-                                        )
+        self.histogram_axis = np.arange(
+            self._xmin,
+            self._xmax,
+            (self._xmax - self._xmin) / self._bins
+            )
         self.histogram = np.zeros(self.histogram_axis.shape)
         self.envelope_histogram = np.zeros(self.histogram_axis.shape)
 
-        self.sig_update_histogram_next.connect(self._attach_counts_to_wavelength,
-                                               QtCore.Qt.QueuedConnection
-                                               )
+        self.sig_update_histogram_next.connect(
+            self._attach_counts_to_wavelength,
+            QtCore.Qt.QueuedConnection
+            )
+
+        # fit data
+        self.wlog_fit_x = np.linspace(self._xmin, self._xmax, self._bins*5)
+        self.wlog_fit_y = np.zeros(self.wlog_fit_x.shape)
 
         # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
@@ -190,26 +220,45 @@ class WavemeterLoggerLogic(GenericLogic):
         self.hardware_thread.start()
         self.last_point_time = time.time()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-          @param object e: Fysom state change event
         """
         if self.getState() != 'idle' and self.getState() != 'deactivated':
             self.stop_scanning()
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
 
+        if len(self.fc.fit_list) > 0:
+            self._statusVariables['fits'] = self.fc.save_to_dict()
+
     def get_max_wavelength(self):
+        """ Current maximum wavelength of the scan.
+
+            @return float: current maximum wavelength
+        """
         return self._xmax
 
     def get_min_wavelength(self):
+        """ Current minimum wavelength of the scan.
+
+            @return float: current minimum wavelength
+        """
         return self._xmin
 
     def get_bins(self):
+        """ Current number of bins in the spectrum.
+
+            @return int: current number of bins in the scan
+        """
         return self._bins
 
     def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
+        """ Recalculate the current spectrum from raw data.
+
+            @praram int bins: new number of bins
+            @param float xmin: new minimum wavelength
+            @param float xmax: new maximum wavelength
+        """
         if bins is not None:
             self._bins = bins
         if xmin is not None:
@@ -217,7 +266,6 @@ class WavemeterLoggerLogic(GenericLogic):
         if xmax is not None:
             self._xmax = xmax
 
-#        print('New histogram', self._bins,self._xmin,self._xmax)
         # create a new x axis from xmin to xmax with bins points
         self.rawhisto = np.zeros(self._bins)
         self.envelope_histogram = np.zeros(self._bins)
@@ -225,9 +273,28 @@ class WavemeterLoggerLogic(GenericLogic):
         self.histogram_axis = np.linspace(self._xmin, self._xmax, self._bins)
         self.sig_update_histogram_next.emit(True)
 
+    def get_fit_functions(self):
+        """ Return the names of all ocnfigured fit functions.
+        @return list(str): list of fit function names
+        """
+        return self.fc.fit_list.keys()
+
+    def do_fit(self):
+        """ Execute the currently configured fit
+        """
+        self.wlog_fit_x, self.wlog_fit_y, result = self.fc.do_fit(
+            self.histogram_axis,
+            self.histogram
+            )
+
+        self.sig_fit_updated.emit()
+        self.sig_data_updated.emit()
+
     def start_scanning(self, resume=False):
         """ Prepare to start counting:
             zero variables, change state and start counting "loop"
+
+            @param bool resume: whether to resume measurement
         """
 
         self.run()
@@ -434,9 +501,8 @@ class WavemeterLoggerLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)': np.array(
-                [self.histogram_axis, self.histogram]
-                ).transpose()}
+        data['Wavelength (nm)'] = np.array(self.histogram_axis)
+        data['Signal (counts/s)'] = np.array(self.histogram)
 
         # write the parameters:
         parameters = OrderedDict()
@@ -451,19 +517,17 @@ class WavemeterLoggerLogic(GenericLogic):
                                                     )
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
-                                   precision=':.6f'
-                                   )
+                                   fmt='%.6e')
 
         filelabel = 'wavemeter_log_wavelength'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s), Wavelength (nm)': self._wavelength_data}
+        data['Time (s), Wavelength (nm)'] = self._wavelength_data
         # write the parameters:
         parameters = OrderedDict()
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
@@ -475,19 +539,17 @@ class WavemeterLoggerLogic(GenericLogic):
                                                     )
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
-                                   precision=':.6f'
-                                   )
+                                   fmt='%.6e')
 
         filelabel = 'wavemeter_log_counts'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s),Signal (counts/s)': self._counter_logic._data_to_save}
+        data['Time (s),Signal (counts/s)'] = self._counter_logic._data_to_save
 
         # write the parameters:
         parameters = OrderedDict()
@@ -499,13 +561,11 @@ class WavemeterLoggerLogic(GenericLogic):
         parameters['Smooth Window Length (# of events)'] = self._counter_logic._smooth_window_length
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
-                                   precision=':.6f'
-                                   )
+                                   fmt='%.6e')
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
@@ -513,7 +573,7 @@ class WavemeterLoggerLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)': np.array(self.counts_with_wavelength)}
+        data['Measurement Time (s), Signal (counts/s), Interpolated Wavelength (nm)'] = np.array(self.counts_with_wavelength)
 
         fig = self.draw_figure()
         # write the parameters:
@@ -526,13 +586,12 @@ class WavemeterLoggerLogic(GenericLogic):
                                                     )
 
         self._save_logic.save_data(data,
-                                   filepath,
+                                   filepath=filepath,
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   as_text=True,
                                    plotfig=fig,
-                                   precision=':.6f')
+                                   fmt='%.6e')
         plt.close(fig)
         return 0
 
@@ -586,4 +645,10 @@ class WavemeterLoggerLogic(GenericLogic):
         return fig
 
     def nm_to_ghz(self, wavelength):
+        """ Convert wavelength to frequency.
+
+            @param float wavelength: vacuum wavelength
+
+            @return float: freequency
+        """
         return 3e8 / wavelength

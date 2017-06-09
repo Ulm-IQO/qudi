@@ -42,10 +42,16 @@ import builtins as builtin_mod
 # Classes and functions
 #-----------------------------------------------------------------------------
 
-class __BuiltinUndefined: pass
+class __BuiltinUndefined:
+    """ Empty class.
+    """
+    pass
 BuiltinUndefined = __BuiltinUndefined()
 
-class __HideBuiltin: pass
+class __HideBuiltin:
+    """ Empty class.
+    """
+    pass
 HideBuiltin = __HideBuiltin()
 
 

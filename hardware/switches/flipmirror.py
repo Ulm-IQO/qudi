@@ -32,7 +32,6 @@ class FlipMirror(Base, SwitchInterface):
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'
-    _out = {'switch':'SwitchInterface'}
 
     def __init__(self, config, **kwargs):
         """ Creae flip mirror control module
@@ -47,10 +46,8 @@ class FlipMirror(Base, SwitchInterface):
         print(config)
         print(self._configuration)
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Prepare module, connect to hardware.
-
-          @param e: Fysom stae change notification.
         """
         config = self.getConfiguration()
         if not 'interface' in config:
@@ -65,10 +62,8 @@ class FlipMirror(Base, SwitchInterface):
                 send_end=True
         )
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Disconnect from hardware on deactivation.
-
-          @param e: Fysom stae change notification.
         """
         self.inst.close()
         self.rm.close()

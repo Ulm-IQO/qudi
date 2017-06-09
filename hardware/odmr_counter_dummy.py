@@ -32,8 +32,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _modtype = 'hardware'
 
     # connectors
-    _in = {'fitlogic': 'FitLogic'}
-    _out = {'odmrcounter': 'ODMRCounterInterface'}
+    _connectors = {'fitlogic': 'FitLogic'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -54,24 +53,13 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         self._scanner_counter_daq_task = None
         self._odmr_length = None
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
-        self._fit_logic = self.get_in_connector('fitlogic')
+        self._fit_logic = self.get_connector('fitlogic')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.log.debug('ODMR counter is shutting down.')
 
@@ -152,7 +140,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_multiplelorentzoffset_model(no_of_functions=2)
+        lorentians,params = self._fit_logic.make_lorentziandouble_model()
 
         sigma = 3.
 

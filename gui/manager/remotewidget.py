@@ -24,6 +24,8 @@ import os
 
 
 class RemoteWidget(QWidget):
+    """ This widget shows information about shared or imported remote modules.
+    """
 
     def __init__(self):
         super().__init__()

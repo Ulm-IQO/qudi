@@ -32,8 +32,6 @@ class MotorStageMicos(Base, MotorInterface):
     """
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
-    # connectors
-    _out = {'motorstage': 'MotorInterface'}
 
 #Questions:
 #    Are values put in the right way in config????
@@ -69,7 +67,7 @@ class MotorStageMicos(Base, MotorInterface):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
 
-    def on_activate(self, e):
+    def on_activate(self):
 
 
         # ALEX COMMENT: Why are the values stored? In general that is not a
@@ -151,7 +149,7 @@ class MotorStageMicos(Base, MotorInterface):
         self._micos_b.baud_rate = self._baud_rate_zphi
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Disconnect from hardware and clean up """
         self._micos_a.close()
         self._micos_b.close()

@@ -399,7 +399,7 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QComboBox" name="fit_param_fit_func_ComboBox">
+         <widget class="FitSettingsComboBox" name="fit_param_fit_func_ComboBox">
           <property name="sizePolicy">
            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -588,6 +588,11 @@
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>FitSettingsComboBox</class>
+   <extends>QComboBox</extends>
+   <header>gui/fitsettings</header>
   </customwidget>
   <customwidget>
    <class>ScienSpinBox</class>

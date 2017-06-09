@@ -38,19 +38,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAnritsu'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'mwsourceanritsu': 'MicrowaveInterface'}
-
-    def on_activate(self,e=None):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         # checking for the right configuration
@@ -81,11 +70,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self.log.info('MicrowaveAnritsu initialised and connected to '
                 'hardware.')
 
-    def on_deactivate(self,e=None):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self._gpib_connection.close()
         self.rm.close()
@@ -277,13 +263,13 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start, stop, step, power):
-        """
+        """ Activate sweep mode on the microwave source
 
-        @param start:
-        @param stop:
-        @param step:
-        @param power:
-        @return:
+        @param start float: start frequency
+        @param stop float: stop frequency
+        @param step float: frequency step
+        @param power float: output power
+        @return int: number of frequency steps generated
         """
         self._gpib_connection.write(':SWE:GEN STEP')
         self._gpib_connection.write(':FREQ:START {0}'.format(start-step))

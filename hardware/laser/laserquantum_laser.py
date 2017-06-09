@@ -29,6 +29,8 @@ import visa
 
 
 class PSUTypes(Enum):
+    """ LaserQuantum power supply types.
+    """
     FPU = 0
     MPC6000 = 1
     MPC3000 = 2
@@ -44,14 +46,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
     _modclass = 'lqlaser'
     _modtype = 'hardware'
 
-    # connectors
-    _out = {'laser': 'Laser'}
-
-    def on_activate(self, e):
-        """
-
-        @param e:
-        @return:
+    def on_activate(self):
+        """ Activate module.
         """
         config = self.getConfiguration()
         if 'psu' in config:
@@ -69,10 +65,8 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         else:
             self.maxpower = 0.250
 
-    def on_deactivate(self, e):
-        """
-        @param e:
-        @return:
+    def on_deactivate(self):
+        """ Deactivate module.
         """
         self.disconnect_laser()
 
@@ -101,14 +95,14 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return True
 
     def disconnect_laser(self):
-        """
-        Close the connection to the instrument.
+        """ Close the connection to the instrument.
         """
         self.inst.close()
         self.rm.close()
 
     def allowed_control_modes(self):
-        """ Control modes for this laser"""
+        """ Control modes for this laser
+        """
         if self.psu == PSUTypes.FPU:
             return [ControlMode.MIXED]
         elif self.psu == PSUTypes.SMD6000:
@@ -117,9 +111,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return [ControlMode.POWER, ControlMode.CURRENT]
 
     def get_control_mode(self):
-        """
+        """ Get current laser control mode.
 
-        @return:
+        @return ControlMode: current laser control mode
         """
         if self.psu == PSUTypes.FPU:
             return ControlMode.MIXED
@@ -129,10 +123,10 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return ControlMode[self.inst.query('CONTROL?')]
 
     def set_control_mode(self, mode):
-        """
+        """ Set laser control mode.
 
-        @param mode:
-        @return:
+        @param ControlMode mode: desired control mode
+        @return ControlMode: actual control mode
         """
         if self.psu == PSUTypes.FPU:
             return ControlMode.MIXED
@@ -150,9 +144,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return self.get_control_mode()
 
     def get_power(self):
-        """
+        """ Get laser power.
 
-        @return:
+            @return float: laser power in watts
         """
         answer = self.inst.query('POWER?')
         try:
@@ -167,9 +161,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return -1
 
     def get_power_setpoint(self):
-        """
+        """ Get the laser power setpoint.
 
-        @return:
+        @return float: laser power setpoint in watts
         """
         if self.psu == PSUTypes.FPU:
             answer = self.inst.query('SETPOWER?')
@@ -187,17 +181,16 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return self.get_power()
 
     def get_power_range(self):
-        """
+        """ Get laser power range.
 
-        @return:
+        @return tuple(float, float): laser power range
         """
         return 0, self.maxpower
 
     def set_power(self, power):
-        """
+        """ Set laser power
 
-        @param power:
-        @return:
+        @param float power: desired laser power in watts
         """
         if self.psu == PSUTypes.FPU:
             self.inst.query('POWER={0:f}'.format(power))
@@ -205,15 +198,23 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             self.inst.query('POWER={0:f}'.format(power*1000))
 
     def get_current_unit(self):
+        """ Get unit for laser current.
+
+            @return str: unit for laser current
+        """
         return '%'
 
     def get_current_range(self):
+        """ Get range for laser current.
+
+            @return tuple(flaot, float): range for laser current
+        """
         return 0, 100
 
     def get_current(self):
-        """
+        """ Cet current laser current
 
-        @return:
+        @return float: current laser current
         """
         if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
             return float(self.inst.query('SETCURRENT1?').split('%')[0])
@@ -221,9 +222,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return float(self.inst.query('CURRENT?').split('%')[0])
 
     def get_current_setpoint(self):
-        """
+        """ Current laser current setpoint.
 
-        @return:
+        @return float: laser current setpoint
         """
         if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
             return float(self.inst.query('SETCURRENT1?').split('%')[0])
@@ -233,18 +234,17 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return float(self.inst.query('SETCURRENT?').split('%')[0])
 
     def set_current(self, current_percent):
-        """
+        """ Set laser current setpoint.
 
-        @param current_percent:
-        @return:
+        @param float current_percent: laser current setpoint
         """
         self.inst.query('CURRENT={0}'.format(current_percent))
         return self.get_current()
 
     def get_shutter_state(self):
-        """
+        """ Get laser shutter state.
 
-        @return:
+        @return ShutterState: laser shutter state
         """
         if self.psu == PSUTypes.FPU:
             state = self.inst.query('SHUTTER?')
@@ -258,10 +258,10 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return ShutterState.NOSHUTTER
 
     def set_shutter_state(self, state):
-        """
+        """ Set the desired laser shutter state.
 
-        @param state:
-        @return:
+        @param ShutterState state: desired laser shutter state
+        @return ShutterState: actual laser shutter state
         """
         if self.psu == PSUTypes.FPU:
             actstate = self.get_shutter_state()
@@ -273,35 +273,47 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return self.get_shutter_state()
 
     def get_psu_temperature(self):
-        """
+        """ Get power supply temperature
 
-        @return:
+        @return float: power supply temperature
         """
         return float(self.inst.query('PSUTEMP?').split('C')[0])
 
     def get_laser_temperature(self):
-        """
+        """ Get laser head temperature
 
-        @return:
+        @return float: laser head temperature
         """
         return float(self.inst.query('LASTEMP?').split('C')[0])
 
     def get_temperatures(self):
+        """ Get all available temperatures.
+
+            @return dict: dict of temperature names and value
+        """
         return {
             'psu': self.get_psu_temperature(),
             'laser': self.get_laser_temperature()
             }
 
     def set_temperatures(self, temps):
+        """ Set temperature for lasers with adjustable temperature for tuning
+
+            @return dict: dict with new temperature setpoints
+        """
         return {}
 
     def get_temperature_setpoints(self):
+        """ Get temperature setpints.
+
+            @return dict: dict of temperature name and setpoint value
+        """
         return {}
 
     def get_lcd(self):
-        """
+        """ Get the text displayed on the PSU display.
 
-        @return:
+            @return str: text on power supply display
         """
         if self.psu == PSUTypes.SMD12 or self.psu == PSUTypes.SMD6000:
             return ''
@@ -309,9 +321,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return self.inst.query('STATUSLCD?')
 
     def get_laser_state(self):
-        """
+        """ Get laser operation state
 
-        @return:
+        @return LaserState: laser state
         """
         if self.psu == PSUTypes.SMD6000:
             state = self.inst.query('STAT?')
@@ -325,10 +337,10 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return LaserState.UNKNOWN
 
     def set_laser_state(self, status):
-        """
+        """ Set desited laser state.
 
-        @param status:
-        @return:
+        @param LaserState status: desired laser state
+        @return LaserState: actual laser state
         """
         actstat = self.get_laser_state()
         if actstat != status:
@@ -339,9 +351,17 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return self.get_laser_state()
 
     def on(self):
+        """ Turn laser on.
+
+            @return LaserState: actual laser state
+        """
         return self.set_laser_state(LaserState.ON)
 
     def off(self):
+        """ Turn laser off.
+
+            @return LaserState: actual laser state
+        """
         return self.set_laser_state(LaserState.OFF)
 
     def get_firmware_version(self):
@@ -362,9 +382,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return lines
 
     def dump(self):
-        """
+        """ Return LaserQuantum information dump
 
-        @return:
+        @return str: diagnostic information dump from laser
         """
         self.inst.write('DUMP ')
         lines = []
@@ -376,9 +396,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return lines
 
     def timers(self):
-        """
+        """ Return information about component runtimes.
 
-        @return:
+            @return str: runtimes of components
         """
         self.inst.write('TIMERS')
         lines = []
@@ -390,6 +410,12 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         return lines
 
     def get_extra_info(self):
+        """ Extra information from laser.
+
+            @return str: multiple lines of text with information about laser
+
+            For LaserQuantum devices, this is the firmware version, dump and timers information
+        """
         extra = ''
         extra += '\n'.join(self.get_firmware_version())
         extra += '\n'

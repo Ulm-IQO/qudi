@@ -34,10 +34,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-           'spectrometer1': 'SpectrometerInterface'}
-    _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
+    _connectors = {
+        'fitlogic': 'FitLogic',
+        'confocalscanner1': 'ConfocalScannerInterface',
+        'spectrometer1': 'SpectrometerInterface'
+    }
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -66,16 +67,16 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._scanner_hw = self.get_in_connector('confocalscanner1')
-        self._spectrometer_hw = self.get_in_connector('spectrometer1')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._scanner_hw = self.get_connector('confocalscanner1')
+        self._spectrometer_hw = self.get_connector('spectrometer1')
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self.reset_hardware()
 
     def reset_hardware(self):
@@ -189,11 +190,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._line_length = length
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
@@ -213,7 +214,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         count_data = np.zeros(self._line_length)
 
         for i in xrange(self._line_length):
-            coords = line_path[:,i]
+            coords = line_path[:, i]
             self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2], a=coords[3])
             print(coords)
             print(i)

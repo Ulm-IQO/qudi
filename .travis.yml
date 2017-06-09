@@ -7,15 +7,12 @@ branches:
 env:
   global:
     - SETUP_XVFB=True
-    - CONDA_CHANNELS="qttesting"
-    - CONDA_DEPENDENCIES="jedi jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
-    - PIP_DEPENDENCIES="doxypypy fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy pyqtgraph rpyc ruamel.yaml smmap spidev i2cdev"
+#    - CONDA_CHANNELS="qttesting"
+#    - CONDA_DEPENDENCIES="jedi jupyter lxml matplotlib numpy openssl pip pygments pyparsing python-dateutil pyzmq scipy sip six tornado traitlets"
+#    - PIP_DEPENDENCIES="doxypypy fysom gitpython hdf5storage lmfit pydaqmx pyvisa pyvisa-py qtpy pyqtgraph rpyc ruamel.yaml smmap spidev i2cdev"
 
   matrix:
-    - PYTHON_VERSION=3.4 USE_QT_API=PyQt4 BUILD_DOCS=True
-    - PYTHON_VERSION=3.4 USE_QT_API=PyQt5 BUILD_DOCS=False
-    - PYTHON_VERSION=3.5 USE_QT_API=PyQt4 BUILD_DOCS=False
-    - PYTHON_VERSION=3.5 USE_QT_API=PyQt5 BUILD_DOCS=False
+    - PYTHON_VERSION=3.6 USE_QT_API=PyQt5 BUILD_DOCS=True
 
 addons:
   apt:
@@ -27,28 +24,13 @@ addons:
 
 before_install:
   # Test environments for different Qt bindings
-  - if [[ "$USE_QT_API" == "PyQt5" ]]; then 
-      export CONDA_DEPENDENCIES="pyopengl qt=5.* pyqt=5.* $CONDA_DEPENDENCIES";
-      export QT_API=pyqt5;
-    elif [[ "$USE_QT_API" == "PyQt4" ]]; then
-      export CONDA_DEPENDENCIES="qt=4.* pyqt=4.* $CONDA_DEPENDENCIES";
-      export QT_API=pyqt4;
-    elif [[ "$USE_QT_API" == "PySide" ]]; then
-      export CONDA_DEPENDENCIES="qt=4.* pyside $CONDA_DEPENDENCIES";
-      export QT_API=pyside;
-    fi
-  - echo "$CONDA_DEPENDENCIES"
-  - git clone git://github.com/astropy/ci-helpers.git
-  - source ci-helpers/travis/setup_conda_$TRAVIS_OS_NAME.sh
-#  - if [[ "$USE_QT_API" == "PyQt5" ]]; then
-#    git clone https://github.com/pyqtgraph/pyqtgraph.git;
-#    (cd pyqtgraph; python setup.py install;)
-#    fi
+  - source tools/setup_conda_linux.sh
+  - ./tools/install-python-modules-linux.sh
+  - source activate qudi
   - mkdir -p $HOME/bin
-  - echo -e "#!/bin/bash\ndoxypypy -a -c \$1" > $HOME/bin/py_filter
-  - chmod +x $HOME/bin/py_filter
 
 install:
+  - python -c "import matplotlib.pyplot" # generate matplotlib font cache
   - python tools/qudikernel.py install
   - export PATH=$PATH:$HOME/bin
 
@@ -56,5 +38,8 @@ script:
   - ./tools/test.sh
 
 after_success:
+  - pip install doxypypy
+  - echo -e "#!/bin/bash\ndoxypypy -a -c \$1" > $HOME/bin/py_filter
+  - chmod +x $HOME/bin/py_filter
   - ./tools/travis-publish-doxygen.sh
 
