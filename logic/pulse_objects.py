@@ -253,15 +253,13 @@ class PulseSequence:
                     (Pulse_Block_Ensemble, seq_param), (Pulse_Block_Ensemble, seq_param), ...
                                           The seq_param is a dictionary, where the various sequence
                                           parameters are saved with their keywords and the
-                                          according parameter (as item). What parameter will be in
-                                          this dictionary will completely depend on the sequence
-                                          parameter set of the pulsing device. But most certain the
-                                          parameter 'reps' meaning repetitions will be presesnt in
-                                          the sequence parameters.
-                                          If only 'reps' are in the dictionary, than the dict will
-                                          look like
-                                                seq_param = {'reps': 12}
-                                          if 12 was chosen as the number of repetitions.
+                                          according parameter (as item). You need to list all #
+                                          parameters. The parameters are 'repetitions',
+                                          'trigger_wait','go_to','event_jump_to'
+                                          The dict will for example look like this
+                                            seq_param = {'repetitions': 10, 'trigger_wait': False,
+                                            'go_to':0,'event_jump_to':0}
+                                          if 10 was chosen as the number of repetitions. 
         @param bool rotating_frame: indicates, whether the phase has to be preserved in all
                                     oscillating functions.
         """

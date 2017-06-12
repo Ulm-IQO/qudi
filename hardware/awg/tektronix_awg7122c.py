@@ -424,6 +424,8 @@ class AWG7122C(Base, PulserInterface):
                 self.log.warning('No file and channel provided for load!\nCorrect that!\n'
                                  'Command will be ignored.')
 
+            #set runmode to continuous
+            self.tell('AWGCONTROL:RMODe CONT')
         # for channel_num in list(load_dict):
             #asset_name = str(load_dict[channel_num])
             #self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch{0}'.format(int(channel_num)), asset_name + '_ch{0}.wfm'.format(int(channel_num))))
@@ -434,6 +436,8 @@ class AWG7122C(Base, PulserInterface):
 
         # Restore channel activation state
         self.set_active_channels(chnl_activation)
+
+        #TODO: wait until running
         return 0
 
 
