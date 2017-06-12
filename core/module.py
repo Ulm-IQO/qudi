@@ -226,7 +226,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         # add connectors
         self.connectors = OrderedDict()
         for cname, con in self._conn.items():
-            print('Connector', cname, con.name, con.ifname)
             self.connectors[con.name] = OrderedDict()
             self.connectors[con.name]['class'] = con.ifname
             self.connectors[con.name]['object'] = None
@@ -259,7 +258,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
 
         # add status var defaults
         for vname, var in self._stat_vars.items():
-            print('varinit', vname, var.var_name, var.name, var.default)
             setattr(self, var.var_name, var.default)
 
         self._manager = manager
@@ -298,7 +296,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         # add status vars
         for vname, var in self._stat_vars.items():
             if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
-                print('varact', vname, var.var_name, var.name, var.default, self._statusVariables[var.name])
                 setattr(self, var.var_name, self._statusVariables[var.name])
 
         self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
@@ -322,10 +319,8 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         # save status vars
         for vname, var in self._stat_vars.items():
             if hasattr(self, var.var_name):
-                print('varde', vname, var.var_name, var.name, var.default, getattr(self, var.var_name))
                 self._statusVariables[var.name] = getattr(self, var.var_name)
 
-        print('desv', self._statusVariables)
         return True
 
     def on_activate(self):
