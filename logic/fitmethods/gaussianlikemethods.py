@@ -330,7 +330,35 @@ def make_gaussian_fit(self, x_axis, data, estimator, units=None, add_params=None
         self.log.warning('The 1D gaussian peak fit did not work. Error '
                        'message: {0}\n'.format(result.message))
 
+        if units is None:
+            units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = OrderedDict()  # create result string for gui
+
+    #result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+    #                                    'error': result.params['amplitude'].stderr,
+    #                                    'unit': units[1]}                               #amplitude
+
+    result_str_dict['Center'] = {'value': result.params['center'].value,
+                                        'error': result.params['center'].stderr,
+                                        'unit': units[0]}                               #center
+
+    #result_str_dict['Standard deviation'] = {'value': result.params['sigma'].value,
+    #                                'error': result.params['sigma'].stderr,
+    #                                'unit': units[0]}                               #standart deviation
+
+    result_str_dict['Linewidth'] = {'value': result.params['fwhm'].value,
+                                        'error': result.params['fwhm'].stderr,
+                                        'unit': units[0]}                               #FWHM
+
+    result_str_dict['Contrast'] = {'value': result.params['contrast'].value,
+                                        'error': result.params['contrast'].stderr,
+                                        'unit': '%'}                                    #Contrast
+    result.result_str_dict = result_str_dict
+
     return result
+
+
 
 def estimate_gaussian_peak(self, x_axis, data, params):
     """ Provides a gaussian offset peak estimator.
@@ -555,7 +583,7 @@ def make_gaussiandouble_fit(self, x_axis, data, estimator,
                           with best fit with given axis,...
     """
     if units is None:
-        units = ['fucking units', 'other fucking units']
+        units = ['arb. unit', 'arb. unit']
 
     model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
 
