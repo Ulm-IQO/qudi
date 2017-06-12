@@ -213,6 +213,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         for filename in filenames_list:
             mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
+            # To allow changes in predefined methods during runtime by simply reloading
+            # sequence_generator_logic.
+            importlib.reload(mod)
             for method in dir(mod):
                 try:
                     # Check for callable function or method:
