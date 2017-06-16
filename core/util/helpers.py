@@ -27,6 +27,14 @@ Copyright:
 import os
 import sys
 import atexit
+
+# use setuptools parse_version if available and use distutils LooseVersion as
+# fallback
+try:
+    from pkg_resources import parse_version
+except ImportError:
+    from distutils.version import LooseVersion as parse_version
+
 has_pyqtgraph = False
 try:
     import pyqtgraph
@@ -86,28 +94,76 @@ def exit(exitcode=0):
 
 def import_check():
     """ Checks whether all the necessary modules are present upon start of qudi.
-    
+
     @return: int, error code either 0 or 4.
-    
+
     Check also whether some recommended packages exists. Return err_code=0 if
     all vital packages are installed and err_code=4 if vital packages are
-    missing. Make a warning about missing packages.
+    missing. Make a warning about missing packages. Check versions.
     """
-    err_code = 0
+    # encode like: (python-package-name, repository-name, version)
+    vital_pkg = [('ruamel.yaml','ruamel.yaml', None),
+                 ('rpyc','rpyc', None),
+                 ('fysom','fysom', '2.1.4')]
+    opt_pkg = [('pyqtgraph','pyqtgraph', None), ('git','gitpython', None)]
 
-    # encode like: (python-package-name, repository-name)
-    vital_pkg = [('ruamel.yaml','ruamel.yaml'), ('rpyc','rpyc'), ('fysom','fysom')]
-    opt_pkg = [('pyqtgraph','pyqtgraph'), ('git','gitpython')]
 
-    for pkg_name, repo_name in vital_pkg:
+    def check_package(pkg_name, repo_name, version, optional=False):
+        """
+        Checks if a package is installed and if so whether it is new enough.
+
+        @param: pkg_name : str, package name
+        @param: repo_name : str, repository name
+        @param: version : str, required version number
+        @param: optional : bool, indicates whether a package is optional
+        @return: int, error code either 0 or 4.
+        """
         try:
-            importlib.import_module(pkg_name)
+            module = importlib.import_module(pkg_name)
         except ImportError:
-            logger.error('No Package "{0}" installed! Perform e.g.\n\n'
-                         '    pip install {1}\n\n'
-                         'in the console to install the missing package.'.format(pkg_name, repo_name))
-            err_code = err_code | 4
+            if (optional):
+                additional_text = 'It is recommended to have this package installed. '
+            else:
+                additional_text = ''
+            logger.error(
+                'No Package "{0}" installed! {2}Perform e.g.\n\n'
+                '    pip install {1}\n\n'
+                'in the console to install the missing package.'.format(
+                    pkg_name,
+                    repo_name,
+                    additional_text
+                    ))
+            return 4
+        if (version is not None):
+            # get package version number
+            try:
+                module_version = module.__version__
+            except AttributeError:
+                logger.warning('Package "{0}" does not have a __version__ '
+                               'attribute. Ignoring version check!'.format(
+                                   pkg_name))
+                return 0
+            # compare version number
+            if (parse_version(module_version) < parse_version(version)):
+                logger.error(
+                    'Installed package "{0}" has version {1}, but version '
+                    '{2} is required. Upgrade e.g. with \n\n'
+                    '    pip install --upgrade {3}\n\n'
+                    'in the console to upgrade to newest version.'.format(
+                        pkg_name,
+                        module_version,
+                        version,
+                        repo_name))
+                return 4
+        return 0
 
+
+    err_code = 0
+    # check required packages
+    for pkg_name, repo_name, version in vital_pkg:
+        err_code = err_code | check_package(pkg_name, repo_name, version)
+
+    # check qt
     try:
         from qtpy.QtCore import Qt
     except ImportError:
@@ -116,13 +172,8 @@ def import_check():
                      'in the console to install the missing package.')
         err_code = err_code | 4
 
-    for pkg_name, repo_name in opt_pkg:
-        try:
-            importlib.import_module(pkg_name)
-        except ImportError:
-            logger.warning('No Package "{0}" installed! It is recommended to '
-                           'have this package installed. Perform e.g.\n\n'
-                           '    pip install {1}\n\n'
-                           'in the console to install the missing package.'.format(pkg_name, repo_name))
+    # check optional packages
+    for pkg_name, repo_name, version in opt_pkg:
+        check_package(pkg_name, repo_name, version, True)
 
     return err_code

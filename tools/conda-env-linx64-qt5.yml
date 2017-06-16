@@ -83,7 +83,7 @@ dependencies:
 - zeromq=4.1.5=0
 - zlib=1.2.8=3
 - pip:
-  - fysom==2.1.2
+  - fysom==2.1.4
   - gitdb2==2.0.0
   - gitpython==2.1.1
   - hdf5storage==0.1.14
