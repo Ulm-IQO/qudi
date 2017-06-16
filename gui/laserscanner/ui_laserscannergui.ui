@@ -209,7 +209,7 @@
   </widget>
   <widget class="QDockWidget" name="odmr_control_DockWidget">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
@@ -233,20 +233,70 @@
     <layout class="QGridLayout" name="gridLayout_11">
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout_9">
-       <item row="2" column="2">
-        <widget class="QLabel" name="label_4">
+       <item row="0" column="5">
+        <widget class="QLineEdit" name="clock_InputWidget"/>
+       </item>
+       <item row="0" column="4">
+        <widget class="QLabel" name="label">
          <property name="text">
-          <string>Step (V) :</string>
+          <string>Clock (Hz):</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="3">
-        <widget class="QLineEdit" name="step_freq_InputWidget">
+       <item row="2" column="5">
+        <widget class="QLineEdit" name="speed_InputWidget">
          <property name="maximumSize">
           <size>
            <width>50</width>
            <height>16777215</height>
           </size>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="7">
+        <widget class="QLineEdit" name="const_InputWidget"/>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Stop (V) :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QLineEdit" name="stop_volt_InputWidget">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>75</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Speed (V/s) :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Scanned lines</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Lines</string>
          </property>
         </widget>
        </item>
@@ -257,25 +307,12 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="4">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Stop (V) :</string>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="1">
-        <widget class="QLineEdit" name="start_freq_InputWidget">
+        <widget class="QLineEdit" name="start_volt_InputWidget">
          <property name="minimumSize">
           <size>
-           <width>75</width>
+           <width>50</width>
            <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>75</width>
-           <height>16777215</height>
           </size>
          </property>
         </widget>
@@ -287,18 +324,11 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
-        <widget class="QLabel" name="label_8">
-         <property name="text">
-          <string>Elapsed Time [s] :</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="3">
-        <widget class="QLCDNumber" name="elapsed_time_DisplayWidget"/>
+        <widget class="QLCDNumber" name="elapsed_lines_DisplayWidget"/>
        </item>
        <item row="0" column="1">
-        <widget class="QLineEdit" name="runtime_InputWidget">
+        <widget class="QLineEdit" name="lines_InputWidget">
          <property name="enabled">
           <bool>true</bool>
          </property>
@@ -310,26 +340,10 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="5">
-        <widget class="QLineEdit" name="stop_freq_InputWidget">
-         <property name="minimumSize">
-          <size>
-           <width>75</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>75</width>
-           <height>16777215</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_7">
+       <item row="2" column="6">
+        <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Runtime [s] :</string>
+          <string>Constant voltage:</string>
          </property>
         </widget>
        </item>
