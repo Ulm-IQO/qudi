@@ -78,6 +78,7 @@ class LaserScannerLogic(GenericLogic):
         self.fit_y = []
         self.plot_x = []
         self.plot_y = []
+        self.plot_y2 = []
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -105,8 +106,8 @@ class LaserScannerLogic(GenericLogic):
         self.sigScanNextLine.connect(self._do_next_line, QtCore.Qt.QueuedConnection)
 
         # Initialization of internal counter for scanning
-        self._scan_counter = 0
-
+        self._scan_counter_up = 0
+        self._scan_counter_down = 0
         # Keep track of scan direction
         self.upwards_scan = True
 
@@ -213,8 +214,10 @@ class LaserScannerLogic(GenericLogic):
         """ Initializing the ODMR matrix plot. """
 
         self.scan_matrix = np.zeros((self.number_of_repeats, scan_length))
+        self.scan_matrix2 = np.zeros((self.number_of_repeats, scan_length))
         self.plot_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.plot_y = np.zeros(scan_length)
+        self.plot_y2 = np.zeros(scan_length)
         self.fit_x = np.linspace(self.scan_range[0], self.scan_range[1], scan_length)
         self.fit_y = np.zeros(scan_length)
 
@@ -262,7 +265,8 @@ class LaserScannerLogic(GenericLogic):
         else:
             v_max = self.scan_range[1]
 
-        self._scan_counter = 0
+        self._scan_counter_up = 0
+        self._scan_counter_down = 0
         self.upwards_scan = True
 
         # TODO: Generate Ramps
@@ -303,27 +307,30 @@ class LaserScannerLogic(GenericLogic):
         """ If stopRequested then finish the scan, otherwise perform next repeat of the scan line
         """
         # stops scanning
-        if self.stopRequested or self._scan_counter >= self.number_of_repeats:
+        if self.stopRequested or self._scan_counter_up >= self.number_of_repeats:
             print(self.current_position)
             self._goto_during_scan(self._static_v)
             self._close_scanner()
             self.sigScanFinished.emit()
             return
 
-        if self._scan_counter == 0:
+        if self._scan_counter_up == 0:
             # move from current voltage to start of scan range.
             self._goto_during_scan(self.scan_range[0])
 
         if self.upwards_scan:
             counts = self._scan_line(self._upwards_ramp)
+            self.scan_matrix[self._scan_counter_up] = counts
+            self.plot_y += counts
+            self._scan_counter_up += 1
             self.upwards_scan = False
         else:
             counts = self._scan_line(self._downwards_ramp)
+            self.scan_matrix2[self._scan_counter_down] = counts
+            self.plot_y2 += counts
+            self._scan_counter_down += 1
             self.upwards_scan = True
 
-        self.scan_matrix[self._scan_counter] = counts
-        self.plot_y += counts
-        self._scan_counter += 1
         self.sigUpdatePlots.emit()
         self.sigScanNextLine.emit()
 
@@ -460,52 +467,91 @@ class LaserScannerLogic(GenericLogic):
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filepath2 = self._save_logic.get_path_for_module(module_name='LaserScanning')
+        filepath3 = self._save_logic.get_path_for_module(module_name='LaserScanning')
         timestamp = datetime.datetime.now()
 
         if len(tag) > 0:
             filelabel = tag + '_volt_data'
-            filelabel2 = tag + '_volt_data_raw'
+            filelabel2 = tag + '_volt_data_raw_trace'
+            filelabel3 = tag + '_volt_data_raw_retrace'
         else:
             filelabel = 'volt_data'
-            filelabel2 = 'volt_data_raw'
+            filelabel2 = 'volt_data_raw_trace'
+            filelabel3 = 'volt_data_raw_retrace'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data2 = OrderedDict()
         data['frequency (Hz)'] = self.plot_x
-        data['count data (counts/s)'] = self.plot_y
-        data2['count data (counts/s)'] = self.scan_matrix[:self._scan_counter, :]
+        data['trace count data (counts/s)'] = self.plot_y
+        data['retrace count data (counts/s)'] = self.plot_y2
+
+        data2 = OrderedDict()
+        data2['count data (counts/s)'] = self.scan_matrix[:self._scan_counter_up, :]
+
+        data3 = OrderedDict()
+        data3['count data (counts/s)'] = self.scan_matrix2[:self._scan_counter_down, :]
 
         parameters = OrderedDict()
-        parameters['Number of frequency sweeps (#)'] = self._scan_counter
+        parameters['Number of frequency sweeps (#)'] = self._scan_counter_up
         parameters['Start Voltage (V)'] = self.scan_range[0]
         parameters['Stop Voltage (V)'] = self.scan_range[1]
         parameters['Scan speed [V/s]'] = self._scan_speed
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
 
-        fig = self.draw_figure(cbar_range=colorscale_range, percentile_range=percentile_range)
+        fig = self.draw_figure(
+            self.scan_matrix,
+            self.plot_x,
+            self.plot_y,
+            self.fit_x,
+            self.fit_y,
+            cbar_range=colorscale_range,
+            percentile_range=percentile_range)
 
-        self._save_logic.save_data(data,
-                                   filepath=filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   timestamp=timestamp,
-                                   plotfig=fig)
+        fig2 = self.draw_figure(
+            self.scan_matrix2,
+            self.plot_x,
+            self.plot_y2,
+            self.fit_x,
+            self.fit_y,
+            cbar_range=colorscale_range,
+            percentile_range=percentile_range)
 
-        self._save_logic.save_data(data2,
-                                   filepath=filepath2,
-                                   parameters=parameters,
-                                   filelabel=filelabel2,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   timestamp=timestamp)
+        self._save_logic.save_data(
+            data,
+            filepath=filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            fmt='%.6e',
+            delimiter='\t',
+            timestamp=timestamp
+        )
+
+        self._save_logic.save_data(
+            data2,
+            filepath=filepath2,
+            parameters=parameters,
+            filelabel=filelabel2,
+            fmt='%.6e',
+            delimiter='\t',
+            timestamp=timestamp,
+            plotfig=fig
+        )
+
+        self._save_logic.save_data(
+            data3,
+            filepath=filepath3,
+            parameters=parameters,
+            filelabel=filelabel3,
+            fmt='%.6e',
+            delimiter='\t',
+            timestamp=timestamp,
+            plotfig=fig2
+        )
 
         self.log.info('Laser Scan saved to:\n{0}'.format(filepath))
         return 0
 
-    def draw_figure(self, cbar_range=None, percentile_range=None):
+    def draw_figure(self, matrix_data, freq_data, count_data, fit_freq_vals, fit_count_vals, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
 
         @param: list cbar_range: (optional) [color_scale_min, color_scale_max].
@@ -516,11 +562,6 @@ class LaserScannerLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
-        freq_data = self.plot_x
-        count_data = self.plot_y
-        fit_freq_vals = self.fit_x
-        fit_count_vals = self.fit_y
-        matrix_data = self.scan_matrix
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
