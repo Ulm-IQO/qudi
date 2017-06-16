@@ -307,7 +307,7 @@ class LaserScannerLogic(GenericLogic):
         """ If stopRequested then finish the scan, otherwise perform next repeat of the scan line
         """
         # stops scanning
-        if self.stopRequested or self._scan_counter_up >= self.number_of_repeats:
+        if self.stopRequested or self._scan_counter_down >= self.number_of_repeats:
             print(self.current_position)
             self._goto_during_scan(self._static_v)
             self._close_scanner()
