@@ -31,7 +31,9 @@ from qtpy import QtCore
 
 
 class StatusVar:
-
+    """ This class defines a status variable that is loaded before activation
+        and saved after deactivation.
+    """
     def __init__(self, name=None, default=None, var_name=None):
         self.var_name = var_name
         if name is None:
@@ -60,7 +62,9 @@ class MissingOption(Enum):
     nothing = 0
 
 class ConfigOption:
-
+    """ This class represents a configuration entry in the config file that is loaded before
+        module initalisation.
+    """
     def __init__(self, name=None, default=None, var_name=None, missing='nothing'):
         self.missing = MissingOption[missing]
         self.var_name = var_name
@@ -86,6 +90,7 @@ class ConfigOption:
 
 
 class Connector:
+    """ A connector where another module can be connected """
 
     def __init__(self, name=None, interface_name=None):
         self.name = name
@@ -188,8 +193,8 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
             callbacks = {}
 
         default_callbacks = {
-            'onactivate': lambda e: self.on_activate(),
-            'ondeactivate': lambda e: self.on_deactivate()
+            'onactivate': self.__load_status_vars_activate,
+            'ondeactivate': self.__save_status_vars_deactivate
             }
         default_callbacks.update(callbacks)
 
@@ -260,6 +265,33 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         self._configuration = config
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
+
+    def __load_status_vars_activate(self, event):
+        """ Restore status variables before activation.
+
+            @param e: Fysom event
+        """
+        # add status vars
+        for vname, var in self._stat_vars.items():
+            if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
+                setattr(self, var.var_name, self._statusVariables[var.name])
+        # activate
+        self.on_activate()
+
+    def __save_status_vars_deactivate(self, event):
+        """ Save status variables after deactivation.
+
+            @param e: Fysom event
+        """
+        try:
+            self.on_deactivate()
+        except Exception as e:
+            raise e
+        finally:
+            # save status vars even if deactivation failed
+            for vname, var in self._stat_vars.items():
+                if hasattr(self, var.var_name):
+                    self._statusVariables[var.name] = getattr(self, var.var_name)
 
     def _build_event(self, event):
         """
