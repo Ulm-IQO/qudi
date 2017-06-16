@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1074</width>
-    <height>664</height>
+    <width>1089</width>
+    <height>655</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -17,46 +17,23 @@
    <string>qudi: Voltage Scanner (Laser)</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="3" column="10" rowspan="2" colspan="2">
-       <widget class="PlotWidget" name="voltscan_cb_ViewWidget">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="10">
-       <widget class="QLabel" name="label_10">
-        <property name="maximumSize">
-         <size>
-          <width>30</width>
-          <height>16777215</height>
-         </size>
-        </property>
+      <item row="8" column="17">
+       <widget class="QRadioButton" name="voltscan_cb_centiles_RadioButton">
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>Centiles</string>
         </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
        </widget>
       </item>
-      <item row="5" column="10">
-       <widget class="QLabel" name="label_11">
-        <property name="maximumSize">
-         <size>
-          <width>30</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="10" colspan="2">
+      <item row="7" column="17">
        <widget class="QSpinBox" name="voltscan_cb_min_InputWidget">
         <property name="maximumSize">
          <size>
@@ -72,7 +49,30 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="10" colspan="2">
+      <item row="6" column="17">
+       <widget class="QSpinBox" name="voltscan_cb_low_centile_InputWidget">
+        <property name="maximumSize">
+         <size>
+          <width>50</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="17">
+       <widget class="QRadioButton" name="voltscan_cb_manual_RadioButton">
+        <property name="text">
+         <string>Manual</string>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
+       </widget>
+      </item>
+      <item row="1" column="17">
        <widget class="QSpinBox" name="voltscan_cb_max_InputWidget">
         <property name="maximumSize">
          <size>
@@ -91,17 +91,17 @@
         </property>
        </widget>
       </item>
-      <item row="8" column="10" colspan="2">
-       <widget class="QRadioButton" name="voltscan_cb_manual_RadioButton">
-        <property name="text">
-         <string>Manual</string>
+      <item row="4" column="0" rowspan="6" colspan="6">
+       <widget class="PlotWidget" name="voltscan_matrix_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
         </property>
-        <attribute name="buttonGroup">
-         <string notr="true">buttonGroup</string>
-        </attribute>
        </widget>
       </item>
-      <item row="2" column="11">
+      <item row="2" column="17">
        <widget class="QSpinBox" name="voltscan_cb_high_centile_InputWidget">
         <property name="maximumSize">
          <size>
@@ -117,8 +117,21 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0" rowspan="5" colspan="10">
-       <widget class="PlotWidget" name="voltscan_matrix_ViewWidget">
+      <item row="6" column="16">
+       <widget class="QLabel" name="label_11">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="6" rowspan="3" colspan="6">
+       <widget class="PlotWidget" name="voltscan2_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>1</horstretch>
@@ -127,7 +140,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0" rowspan="3" colspan="10">
+      <item row="1" column="0" rowspan="3" colspan="6">
        <widget class="PlotWidget" name="voltscan_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -137,29 +150,49 @@
         </property>
        </widget>
       </item>
-      <item row="7" column="10" colspan="2">
-       <widget class="QRadioButton" name="voltscan_cb_centiles_RadioButton">
-        <property name="text">
-         <string>Centiles</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-        <attribute name="buttonGroup">
-         <string notr="true">buttonGroup</string>
-        </attribute>
-       </widget>
-      </item>
-      <item row="5" column="11">
-       <widget class="QSpinBox" name="voltscan_cb_low_centile_InputWidget">
+      <item row="2" column="16">
+       <widget class="QLabel" name="label_10">
         <property name="maximumSize">
          <size>
-          <width>50</width>
+          <width>30</width>
           <height>16777215</height>
          </size>
         </property>
-        <property name="maximum">
-         <number>100</number>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="6" rowspan="6" colspan="6">
+       <widget class="PlotWidget" name="voltscan_matrix2_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="16" rowspan="3" colspan="2">
+       <widget class="PlotWidget" name="voltscan_cb_ViewWidget"/>
+      </item>
+      <item row="0" column="0" colspan="6">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Trace</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="6" colspan="6">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Retrace</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -172,7 +205,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1074</width>
+     <width>1089</width>
      <height>21</height>
     </rect>
    </property>
@@ -403,13 +436,6 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>voltscan_cb_max_InputWidget</tabstop>
-  <tabstop>voltscan_cb_high_centile_InputWidget</tabstop>
-  <tabstop>voltscan_cb_ViewWidget</tabstop>
-  <tabstop>voltscan_cb_low_centile_InputWidget</tabstop>
-  <tabstop>voltscan_cb_min_InputWidget</tabstop>
-  <tabstop>voltscan_cb_centiles_RadioButton</tabstop>
-  <tabstop>voltscan_cb_manual_RadioButton</tabstop>
   <tabstop>voltscan_matrix_ViewWidget</tabstop>
   <tabstop>voltscan_ViewWidget</tabstop>
  </tabstops>

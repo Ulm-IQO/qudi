@@ -104,11 +104,27 @@ class VoltScanGui(GUIBase):
                 0,
                 self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
                 self._voltscan_logic.number_of_repeats)
-            )
+        )
+
+        self.scan_matrix_image2 = pg.ImageItem(
+            self._voltscan_logic.scan_matrix2,
+            axisOrder='row-major')
+
+        self.scan_matrix_image2.setRect(
+            QtCore.QRectF(
+                self._voltscan_logic.scan_range[0],
+                0,
+                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.number_of_repeats)
+        )
 
         self.scan_image = pg.PlotDataItem(
             self._voltscan_logic.plot_x,
             self._voltscan_logic.plot_y)
+
+        self.scan_image2 = pg.PlotDataItem(
+            self._voltscan_logic.plot_x,
+            self._voltscan_logic.plot_y2)
 
         self.scan_fit_image = pg.PlotDataItem(
             self._voltscan_logic.fit_x,
@@ -118,14 +134,20 @@ class VoltScanGui(GUIBase):
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.voltscan_ViewWidget.addItem(self.scan_image)
-        self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
-        self._mw.voltscan_matrix_ViewWidget.addItem(self.scan_matrix_image)
+        #self._mw.voltscan_ViewWidget.addItem(self.scan_fit_image)
         self._mw.voltscan_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.voltscan_matrix_ViewWidget.addItem(self.scan_matrix_image)
+
+        self._mw.voltscan2_ViewWidget.addItem(self.scan_image2)
+        #self._mw.voltscan2_ViewWidget.addItem(self.scan_fit_image)
+        self._mw.voltscan2_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.voltscan_matrix2_ViewWidget.addItem(self.scan_matrix_image2)
 
         # Get the colorscales at set LUT
         my_colors = ColorScaleInferno()
 
         self.scan_matrix_image.setLookupTable(my_colors.lut)
+        self.scan_matrix_image2.setLookupTable(my_colors.lut)
 
         # Configuration of the Colorbar
         self.scan_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
@@ -212,6 +234,7 @@ class VoltScanGui(GUIBase):
         if is_checked:
             self.sigStartScan.emit()
             self._mw.voltscan_ViewWidget.removeItem(self.scan_fit_image)
+            self._mw.voltscan2_ViewWidget.removeItem(self.scan_fit_image)
         else:
             self.sigStopScan.emit()
 
@@ -225,6 +248,7 @@ class VoltScanGui(GUIBase):
     def refresh_plot(self):
         """ Refresh the xy-plot image """
         self.scan_image.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y)
+        self.scan_image2.setData(self._voltscan_logic.plot_x, self._voltscan_logic.plot_y2)
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
@@ -236,6 +260,14 @@ class VoltScanGui(GUIBase):
                 self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
                 self._voltscan_logic.number_of_repeats)
             )
+        self.scan_matrix_image2.setImage(self._voltscan_logic.scan_matrix2, axisOrder='row-major')
+        self.scan_matrix_image2.setRect(
+            QtCore.QRectF(
+                self._voltscan_logic.scan_range[0],
+                0,
+                self._voltscan_logic.scan_range[1] - self._voltscan_logic.scan_range[0],
+                self._voltscan_logic.number_of_repeats)
+        )
         self.refresh_scan_colorbar()
 
         scan_image_data = self._voltscan_logic.scan_matrix
@@ -257,6 +289,14 @@ class VoltScanGui(GUIBase):
             image=scan_image_data,
             levels=(cb_min, cb_max),
             axisOrder='row-major')
+
+        scan_image_data2 = self._voltscan_logic.scan_matrix2
+        # Now update image with new color scale, and update colorbar
+        self.scan_matrix_image2.setImage(
+            image=scan_image_data2,
+            levels=(cb_min, cb_max),
+            axisOrder='row-major')
+
         self.refresh_scan_colorbar()
 
     def refresh_scan_colorbar(self):
@@ -278,7 +318,7 @@ class VoltScanGui(GUIBase):
         self._mw.voltscan_cb_ViewWidget.update()
 
     def refresh_lines(self):
-        self._mw.elapsed_lines_DisplayWidget.display(self._voltscan_logic._scan_counter)
+        self._mw.elapsed_lines_DisplayWidget.display(self._voltscan_logic._scan_counter_up)
 
     def change_voltage(self):
         self.sigChangeVoltage.emit(float(self._mw.const_InputWidget.text()))
