@@ -24,10 +24,9 @@ import logging
 import os
 import qtpy
 import sys
-
+from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 from enum import Enum
-from .FysomAdapter import Fysom  # provides a final state machine
 from qtpy import QtCore
 
 
@@ -150,7 +149,7 @@ class ModuleMeta(type(QtCore.QObject)):
         return new_class
 
 
-class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
+class BaseMixin(Fysom, metaclass=ModuleMeta):
     """
     Base class for all loadable modules
 
@@ -217,11 +216,7 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         }
 
         # Initialise state machine:
-        if qtpy.PYQT4 or qtpy.PYSIDE:
-            QtCore.QObject.__init__(self)
-            Fysom.__init__(self, _baseStateList)
-        else:
-            super().__init__(cfg=_baseStateList, **kwargs)
+        super().__init__(cfg=_baseStateList, **kwargs)
 
         # add connectors
         self.connectors = OrderedDict()
@@ -266,21 +261,30 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
-    def __getattr__(self, name):
+    def _build_event(self, event):
         """
-        Attribute getter.
-
-        We'll reimplement it here because otherwise only __getattr__ of the
-        first base class (QObject) is called and the second base class is
-        never looked up.
-        Here we look up the first base class first and if the attribute is
-        not found, we'll look into the second base class.
+        Overrides fysom _build_event to wrap on_activate and on_deactivate to
+        catch and log exceptios.
         """
-        try:
-            return QtCore.QObject.__getattr__(self, name)
-        except AttributeError:
-            pass
-        return Fysom.__getattr__(self, name)
+        base_event = super()._build_event(event)
+        if (event in ['activate', 'deactivate']):
+            if (event == 'activate'):
+                noun = 'activation'
+            else:
+                noun = 'deactivation'
+            def wrap_event(*args, **kwargs):
+                self.log.debug('{0} in thread {1}'.format(
+                    noun.capitalize(),
+                    QtCore.QThread.currentThreadId()))
+                try:
+                    base_event(*args, **kwargs)
+                except:
+                    self.log.exception('Error during {0}'.format(noun))
+                    return False
+                return True
+            return wrap_event
+        else:
+            return base_event
 
     @property
     def log(self):
@@ -289,39 +293,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         """
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
-
-    @QtCore.Slot(result=bool)
-    def _wrap_activation(self):
-        """ Restore vars and catch exceptions during activation. """
-        # add status vars
-        for vname, var in self._stat_vars.items():
-            if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
-                setattr(self, var.var_name, self._statusVariables[var.name])
-
-        self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.activate()
-        except:
-            self.log.exception('Error during activation')
-            return False
-        return True
-
-    @QtCore.Slot(result=bool)
-    def _wrap_deactivation(self):
-        """ Save vars and catch exceptions during deactivation. """
-        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.deactivate()
-        except:
-            self.log.exception('Error during deactivation:')
-            return False
-
-        # save status vars
-        for vname, var in self._stat_vars.items():
-            if hasattr(self, var.var_name):
-                self._statusVariables[var.name] = getattr(self, var.var_name)
-
-        return True
 
     def on_activate(self):
         """ Method called when module is activated. If not overridden
@@ -432,3 +403,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
             raise TypeError('No module connected')
         return obj
 
+
+class Base(QtCore.QObject, BaseMixin):
+    pass
