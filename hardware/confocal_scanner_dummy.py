@@ -208,7 +208,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
     def get_scanner_axes(self):
         """ Dummy scanner is always 3D cartesian.
         """
-        return ['x', 'y', 'z']
+        return ['x', 'y', 'z', 'a']
 
     def get_scanner_count_channels(self):
         """ 3 counting channels in dummy confocal: normal, negative and a ramp."""
