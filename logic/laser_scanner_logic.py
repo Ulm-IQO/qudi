@@ -94,7 +94,6 @@ class LaserScannerLogic(GenericLogic):
         self.current_position = self._scanning_device.get_scanner_position()
 
         # initialise the range for scanning
-        self.voltage_range = self._scanning_device._voltage_range[3]
         self.set_scan_range(self.scan_range)
 
         # Keep track of the current static voltage even while a scan may cause the real-time
