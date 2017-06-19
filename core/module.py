@@ -171,10 +171,15 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
     * Reload module data (from saved variables)
     """
 
-    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
     _modclass = 'base'
     _modtype = 'base'
     _connectors = dict()
+
+    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
+    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
+
+    # signals
+    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
 
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
