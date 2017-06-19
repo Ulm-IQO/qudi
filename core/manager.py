@@ -891,7 +891,14 @@ class Manager(QtCore.QObject):
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
-            success = module.activate() # runs on_activate in main thread
+                success = QtCore.QMetaObject.invokeMethod(
+                    module,
+                    "trigger",
+                    QtCore.Qt.BlockingQueuedConnection,
+                    QtCore.Q_RETURN_ARG(bool),
+                    QtCore.Q_ARG(str, 'activate'))
+            else:
+                success = module.activate() # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(success))
         except:
             logger.exception(
@@ -923,8 +930,14 @@ class Manager(QtCore.QObject):
                 self.tree['loaded'][base].pop(name)
             return
         try:
-            success = module.deactivate() # runs on_deactivate in main thread
             if base == 'logic':
+                success = QtCore.QMetaObject.invokeMethod(
+                    module,
+                    "trigger",
+                    QtCore.Qt.BlockingQueuedConnection,
+                    QtCore.Q_RETURN_ARG(bool),
+                    QtCore.Q_ARG(str, 'deactivate'))
+
                 QtCore.QMetaObject.invokeMethod(
                     module,
                     'moveToThread',
@@ -932,6 +945,9 @@ class Manager(QtCore.QObject):
                     QtCore.Q_ARG(QtCore.QThread, self.tm.thread))
                 self.tm.quitThread('mod-{0}-{1}'.format(base, name))
                 self.tm.joinThread('mod-{0}-{1}'.format(base, name))
+            else:
+                success = module.deactivate() # runs on_deactivate in main thread
+
             self.saveStatusVariables(base, name, module.getStatusVariables())
             logger.debug('Deactivation success: {}'.format(success))
         except:
