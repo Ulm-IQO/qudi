@@ -34,7 +34,7 @@ class StatusVar:
     """ This class defines a status variable that is loaded before activation
         and saved after deactivation.
     """
-    def __init__(self, name=None, default=None, var_name=None):
+    def __init__(self, name=None, default=None, *, var_name=None):
         self.var_name = var_name
         if name is None:
             self.name = var_name
@@ -44,7 +44,10 @@ class StatusVar:
         self.default = default
 
     def copy(self, **kwargs):
-        """ Create a new instance of StatusVar with copied values and update """
+        """ Create a new instance of StatusVar with copied and updated values.
+
+            @param kwargs: Additional or overridden parameters for the constructor of this class
+        """
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
@@ -56,6 +59,7 @@ class StatusVar:
         return True
 
 class MissingOption(Enum):
+    """ Representation for missing ConfigOption """
     error = -3
     warn = -2
     info = -1
@@ -65,7 +69,14 @@ class ConfigOption:
     """ This class represents a configuration entry in the config file that is loaded before
         module initalisation.
     """
-    def __init__(self, name=None, default=None, var_name=None, missing='nothing'):
+    def __init__(self, name=None, default=None, *, var_name=None, missing='nothing'):
+        """ Create a ConfigOption object.
+
+            @param name
+            @param default
+            @param var_name
+            @param missing
+        """
         self.missing = MissingOption[missing]
         self.var_name = var_name
         if name is None:
@@ -75,11 +86,11 @@ class ConfigOption:
 
         self.default = default
 
-    #def __repr__(self):
-    #    return '<{0}: {1}>'.format(self.__class__, self.name)
-
     def copy(self, **kwargs):
-        """ Create a new instance of ConfigOption with copied values and update """
+        """ Create a new instance of ConfigOption with copied values and update
+
+            @param kwargs: extra arguments or overrides for the constructor of this class
+        """
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
@@ -92,7 +103,11 @@ class ConfigOption:
 class Connector:
     """ A connector where another module can be connected """
 
-    def __init__(self, name=None, interface_name=None):
+    def __init__(self, *, name=None, interface_name=None):
+        """
+            @param name: name of the connector
+            @param interface_name: name of the interface for this connector
+        """
         self.name = name
         self.ifname = interface_name
         self.obj = None
@@ -116,7 +131,14 @@ class ModuleMeta(type(QtCore.QObject)):
 
     def __new__(mcs, name, bases, attrs):
         """
-        Parse declared connectors and config options into the usual dictionary structures.
+        Collect declared Connectors, ConfigOptions and StatusVars into dictionaries.
+
+            @param mcs: class
+            @param name: name of class
+            @param bases: list of base classes of class
+            @param attrs: attributes of class
+
+            @return: new class with collected connectors
         """
 
         # collect meta info in dicts
@@ -124,7 +146,7 @@ class ModuleMeta(type(QtCore.QObject)):
         config_options = OrderedDict()
         status_vars = OrderedDict()
 
-        # Accumulate metas info from parent classes
+        # Accumulate Connector, ConfigOption and StatusVar info from parent classes
         for base in reversed(bases):
             if hasattr(base, '_connectors'):
                 connectors.update(copy.deepcopy(base._connectors))
@@ -133,7 +155,7 @@ class ModuleMeta(type(QtCore.QObject)):
             if hasattr(base, '_stat_var'):
                 status_vars.update(copy.deepcopy(base._stat_var))
 
-        # Parse this class's attributes into connector and config_option structures
+        # Collect this classes Connector and ConfigOption and StatusVar into dictionaries
         for key, value in attrs.items():
             if isinstance(value, Connector):
                 connectors[key] = value.copy(name=key)
@@ -146,6 +168,7 @@ class ModuleMeta(type(QtCore.QObject)):
         attrs.update(config_options)
         attrs.update(status_vars)
 
+        # create a new class with the new dictionaries
         new_class = super().__new__(mcs, name, bases, attrs)
         new_class._conn = connectors
         new_class._config_options = config_options
