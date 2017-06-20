@@ -50,31 +50,8 @@ class NuclearOperationsGui(GUIBase):
     nuclearoperationslogic = Connector(interface_name='NuclearOperationsLogic')
     savelogic = Connector(interface_name='SaveLogic')
 
-    def __init__(self, manager, name, config, **kwargs):
-        # declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
-        super().__init__(manager,
-                         name,
-                         config,
-                         c_dict)
-
-        self.log.debug('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
-    def initUI(self, e=None):
-        """ Definition, configuration and initialisation of the ODMR GUI.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
-
+    def on_activate(self):
+        """
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
         """
@@ -182,11 +159,8 @@ class NuclearOperationsGui(GUIBase):
         self._no_logic.sigCurrMeasPointUpdated.connect(self.update_meas_graph)
         self._no_logic.sigCurrMeasPointUpdated.connect(self.update_meas_parameter)
 
-    def deactivation(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         @return int: error code (0:OK, -1:error)
         """
