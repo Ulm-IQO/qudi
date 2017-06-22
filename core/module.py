@@ -24,16 +24,17 @@ import logging
 import os
 import qtpy
 import sys
-
+from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 from enum import Enum
-from .FysomAdapter import Fysom  # provides a final state machine
 from qtpy import QtCore
 
 
 class StatusVar:
-
-    def __init__(self, name=None, default=None, var_name=None):
+    """ This class defines a status variable that is loaded before activation
+        and saved after deactivation.
+    """
+    def __init__(self, name=None, default=None, *, var_name=None):
         self.var_name = var_name
         if name is None:
             self.name = var_name
@@ -43,7 +44,10 @@ class StatusVar:
         self.default = default
 
     def copy(self, **kwargs):
-        """ Create a new instance of StatusVar with copied values and update """
+        """ Create a new instance of StatusVar with copied and updated values.
+
+            @param kwargs: Additional or overridden parameters for the constructor of this class
+        """
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
@@ -55,14 +59,24 @@ class StatusVar:
         return True
 
 class MissingOption(Enum):
+    """ Representation for missing ConfigOption """
     error = -3
     warn = -2
     info = -1
     nothing = 0
 
 class ConfigOption:
+    """ This class represents a configuration entry in the config file that is loaded before
+        module initalisation.
+    """
+    def __init__(self, name=None, default=None, *, var_name=None, missing='nothing'):
+        """ Create a ConfigOption object.
 
-    def __init__(self, name=None, default=None, var_name=None, missing='nothing'):
+            @param name
+            @param default
+            @param var_name
+            @param missing
+        """
         self.missing = MissingOption[missing]
         self.var_name = var_name
         if name is None:
@@ -72,11 +86,11 @@ class ConfigOption:
 
         self.default = default
 
-    #def __repr__(self):
-    #    return '<{0}: {1}>'.format(self.__class__, self.name)
-
     def copy(self, **kwargs):
-        """ Create a new instance of ConfigOption with copied values and update """
+        """ Create a new instance of ConfigOption with copied values and update
+
+            @param kwargs: extra arguments or overrides for the constructor of this class
+        """
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
@@ -87,8 +101,13 @@ class ConfigOption:
 
 
 class Connector:
+    """ A connector where another module can be connected """
 
-    def __init__(self, name=None, interface_name=None):
+    def __init__(self, *, name=None, interface_name=None):
+        """
+            @param name: name of the connector
+            @param interface_name: name of the interface for this connector
+        """
         self.name = name
         self.ifname = interface_name
         self.obj = None
@@ -112,7 +131,14 @@ class ModuleMeta(type(QtCore.QObject)):
 
     def __new__(mcs, name, bases, attrs):
         """
-        Parse declared connectors and config options into the usual dictionary structures.
+        Collect declared Connectors, ConfigOptions and StatusVars into dictionaries.
+
+            @param mcs: class
+            @param name: name of class
+            @param bases: list of base classes of class
+            @param attrs: attributes of class
+
+            @return: new class with collected connectors
         """
 
         # collect meta info in dicts
@@ -120,7 +146,7 @@ class ModuleMeta(type(QtCore.QObject)):
         config_options = OrderedDict()
         status_vars = OrderedDict()
 
-        # Accumulate metas info from parent classes
+        # Accumulate Connector, ConfigOption and StatusVar info from parent classes
         for base in reversed(bases):
             if hasattr(base, '_connectors'):
                 connectors.update(copy.deepcopy(base._connectors))
@@ -129,7 +155,7 @@ class ModuleMeta(type(QtCore.QObject)):
             if hasattr(base, '_stat_var'):
                 status_vars.update(copy.deepcopy(base._stat_var))
 
-        # Parse this class's attributes into connector and config_option structures
+        # Collect this classes Connector and ConfigOption and StatusVar into dictionaries
         for key, value in attrs.items():
             if isinstance(value, Connector):
                 connectors[key] = value.copy(name=key)
@@ -142,6 +168,7 @@ class ModuleMeta(type(QtCore.QObject)):
         attrs.update(config_options)
         attrs.update(status_vars)
 
+        # create a new class with the new dictionaries
         new_class = super().__new__(mcs, name, bases, attrs)
         new_class._conn = connectors
         new_class._config_options = config_options
@@ -150,7 +177,7 @@ class ModuleMeta(type(QtCore.QObject)):
         return new_class
 
 
-class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
+class BaseMixin(Fysom, metaclass=ModuleMeta):
     """
     Base class for all loadable modules
 
@@ -167,10 +194,15 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
     * Reload module data (from saved variables)
     """
 
-    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
     _modclass = 'base'
     _modtype = 'base'
     _connectors = dict()
+
+    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
+    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
+
+    # signals
+    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
 
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
@@ -189,8 +221,8 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
             callbacks = {}
 
         default_callbacks = {
-            'onactivate': lambda e: self.on_activate(),
-            'ondeactivate': lambda e: self.on_deactivate()
+            'onactivate': self.__load_status_vars_activate,
+            'ondeactivate': self.__save_status_vars_deactivate
             }
         default_callbacks.update(callbacks)
 
@@ -217,11 +249,7 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         }
 
         # Initialise state machine:
-        if qtpy.PYQT4 or qtpy.PYSIDE:
-            QtCore.QObject.__init__(self)
-            Fysom.__init__(self, _baseStateList)
-        else:
-            super().__init__(cfg=_baseStateList, **kwargs)
+        super().__init__(cfg=_baseStateList, **kwargs)
 
         # add connectors
         self.connectors = OrderedDict()
@@ -266,21 +294,57 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
-    def __getattr__(self, name):
-        """
-        Attribute getter.
+    def __load_status_vars_activate(self, event):
+        """ Restore status variables before activation.
 
-        We'll reimplement it here because otherwise only __getattr__ of the
-        first base class (QObject) is called and the second base class is
-        never looked up.
-        Here we look up the first base class first and if the attribute is
-        not found, we'll look into the second base class.
+            @param e: Fysom event
+        """
+        # add status vars
+        for vname, var in self._stat_vars.items():
+            if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
+                setattr(self, var.var_name, self._statusVariables[var.name])
+        # activate
+        self.on_activate()
+
+    def __save_status_vars_deactivate(self, event):
+        """ Save status variables after deactivation.
+
+            @param e: Fysom event
         """
         try:
-            return QtCore.QObject.__getattr__(self, name)
-        except AttributeError:
-            pass
-        return Fysom.__getattr__(self, name)
+            self.on_deactivate()
+        except Exception as e:
+            raise e
+        finally:
+            # save status vars even if deactivation failed
+            for vname, var in self._stat_vars.items():
+                if hasattr(self, var.var_name):
+                    self._statusVariables[var.name] = getattr(self, var.var_name)
+
+    def _build_event(self, event):
+        """
+        Overrides fysom _build_event to wrap on_activate and on_deactivate to
+        catch and log exceptios.
+        """
+        base_event = super()._build_event(event)
+        if (event in ['activate', 'deactivate']):
+            if (event == 'activate'):
+                noun = 'activation'
+            else:
+                noun = 'deactivation'
+            def wrap_event(*args, **kwargs):
+                self.log.debug('{0} in thread {1}'.format(
+                    noun.capitalize(),
+                    QtCore.QThread.currentThreadId()))
+                try:
+                    base_event(*args, **kwargs)
+                except:
+                    self.log.exception('Error during {0}'.format(noun))
+                    return False
+                return True
+            return wrap_event
+        else:
+            return base_event
 
     @property
     def log(self):
@@ -289,39 +353,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
         """
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
-
-    @QtCore.Slot(result=bool)
-    def _wrap_activation(self):
-        """ Restore vars and catch exceptions during activation. """
-        # add status vars
-        for vname, var in self._stat_vars.items():
-            if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
-                setattr(self, var.var_name, self._statusVariables[var.name])
-
-        self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.activate()
-        except:
-            self.log.exception('Error during activation')
-            return False
-        return True
-
-    @QtCore.Slot(result=bool)
-    def _wrap_deactivation(self):
-        """ Save vars and catch exceptions during deactivation. """
-        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.deactivate()
-        except:
-            self.log.exception('Error during deactivation:')
-            return False
-
-        # save status vars
-        for vname, var in self._stat_vars.items():
-            if hasattr(self, var.var_name):
-                self._statusVariables[var.name] = getattr(self, var.var_name)
-
-        return True
 
     def on_activate(self):
         """ Method called when module is activated. If not overridden
@@ -432,3 +463,6 @@ class Base(QtCore.QObject, Fysom, metaclass=ModuleMeta):
             raise TypeError('No module connected')
         return obj
 
+
+class Base(QtCore.QObject, BaseMixin):
+    pass
