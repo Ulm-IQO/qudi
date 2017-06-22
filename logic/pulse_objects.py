@@ -290,7 +290,7 @@ class PulseSequence:
         Baiscally, calculate the length_bins and number of analog and digital
         channels.
         """
-        self.length_bins = 0
+        self.length_s = 0
         self.analog_channels = 0
         self.digital_channels = 0
         # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
@@ -308,7 +308,8 @@ class PulseSequence:
                     break
                 else:
                     reps = 0
-            self.length_s += (ensemble.length_s * (reps+1))
+
+            self.length_s += (ensemble.length_s * (reps))
 
             if ensemble.analog_channels > self.analog_channels:
                 self.analog_channels = ensemble.analog_channels
