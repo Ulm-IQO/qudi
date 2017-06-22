@@ -302,14 +302,13 @@ class PulseSequence:
         # the repetitions of a block is used as the offset_time for the next block.
         offset_tick_bin = 0
         for ensemble, seq_dict in self.ensemble_param_list:
+            reps = 0
             for param in seq_dict:
                 if 'reps' in param.lower() or 'repetition' in param.lower():
                     reps = seq_dict[param]
                     break
-                else:
-                    reps = 0
 
-            self.length_s += (ensemble.length_s * (reps))
+            self.length_s += (ensemble.length_s * reps)
 
             if ensemble.analog_channels > self.analog_channels:
                 self.analog_channels = ensemble.analog_channels
