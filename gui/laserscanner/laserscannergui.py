@@ -61,7 +61,7 @@ class VoltScanGui(GUIBase):
     sigStopScan = QtCore.Signal()
     sigChangeVoltage = QtCore.Signal(float)
     sigChangeRange = QtCore.Signal(list)
-    sigChangeClock = QtCore.Signal(float)
+    sigChangeResolution = QtCore.Signal(float)
     sigChangeSpeed = QtCore.Signal(float)
     sigChangeLines = QtCore.Signal(int)
     sigSaveMeasurement = QtCore.Signal(str, list, list)
@@ -162,39 +162,28 @@ class VoltScanGui(GUIBase):
         self._mw.voltscan_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
         self._mw.voltscan_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
 
-        # Add Validators to InputWidgets
-        validator = QtGui.QDoubleValidator()
-        validator2 = QtGui.QIntValidator()
-
-        self._mw.start_volt_InputWidget.setValidator(validator)
-        self._mw.speed_InputWidget.setValidator(validator)
-        self._mw.stop_volt_InputWidget.setValidator(validator)
-        self._mw.lines_InputWidget.setValidator(validator2)
-        self._mw.clock_InputWidget.setValidator(validator)
-        self._mw.const_InputWidget.setValidator(validator)
-
-        self._mw.start_volt_InputWidget.setText(str(self._voltscan_logic.scan_range[0]))
-        self._mw.speed_InputWidget.setText(str(self._voltscan_logic._scan_speed))
-        self._mw.stop_volt_InputWidget.setText(str(self._voltscan_logic.scan_range[1]))
-        self._mw.const_InputWidget.setText(str(self._voltscan_logic._static_v))
-        self._mw.clock_InputWidget.setText(str(self._voltscan_logic._clock_frequency))
-        self._mw.lines_InputWidget.setText(str(self._voltscan_logic.number_of_repeats))
+        self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
+        self._mw.speedDoubleSpinBox.setValue(self._voltscan_logic._scan_speed)
+        self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
+        self._mw.constDoubleSpinBox.setValue(self._voltscan_logic._static_v)
+        self._mw.resolutionSpinBox.setValue(self._voltscan_logic.resolution)
+        self._mw.linesSpinBox.setValue(self._voltscan_logic.number_of_repeats)
 
         # Update the inputed/displayed numbers if return key is hit:
-        self._mw.start_volt_InputWidget.returnPressed.connect(self.change_start_volt)
-        self._mw.speed_InputWidget.returnPressed.connect(self.change_speed)
-        self._mw.stop_volt_InputWidget.returnPressed.connect(self.change_stop_volt)
-        self._mw.clock_InputWidget.returnPressed.connect(self.change_clock)
-        self._mw.lines_InputWidget.returnPressed.connect(self.change_lines)
-        self._mw.const_InputWidget.returnPressed.connect(self.change_voltage)
+        #self._mw.startDoubleSpinBox.returnPressed.connect(self.change_start_volt)
+        #self._mw.speedDoubleSpinBox.returnPressed.connect(self.change_speed)
+        #self._mw.stopDoubleSpinBox.returnPressed.connect(self.change_stop_volt)
+        #self._mw.resolutionSpinBox.returnPressed.connect(self.change_clock)
+        #self._mw.linesSpinBox.returnPressed.connect(self.change_lines)
+        #self._mw.constDoubleSpinBox.returnPressed.connect(self.change_voltage)
 
         # Update the inputed/displayed numbers if the cursor has left the field:
-        self._mw.start_volt_InputWidget.editingFinished.connect(self.change_start_volt)
-        self._mw.speed_InputWidget.editingFinished.connect(self.change_speed)
-        self._mw.stop_volt_InputWidget.editingFinished.connect(self.change_stop_volt)
-        self._mw.clock_InputWidget.editingFinished.connect(self.change_clock)
-        self._mw.lines_InputWidget.editingFinished.connect(self.change_lines)
-        self._mw.const_InputWidget.editingFinished.connect(self.change_voltage)
+        self._mw.startDoubleSpinBox.editingFinished.connect(self.change_start_volt)
+        self._mw.speedDoubleSpinBox.editingFinished.connect(self.change_speed)
+        self._mw.stopDoubleSpinBox.editingFinished.connect(self.change_stop_volt)
+        self._mw.resolutionSpinBox.editingFinished.connect(self.change_resolution)
+        self._mw.linesSpinBox.editingFinished.connect(self.change_lines)
+        self._mw.constDoubleSpinBox.editingFinished.connect(self.change_voltage)
 
         #
         self._mw.voltscan_cb_max_InputWidget.valueChanged.connect(self.refresh_matrix)
@@ -215,7 +204,7 @@ class VoltScanGui(GUIBase):
         self.sigChangeRange.connect(self._voltscan_logic.set_scan_range)
         self.sigChangeSpeed.connect(self._voltscan_logic.set_scan_speed)
         self.sigChangeLines.connect(self._voltscan_logic.set_scan_lines)
-        self.sigChangeClock.connect(self._voltscan_logic.set_clock_frequency)
+        self.sigChangeResolution.connect(self._voltscan_logic.set_resolution)
         self.sigSaveMeasurement.connect(self._voltscan_logic.save_data)
 
         self._mw.action_run_stop.triggered.connect(self.run_stop)
@@ -244,6 +233,9 @@ class VoltScanGui(GUIBase):
     def scan_stopped(self):
         self._mw.action_run_stop.setEnabled(True)
         self._mw.action_run_stop.setChecked(False)
+        self.refresh_plot()
+        self.refresh_matrix()
+        self.refresh_lines()
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
@@ -321,28 +313,28 @@ class VoltScanGui(GUIBase):
         self._mw.elapsed_lines_DisplayWidget.display(self._voltscan_logic._scan_counter_up)
 
     def change_voltage(self):
-        self.sigChangeVoltage.emit(float(self._mw.const_InputWidget.text()))
+        self.sigChangeVoltage.emit(self._mw.constDoubleSpinBox.value())
 
     def change_start_volt(self):
         self.sigChangeRange.emit([
-            float(self._mw.start_volt_InputWidget.text()),
-            float(self._mw.stop_volt_InputWidget.text())
+            self._mw.startDoubleSpinBox.value(),
+            self._mw.stopDoubleSpinBox.value()
         ])
 
     def change_speed(self):
-        self.sigChangeSpeed.emit(float(self._mw.speed_InputWidget.text()))
+        self.sigChangeSpeed.emit(self._mw.speedDoubleSpinBox.value())
 
     def change_stop_volt(self):
         self.sigChangeRange.emit([
-            float(self._mw.start_volt_InputWidget.text()),
-            float(self._mw.stop_volt_InputWidget.text())
+            self._mw.startDoubleSpinBox.value(),
+            self._mw.stopDoubleSpinBox.value()
         ])
 
     def change_lines(self):
-        self.sigChangeLines.emit(int(self._mw.lines_InputWidget.text()))
+        self.sigChangeLines.emit(self._mw.linesSpinBox.value())
 
-    def change_clock(self):
-        self.sigChangeClock.emit(float(self._mw.clock_InputWidget.text()))
+    def change_resolution(self):
+        self.sigChangeResolution.emit(self._mw.resolutionSpinBox.value())
 
     def get_matrix_cb_range(self):
         """
