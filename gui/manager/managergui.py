@@ -19,10 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import logging
 import core.logger
-from gui.guibase import GUIBaseMixin
+import logging
+import numpy as np
+import os
+
+from collections import OrderedDict
 from core.module import StatusVar
+from .errordialog import ErrorDialog
+from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import QWidget
@@ -31,16 +36,11 @@ try:
     from qtconsole.inprocess import QtInProcessKernelManager
 except ImportError:
     from IPython.qt.inprocess import QtInProcessKernelManager
-_has_git = False
+
 try:
     from git import Repo
-    _has_git = True
 except:
     pass
-from collections import OrderedDict
-from .errordialog import ErrorDialog
-import numpy as np
-import os
 
 try:
     import pyqtgraph as pg
@@ -48,8 +48,11 @@ try:
 except:
     _has_pyqtgraph = False
 
+# Rather than import the ui*.py file here, the ui*.ui file itself is
+# loaded by uic.loadUI in the QtGui classes below.
 
-class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
+
+class ManagerGui(GUIBase):
     """This class provides a GUI to the Qudi manager.
 
       @signal sigStartAll: sent when all modules should be loaded
@@ -84,34 +87,6 @@ class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
         super().__init__(**kwargs)
         self.modlist = list()
         self.modules = set()
-        self._software_version = None # cache software version to retrieve it
-                                      # only once
-
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_manager_window.ui')
-
-        # Load it
-        uic.loadUi(ui_file, self)
-
-        # Set up the layout
-        # this really cannot be done in Qt designer, you cannot set a layout
-        # on an empty widget
-        self.guilayout = QtWidgets.QVBoxLayout(self.guiscroll)
-        self.logiclayout = QtWidgets.QVBoxLayout(self.logicscroll)
-        self.hwlayout = QtWidgets.QVBoxLayout(self.hwscroll)
-
-        self._error_dialog = ErrorDialog(self)
-        self._about_dialog = AboutDialog()
-
-        version = self.getSoftwareVersion()
-        self._about_dialog.label.setText(
-            '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
-            ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(
-                version[0], version[1]))
-        self.versionLabel = QtWidgets.QLabel()
-        self.versionLabel.setOpenExternalLinks(True)
-        self.statusBar().addWidget(self.versionLabel)
 
     def on_activate(self):
         """ Activation method called on change to active state.
@@ -132,30 +107,40 @@ class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
             if 'useOpenGL' in self._manager.tree['global']:
                 pg.setConfigOption('useOpenGL',
                                    self._manager.tree['global']['useOpenGL'])
-        self.restoreWindowPos(self)
-        configFile = self._manager.configFile
+        self._mw = ManagerMainWindow()
+        self.restoreWindowPos(self._mw)
+        self.errorDialog = ErrorDialog(self)
+        self._about = AboutDialog()
         version = self.getSoftwareVersion()
+        configFile = self._manager.configFile
+        self._about.label.setText(
+            '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
+            ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(
+                version[0], version[1]))
+        self.versionLabel = QtWidgets.QLabel()
         self.versionLabel.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
             ' style=\"color: cyan;\"> {0} </a>,'
             ' on branch {1}, configured from {2}'.format(
                 version[0], version[1], configFile))
+        self.versionLabel.setOpenExternalLinks(True)
+        self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
-        self.actionQuit.triggered.connect(self._manager.quit)
-        self.actionLoad_configuration.triggered.connect(self.getLoadFile)
-        self.actionReload_current_configuration.triggered.connect(self.reloadConfig)
-        self.actionSave_configuration.triggered.connect(self.getSaveFile)
-        self.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
-        self.actionAbout_Qt.triggered.connect(QtWidgets.QApplication.aboutQt)
-        self.actionAbout_Qudi.triggered.connect(self.showAboutQudi)
-        self.actionReset_to_default_layout.triggered.connect(self.resetToDefaultLayout)
+        self._mw.actionQuit.triggered.connect(self._manager.quit)
+        self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
+        self._mw.actionReload_current_configuration.triggered.connect(self.reloadConfig)
+        self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
+        self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.actionAbout_Qt.triggered.connect(QtWidgets.QApplication.aboutQt)
+        self._mw.actionAbout_Qudi.triggered.connect(self.showAboutQudi)
+        self._mw.actionReset_to_default_layout.triggered.connect(self.resetToDefaultLayout)
 
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         self._manager.sigShutdownAcknowledge.connect(self.promptForShutdown)
         # Log widget
-        self.logwidget.setManager(self._manager)
+        self._mw.logwidget.setManager(self._manager)
         for loghandler in logging.getLogger().handlers:
             if isinstance(loghandler, core.logger.QtLogHandler):
                 loghandler.sigLoggedMessage.connect(self.handleLogEntry)
@@ -176,21 +161,21 @@ class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
         self.updateIPythonModuleList()
         self.startIPythonWidget()
         # thread widget
-        self.threadWidget.threadListView.setModel(self._manager.tm)
+        self._mw.threadWidget.threadListView.setModel(self._manager.tm)
         # remote widget
-        self.remoteWidget.hostLabel.setText('URL:')
-        self.remoteWidget.portLabel.setText(
+        self._mw.remoteWidget.hostLabel.setText('URL:')
+        self._mw.remoteWidget.portLabel.setText(
             'rpyc://{0}:{1}/'.format(self._manager.rm.host,
                                      self._manager.rm.server.port))
-        self.remoteWidget.remoteModuleListView.setModel(
+        self._mw.remoteWidget.remoteModuleListView.setModel(
             self._manager.rm.remoteModules)
-        self.remoteWidget.sharedModuleListView.setModel(
+        self._mw.remoteWidget.sharedModuleListView.setModel(
             self._manager.rm.sharedModules)
 
-        self.configDisplayDockWidget.hide()
-        self.remoteDockWidget.hide()
-        self.threadDockWidget.hide()
-        self.show()
+        self._mw.configDisplayDockWidget.hide()
+        self._mw.remoteDockWidget.hide()
+        self._mw.threadDockWidget.hide()
+        self._mw.show()
 
     def on_deactivate(self):
         """Close window and remove connections.
@@ -198,40 +183,40 @@ class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
         self.stopIPythonWidget()
         self.stopIPython()
         self.checkTimer.stop()
-        if (len(self.modlist) > 0):
+        if len(self.modlist) > 0:
             self.checkTimer.timeout.disconnect()
         self.sigStartModule.disconnect()
         self.sigReloadModule.disconnect()
         self.sigStopModule.disconnect()
         self.sigLoadConfig.disconnect()
         self.sigSaveConfig.disconnect()
-        self.actionQuit.triggered.disconnect()
-        self.actionLoad_configuration.triggered.disconnect()
-        self.actionSave_configuration.triggered.disconnect()
-        self.action_Load_all_modules.triggered.disconnect()
-        self.actionAbout_Qt.triggered.disconnect()
-        self.actionAbout_Qudi.triggered.disconnect()
-        self.saveWindowPos(self)
-        self.close()
+        self._mw.actionQuit.triggered.disconnect()
+        self._mw.actionLoad_configuration.triggered.disconnect()
+        self._mw.actionSave_configuration.triggered.disconnect()
+        self._mw.action_Load_all_modules.triggered.disconnect()
+        self._mw.actionAbout_Qt.triggered.disconnect()
+        self._mw.actionAbout_Qudi.triggered.disconnect()
+        self.saveWindowPos(self._mw)
+        self._mw.close()
 
     def show(self):
         """Show the window and bring it t the top.
         """
-        super().show()
-        self.activateWindow()
-        self.raise_()
+        QtWidgets.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
 
     def showAboutQudi(self):
         """Show a dialog with details about Qudi.
         """
-        self._about_dialog.show()
+        self._about.show()
 
     @QtCore.Slot(bool, bool)
     def promptForShutdown(self, locked, broken):
         """ Display a dialog, asking the user to confirm shutdown. """
         text = "Some modules are locked right now, really quit?"
         result = QtWidgets.QMessageBox.question(
-            self,
+            self._mw,
             'Qudi: Really Quit?',
             text,
             QtWidgets.QMessageBox.Yes,
@@ -242,29 +227,29 @@ class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
 
     def resetToDefaultLayout(self):
         """ Return the dockwidget layout and visibility to its default state """
-        self.configDisplayDockWidget.setVisible(False)
-        self.consoleDockWidget.setVisible(True)
-        self.remoteDockWidget.setVisible(False)
-        self.threadDockWidget.setVisible(False)
-        self.logDockWidget.setVisible(True)
+        self._mw.configDisplayDockWidget.setVisible(False)
+        self._mw.consoleDockWidget.setVisible(True)
+        self._mw.remoteDockWidget.setVisible(False)
+        self._mw.threadDockWidget.setVisible(False)
+        self._mw.logDockWidget.setVisible(True)
 
-        self.actionConfigurationView.setChecked(False)
-        self.actionConsoleView.setChecked(True)
-        self.actionRemoteView.setChecked(False)
-        self.actionThreadsView.setChecked(False)
-        self.actionLogView.setChecked(True)
+        self._mw.actionConfigurationView.setChecked(False)
+        self._mw.actionConsoleView.setChecked(True)
+        self._mw.actionRemoteView.setChecked(False)
+        self._mw.actionThreadsView.setChecked(False)
+        self._mw.actionLogView.setChecked(True)
 
-        self.configDisplayDockWidget.setFloating(False)
-        self.consoleDockWidget.setFloating(False)
-        self.remoteDockWidget.setFloating(False)
-        self.threadDockWidget.setFloating(False)
-        self.logDockWidget.setFloating(False)
+        self._mw.configDisplayDockWidget.setFloating(False)
+        self._mw.consoleDockWidget.setFloating(False)
+        self._mw.remoteDockWidget.setFloating(False)
+        self._mw.threadDockWidget.setFloating(False)
+        self._mw.logDockWidget.setFloating(False)
 
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.configDisplayDockWidget)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(2), self.consoleDockWidget)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.remoteDockWidget)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.threadDockWidget)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.logDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.configDisplayDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.consoleDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.remoteDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.threadDockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.logDockWidget)
 
     def handleLogEntry(self, entry):
         """ Forward log entry to log widget and show an error popup if it is
@@ -272,9 +257,9 @@ class ManagerGui(QtWidgets.QMainWindow, GUIBaseMixin):
 
             @param dict entry: Log entry
         """
-        self.logwidget.addEntry(entry)
-        if (entry['level'] == 'error' or entry['level'] == 'critical'):
-            self._error_dialog.show(entry)
+        self._mw.logwidget.addEntry(entry)
+        if entry['level'] == 'error' or entry['level'] == 'critical':
+            self.errorDialog.show(entry)
 
     def startIPython(self):
         """ Create an IPython kernel manager and kernel.
@@ -319,7 +304,7 @@ Configuration is in 'config', the manager is 'manager' and all loaded modules ar
 View the current namespace with dir().
 Go, play.
 """.format(banner_modules)
-        self.consolewidget.banner = banner
+        self._mw.consolewidget.banner = banner
         # font size
         self.consoleSetFontSize(self.consoleFontSize)
         # settings
@@ -329,15 +314,15 @@ Go, play.
         self._csd.buttonBox.button(
             QtWidgets.QDialogButtonBox.Apply).clicked.connect(
                 self.consoleApplySettings)
-        self.actionConsoleSettings.triggered.connect(self._csd.exec_)
+        self._mw.actionConsoleSettings.triggered.connect(self._csd.exec_)
         self.consoleKeepSettings()
 
-        self.consolewidget.kernel_manager = self.kernel_manager
-        self.consolewidget.kernel_client = \
-            self.consolewidget.kernel_manager.client()
-        self.consolewidget.kernel_client.start_channels()
+        self._mw.consolewidget.kernel_manager = self.kernel_manager
+        self._mw.consolewidget.kernel_client = \
+            self._mw.consolewidget.kernel_manager.client()
+        self._mw.consolewidget.kernel_client.start_channels()
         # the linux style theme which is basically the monokai theme
-        self.consolewidget.set_default_style(colors='linux')
+        self._mw.consolewidget.set_default_style(colors='linux')
 
     def stopIPython(self):
         """ Stop the IPython kernel.
@@ -348,7 +333,7 @@ Go, play.
     def stopIPythonWidget(self):
         """ Disconnect the IPython widget from the kernel.
         """
-        self.consolewidget.kernel_client.stop_channels()
+        self._mw.consolewidget.kernel_client.stop_channels()
 
     def updateIPythonModuleList(self):
         """Remove non-existing modules from namespace,
@@ -378,22 +363,22 @@ Go, play.
         self.consoleSetFontSize(self._csd.fontSizeBox.value())
 
     def consoleSetFontSize(self, fontsize):
-        self.consolewidget.font_size = fontsize
+        self._mw.consolewidget.font_size = fontsize
         self.consoleFontSize = fontsize
-        self.consolewidget.reset_font()
+        self._mw.consolewidget.reset_font()
 
     def updateConfigWidgets(self):
         """ Clear and refill the tree widget showing the configuration.
         """
-        self.fillTreeWidget(self.treeWidget, self._manager.tree)
+        self.fillTreeWidget(self._mw.treeWidget, self._manager.tree)
 
     def updateGUIModuleList(self):
         """ Clear and refill the module list widget
         """
         # self.clearModuleList(self)
-        self.fillModuleList(self.guilayout, 'gui')
-        self.fillModuleList(self.logiclayout, 'logic')
-        self.fillModuleList(self.hwlayout, 'hardware')
+        self.fillModuleList(self._mw.guilayout, 'gui')
+        self.fillModuleList(self._mw.logiclayout, 'logic')
+        self.fillModuleList(self._mw.hwlayout, 'hardware')
 
     def fillModuleList(self, layout, base):
         """ Fill the module list widget with module widgets for defined gui
@@ -453,21 +438,15 @@ Go, play.
         """ Try to determine the software version in case the program is in
             a git repository.
         """
-        if (self._software_version is not None):
-            return self._software_version
-        else:
-            self._software_version = ('unknown', -1)
-        if (_has_git):
-            try:
-                repo = Repo(self.get_main_dir())
-                branch = repo.active_branch
-                rev = str(repo.head.commit)
-                self._software_version = (rev, str(branch))
-            except Exception as e:
-                self.log.warning('Could not get git repository because: {0}'
-                                 ''.format(e))
-                self._software_version = ('unknown', -1)
-        return self._software_version
+        try:
+            repo = Repo(self.get_main_dir())
+            branch = repo.active_branch
+            rev = str(repo.head.commit)
+            return (rev, str(branch))
+
+        except Exception as e:
+            print('Could not get git repo because:', e)
+            return ('unknown', -1)
 
     def fillTreeWidget(self, widget, value):
         """ Fill a QTreeWidget with the content of a dictionary
@@ -482,7 +461,7 @@ Go, play.
         """  Reload the current config. """
 
         reply = QtWidgets.QMessageBox.question(
-            self,
+            self._mw,
             'Restart',
             'Do you want to restart the current configuration?',
             QtWidgets.QMessageBox.Yes,
@@ -499,13 +478,13 @@ Go, play.
         """
         defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
         filename = QtWidgets.QFileDialog.getOpenFileName(
-            self,
+            self._mw,
             'Load Configration',
             defaultconfigpath,
             'Configuration files (*.cfg)')[0]
         if filename != '':
             reply = QtWidgets.QMessageBox.question(
-                self,
+                self._mw,
                 'Restart',
                 'Do you want to restart to use the configuration?',
                 QtWidgets.QMessageBox.Yes,
@@ -520,7 +499,7 @@ Go, play.
         """
         defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
         filename = QtWidgets.QFileDialog.getSaveFileName(
-            self,
+            self._mw,
             'Save Configration',
             defaultconfigpath,
             'Configuration files (*.cfg)')[0]
@@ -528,11 +507,35 @@ Go, play.
             self.sigSaveConfig.emit(filename)
 
 
+class ManagerMainWindow(QtWidgets.QMainWindow):
+    """ This class represents the Manager Window.
+    """
+
+    def __init__(self):
+        """ Create the Manager Window.
+        """
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_manager_window.ui')
+
+        # Load it
+        super(ManagerMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
+
+        # Set up the layout
+        # this really cannot be done in Qt designer, you cannot set a layout
+        # on an empty widget
+        self.guilayout = QtWidgets.QVBoxLayout(self.guiscroll)
+        self.logiclayout = QtWidgets.QVBoxLayout(self.logicscroll)
+        self.hwlayout = QtWidgets.QVBoxLayout(self.hwscroll)
+
+
 class AboutDialog(QtWidgets.QDialog):
     """ This class represents the Qudi About dialog.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         """ Create Qudi About Dialog.
         """
         # Get the path to the *.ui file
@@ -540,7 +543,7 @@ class AboutDialog(QtWidgets.QDialog):
         ui_file = os.path.join(this_dir, 'ui_about.ui')
 
         # Load it
-        super().__init__(**kwargs)
+        super().__init__()
         uic.loadUi(ui_file, self)
 
 
@@ -549,13 +552,13 @@ class ConsoleSettingsDialog(QtWidgets.QDialog):
         file.
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self):
          # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_console_settings.ui')
 
         # Load it
+        super().__init__()
         uic.loadUi(ui_file, self)
 
 
