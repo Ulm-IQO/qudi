@@ -162,20 +162,13 @@ class VoltScanGui(GUIBase):
         self._mw.voltscan_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
         self._mw.voltscan_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)
 
+        # set initial values
         self._mw.startDoubleSpinBox.setValue(self._voltscan_logic.scan_range[0])
         self._mw.speedDoubleSpinBox.setValue(self._voltscan_logic._scan_speed)
         self._mw.stopDoubleSpinBox.setValue(self._voltscan_logic.scan_range[1])
         self._mw.constDoubleSpinBox.setValue(self._voltscan_logic._static_v)
         self._mw.resolutionSpinBox.setValue(self._voltscan_logic.resolution)
         self._mw.linesSpinBox.setValue(self._voltscan_logic.number_of_repeats)
-
-        # Update the inputed/displayed numbers if return key is hit:
-        #self._mw.startDoubleSpinBox.returnPressed.connect(self.change_start_volt)
-        #self._mw.speedDoubleSpinBox.returnPressed.connect(self.change_speed)
-        #self._mw.stopDoubleSpinBox.returnPressed.connect(self.change_stop_volt)
-        #self._mw.resolutionSpinBox.returnPressed.connect(self.change_clock)
-        #self._mw.linesSpinBox.returnPressed.connect(self.change_lines)
-        #self._mw.constDoubleSpinBox.returnPressed.connect(self.change_voltage)
 
         # Update the inputed/displayed numbers if the cursor has left the field:
         self._mw.startDoubleSpinBox.editingFinished.connect(self.change_start_volt)
