@@ -52,7 +52,7 @@ class LaserScannerLogic(GenericLogic):
 
     scan_range = StatusVar('scan_range', [-10, 10])
     number_of_repeats = StatusVar(default=10)
-    _clock_frequency = StatusVar('clock_frequency', 500)
+    resolution = StatusVar('resolution', 500)
     _scan_speed = StatusVar('scan_speed', 10)
     _static_v = StatusVar('goto_voltage', 5)
 
@@ -94,7 +94,6 @@ class LaserScannerLogic(GenericLogic):
         self.current_position = self._scanning_device.get_scanner_position()
 
         # initialise the range for scanning
-        self.voltage_range = self._scanning_device._voltage_range[3]
         self.set_scan_range(self.scan_range)
 
         # Keep track of the current static voltage even while a scan may cause the real-time
@@ -121,7 +120,7 @@ class LaserScannerLogic(GenericLogic):
 
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
-        self.set_clock_frequency(self._clock_frequency)
+        self.set_resolution(self.resolution)
         self._goto_speed = 10  # 0.01  # volt / second
         self.set_scan_speed(self._scan_speed)
         self._smoothing_steps = 10  # steps to accelerate between 0 and scan_speed
@@ -187,23 +186,34 @@ class LaserScannerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._clock_frequency = int(clock_frequency)
+        self._clock_frequency = float(clock_frequency)
         # checks if scanner is still running
         if self.getState() == 'locked':
             return -1
         else:
             return 0
 
+    def set_resolution(self, resolution):
+        """ Calculate clock rate from scan speed and desired number of pixels """
+        self.resolution = resolution
+        scan_range = abs(self.scan_range[1] - self.scan_range[0])
+        duration = scan_range / self._scan_speed
+        new_clock = resolution / duration
+        return self.set_clock_frequency(new_clock)
+
     def set_scan_range(self, scan_range):
+        """ Set the scan rnage """
         r_max = np.clip(scan_range[1], self.a_range[0], self.a_range[1])
         r_min = np.clip(scan_range[0], self.a_range[0], r_max)
         self.scan_range = [r_min, r_max]
 
     def set_voltage(self, volts):
+        """ Set the channel idle voltage """
         self._static_v = np.clip(volts, self.a_range[0], self.a_range[1])
         self.goto_voltage(self._static_v)
 
     def set_scan_speed(self, scan_speed):
+        """ Set scan speed in volt per second """
         self._scan_speed = np.clip(scan_speed, 1e-9, 1e6)
         self._goto_speed = self._scan_speed
 
