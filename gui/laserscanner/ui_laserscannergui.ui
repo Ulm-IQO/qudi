@@ -199,7 +199,7 @@
      <x>0</x>
      <y>0</y>
      <width>750</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -421,8 +421,23 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>voltscan_matrix_ViewWidget</tabstop>
+  <tabstop>linesSpinBox</tabstop>
+  <tabstop>resolutionSpinBox</tabstop>
+  <tabstop>startDoubleSpinBox</tabstop>
+  <tabstop>stopDoubleSpinBox</tabstop>
+  <tabstop>speedDoubleSpinBox</tabstop>
+  <tabstop>constDoubleSpinBox</tabstop>
+  <tabstop>voltscan_cb_max_InputWidget</tabstop>
+  <tabstop>voltscan_cb_high_centile_InputWidget</tabstop>
+  <tabstop>voltscan_cb_low_centile_InputWidget</tabstop>
+  <tabstop>voltscan_cb_min_InputWidget</tabstop>
+  <tabstop>voltscan_cb_centiles_RadioButton</tabstop>
+  <tabstop>voltscan_cb_manual_RadioButton</tabstop>
   <tabstop>voltscan_ViewWidget</tabstop>
+  <tabstop>voltscan2_ViewWidget</tabstop>
+  <tabstop>voltscan_matrix_ViewWidget</tabstop>
+  <tabstop>voltscan_matrix2_ViewWidget</tabstop>
+  <tabstop>voltscan_cb_ViewWidget</tabstop>
  </tabstops>
  <resources/>
  <connections>
