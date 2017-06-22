@@ -412,18 +412,9 @@ class LaserScannerLogic(GenericLogic):
         spatial_pos = self._scanning_device.get_scanner_position()
 
         scan_line = np.vstack((
-            np.linspace(
-                spatial_pos[0],
-                spatial_pos[0],
-                len(ramp)),
-            np.linspace(
-                spatial_pos[1],
-                spatial_pos[1],
-                len(ramp)),
-            np.linspace(
-                spatial_pos[2],
-                spatial_pos[2],
-                len(ramp)),
+            np.ones((len(ramp), )) * spatial_pos[0],
+            np.ones((len(ramp), )) * spatial_pos[1],
+            np.ones((len(ramp), )) * spatial_pos[2],
             ramp
             ))
 

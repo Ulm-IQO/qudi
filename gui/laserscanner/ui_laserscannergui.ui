@@ -263,14 +263,14 @@
        <item row="2" column="2">
         <widget class="QLabel" name="stopLabel">
          <property name="text">
-          <string>Stop (V) :</string>
+          <string>Stop:</string>
          </property>
         </widget>
        </item>
        <item row="2" column="4">
         <widget class="QLabel" name="speedLabel">
          <property name="text">
-          <string>Speed (V/s) :</string>
+          <string>Speed:</string>
          </property>
         </widget>
        </item>
@@ -291,7 +291,7 @@
        <item row="2" column="0">
         <widget class="QLabel" name="startLabel">
          <property name="text">
-          <string>Start (V) :</string>
+          <string>Start :</string>
          </property>
         </widget>
        </item>
@@ -314,6 +314,12 @@
        </item>
        <item row="2" column="1">
         <widget class="ScienDSpinBox" name="startDoubleSpinBox">
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
          <property name="minimum">
           <double>-99.000000000000000</double>
          </property>
@@ -321,6 +327,12 @@
        </item>
        <item row="2" column="3">
         <widget class="ScienDSpinBox" name="stopDoubleSpinBox">
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
          <property name="minimum">
           <double>-99.000000000000000</double>
          </property>
@@ -338,6 +350,12 @@
        </item>
        <item row="2" column="5">
         <widget class="ScienDSpinBox" name="speedDoubleSpinBox">
+         <property name="suffix">
+          <string>V/s</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
          <property name="maximum">
           <double>9999.989999999999782</double>
          </property>
@@ -345,6 +363,12 @@
        </item>
        <item row="2" column="7">
         <widget class="ScienDSpinBox" name="constDoubleSpinBox">
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
          <property name="minimum">
           <double>-99.000000000000000</double>
          </property>
