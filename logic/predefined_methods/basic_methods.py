@@ -994,6 +994,163 @@ def generate_xy8_freq(self, name='XY8_freq', rabi_period=1.0e-6, mw_freq=2870.0e
     self.save_ensemble(name, block_ensemble)
     return block_ensemble
 
+def generate_xy8_order(self, name='xy8_order', rabi_period=1.0e-6, mw_freq=933.0e6, mw_amp=0.5,
+                       tau=0.5e-6, start_order=1, steps_order=1, num_of_points=50,
+                       mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.5e-6,
+                       wait_time=1.5e-6, seq_trig_channel='d_ch3', gate_count_channel='d_ch2', alternating=True,
+                       normalization = False):
+
+    """
+
+    """
+    # Sanity checks
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if seq_trig_channel == '':
+        seq_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              seq_trig_channel=seq_trig_channel)
+    if err_code != 0:
+        return
+
+    # get tau array for measurement ticks
+    order_array = start_order + np.arange(num_of_points) * steps_order
+
+    real_tau = tau - rabi_period / 2.
+    real_tauhalf = tau / 2 - 3 * rabi_period / 8
+    if real_tau < 0.0 or real_tauhalf < 0.0:
+        self.log.error('XY8 generation failed! Rabi period of {0:.3e} s is too long for start tau '
+                       'of {1:.3e} s.'.format(rabi_period, tau))
+        return
+
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False, delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          0.0)
+    # get -x pihalf (3pihalf) element
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 180.)
+    # get pi elements
+    pix_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       0.0)
+    piy_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                       90.0)
+    # get tauhalf element
+    tauhalf_element = self._get_idle_element(real_tauhalf, 0., False)
+    # get tau element
+    tau_element = self._get_idle_element(real_tau, 0., False)
+
+    if seq_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, seq_trig_channel, amp=channel_amp)
+        # Create its own block out of the element
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
+        # save block
+        self.save_block('seq_trigger', seq_block)
+
+    # create XY8-N block element list
+    xy8_elem_list = []
+
+    if normalization:
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+        xy8_elem_list.append(pix_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+        xy8_elem_list.append(pix_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+
+
+    # actual XY8-N sequence
+    for xy8_order in order_array:
+        xy8_elem_list.append(pihalf_element)
+        xy8_elem_list.append(tauhalf_element)
+        for n in range(xy8_order):
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(piy_element)
+            xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(pix_element)
+            if n != xy8_order - 1:
+                xy8_elem_list.append(tau_element)
+        xy8_elem_list.append(tauhalf_element)
+        xy8_elem_list.append(pihalf_element)
+        xy8_elem_list.append(laser_element)
+        xy8_elem_list.append(delay_element)
+        xy8_elem_list.append(waiting_element)
+
+        if alternating:
+            xy8_elem_list.append(pihalf_element)
+            xy8_elem_list.append(tauhalf_element)
+            for n in range(xy8_order):
+                xy8_elem_list.append(pix_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(pix_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(pix_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(pix_element)
+                if n != xy8_order - 1:
+                    xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(tauhalf_element)
+            xy8_elem_list.append(pi3half_element)
+            xy8_elem_list.append(laser_element)
+            xy8_elem_list.append(delay_element)
+            xy8_elem_list.append(waiting_element)
+
+    # create XY8-N block object
+    xy8_block = PulseBlock(name, xy8_elem_list)
+    self.save_block(name, xy8_block)
+
+    # create block list and ensemble object
+    block_list = [(xy8_block, 0)]
+    if seq_trig_channel is not None:
+        block_list.append((seq_block, 0))
+
+    # create ensemble out of the block(s)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to invoke settings later on
+    block_ensemble.sample_rate = self.sample_rate
+    block_ensemble.activation_config = self.activation_config
+    block_ensemble.amplitude_dict = self.amplitude_dict
+    block_ensemble.laser_channel = self.laser_channel
+    block_ensemble.alternating = alternating
+    block_ensemble.laser_ignore_list = []
+    block_ensemble.controlled_vals_array = order_array
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    return block_ensemble
+
 ####################################################################################################
 #                                   Helper methods                                              ####
 ####################################################################################################
