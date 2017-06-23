@@ -48,8 +48,8 @@ class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    motorstage_xyz = Connector(interface_name='MotorInterface')
-    motorstage_rot = Connector(interface_name='MotorInterface')
+    motorstage_xyz = Connector(interface='MotorInterface')
+    motorstage_rot = Connector(interface='MotorInterface')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

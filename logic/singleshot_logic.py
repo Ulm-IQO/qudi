@@ -42,17 +42,17 @@ class SingleShotLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    savelogic = Connector(interface_name='SaveLogic')
-    fitlogic = Connector(interface_name='FitLogic')
-    fastcounter = Connector(interface_name='FastCounterInterface')
-    pulseextractionlogic = Connector(interface_name='PulseExtractionLogic')
-    pulsedmeasurementlogic = Connector(interface_name='PulsedMeasurementLogic')
-    traceanalysislogic1 = Connector(interface_name='TraceAnalysisLogic')
-    pulsegenerator = Connector(interface_name='PulserInterface')
-    scannerlogic = Connector(interface_name='ScannerLogic')
-    optimizerlogic = Connector(interface_name='OptimizerLogic')
-    pulsedmasterlogic = Connector(interface_name='PulsedMasterLogic')
-    odmrlogic = Connector(interface_name='ODMRLogic')
+    savelogic = Connector(interface='SaveLogic')
+    fitlogic = Connector(interface='FitLogic')
+    fastcounter = Connector(interface='FastCounterInterface')
+    pulseextractionlogic = Connector(interface='PulseExtractionLogic')
+    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
+    traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
+    pulsegenerator = Connector(interface='PulserInterface')
+    scannerlogic = Connector(interface='ScannerLogic')
+    optimizerlogic = Connector(interface='OptimizerLogic')
+    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
+    odmrlogic = Connector(interface='ODMRLogic')
 
     # add possible signals here
     sigHistogramUpdated = QtCore.Signal()

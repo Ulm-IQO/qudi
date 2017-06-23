@@ -157,8 +157,8 @@ class PulsedMeasurementGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    pulsedmasterlogic = Connector(interface_name='PulsedMasterLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     # status var
     _ana_param_x_axis_name_text = StatusVar('ana_param_x_axis_name_LineEdit', 'Tau')

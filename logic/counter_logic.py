@@ -59,8 +59,8 @@ class CounterLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    counter1 = Connector(interface_name='SlowCounterInterface')
-    savelogic = Connector(interface_name='SaveLogic')
+    counter1 = Connector(interface='SlowCounterInterface')
+    savelogic = Connector(interface='SaveLogic')
 
     # status vars
     _count_length = StatusVar('count_length', 300)

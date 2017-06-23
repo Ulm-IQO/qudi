@@ -36,8 +36,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     _modtype = 'logic'
 
     ## declare connectors
-    process = Connector(interface_name='ProcessInterface')
-    control = Connector(interface_name='ProcessControlInterface')
+    process = Connector(interface='ProcessInterface')
+    control = Connector(interface='ProcessControlInterface')
 
     # config opt
     timestep = ConfigOption(default=100)

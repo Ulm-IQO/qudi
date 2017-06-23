@@ -256,8 +256,8 @@ class ConfocalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
-    savelogic = Connector(interface_name='SaveLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    savelogic = Connector(interface='SaveLogic')
 
     # status vars
     _clock_frequency = StatusVar('clock_frequency', 500)

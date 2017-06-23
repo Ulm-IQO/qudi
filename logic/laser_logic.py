@@ -34,7 +34,7 @@ class LaserLogic(GenericLogic):
     _modclass = 'laser'
     _modtype = 'logic'
 
-    laser = Connector(interface_name='SimpleLaserInterface')
+    laser = Connector(interface='SimpleLaserInterface')
 
     sigUpdate = QtCore.Signal()
 

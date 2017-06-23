@@ -41,11 +41,11 @@ class ODMRLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    odmrcounter = Connector(interface_name='ODMRCounterInterface')
-    fitlogic = Connector(interface_name='FitLogic')
-    microwave1 = Connector(interface_name='mwsourceinterface')
-    savelogic = Connector(interface_name='SaveLogic')
-    taskrunner = Connector(interface_name='TaskRunner')
+    odmrcounter = Connector(interface='ODMRCounterInterface')
+    fitlogic = Connector(interface='FitLogic')
+    microwave1 = Connector(interface='mwsourceinterface')
+    savelogic = Connector(interface='SaveLogic')
+    taskrunner = Connector(interface='TaskRunner')
 
     _mw_scanmode = ConfigOption('scanmode', 'LIST', missing='warn')
 

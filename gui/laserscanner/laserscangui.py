@@ -51,8 +51,8 @@ class LaserScanningGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    laserscanninglogic1 = Connector(interface_name='LaserScanningLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    laserscanninglogic1 = Connector(interface='LaserScanningLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()

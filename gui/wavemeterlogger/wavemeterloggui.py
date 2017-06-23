@@ -55,8 +55,8 @@ class WavemeterLogGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    wavemeterloggerlogic1 = Connector(interface_name='WavemeterLoggerLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    wavemeterloggerlogic1 = Connector(interface='WavemeterLoggerLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
