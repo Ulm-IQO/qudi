@@ -58,6 +58,7 @@ class ODMRLogic(GenericLogic):
     mw_step = StatusVar('mw_step', 2e6)
     run_time = StatusVar('run_time', 60)
     number_of_lines = StatusVar('number_of_lines', 50)
+    fc = StatusVar('fits', None, setter='sv_set_fits', getter='sv_get_fits')
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -74,7 +75,7 @@ class ODMRLogic(GenericLogic):
         self.threadlock = Mutex()
 
     def on_activate(self):
-        """ 
+        """
         Initialisation performed during activation of the module.
         """
         # Get configuration
@@ -86,37 +87,6 @@ class ODMRLogic(GenericLogic):
         self._odmr_counter = self.get_connector('odmrcounter')
         self._save_logic = self.get_connector('savelogic')
         self._taskrunner = self.get_connector('taskrunner')
-
-        # Setup fit container
-        self.fc = self._fit_logic.make_fit_container('ODMR sum', '1d')
-        self.fc.set_units(['Hz', 'c/s'])
-        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
-            self.fc.load_from_dict(self._statusVariables['fits'])
-        else:
-            d1 = OrderedDict()
-            d1['Lorentzian dip'] = {
-                'fit_function': 'lorentzian',
-                'estimator': 'dip'
-                }
-            d1['Two Lorentzian dips'] = {
-                'fit_function': 'lorentziandouble',
-                'estimator': 'dip'
-                }
-            d1['N14'] = {
-                'fit_function': 'lorentziantriple',
-                'estimator': 'N14'
-                }
-            d1['N15'] = {
-                'fit_function': 'lorentziandouble',
-                'estimator': 'N15'
-                }
-            d1['Two Gaussian dips'] = {
-                'fit_function': 'gaussiandouble',
-                'estimator': 'dip'
-                }
-            default_fits = OrderedDict()
-            default_fits['1d'] = d1
-            self.fc.load_from_dict(default_fits)
 
         # Get hardware constraints
         limits = self.get_hw_constraints()
@@ -186,9 +156,46 @@ class ODMRLogic(GenericLogic):
         self._mw_device.off()
         # Disconnect signals
         self.sigNextLine.disconnect()
-        # save configured fits
+
+    def sv_set_fits(self, val):
+        # Setup fit container
+        fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
+        fc.set_units(['Hz', 'c/s'])
+        if isinstance(val, dict) and len(val) > 0:
+            fc.load_from_dict(val)
+        else:
+            d1 = OrderedDict()
+            d1['Lorentzian dip'] = {
+                'fit_function': 'lorentzian',
+                'estimator': 'dip'
+                }
+            d1['Two Lorentzian dips'] = {
+                'fit_function': 'lorentziandouble',
+                'estimator': 'dip'
+                }
+            d1['N14'] = {
+                'fit_function': 'lorentziantriple',
+                'estimator': 'N14'
+                }
+            d1['N15'] = {
+                'fit_function': 'lorentziandouble',
+                'estimator': 'N15'
+                }
+            d1['Two Gaussian dips'] = {
+                'fit_function': 'gaussiandouble',
+                'estimator': 'dip'
+                }
+            default_fits = OrderedDict()
+            default_fits['1d'] = d1
+            fc.load_from_dict(default_fits)
+        self.fc = fc
+
+    def sv_get_fits(self):
+        """ save configured fits """
         if len(self.fc.fit_list) > 0:
-            self._statusVariables['fits'] = self.fc.save_to_dict()
+            return self.fc.save_to_dict()
+        else:
+            return None
 
     def _initialize_odmr_plots(self):
         """ Initializing the ODMR plots (line and matrix). """
@@ -205,9 +212,9 @@ class ODMRLogic(GenericLogic):
     def set_trigger_pol(self, trigger_pol):
         """
         Set trigger polarity of external microwave trigger (for list and sweep mode).
-        
+
         @param object trigger_pol: one of [TriggerEdge.RISING, TriggerEdge.FALLING]
-        
+
         @return object: actually set trigger polarity returned from hardware
         """
         if self.getState() != 'locked':
@@ -303,7 +310,7 @@ class ODMRLogic(GenericLogic):
         @param float step: step frequency to set in Hz
         @param float power: mw power to set in dBm
 
-        @return float, float, float, float: current start_freq, current stop_freq, 
+        @return float, float, float, float: current start_freq, current stop_freq,
                                             current freq_step, current power
         """
         limits = self.get_hw_constraints()
@@ -328,7 +335,7 @@ class ODMRLogic(GenericLogic):
         return self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power
 
     def mw_cw_on(self):
-        """ 
+        """
         Switching on the mw source in cw mode.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
@@ -353,7 +360,7 @@ class ODMRLogic(GenericLogic):
         return mode, is_running
 
     def mw_sweep_on(self):
-        """ 
+        """
         Switching on the mw source in list/sweep mode.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
@@ -444,9 +451,9 @@ class ODMRLogic(GenericLogic):
         return 0
 
     def _stop_odmr_counter(self):
-        """ 
-        Stopping the ODMR counter. 
-        
+        """
+        Stopping the ODMR counter.
+
         @return int: error code (0:OK, -1:error)
         """
 
@@ -649,7 +656,7 @@ class ODMRLogic(GenericLogic):
         return list(self.fc.fit_list)
 
     def do_fit(self, fit_function=None, x_data=None, y_data=None):
-        """ 
+        """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
         if (x_data is None) or (y_data is None):
@@ -866,7 +873,7 @@ class ODMRLogic(GenericLogic):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
 
-        @return 
+        @return
         """
         timeout = 30
         start_time = time.time()
