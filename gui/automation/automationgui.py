@@ -34,7 +34,7 @@ class AutomationGui(GUIBase):
     _modtype = 'gui'
     ## declare connectors
 
-    automationlogic = Connector(interface_name='AutomationLogic')
+    automationlogic = Connector(interface='AutomationLogic')
 
     sigRunTaskFromList = QtCore.Signal(object)
     sigPauseTaskFromList = QtCore.Signal(object)

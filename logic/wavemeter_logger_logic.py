@@ -104,10 +104,10 @@ class WavemeterLoggerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    wavemeter1 = Connector(interface_name='WavemeterInterface')
-    counterlogic = Connector(interface_name='CounterLogic')
-    savelogic = Connector(interface_name='SaveLogic')
-    fitlogic = Connector(interface_name='FitLogic')
+    wavemeter1 = Connector(interface='WavemeterInterface')
+    counterlogic = Connector(interface='CounterLogic')
+    savelogic = Connector(interface='SaveLogic')
+    fitlogic = Connector(interface='FitLogic')
 
     # config opts
     _logic_acquisition_timing = ConfigOption('logic_acquisition_timing', 20.0, missing='warn')

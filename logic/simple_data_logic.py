@@ -32,7 +32,7 @@ class SimpleDataLogic(GenericLogic):
     _modclass = 'smple_data'
     _modtype = 'logic'
 
-    simpledata = Connector(interface_name='SimpleDataInterface')
+    simpledata = Connector(interface='SimpleDataInterface')
 
     sigRepeat = QtCore.Signal()
 

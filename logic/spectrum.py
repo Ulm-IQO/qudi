@@ -42,9 +42,9 @@ class SpectrumLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    spectrometer = Connector(interface_name='SpectrometerInterface')
-    odmrlogic1 = Connector(interface_name='ODMRLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    spectrometer = Connector(interface='SpectrometerInterface')
+    odmrlogic1 = Connector(interface='ODMRLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.

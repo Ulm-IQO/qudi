@@ -44,9 +44,9 @@ class PulsedExtractionExternalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    savelogic = Connector(interface_name='SaveLogic')
-    pulseextractionlogic = Connector(interface_name='PulseExtractionLogic')
-    pulseanalysislogic = Connector(interface_name='PulseAnalysisLogic')
+    savelogic = Connector(interface='SaveLogic')
+    pulseextractionlogic = Connector(interface='PulseExtractionLogic')
+    pulseanalysislogic = Connector(interface='PulseAnalysisLogic')
 
     def __init__(self, **kwargs):
         """ Create QdplotLogic object with connectors.

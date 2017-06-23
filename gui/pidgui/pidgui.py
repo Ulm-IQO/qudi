@@ -53,7 +53,7 @@ class PIDGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    pidlogic = Connector(interface_name='PIDLogic')
+    pidlogic = Connector(interface='PIDLogic')
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()

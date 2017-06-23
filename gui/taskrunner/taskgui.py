@@ -34,7 +34,7 @@ class TaskGui(GUIBase):
     _modclass = 'TaskGui'
     _modtype = 'gui'
     ## declare connectors
-    tasklogic = Connector(interface_name='TaskRunner')
+    tasklogic = Connector(interface='TaskRunner')
 
     sigRunTaskFromList = QtCore.Signal(object)
     sigPauseTaskFromList = QtCore.Signal(object)

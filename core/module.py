@@ -34,13 +34,25 @@ class StatusVar:
     """ This class defines a status variable that is loaded before activation
         and saved after deactivation.
     """
-    def __init__(self, name=None, default=None, *, var_name=None):
+
+    def __init__(self, name=None, default=None, *, setter=None, getter=None, var_name=None):
+        """
+            @param name: identifier of the status variable when stored
+            @param default: default value for the status variable when a
+                saved version is not present
+            @param setter: setter function for variable, do loading type checks or conversion here
+            @param getter: getter function for status variable, do saving conversion here
+            @param var_name: name of the variable inside a running module. Only set this
+                if you know what you are doing!
+        """
         self.var_name = var_name
         if name is None:
             self.name = var_name
         else:
             self.name = name
 
+        self.setter = setter
+        self.getter = getter
         self.default = default
 
     def copy(self, **kwargs):
@@ -51,12 +63,12 @@ class StatusVar:
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
+        newargs['setter'] = self.setter
+        newargs['getter'] = self.getter
         newargs['var_name'] = copy.copy(self.var_name)
         newargs.update(kwargs)
         return StatusVar(**newargs)
 
-    def type_check(self, check_this):
-        return True
 
 class MissingOption(Enum):
     """ Representation for missing ConfigOption """
@@ -65,17 +77,22 @@ class MissingOption(Enum):
     info = -1
     nothing = 0
 
+
 class ConfigOption:
     """ This class represents a configuration entry in the config file that is loaded before
         module initalisation.
     """
+
     def __init__(self, name=None, default=None, *, var_name=None, missing='nothing'):
         """ Create a ConfigOption object.
 
-            @param name
-            @param default
-            @param var_name
-            @param missing
+            @param name: identifier of the option in the configuration file
+            @param default: default value for the case that the option is not set
+                in the config file
+            @param var_name: name of the variable inside a running module. Only set this
+                if you know what you are doing!
+            @param missing: action to take when the option is not set. 'nothing' does nothing,
+                'warn' logs a warning, 'error' logs an error and prevents the module from loading
         """
         self.missing = MissingOption[missing]
         self.var_name = var_name
@@ -103,14 +120,34 @@ class ConfigOption:
 class Connector:
     """ A connector where another module can be connected """
 
-    def __init__(self, *, name=None, interface_name=None):
+    def __init__(self, *, name=None, interface=None):
         """
             @param name: name of the connector
-            @param interface_name: name of the interface for this connector
+            @param interface: interface class or name of the interface for this connector
         """
         self.name = name
-        self.ifname = interface_name
+        self.interface = interface
         self.obj = None
+
+    def __call__(self):
+        """ Return reference to the module that this connector is connected to. """
+        if self.obj is None:
+            raise Exception(
+                'Connector {0} (interface {1}) is not connected.'
+                ''.format(self.name, self.interface))
+        return self.obj
+
+    def connect(self, target):
+        """ Check if target is connectable this connector and connect."""
+        if not isinstance(self.interface, str):
+            if isinstance(target, self.interface):
+                self.obj = target
+            else:
+                raise Exception(
+                    'Module {0} connected to connector {1} does not implement interface {2}.'
+                    ''.format(target, self.name, self.interface))
+        else:
+            self.obj = target
 
     #def __repr__(self):
     #    return '<{0}: name={1}, interface={2}, object={3}>'.format(self.__class__, self.name, self.ifname, self.obj)
@@ -119,7 +156,7 @@ class Connector:
         """ Create a new instance of Connector with copied values and update """
         newargs = {}
         newargs['name'] = copy.copy(self.name)
-        newargs['interface_name'] = copy.copy(self.ifname)
+        newargs['interface'] = copy.copy(self.interface)
         newargs.update(kwargs)
         return Connector(**newargs)
 
@@ -254,9 +291,7 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         # add connectors
         self.connectors = OrderedDict()
         for cname, con in self._conn.items():
-            self.connectors[con.name] = OrderedDict()
-            self.connectors[con.name]['class'] = con.ifname
-            self.connectors[con.name]['object'] = None
+            self.connectors[con.name] = con
 
         # add connection base (legacy)
         for con in self._connectors:
@@ -301,8 +336,11 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         """
         # add status vars
         for vname, var in self._stat_vars.items():
-            if var.name in self._statusVariables and var.type_check(self._statusVariables[var.name]):
-                setattr(self, var.var_name, self._statusVariables[var.name])
+            if var.name in self._statusVariables:
+                if var.setter is None:
+                    setattr(self, var.var_name, self._statusVariables[var.name])
+                else:
+                    var.setter(self._statusVariables[var.name])
         # activate
         self.on_activate()
 
@@ -318,8 +356,11 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         finally:
             # save status vars even if deactivation failed
             for vname, var in self._stat_vars.items():
-                if hasattr(self, var.var_name):
-                    self._statusVariables[var.name] = getattr(self, var.var_name)
+                if var.getter is None:
+                    if hasattr(self, var.var_name):
+                        self._statusVariables[var.name] = getattr(self, var.var_name)
+                else:
+                    self._statusVariables[var.name] = var.getter()
 
     def _build_event(self, event):
         """
@@ -458,10 +499,25 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
 
           @return obj: module that is connected to the named connector
         """
-        obj = self.connectors[connector_name]['object']
-        if (obj is None):
-            raise TypeError('No module connected')
-        return obj
+        if connector_name in self.connectors:
+            connector = self.connectors[connector_name]
+            # new style connector
+            if isinstance(connector, Connector):
+                return connector()
+            # legacy connector
+            elif isinstance(connector, dict):
+                obj = connector['object']
+                if (obj is None):
+                    raise TypeError('No module connected')
+                return obj
+            else:
+                raise Exception(
+                    'Entry {0} in connector dict is of wrong type {1}.'
+                    ''.format(connector_name, type(connector)))
+        else:
+            raise Exception(
+                'Connector {0} does not exist.'
+                ''.format(connector_name))
 
 
 class Base(QtCore.QObject, BaseMixin):
