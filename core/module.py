@@ -319,10 +319,6 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                 cfg_val = opt.default
             setattr(self, opt.var_name, cfg_val)
 
-        # add status var defaults
-        for vname, var in self._stat_vars.items():
-            setattr(self, var.var_name, var.default)
-
         self._manager = manager
         self._name = name
         self._configuration = config
@@ -336,11 +332,14 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         """
         # add status vars
         for vname, var in self._stat_vars.items():
-            if var.name in self._statusVariables:
-                if var.setter is None:
-                    setattr(self, var.var_name, self._statusVariables[var.name])
-                else:
-                    var.setter(self._statusVariables[var.name])
+            sv = self._statusVariables
+            svar = sv[var.name] if var.name in sv else var.default
+
+            if var.setter is None:
+                setattr(self, var.var_name, svar)
+            else:
+                getattr(self, var.setter)(svar)
+
         # activate
         self.on_activate()
 
@@ -360,7 +359,7 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                     if hasattr(self, var.var_name):
                         self._statusVariables[var.name] = getattr(self, var.var_name)
                 else:
-                    self._statusVariables[var.name] = var.getter()
+                    self._statusVariables[var.name] = getattr(self, var.getter)()
 
     def _build_event(self, event):
         """
