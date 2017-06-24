@@ -639,6 +639,9 @@ class Manager(QtCore.QObject):
                     logger.warning('Connector {0}.{1}.{2} is already connected.'
                         ''.format(c, base, mkey))
                     continue
+                logger.warning('Connector {0} in {1}.{2} is a legacy connector.\n'
+                    'Use core.module.Connector to declare connectors.'
+                    ''.format(c, base, mkey))
             else:
                 logger.error('{0}.{1}.{2}: Connector is no dictionary or Connector.'
                     ''.format(c, base, mkey))
@@ -687,9 +690,10 @@ class Manager(QtCore.QObject):
             # Finally set the connection object
             logger.info('Connecting {0}.{1}.{2} to {3}.{4}'
                         ''.format(base, mkey, c, destbase, destmod))
-
+            # new-style connector
             if isinstance(connectors[c], Connector):
                 connectors[c].connect(self.tree['loaded'][destbase][destmod])
+            # legacy connector
             elif isinstance(connectors[c], dict):
                 connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
             else:
@@ -699,11 +703,13 @@ class Manager(QtCore.QObject):
 
         # check that all connectors are connected
         for c, v in self.tree['loaded'][base][mkey].connectors.items():
+            # new-style connector
             if isinstance(v, Connector) and v.obj is None:
                 logger.error('Connector {0} of module {1}.{2} is not '
                              'connected. Connection not complete.'.format(
                                  c, base, mkey))
                 return -1
+            # legacy connector
             elif isinstance(v, dict) and v['object'] is None:
                 logger.error('Connector {0} of module {1}.{2} is not '
                              'connected. Connection not complete.'.format(

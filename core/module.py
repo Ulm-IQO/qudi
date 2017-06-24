@@ -35,7 +35,7 @@ class StatusVar:
         and saved after deactivation.
     """
 
-    def __init__(self, name=None, default=None, *, setter=None, getter=None, var_name=None):
+    def __init__(self, name=None, default=None, *, var_name=None, setter=None, getter=None):
         """
             @param name: identifier of the status variable when stored
             @param default: default value for the status variable when a
@@ -51,8 +51,8 @@ class StatusVar:
         else:
             self.name = name
 
-        self.setter = setter
-        self.getter = getter
+        self.setter_function = setter
+        self.getter_function = getter
         self.default = default
 
     def copy(self, **kwargs):
@@ -63,11 +63,31 @@ class StatusVar:
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
-        newargs['setter'] = self.setter
-        newargs['getter'] = self.getter
+        newargs['setter'] = self.setter_function
+        newargs['getter'] = self.getter_function
         newargs['var_name'] = copy.copy(self.var_name)
         newargs.update(kwargs)
         return StatusVar(**newargs)
+
+    def setter(self, func):
+        """ This is the decorator for declaring a setter function for this StatusVar.
+
+            @param func: getter function for this StatusVar
+            @return: return the original function so this can be used as a decorator
+        """
+        if callable(func):
+            self.setter_function = func
+        return func
+
+    def getter(self, func):
+        """ This is the decorator for declaring a getter function for this StatusVar.
+
+            @param func: getter function for this StatusVar
+            @return: return the original function so this can be used as a decorator
+        """
+        if callable(func):
+            self.getter_function = func
+        return func
 
 
 class MissingOption(Enum):
@@ -148,6 +168,10 @@ class Connector:
                     ''.format(target, self.name, self.interface))
         else:
             self.obj = target
+
+    def disconnect(self):
+        """ Disconnect connector. """
+        self.obj = None
 
     #def __repr__(self):
     #    return '<{0}: name={1}, interface={2}, object={3}>'.format(self.__class__, self.name, self.ifname, self.obj)
@@ -335,10 +359,10 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
             sv = self._statusVariables
             svar = sv[var.name] if var.name in sv else var.default
 
-            if var.setter is None:
+            if var.setter_function is None:
                 setattr(self, var.var_name, svar)
             else:
-                getattr(self, var.setter)(svar)
+                var.setter_function(self, svar)
 
         # activate
         self.on_activate()
@@ -355,11 +379,11 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         finally:
             # save status vars even if deactivation failed
             for vname, var in self._stat_vars.items():
-                if var.getter is None:
+                if var.getter_function is None:
                     if hasattr(self, var.var_name):
                         self._statusVariables[var.name] = getattr(self, var.var_name)
                 else:
-                    self._statusVariables[var.name] = getattr(self, var.getter)()
+                    self._statusVariables[var.name] = var.getter_function(self)
 
     def _build_event(self, event):
         """
