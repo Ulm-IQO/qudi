@@ -78,9 +78,6 @@ class ODMRLogic(GenericLogic):
         """
         Initialisation performed during activation of the module.
         """
-        # Get configuration
-        config = self.getConfiguration()
-
         # Get connectors
         self._mw_device = self.get_connector('microwave1')
         self._fit_logic = self.get_connector('fitlogic')
@@ -112,7 +109,7 @@ class ODMRLogic(GenericLogic):
         else:
             self.mw_scanmode = MicrowaveMode.LIST
             self.log.error('Specified scanmode "{0}" not valid. Choose "list" or "sweep".\n'
-                           'Falling back to list mode.'.format(config['scanmode']))
+                           'Falling back to list mode.'.format(self._mw_scanmode))
 
         # Elapsed measurement time and number of sweeps
         self.elapsed_time = 0.0

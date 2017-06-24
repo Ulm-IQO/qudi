@@ -197,12 +197,6 @@ class MagnetLogic(GenericLogic):
         self._magnet_device = self.get_connector('magnetstage')
         self._save_logic = self.get_connector('savelogic')
 
-        self.log.debug('The following configuration was found.')
-        # checking for the right configuration
-        config = self.getConfiguration()
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
         self._optimizer_logic = self.get_connector('optimizerlogic')
