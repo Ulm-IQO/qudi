@@ -145,7 +145,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
 
         # check where the module belongs and what it can connect to
         for cname, conn in module.connections.items():
-            port_type = QudiPortType('in', module.base, [conn.ifname])
+            port_type = QudiPortType('in', module.base, [conn.interface])
             node.addPort(InputPort(node, g, conn.name, palette.c3, port_type))
 
         if module.base != 'gui':
