@@ -39,7 +39,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     """
     This is the Logic class for confocal stepping.
     """
-    _modclass = 'confocalsteppinglogic'
+    _modclass = 'confocalstepperlogic'
     _modtype = 'logic'
 
     _connectors = {
@@ -75,7 +75,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._couting_device = self.get_connector('confocalcounter')
         self._save_logic = self.get_connector('savelogic')
 
-        self.axis = self._stepping_device.get_stepper_axes_use()
+        self.axis = self.get_stepper_axes_use()
         self.step_amplitude = dict()
         self._step_freq = dict()
         self._axis_mode = dict()
@@ -217,6 +217,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return -1
             return self._stepping_device.set_step_amplitude(self, axis, self.step_amplitude)
         return 0
+
+    def get_stepper_axes_use(self):
+        """ Find out how the axes of the stepping device are named.
+
+        @return list(str): list of axis dictionary
+
+        Example:
+          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible
+          value.
+          If you only care about the number of axes and not the assignment and names
+          use get_stepper_axes
+          On error, return an empty list.
+        """
+        return self._stepping_device.get_stepper_axes_use()
 
     ##################################### Control Stepper ########################################
 
