@@ -32,10 +32,10 @@ class SimpleDummy(Base, SimpleDataInterface):
     _modclass = 'simple'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         pass
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         pass
 
     def getData(self):

@@ -145,13 +145,16 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
     if not isinstance(prefix, str) and prefix is not None:
-        self.log.error('The passed prefix <{0}> of type {1} is not a string and'
-                       'cannot be used as a prefix and will be ignored for now.'
-                       'Correct that!'.format(prefix, type(prefix)))
+        self.log.error(
+            'The passed prefix <{0}> of type {1} is not a string and'
+            'cannot be used as a prefix and will be ignored for now.'
+            'Correct that!'.format(prefix, type(prefix)))
         lorentz_model = Model(physical_lorentzian, independent_vars='x')
     else:
-        lorentz_model = Model(physical_lorentzian, independent_vars='x',
-                              prefix=prefix)
+        lorentz_model = Model(
+            physical_lorentzian,
+            independent_vars='x',
+            prefix=prefix)
 
     full_lorentz_model = amplitude_model * lorentz_model
     params = full_lorentz_model.make_params()
@@ -160,8 +163,9 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
     # will be not optimized:
     if prefix is None:
         prefix = ''
-    full_lorentz_model.set_param_hint('{0!s}fwhm'.format(prefix),
-                                      expr="2*{0!s}sigma".format(prefix))
+    full_lorentz_model.set_param_hint(
+        '{0!s}fwhm'.format(prefix),
+        expr="2*{0!s}sigma".format(prefix))
     # full_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
     #                                   expr='(-100.0)')
                                       # expr='({0!s}amplitude/offset)*100'.format(prefix))
@@ -225,15 +229,17 @@ def make_multiplelorentzian_model(self, no_of_functions=1):
         constant_model, params = self.make_constant_model()
         multi_lorentz_model = multi_lorentz_model + constant_model
 
-        multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
-                                           expr='({0}amplitude/offset)*100'.format(prefix))
+        multi_lorentz_model.set_param_hint(
+            '{0}contrast'.format(prefix),
+            expr='({0}amplitude/offset)*100'.format(prefix))
 
 
         for ii in range(1, no_of_functions):
             prefix = 'l{0:d}_'.format(ii)
             multi_lorentz_model += self.make_lorentzianwithoutoffset_model(prefix=prefix)[0]
-            multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
-                                               expr='({0}amplitude/offset)*100'.format(prefix))
+            multi_lorentz_model.set_param_hint(
+                '{0}contrast'.format(prefix),
+                expr='({0}amplitude/offset)*100'.format(prefix))
 
     params = multi_lorentz_model.make_params()
 
@@ -343,9 +349,14 @@ def estimate_lorentzian_dip(self, x_axis, data, params):
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
-
     # check if parameters make sense
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # check if input x-axis is ordered and increasing
+    sorted_indices = np.argsort(x_axis)
+    if not np.all(sorted_indices == np.arange(len(x_axis))):
+        x_axis = x_axis[sorted_indices]
+        data = data[sorted_indices]
 
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
@@ -402,14 +413,18 @@ def estimate_lorentzian_peak (self, x_axis, data, params):
     params_dip = params
     data_negative = data * (-1)
 
-    error, params_ret = self.estimate_lorentzian_dip(x_axis, data_negative,
-                                                     params_dip)
+    error, params_ret = self.estimate_lorentzian_dip(
+        x_axis,
+        data_negative,
+        params_dip)
 
     params['sigma'] = params_ret['sigma']
     params['offset'].set(value=-params_ret['offset'])
     # set the maximum to infinity, since that is the default value.
-    params['amplitude'].set(value=-params_ret['amplitude'].value, min=-1e-12,
-                            max=np.inf)
+    params['amplitude'].set(
+        value=-params_ret['amplitude'].value,
+        min=-1e-12,
+        max=np.inf)
     params['center'] = params_ret['center']
 
     return error, params

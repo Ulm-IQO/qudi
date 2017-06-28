@@ -41,10 +41,8 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
     _modclass = 'millenniaevlaser'
     _modtype = 'hardware'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Activate Module.
-
-        @param e: fysom state transition information
         """
         config = self.getConfiguration()
         self.connect_laser(config['interface'])
@@ -53,10 +51,8 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
         else:
             self.maxpower = 25.0
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate module
-
-        @param e: fysom state transition information
         """
         self.disconnect_laser()
 
@@ -93,7 +89,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
     def allowed_control_modes(self):
         """ Control modes for this laser
-        
+
             @return ControlMode: available control modes
         """
         return [ControlMode.MIXED]
@@ -228,7 +224,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
     def get_tower_temperature(self):
         """ Get SHG tower temperature
 
-            @return float: SHG tower temperature in degrees Celsius 
+            @return float: SHG tower temperature in degrees Celsius
         """
         return float(self.inst.query('?TT'))
 
@@ -301,14 +297,14 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
 
     def on(self):
         """ Turn laser on.
-            
+
             @return LaserState: actual laser state
         """
         return self.set_laser_state(LaserState.ON)
 
     def off(self):
         """ Turn laser off.
-            
+
             @return LaserState: actual laser state
         """
         return self.set_laser_state(LaserState.OFF)

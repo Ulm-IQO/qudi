@@ -19,7 +19,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from collections import OrderedDict
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 import numpy as np
@@ -162,7 +162,6 @@ class FitSettingsDialog(QtWidgets.QDialog):
             self.tabs[name] = FitParametersWidget(params)
             self._tabWidget.addTab(self.tabs[name], name)
             self.updateParameters(name, fit['parameters'])
-
         # build fit list and send update signals
         self.applySettings()
 
@@ -204,10 +203,10 @@ class FitSettingsDialog(QtWidgets.QDialog):
         """ Return all configured fits from this dialog.
         """
         return self.currentFits
-    
+
     def applySettings(self):
-        """ Apply all settings that the user has made in the dialog and send out update signals. 
-        
+        """ Apply all settings that the user has made in the dialog and send out update signals.
+
         This copies all input widget values to thei coresponding internal data structures,
         creates an removes widgets and parameter tabs.
         """
@@ -225,6 +224,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
         # add tabs for new fits, replace tabs for changed fits
         for name, widget in self.currentFitWidgets.items():
             oldfit = widget.fit
+            oldest = widget.estimator
             widget.applySettings()
 
             if name in self.tabs and widget.fit != oldfit:
@@ -245,7 +245,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
                 model, params = self.all_functions[widget.fit]['make_model']()
                 self.tabs[name] = FitParametersWidget(params)
                 self._tabWidget.addTab(self.tabs[name], name)
-            
+
             # put all widgets here
             self.fitWidgets[name] = widget
 
@@ -320,7 +320,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
 
 class FitSettingsComboBox(QtWidgets.QComboBox):
     """ A QComboBox for use with FitContainer. """
-   
+
     sigFitUpdated = QtCore.Signal(tuple)
 
     def __init__(self, *args, **kwargs):
@@ -353,14 +353,14 @@ class FitSettingsComboBox(QtWidgets.QComboBox):
 
     def getCurrentFit(self):
         """ Return name and fit dictionary for the current fit.
-            
+
             @return tuple(str, dict): name nad fit dict for current fit
         """
         name = self.currentText()
         return (name, self.fit_functions[name])
 
-    def setCurrentFit(self, name): 
-        """ Set current fit by name. 'No Fit' if the name is invalid. 
+    def setCurrentFit(self, name):
+        """ Set current fit by name. 'No Fit' if the name is invalid.
             @param name str: name of the fit to be set as current fit
         """
         if name in self.fit_functions:
@@ -393,6 +393,10 @@ class FitConfigWidget(QtWidgets.QWidget):
         self.estComboBox = QtWidgets.QComboBox()
         self.delButton = QtWidgets.QToolButton()
 
+        self.delIcon = QtGui.QIcon()
+        self.delIcon.addFile('artwork/icons/oxygen/22x22/edit-delete.png')
+        self.delButton.setIcon(self.delIcon)
+
         self._layout = QtWidgets.QHBoxLayout()
         self._layout.addWidget(self.nameLabel)
         self._layout.addWidget(self.fitComboBox)
@@ -412,6 +416,11 @@ class FitConfigWidget(QtWidgets.QWidget):
                 self.estComboBox.setCurrentIndex(self.estComboBox.findText(estimator))
                 self.estimatorChanged(self.estComboBox.findText(estimator))
                 self.applySettings()
+
+        elif self.fitComboBox.count() > 0:
+            self.fitChanged(self.fitComboBox.currentIndex())
+            if self.estComboBox.count() > 0:
+                self.estimatorChanged(self.estComboBox.currentIndex())
 
         self.fitComboBox.activated.connect(self.fitChanged)
         self.estComboBox.activated.connect(self.estimatorChanged)

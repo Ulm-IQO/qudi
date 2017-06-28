@@ -27,7 +27,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is the inverse time how long the scanner stays at the desired position during the scan and counts.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Clock frequency (Hz):</string>
+        <string>Clock frequency (Hz)</string>
        </property>
       </widget>
      </item>
@@ -89,7 +89,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is basically the 'scan' resolution when the scanner moves backwards to prepare to scan again a line.&lt;/p&gt;&lt;p&gt;How many points are scanned in one line is depending on the resolution. Since the scanner is permanently counting during the scan, only the clock frequency determined the speed, how fast a line is scanned by a given resolution. If the scanner has to move back, it uses the same scan line method but just in the reverse. How many points are approached in the backwards movement depends on the 'return slowness'. If you scan with 100 point resolution and set return slowness to 25, than the return movement will be 4 times faster.&lt;/p&gt;&lt;p&gt;BE CAREFULL NOT TO USE A SMALL NUMBER, SINCE THE SCANNER MIGHT CRASH AGAINST THE BOARDER BECAUSE IT IS MOVING BACK TOO FAST!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Return slowness (points):</string>
+        <string>Return slowness (points)</string>
        </property>
       </widget>
      </item>
@@ -255,7 +255,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Fixed Aspect Ratio XY Scan :</string>
+        <string>Fixed Aspect Ratio XY Scan</string>
        </property>
       </widget>
      </item>
@@ -302,6 +302,12 @@
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
       <widget class="QLabel" name="label_4">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="font">
         <font>
          <pointsize>10</pointsize>
@@ -311,7 +317,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Fixed Aspect Ratio Depth Scan :</string>
+        <string>Fixed Aspect Ratio Depth Scan</string>
        </property>
       </widget>
      </item>
@@ -332,6 +338,30 @@
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_7">
+     <item>
+      <widget class="QLabel" name="adjust_label">
+       <property name="text">
+        <string>Adjust cursor size to optimizer range</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="adjust_cursor_to_optimizer_checkBox">
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>

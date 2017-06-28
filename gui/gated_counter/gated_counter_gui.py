@@ -160,11 +160,8 @@ class GatedCounterGui(GUIBase):
         self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
 
 
-    def on_deactivate(self, e=None):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
         """
         self._mw.close()
 

@@ -554,6 +554,8 @@ def make_gaussiandouble_fit(self, x_axis, data, estimator,
                           initial fitting values, best fitting values, data
                           with best fit with given axis,...
     """
+    if units is None:
+        units = ['fucking units', 'other fucking units']
 
     model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
 
@@ -732,7 +734,7 @@ def make_twoDgaussian_fit(self, xy_axes, data, estimator, units=None, add_params
         result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
     except:
         result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
-        lself.log.warning('The 2D gaussian fit did not work: {0}'.format(
+        self.log.warning('The 2D gaussian fit did not work: {0}'.format(
                        result.message))
 
     return result

@@ -22,14 +22,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 import qtpy
 from qtpy import QtCore
-from .FysomAdapter import Fysom  # provides a final state machine
+from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 
 import os
 import sys
 
 
-class Base(QtCore.QObject, Fysom):
+class BaseMixin(Fysom):
     """
     Base class for all loadable modules
 
@@ -69,8 +69,8 @@ class Base(QtCore.QObject, Fysom):
             callbacks = {}
 
         default_callbacks = {
-            'onactivate': self.on_activate,
-            'ondeactivate': self.on_deactivate
+            'onactivate': lambda e: self.on_activate(),
+            'ondeactivate': lambda e: self.on_deactivate()
             }
         default_callbacks.update(callbacks)
 
@@ -97,11 +97,7 @@ class Base(QtCore.QObject, Fysom):
         }
 
         # Initialise state machine:
-        if qtpy.PYQT4 or qtpy.PYSIDE:
-            QtCore.QObject.__init__(self)
-            Fysom.__init__(self, _baseStateList)
-        else:
-            super().__init__(cfg=_baseStateList, **kwargs)
+        super().__init__(cfg=_baseStateList, **kwargs)
 
         # add connection base
         self.connectors = OrderedDict()
@@ -121,21 +117,30 @@ class Base(QtCore.QObject, Fysom):
         self._statusVariables = OrderedDict()
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
-    def __getattr__(self, name):
+    def _build_event(self, event):
         """
-        Attribute getter.
-
-        We'll reimplement it here because otherwise only __getattr__ of the
-        first base class (QObject) is called and the second base class is
-        never looked up.
-        Here we look up the first base class first and if the attribute is
-        not found, we'll look into the second base class.
+        Overrides fysom _build_event to wrap on_activate and on_deactivate to
+        catch and log exceptios.
         """
-        try:
-            return QtCore.QObject.__getattr__(self, name)
-        except AttributeError:
-            pass
-        return Fysom.__getattr__(self, name)
+        base_event = super()._build_event(event)
+        if (event in ['activate', 'deactivate']):
+            if (event == 'activate'):
+                noun = 'activation'
+            else:
+                noun = 'deactivation'
+            def wrap_event(*args, **kwargs):
+                self.log.debug('{0} in thread {1}'.format(
+                    noun.capitalize(),
+                    QtCore.QThread.currentThreadId()))
+                try:
+                    base_event(*args, **kwargs)
+                except:
+                    self.log.exception('Error during {0}'.format(noun))
+                    return False
+                return True
+            return wrap_event
+        else:
+            return base_event
 
     @property
     def log(self):
@@ -145,40 +150,17 @@ class Base(QtCore.QObject, Fysom):
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
 
-    @QtCore.Slot(result=bool)
-    def _wrap_activation(self):
-        self.log.debug('Activation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.activate()
-        except:
-            self.log.exception('Error during activation')
-            return False
-        return True
-
-    @QtCore.Slot(result=bool)
-    def _wrap_deactivation(self):
-        self.log.debug('Deactivation in thread {0}'.format(QtCore.QThread.currentThreadId()))
-        try:
-            self.deactivate()
-        except:
-            self.log.exception('Error during activation:')
-            return False
-        return True
-
-    def on_activate(self, e):
+    def on_activate(self):
         """ Method called when module is activated. If not overridden
             this method returns an error.
 
-        @param object e: Fysom state change descriptor
         """
         self.log.error('Please implement and specify the activation method '
                          'for {0}.'.format(self.__class__.__name__))
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Method called when module is deactivated. If not overridden
             this method returns an error.
-
-        @param object e: Fysom state change descriptor
         """
         self.log.error('Please implement and specify the deactivation '
                          'method {0}.'.format(self.__class__.__name__))
@@ -277,3 +259,6 @@ class Base(QtCore.QObject, Fysom):
             raise TypeError('No module connected')
         return obj
 
+
+class Base(QtCore.QObject, BaseMixin):
+    pass

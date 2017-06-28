@@ -212,13 +212,21 @@ def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
 
     params = self._substitute_params(initial_params=params, update_params=add_params)
 
-    try:
-        result = linear.fit(data, x=x_axis, params=params)
-    except:
-        self.log.warning('The linear fit did not work. lmfit result Message:\n'
-                         '{0}'.format(str(result.message)))
-        result = linear.fit(data, x=x_axis, params=params)
+    result = linear.fit(data, x=x_axis, params=params)
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()
+
+    result_str_dict['Slope'] = {'value': result.params['slope'].value,
+                                'error': result.params['slope'].stderr,
+                                'unit': '{0}/{1}'.format(units[1], units[0])}
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
     return result
 
 def estimate_linear(self, x_axis, data, params):

@@ -59,28 +59,15 @@ class PulsedExtractionExternalLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
-
-
         self._save_logic = self.get_connector('savelogic')
         self._pe_logic = self.get_connector('pulseextractionlogic')
         self._pa_logic = self.get_connector('pulseanalysislogic')
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         return
 

@@ -69,16 +69,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         self.GRAN_MIN = 2   # minimal possible granuality in time, in ns.
         self.FREQ_MAX = int(1/self.GRAN_MIN *1000) # Maximal output frequency.
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
-
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
 
         # Check the platform architecture:
@@ -103,11 +95,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         self.open_connection()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
         """
         self.close_connection()
 

@@ -22,19 +22,50 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import sys
 import fnmatch
+import inspect
 import importlib
 
-def print_connectors(moduledict):
-    print('  IN:')
-    for conn in moduledict['conn']:
-        print('    {}: {}'.format(conn[0], conn[1]))
-    print('')
+from qtpy import QtCore, QtWidgets
 
-def print_interface(moduledict):
-    print('  IF:')
-    for iface in moduledict['if']:
-        print('    {}'.format(iface))
-    print('')
+class Module(QtCore.QObject):
+    """ This class represents a Qudi module.
+    """
+
+    sigAddModule = QtCore.Signal(object)
+
+    def __init__(self, path, name, ref, connections, interfaces):
+        super().__init__()
+        self.path = path
+        if path.startswith('hardware'):
+            self.base = 'hardware'
+        elif path.startswith('logic'):
+            self.base = 'logic'
+        elif path.startswith('gui'):
+            self.base = 'gui'
+        else:
+            self.base = ''
+        self.connections = connections
+        self.interfaces = interfaces
+        self.reference = ref
+
+    def addModule(self):
+        """ Add this module to the config.
+        """
+        self.sigAddModule.emit(self)
+
+    def print_connectors(self):
+        if len(self.connections) > 0:
+            print('  IN:')
+            for conn in self.connections:
+                print('    {}: {}'.format(conn[0], conn[1]))
+            print('')
+
+    def print_interfaces(self):
+        print('  IF:')
+        for interface in self.interfaces:
+            print('    {}'.format(interface))
+        print('')
+
 
 def find_pyfiles(path):
     """ Find all python files in a path that qualify as qudi modules and return in pyton module form"""
@@ -81,39 +112,51 @@ def check_qudi_modules(filelist):
             importsuccess.append(f)
             thinglist = dir(mod)
             for thingname in thinglist:
+                path = '{}.{}'.format(f, thingname)
                 thing = getattr(mod, thingname)
                 try:
+                    if not inspect.isclass(thing):
+                        continue
                     if issubclass(thing, GenericLogic) and thingname != 'GenericLogic':
-                        d = {}
-                        d['mod'] = thing
-                        d['conn'] = [(i, v) for i, v in thing._connectors.items()]
-                        modules['logic']['{}.{}'.format(f, thingname)] = d
+                        modules['logic'][path] = Module(
+                            path,
+                            thingname,
+                            thing,
+                            [(i,v) for i, v in thing._connectors.items()],
+                            [thingname]
+                            )
                     elif issubclass(thing, GUIBase) and thingname != 'GUIBase':
-                        d = {}
-                        d['mod'] = thing
-                        d['conn'] = [(i, v) for i, v in thing._connectors.items()]
-                        modules['gui']['{}.{}'.format(f, thingname)] = d
+                        modules['gui'][path] = Module(
+                            path,
+                            thingname,
+                            thing,
+                            [(i,v) for i, v in thing._connectors.items()],
+                            [thingname]
+                            )
                     elif issubclass(thing, InterruptableTask) and thingname != 'InterruptableTask' :
-                        modules['itask']['{}.{}'.format(f, thingname)] = {'pause': [i for i in thing.pauseTasks]}
+                        modules['itask'][path] = {'pause': [i for i in thing.pauseTasks]}
                     elif issubclass(thing, PrePostTask) and thingname != 'PerPostTask':
-                        modules['pptask']['{}.{}'.format(f, thingname)] = {}
+                        modules['pptask'][path] = {}
                     elif (issubclass(thing, Base)
                         and thingname != 'Base'
                         and thingname != 'GenericLogic'
                         and thingname != 'GUIBase'
                         ):
-                        d = {}
-                        d['mod'] = thing
-                        d['conn'] = [(i,v) for i, v in thing._connectors.items()]
-                        modules['hardware']['{}.{}'.format(f, thingname)] = d
+                        modules['hardware'][path] = Module(
+                            path,
+                            thingname,
+                            thing,
+                            [(i,v) for i, v in thing._connectors.items()],
+                            [thingname]
+                            )
                     elif (f.startswith('interface')
                         and not issubclass(thing, Base)
                         and issubclass(thing.__class__, InterfaceMetaclass)
                         ):
-                        modules['interface']['{}.{}'.format(f, thingname)] = thing
+                        modules['interface'][path] = thing
                     else:
                         pass
-                except:
+                except Exception as e:
                     pass
         except ImportError as e:
             importerror.append([f, e])
@@ -121,12 +164,11 @@ def check_qudi_modules(filelist):
             othererror.append([f, e])
 
     for base in ['hardware', 'logic', 'gui']:
-        for modpath, moddef in modules[base].items():
-            moddef['if'] = [modpath.split('.')[-1]]
-            for ifname, iface in modules['interface'].items():
+        for modpath, module in modules[base].items():
+            for ifname, interface in modules['interface'].items():
                 n = ifname.split('.')[-1]
-                if issubclass(moddef['mod'], iface):
-                    moddef['if'].append(n)
+                if issubclass(module.reference, interface):
+                    module.interfaces.append(n)
 
     return modules, importsuccess, importerror, othererror
 
@@ -137,23 +179,23 @@ if __name__ == '__main__':
         path = sys.argv[1]
     sys.path.append(os.getcwd())
     files = find_pyfiles(path)
-    print(files)
+    # print(files)
     m, i_s, ie, oe = check_qudi_modules(files)
 
     for k, v in m['hardware'].items():
         print('MODULE {}'.format(k))
-        print_connectors(v)
-        print_interface(v)
+        v.print_connectors()
+        v.print_interfaces()
 
     for k, v in m['logic'].items():
         print('MODULE {}'.format(k))
-        print_connectors(v)
-        print_interface(v)
+        v.print_connectors()
+        v.print_interfaces()
 
     for k, v in m['gui'].items():
         print('MODULE {}'.format(k))
-        print_connectors(v)
-        print_interface(v)
+        v.print_connectors()
+        v.print_interfaces()
 
     for k, v in m['pptask'].items():
         print('PPTASK {}'.format(k))

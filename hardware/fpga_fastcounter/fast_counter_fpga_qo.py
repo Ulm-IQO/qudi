@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import struct
 import os
+import time
 
 from interface.fast_counter_interface import FastCounterInterface
 from core.base import Base
@@ -50,29 +51,84 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
+        self.threadlock = Mutex()
+
         self.log.info('The following configuration was found.')
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key, config[key]))
 
-        # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
-        # c dll which was wrapped with SWIG for Windows type systems to be
-        # accessed with python 3.4. You have to ensure to use the python 3.4
-        # version to be able to run the Frontpanel wrapper:
-        self._fpga = ok.FrontPanel()
-
         self._internal_clock_hz = 950e6     # that is a fixed number, 950MHz
         self.statusvar = -1                 # fast counter state
+        # The following is the encoding (status flags and errors) of the FPGA status register
+        self._status_encoding = {0x00000001: 'initialization',
+                                 0x00000002: 'pulling_data',
+                                 0x00000004: 'idle_ready',
+                                 0x00000008: 'running',
+                                 0x80000000: 'TDC_in_reset'}
+        self._error_encoding = {0x00000020: 'Init/output FSM in FPGA hardware encountered an error.'
+                                            ' Please reset the device to recover from this state.',
+                                0x00000040: 'Histogram FSM in FPGA hardware encountered an error. '
+                                            'Please reset the device to recover from this state.',
+                                0x00000080: 'One or more histogram bins have overflown (32 bit '
+                                            'unsigned integer). Time tagger will not continue to '
+                                            'accumulate more events. Please save current data and '
+                                            'start a new measurement.',
+                                0x00000200: 'Output buffer FIFO for pipe transfer via USB has '
+                                            'overflown. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00000400: 'Output buffer FIFO for pipe transfer via USB has '
+                                            'underrun. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00000800: 'Power-On self calibration of DDR2 interface not '
+                                            'successful. Please contact hardware manufacturer.',
+                                0x00001000: 'Read buffer of init/output memory interface port has '
+                                            'overflown. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00002000: 'Write buffer of init/output memory interface port has '
+                                            'underrun. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00004000: 'Init/output memory interface read port has encountered'
+                                            ' a fatal error. Please contact hardware manufacturer.',
+                                0x00008000: 'Init/output memory interface write port has '
+                                            'encountered a fatal error. Please contact hardware '
+                                            'manufacturer.',
+                                0x00010000: 'Read buffer of histogram memory interface port has '
+                                            'overflown. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00020000: 'Write buffer of histogram memory interface port has '
+                                            'underrun. This should not happen under any '
+                                            'circumstance. Please contact hardware manufacturer.',
+                                0x00040000: 'Histogram memory interface read port has encountered a'
+                                            ' fatal error. Please contact hardware manufacturer.',
+                                0x00080000: 'Histogram memory interface write port has encountered '
+                                            'a fatal error. Please contact hardware manufacturer.',
+                                0x00100000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x00200000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x00400000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x00800000: 'Idle memory interface port encountered an error. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x01000000: 'Bandwidth of Timetagger buffer memory exceeded. This '
+                                            'can happen if the rate of detector events is too high '
+                                            'and/or the data requests are too frequent. Timetrace '
+                                            'is not reliable.',
+                                0x10000000: 'Timetagger event buffer has encountered an overflow. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x20000000: 'Timetagger event buffer has encountered an underrun. '
+                                            'This should not happen under any circumstance. '
+                                            'Please contact hardware manufacturer.',
+                                0x40000000: 'Power-On self calibration of TDC not successful. '
+                                            'Please contact hardware manufacturer.'}
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Connect and configure the access to the FPGA.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
         """
 
         config = self.getConfiguration()
@@ -102,20 +158,18 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # fast counter state
         self.statusvar = -1
         # fast counter parameters to be configured. Default values.
-        self._binwidth = 1              # number of elementary bins to be put
-                                        # together in one bigger bin
-        self._gate_length_bins = 8192   # number of bins in one gate (max 8192)
-        self._number_of_gates = 1       # number of gates in the pulse sequence
-                                        # (max 2048)
-        self._histogram_size = 1*8192   # histogram size in bins to tell the
-                                        # FPGA (integer multiple of 8192)
+        self._binwidth = 1              # number of elementary bins to be combined into a single bin
+        self._gate_length_bins = 8192   # number of bins in one gate (max 65536)
+        self._number_of_gates = 1       # number of gates in the pulse sequence (max 512)
 
-        self._old_data = None           # histogram to be added to the current
-                                        # data, i.e. after an overflow on the
-                                        # FPGA.
-        self._overflown = False         # overflow indicator
+        self._old_data = None           # histogram to be added to the current data after
+                                        # continuing a measurement
         self.count_data = None
+        self.saved_count_data = None    # Count data stored to continue measurement
 
+        # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a C dll which was
+        # wrapped for use with python.
+        self._fpga = ok.FrontPanel()
         # connect to the FPGA module
         self._connect()
         # configure DAC for threshold voltages
@@ -124,14 +178,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._set_dac_voltages()
         return
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deactivate the FPGA.
-
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method activation.
         """
         self.stop_measure()
-        self.statusvar = 0
+        self.statusvar = -1
         del self._fpga
         return
 
@@ -139,8 +190,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         """
         Connect host PC to FPGA module with the specified serial number.
         """
-        # check if a FPGA is connected to this host PC. That method is used to
-        # determine also how many devices are available.
+        # check if a FPGA is connected to this host PC. That method is used to determine also how
+        # many devices are available.
         if not self._fpga.GetDeviceCount():
             self.log.error('No FPGA connected to host PC or FrontPanel.exe is running.')
             return -1
@@ -161,43 +212,92 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                            'Upload of bitfile failed.')
             self.statusvar = -1
             return -1
-        else:
-            # Put the fast counter logic and its clock into reset mode
-            self._fpga.SetWireInValue(0x00, 0xC0000000)
-            self._fpga.UpdateWireIns()
-            self.statusvar = 0
-        return 0
+
+        # Wait until all power-up initialization processes on the FPGA have finished
+        timeout = 5
+        start_time = time.time()
+        while True:
+            if time.time()-start_time >= timeout:
+                self.log.error('Power-on initialization of FPGA-timetagger timed out. '
+                               'Device non-functional.')
+                self.statusvar = -1
+                break
+            status_messages = self._get_status_messages()
+            if len(status_messages) == 2 and ('idle_ready' in status_messages) and (
+                'TDC_in_reset' in status_messages):
+                self.log.info('Power-on initialization of FPGA-timetagger complete.')
+                self.statusvar = 0
+                break
+            time.sleep(0.2)
+        return self.statusvar
+
+    def _read_status_register(self):
+        """
+        Reads the 32bit status register from the FPGA Timetagger via USB.
+
+        @return: 32bit status register
+        """
+        self._fpga.UpdateWireOuts()
+        status_register = self._fpga.GetWireOutValue(0x20)
+        return status_register
+
+    def _get_status_messages(self):
+        """
+
+        @return:
+        """
+        status_register = self._read_status_register()
+        status_messages = []
+        for bitmask in self._status_encoding:
+            if (bitmask & status_register) != 0:
+                status_messages.append(self._status_encoding[bitmask])
+        return status_messages
+
+    def _get_error_messages(self):
+        """
+
+        @return:
+        """
+        status_register = self._read_status_register()
+        error_messages = []
+        for bitmask in self._error_encoding:
+            if (bitmask & status_register) != 0:
+                error_messages.append(self._error_encoding[bitmask])
+        return error_messages
 
     def _set_dac_voltages(self):
         """
         """
-        dac_sma_mapping = {1: 1, 2: 5, 3: 2, 4: 6, 5: 3, 6: 7, 7: 4, 8: 8}
-        set_voltage_cmd = 0x03000000
-        for dac_chnl in range(8):
-            sma_chnl = dac_sma_mapping[dac_chnl+1]
-            dac_value = int(np.rint(4096*self._switching_voltage[sma_chnl]/(2.5*2)))
-            if dac_value > 4095:
-                dac_value = 4095
-            elif dac_value < 0:
-                dac_value = 0
-            tmp_cmd = set_voltage_cmd + (dac_chnl << 20) + (dac_value << 8)
-            self._fpga.SetWireInValue(0x01, tmp_cmd)
-            self._fpga.UpdateWireIns()
-            self._fpga.ActivateTriggerIn(0x40, 0)
+        with self.threadlock:
+            dac_sma_mapping = {1: 1, 2: 5, 3: 2, 4: 6, 5: 3, 6: 7, 7: 4, 8: 8}
+            set_voltage_cmd = 0x03000000
+            for dac_chnl in range(8):
+                sma_chnl = dac_sma_mapping[dac_chnl+1]
+                dac_value = int(np.rint(4096*self._switching_voltage[sma_chnl]/(2.5*2)))
+                if dac_value > 4095:
+                    dac_value = 4095
+                elif dac_value < 0:
+                    dac_value = 0
+                tmp_cmd = set_voltage_cmd + (dac_chnl << 20) + (dac_value << 8)
+                self._fpga.SetWireInValue(0x01, tmp_cmd)
+                self._fpga.UpdateWireIns()
+                self._fpga.ActivateTriggerIn(0x41, 0)
         return
 
     def _activate_dac_ref(self):
         """
         """
-        self._fpga.SetWireInValue(0x01, 0x08000001)
-        self._fpga.UpdateWireIns()
-        self._fpga.ActivateTriggerIn(0x40, 0)
+        with self.threadlock:
+            self._fpga.SetWireInValue(0x01, 0x08000001)
+            self._fpga.UpdateWireIns()
+            self._fpga.ActivateTriggerIn(0x41, 0)
         return
 
     def _reset_dac(self):
         """
         """
-        self._fpga.ActivateTriggerIn(0x40, 31)
+        with self.threadlock:
+            self._fpga.ActivateTriggerIn(0x41, 31)
         return
 
     def get_constraints(self):
@@ -274,125 +374,168 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         gate_length_s = self._gate_length_bins * binwidth_s
 
         self._number_of_gates = number_of_gates
-        self._histogram_size = number_of_gates * 8192
 
-        # reset overflow indicator
-        self._overflown = False
-
-        # release the fast counter clock but leave the logic in reset mode
-        # set histogram size in the hardware
-        self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
         self.statusvar = 1
         return binwidth_s, gate_length_s, number_of_gates
 
     def start_measure(self):
         """ Start the fast counter. """
+        self.saved_count_data = None
         # initialize the data array
         self.count_data = np.zeros([self._number_of_gates, self._gate_length_bins])
-        # reset overflow indicator
-        self._overflown = False
-        # Release all reset states and start the counter.
-        # Keep the histogram size.
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 2
-        return 0
+        # Start the counter.
+        self._fpga.ActivateTriggerIn(0x40, 0)
+        timeout = 5
+        start_time = time.time()
+        while True:
+            status_messages = self._get_status_messages()
+            if len(status_messages) <= 2 and ('running' in status_messages):
+                self.log.info('FPGA-timetagger measurement started.')
+                self.statusvar = 2
+                break
+            if time.time() - start_time >= timeout:
+                self.log.error('Starting of FPGA-timetagger timed out.')
+                break
+            time.sleep(0.1)
+        return self.statusvar
 
     def get_data_trace(self):
         """ Polls the current timetrace data from the fast counter.
 
-        @return numpy.array: 2 dimensional array of dtype = int64. This counter
-                             is gated the the return array has the following
-                             shape:
-                                returnarray[gate_index, timebin_index]
+        @return numpy.array: 2 dimensional numpy ndarray. This counter is gated.
+                             The return array has the following shape:
+                             returnarray[gate_index, timebin_index]
 
         The binning, specified by calling configure() in forehand, must be taken
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
-        # initialize the read buffer for the USB transfer.
-        # one timebin of the data to read is 32 bit wide and the data is
-        # transferred in bytes.
-        if self.statusvar != 2:
-            self.log.error('The FPGA is currently not running! The current status is: "{0}". The '
-                           'running status would be 2. Start the FPGA to get the data_trace of the '
-                           'device. An emtpy numpy array[{1},{2}] filled with zeros will be '
-                           'returned.'.format(self.statusvar, self._number_of_gates,
-                                              self._gate_length_bins))
+        with self.threadlock:
+            # check for error status in FPGA timetagger
+            error_messages = self._get_error_messages()
+            if len(error_messages) != 0:
+                for err_message in error_messages:
+                    self.log.error(err_message)
+                self.stop_measure()
+                return self.count_data
+
+            # check for running status
+            status_messages = self._get_status_messages()
+            if len(status_messages) != 1 or ('running' not in status_messages):
+                self.log.error('The FPGA is currently not running! Start the FPGA to get the data '
+                               'trace of the device. An empty numpy array[{0},{1}] filled with '
+                               'zeros will be returned.'.format(self._number_of_gates,
+                                                                self._gate_length_bins))
+                return self.count_data
+
+            # initialize the read buffer for the USB transfer.
+            # one timebin of the data to read is 32 bit wide and the data is transferred in bytes.
+            buffersize = 128 * 1024 * 1024  # 128 MB
+            data_buffer = bytearray(buffersize)
+
+            # trigger the data read in the FPGA
+            self._fpga.ActivateTriggerIn(0x40, 2)
+            # Read data from FPGA
+            read_err_code = self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
+            if read_err_code != buffersize:
+                self.log.error('Data transfer from FPGA via USB failed with error code {0}. '
+                               'Returning old count data.'.format(read_err_code))
+                return self.count_data
+
+            # Encode bytes into 32bit unsigned integers
+            buffer_encode = np.frombuffer(data_buffer, dtype='uint32')
+
+            # Extract only the requested number of gates and gate length
+            buffer_encode = buffer_encode.reshape(512, 65536)[0:self._number_of_gates,
+                                                              0:self._gate_length_bins]
+
+            # convert into float values
+            self.count_data = buffer_encode.astype(float, casting='safe')
+
+            # Add saved count data (in case of continued measurement)
+            if self.saved_count_data is not None:
+                if self.saved_count_data.shape == self.count_data.shape:
+                    self.count_data = self.count_data + self.saved_count_data
+                else:
+                    self.log.error('Count data before pausing measurement had different shape than '
+                                   'after measurement. Can not properly continue measurement.')
+
+            # bin the data according to the specified bin width
+            #if self._binwidth != 1:
+            #    buffer_encode = buffer_encode[:(buffer_encode.size // self._binwidth) * self._binwidth].reshape(-1, self._binwidth).sum(axis=1)
             return self.count_data
-
-        data_buffer = bytearray(self._histogram_size*4)
-        # check if the timetagger had an overflow.
-        self._fpga.UpdateWireOuts()
-        flags = self._fpga.GetWireOutValue(0x20)
-        if flags != 0:
-            # send acknowledge signal to FPGA
-            self._fpga.SetWireInValue(0x00, 0x08000000 + self._histogram_size)
-            self._fpga.UpdateWireIns()
-            self._fpga.SetWireInValue(0x00, self._histogram_size)
-            self._fpga.UpdateWireIns()
-
-            # save latest count data into a new class variable to preserve it
-            self._old_data = self.count_data.copy()
-            self._overflown = True
-
-        # trigger the data read in the FPGA
-        self._fpga.SetWireInValue(0x00, 0x20000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
-
-        # read data from the FPGA
-        read_err_code = self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
-        if read_err_code < 0:
-            self.log.warning('Opal Kelly FrontPanel method ReadFromBlockPipeOut failed with error '
-                             'code {0}.'.format(read_err_code))
-
-        # encode the bytearray data into 32-bit integers
-        buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size, data_buffer))
-
-        # bin the data according to the specified bin width
-        if self._binwidth != 1:
-            buffer_encode = buffer_encode[:(buffer_encode.size // self._binwidth) * self._binwidth].reshape(-1, self._binwidth).sum(axis=1)
-
-        # reshape the data array into the 2D output array
-        self.count_data = buffer_encode.reshape(self._number_of_gates, -1)[:, 0:self._gate_length_bins]
-        if self._overflown:
-            self.count_data = np.add(self.count_data, self._old_data)
-        return self.count_data
 
     def stop_measure(self):
         """ Stop the fast counter. """
-        # put the fast counter logic into reset state
-        self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        # reset overflow indicator
-        self._overflown = False
-        self.statusvar = 1
-        return 0
+        self.saved_count_data = None
+        # stop FPGA timetagger
+        self._fpga.ActivateTriggerIn(0x40, 1)
+        # Check status and wait until stopped
+        timeout = 5
+        start_time = time.time()
+        while True:
+            status_messages = self._get_status_messages()
+            if len(status_messages) == 2 and ('idle_ready' in status_messages) and (
+                        'TDC_in_reset' in status_messages):
+                self.log.info('FPGA-timetagger measurement stopped.')
+                self.statusvar = 1
+                break
+            if time.time() - start_time >= timeout:
+                self.log.error('Stopping of FPGA-timetagger timed out.')
+                break
+            time.sleep(0.1)
+        return self.statusvar
 
     def pause_measure(self):
         """ Pauses the current measurement.
 
         Fast counter must be initially in the run state to make it pause.
         """
-        # set the pause state in the FPGA
-        self._fpga.SetWireInValue(0x00, 0x10000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 3
-        return 0
+        # stop FPGA timetagger
+        self.saved_count_data = self.get_data_trace()
+        self._fpga.ActivateTriggerIn(0x40, 1)
+        # Check status and wait until stopped
+        timeout = 5
+        start_time = time.time()
+        while True:
+            status_messages = self._get_status_messages()
+            if len(status_messages) == 2 and ('idle_ready' in status_messages) and (
+                        'TDC_in_reset' in status_messages):
+                self.log.info('FPGA-timetagger measurement paused.')
+                self.statusvar = 3
+                break
+            if time.time() - start_time >= timeout:
+                self.log.error('Pausing of FPGA-timetagger timed out.')
+                break
+            time.sleep(0.1)
+        return self.statusvar
 
     def continue_measure(self):
         """ Continues the current measurement.
 
         If fast counter is in pause state, then fast counter will be continued.
         """
-        # exit the pause state in the FPGA
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self.statusvar = 2
-        return 0
+        self.count_data = np.zeros([self._number_of_gates, self._gate_length_bins])
+        # Check if fastcounter was in pause state
+        if self.statusvar != 3:
+            self.log.error('Can not continue fast counter since it was not in a paused state.')
+            return self.statusvar
+
+        # Start the counter.
+        self._fpga.ActivateTriggerIn(0x40, 0)
+        timeout = 5
+        start_time = time.time()
+        while True:
+            status_messages = self._get_status_messages()
+            if len(status_messages) == 1 and ('running' in status_messages):
+                self.log.info('FPGA-timetagger measurement started.')
+                self.statusvar = 2
+                break
+            if time.time() - start_time >= timeout:
+                self.log.error('Starting of FPGA-timetagger timed out.')
+                break
+            time.sleep(0.1)
+        return self.statusvar
 
     def is_gated(self):
         """ Check the gated counting possibility.
@@ -407,7 +550,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
         @return float: current length of a single bin in seconds (seconds/bin)
         """
-        width_in_seconds = self._binwidth * 1e-6/950
+        width_in_seconds = self._binwidth / self._internal_clock_hz
         return width_in_seconds
 
     def get_status(self):
