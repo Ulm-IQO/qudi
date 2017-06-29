@@ -31,9 +31,10 @@ from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
+from interface.finite_counter_interface import FiniteCounterInterface
 
 
-class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface):
+class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface, FiniteCounterInterface):
     """ stable: Kay Jahnke, Alexander Stark
 
     A National Instruments device that can count and control microvave generators.
@@ -2060,7 +2061,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             retval = -1
         return retval
 
-    # ======================== Stepper counting/non synched ==========================
+    # ================ FiniteCounterInterface Commands =======================
 
     def set_up_finite_counter(self, samples,
                               counter_channel=None,
@@ -2308,6 +2309,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return int: error code (0:OK, -1:error)
         """
         return self.close_clock(scanner=True)
+    # ================ End FiniteCOunterInterface Commands =======================
+
 
 
 class SlowGatedNICard(NICard):
