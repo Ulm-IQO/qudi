@@ -38,7 +38,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -68,7 +68,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         self.mw_channel = 'a_ch1'
         return
 
-    def on_deactivate(self,e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed
