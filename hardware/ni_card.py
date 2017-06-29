@@ -168,6 +168,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         self._clock_frequency_default = 100  # in Hz
         self._scanner_clock_frequency_default = 100  # in Hz
+        self._fixed_clock_frequency_default = 100 #in Hz
         # number of readout samples, mainly used for gated counter
         self._samples_number_default = 50
 
@@ -302,6 +303,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self._scanner_clock_frequency = self._scanner_clock_frequency_default
             self.log.warning(
                 'No scanner_clock_frequency configured, taking 100 Hz instead.')
+
+        if 'fixed_clock_frequency' in config.keys():
+            self._fixed_clock_frequency =  config['fixed_clock_frequency']
+        else:
+            self._fixed_clock_frequency = self._fixed_clock_frequency_default
+            self.log.warning('No scanner_clock_frequency configured, taking {} Hz '
+                             'instead'.format(self._fixed_clock_frequency_default))
 
         if 'samples_number' in config.keys():
             self._samples_number = config['samples_number']
@@ -2078,8 +2086,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return int:  error code (0: OK, -1:error)
         """
 
-        # Todo: Update this for this fixed coutner
-        # --------------------------------------------------------#
         if self._scanner_clock_daq_task is None and clock_channel is None:
             self.log.error('No clock running, call set_up_clock before starting the counter.')
             return -1
@@ -2101,7 +2107,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             my_photon_source = photon_source
         else:
             my_photon_source = self._photon_sources[0]
-        # ----------------------------------------------------------#
+
+        # value defined for readout and wait until done
+        self._fixed_counter_samples = samples
 
         try:
             # This task will count photons with binning defined a clock
@@ -2177,8 +2185,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         # The clock for the fixed_counter is created on the same principle as it is
         # for the counter. Just to keep consistency, this function is a wrapper
         # around the set_up_clock.
+        if clock_frequency is None:
+            clock_frequency = self._fixed_clock_frequency
+        else:
+            self._fixed_clock_frequency = clock_frequency
+
+        #Todo: Check if this devided by 2 is sensible
         return self.set_up_clock(
-            clock_frequency=clock_frequency,
+            clock_frequency=clock_frequency/2,#because it will be mutipled by 2 in the setup
             clock_channel=clock_channel,
             scanner=True)
 
@@ -2218,20 +2232,48 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def get_fixed_counts(self):
         """ Returns latest count samples acquired by fixed photon counting.
 
-        @param int samples: if defined, number of samples to read in one go.
-                            How many samples are read per readout cycle. The
-                            readout frequency was defined in the counter setup.
-                            That sets also the length of the readout array.
-        @param int timeout: Maximal timeout for the read process. Since nidaq
-                            waits for all samples to be acquired, make sure
-                            this is long enough.
-        @param bool read_available_samples : if False, NiDaq waits for the
-                                             sample you asked for to be in the
-                                             buffer before, True it returns
-                                             what is in buffer until 'samples'
-                                             is full.
+        @return np.array, samples:The photon counts per second and the amount of samples read. For
+        error array with length 1 and entry -1
         """
-        pass
+        if len(self._scanner_counter_daq_tasks) < 1:
+            self.log.error(
+                'No counter is running, cannot read counts line without one.')
+            return np.array([-1.])
+        if self._fixed_counter_samples is None:
+            self.log.error("No fixed counter samples sepcified. Redo setup of counter")
+            return np.array([-1])
+
+        # *1.1 to have an extra (10%) short waiting time.
+        timeout = (self._fixed_counter_samples * 1.1) / self._fixed_clock_frequency
+
+        # Count data will be written here
+        _fixed_count_data = np.empty((1, self._fixed_counter_samples), dtype=np.uint32)
+
+        # Number of samples which were read will be stored here
+        n_read_samples = daq.int32()
+
+        try:
+            daq.DAQmxReadCounterU32(
+                # read from this task
+                self._scanner_counter_daq_tasks,
+                # wait till all finite counts are acquired then return
+                -1,
+                # maximal timeout for the read process
+                timeout,
+                # write into this array
+                _fixed_count_data,
+                # length of array to write into
+                samples,
+                # number of samples which were actually read.
+                daq.byref(n_read_samples),
+                # Reserved for future use. Pass NULL (here None) to this parameter
+                None)
+        except:
+            self.log.error("not able to read counts for fixed counter")
+            return np.array([-1]), 0
+
+        return self._fixed_clock_frequency*_fixed_count_data, n_read_samples #counts per second
+
 
     def stop_fixed_counter(self):
         """Stops the preconfigured counter task
@@ -2242,6 +2284,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error(
                 'Cannot stop Fixed Counter Task since it is not running or configured!\n'
                 'Start the Counter Task Task before you can actually stop it!')
+            return -1
+        if self._fixed_counter_samples is None:
+            self.log.error("No fixed counter samples sepcified.")
             return -1
         try:
             daq.DAQmxStopTask(self._scanner_counter_daq_tasks)
@@ -2255,6 +2300,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         @return int: error code (0:OK, -1:error)
         """
+        #erase sample value
+        self._fixed_counter_samples = None
         return self.close_counter(scanner=True)
 
     def close_fixed_counter_clock(self):
