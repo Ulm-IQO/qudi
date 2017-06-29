@@ -45,7 +45,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     _connectors = {
         'confocalstepper1': 'ConfocalStepperInterface',
         'savelogic': 'SaveLogic',
-        'confocalcounter': 'ConfocalCounterInterface'
+        'confocalcounter': 'FiniteCounterInterface'
     }
 
     # Todo I need a confocalocunterinterface, like a slow counter Interface which uses someting like a slow counter to
@@ -64,7 +64,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # counter for scan_image
         self._step_counter = 0
-        self._zscan = False
+        self._xzscan = False
+        self._xyscan = True
+        self._yzscan = True
+        self._inverted_scan = False
         self.stopRequested = False
         self.depth_scan_dir_is_xz = True
 
@@ -72,7 +75,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # Connectors
         self._stepping_device = self.get_connector('confocalstepper1')
-        self._couting_device = self.get_connector('confocalcounter')
+        self._counting_device = self.get_connector('confocalcounter')
         self._save_logic = self.get_connector('savelogic')
 
         self.axis = self.get_stepper_axes_use()
@@ -80,10 +83,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._step_freq = dict()
         self._axis_mode = dict()
         for i in self.axis:
-            #Todo: Add error check here or in method else it tries to write non existing value into itself
+            # Todo: Add error check here or in method else it tries to write non existing value into itself
             self.step_amplitude[i] = self.get_stepper_amplitude(i)
             self._step_freq[i] = self.get_stepper_frequency(i)
-            #Todo: write method that enquires stepping device mode
+            # Todo: write method that enquires stepping device mode
             self._axis_mode[i] = self._stepping_device.get_axis_mode(i)
 
             # Todo add connectors
@@ -132,7 +135,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if freq == -1:
             self.log.warning("The Stepping device could not read out the frequency")
             return self._step_freq
-        #Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
+        # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
         # this is better
         self._step_freq = freq
         return freq
@@ -159,7 +162,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if amp == -1:
             self.log.warning("The Stepping device could not read out the amplitude")
             return self.step_amplitude
-        #Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
+        # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
         # this is better
         self.step_amplitude = amp
         return amp
@@ -239,9 +242,54 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        # Check the parameters of the device
-        self._check_freq()
-        self._check_amplitude()
+        # Todo: Do we need a lock for the stepper as well?
+        self.lock()
+
+        # Todo: to be done when GUI is done
+        # if self.initialize_image() < 0:
+        #    self._scanning_device.unlock()
+        #    self.unlock()
+        #    return -1
+
+        if self._xzscan:
+            pass
+
+
+
+        # Check the parameters of the stepper device
+        freq_status = self._check_freq()
+        amp_status = self._check_amplitude()
+        if freq_status < 0 or amp_status < 0:
+            self._counting_device.unlock()
+            self.unlock()
+            return -1
+
+        # set the axis to stepping
+        axis_status1 = self.set_mode_stepping(axis_1)
+        axis_status2 = self.set_mode_stepping(axis_2)
+        if axis_status1 < 0 or axis_status2 < 0:
+            self.set_mode_ground(axis_1)
+            self.set_mode_ground(axis_2)
+            self._counting_device.unlock()
+            self.unlock()
+            return -1
+
+        # initialize counting device
+        self._counting_device.lock()
+        clock_status = self._counting_device.set_up_finite_counter_clock(
+            clock_frequency=self._step_freq)
+        if clock_status < 0:
+            self._counting_device.unlock()
+            self.unlock()
+            return -1
+
+        scanner_status = self._counting_device.set_up_finite_counter(samples)
+        if scanner_status < 0:
+            self._counting_device.close_finite_counter_clock()
+            self._counting_device.unlock()
+            self.unlock()
+            return -1
+
         pass
 
     def continue_stepper(self):
@@ -331,6 +379,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return data
 
+    ##################################### Acquire Data ###########################################
+
+    def _initalize_stepping(self):
+        """"
+
+        return
+        """
+
     ##################################### Handle Data ########################################
 
     def initialize_image(self):
@@ -417,7 +473,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             1]
         self.signal_tilt_correction_active.emit(enabled)
 
-        ##################################### Move through History ########################################
+    ##################################### Move through History ########################################
 
     def history_forward(self):
         """ Move forward in confocal image history.

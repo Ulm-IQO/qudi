@@ -44,15 +44,6 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
     # ============================== Stepper Commands ====================================
 
     @abc.abstractmethod
-    def get_step_freq(self, f):
-        """ Checks the step frequency for a specific axis
-
-        @param str axis: the axis for which the frequency is to be checked
-        @return float: the step amplitude of the axis
-        """
-        pass
-
-    @abc.abstractmethod
     def change_step_size(self, axis, stepsize, temp):
         """Changes the step size of the attocubes according to a list give in the config file
         @param str  axis: axis  for which steps size is to be changed
@@ -196,40 +187,3 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         @return 0 
         """
         pass
-
-    # ============================== Counter Commands ====================================
-
-    @abc.abstractmethod
-    def get_scanner_count_channels(self):
-        """ Returns the list of channels that are recorded while scanning an image.
-
-        @return list(str): channel names
-
-        Most methods calling this might just care about the number of channels.
-        """
-        pass
-        # Todo this is connected to NIDAQ not attocube and has to be checked later
-
-    @abc.abstractmethod
-    def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
-        """ Configures the hardware clock of the NiDAQ card to give the timing.
-
-        @param float clock_frequency: if defined, this sets the frequency of the
-                                      clock
-        @param str clock_channel: if defined, this is the physical channel of
-                                  the clock
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-        # Todo this is connected to NIDAQ not attocube and has to be checked later
-
-    @abc.abstractmethod
-    def close_scanner_clock(self, power=0):
-        """ Closes the clock and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-        # ============================== Mixed Commands ====================================
