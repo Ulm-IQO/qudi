@@ -44,7 +44,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         # Todo this is connected to NIDAQ not attocube and has to be checked later
 
     @abc.abstractmethod
-    def set_up_fixed_counter(self, samples,
+    def set_up_finite_counter(self, samples,
                              counter_channel=None,
                              photon_source=None,
                              clock_channel=None):
@@ -69,7 +69,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_up_fixed_counter_clock(self, clock_frequency=None, clock_channel=None):
+    def set_up_finite_counter_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of
@@ -82,7 +82,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def start_fixed_counter(self):
+    def start_finite_counter(self):
         """Starts the preconfigured counter task
 
         @return int: error code (0:OK, -1:error)
@@ -90,7 +90,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def stop_fixed_counter(self):
+    def stop_finite_counter(self):
         """Stops the preconfigured counter task
 
         @return int: error code (0:OK, -1:error)
@@ -98,7 +98,7 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def close_fixed_counter(self):
+    def close_finite_counter(self):
         """ Clear tasks, so that counters are not in use any more.
 
         @return int: error code (0:OK, -1:error)
@@ -106,16 +106,16 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def close_fixed_counter_clock(self):
-        """ Closes the fixed counter clock and cleans up afterwards.
+    def close_finite_counter_clock(self):
+        """ Closes the finite counter clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
         pass
 
     @abc.abstractmethod
-    def get_fixed_counts(self):
-        """ Returns latest count samples acquired by fixed photon counting.
+    def get_finite_counts(self):
+        """ Returns latest count samples acquired by finite photon counting.
 
         @return np.array, samples:The photon counts per second and the amount of samples read. For
         error array with length 1 and entry -1

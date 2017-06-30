@@ -280,7 +280,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             return self._axis_amplitude[axis]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
-        #Todo: Do better error handling
+        # Todo: Do better error handling
 
     def set_step_freq(self, axis, freq=None):
         """Sets the step frequency for axis for the ANC300
@@ -411,7 +411,9 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 result = self._send_cmd(command)
                 if result == 0:
                     self._axis_mode[axis] = mode
-                return 0
+                    return 0
+                else:
+                    self.log.error("Setting axis {} to mode {} failed".format(self._attocube_axis, mode))
             else:
                 self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
                 return -1
