@@ -48,8 +48,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         'confocalcounter': 'FiniteCounterInterface'
     }
 
-    # Todo I need a confocalocunterinterface, like a slow counter Interface which uses someting like a slow counter to
-    # aqucire the counts used for the stepper logic
+    signal_stop_stepping = QtCore.Signal()
+
     # Todo: For steppers with hardware realtime info like res readout of attocubes clock synchronisation and readout needs to be written
     # Therefore a new interface (ConfocalReadInterface o.ä.) needs to be made
 
@@ -70,7 +70,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.depth_scan_dir_is_xz = True
         self._steps_scan_line = 50
 
-        # Todo: Add initalisation from _statusVariable
+        # Todo: Add initialisation from _statusVariable
 
         # Connectors
         self._stepping_device = self.get_connector('confocalstepper1')
@@ -89,6 +89,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._axis_mode[i] = self._stepping_device.get_axis_mode(i)
 
             # Todo add connectors
+        # Sets connections between signals and functions
+        self.signal_step_lines_next.connect(self._step_line, QtCore.Qt.QueuedConnection)
+        self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
+        self.signal_continue_stepping.connect(self.continue_stepper, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -125,8 +129,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # checks if stepper is still running
         if self.getState() == 'locked':
             return -1
-        else:
-            return 0
         return self._stepping_device.set_step_freq(axis, frequency)
 
     def get_stepper_frequency(self, axis):
@@ -152,8 +154,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # checks if stepper is still running
         if self.getState() == 'locked':
             return -1
-        else:
-            return 0
         return self._stepping_device.set_step_amplitude(axis, amplitude)
 
     def get_stepper_amplitude(self, axis):
@@ -186,7 +186,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     def _check_freq(self, axis):
         """ Checks if the frequency in te device is the same as set by the program
-        If the frequencies are different the frequency in the device is changed to the set frequency
+        If the frequencies are different the frequency in the device is changed to the set
+        frequency
 
         @return int: error code (0:OK, -1:error)
         """
@@ -234,7 +235,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         return self._stepping_device.get_stepper_axes_use()
 
-    ##################################### Control Stepper ########################################
+    ################################### Control Stepper ########################################
 
     def start_stepper(self):
         """Starts the scanning procedure
@@ -242,6 +243,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         # Todo: Do we need a lock for the stepper as well?
+        self._step_counter = 0
         self.lock()
 
         # Todo: to be done when GUI is done
@@ -259,7 +261,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._second_scan_axis = a
         else:
             self.log.error(
-                "One of the chosen axes {} are not defined for the stepper hardware.".format(self._scan_axes))
+                "One of the chosen axes {} are not defined for the stepper hardware.".format(
+                    self._scan_axes))
             self.unlock()
             return -1
 
@@ -303,6 +306,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         self._stepping_device.lock()
+        self.signal_step_lines_next.emit(True)
 
         return 0
 
@@ -312,62 +316,119 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         # Todo: Make sure attocube axis are set back to gnd if deemed sensible
-        pass
+        with self.threadlock:
+            if self.getState() == 'locked':
+                self.stopRequested = True
+        self.signal_stop_stepping.emit()
+        return 0
 
     def continue_stepper(self):
         """Continue the stepping procedure
 
         @return int: error code (0:OK, -1:error)
         """
-        # Check the parameters of the device
-        self._check_freq()
-        self._check_amplitude()
+        self.lock()
+        # Check the parameters of the stepper device
+        freq_status = self._check_freq(self._first_scan_axis)
+        amp_status = self._check_amplitude(self._second_scan_axis)
+        if freq_status < 0 or amp_status < 0:
+            self.unlock()
+            return -1
+        freq_status = self._check_freq(self._first_scan_axis)
+        amp_status = self._check_amplitude(self._second_scan_axis)
+        if freq_status < 0 or amp_status < 0:
+            self.unlock()
+            return -1
+
         pass
 
     def move_to_position(self, x=None, y=None, z=None):
         """Moving the stepping device (approximately) to the desired new position from the GUI.
 
-        @param float x: if defined, changes to position in x-direction (steps)
-        @param float y: if defined, changes to position in y-direction (steps)
-        @param float z: if defined, changes to position in z-direction (steps)
+        @param int x: if defined, position in x-direction (steps)
+        @param int y: if defined, position in y-direction (steps)
+        @param int z: if defined, position in z-direction (steps)
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo throw a waring, that without position feedback this is very imprecise
 
+        self.log.info("Movement of attocubes to an absolute position no possible for steppers.\n"
+                      "The position moved to is the given of amount of steps, not a physical "
+                      "given range away")
         # Check if freq and voltage are set as set in GUI
 
-        if x is not None and x != self._current_x:
+        if x is not None and int(x) != self._current_x:
+            # check freq and amplitude
+            status_freq = self._check_freq("x")
+            status_amp = self._check_amplitude("x")
+            if status_amp < 0:
+                self.log.error("A stepping is not possible, as the amplitude in the system and "
+                               "the amp. in the gui are different for the x axis.Please check")
+                return -1
+            if status_freq < 0:
+                self.log.error("A stepping is not possible, as the frequency in the system and "
+                               "the freq. in the gui are different for the x axis.Please check")
+                return -1
+
+            x = int(x)
+            # check the direction of the movement
             out = True
             x_steps = x - self._current_x
-            if (x_steps < 0):
+            if x_steps < 0:
                 out = False
             return_value = self._stepping_device.move_attocube("x", True, out, steps=abs(x_steps))
             self._current_x = x
+            if return_value == -1:
+                return return_value
 
-        if return_value == -1:
-            return return_value
+        if y is not None and int(y) != self._current_y:
+            # check freq and amplitude
+            status_freq = self._check_freq("y")
+            status_amp = self._check_amplitude("y")
+            if status_amp < 0:
+                self.log.error("A stepping is not possible, as the amplitude in the system and "
+                               "the amp. in the gui are different for the y axis.Please check")
+                return -1
+            if status_freq < 0:
+                self.log.error("A stepping is not possible, as the frequency in the system and "
+                               "the freq. in the gui are different for the y axis.Please check")
+                return -1
 
-        if y is not None and y != self._current_y:
+            y = int(y)
+            # check the direction of the movement
             out = True
             y_steps = y - self._current_y
-            if (y_steps < 0):
+            if y_steps < 0:
                 out = False
             return_value = self._stepping_device.move_attocube("y", True, out, steps=abs(y_steps))
             self._current_y = y
+            if return_value == -1:
+                return return_value
 
-        if return_value == -1:
-            return return_value
+        if z is not None and int(z) != self._current_z:
+            # check freq and amplitude
+            status_freq = self._check_freq("z")
+            status_amp = self._check_amplitude("z")
+            if status_amp < 0:
+                self.log.error("A stepping is not possible, as the amplitude in the system and "
+                               "the amp. in the gui are different for the z axis.Please check")
+                return -1
+            if status_freq < 0:
+                self.log.error("A stepping is not possible, as the frequency in the system and "
+                               "the freq. in the gui are different for the z axis.Please check")
+                return -1
 
-        if z is not None and z != self._current_z:
-            up = True
+            z = int(z)
+            # check the direction of the movement
+            out = True
             z_steps = z - self._current_z
-            if (z_steps < 0):
+            if z_steps < 0:
                 out = False
             return_value = self._stepping_device.move_attocube("z", True, out, steps=abs(z_steps))
             self._current_z = z
-
-        return return_value
+            return return_value
+        self.log.warning("No movement was defined or necessary")
+        return 0
 
     def get_position(self):
         """ Get position from stepping device.
@@ -385,7 +446,58 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return bool: If true scan was in up direction, if false scan was in down direction
         """
-        pass
+        # Todo: Make sure how to implement the threadlocking here correctly.
+
+        # Todo: Think about the question wether we actually step the same amount of steps as we
+        # count or is we might be off by one, as we are notcounting when moving up on in "y"
+
+
+        # If the stepping measurement is not running do nothing
+        if self.getState() != 'locked':
+            return
+
+            # stop stepping
+        if self.stopRequested:
+            with self.threadlock:
+                self.kill_counter()
+                self.stopRequested = False
+                self.unlock()
+                self._stepping_device.unlock()
+                # self.signal_xy_image_updated.emit()
+                # self.signal_depth_image_updated.emit()
+
+                # if self._zscan:
+                #    self._depth_line_pos = self._scan_counter
+                # else:
+                #    self._xy_line_pos = self._scan_counter
+                # add new history entry
+                # new_history = ConfocalHistoryEntry(self)
+                # new_history.snapshot(self)
+                # self.history.append(new_history)
+                # if len(self.history) > self.max_history_length:
+                #    self.history.pop(0)
+                # self.history_index = len(self.history) - 1
+                return
+
+        # move and count
+        new_counts = self._step_and_count(self._first_scan_axis, direction,
+                                          steps=self._steps_scan_line)
+        if new_counts[0] == -1:
+            self.stopRequested = True
+            self.signal_step_lines_next.emit(direction)
+            return
+
+        self._step_counter += 1
+        if not direction:  # flip the count direction
+            new_counts = np.flipud(new_counts)
+        direction = not direction  # invert direction
+
+        # move on line up
+        self._stepping_device.move_attocube(self._second_scan_axis, True, True, 1)
+
+        self.signal_step_lines_next(direction)
+
+
         # Todo This needs to do the following things: scan a line with the given amount of steps and th
 
     def _step_and_count(self, axis, direction=True, steps=1):
@@ -400,13 +512,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("moving of attocube failed")
             return -1
 
-        if self._counting_device.start_finite_counter()<0:
+        if self._counting_device.start_finite_counter() < 0:
             self.log.error("Starting the counter failed")
             return -1
 
-        time.sleep(steps*self._step_freq(axis)) #wait till stepping finished for readout
+        time.sleep(steps * self._step_freq(axis))  # wait till stepping finished for readout
         result = self._counting_device.get_fixed_counts()
         retval = 0
+        a = self._counting_device.stop_finite_counter()
         if result[0] == [-1]:
             self.log.error("The readout of the counter failed")
             retval = -1
@@ -414,8 +527,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("A different amount of data than necessary was returned.\n "
                            "Received {} instead of {} bins with counts ".format(result[1], steps))
             retval = -1
-        self._counting_device.stop_finite_counter()
-        retval = -1 if retval<0 else result[0]
+        elif a < 0:
+            retval = -1
+            self.log.error("Stopping the counter failed")
+        else:
+            retval = result[0]
+
         return retval
 
     ##################################### Acquire Data ###########################################
@@ -425,6 +542,27 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return
         """
+        pass
+
+    def kill_counter(self):
+        """Closing the counting device.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        try:
+            self._counting_device.close_finite_counter()
+        except Exception as e:
+            self.log.exception('Could not close the scanner.')
+        try:
+            self._counting_device.close_finite_counter_clock()
+        except Exception as e:
+            self.log.exception('Could not close the scanner clock.')
+        try:
+            self._counting_device.unlock()
+        except Exception as e:
+            self.log.exception('Could not unlock scanning device.')
+
+        return 0
 
     ##################################### Handle Data ########################################
 
@@ -445,7 +583,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         A figure is also saved.
 
-        @param: list colorscale_range (optional) The range [min, max] of the display colour scale (for the figure)
+        @param: list colorscale_range (optional) The range [min, max] of the display colour scale
+                    (for the figure)
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
@@ -462,12 +601,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @param: list axes: Names of the horizontal and vertical axes in the image
 
-        @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  If not supplied then a default of
-                                 data_min to data_max will be used.
+        @param: list cbar_range: (optional) [color_scale_min, color_scale_max].  If not supplied
+                                    then a default of data_min to data_max will be used.
 
         @param: list percentile_range: (optional) Percentile range of the chosen cbar_range.
 
-        @param: list crosshair_pos: (optional) crosshair position as [hor, vert] in the chosen image axes.
+        @param: list crosshair_pos: (optional) crosshair position as [hor, vert] in the chosen
+                                    image axes.
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
