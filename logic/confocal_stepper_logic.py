@@ -138,7 +138,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return self._step_freq
         # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
         # this is better
-        self._step_freq = freq
+        self._step_freq[axis] = freq
         return freq
 
     def set_stepper_amplitude(self, axis, amplitude):
@@ -163,7 +163,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return self.step_amplitude
         # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
         # this is better
-        self.step_amplitude = amp
+        self.step_amplitude[axis] = amp
         return amp
 
     def set_mode_stepping(self, axis):
@@ -192,15 +192,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         freq = self._stepping_device.get_step_freq(axis)
-        if freq != self._step_freq(axis):
+        if freq != self._step_freq[axis]:
             self.log.warning(
                 "The device has different frequency of {} then the set frequency {}. "
-                "The frequency will be changed to the set frequency".format(freq, self._step_freq))
+                "The frequency will be changed to the set frequency".format(freq,
+                                                                            self._step_freq[axis]))
             # checks if stepper is still running
             if self.getState() == 'locked':
                 self.log.warning("The stepper is still running")
                 return -1
-            return self._stepping_device.set_step_freq(self, axis, self._step_freq)
+            return self._stepping_device.set_step_freq(self, axis, self._step_freq[axis])
         return 0
 
     def _check_amplitude(self, axis):
@@ -210,15 +211,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         amp = self._stepping_device.get_step_amplitude(axis)
-        if amp != self.step_amplitude(axis):
+        if amp != self.step_amplitude[axis]:
             self.log.warning(
                 "The device has different voltage of {} then the set voltage {}. "
-                "The voltage will be changed to the set voltage".format(amp, self.step_amplitude))
+                "The voltage will be changed to the set voltage".format(amp,
+                                                                        self.step_amplitude[axis]))
             # checks if stepper is still running
             if self.getState() == 'locked':
                 self.log.warning("The stepper is still running")
                 return -1
-            return self._stepping_device.set_step_amplitude(self, axis, self.step_amplitude)
+            return self._stepping_device.set_step_amplitude(self, axis, self.step_amplitude[axis])
         return 0
 
     def get_stepper_axes_use(self):
@@ -448,8 +450,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         # Todo: Make sure how to implement the threadlocking here correctly.
 
-        # Todo: Think about the question wether we actually step the same amount of steps as we
-        # count or is we might be off by one, as we are notcounting when moving up on in "y"
+        # Todo: Think about the question whether we actually step the same amount of steps as we
+        # count or is we might be off by one, as we are not counting when moving up on in "y"
 
 
         # If the stepping measurement is not running do nothing
@@ -479,8 +481,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # self.history_index = len(self.history) - 1
                 return
 
+        if self._step_counter == 0:
+            # Todo: Right now only square images possible. Needs to be update.
+            self._stepping_raw_data = np.zeros((self._steps_scan_line, self._steps_scan_line))
+
         # move and count
-        new_counts = self._step_and_count(self._first_scan_axis, direction,
+        new_counts = self._step_and_count(self._first_scan_axis, self._second_scan_axis, direction,
                                           steps=self._steps_scan_line)
         if new_counts[0] == -1:
             self.stopRequested = True
@@ -491,6 +497,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if not direction:  # flip the count direction
             new_counts = np.flipud(new_counts)
         direction = not direction  # invert direction
+        self._stepping_raw_data[self._step_counter] = new_counts
 
         # move on line up
         self._stepping_device.move_attocube(self._second_scan_axis, True, True, 1)
@@ -500,7 +507,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # Todo This needs to do the following things: scan a line with the given amount of steps and th
 
-    def _step_and_count(self, axis, direction=True, steps=1):
+    def _step_and_count(self, mainaxis, secondaxis, direction=True, steps=1):
         """
 
         @param str axis: Axis for which the stepping should take place
@@ -508,15 +515,25 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @param int steps: amount of steps, default 1
         @return np.array: acquired data in counts/s or error value -1
         """
-        if self._stepping_device.move_attocube(axis, True, direction, steps=steps) < 0:
-            self.log.error("moving of attocube failed")
-            return -1
 
         if self._counting_device.start_finite_counter() < 0:
             self.log.error("Starting the counter failed")
             return -1
 
-        time.sleep(steps * self._step_freq(axis))  # wait till stepping finished for readout
+        if self._stepping_device.move_attocube(mainaxis, True, direction, steps=steps - 1) < 0:
+            self.log.error("moving of attocube failed")
+            return -1
+
+        # move on line up
+        if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
+            self.log.error("moving of attocube failed")
+            return -1
+
+        # Todo: Check if there is a better way than this to adjust for the fact that a stepping
+        # direction change is necessary for the last count. Maybe different method arrangement
+        # sensible
+
+        time.sleep(steps * self._step_freq(mainaxis))  # wait till stepping finished for readout
         result = self._counting_device.get_fixed_counts()
         retval = 0
         a = self._counting_device.stop_finite_counter()
@@ -564,6 +581,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return 0
 
+    def get_counter_count_channels(self):
+        """ Get lis of counting channels from counting device.
+          @return list(str): names of counter channels
+        """
+        return self._scanning_device.get_scanner_count_channels()
+
     ##################################### Handle Data ########################################
 
     def initialize_image(self):
@@ -573,7 +596,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         pass
 
-    def save_xy_data(self, colorscale_range=None, percentile_range=None):
+    def save_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal xy data to file.
 
         Two files are created.  The first is the imagedata, which has a text-matrix of count values
@@ -588,11 +611,88 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @param: list percentile_range (optional) The percentile range [min, max] of the color scale
         """
+        filepath = self._save_logic.get_path_for_module('ConfocalStepper')
+        timestamp = datetime.datetime.now()
+        # Prepare the metadata parameters (common to both saved files):
+        parameters = OrderedDict()
+
+        parameters['First Axis'] = self._first_scan_axis
+        parameters['First Axis Steps'] = self._steps_scan_line
+        parameters['First Axis Frequency'] = self._step_freq[self._second_scan_axis]
+        parameters['First Axis Amplitude'] = self.step_amplitude[self._second_scan_axis]
+
+        parameters['Second Axis'] = self._second_scan_axis
+        # Todo: Update when square images are not necessary anymore
+        parameters['Second Axis Steps'] = self._steps_scan_line
+        # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
+        parameters['Second Axis Frequency'] = self._step_freq[self._second_scan_axis]
+        parameters['Second Axis Amplitude'] = self.step_amplitude[self._second_scan_axis]
+
+
+        #parameters['XY Image at z position (m)'] = self._current_z
+        #Todo: add starting "x" "y" position
+
+        # Prepare a figure to be saved
+        figure_data = self.xy_image[:, :, 3]
+        image_extent = [0,
+                        self._steps_scan_line,
+                        0,
+                        self._steps_scan_line]
+        axes = [self._first_scan_axis, self._second_scan_axis]
+        crosshair_pos = [self.get_position()[0], self.get_position()[1]]
+
+        # figs = {ch: self.draw_figure(data=self.xy_image[:, :, 3 + n],
+        #                             image_extent=image_extent,
+        #                             scan_axis=axes,
+        #                             cbar_range=colorscale_range,
+        #                             percentile_range=percentile_range)
+        #        for n, ch in enumerate(self.get_scanner_count_channels())}
+
+        # Save the image data and figure
+        for n, ch in enumerate(self.get_scanner_count_channels()):
+            # data for the text-array "image":
+            image_data = OrderedDict()
+            image_data['Confocal pure {}{} scan image data without axis.\n'
+                       'The upper left entry represents the signal at the upper left pixel '
+                       'position.\nA pixel-line in the image corresponds to a row '
+                       'of entries where the Signal is in counts/s:'.format(
+                        self._first_scan_axis, self._second_scan_axis)] = self._stepping_raw_data
+
+            filelabel = 'confocal_xy_image_{0}'.format(ch.replace('/', ''))
+            self._save_logic.save_data(image_data,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       plotfig=None)
+
+        # prepare the full raw data in an OrderedDict:
+        data = OrderedDict()
+        #data['{} steps'.format(self._first_scan_axis)] = self.xy_image[:, :, 0].flatten()
+        #data['{} steps'.format(self._second_scan_axis)] = self.xy_image[:, :, 1].flatten()
+
+        #for n, ch in enumerate(self.get_scanner_count_channels()):
+        #    data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 3 + n].flatten()
+
+        # Save the raw data to file
+        #filelabel = 'confocal_xy_data'
+        #self._save_logic.save_data(data,
+        #                           filepath=filepath,
+        #                           timestamp=timestamp,
+        #                           parameters=parameters,
+        #                           filelabel=filelabel,
+        #                           fmt='%.6e',
+        #                           delimiter='\t')
+
+        self.log.debug('Confocal Image saved.')
+        self.signal_xy_data_saved.emit()
         # Todo Ask if it is possible to write only one save with options for which lines were scanned
-        pass
+        return
 
     def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None,
-                    percentile_range=None, crosshair_pos=None):
+                    percentile_range=None):  # crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image for saving
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
@@ -613,10 +713,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
 
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
-        pass
+        return None
 
     ##################################### Tilt correction ########################################
-
 
     @QtCore.Slot()
     def set_tilt_point1(self):
