@@ -23,6 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from lmfit.models import Model
 
+# add user_data as hint_name so that it can be used in make_params method.
+Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 ################################################################################
 #                                                                              #

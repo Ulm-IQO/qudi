@@ -26,7 +26,7 @@ import re
 from lmfit.models import Model
 from core.util.units import compute_dft
 
-# add user_data as hint_name
+# add user_data as hint_name so that it can be used in make_params method.
 Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 ################################################################################
@@ -105,7 +105,7 @@ def make_baresine_model(self, prefix=None):
     user_data = {'unit': 'rad', 'nice_name': 'Phase_r'+num}
     model.set_param_hint('{0}phase'.format(prefix), user_data=user_data)
 
-    user_data = {'unit': '°', 'nice_name': 'Phase_d'+num}
+    user_data = {'unit': '\u00B0', 'nice_name': 'Phase_d'+num}
     model.set_param_hint('{0}phase_d'.format(prefix), user_data=user_data,
                          expr='({0}phase*180)/pi'.format(prefix))
 

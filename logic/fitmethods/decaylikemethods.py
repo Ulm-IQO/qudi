@@ -25,7 +25,7 @@ import numpy as np
 from lmfit.models import Model
 from scipy.ndimage import filters
 
-# add user_data as hint_name
+# add user_data as hint_name so that it can be used in make_params method.
 Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 ############################################################################
@@ -234,7 +234,7 @@ def estimate_decayexponential(self, x_axis, data, params):
     if data_level.min() <= 0:
         data_level = data_level - data_level.min()
 
- 
+
     # remove all the data that can be smaller than or equals to std.
     # when the data is smaller than std, it is beyond resolution
     # which is not helpful to our fitting.

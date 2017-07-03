@@ -30,7 +30,7 @@ from lmfit.models import Model
 from scipy.ndimage import filters
 from scipy.interpolate import InterpolatedUnivariateSpline
 
-# add user_data as hint_name
+# add user_data as hint_name so that it can be used in make_params method.
 Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 
 
