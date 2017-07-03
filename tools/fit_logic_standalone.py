@@ -1880,7 +1880,7 @@ def lorentziandip_testing2():
 
     print(result.fit_report())
     print(result.result_str_dict)
-    
+
 
 def lorentzianpeak_testing2():
     """ Test the lorentzian fit directy with simulated data. """
@@ -2116,7 +2116,7 @@ def sine_testing():
     x_axis = np.append(x_axis, x_axis1)
     x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
 
-    mod,params = qudi_fitting.make_sine_model()
+    mod, params = qudi_fitting.make_sine_model()
     print('Parameters of the model',mod.param_names,
           ' with the independet variable',mod.independent_vars)
 
@@ -2284,10 +2284,10 @@ def sine_testing2():
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-    
+
     fit_text = create_formatted_output(result.result_str_dict)
     print(fit_text)
-    
+
     qudi_fitting.res = result
 
 
@@ -2694,9 +2694,9 @@ def exponentialdecay_testing():
 
     data_noisy = (mod.eval(x=x_axis, params=params)
                       + 10* np.random.normal(size=x_axis.shape))
-    
+
     units = ('s','counts/s')
-    result = qudi_fitting.make_decayexponential_fit(x_axis=x_axis, 
+    result = qudi_fitting.make_decayexponential_fit(x_axis=x_axis,
                                                     data=data_noisy,
                                                     units=units,
                                                     estimator=qudi_fitting.estimate_decayexponential,
@@ -2715,8 +2715,8 @@ def exponentialdecay_testing():
     print(i)
 #    try:
     data_level_log = np.log(data_level[0:i])
-    linear_result = qudi_fitting.make_linear_fit(x_axis=x_axis[0:i], 
-                                                 data=data_level_log, 
+    linear_result = qudi_fitting.make_linear_fit(x_axis=x_axis[0:i],
+                                                 data=data_level_log,
                                                  estimator=qudi_fitting.estimate_linear,
                                                  add_params=None)
     plt.figure()
@@ -2733,7 +2733,7 @@ def exponentialdecay_testing():
 #        plt.plot(x_axis, np.log(data_level), 'or', label='data_level_log')
 #        plt.show()
 #        print("linear fitting poorly conditioned")
-        
+
     plt.figure()
     plt.plot(x_axis, data_noisy, 'ob', label='data')
     plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g', label='model data')
@@ -2745,12 +2745,12 @@ def exponentialdecay_testing():
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
-    
+
     print(result.fit_report())
-    
+
     fit_text = create_formatted_output(result.result_str_dict)
     print(fit_text)
-    
+
 ###########################################################################################
 def bareexponentialdecay_testing():
     #generation of data for testing
@@ -2878,7 +2878,7 @@ def sineexponentialdecay_testing():
                                                         units=units,
                                                         add_params=None)
     print(result.fit_report())
-    
+
     plt.figure()
     plt.plot(x_axis, data_noisy, 'o--b', label='noisy data')
     plt.plot(x_nice,mod.eval(x=x_nice, params=params),'-g', label='created model')
@@ -2891,8 +2891,8 @@ def sineexponentialdecay_testing():
                prop={'size':12}, title='sine exponential decay')
     #plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
     plt.show()
-    
-    
+
+
     fit_text = create_formatted_output(result.result_str_dict)
     print(fit_text)
 
@@ -3317,10 +3317,10 @@ def double_exponential_testing2():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 #    print(res.fit_report())
-    
+
     fit_text = create_formatted_output(res.result_str_dict)
     print(fit_text)
-    
+
 
 
 def stretched_exponential_decay_testing():
@@ -3336,7 +3336,7 @@ def stretched_exponential_decay_testing():
 
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*0.05
-                                 
+
     units = ('s','counts')
 
     res = qudi_fitting.make_decayexponentialstretched_fit(x_axis=x_axis,
@@ -3354,7 +3354,7 @@ def stretched_exponential_decay_testing():
                ncol=2, mode="expand", borderaxespad=0.)
     plt.show()
 #    print(res.fit_report())
-    
+
     fit_text = create_formatted_output(res.result_str_dict)
     print(fit_text)
 
