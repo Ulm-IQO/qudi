@@ -544,15 +544,16 @@ def _check_1D_input(self, x_axis, data, params):
 
 def _create_result_str_dict(self, result, units):
     """ Create a result_str_dict from the result object.
-    
+
     Handle basically the unit text.
-    
+
     @param lmfit.ModelResult result: the fit result object
-    @param tuple units: the units, writen as a tuple.
-    
+    @param tuple units: the units, written as a tuple.
+
     @return: dict, with the keys as the parameter name and items as another dict
-                   with the keys 'value', 'error', 'unit'.
-                   
+                   with the keys 'value', 'error', 'unit' and the optional key
+                   'nice_name'.
+
     """
     #FIXME: implement that also for 3D models, i.e. with 3 entries in units
 
@@ -561,9 +562,8 @@ def _create_result_str_dict(self, result, units):
         units = ("arb. u.", "arb. u.")
 
     result_str_dict = OrderedDict()
-    params = result.params
 
-    for param_name, param_obj in params.items():
+    for param_name, param_obj in result.params.items():
 
         # if the user_data attribute is not set at all:
         if param_obj.user_data is None or not isinstance(param_obj.user_data, dict):
@@ -587,9 +587,16 @@ def _create_result_str_dict(self, result, units):
                                  'default unit.'.format(param_name, units[0]))
                 unit_text = units[0]
 
+            if param_obj.user_data.get('nice_name') is not None:
+                nice_name = param_obj.user_data['nice_name']
+            else:
+                nice_name = ''
+
         result_str_dict[param_name] = {'value': param_obj.value,
                                        'error': param_obj.stderr,
-                                       'unit': unit_text}
+                                       'unit': unit_text,
+                                       'nice_name': nice_name}
+
 
     return result_str_dict
 

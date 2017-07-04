@@ -36,7 +36,6 @@ from core.config import load, save
 
 
 class FitLogic(GenericLogic):
-
     """
     UNSTABLE:Jochen Scheuer
 
@@ -144,11 +143,11 @@ class FitLogic(GenericLogic):
                                ''.format(fit_name))
 
         self.log.info('Methods were included to FitLogic, but only if naming is right: check the'
-                         ' doxygen documentation if you added a new method and it does not show.')
+                      ' doxygen documentation if you added a new method and it does not show.')
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module."""
+
         # FIXME: load all the fits here, otherwise reloading this module is really questionable
         fitversion = LooseVersion(lmfit.__version__)
         if fitversion < LooseVersion('0.9.2'):
@@ -160,9 +159,10 @@ class FitLogic(GenericLogic):
 
     def validate_load_fits(self, fits):
         """ Take fit names and estimators from a dict and check if they are valid.
-            @param fits dict: dictionary conatining fit and estimator description
 
-            @return dict: checked dictionary with references to fit, model and estimator
+        @param dict fits: dictionary conatining fit and estimator description
+
+        @return dict: checked dictionary with references to fit, model and estimator
 
         The stored dictionary must have the following format.
         There can be a parameter settings string included at the deepest level.
@@ -210,9 +210,10 @@ class FitLogic(GenericLogic):
 
     def prepare_save_fits(self, fits):
         """ Convert fit dictionary into a storable form.
-            @param fits dict: fit dictionary with function references and parameter objects
 
-            @return dict: storable fits description dictionary
+        @param dict fits: fit dictionary with function references and parameter objects
+
+        @return dict: storable fits description dictionary
 
         For the format of this dictionary, ess validate_load_fits.
         """
@@ -235,9 +236,10 @@ class FitLogic(GenericLogic):
 
     def load_fits(self, filename):
         """ Load collection of fits from YAML file.
-            @param filename str: path of file containing fits in YAML format
 
-            @return dict: validated fit dictionary with function references and parameter objects
+        @param str filename: path of file containing fits in YAML format
+
+        @return dict: validated fit dictionary with function references and parameter objects
         """
         user_fits = OrderedDict()
         fits = load(filename)
@@ -254,20 +256,21 @@ class FitLogic(GenericLogic):
 
     def make_fit_container(self, container_name, dimension):
         """ Creare a fit container object.
-            @param container_name str: user-fiendly name for configurable fit
-            @param dimension str: dimension of fit input data ('1d', '2d' od '3d')
 
-            @return FitContainer: fit container object
+        @param str container_name: user-fiendly name for configurable fit
+        @param str dimension: dimension of fit input data ('1d', '2d' od '3d')
 
-        This is a convenience function so you do not have to mess with an extra import in modules
-        using FitLogic.
+        @return FitContainer: fit container object
+
+        This is a convenience function so you do not have to mess with an extra
+        import in modules using FitLogic.
         """
         return FitContainer(self, container_name, dimension)
 
 
 class FitContainer(QtCore.QObject):
-    """ A class for managing a single flexible fit setting in a logic module.
-    """
+    """ A class for managing a single flexible fit setting in a logic module."""
+
     sigFitUpdated = QtCore.Signal()
     sigCurrentFit = QtCore.Signal(str)
     sigNewFitResult = QtCore.Signal(str, lmfit.model.ModelResult)
@@ -276,9 +279,10 @@ class FitContainer(QtCore.QObject):
     def __init__(self, fit_logic, name, dimension):
         """ Create a fit container.
 
-            @param fit_logic FitLogic: reference to a FitLogic instance
-            @param name str: user-friendly name for this container
-            @param dimension str: dimension for fit input in this container, '1d', '2d' or '3d'
+        @param FitLogic fit_logic: reference to a FitLogic instance
+        @param str name: user-friendly name for this container
+        @param str dimension: dimension for fit input in this container,
+                              '1d', '2d' or '3d'
         """
         super().__init__()
 
@@ -305,17 +309,18 @@ class FitContainer(QtCore.QObject):
 
     def set_units(self, units):
         """ Set units for this fit.
-            @param units list(str): list of units (for x axes and y axis)
 
-            Number of units must be = dimensions + 1
+        @param list units: list of str units (for x axes and y axis)
+
+        Number of units must be = dimensions + 1
         """
         if len(units) == self.dim + 1:
             self.units = units
 
     def load_from_dict(self, fit_dict):
         """ Take a list of fits from a storable dictionary, load to self.fit_list and check.
-            @param fit_dict dict: fit dictionary with function references etc
 
+        @param dict fit_dict: fit dictionary with function references etc
         """
         try:
             self.fit_list = self.fit_logic.validate_load_fits(fit_dict)[self.dimension]
@@ -325,7 +330,7 @@ class FitContainer(QtCore.QObject):
     def save_to_dict(self):
         """ Convert self.fit_list to a storable dictionary.
 
-            @return dict: storable configured fits dictionary
+        @return dict: storable configured fits dictionary
         """
         prep = self.fit_logic.prepare_save_fits({self.dimension: self.fit_list})
         return prep
@@ -339,15 +344,18 @@ class FitContainer(QtCore.QObject):
     @QtCore.Slot(dict)
     def set_fit_functions(self, fit_functions):
         """ Set the configured fit functions for this container.
-            @param fit_functions dict: configured fit functions dictionary
+
+        @param dict fit_functions: configured fit functions dictionary
         """
+
         self.fit_list = fit_functions
         self.set_current_fit(self.current_fit)
 
     @QtCore.Slot(str)
     def set_current_fit(self, current_fit):
         """ Check and set the current fit for this container by name.
-            @param current_fit str: name of configured fit to be used as current fit
+
+        @param str current_fit: name of configured fit to be used as current fit
 
         If the name given is not in the list of fits, the current fit will be 'No Fit'.
         This is a reserved name that will do nothing and should not display a fit line if set.
