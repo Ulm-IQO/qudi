@@ -202,7 +202,7 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['run_time'] = self.run_time
         self._statusVariables['saveRawData'] = self.saveRawData
         self._statusVariables['number_of_lines'] = self.number_of_lines
-        if len(self.fc.fit_list) > 0:
+        if len(self.fc.fit_dict) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
 
     def set_clock_frequency(self, clock_frequency):
@@ -569,7 +569,7 @@ class ODMRLogic(GenericLogic):
         """ Return the names of all ocnfigured fit functions.
         @return list(str): list of fit function names
         """
-        return self.fc.fit_list.keys()
+        return self.fc.fit_dict.keys()
 
     def do_fit(self):
         """ Execute the currently configured fit
@@ -622,7 +622,7 @@ class ODMRLogic(GenericLogic):
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
         if self.fc.current_fit != 'No Fit':
-            parameters['Fit function'] = self.fc.fit_list[self.fc.current_fit]['fit_name']
+            parameters['Fit function'] = self.fc.fit_dict[self.fc.current_fit]['fit_name']
 
         # add all fit parameter to the saved data:
         for name, param in self.fc.current_fit_param.items():

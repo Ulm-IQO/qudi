@@ -260,7 +260,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['alternating'] = self.alternating
         self._statusVariables['show_raw_data'] = self.show_raw_data
         self._statusVariables['show_laser_index'] = self.show_laser_index
-        if len(self.fc.fit_list) > 0:
+        if len(self.fc.fit_dict) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
         return
 

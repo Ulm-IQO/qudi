@@ -50,7 +50,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self.setWindowTitle(self.title)
 
         # variables
-        self.all_functions = self.fc.fit_logic.fit_list[self.fc.dimension]
+        self.all_functions = self.fc.fit_logic.fit_dict[self.fc.dimension]
         self.tabs = {}
         self.parameters = {}
         self.parameterUse = {}
@@ -105,8 +105,8 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self.fc.sigNewFitParameters.connect(self.updateParameters)
 
         # load user defined fits from fit container
-        if len(self.fc.fit_list) > 0:
-            self.loadFits(self.fc.fit_list)
+        if len(self.fc.fit_dict) > 0:
+            self.loadFits(self.fc.fit_dict)
 
     @QtCore.Slot(QtWidgets.QAbstractButton)
     def buttonClicked(self, button):
@@ -135,7 +135,7 @@ class FitSettingsDialog(QtWidgets.QDialog):
             '/path',
             'Fit files (*.fit *.yml)'
             )
-        self.fc.fit_logic.save_fits(res[0], {self.fc.dimension: self.fc.fit_list})
+        self.fc.fit_logic.save_fits(res[0], {self.fc.dimension: self.fc.fit_dict})
 
     @QtCore.Slot()
     def loadFitButtonClicked(self):
@@ -262,8 +262,9 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self.sigFitsUpdated.emit(self.currentFits)
 
     def buildCurrentFits(self):
-        """ Update dictionary of the configured fits for FitContainer or other componenrs.
+        """ Update dictionary of the configured fits for FitContainer or other components.
         """
+
         # arrange all of this information in a convenient form
         self.currentFits = OrderedDict()
         for name, widget in self.fitWidgets.items():

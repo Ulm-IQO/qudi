@@ -228,7 +228,7 @@ class WavemeterLoggerLogic(GenericLogic):
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
 
-        if len(self.fc.fit_list) > 0:
+        if len(self.fc.fit_dict) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
 
     def get_max_wavelength(self):
@@ -277,7 +277,7 @@ class WavemeterLoggerLogic(GenericLogic):
         """ Return the names of all ocnfigured fit functions.
         @return list(str): list of fit function names
         """
-        return self.fc.fit_list.keys()
+        return self.fc.fit_dict.keys()
 
     def do_fit(self):
         """ Execute the currently configured fit
