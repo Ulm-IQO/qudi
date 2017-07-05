@@ -2176,7 +2176,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of
-                                      the clock
+                                      the clock (in Hz)
         @param string clock_channel: if defined, this is the physical channel
                                      of the clock
 
@@ -2221,12 +2221,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         except:
             self.log.error('Error while starting up finite counter clock')
             return -1
-
-        try:
-            daq.DAQmxStartTask(self._scanner_counter_daq_tasks)
-        except:
-            self.log.exception('Error while starting up gated counting.')
-            return -1
+        for task in self._scanner_counter_daq_tasks:
+            try:
+                daq.DAQmxStartTask(task
+                                   )
+            except:
+                self.log.exception('Error while starting up finite counting.')
+                return -1
         return 0
 
     def get_finite_counts(self):
@@ -2240,37 +2241,38 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'No counter is running, cannot read counts line without one.')
             return np.array([-1.])
         if self._finite_counter_samples is None:
-            self.log.error("No finite counter samples sepcified. Redo setup of counter")
+            self.log.error("No finite counter samples specified. Redo setup of counter")
             return np.array([-1])
 
         # *1.1 to have an extra (10%) short waiting time.
         timeout = (self._finite_counter_samples * 1.1) / self._finite_clock_frequency
 
         # Count data will be written here
-        _finite_count_data = np.empty((1, self._finite_counter_samples), dtype=np.uint32)
+        _finite_count_data = np.zeros((self._finite_counter_samples), dtype=np.uint32)
 
         # Number of samples which were read will be stored here
         n_read_samples = daq.int32()
 
-        try:
-            daq.DAQmxReadCounterU32(
-                # read from this task
-                self._scanner_counter_daq_tasks,
-                # wait till all finite counts are acquired then return
-                -1,
-                # maximal timeout for the read process
-                timeout,
-                # write into this array
-                _finite_count_data,
-                # length of array to write into
-                samples,
-                # number of samples which were actually read.
-                daq.byref(n_read_samples),
-                # Reserved for future use. Pass NULL (here None) to this parameter
-                None)
-        except:
-            self.log.error("not able to read counts for finite counter")
-            return np.array([-1]), 0
+        for task in self._scanner_counter_daq_tasks:
+            try:
+                daq.DAQmxReadCounterU32(
+                    # read from this task
+                    task,
+                    # wait till all finite counts are acquired then return
+                    -1,
+                    # maximal timeout for the read process
+                    timeout,
+                    # write into this array
+                    _finite_count_data,
+                    # length of array to write into
+                    self._finite_counter_samples,
+                    # number of samples which were actually read.
+                    daq.byref(n_read_samples),
+                    # Reserved for future use. Pass NULL (here None) to this parameter
+                    None)
+            except:
+                self.log.error("not able to read counts for finite counter.")
+                return np.array([-1]), 0
 
         return self._finite_clock_frequency * _finite_count_data, n_read_samples  # counts per second
 
@@ -2309,8 +2311,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return int: error code (0:OK, -1:error)
         """
         return self.close_clock(scanner=True)
-    # ================ End FiniteCOunterInterface Commands =======================
-
+        # ================ End FiniteCOunterInterface Commands =======================
 
 
 class SlowGatedNICard(NICard):

@@ -21,15 +21,16 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore
 from collections import OrderedDict
-from copy import copy
+#from copy import copy
 import time
 import datetime
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from io import BytesIO
+#import matplotlib as mpl
+#import matplotlib.pyplot as plt
+#from io import BytesIO
 
 from logic.generic_logic import GenericLogic
+from core.util.mutex import Mutex
 
 
 # Todo make a confocal stepper History class for this logic as exists in confocal logic. This is neede for restarting and
@@ -39,7 +40,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     """
     This is the Logic class for confocal stepping.
     """
-    _modclass = 'confocalstepperlogic'
+    _modclass = 'ConfocalStepperLogic'
     _modtype = 'logic'
 
     _connectors = {
@@ -57,6 +58,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+
+        #locking for thread safety
+        self.threadlock = Mutex()
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -534,7 +538,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # sensible
 
         time.sleep(steps * self._step_freq(mainaxis))  # wait till stepping finished for readout
-        result = self._counting_device.get_fixed_counts()
+        result = self._counting_device.get_finite_counts()
         retval = 0
         a = self._counting_device.stop_finite_counter()
         if result[0] == [-1]:
