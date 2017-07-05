@@ -50,6 +50,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         # some default values for the hardware:
         # Todo: This needs to be calculated by a more complicated formula depnding on the measured capacitance.
+        # Todo: voltage range should be defined for each axis, the same for frequency
         self._voltage_range_stepper_default = [0, 60]
         self._frequency_range_default = [0, 10000]
         self._password_default = b"123456"
@@ -148,7 +149,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             if value[2] == 'success':  # Checks if connection was successful
                 self.connected = True
                 # Todo: Check how to do correct log messages
-                # self.log.log("Connection to Attocube was established")
+                self.log.info("Connection to Attocube was established")
             else:
                 counter += 1
 
@@ -167,7 +168,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self.connected = False
 
     # =================== Attocube Communication ========================
-    #Todo: make two send cmd, one with reutn value, one without
+    # Todo: make two send cmd, one with reutn value, one without
     def _send_cmd(self, cmd, expected_response="OK", read=False):
         """Sends a command to the attocube steppers and checks response value
 
@@ -181,9 +182,12 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
         self.tn.read_eager()  # disregard old print outs
         self.tn.write(full_cmd)  # send command
-        time.sleep(0.03)  # this exists because the ANC has response time of 30ms
-        # self.tn.read_until(full_cmd + b" = ") #read answer
-        value_binary = self.tn.read_very_eager()
+        # any response ends with ">" from the attocube. Therefor connection waits until this happend
+        try:
+            value_binary = self.tn.read_until(b">", timeout=1)
+        except:
+            self.log.error("timeout of telnet connection attocube did not responde")
+            return -1
         value = value_binary.decode().split("\r\n")  # transform into string and split at linefeed
         if value[-2] == "ERROR":
             if read:
@@ -261,7 +265,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if voltage is not None:
             if axis in self._attocube_axis.keys():
-                command = "setv " + str(self._attocube_axis[axis]) + " " + str(voltage)
+                command = "setv {} {}".format(self._attocube_axis[axis], voltage)
                 self._axis_amplitude[axis] = voltage
                 return self._send_cmd(command)
             self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
@@ -274,7 +278,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return float: the step amplitude of the axis
         """
         if axis in self._attocube_axis.keys():
-            command = "getv " + str(self._attocube_axis[axis])
+            command = "getv {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 return -1
@@ -301,8 +305,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if freq is not None:
             if axis in self._attocube_axis.keys():
-                command = "setf {} {}".format(self._attocube_axis[axis],freq)
-                #command = "setf " + self._attocube_axis[axis] + " " + str(freq)
+                command = "setf {} {}".format(self._attocube_axis[axis], freq)
+                # command = "setf " + self._attocube_axis[axis] + " " + str(freq)
                 self._axis_frequency[axis] = freq
                 return self._send_cmd(command)
             self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
@@ -315,7 +319,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return float: the step amplitude of the axis
         """
         if axis in self._attocube_axis.keys():
-            command = "getf " + str(self._attocube_axis[axis])
+            command = "getf {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 # TodO: clean as soon as the attocube starts returning expected results
@@ -350,16 +354,15 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return float: the capacitance of the axis in F, -1 for error
         """
         if axis in self._attocube_axis.keys():
-            result = self.set_axis_mode(axis, "gnd")  # for any capacitance mesaurement the mode
-            # needs
-            #  to be set to gnd before
+            result = self.set_axis_mode(axis, "ground")  # for any capacitance measurement the mode
+            # needs to be set to gnd before
             if result == -1:
                 return -1
-            command = "setm " + str(self._attocube_axis[axis]) + " cap"
+            command = "setm {} ".format(self._attocube_axis[axis]) + "cap"
             result = self._send_cmd(command)  # measure
             if result == -1:
                 return -1
-            command = "capw " + str(self._attocube_axis[axis])
+            command = "capw {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 return -1
@@ -393,7 +396,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return float: the capacitance of the axis in F, -1 for error
         """
         if axis in self._attocube_axis.keys():
-            command = "getc " + str(self._attocube_axis[axis])
+            command = "getc {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 return -1
@@ -433,7 +436,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 command = "setm {} {}".format(self._attocube_axis[axis], self._attocube_modes[mode])
                 result = self._send_cmd(command)
                 if result == 0:
-                    self._axis_mode[axis] = mode
+                    self._axis_mode[axis] = self._attocube_modes[mode]
                     return 0
                 else:
                     self.log.error("Setting axis {} to mode {} failed".format(self._attocube_axis[axis], mode))
@@ -448,10 +451,10 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         """ Checks the mode for a specific axis
 
         @param str axis: the axis for which the frequency is to be checked
-        @return float: the step amplitude of the axis, -1 for error
+        @return float: the mode of the axis, -1 for error
         """
         if axis in self._attocube_axis.keys():
-            command = "getm " + str(self._attocube_axis[axis])
+            command = "getm {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 return -1
@@ -473,7 +476,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 dci = "on"
             else:
                 dci = "off"
-            command = "setdci " + str(self._attocube_axis[axis]) + " " + dci
+            command = "setdci {} ".format(self._attocube_axis[axis])+ dci
             result = self._send_cmd(command)
             if result == 0:
                 self._axis_dci[axis] = dci
@@ -490,7 +493,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return bool: True for on, False for off, -1 for error
         """
         if axis in self._attocube_axis.keys():
-            command = "getdci " + str(self._attocube_axis[axis])
+            command = "getdci {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 return -1
@@ -514,7 +517,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 aci = "on"
             else:
                 aci = "off"
-            command = "setdci " + str(self._attocube_axis[axis]) + " " + aci
+            command = "setdci {} ".format(self._attocube_axis[axis]) + aci
             result = self._send_cmd(command)
             if result == 0:
                 self._axis_aci[axis] = aci
@@ -531,7 +534,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return bool: True for on, False for off, -1 for error
         """
         if axis in self._attocube_axis.keys():
-            command = "getaci " + str(self._attocube_axis[axis])
+            command = "getaci {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 return -1
@@ -546,12 +549,13 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
     def _get_all_hardwaresettings(self):
         axis = self.get_stepper_axes()
         for i in self._attocube_axis.keys():  # get all axis names
-            if axis[self._attocube_axis[i]-1]:  # check it the axis actually exists
+            if axis[self._attocube_axis[i] - 1]:  # check it the axis actually exists
                 self.get_step_amplitude(i)
                 self.get_step_freq(i)
                 self.get_axis_mode(i)
                 self.get_DC_in(i)
                 self.get_AC_in(i)
+                self._get_capacitance(i)
 
             else:
                 self.log.error("axis {} was specified as number {} on ANC300\n  but this axis "
@@ -573,7 +577,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self._axis_capacitance = {}
 
         for i in self._attocube_axis.keys():  # get all axis names
-            if axis[self._attocube_axis[i]]:  # check it the axis actually exists
+            if axis[self._attocube_axis[i] - 1]:  # check it the axis actually exists
                 self._axis_amplitude[i] = 0
                 self._axis_frequency[i] = 0
                 self._axis_mode[i] = 0
@@ -676,15 +680,15 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # TOdo: Check if I did the same split list problem more then once
         axis = []
         for i in range(5):
-            command = "getm "
-            result = self._send_cmd(command + str(i + 1), read=True)
+            command = "getm {}".format(i+1)
+            result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 res = result[1]
                 if result[1][1] == "Wrong axis type":
                     axis.append(False)
                 else:
                     self.log.error('The command {} did the expected axis response, '
-                                   'but{}'.format(command + str(i + 1), result[1][1].split()[-3]))
+                                   'but{}'.format(command , result[1][1].split()[-3]))
             else:
 
                 axis.append(True)
@@ -704,7 +708,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         """
         return self._attocube_axis
 
-    #Todo: make two options for silent or not for fast usage
+    # Todo: make two options for silent or not for fast usage
     def move_attocube(self, axis, mode=True, direction=True, steps=1):
         """Moves attocubes either continuously or by a number of steps
         in the up or down direction.
@@ -719,9 +723,9 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         #  or if option in call. Also needs to check response from attocube if moved.
         if axis in self._attocube_axis.keys():
             if direction:
-                command = "stepu " + str(self._attocube_axis[axis]) + " "
+                command = "stepu {} ".format(self._attocube_axis[axis])
             else:
-                command = "stepd " + str(self._attocube_axis[axis]) + " "
+                command = "stepd {} ".format(self._attocube_axis[axis])
 
             if not mode:
                 command += "c"
