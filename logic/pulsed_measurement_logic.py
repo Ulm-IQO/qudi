@@ -657,11 +657,19 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         if switch_on:
-            self._mycrowave_source_device.on()
-            self.sigExtMicrowaveRunningUpdated.emit(True)
+            err_code = self._mycrowave_source_device.cw_on()
+            if err_code == -1:
+                self._mycrowave_source_device.off()
+                self.log.error('Failed to turn on CW microwave source.')
+                self.sigExtMicrowaveRunningUpdated.emit(False)
+            else:
+                self.sigExtMicrowaveRunningUpdated.emit(True)
         else:
-            self._mycrowave_source_device.off()
-            self.sigExtMicrowaveRunningUpdated.emit(False)
+            err_code = self._mycrowave_source_device.off()
+            if err_code == -1:
+                self.log.error('Failed to turn off CW microwave source.')
+            else:
+                self.sigExtMicrowaveRunningUpdated.emit(False)
         return
 
     def set_microwave_params(self, frequency=None, power=None, use_ext_mw=None):
@@ -672,7 +680,9 @@ class PulsedMeasurementLogic(GenericLogic):
         if use_ext_mw is not None:
             self.use_ext_microwave = use_ext_mw
         if self.use_ext_microwave:
-            self._mycrowave_source_device.set_cw(freq=frequency, power=power)
+            self.microwave_freq, \
+            self.microwave_power, \
+            dummy = self._mycrowave_source_device.set_cw(frequency=frequency, power=power)
         self.sigExtMicrowaveSettingsUpdated.emit(self.microwave_freq, self.microwave_power,
                                                  self.use_ext_microwave)
         return
