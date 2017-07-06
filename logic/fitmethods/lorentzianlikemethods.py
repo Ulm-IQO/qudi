@@ -248,8 +248,9 @@ def make_multiplelorentzian_model(self, no_of_functions=1):
             multi_lorentz_model += self.make_lorentzianwithoutoffset_model(prefix=prefix)[0]
             multi_lorentz_model.set_param_hint(
                 '{0}contrast'.format(prefix),
-                                               expr='abs({0}amplitude/offset)*100'.format(prefix),
-                                               user_data=user_data)
+                expr='abs({0}amplitude/offset)*100'.format(prefix),
+                user_data=user_data
+                )
 
     params = multi_lorentz_model.make_params()
 
@@ -439,7 +440,7 @@ def estimate_lorentzian_peak (self, x_axis, data, params):
     # set the maximum to infinity, since that is the default value.
     params['amplitude'].set(
         value=-params_ret['amplitude'].value,
-        min=-1e-12,
+        min=0,
                             max=np.inf)
     params['center'] = params_ret['center']
 

@@ -160,7 +160,7 @@ class FitLogic(GenericLogic):
     def validate_load_fits(self, fits):
         """ Take fit names and estimators from a dict and check if they are valid.
 
-        @param dict fits: dictionary conatining fit and estimator description
+        @param dict fits: dictionary containing fit and estimator description
 
         @return dict: checked dictionary with references to fit, model and estimator
 
@@ -215,7 +215,7 @@ class FitLogic(GenericLogic):
 
         @return dict: storable fits description dictionary
 
-        For the format of this dictionary, ess validate_load_fits.
+        For the format of this dictionary, see validate_load_fits method.
         """
         save_fits = OrderedDict()
         for dim, dfits in fits.items():
@@ -401,12 +401,18 @@ class FitContainer(QtCore.QObject):
             stop=x_data[-1],
             num=int(len(x_data) * self.fit_granularity_fact))
 
+        add_params = self.fit_dict[self.current_fit]['parameters'].copy()
+
+        for param_name, usage in self.fit_dict[self.current_fit]['parameterUse'].items():
+            if not bool(usage):# and add_params.get(param_name) is not None:
+                add_params.pop(param_name)
+
         # set the keyword arguments, which will be passed to the fit.
         kwargs = {
             'x_axis': x_data,
             'data': y_data,
             'units': self.units,
-            'add_params': None}
+            'add_params': add_params}
 
         result = None
 
