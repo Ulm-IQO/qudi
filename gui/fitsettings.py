@@ -275,7 +275,8 @@ class FitSettingsDialog(QtWidgets.QDialog):
                     'make_fit': self.all_functions[widget.fit]['make_fit'],
                     'make_model': self.all_functions[widget.fit]['make_model'],
                     'estimator': self.all_functions[widget.fit][widget.estimator],
-                    'parameters': self.parameters[name]
+                    'parameters': self.parameters[name],
+                    'parameterUse': self.parameterUse[name]
                 }
             except KeyError:
                 continue
@@ -321,6 +322,11 @@ class FitSettingsDialog(QtWidgets.QDialog):
                 if name in self.parameters[fit_name]:
                     self.parameters[fit_name][name] = param
             self.tabs[fit_name].updateFitParameters(parameters)
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.applySettings()
+            event.accept()
 
 
 class FitSettingsComboBox(QtWidgets.QComboBox):
@@ -528,7 +534,7 @@ class FitParametersWidget(QtWidgets.QWidget):
             maximumSpinbox.setSingleStep(0.01)
             maximumSpinbox.setMaximum(np.inf)
             maximumSpinbox.setMinimum(-np.inf)
-            if param.value is not None and not math.isnan(param.value):
+            if param.value is not None:# and not math.isnan(param.value):
                 useCheckbox.setChecked(self.paramUseSettings[name])
                 valueSpinbox.setValue(param.value)
                 minimumSpinbox.setValue(param.min)
@@ -551,7 +557,12 @@ class FitParametersWidget(QtWidgets.QWidget):
     def applyFitParameters(self):
         """ Updates the fit parameters with the new values from the widget.
 
-        @return tuple(Parameters, dict): new lmfit Parameters and a dict indicating their use
+        @return tuple(parameters, paramUseSettings): with the objects
+            lmfit.Parameters parameters: the new parameters for the fit
+            dict paramUseSettings: indicating whether the new parameters should
+                                   be used in the fit procedure.
+                                        0 = False (use the default one)
+                                        2 = True (use the specified one)
         """
         for name, param in self.parameters.items():
             self.paramUseSettings[name] = self.widgets[name + '_use'].checkState()
@@ -568,7 +579,7 @@ class FitParametersWidget(QtWidgets.QWidget):
         @return tuple(Parameters, dict): old Parameters and dict indicating their use
         """
         for name, param in self.parameters.items():
-            if param.value is not None and not math.isnan(param.value):
+            if param.value is not None:# and not math.isnan(param.value):
                 self.widgets[name + '_use'].setChecked(self.paramUseSettings[name])
                 self.widgets[name + '_value'].setValue(param.value)
                 self.widgets[name + '_min'].setValue(param.min)
@@ -578,13 +589,15 @@ class FitParametersWidget(QtWidgets.QWidget):
         return self.parameters, self.paramUseSettings
 
     def updateFitParameters(self, parameters):
-        """ Update all the parameter values.
+        """ Update all the parameter values with the passed parameters.
 
         @param lmfit.Parameters parameters: lmfit Parameters to update the widget with
         """
         for name, param in parameters.items():
             v = param.value
-            if name in self.parameters and v is not None and not math.isnan(v):
+            if name in self.parameters and v is not None:# and not math.isnan(v):
+                # and not bool(self.paramUseSettings[name])
+
                 self.widgets[name + '_value'].setValue(v)
                 self.widgets[name + '_min'].setValue(param.min)
                 self.widgets[name + '_max'].setValue(param.max)

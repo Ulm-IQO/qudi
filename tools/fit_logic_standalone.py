@@ -2231,6 +2231,8 @@ def sine_testing():
                ncol=2, mode="expand", borderaxespad=0.)
 
     plt.show()
+    
+    qudi_fitting.result = result
 
 #    print(result.fit_report())
 
@@ -4165,13 +4167,13 @@ if __name__ == "__main__":
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    N14_testing()
-    N14_testing2()
+#    N14_testing2()
 #    N14_testing_data()
 #    N14_testing_data2()
 #    N15_testing()
-    N15_testing2()
+#    N15_testing2()
 #    powerfluorescence_testing()
-#    sine_testing()
+    sine_testing()
 #    sine_testing2()
 #    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
@@ -4192,7 +4194,7 @@ if __name__ == "__main__":
 #    linear_testing()
 #    double_exponential_testing()
 #    double_exponential_testing2()
-    stretched_exponential_decay_testing()
+#    stretched_exponential_decay_testing()
 #    two_sine_offset_testing()
 #    two_sine_offset_testing2()
 #    two_sine_exp_decay_offset_testing()
