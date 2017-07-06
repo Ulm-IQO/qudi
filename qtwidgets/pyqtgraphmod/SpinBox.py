@@ -4,11 +4,8 @@ from pyqtgraph.python2_3 import asUnicode
 from pyqtgraph.SignalProxy import SignalProxy
 
 from pyqtgraph import functions as fn
-from math import log
-from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-point errors
+from decimal import Decimal as D  # Use decimal to avoid accumulating floating-point errors
 from decimal import ROUND_FLOOR
-#from decimal import *
-import weakref
 
 from qtpy.QtCore import Property
 
@@ -141,15 +138,16 @@ class SpinBox(QtGui.QAbstractSpinBox):
     def event(self, ev):
         ret = QtGui.QAbstractSpinBox.event(self, ev)
         if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Return:
-            ret = True  ## For some reason, spinbox pretends to ignore return key press
+            ret = True  # For some reason, Spinbox pretends to ignore return key press
 
-        #Fix: introduce the Escape event, which is restoring the previous display.
+        #FIXED: introduce the Escape event, which is restoring the previous display.
         if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Escape:
             self.updateText()
             ret = True
         return ret
 
-    ##lots of config options, just gonna stuff 'em all in here rather than do the get/set crap.
+    # lots of config options, just gonna stuff 'em all in here rather than do
+    # the get/set crap.
     def setOpts(self, **opts):
         """
         Changes the behavior of the SpinBox. Accepts most of the arguments
@@ -176,11 +174,11 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if 'value' in opts:
             self.setValue(opts['value'])
 
-        ## If bounds have changed, update value to match
+        # If bounds have changed, update value to match
         if 'bounds' in opts and 'value' not in opts:
             self.setValue()
 
-        ## sanity checks:
+        # sanity checks:
         if self.opts['int']:
             if 'step' in opts:
                 step = opts['step']
@@ -208,7 +206,8 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         self.updateText()
 
-    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
+    # FIXED: reimplement the methods for compatibility reasons to QSpinBox and
+    #        QDoubleSpinBox methods
     def maximum(self):
         """ Reimplement the maximum functionality."""
         max_val = self.opts['bounds'][1]
@@ -224,7 +223,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
         """Set the maximum allowed value (or None for no limit)"""
         if m is not None:
 
-            #FIX: insert the integer functionality:
+            # FIXED: insert the integer functionality:
             if self.opts['int']:
                 m = int(m)
 
@@ -233,7 +232,8 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if update:
             self.setValue()
 
-    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
+    # FIXED: reimplement the methods for compatibility reasons to QSpinBox and
+    #        QDoubleSpinBox methods
     def minimum(self):
         """ Reimplement the minimum functionality."""
 
@@ -250,7 +250,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
         """Set the minimum allowed value (or None for no limit)"""
         if m is not None:
 
-            #FIX: insert the integer functionality:
+            #FIXED: insert the integer functionality:
             if self.opts['int']:
                 m = int(m)
 
@@ -266,10 +266,10 @@ class SpinBox(QtGui.QAbstractSpinBox):
         self.setOpts(bounds = [r0,r1])
 
     def setProperty(self, prop, val):
-        ## for QSpinBox compatibility
+        # for QSpinBox compatibility
         if prop == 'value':
-            #if type(val) is QtCore.QVariant:
-                #val = val.toDouble()[0]
+            # if type(val) is QtCore.QVariant:
+            #     val = val.toDouble()[0]
             self.setValue(val)
         else:
             print("Warning: SpinBox.setProperty('{0!s}', ..) not supported.".format(prop))
@@ -298,19 +298,19 @@ class SpinBox(QtGui.QAbstractSpinBox):
                 return
             le.setSelection(0, index)
 
-    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
+    # FIXED: reimplement the methods for compatibility reasons to QSpinBox and
+    #        QDoubleSpinBox methods
     def suffix(self):
         return self.opts['suffix']
 
-    #Fix: reimplement the methods for compatibility reasons to QSpinBox and QDoubleSpinBox methods
+    # FIXED: reimplement the methods for compatibility reasons to QSpinBox and
+    #        QDoubleSpinBox methods
     def prefix(self):
         return self.opts['prefix']
 
     def value(self):
-        """
-        Return the value of this SpinBox.
+        """ Return the value of this SpinBox."""
 
-        """
         if self.opts['int']:
             return int(self.val)
         else:
@@ -330,13 +330,18 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if value is None:
             value = self.value()
 
-        bounds = self.opts['bounds']
-        if bounds[0] is not None and value < bounds[0]:
-            value = bounds[0]
-        if bounds[1] is not None and value > bounds[1]:
-            value = bounds[1]
+        is_NAN = self.checkNaN(value)
 
-        if self.opts['int']:
+        bounds = self.opts['bounds']
+        # check just the bounds, if value is reasonable.
+        # FIXED: add the NaN check.
+        if not is_NAN:
+            if bounds[0] is not None and value < bounds[0]:
+                value = bounds[0]
+            if bounds[1] is not None and value > bounds[1]:
+                value = bounds[1]
+
+        if self.opts['int'] and not is_NAN:
             value = int(value)
 
         value = D(asUnicode(value))
@@ -348,7 +353,8 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if update:
             self.updateText(prev=prev)
 
-        self.sigValueChanging.emit(self, float(self.val))  ## change will be emitted in 300ms if there are no subsequent changes.
+        # change will be emitted in 300ms if there are no subsequent changes.
+        self.sigValueChanging.emit(self, float(self.val))
         if not delaySignal:
             self.emitChanged()
 
@@ -358,6 +364,15 @@ class SpinBox(QtGui.QAbstractSpinBox):
                            doc='Qt property value as type float')
     value_int = Property(int, value, setValue,
                          doc='Qt property value as type int')
+
+    def checkNaN(self, val):
+        """
+        NaN check to make the enhance the ability to cope with NaN.
+        The NaN is the only object which fails in comparing it to itself.
+            True if val is NaN,
+            False otherwise.
+        """
+        return not (val == val)
 
     def emitChanged(self):
         self.lastValEmitted = self.val
@@ -369,7 +384,9 @@ class SpinBox(QtGui.QAbstractSpinBox):
             if self.val != self.lastValEmitted:
                 self.emitChanged()
         except RuntimeError:
-            pass  ## This can happen if we try to handle a delayed signal after someone else has already deleted the underlying C++ object.
+            # This can happen if we try to handle a delayed signal after
+            # someone else has already deleted the underlying C++ object.
+            pass
 
     def widgetGroupInterface(self):
         return (self.valueChanged, SpinBox.value, SpinBox.setValue)
@@ -384,40 +401,62 @@ class SpinBox(QtGui.QAbstractSpinBox):
         #print "fixup:", args
 
     def stepBy(self, n):
-        n = D(int(n))   ## n must be integral number of steps.
-        s = [D(-1), D(1)][n >= 0]  ## determine sign of step
-        val = self.val
+        n = D(int(n))               # n must be an integer number of steps.
+        s = [D(-1), D(1)][n >= 0]   # determine sign of step
 
-        for i in range(int(abs(n))):
+        # If NaN is present in the Spinbox, then upon one step the value should
+        # start from the bounds depending on in which direction the step is
+        # performed. By this the step functionality is preserved even if NaN is
+        # present in the Spinbox.
+        bounds = self.opts['bounds']
+        b = [bounds[0], bounds[1]][s >= 0]
 
-            if self.opts['log']:
-                raise Exception("Log mode no longer supported.")
-            #    step = abs(val) * self.opts['step']
-            #    if 'minStep' in self.opts:
-            #        step = max(step, self.opts['minStep'])
-            #    val += step * s
-            if self.opts['dec']:
-                if val == 0:
-                    step = self.opts['minStep']
-                    exp = None
+        if self.checkNaN(self.val):
+            val = b
+        else:
+            val = self.val
+
+        # Just remember: inf+step remains inf, therefore skip the calculation
+        if abs(val) != float('inf'):
+
+            # calculate the range of step:
+            for i in range(int(abs(n))):
+
+                if self.opts['log']:
+                    raise Exception("Log mode no longer supported.")
+                #    step = abs(val) * self.opts['step']
+                #    if 'minStep' in self.opts:
+                #        step = max(step, self.opts['minStep'])
+                #    val += step * s
+                if self.opts['dec']:
+                    if val == 0:
+                        step = self.opts['minStep']
+                        exp = None
+                    else:
+                        vs = [D(-1), D(1)][val >= 0]
+                        #exp = D(int(abs(val*(D('1.01')**(s*vs))).log10()))
+                        fudge = D('1.01')**(s*vs) # fudge factor. At some
+                                                  # places, the step size
+                                                  # depends on the step sign.
+                        exp = abs(val * fudge).log10().quantize(
+                                1,
+                                rounding=ROUND_FLOOR
+                                )
+                        step = self.opts['step'] * D(10)**exp
+                    if 'minStep' in self.opts:
+                        step = max(step, self.opts['minStep'])
+                    val += s * step
+                    # print("Exp:", exp, "step", step, "val", val)
                 else:
-                    vs = [D(-1), D(1)][val >= 0]
-                    #exp = D(int(abs(val*(D('1.01')**(s*vs))).log10()))
-                    fudge = D('1.01')**(s*vs) ## fudge factor. at some places, the step size depends on the step sign.
-                    exp = abs(val * fudge).log10().quantize(1, rounding=ROUND_FLOOR)
-                    step = self.opts['step'] * D(10)**exp
-                if 'minStep' in self.opts:
-                    step = max(step, self.opts['minStep'])
-                val += s * step
-                #print "Exp:", exp, "step", step, "val", val
-            else:
-                val += s*self.opts['step']
+                    val += s*self.opts['step']
 
-            if 'minStep' in self.opts and abs(val) < self.opts['minStep']:
-                val = D(0)
-        self.setValue(val, delaySignal=True)  ## note all steps (arrow buttons, wheel, up/down keys..) emit delayed signals only.
+                if 'minStep' in self.opts and abs(val) < self.opts['minStep']:
+                    val = D(0)
+        # note all steps (arrow buttons, wheel, up/down keys..) emit delayed signals only.
+        self.setValue(val, delaySignal=True)
 
     def valueInRange(self, value):
+        """ Check whether current value is in range. """
         bounds = self.opts['bounds']
         if bounds[0] is not None and value < bounds[0]:
             return False
@@ -430,7 +469,6 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
 
     def updateText(self, prev=None):
-        # print("Update text.")
 
         self.skipValidate = True
         if self.opts['siPrefix']:
@@ -443,12 +481,14 @@ class SpinBox(QtGui.QAbstractSpinBox):
                                   suffix=self.opts['suffix']
                                   )
         else:
-            txt = '{0:.14g}{1!s}'.format(self.val , self.opts['suffix'])
+            txt = '{0:.14g}{1!s}'.format(self.val, self.opts['suffix'])
         self.lineEdit().setText(txt)
         self.lastText = txt
         self.skipValidate = False
 
     def validate(self, strn, pos):
+        """ Reimplement the validate functionality from QAbstractSpinBox. """
+
         # print('validate', strn, pos)
         if self.skipValidate:
             # print("skip validate")
@@ -459,30 +499,38 @@ class SpinBox(QtGui.QAbstractSpinBox):
                 ## first make sure we didn't mess with the suffix
                 suff = self.opts.get('suffix', '')
 
-                # fix: if the whole text is selected and one needs to typ in a
-                #      new number, then a single integer character is ignored.
+                # FIXED: if the whole text is selected and one needs to typ in
+                #        a new number, then a single integer character is
+                #        ignored.
+
                 if len(strn) == 1 and strn.isdigit():
                     scl_str = fn.siScale(self.val)[1]
                     strn = '{0} {1}{2}'.format(strn, scl_str, suff)
 
+                # print('check whether strn has a suffix and is a unicode')
                 if len(suff) > 0 and asUnicode(strn)[-len(suff):] != suff:
-                    #print '"%s" != "%s"' % (unicode(strn)[-len(suff):], suff)
+                    # print('"{0}" != "{1}"'.format(asUnicode(strn)[-len(suff):], suff))
                     ret = QtGui.QValidator.Invalid
                     # print('invalid input', 'suff:', suff, '{0} != {1}'.format(asUnicode(strn)[-len(suff):], suff))
 
-                ## next see if we actually have an interpretable value
+                # next see if we actually have an interpretable value
                 else:
+                    # print('interpret the text')
                     val = self.interpret()
                     if val is False:
-                        #print "can't interpret"
+                        # print("can't interpret")
                         #self.setStyleSheet('SpinBox {border: 2px solid #C55;}')
                         #self.textValid = False
                         ret = QtGui.QValidator.Intermediate
                     else:
-                        if self.valueInRange(val):
+                        # print('Check value in Range')
+                        # let also NaN pass.
+                        if self.checkNaN(val):
+                            ret = QtGui.QValidator.Acceptable
+                        elif self.valueInRange(val):
                             if not self.opts['delayUntilEditFinished']:
                                 self.setValue(val, update=False)
-                            #print "  OK:", self.val
+                            # print("  OK:", self.val)
                             #self.setStyleSheet('')
                             #self.textValid = True
 
@@ -526,25 +574,41 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
 
     def interpret(self):
-        """Return value of text. Return False if text is invalid, raise exception if text is intermediate"""
+        """
+        Interprete the text by returning the interpreted number.
+        If interpretation fails, False is returned.
+        """
         strn = self.lineEdit().text()
+        # print('Full string: "{0}"'.format(strn))
 
-        #Fix: strip leading blank characters, which produce errors:
-        strn = strn.lstrip()
+        #FIXED: strip leading and subsequent blank characters which may
+        #       produce errors:
+        strn = strn.strip()
 
         suf = self.opts['suffix']
         if len(suf) > 0:
             if strn[-len(suf):] != suf:
                 return False
             #raise Exception("Units are invalid.")
+
+            # subtract the unit from the string, prefix is still present
             strn = strn[:-len(suf)]
         try:
-            val = fn.siEval(strn)
+            # Catch all the cases for input of NaN, inf and a leading minus sign:
+            if strn in ['NAN', 'NaN', 'nan']:
+                val = D('NaN')
+            elif strn in ['-inf', 'inf']:
+                val = float(strn)
+            elif strn in ['-','+']:
+                val = float(strn+'1')
+            else:
+                # otherwise, try to extract the value
+                val = fn.siEval(strn)
         except:
             #sys.excepthook(*sys.exc_info())
-            #print "invalid"
+            # print("invalid")
             return False
-        #print val
+        # print(val)
         return val
 
     #def interpretText(self, strn=None):
@@ -557,9 +621,9 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
     def editingFinishedEvent(self):
         """Edit has finished; set value."""
-        #print "Edit finished."
+        # print("Edit finished.")
         if asUnicode(self.lineEdit().text()) == self.lastText:
-            #print "no text change."
+            # print("no text change.")
             return
         try:
             val = self.interpret()
@@ -567,15 +631,17 @@ class SpinBox(QtGui.QAbstractSpinBox):
             return
 
         if val is False:
-            #print "value invalid:", str(self.lineEdit().text())
+            # print("value invalid:", str(self.lineEdit().text()))
             return
         if val == self.val:
-            #print "no value change:", val, self.val
+            # print("no value change:", val, self.val)
             return
-        self.setValue(val, delaySignal=False)  ## allow text update so that values are reformatted pretty-like
+        # allow text update so that values are reformatted pretty-like
+        self.setValue(val, delaySignal=False)
 
-    #def textChanged(self):
-        #print "Text changed."
+    # for testing issues:
+    # def textChanged(self):
+    #     print("Text changed.")
 
 
 ### Drop-in replacement for SpinBox; just for crash-testing
@@ -592,13 +658,18 @@ class SpinBox(QtGui.QAbstractSpinBox):
     #def widgetGroupInterface(self):
         #return (self.valueChanged, SpinBox.value, SpinBox.setValue)
 
+    #FIXED: Implement ReadOnly possibility.
     def isReadOnly(self):
-        """ Overwrite the QAbstractSpinBox method to obtain the ReadOnly state.
+        """
+        Overwrite the QAbstractSpinBox method to obtain the ReadOnly state.
         """
         return self.opts['readonly']
 
+    #FIXED: Catch MousePressEvents
     def mousePressEvent(self, event):
-        """ Handle what happens on press event of the mouse.
+        """
+        Handle what happens on press event of the mouse, specifically for the
+        readOnly state.
 
         @param event: QEvent of a Mouse Release action
         """
@@ -621,8 +692,11 @@ class SpinBox(QtGui.QAbstractSpinBox):
     #     else:
     #         super(SpinBox, self).mouseMoveEvent(event)
 
+    #FIXED: Catch MouseReleaseEvents
     def mouseReleaseEvent(self, event):
-        """ Handle what happens on release of the mouse.
+        """
+        Handle what happens on release of the mouse, specifically for the
+        readOnly state.
 
         @param event: QEvent of a Mouse Release action
         """
@@ -632,9 +706,10 @@ class SpinBox(QtGui.QAbstractSpinBox):
         else:
             super(SpinBox, self).mouseReleaseEvent(event)
 
-    # Handle event in which the widget has focus and the spacebar is pressed.
+    #FIXED: Handle event in which the widget has the focus and the spacebar is pressed.
     def keyPressEvent(self, event):
-        """ Handle what happens on keypress.
+        """
+        Handle what happens on keypress, specifically for the readOnly state.
 
         @param event: QEvent of a key press Action
         """
@@ -644,8 +719,11 @@ class SpinBox(QtGui.QAbstractSpinBox):
         else:
             super(SpinBox, self).keyPressEvent(event)
 
+    #FIXED: Catch wheelEvent
     def wheelEvent(self, event):
-        """ Handle what happens on a wheel event of the mouse.
+        """
+        Handle what happens on a wheel event of the mouse, specifically for the
+        readOnly state.
 
         @param event: QEvent of a Mouse Wheel event
         """
@@ -662,13 +740,13 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         @param bool state: True or False, for having a readonly QRadioButton.
 
-        Important, declare that slot as a qt slot to provide a C++ signature for
-        that. The advantage is less memory consumption and slightly faster
+        Important, declare that slot as a qt slot to provide a C++ signature
+        for that. The advantage is less memory consumption and slightly faster
         performance.
         Note: Not using the slot decorator causes that the signal connection
-        mechanism is forced to work out manually the type conversion to map from
-        the underlying C++ function signatures to the Python functions. When the
-        slot decorators are used, the type mapping can be explicit!
+        mechanism is forced to work out manually the type conversion to map
+        from the underlying C++ function signatures to the Python functions.
+        When the slot decorators are used, the type mapping can be explicit!
         """
 
         self.setOpts(readonly=state)
