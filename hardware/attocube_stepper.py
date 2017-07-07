@@ -436,7 +436,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 command = "setm {} {}".format(self._attocube_axis[axis], self._attocube_modes[mode])
                 result = self._send_cmd(command)
                 if result == 0:
-                    self._axis_mode[axis] = self._attocube_modes[mode]
+                    self._axis_mode[axis] = mode
                     return 0
                 else:
                     self.log.error("Setting axis {} to mode {} failed".format(self._attocube_axis[axis], mode))
@@ -459,8 +459,13 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             if result[0] == -1:
                 return -1
             mode_line = result[1][-3].split()
-            self._axis_mode[axis] = mode_line[-1]
-            return self._axis_mode[axis]
+            for mode in self._attocube_modes:
+                if self._attocube_modes[mode] == mode_line[-1]:
+                    self._axis_mode[axis] = mode
+                    return self._axis_mode[axis]
+            else:
+                self.log.error("Current mode of controller {} not in list of modes{}".format(mode_line[-1]._attocube_modes))
+                return -1
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
 
@@ -580,9 +585,9 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             if axis[self._attocube_axis[i] - 1]:  # check it the axis actually exists
                 self._axis_amplitude[i] = 0
                 self._axis_frequency[i] = 0
-                self._axis_mode[i] = 0
-                self._axis_dci[i] = 0
-                self._axis_aci[i] = 0
+                self._axis_mode[i] = ""
+                self._axis_dci[i] = ""
+                self._axis_aci[i] = ""
                 self._axis_capacitance[i] = 0
             else:
                 self.log.error("axis {} was specified as number {} on ANC300\n  but this axis "
