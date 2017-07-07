@@ -21,13 +21,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore
 from collections import OrderedDict
-#from copy import copy
+# from copy import copy
 import time
 import datetime
 import numpy as np
-#import matplotlib as mpl
-#import matplotlib.pyplot as plt
-#from io import BytesIO
+# import matplotlib as mpl
+# import matplotlib.pyplot as plt
+# from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -49,17 +49,22 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         'confocalcounter': 'FiniteCounterInterface'
     }
 
+    # Todo: add connectors and QTCore Signals
+    # signals
+    signal_start_stepping = QtCore.Signal()
+    signal_step_lines_next = QtCore.Signal()
     signal_stop_stepping = QtCore.Signal()
+    signal_continue_stepping = QtCore.Signal()
 
     # Todo: For steppers with hardware realtime info like res readout of attocubes clock synchronisation and readout needs to be written
     # Therefore a new interface (ConfocalReadInterface o.ä.) needs to be made
 
-    # Todo: add connectors and QTCore Signals
+
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        #locking for thread safety
+        # locking for thread safety
         self.threadlock = Mutex()
 
     def on_activate(self):
@@ -84,15 +89,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.axis = self.get_stepper_axes_use()
         self.step_amplitude = dict()
         self._step_freq = dict()
-        self._axis_mode = dict()
+        self._stepper_mode = dict()
         for i in self.axis:
             # Todo: Add error check here or in method else it tries to write non existing value into itself
             self.step_amplitude[i] = self.get_stepper_amplitude(i)
             self._step_freq[i] = self.get_stepper_frequency(i)
             # Todo: write method that enquires stepping device mode
-            self._axis_mode[i] = self._stepping_device.get_axis_mode(i)
-
-            # Todo add connectors
+            self._stepper_mode[i] = self.get_stepper_mode(i)
         # Sets connections between signals and functions
         self.signal_step_lines_next.connect(self._step_line, QtCore.Qt.QueuedConnection)
         self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
@@ -171,22 +174,35 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         return amp
 
     def set_mode_stepping(self, axis):
-        """Sets the mode of the stepping device to stepping
+        """Sets the mode of the stepping device to stepping for the specified axis
 
         :param axis: The axis for which the mode is to be set
         :return int: error code (0:OK, -1:error)
         """
-        self._axis_mode[axis] = "stepping"
+        self._stepper_mode[axis] = "stepping"
         return self._stepping_device.set_axis_mode(axis, "stepping")
 
     def set_mode_ground(self, axis):
-        """Sets the mode of the stepping device to grounded
+        """Sets the mode of the stepping device to grounded for the specified axis
 
         :param axis: The axis for which the mode is to be set
         :return int: error code (0:OK, -1:error)
         """
-        self._axis_mode[axis] = "ground"
+        self._stepper_mode[axis] = "ground"
         return self._stepping_device.set_axis_mode(axis, "ground")
+
+    def get_stepper_mode(self, axis):
+        """Gets the mode of the stepping device for the specified axis
+
+        :param axis: The axis for which the mode is to be set
+        :return int: error code (0:OK, -1:error)
+        """
+        mode = self._stepping_device.get_axis_mode(axis)
+        if mode == -1:
+            return mode
+        else:
+            self._stepper_mode[axis] = mode
+            return 0
 
     def _check_freq(self, axis):
         """ Checks if the frequency in te device is the same as set by the program
@@ -205,7 +221,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if self.getState() == 'locked':
                 self.log.warning("The stepper is still running")
                 return -1
-            return self._stepping_device.set_step_freq(self, axis, self._step_freq[axis])
+            return self.set_stepper_frequency(axis, self._step_freq[axis])
         return 0
 
     def _check_amplitude(self, axis):
@@ -224,7 +240,36 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if self.getState() == 'locked':
                 self.log.warning("The stepper is still running")
                 return -1
-            return self._stepping_device.set_step_amplitude(self, axis, self.step_amplitude[axis])
+            return self.set_stepper_amplitude(axis, self.step_amplitude[axis])
+        return 0
+
+    def _check_mode(self, axis):
+        """ Checks if the voltage in te device is the same as set by the program
+        If the voltages are different the voltage in the device is changed to the set voltage
+
+        @return int: error code (0:OK, -1:error)
+        """
+        mode = self._stepping_device.get_axis_mode(axis)
+        if mode != self._stepper_mode[axis]:
+            self.log.warning(
+                "The device has different mode ({}) compared the assumed mode {}. "
+                "The mode of the device will be changed to the programs mode".format(mode,
+                                                                                     self._stepper_mode[axis]))
+            # checks if stepper is still running
+            if self.getState() == 'locked':
+                self.log.warning("The stepper is still running")
+                return -1
+            else:
+                if self._stepper_mode[axis] == "ground":
+                    retval = self.set_mode_ground(axis)
+                elif self._stepper_mode[axis] == "stepping":
+                    retval = self.set_mode_stepping(axis)
+                else:
+                    self.log.error(
+                        "The mode set by the program {} does not exist or can not be accessed by this program.\n"
+                        "Please change it to one of the possible modes".format(self._stepper_mode[axis]))
+                    retval = -1
+                return retval
         return 0
 
     def get_stepper_axes_use(self):
@@ -243,20 +288,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     ################################### Control Stepper ########################################
 
-    def start_stepper(self):
-        """Starts the scanning procedure
+    def _get_scan_axes(self):
+        """
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo: Do we need a lock for the stepper as well?
-        self._step_counter = 0
-        self.lock()
-
-        # Todo: to be done when GUI is done
-        # if self.initialize_image() < 0:
-        #    self.unlock()
-        #    return -1
-
         a, b = self._scan_axes.split()
         if a in self.axis.keys() and b in self.axis.keys():
             if self._inverted_scan:
@@ -271,6 +307,24 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     self._scan_axes))
             self.unlock()
             return -1
+        return 0
+
+    def start_stepper(self):
+        """Starts the scanning procedure
+
+        @return int: error code (0:OK, -1:error)
+        """
+        # Todo: Do we need a lock for the stepper as well?
+        self._step_counter = 0
+        self.lock()
+
+        # Todo: to be done when GUI is done
+        # if self.initialize_image() < 0:
+        #    self.unlock()
+        #    return -1
+
+        if self._get_scan_axes() < 0:
+            return -1
 
         # Check the parameters of the stepper device
         freq_status = self._check_freq(self._first_scan_axis)
@@ -281,6 +335,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         freq_status = self._check_freq(self._first_scan_axis)
         amp_status = self._check_amplitude(self._second_scan_axis)
         if freq_status < 0 or amp_status < 0:
+            self.unlock()
+            return -1
+        if self._stepper_mode[self._first_scan_axis] != "stepping":
+            mode_status = self.set_mode_stepping(self._first_scan_axis)
+        else:
+            mode_status = self._check_mode(self._first_scan_axis)
+        if mode_status < 0:
+            self.unlock()
+            return -1
+        if self._stepper_mode[self._second_scan_axis] != "stepping":
+            mode_status = self.set_mode_stepping(self._second_scan_axis)
+        else:
+            mode_status = self._check_mode(self._second_scan_axis)
+        if mode_status < 0:
             self.unlock()
             return -1
 
@@ -589,7 +657,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """ Get lis of counting channels from counting device.
           @return list(str): names of counter channels
         """
-        return self._scanning_device.get_scanner_count_channels()
+        return self._counting_device.get_scanner_count_channels()
 
     ##################################### Handle Data ########################################
 
@@ -620,6 +688,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
+        self._get_scan_axes()
         parameters['First Axis'] = self._first_scan_axis
         parameters['First Axis Steps'] = self._steps_scan_line
         parameters['First Axis Frequency'] = self._step_freq[self._second_scan_axis]
@@ -632,12 +701,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Second Axis Frequency'] = self._step_freq[self._second_scan_axis]
         parameters['Second Axis Amplitude'] = self.step_amplitude[self._second_scan_axis]
 
-
-        #parameters['XY Image at z position (m)'] = self._current_z
-        #Todo: add starting "x" "y" position
+        # parameters['XY Image at z position (m)'] = self._current_z
+        # Todo: add starting "x" "y" position
 
         # Prepare a figure to be saved
-        figure_data = self.xy_image[:, :, 3]
+        #figure_data = self.xy_image[:, :, 3]
         image_extent = [0,
                         self._steps_scan_line,
                         0,
@@ -660,7 +728,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                        'The upper left entry represents the signal at the upper left pixel '
                        'position.\nA pixel-line in the image corresponds to a row '
                        'of entries where the Signal is in counts/s:'.format(
-                        self._first_scan_axis, self._second_scan_axis)] = self._stepping_raw_data
+                self._first_scan_axis, self._second_scan_axis)] = self._stepping_raw_data
 
             filelabel = 'confocal_xy_image_{0}'.format(ch.replace('/', ''))
             self._save_logic.save_data(image_data,
@@ -674,15 +742,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
-        #data['{} steps'.format(self._first_scan_axis)] = self.xy_image[:, :, 0].flatten()
-        #data['{} steps'.format(self._second_scan_axis)] = self.xy_image[:, :, 1].flatten()
+        # data['{} steps'.format(self._first_scan_axis)] = self.xy_image[:, :, 0].flatten()
+        # data['{} steps'.format(self._second_scan_axis)] = self.xy_image[:, :, 1].flatten()
 
-        #for n, ch in enumerate(self.get_scanner_count_channels()):
+        # for n, ch in enumerate(self.get_scanner_count_channels()):
         #    data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 3 + n].flatten()
 
         # Save the raw data to file
-        #filelabel = 'confocal_xy_data'
-        #self._save_logic.save_data(data,
+        # filelabel = 'confocal_xy_data'
+        # self._save_logic.save_data(data,
         #                           filepath=filepath,
         #                           timestamp=timestamp,
         #                           parameters=parameters,
