@@ -25,8 +25,8 @@ from collections import OrderedDict
 import time
 import datetime
 import numpy as np
-# import matplotlib as mpl
-# import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 # from io import BytesIO
 
 from logic.generic_logic import GenericLogic
@@ -727,12 +727,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # axes = [self._first_scan_axis, self._second_scan_axis]
         # crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
-        # figs = {ch: self.draw_figure(data=self.xy_image[:, :, 3 + n],
-        #                             image_extent=image_extent,
-        #                             scan_axis=axes,
-        #                             cbar_range=colorscale_range,
-        #                             percentile_range=percentile_range)
-        #        for n, ch in enumerate(self.get_scanner_count_channels())}
+        figs = {ch: self.draw_figure(data=self._stepping_raw_data,
+                                     cbar_range=colorscale_range,
+                                     percentile_range=percentile_range)
+                for n, ch in enumerate(self.get_counter_count_channels())}
 
         # Save the image data and figure
         for n, ch in enumerate(self.get_counter_count_channels()):
@@ -752,7 +750,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                        filelabel=filelabel,
                                        fmt='%.6e',
                                        delimiter='\t',
-                                       plotfig=None)
+                                       plotfig=figs[ch])
 
         # prepare the full raw data in an OrderedDict:
         # data = OrderedDict()
@@ -777,7 +775,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo Ask if it is possible to write only one save with options for which lines were scanned
         return
 
-    def draw_figure(self, data, image_extent, scan_axis=None, cbar_range=None,
+    def draw_figure(self, data, scan_axis=None, cbar_range=None,
                     percentile_range=None):  # crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image for saving
 
@@ -797,9 +795,70 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
+        # Todo: this is very incomplete. Things like axis etc are missing
+        image_data = data
 
+        # If no colorbar range was given, take full range of data
+        cbar_range = [np.min(image_data), np.max(image_data)]
+
+        # Scale color values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_count = 0
+        image_data = data
+        draw_cb_range = np.array(cbar_range)
+
+        while draw_cb_range[1] > 1000:
+            image_data = image_data/1000
+            draw_cb_range = draw_cb_range/1000
+            prefix_count = prefix_count + 1
+
+        c_prefix = prefix[prefix_count]
+
+
+        # Scale axes values using SI prefix
+        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        x_prefix_count = 0
+        y_prefix_count = 0
+
+        cbar_prefix = prefix[prefix_count]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        # Create image plot
+        cfimage = ax.imshow(image_data,
+                            cmap=plt.get_cmap('inferno'),  # reference the right place in qd
+                            origin="lower",
+                            vmin=draw_cb_range[0],
+                            vmax=draw_cb_range[1],
+                            interpolation='none',
+                            )
+
+        ax.set_aspect(1)
+        ax.set_xlabel(self._first_scan_axis + ' steps (')
+        ax.set_ylabel(self._second_scan_axis + ' steps ')
+        ax.spines['bottom'].set_position(('outward', 10))
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.get_xaxis().tick_bottom()
+        ax.get_yaxis().tick_left()
+
+        # Adjust subplots to make room for colorbar
+        fig.subplots_adjust(right=0.8)
+
+        # Draw the colorbar
+        cbar = plt.colorbar(cfimage, shrink=0.8)  # , fraction=0.046, pad=0.08, shrink=0.75)
+        cbar.set_label('Fluorescence (' + c_prefix + 'c/s)')
+
+        # remove ticks from colorbar for cleaner image
+        cbar.ax.tick_params(which=u'both', length=0)
+
+        return fig
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
-        return None
 
     ##################################### Tilt correction ########################################
 
