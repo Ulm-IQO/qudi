@@ -182,11 +182,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
         self.tn.read_eager()  # disregard old print outs
         self.tn.write(full_cmd)  # send command
-        # any response ends with ">" from the attocube. Therefor connection waits until this happend
+        # any response ends with ">" from the attocube. Therefor connection waits until this happened
         try:
             value_binary = self.tn.read_until(b">", timeout=1)
         except:
-            self.log.error("timeout of telnet connection attocube did not responde")
+            self.log.error("timeout of telnet connection attocube did not respond")
             return -1
         value = value_binary.decode().split("\r\n")  # transform into string and split at linefeed
         if value[-2] == "ERROR":
@@ -464,7 +464,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                     self._axis_mode[axis] = mode
                     return self._axis_mode[axis]
             else:
-                self.log.error("Current mode of controller {} not in list of modes{}".format(mode_line[-1]._attocube_modes))
+                self.log.error(
+                    "Current mode of controller {} not in list of modes{}".format(mode_line[-1]._attocube_modes))
                 return -1
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
@@ -481,7 +482,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 dci = "on"
             else:
                 dci = "off"
-            command = "setdci {} ".format(self._attocube_axis[axis])+ dci
+            command = "setdci {} ".format(self._attocube_axis[axis]) + dci
             result = self._send_cmd(command)
             if result == 0:
                 self._axis_dci[axis] = dci
@@ -685,7 +686,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # TOdo: Check if I did the same split list problem more then once
         axis = []
         for i in range(5):
-            command = "getm {}".format(i+1)
+            command = "getm {}".format(i + 1)
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
                 res = result[1]
@@ -693,7 +694,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                     axis.append(False)
                 else:
                     self.log.error('The command {} did the expected axis response, '
-                                   'but{}'.format(command , result[1][1].split()[-3]))
+                                   'but{}'.format(command, result[1][1].split()[-3]))
             else:
 
                 axis.append(True)
@@ -726,7 +727,12 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         """
         # TODO still needs to decide if necessary to use send_cmd or if silent_cmd is sufficient,
         #  or if option in call. Also needs to check response from attocube if moved.
+
         if axis in self._attocube_axis.keys():
+            if self._axis_mode[axis] == 'ground':
+                self.log.warning("Set mode to stepping. Current mode is ground.")
+                # Todo: this needs to check actually if it is in allowed mode. Figure out which modes are allowed.
+                return -1
             if direction:
                 command = "stepu {} ".format(self._attocube_axis[axis])
             else:

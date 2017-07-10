@@ -52,7 +52,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     # Todo: add connectors and QTCore Signals
     # signals
     signal_start_stepping = QtCore.Signal()
-    signal_step_lines_next = QtCore.Signal()
+    signal_step_lines_next = QtCore.Signal(bool)
     signal_stop_stepping = QtCore.Signal()
     signal_continue_stepping = QtCore.Signal()
 
@@ -73,7 +73,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # counter for scan_image
         self._step_counter = 0
-        self._scan_axes = "xz"
+        self._scan_axes = "xy"
         self._inverted_scan = False
         self.stopRequested = False
         self.depth_scan_dir_is_xz = True
@@ -96,6 +96,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._step_freq[i] = self.get_stepper_frequency(i)
             # Todo: write method that enquires stepping device mode
             self._stepper_mode[i] = self.get_stepper_mode(i)
+        self._stepping_raw_data = np.zeros((self._steps_scan_line, self._steps_scan_line))
+
         # Sets connections between signals and functions
         self.signal_step_lines_next.connect(self._step_line, QtCore.Qt.QueuedConnection)
         self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
@@ -202,7 +204,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return mode
         else:
             self._stepper_mode[axis] = mode
-            return 0
+            return mode
 
     def _check_freq(self, axis):
         """ Checks if the frequency in te device is the same as set by the program
@@ -212,7 +214,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         freq = self._stepping_device.get_step_freq(axis)
-        if freq != self._step_freq[axis]:
+        if freq == -1:
+            return -1
+        elif freq != self._step_freq[axis]:
             self.log.warning(
                 "The device has different frequency of {} then the set frequency {}. "
                 "The frequency will be changed to the set frequency".format(freq,
@@ -231,7 +235,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         amp = self._stepping_device.get_step_amplitude(axis)
-        if amp != self.step_amplitude[axis]:
+        if amp == -1:
+            return -1
+        elif amp != self.step_amplitude[axis]:
             self.log.warning(
                 "The device has different voltage of {} then the set voltage {}. "
                 "The voltage will be changed to the set voltage".format(amp,
@@ -250,7 +256,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         mode = self._stepping_device.get_axis_mode(axis)
-        if mode != self._stepper_mode[axis]:
+        if mode == -1:
+            return -1
+        elif mode != self._stepper_mode[axis]:
             self.log.warning(
                 "The device has different mode ({}) compared the assumed mode {}. "
                 "The mode of the device will be changed to the programs mode".format(mode,
@@ -293,14 +301,18 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        a, b = self._scan_axes.split()
+        if (len(self._scan_axes) != 2):
+            self.log.error(
+                "A wrong number ({}) of scan axis was given. \n The program needs 2 axes".format(len(self._scan_axes)))
+            return -1
+        a, b = self._scan_axes[0], self._scan_axes[1]
         if a in self.axis.keys() and b in self.axis.keys():
             if self._inverted_scan:
-                self._first_scan_axis = a
-                self._second_scan_axis = b
-            else:
                 self._first_scan_axis = b
                 self._second_scan_axis = a
+            else:
+                self._first_scan_axis = a
+                self._second_scan_axis = b
         else:
             self.log.error(
                 "One of the chosen axes {} are not defined for the stepper hardware.".format(
@@ -337,25 +349,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if freq_status < 0 or amp_status < 0:
             self.unlock()
             return -1
-        if self._stepper_mode[self._first_scan_axis] != "stepping":
-            mode_status = self.set_mode_stepping(self._first_scan_axis)
-        else:
-            mode_status = self._check_mode(self._first_scan_axis)
-        if mode_status < 0:
-            self.unlock()
-            return -1
-        if self._stepper_mode[self._second_scan_axis] != "stepping":
-            mode_status = self.set_mode_stepping(self._second_scan_axis)
-        else:
-            mode_status = self._check_mode(self._second_scan_axis)
-        if mode_status < 0:
-            self.unlock()
-            return -1
 
         # initialize counting device
         self._counting_device.lock()
         clock_status = self._counting_device.set_up_finite_counter_clock(
-            clock_frequency=self._step_freq(self._first_scan_axis))
+            clock_frequency=self._step_freq[self._first_scan_axis])
         if clock_status < 0:
             self._counting_device.unlock()
             self.unlock()
@@ -370,16 +368,24 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.unlock()
             return -1
 
-        # set the axis to stepping
-        axis_status1 = self.set_mode_stepping(self._first_scan_axis)
-        axis_status2 = self.set_mode_stepping(self._second_scan_axis)
+        # check axis status
+        if self._stepper_mode[self._first_scan_axis] != "stepping":
+            axis_status1 = self.set_mode_stepping(self._first_scan_axis)
+        else:
+            axis_status1 = self._check_mode(self._first_scan_axis)
+        if self._stepper_mode[self._second_scan_axis] != "stepping":
+            axis_status2 = self.set_mode_stepping(self._second_scan_axis)
+        else:
+            axis_status2 = self._check_mode(self._second_scan_axis)
         if axis_status1 < 0 or axis_status2 < 0:
+            # Todo: is this really sensible here?
             self.set_mode_ground(self._first_scan_axis)
             self.set_mode_ground(self._second_scan_axis)
             self.unlock()
+            self._counting_device.unlock()
             return -1
-
         self._stepping_device.lock()
+
         self.signal_step_lines_next.emit(True)
 
         return 0
@@ -565,16 +571,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.signal_step_lines_next.emit(direction)
             return
 
-        self._step_counter += 1
         if not direction:  # flip the count direction
             new_counts = np.flipud(new_counts)
         direction = not direction  # invert direction
         self._stepping_raw_data[self._step_counter] = new_counts
 
-        # move on line up
-        self._stepping_device.move_attocube(self._second_scan_axis, True, True, 1)
+        self._step_counter += 1
+        if self._step_counter > self._steps_scan_line - 1:
+            self.stopRequested = True
 
-        self.signal_step_lines_next(direction)
+        self.signal_step_lines_next.emit(direction)
 
 
         # Todo This needs to do the following things: scan a line with the given amount of steps and th
@@ -587,42 +593,50 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @param int steps: amount of steps, default 1
         @return np.array: acquired data in counts/s or error value -1
         """
+        # check axis
+        if mainaxis in self.axis.keys():
+            if secondaxis in self.axis.keys():
+                if self._counting_device.start_finite_counter() < 0:
+                    self.log.error("Starting the counter failed")
+                    return -1
 
-        if self._counting_device.start_finite_counter() < 0:
-            self.log.error("Starting the counter failed")
-            return -1
+                if self._stepping_device.move_attocube(mainaxis, True, direction, steps=steps - 1) < 0:
+                    self.log.error("moving of attocube failed")
+                    return -1
 
-        if self._stepping_device.move_attocube(mainaxis, True, direction, steps=steps - 1) < 0:
-            self.log.error("moving of attocube failed")
-            return -1
+                # move on line up
+                if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
+                    self.log.error("moving of attocube failed")
+                    return -1
 
-        # move on line up
-        if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
-            self.log.error("moving of attocube failed")
-            return -1
+                # Todo: Check if there is a better way than this to adjust for the fact that a stepping
+                # direction change is necessary for the last count. Maybe different method arrangement
+                # sensible
 
-        # Todo: Check if there is a better way than this to adjust for the fact that a stepping
-        # direction change is necessary for the last count. Maybe different method arrangement
-        # sensible
+                time.sleep(steps / self._step_freq[mainaxis])  # wait till stepping finished for readout
+                result = self._counting_device.get_finite_counts()
+                retval = 0
+                a = self._counting_device.stop_finite_counter()
+                if result[0][0] == [-1]:
+                    self.log.error("The readout of the counter failed")
+                    retval = -1
+                elif result[1] != steps:
+                    self.log.error("A different amount of data than necessary was returned.\n "
+                                   "Received {} instead of {} bins with counts ".format(result[1], steps))
+                    retval = -1
+                elif a < 0:
+                    retval = -1
+                    self.log.error("Stopping the counter failed")
+                else:
+                    retval = result[0]
 
-        time.sleep(steps * self._step_freq(mainaxis))  # wait till stepping finished for readout
-        result = self._counting_device.get_finite_counts()
-        retval = 0
-        a = self._counting_device.stop_finite_counter()
-        if result[0] == [-1]:
-            self.log.error("The readout of the counter failed")
-            retval = -1
-        elif result[1] != steps:
-            self.log.error("A different amount of data than necessary was returned.\n "
-                           "Received {} instead of {} bins with counts ".format(result[1], steps))
-            retval = -1
-        elif a < 0:
-            retval = -1
-            self.log.error("Stopping the counter failed")
+                return retval
+            else:
+                self.log.error("second axis {} in not  an axis {} of the stepper".format_map(secondaxis, self.axis))
+                return -1
         else:
-            retval = result[0]
-
-        return retval
+            self.log.error("main axis {} is not an axis {} of the stepper".format_map(mainaxis, self.axis))
+            return -1
 
     ##################################### Acquire Data ###########################################
 
@@ -705,13 +719,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo: add starting "x" "y" position
 
         # Prepare a figure to be saved
-        #figure_data = self.xy_image[:, :, 3]
-        image_extent = [0,
-                        self._steps_scan_line,
-                        0,
-                        self._steps_scan_line]
-        axes = [self._first_scan_axis, self._second_scan_axis]
-        crosshair_pos = [self.get_position()[0], self.get_position()[1]]
+        # figure_data = self.xy_image[:, :, 3]
+        # image_extent = [0,
+        #                self._steps_scan_line,
+        #                0,
+        #                self._steps_scan_line]
+        # axes = [self._first_scan_axis, self._second_scan_axis]
+        # crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
         # figs = {ch: self.draw_figure(data=self.xy_image[:, :, 3 + n],
         #                             image_extent=image_extent,
@@ -721,7 +735,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         #        for n, ch in enumerate(self.get_scanner_count_channels())}
 
         # Save the image data and figure
-        for n, ch in enumerate(self.get_scanner_count_channels()):
+        for n, ch in enumerate(self.get_counter_count_channels()):
             # data for the text-array "image":
             image_data = OrderedDict()
             image_data['Confocal pure {}{} scan image data without axis.\n'
@@ -741,7 +755,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                        plotfig=None)
 
         # prepare the full raw data in an OrderedDict:
-        data = OrderedDict()
+        # data = OrderedDict()
         # data['{} steps'.format(self._first_scan_axis)] = self.xy_image[:, :, 0].flatten()
         # data['{} steps'.format(self._second_scan_axis)] = self.xy_image[:, :, 1].flatten()
 
@@ -758,8 +772,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         #                           fmt='%.6e',
         #                           delimiter='\t')
 
-        self.log.debug('Confocal Image saved.')
-        self.signal_xy_data_saved.emit()
+        self.log.debug('Confocal Stepper Image saved.')
+        # self.signal_xy_data_saved.emit()
         # Todo Ask if it is possible to write only one save with options for which lines were scanned
         return
 

@@ -2274,27 +2274,28 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 self.log.error("not able to read counts for finite counter.")
                 return np.array([-1]), 0
 
-        return self._finite_clock_frequency * _finite_count_data, n_read_samples  # counts per second
+        return self._finite_clock_frequency * _finite_count_data, n_read_samples.value  # counts per second
 
     def stop_finite_counter(self):
         """Stops the preconfigured counter task
 
         @return int: error code (0:OK, -1:error)
         """
-        if self._scanner_counter_daq_tasks is None:
+        if len(self._scanner_counter_daq_tasks) < 1:
             self.log.error(
                 'Cannot stop Finite Counter Task since it is not running or configured!\n'
                 'Start the Counter Task Task before you can actually stop it!')
             return -1
         if self._finite_counter_samples is None:
-            self.log.error("No finite counter samples sepcified.")
+            self.log.error("No finite counter samples specified.")
             return -1
-        try:
-            daq.DAQmxStopTask(self._scanner_counter_daq_tasks)
-        except:
-            self.log.exception('Error while stopping gated counting.')
-            return -1
-        return 0
+        for task in self._scanner_counter_daq_tasks:
+            try:
+                daq.DAQmxStopTask(task)
+            except:
+                self.log.exception('Error while stopping finite counting.')
+                return -1
+            return 0
 
     def close_finite_counter(self):
         """ Clear tasks, so that counters are not in use any more.
