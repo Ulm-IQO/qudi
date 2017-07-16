@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import lmfit
 
 from logic.generic_logic import GenericLogic
+from logic.fit_logic import FitContainer
 from core.util.mutex import Mutex
 from core.module import Connector, ConfigOption, StatusVar
 
@@ -84,6 +85,9 @@ class ODMRLogic(GenericLogic):
         self._odmr_counter = self.get_connector('odmrcounter')
         self._save_logic = self.get_connector('savelogic')
         self._taskrunner = self.get_connector('taskrunner')
+
+        # load fits
+        self.fc = self.fitcontainer
 
         # Get hardware constraints
         limits = self.get_hw_constraints()
@@ -153,9 +157,11 @@ class ODMRLogic(GenericLogic):
         self._mw_device.off()
         # Disconnect signals
         self.sigNextLine.disconnect()
+        # save fit container
+        self.fitcontainer = self.fc
 
-    @fitcontainer.setter
-    def sv_set_fits(self, val):
+    @fitcontainer.getter
+    def sv_get_fits(self, val):
         # Setup fit container
         fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
         fc.set_units(['Hz', 'c/s'])
@@ -186,13 +192,15 @@ class ODMRLogic(GenericLogic):
             default_fits = OrderedDict()
             default_fits['1d'] = d1
             fc.load_from_dict(default_fits)
-        self.fc = fc
+        return fc
 
-    @fitcontainer.getter
-    def sv_get_fits(self):
+    @fitcontainer.setter
+    def sv_set_fits(self, value):
         """ save configured fits """
-        if len(self.fc.fit_list) > 0:
-            return self.fc.save_to_dict()
+        if not isinstance(value, FitContainer):
+            raise Exception('Invalid type for status variable.')
+        if len(value.fit_list) > 0:
+            return value.save_to_dict()
         else:
             return None
 

@@ -20,14 +20,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import copy
+import functools
 import logging
 import os
-import qtpy
-import sys
 from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 from enum import Enum
 from qtpy import QtCore
+from . import config
 
 
 class StatusVar:
@@ -235,6 +235,27 @@ class ModuleMeta(type(QtCore.QObject)):
         new_class._config_options = config_options
         new_class._stat_vars = status_vars
 
+        # for each status variable generate a property
+        def fget(self, var):
+            if var.getter_function is None:
+                return self._statusVariables[var.name]
+            else:
+                return var.getter_function(self._statusVariables[var.name])
+
+        def fset(self, value, var):
+            # write value to dictionary
+            if var.setter_function is None:
+                self._statusVariables[var.name] = value
+            else:
+                self._statusVariables[var.name] = var.setter_function(value)
+            # and save it immediately in a file
+            self.save_status_variables()
+
+        for vname, var in status_vars.items():
+            setattr(new_class, var.var_name, property(
+                functools.partial(fget, var=var),
+                functools.partial(fset, var=var)))
+
         return new_class
 
 
@@ -265,10 +286,10 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
     # signals
     sigStateChanged = QtCore.Signal(object)  # (module name, state change)
 
-    def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
+    def __init__(self, manager, base, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
 
-          @param object self: tthe object being initialised
+          @param object self: the object being initialised
           @param object manager: the manager object that
           @param str name: unique name for this object
           @param dict configuration: parameters from the configuration file
@@ -335,15 +356,16 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                 elif opt.missing == MissingOption.warn:
                     self.log.warning(
                         'No variable >> {0} << configured, using default value {1} instead.'
-                         ''.format(opt.name, opt.default))
+                        ''.format(opt.name, opt.default))
                 elif opt.missing == MissingOption.info:
                     self.log.info(
                         'No variable >> {0} << configured, using default value {1} instead.'
-                         ''.format(opt.name, opt.default))
+                        ''.format(opt.name, opt.default))
                 cfg_val = opt.default
             setattr(self, opt.var_name, cfg_val)
 
         self._manager = manager
+        self._base = base
         self._name = name
         self._configuration = config
         self._statusVariables = OrderedDict()
@@ -352,17 +374,15 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
     def __load_status_vars_activate(self, event):
         """ Restore status variables before activation.
 
-            @param e: Fysom event
+            @param event: Fysom event
         """
-        # add status vars
-        for vname, var in self._stat_vars.items():
-            sv = self._statusVariables
-            svar = sv[var.name] if var.name in sv else var.default
+        # load status variables from file
+        self.load_status_variables()
 
-            if var.setter_function is None:
-                setattr(self, var.var_name, svar)
-            else:
-                var.setter_function(self, svar)
+        # add default values for status vars
+        for vname, var in self._stat_vars.items():
+            if var.name not in self._statusVariables:
+                self._statusVariables[var.name] = var.default
 
         # activate
         self.on_activate()
@@ -370,7 +390,7 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
     def __save_status_vars_deactivate(self, event):
         """ Save status variables after deactivation.
 
-            @param e: Fysom event
+            @param event: Fysom event
         """
         try:
             self.on_deactivate()
@@ -378,17 +398,12 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
             raise e
         finally:
             # save status vars even if deactivation failed
-            for vname, var in self._stat_vars.items():
-                if var.getter_function is None:
-                    if hasattr(self, var.var_name):
-                        self._statusVariables[var.name] = getattr(self, var.var_name)
-                else:
-                    self._statusVariables[var.name] = var.getter_function(self)
+            self.save_status_variables()
 
     def _build_event(self, event):
         """
         Overrides fysom _build_event to wrap on_activate and on_deactivate to
-        catch and log exceptios.
+        catch and log exceptions.
         """
         base_event = super()._build_event(event)
         if (event in ['activate', 'deactivate']):
@@ -440,6 +455,52 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         @param object e: Fysom state transition description
         """
         self.sigStateChanged.emit(e)
+
+    @QtCore.Slot()
+    def save_status_variables(self):
+        """ If a module has status variables, save them to a file in the application status
+            directory.
+        """
+        if len(self._statusVariables) > 0:
+            try:
+                status_dir = self._manager.getStatusDir()
+                class_name = self.__class__.__name__
+                filename = os.path.join(status_dir,
+                    'status-{0}_{1}_{2}.cfg'.format(class_name, self._base, self._name))
+                config.save(filename, self._statusVariables)
+            except:
+                print(self._statusVariables)
+                self.log.exception('Failed to save status variables of module '
+                        '{0}.{1}:\n{2}'.format(self._base, self._name, repr(self._statusVariables)))
+
+    def load_status_variables(self):
+        """ If a status variable file exists for a module, load it into a dictionary.
+        """
+        try:
+            status_dir = self._manager.getStatusDir()
+            class_name = self.__class__.__name__
+            filename = os.path.join(
+                status_dir, 'status-{0}_{1}_{2}.cfg'.format(class_name, self._base, self._name))
+            if os.path.isfile(filename):
+                self._statusVariables = config.load(filename)
+            else:
+                self._statusVariables = OrderedDict()
+        except:
+            self.log.exception('Failed to load status variables.')
+            self._statusVariables = OrderedDict()
+
+    @QtCore.Slot()
+    def remove_status_file(self):
+        try:
+            status_dir = self._manager.getStatusDir()
+            class_name = self.__class__.__name__
+            filename = os.path.join(
+                status_dir, 'status-{0}_{1}_{2}.cfg'.format(class_name, self._base, self._name))
+            if os.path.isfile(filename):
+                os.remove(filename)
+        except:
+            self.log.exception('Failed to remove module status file.')
+
 
     def getStatusVariables(self):
         """ Return a dict of variable names and their content representing
