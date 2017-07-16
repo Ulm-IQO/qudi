@@ -257,6 +257,7 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
 
     _modclass = 'base'
     _modtype = 'base'
+    _threaded = False
     _connectors = dict()
 
     # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
@@ -417,6 +418,13 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         """
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
+
+    @property
+    def is_module_threaded(self):
+        """
+        Returns whether the module shall be started in a thread.
+        """
+        return self._threaded
 
     def on_activate(self):
         """ Method called when module is activated. If not overridden
