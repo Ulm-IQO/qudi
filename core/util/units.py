@@ -167,6 +167,12 @@ def create_formatted_output(param_dict, num_sig_digits=5):
     atol = 1e-18    # absolute tolerance for the detection of zero.
 
     for entry in param_dict:
+
+        if param_dict[entry].get('custom_name') is not None:
+            name = param_dict[entry]['custom_name']
+        else:
+            name = entry
+
         if param_dict[entry].get('error') is not None:
 
             value, error, digit = round_value_to_error(
@@ -194,7 +200,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
                 # default.
                 sc_fact, unit_prefix = fn.siScale(error * 10)
 
-            output_str += '{0}: {1} \u00B1 {2} {3}{4} \n'.format(entry,
+            output_str += '{0}: {1} \u00B1 {2} {3}{4} \n'.format(name,
                                                                  round(
                                                                      value * sc_fact, num_sig_digits - 1),
                                                                  round(
@@ -205,7 +211,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
                                                                  )
 
         else:
-            output_str += '{0}: '.format(entry) + fn.siFormat(param_dict[entry]['value'],
+            output_str += '{0}: '.format(name) + fn.siFormat(param_dict[entry]['value'],
                                                               precision=num_sig_digits,
                                                               suffix=param_dict[entry]['unit']) + '\n'
 
