@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
+import re
 import numpy as np
 from lmfit import Parameters
 from lmfit.models import Model
@@ -107,7 +108,7 @@ numerically, then the parameter sigma can be estimated.
 # Lorentzian model                 #
 ####################################
 
-def make_lorentzianwithoutoffset_model(self, prefix=None):
+def make_lorentzianwithoutoffset_model(self, prefix=''):
     """ Create a model of a bare physical Lorentzian with an amplitude.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -146,23 +147,29 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
 
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
 
-    if not isinstance(prefix, str) and prefix is not None:
-        self.log.error(
-            'The passed prefix <{0}> of type {1} is not a string and'
-                       'cannot be used as a prefix and will be ignored for now.'
-                       'Correct that!'.format(prefix, type(prefix)))
-        lorentz_model = Model(physical_lorentzian, independent_vars='x')
-    else:
-        lorentz_model = Model(
-            physical_lorentzian,
-            independent_vars='x',
-                              prefix=prefix)
+    if not isinstance(prefix, str):
+        self.log.error('The passed prefix "{0}" has the type "{1}" and is '
+                       'therefore not a string and cannot be used as a prefix. '
+                       'Prefix value will be ignored for now. Correct that for '
+                       'future runs!'.format(prefix, type(prefix)))
+        prefix = ''
+
+    lorentz_model = Model(physical_lorentzian,
+                          independent_vars='x',
+                          prefix=prefix)
+
+    # \d means find all numerals, \d+ all consecutive numerals, | is the or
+    # operator, $ means the end of the string, so empty string '' is always
+    # included in the result.
+    # Note that the first positive match is taken here!
+    num = (' '+re.findall('\d+|$', prefix)[0]).rstrip()
+
     # set the relative unit relations, which will be replaced in the fit by the
-    # proper units:
-    user_data = {'unit': 'x_val'}
+    # specified units:
+    user_data = {'unit': 'x_val', 'custom_name': 'Sigma'+num}
     lorentz_model.set_param_hint(name='sigma', user_data=user_data)
 
-    user_data = {'unit': 'x_val'}
+    user_data = {'unit': 'x_val', 'custom_name': 'Center'+num}
     lorentz_model.set_param_hint(name='center', user_data=user_data)
 
     full_lorentz_model = amplitude_model * lorentz_model
@@ -170,11 +177,10 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
 
     # introduces a new parameter, which is solely depending on others and which
     # will be not optimized:
-    if prefix is None:
-        prefix = ''
-
+    user_data = {'unit': 'x_val', 'custom_name': 'FWHM'+num}
     full_lorentz_model.set_param_hint('{0!s}fwhm'.format(prefix),
-                                      expr="2*{0!s}sigma".format(prefix))
+                                      expr="2*{0!s}sigma".format(prefix),
+                                      user_data=user_data)
 
     return full_lorentz_model, params
 
@@ -184,7 +190,7 @@ def make_lorentzianwithoutoffset_model(self, prefix=None):
 ####################################
 
 
-def make_lorentzian_model(self, prefix=None):
+def make_lorentzian_model(self, prefix=''):
     """ Create a Lorentz model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -200,14 +206,15 @@ def make_lorentzian_model(self, prefix=None):
 
     lorentz_offset_model = lorentz_model + constant_model
 
-    if prefix is None:
-        prefix = ''
+    num = (' '+re.findall('\d+|$', prefix)[0]).rstrip()
 
     # this value is independent of the units for x and y axes.
-    user_data = {'unit': '%'}
-    lorentz_offset_model.set_param_hint('{0}contrast'.format(prefix),
-                                        expr='abs({0}amplitude/offset)*100'.format(prefix),
-                                        user_data=user_data)
+    user_data = {'unit': '%', 'custom_name': 'Contrast'+num}
+    lorentz_offset_model.set_param_hint(
+        '{0}contrast'.format(prefix),
+        expr='abs({0}amplitude/offset)*100'.format(prefix),
+        user_data=user_data
+        )
 
     params = lorentz_offset_model.make_params()
 
@@ -237,20 +244,10 @@ def make_multiplelorentzian_model(self, no_of_functions=1):
         constant_model, params = self.make_constant_model()
         multi_lorentz_model = multi_lorentz_model + constant_model
 
-        user_data = {'unit': '%'}
-        multi_lorentz_model.set_param_hint('{0}contrast'.format(prefix),
-                                           expr='abs({0}amplitude/offset)*100'.format(prefix),
-                                           user_data=user_data)
-
 
         for ii in range(1, no_of_functions):
             prefix = 'l{0:d}_'.format(ii)
             multi_lorentz_model += self.make_lorentzianwithoutoffset_model(prefix=prefix)[0]
-            multi_lorentz_model.set_param_hint(
-                '{0}contrast'.format(prefix),
-                expr='abs({0}amplitude/offset)*100'.format(prefix),
-                user_data=user_data
-                )
 
     params = multi_lorentz_model.make_params()
 
@@ -269,7 +266,7 @@ def make_lorentziandouble_model(self):
     dl_model, dl_params = self.make_multiplelorentzian_model(no_of_functions=2)
 
     # introduce the splitting as new variable:
-    user_data = {'unit': 'x_val'}
+    user_data = {'unit': 'x_val', 'custom_name': 'Splitting'}
     dl_model.set_param_hint('splitting', expr='abs(l0_center-l1_center)',
                             user_data=user_data)
 
@@ -291,9 +288,10 @@ def make_lorentziantriple_model(self):
     tl_model, tl_params = self.make_multiplelorentzian_model(no_of_functions=3)
 
     # introduce the splitting as new variable:
-    user_data = {'unit': 'x_val'}
+    user_data = {'unit': 'x_val', 'custom_name': 'Splitting 0-1'}
     tl_model.set_param_hint('l0_splitting', expr='abs(l0_center-l1_center)',
                             user_data=user_data)
+    user_data = {'unit': 'x_val', 'custom_name': 'Splitting 1-2'}
     tl_model.set_param_hint('l1_splitting', expr='abs(l1_center-l2_center)',
                             user_data=user_data)
 
@@ -311,8 +309,8 @@ def make_lorentziantriple_model(self):
 #                 Single Lorentzian with offset fitting                        #
 ################################################################################
 
-def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
-                        add_params=None):
+def make_lorentzian_fit(self, x_axis, data, estimator,
+                        units=("arb. units", "arb. units"), add_params=None):
     """ Perform a 1D lorentzian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -342,9 +340,6 @@ def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
         self.log.warning('The 1D lorentzian fit did not work. Error '
                          'message: {0}\n'.format(result.message))
 
-    if units is None:
-        units = ("arb. units", "arb. units")
-
     result.result_str_dict = self._create_result_str_dict(result, units)
 
     # add also the chi squared value of the fit
@@ -353,7 +348,7 @@ def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
     return result
 
 def estimate_lorentzian_dip(self, x_axis, data, params):
-    """ Provides an estimator to obtain initial values for lorentzian function.
+    """ Provides an estima  tor to obtain initial values for lorentzian function.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -450,7 +445,9 @@ def estimate_lorentzian_peak (self, x_axis, data, params):
 #                   Double Lorentzian with offset fitting                      #
 ################################################################################
 
-def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_lorentziandouble_fit(self, x_axis, data, estimator,
+                              units=("arb. units", "arb. units"),
+                              add_params=None):
     """ Perform a 1D double lorentzian dip fit with offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -481,9 +478,6 @@ def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_par
         result = model.fit(data, x=x_axis, params=params)
         self.log.error('The double lorentzian fit did not '
                        'work: {0}'.format(result.message))
-
-    if units is None:
-        units = ("arb. units", "arb. units")
 
     result.result_str_dict = self._create_result_str_dict(result, units)
 
@@ -833,8 +827,9 @@ def estimate_lorentziandouble_N15(self, x_axis, data, params):
 # make_N14_fit
 
 
-def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
-                            add_params=None):
+def make_lorentziantriple_fit(self, x_axis, data, estimator,
+                              units=("arb. units", "arb. units"),
+                              add_params=None):
     """ Perform a triple lorentzian fit
 
     @param numpy.array x_axis: 1D axis values
@@ -863,9 +858,6 @@ def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
         result = model.fit(data, x=x_axis, params=params)
         self.log.error('The triple lorentzian fit did not '
                        'work: {0}'.format(result.message))
-
-    if units is None:
-        units = ("arb. units", "arb. units")
 
     result.result_str_dict = self._create_result_str_dict(result, units)
 
