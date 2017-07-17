@@ -39,7 +39,7 @@ Model._hint_names = ('value', 'vary', 'min', 'max', 'expr', 'user_data')
 # Bare sine with unitary amplitude and no offset #
 ##################################################
 
-def make_baresine_model(self, prefix=None):
+def make_baresine_model(self, prefix=''):
     """ Create a bare sine model without amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -83,16 +83,13 @@ def make_baresine_model(self, prefix=None):
         self.log.error('The passed prefix <{0}> of type {1} is not a string '
                        'and cannot be used as a prefix and will be ignored for '
                        'now. Correct that!'.format(prefix, type(prefix)))
-        model = Model(bare_sine_function, independent_vars='x')
         prefix = ''
 
-    else:
-        model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
-        # extract number from prefix:
-        if prefix is not None:
-            num = ' ' + re.findall('\d+|$', prefix)[0]
-        else:
-            prefix = ''
+    model = Model(bare_sine_function, independent_vars='x', prefix=prefix)
+    # extract number from prefix:
+    if prefix is not None:
+        num = ' ' + re.findall('\d+|$', prefix)[0]
+
 
 
     # each parameter has a user_data attribute, which can be used to store
@@ -122,7 +119,7 @@ def make_baresine_model(self, prefix=None):
 # Centred sine with no offset #
 ###############################
 
-def make_sinewithoutoffset_model(self, prefix=None):
+def make_sinewithoutoffset_model(self, prefix=''):
     """ Create a model of sine with an amplitude.
 
     @param str prefix: optional, if multiple models should be used in a
@@ -144,7 +141,7 @@ def make_sinewithoutoffset_model(self, prefix=None):
 # General sine with offset #
 ############################
 
-def make_sine_model(self, prefix=None):
+def make_sine_model(self, prefix=''):
     """ Create a sine model with amplitude and offset.
 
     @param str prefix: optional, if multiple models should be used in a
