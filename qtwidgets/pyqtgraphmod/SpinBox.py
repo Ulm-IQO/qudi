@@ -144,6 +144,17 @@ class SpinBox(QtGui.QAbstractSpinBox):
         if ev.type() == QtCore.QEvent.KeyPress and ev.key() == QtCore.Qt.Key_Escape:
             self.updateText()
             ret = True
+
+        # catch the keypress event for a copy to clipboard event:
+        if ev.type() == QtCore.QEvent.KeyPress and ev.modifiers() == QtCore.Qt.ControlModifier and ev.key() == QtCore.Qt.Key_C:
+            cb = QtGui.QGuiApplication.clipboard()
+            selected_text = self.lineEdit().selectedText()
+            if len(selected_text) > 0:
+                cb.setText(selected_text)
+            else:
+                cb.setText(self.lineEdit().text())
+            ret = True
+
         return ret
 
     # lots of config options, just gonna stuff 'em all in here rather than do
@@ -751,3 +762,4 @@ class SpinBox(QtGui.QAbstractSpinBox):
 
         self.setOpts(readonly=state)
     readOnly = QtCore.pyqtProperty(bool, isReadOnly, setReadOnly)
+
