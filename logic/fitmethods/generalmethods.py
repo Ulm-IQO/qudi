@@ -70,6 +70,10 @@ def _substitute_params(self, initial_params, update_params=None):
 
             if para not in initial_params:
                 initial_params.add(para)
+
+            if update_params[para].user_data is not None:
+                initial_params[para].user_data = update_params[para].user_data
+
             if update_params[para].min is not None:
                 initial_params[para].min = update_params[para].min
 
@@ -99,6 +103,10 @@ def _substitute_params(self, initial_params, update_params=None):
         for para in update_params:
             if para not in initial_params:
                 initial_params.add(para)
+
+            if 'user_data' in update_params[para]:
+                initial_params[para].user_data = update_params[para]['user_data']
+
             if 'min' in update_params[para]:
                 initial_params[para].min = update_params[para]['min']
 
@@ -484,7 +492,7 @@ def find_offset_parameter(self, x_values=None, data=None):
 
 ############################################################################
 #                                                                          #
-#             Additional routines with gaussian-like filter              #
+#             Additional routines with gaussian-like filter                #
 #                                                                          #
 ############################################################################
 
@@ -548,11 +556,13 @@ def _create_result_str_dict(self, result, units):
     Handle basically the unit text.
 
     @param lmfit.ModelResult result: the fit result object
-    @param tuple units: the units, written as a tuple.
+    @param tuple units: the units, written as a tuple. The tuple can only have
+                        two (for 2D plots) or three (for 3D plots) string
+                        entries
 
     @return: dict, with the keys as the parameter name and items as another dict
                    with the keys 'value', 'error', 'unit' and the optional key
-                   'nice_name'.
+                   'custom_name'.
 
     """
     #FIXME: implement that also for 3D models, i.e. with 3 entries in units
@@ -560,6 +570,11 @@ def _create_result_str_dict(self, result, units):
     # just to be save:
     if units is None:
         units = ("arb. u.", "arb. u.")
+    elif len(units) < 2:
+        units = ("arb. u.", "arb. u.")
+        self.log.error('The units tuple passed contain just one or no entry! '
+                       'Units are replaced by default units: "{0}"'.format(units))
+
 
     result_str_dict = OrderedDict()
 
@@ -572,8 +587,12 @@ def _create_result_str_dict(self, result, units):
         else:
 
             if param_obj.user_data.get('unit') is not None:
+                #TODO: here a more sophisticated algorithm for unit replacement could be implemented
                 unit_text = param_obj.user_data['unit'].replace('x_val', units[0])
                 unit_text = unit_text.replace('y_val', units[1])
+
+                if len(units) == 3:
+                    unit_text = unit_text.replace('z_val', units[1])
 
                 # detect very special cases:
                 if unit_text == '1/s':
@@ -587,16 +606,15 @@ def _create_result_str_dict(self, result, units):
                                  'default unit.'.format(param_name, units[0]))
                 unit_text = units[0]
 
-            if param_obj.user_data.get('nice_name') is not None:
-                nice_name = param_obj.user_data['nice_name']
+            if param_obj.user_data.get('custom_name') is not None:
+                custom_name = param_obj.user_data['custom_name']
             else:
-                nice_name = ''
+                custom_name = param_name
 
         result_str_dict[param_name] = {'value': param_obj.value,
                                        'error': param_obj.stderr,
                                        'unit': unit_text,
-                                       'nice_name': nice_name}
-
+                                       'custom_name': custom_name}
 
     return result_str_dict
 
