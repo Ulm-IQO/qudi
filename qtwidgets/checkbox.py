@@ -19,6 +19,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from qtpy.QtWidgets import QCheckBox
+from qtpy import QtCore
 
 class CheckBox(QCheckBox):
     """
@@ -50,6 +51,7 @@ class CheckBox(QCheckBox):
         """
         super().__init__(*args, **kwargs)
         self._callback = None
+        self._readOnly = False
 
     @property
     def accept_state_change_callback(self):
@@ -79,8 +81,45 @@ class CheckBox(QCheckBox):
         """
         Protected functions that calls the callback.
         """
-        if (self._callback is not None):
-            if (self._callback(not self.isChecked())):
+        if self._callback is not None:
+            if self._callback(not self.isChecked()):
                 super().nextCheckState()
         else:
             super().nextCheckState()
+
+    # concerning the readonly possibility of a checkbox:
+
+    def isReadOnly(self):
+        return self._readOnly
+
+    def mousePressEvent(self, event):
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+    # Handle event in which the widget has focus and the spacebar is pressed.
+    def keyPressEvent(self, event):
+        if self.isReadOnly():
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
+    @QtCore.Slot(bool)
+    def setReadOnly(self, state):
+        self._readOnly = state
+
+    readOnly = QtCore.Property(bool, isReadOnly, setReadOnly)
+
