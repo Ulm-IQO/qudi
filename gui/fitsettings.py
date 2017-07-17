@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore, QtGui, QtWidgets
 from collections import OrderedDict
 from qtwidgets.scientific_spinbox import ScienDSpinBox
+from qtwidgets.checkbox import CheckBox
 import numpy as np
 import math
 
@@ -69,8 +70,8 @@ class FitSettingsDialog(QtWidgets.QDialog):
         self._scrLayout = QtWidgets.QVBoxLayout()
         self._dbox = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok
-                | QtWidgets.QDialogButtonBox.Apply
-                | QtWidgets.QDialogButtonBox.Cancel,
+            | QtWidgets.QDialogButtonBox.Apply
+            | QtWidgets.QDialogButtonBox.Cancel,
             QtCore.Qt.Horizontal
         )
         self._addFitButton = QtWidgets.QPushButton('Add fit')
@@ -495,6 +496,7 @@ class FitParametersWidget(QtWidgets.QWidget):
         # create labels and layout
         self._layout = QtWidgets.QGridLayout(self)
         self.useLabel = QtWidgets.QLabel('Edit?')
+        self.custom_nameLabel = QtWidgets.QLabel('Custom Name')
         self.valueLabel = QtWidgets.QLabel('Value')
         self.minimumLabel = QtWidgets.QLabel('Minimum')
         self.maximumLabel = QtWidgets.QLabel('Maximum')
@@ -503,11 +505,12 @@ class FitParametersWidget(QtWidgets.QWidget):
 
         # add labels to layout
         self._layout.addWidget(self.useLabel, 0, 0)
-        self._layout.addWidget(self.valueLabel, 0, 2)
-        self._layout.addWidget(self.minimumLabel, 0, 3)
-        self._layout.addWidget(self.maximumLabel, 0, 4)
-        self._layout.addWidget(self.exprLabel, 0, 5)
-        self._layout.addWidget(self.varyLabel, 0, 6)
+        self._layout.addWidget(self.custom_nameLabel, 0, 2)
+        self._layout.addWidget(self.valueLabel, 0, 3)
+        self._layout.addWidget(self.minimumLabel, 0, 4)
+        self._layout.addWidget(self.maximumLabel, 0, 5)
+        self._layout.addWidget(self.exprLabel, 0, 6)
+        self._layout.addWidget(self.varyLabel, 0, 7)
 
         # create all parameter fields and add to layout
         self.widgets = {}
@@ -515,13 +518,14 @@ class FitParametersWidget(QtWidgets.QWidget):
         n = 2
         for name, param in parameters.items():
             self.paramUseSettings[name] = False
-            self.widgets[name + '_use'] = useCheckbox = QtWidgets.QCheckBox()
+            self.widgets[name + '_use'] = useCheckbox = CheckBox()
             self.widgets[name + '_label'] = parameterNameLabel = QtWidgets.QLabel(str(name))
+            self.widgets[name + '_custom_name'] = custom_nameLineEdit = QtWidgets.QLineEdit()
             self.widgets[name + '_value'] = valueSpinbox =  ScienDSpinBox()
             self.widgets[name + '_min'] = minimumSpinbox = ScienDSpinBox()
             self.widgets[name + '_max'] = maximumSpinbox = ScienDSpinBox()
             self.widgets[name + '_expr'] = expressionLineEdit = QtWidgets.QLineEdit()
-            self.widgets[name + '_vary'] = varyCheckbox = QtWidgets.QCheckBox()
+            self.widgets[name + '_vary'] = varyCheckbox = CheckBox()
             valueSpinbox.setDecimals(3)
             valueSpinbox.setSingleStep(0.01)
             valueSpinbox.setMaximum(np.inf)
@@ -534,25 +538,70 @@ class FitParametersWidget(QtWidgets.QWidget):
             maximumSpinbox.setSingleStep(0.01)
             maximumSpinbox.setMaximum(np.inf)
             maximumSpinbox.setMinimum(-np.inf)
+
             if param.value is not None:# and not math.isnan(param.value):
                 useCheckbox.setChecked(self.paramUseSettings[name])
+
+                # safety checks whether custom_name exists, if not take 'name'
+                # as the default custom name.
+                custom_name_text = ''
+                if param.user_data is not None:
+                    if param.user_data.get('custom_name') is not None:
+                        custom_name_text = param.user_data['custom_name']
+                if len(custom_name_text) == 0:
+                    custom_name_text = name
+
+                custom_nameLineEdit.setText(custom_name_text)
                 valueSpinbox.setValue(param.value)
                 minimumSpinbox.setValue(param.min)
                 minimumSpinbox.setValue(param.max)
                 expressionLineEdit.setText(param.expr)
                 varyCheckbox.setChecked(param.vary)
 
+            state_change_func_ref = self._function_builder_state_changed(name)
+            useCheckbox.stateChanged.connect(state_change_func_ref)
+            state_change_func_ref()     # run it once for initialization
+
             self._layout.addWidget(useCheckbox, n, 0)
             self._layout.addWidget(parameterNameLabel, n, 1)
-            self._layout.addWidget(valueSpinbox, n, 2)
-            self._layout.addWidget(minimumSpinbox, n, 3)
-            self._layout.addWidget(maximumSpinbox, n, 4)
-            self._layout.addWidget(expressionLineEdit, n, 5)
-            self._layout.addWidget(varyCheckbox, n, 6)
+            self._layout.addWidget(custom_nameLineEdit, n, 2)
+            self._layout.addWidget(valueSpinbox, n, 3)
+            self._layout.addWidget(minimumSpinbox, n, 4)
+            self._layout.addWidget(maximumSpinbox, n, 5)
+            self._layout.addWidget(expressionLineEdit, n, 6)
+            self._layout.addWidget(varyCheckbox, n, 7)
             n += 1
 
         # space at the bottom of the list
         self._layout.setRowStretch(n, 1)
+
+
+    def _function_builder_state_changed(self, name):
+        """ State changed function builder
+
+        @param str name: name of the parameter for which to build the state
+                         change function
+
+        @return: function, which is excecuted upon state change
+        """
+
+        def dummy_name():
+
+            state = not self.widgets[name + '_use'].isChecked()
+            self.widgets[name + '_custom_name'].setReadOnly(state)
+            self.widgets[name + '_value'].setReadOnly(state)
+            self.widgets[name + '_min'].setReadOnly(state)
+            self.widgets[name + '_max'].setReadOnly(state)
+            self.widgets[name + '_expr'].setReadOnly(state)
+            self.widgets[name + '_vary'].setReadOnly(state)
+
+        # rename function according to the parameter and bound it to the main
+        # object, just to be able to access it later, if needed:
+        dummy_name.__name__ = name + '_state_changed'
+        setattr(self, dummy_name.__name__, dummy_name)
+
+        return dummy_name
+
 
     def applyFitParameters(self):
         """ Updates the fit parameters with the new values from the widget.
@@ -571,6 +620,11 @@ class FitParametersWidget(QtWidgets.QWidget):
             param.max = self.widgets[name + '_max'].value()
             param.expr = str(self.widgets[name + '_expr'].displayText())
             param.vary = self.widgets[name + '_vary'].checkState()
+
+            if param.user_data is None: # Handle if user_data is not set
+                param.user_data = {}
+            param.user_data['custom_name'] = str(self.widgets[name + '_custom_name'].displayText())
+
         return self.parameters, self.paramUseSettings
 
     def resetFitParameters(self):
@@ -586,6 +640,17 @@ class FitParametersWidget(QtWidgets.QWidget):
                 self.widgets[name + '_max'].setValue(param.max)
                 self.widgets[name + '_expr'].setText(param.expr)
                 self.widgets[name + '_vary'].setChecked(param.vary)
+
+                # safety checks whether custom_name exists, if not take 'name'
+                # as the default custom name.
+                custom_name_text = ''
+                if param.user_data is not None:
+                    if param.user_data.get('custom_name') is not None:
+                        custom_name_text = param.user_data['custom_name']
+                if len(custom_name_text) == 0:
+                    custom_name_text = name
+
+                self.widgets[name + '_custom_name'].setText(custom_name_text)
         return self.parameters, self.paramUseSettings
 
     def updateFitParameters(self, parameters):
@@ -603,6 +668,18 @@ class FitParametersWidget(QtWidgets.QWidget):
                 self.widgets[name + '_max'].setValue(param.max)
                 self.widgets[name + '_expr'].setText(param.expr)
                 self.widgets[name + '_vary'].setChecked(param.vary)
+
+                # safety checks whether custom_name exists, if not take 'name'
+                # as the default custom name.
+                custom_name_text = ''
+                if param.user_data is not None:
+                    if param.user_data.get('custom_name') is not None:
+                        custom_name_text = param.user_data['custom_name']
+                if len(custom_name_text) == 0:
+                    custom_name_text = name
+
+                self.widgets[name + '_custom_name'].setText(custom_name_text)
+
                 self.parameters[name] = param
         return self.parameters, self.paramUseSettings
 
