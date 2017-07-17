@@ -247,9 +247,11 @@ class FitLogic(GenericLogic):
 
     def save_fits(self, filename, fits):
         """ Save a collection of configured fits to YAML file.
-            @param fits dict: dictionay with fits, function references and parameter objects
 
-            @return dict: storable dictionary with fit description
+        @param str filename: path of file containing fits in YAML format
+        @param dict fits: dictionay with fits, function references and parameter objects
+
+        @return dict: storable dictionary with fit description
         """
         stripped_fits = self.prepare_save_fits(fits)
         save(filename, stripped_fits)
@@ -370,13 +372,13 @@ class FitContainer(QtCore.QObject):
 
     def do_fit(self, x_data, y_data):
         """Performs the chosen fit on the measured data.
-        @param array x_data: optional, 1D np.array or 1D list with the x values.
-                             If None is passed then the module x values are
-                             taken.
-        @param array y_data: optional, 1D np.array or 1D list with the y values.
-                             If None is passed then the module y values are
-                             taken. If passed, then it should have the same size
-                             as x_data.
+        @param list x_data: optional, 1D np.array or 1D list with the x values.
+                            If None is passed then the module x values are
+                            taken.
+        @param list y_data: optional, 1D np.array or 1D list with the y values.
+                            If None is passed then the module y values are
+                            taken. If passed, then it should have the same size
+                            as x_data.
 
         @return: tuple (fit_x, fit_y, str_dict, fit_result)
             np.array fit_x: 1D array containing the x values of the fit
@@ -396,16 +398,18 @@ class FitContainer(QtCore.QObject):
         """
         self.clear_result()
 
-        fit_x = np.linspace(
-            start=x_data[0],
-            stop=x_data[-1],
-            num=int(len(x_data) * self.fit_granularity_fact))
+        fit_x = np.linspace(start=x_data[0],
+                            stop=x_data[-1],
+                            num=int(len(x_data) * self.fit_granularity_fact))
 
-        add_params = self.fit_dict[self.current_fit]['parameters'].copy()
+        add_params = {}
+        if self.current_fit != 'No Fit':
+            add_params = self.fit_dict[self.current_fit]['parameters'].copy()
+            # the custom names are always put in the dictionary
 
-        for param_name, usage in self.fit_dict[self.current_fit]['parameterUse'].items():
-            if not bool(usage):# and add_params.get(param_name) is not None:
-                add_params.pop(param_name)
+            for param_name, usage in self.fit_dict[self.current_fit]['parameterUse'].items():
+                if not bool(usage):
+                    add_params.pop(param_name)
 
         # set the keyword arguments, which will be passed to the fit.
         kwargs = {
