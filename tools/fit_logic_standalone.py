@@ -1868,7 +1868,9 @@ def lorentziandip_testing2():
     print(qudi_fitting.estimate_lorentzian_dip)
 
 
-    result = qudi_fitting.make_lorentzian_fit(x_axis=x_axis, data=data_noisy, units=["MHz"], estimator = qudi_fitting.estimate_lorentzian_dip)
+    result = qudi_fitting.make_lorentzian_fit(x_axis=x_axis, data=data_noisy, 
+                                              units=["MHz", "counts/s"], 
+                                              estimator = qudi_fitting.estimate_lorentzian_dip)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -1880,6 +1882,12 @@ def lorentziandip_testing2():
 
     print(result.fit_report())
     print(result.result_str_dict)
+    qudi_fitting.result = result
+    for param, entry in result.result_str_dict.items():
+        for name, item in entry.items():
+            print(name,item , end=' ')
+        print('\n')
+            
 
 
 def lorentzianpeak_testing2():
@@ -1899,7 +1907,7 @@ def lorentzianpeak_testing2():
     data_noisy = data_nice + 5.0*np.random.normal(size=x_axis.shape)
 
     result = qudi_fitting.make_lorentzian_fit(x_axis=x_axis, data=data_noisy,
-                                                 estimator=qudi_fitting.estimate_lorentzian_peak)
+                                              estimator=qudi_fitting.estimate_lorentzian_peak)
 
     plt.figure()
     plt.plot(x_axis, data_nice, label='ideal data')
@@ -2257,6 +2265,11 @@ def sine_testing2():
     data_noisy = (mod.eval(x=x_axis, params=params)
                   + 1.5* np.random.normal(size=x_axis.shape))
 
+    plt.figure()
+    plt.plot(x_axis, data, label='simulate data')
+    plt.plot(x_axis, data_noisy, label='noisy data')
+    plt.show()
+
 #    sorted_indices = x_axis.argsort()
 #    x_axis = x_axis[sorted_indices]
 #    data = data[sorted_indices]
@@ -2273,11 +2286,13 @@ def sine_testing2():
     update_dict = {}
     #update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
 
-    result = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_noisy,
-                                              add_params=update_dict)
+    result = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_noisy, 
+                                        estimator=qudi_fitting.estimate_sine,
+                                        units=("arb. u.", "arb. u."),
+                                        add_params=update_dict)
 
     plt.figure()
-#    plt.plot(x_axis, data, 'simulate data')
+#    plt.plot(x_axis, data, label='simulate data')
     plt.plot(x_axis, data_noisy, label='noisy data')
     plt.plot(x_axis, result.init_fit, label='initial data')
     plt.plot(x_axis, result.best_fit, label='fit data')
@@ -4159,7 +4174,7 @@ if __name__ == "__main__":
 #    double_gaussian_odmr_testing()
 
 #    lorentziandip_testing()
-#    lorentziandip_testing2()
+    lorentziandip_testing2()
 #    lorentzianpeak_testing2()
 
 #    double_lorentzdip_testing()
@@ -4173,7 +4188,7 @@ if __name__ == "__main__":
 #    N15_testing()
 #    N15_testing2()
 #    powerfluorescence_testing()
-    sine_testing()
+#    sine_testing()
 #    sine_testing2()
 #    sine_testing_data() # needs a selected file for data input
 #    twoD_gaussian_magnet()
