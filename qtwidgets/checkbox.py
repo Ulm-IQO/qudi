@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy.QtWidgets import QCheckBox
 from qtpy import QtCore
 
+
 class CheckBox(QCheckBox):
     """
     This QCheckBox provides a callback function which is called before
@@ -78,9 +79,7 @@ class CheckBox(QCheckBox):
         self._callback = value
 
     def nextCheckState(self):
-        """
-        Protected functions that calls the callback.
-        """
+        """ Protected functions that calls the callback. """
         if self._callback is not None:
             if self._callback(not self.isChecked()):
                 super().nextCheckState()
@@ -90,28 +89,49 @@ class CheckBox(QCheckBox):
     # concerning the readonly possibility of a checkbox:
 
     def isReadOnly(self):
+        """ Implementation of the ReadOnly flag for Checkboxes.
+
+        @return: bool, indicating the current state of the widget
+        """
         return self._readOnly
 
     def mousePressEvent(self, event):
+        """ Catch MousepressEvent for ReadOnly state, else let it pass.
+
+        @param QtGui.QMouseEvent event: object containing the event information
+        """
         if self.isReadOnly():
             event.accept()
         else:
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        """ Catch MouseMoveEvent for ReadOnly state, else let it pass.
+
+        @param QtGui.QMouseEvent event: object containing the event information
+        """
         if self.isReadOnly():
             event.accept()
         else:
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        """ Catch MouseReleaseEvent for ReadOnly state, else let it pass.
+
+        @param QtGui.QMouseEvent event: object containing the event information
+        """
         if self.isReadOnly():
             event.accept()
         else:
             super().mouseReleaseEvent(event)
 
-    # Handle event in which the widget has focus and the spacebar is pressed.
     def keyPressEvent(self, event):
+        """ Catch KeypressEvent for ReadOnly state, else let it pass.
+
+        @param QtGui.QKeyEvent event: object containing the event information
+
+        Handle event in which the widget has focus and the spacebar is pressed.
+        """
         if self.isReadOnly():
             event.accept()
         else:
@@ -119,7 +139,10 @@ class CheckBox(QCheckBox):
 
     @QtCore.Slot(bool)
     def setReadOnly(self, state):
+        """ Implement setter property to set the ReadOnly state.
+
+        @param bool state: True or False, for having a readonly QCheckboxes.
+        """
         self._readOnly = state
 
     readOnly = QtCore.Property(bool, isReadOnly, setReadOnly)
-

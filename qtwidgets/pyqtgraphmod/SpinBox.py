@@ -749,7 +749,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
     def setReadOnly(self, state):
         """ Overwrite the QAbstractSpinBox method to set the ReadOnly state.
 
-        @param bool state: True or False, for having a readonly QRadioButton.
+        @param bool state: True or False, for having a readonly SpinBox.
 
         Important, declare that slot as a qt slot to provide a C++ signature
         for that. The advantage is less memory consumption and slightly faster
@@ -761,5 +761,6 @@ class SpinBox(QtGui.QAbstractSpinBox):
         """
 
         self.setOpts(readonly=state)
+
     readOnly = QtCore.pyqtProperty(bool, isReadOnly, setReadOnly)
 
