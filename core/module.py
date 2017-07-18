@@ -30,18 +30,31 @@ from qtpy import QtCore
 from . import config
 
 
+class StatusVarSave(Enum):
+    """Representation of saving status variables"""
+    deactivation = 0
+    immediately = 1
+    delayed = 2
+
+
 class StatusVar:
     """ This class defines a status variable that is loaded before activation
         and saved after deactivation.
     """
 
-    def __init__(self, name=None, default=None, *, var_name=None, setter=None, getter=None):
+    def __init__(self, name=None, default=None, *, var_name=None, setter=None, getter=None,
+                 save='deactivation'):
         """
             @param name: identifier of the status variable when stored
             @param default: default value for the status variable when a
                 saved version is not present
             @param setter: setter function for variable, do loading type checks or conversion here
             @param getter: getter function for status variable, do saving conversion here
+            @param save: defines when a status variable is saved to file.
+                'deactivation' (default): at deactivation of module
+                'immediately': immediately when changed
+                'delayed': after a 500ms timeout which is reset when status variable is changed
+                           again
             @param var_name: name of the variable inside a running module. Only set this
                 if you know what you are doing!
         """
@@ -54,6 +67,7 @@ class StatusVar:
         self.setter_function = setter
         self.getter_function = getter
         self.default = default
+        self.save = StatusVarSave[save]
 
     def copy(self, **kwargs):
         """ Create a new instance of StatusVar with copied and updated values.
@@ -66,6 +80,7 @@ class StatusVar:
         newargs['setter'] = self.setter_function
         newargs['getter'] = self.getter_function
         newargs['var_name'] = copy.copy(self.var_name)
+        newargs['save'] = copy.copy(self.save.name)
         newargs.update(kwargs)
         return StatusVar(**newargs)
 
@@ -248,8 +263,13 @@ class ModuleMeta(type(QtCore.QObject)):
                 self._statusVariables[var.name] = value
             else:
                 self._statusVariables[var.name] = var.setter_function(value)
-            # and save it immediately in a file
-            self.save_status_variables()
+            # and save it immediately in a file if requested
+            if var.save == StatusVarSave.immediately:
+                self.save_status_variables()
+            # or delay saving by some amount of time
+            elif var.save == StatusVarSave.delayed:
+                # restarts timer if already running
+                self._timer_save_status_variables.start()
 
         for vname, var in status_vars.items():
             setattr(new_class, var.var_name, property(
@@ -369,6 +389,12 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         self._name = name
         self._configuration = config
         self._statusVariables = OrderedDict()
+        # timer for delayed saving of status variables
+        self._timer_save_status_variables = QtCore.QTimer(parent=self)
+        self._timer_save_status_variables.setInterval(500)
+        self._timer_save_status_variables.setSingleShot(True)
+        self._timer_save_status_variables.timeout.connect(self.save_status_variables)
+
         # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
     def __load_status_vars_activate(self, event):

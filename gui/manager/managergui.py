@@ -65,7 +65,7 @@ class ManagerGui(GUIBase):
     """
 
     # status vars
-    consoleFontSize = StatusVar('console_font_size', 10)
+    consoleFontSize = StatusVar('console_font_size', 10, save='immediately')
 
     # signals
     sigStartAll = QtCore.Signal()
