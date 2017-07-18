@@ -18,6 +18,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import numpy as np
+import time
 
 from core.base import Base
 from interface.microwave_interface import MicrowaveInterface
@@ -26,8 +27,10 @@ from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveSMR20(Base, MicrowaveInterface):
-    """ The hardware control for the device Rohde and Schwarz SMR 20.
+class MicrowaveSMR(Base, MicrowaveInterface):
+    """ The hardware control for the device Rohde and Schwarz of type SMR.
+    The command structure has been tested for type SMR20.
+    Not tested on the device types SMR27, SMR30, SMR40
     For additional information concerning the commands to communicate via the
     GPIB connection through visa, please have a look at:
     http://cdn.rohde-schwarz.com/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smr_1/smr_20-40.pdf
@@ -37,8 +40,15 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     _modtype = 'hardware'
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
+
+
+        self._LIST_DWELL = 10e-3    # Dwell time for list mode to set how long
+                                    # the device should stay at one list entry.
+                                    # here dwell time can be between 1ms and 1s
+        self._SWEEP_DWELL = 10e-3   # Dwell time for sweep mode to set how long
+                                    # the device should stay at one list entry.
+                                    # here dwell time can be between 10ms and 5s
 
         # checking for the right configuration
         config = self.getConfiguration()
@@ -46,15 +56,15 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.log.error('MicrowaveSMR: did not find parameter '
-                           '"gpib_address" in configuration.')
+            self.log.error('MicrowaveSMR20: did not find parameter '
+                        '>>gpib_address<< in configuration.')
 
         if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = int(config['gpib_timeout'])
+            self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
-            self._gpib_timeout = 10
-            self.log.error('MicrowaveSMR: did not find "gpib_timeout" in '
-                           'configuration. It will be set to {0} '
+            self._gpib_timeout = 10*1000
+            self.log.error('MicrowaveSMR20: did not find >>gpib_timeout<< in '
+                           'configration. It will be set to {0} '
                            'seconds.'.format(self._gpib_timeout))
 
         # trying to load the visa connection to the module
@@ -62,142 +72,178 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         try:
             # such a stupid stuff, the timeout is specified here in ms not in
             # seconds any more, take that into account.
-            self._gpib_connection = self.rm.open_resource(
-                self._gpib_address,
-                timeout=self._gpib_timeout*1000)
+            self._gpib_connection = self.rm.open_resource(self._gpib_address,
+                                                          timeout=self._gpib_timeout*1000)
 
-            #self._gpib_connection.term_chars = "\r\n"
+            self._gpib_connection.write_termination = "\r\n"
+            self._gpib_connection.read_termination = None
 
-            self.log.info('MicrowaveSMR: initialised and connected to '
-                          'hardware.')
+            self.log.info('MicrowaveSMR20: initialised and connected to '
+                        'hardware.')
         except:
-             self.log.error('MicrowaveSMR: could not connect to the GPIB '
-                            'address "{0}".'.format(self._gpib_address))
-
-        # set manually the number of entries in a list, the explanation for that
-        # procedure is in the function self.set_list.
-        self._MAX_LIST_ENTRIES = 4000
+             self.log.error('MicrowaveSMR20: could not connect to the GPIB '
+                         'address >>{0}<<.'.format(self._gpib_address))
 
         self._gpib_connection.write('*WAI')
-        self._FREQ_MAX = float(self._gpib_connection.ask('FREQuency? MAX'))
-        self._FREQ_MIN = float(self._gpib_connection.ask('FREQuency? MIN'))
-        self._POWER_MAX = float(self._gpib_connection.ask('POWER? MAX'))
-        self._POWER_MIN = float(self._gpib_connection.ask('POWER? MIN'))
+        self._FREQ_MAX = float(self._ask('FREQuency? MAX'))
+        self._FREQ_MIN = float(self._ask('FREQuency? MIN'))
+        self._POWER_MAX = float(self._ask('POWER? MAX'))
+        self._POWER_MIN = float(self._ask('POWER? MIN'))
+
+        # although it is the step mode, this number should be the same for the
+        # list mode:
+        self._LIST_FREQ_STEP_MIN = float(self._ask(':SOURce:FREQuency:STEP? MIN'))
+        self._LIST_FREQ_STEP_MAX = float(self._ask(':SOURce:FREQuency:STEP? MAX'))
+
+        self._SWEEP_FREQ_STEP_MIN = float(self._ask(':SOURce:SWEep:FREQuency:STEP? MIN'))
+        self._SWEEP_FREQ_STEP_MAX = float(self._ask(':SOURce:SWEep:FREQuency:STEP? MAX'))
+
+        # the return will be a list telling how many are free and occupied, i.e.
+        # [free, occupied] and the sum of that is the total list entries.
+        max_list_entries = self._ask('SOUR:LIST:FREE?')
+        self._MAX_LIST_ENTRIES = sum([int(entry) for entry in max_list_entries.strip().split(',')])
+        # FIXME: Not quite sure about this:
+        self._MAX_SWEEP_ENTRIES = 10001
+
+        # extract the options from the device:
+        message = self._ask('*OPT?').strip().split(',')
+        self.OPTIONS = [entry for entry in message if entry != '0']
+
+        message = self._ask('*IDN?').strip().split(',')
+        self._BRAND = message[0]
+        self._MODEL = message[1]
+        self._SERIALNUMBER = message[2]
+        self._FIRMWARE_VERSION = message[3]
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
 
         self.off()  # turn the device off in case it is running
-        self._gpib_connection.close()
-        self.rm.close()
-
+        self._gpib_connection.close()   # close the gpib connection
+        self.rm.close()                 # close the resource manager
 
     def get_limits(self):
         """ Retrieve the limits of the device.
         @return: object MicrowaveLimits: Serves as a container for the limits
                                          of the microwave device.
         """
-
         limits = MicrowaveLimits()
-
-        identify = self._gpib_connection.query('*IDN?')
-        # split the comma separted options and out the entries in an array:
-        identify = identify.strip().split(',')
-
-        opts = self._gpib_connection.query('*OPT?')
-
-        # split the comma separted options and out the entries in an array:
-        opts = opts.strip().split(',')
-
         limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST,
                                   MicrowaveMode.SWEEP)
 
-        # the extended frequency option
-        if 'B11' in opts:
-            limits.min_frequency = 10e6
-        else:
-            limits.min_frequency = 1e9
+        limits.min_frequency = self._FREQ_MIN
+        limits.max_frequency = self._FREQ_MAX
+        limits.min_power = self._POWER_MIN
+        limits.max_power = self._POWER_MAX
 
-        if 'SMR20' in identify:
-            limits.max_frequency = 20e9
-        elif 'SMR27' in identify:
-            limits.max_frequency = 27e9
-        elif 'SMR30' in identify:
-            limits.max_frequency = 30e9
-        elif 'SMR40' in identify:
-            limits.max_frequency = 40e9
-        else:
-            self.error('The SMR device is not of the types '
-                       '"R&S SMR20 or SMR27 or SMR30 or SMR40"! Could not '
-                       'determine the maximal frequency limit. Set it just to '
-                       '10GHz as default. Please check the device type and the '
-                       'maximal frequency for your device!')
+        limits.list_minstep = self._LIST_FREQ_STEP_MIN
+        limits.list_maxstep = self._LIST_FREQ_STEP_MAX
+        limits.list_maxentries = self._MAX_LIST_ENTRIES
 
-
-        limits.min_power = -130
-        limits.max_power = 13
-
-        # FIXME: Not quite sure about this:
-        limits.list_minstep = limits.min_frequency
-        limits.list_maxstep = limits.max_frequency
-        limits.list_maxentries = 2003
-
-        # FIXME: Not quite sure about this:
-        limits.sweep_minstep = limits.min_frequency
-        limits.sweep_maxstep = limits.max_frequency
-        limits.sweep_maxentries = 10001
+        limits.sweep_minstep = self._SWEEP_FREQ_STEP_MIN
+        limits.sweep_maxstep = self._SWEEP_FREQ_STEP_MAX
+        limits.sweep_maxentries = self._MAX_SWEEP_ENTRIES
         return limits
-
-    def on(self):
-        """ Switches on any preconfigured microwave output.
-        @return int: error code (0:OK, -1:error)
-        """
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':OUTP ON')
-
-
-        return 0
 
     def off(self):
         """ Switches off any microwave output.
+        Must return AFTER the device is actually stopped.
         @return int: error code (0:OK, -1:error)
         """
+        mode, is_running = self.get_status()
+        if not is_running:
+            return 0
 
-        self._gpib_connection.write('*WAI')
-        if self._gpib_connection.ask(':FREQ:MODE?') == 'LIST':
-            self._gpib_connection.write(':FREQ:MODE CW')
-        self._gpib_connection.write(':OUTP OFF')
+        if mode == 'list':
+            self._write(':FREQ:MODE CW')
 
+        self._write(':OUTP OFF')
 
+        # check whether
+        while int(float(self._gpib_connection.query('OUTP:STAT?'))) != 0:
+            time.sleep(0.2)
+
+        if mode == 'list':
+            self._command_wait(':LIST:LEARN')
+            self._command_wait(':FREQ:MODE LIST')
         return 0
+
+
+    def get_status(self):
+        """ Get the current status of the MW source, i.e. the mode
+        (cw, list or sweep) and the output state (stopped, running).
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
+        """
+        is_running = bool(int(self._ask('OUTP:STAT?')))
+        mode = self._ask(':FREQ:MODE?').strip().lower()
+
+        # The modes 'fix' and 'cw' are treated the same in the SMR device,
+        # therefore, 'fix' is converted to 'cw':
+        if mode == 'fix':
+            mode = 'cw'
+
+        # rename the mode according to the interface
+        if mode == 'swe':
+            mode = 'sweep'
+
+        return mode, is_running
+
+
 
     def get_power(self):
         """ Gets the microwave output power.
         @return float: the power set at the device in dBm
         """
-        self._gpib_connection.write('*WAI')
-        return float(self._gpib_connection.ask(':POW?'))
 
-    def set_power(self, power):
+        mode, dummy = self.get_status()
+        if mode == 'list':
+            return float(self._ask(':LIST:POW?'))
+        else:
+            # This case works for cw AND sweep mode
+            return float(self._ask(':POW?'))
+
+    def _set_power(self, power):
         """ Sets the microwave output power.
         @param float power: the power (in dBm) set for this device
-        @return int: error code (0:OK, -1:error)
+        @return float: actual power set (in dBm)
         """
 
         # every time a single power is set, the CW mode is activated!
         self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':POW {0:f};'.format(power))
-        return 0
+        actual_power = self.get_power()
+        return actual_power
+
 
     def get_frequency(self):
-        """ Gets the frequency of the microwave output.
-        @return float: frequency (in Hz), which is currently set for this device
+        """  Gets the frequency of the microwave output.
+        @return float|list: frequency(s) currently set for this device in Hz
+        Returns single float value if the device is in cw mode.
+        Returns list like [start, stop, step] if the device is in sweep mode.
+        Returns list of frequencies if the device is in list mode.
         """
 
-        self._gpib_connection.write('*WAI')
-        return float(self._gpib_connection.ask(':FREQ?'))
+        mode, is_running = self.get_status()
+
+        if 'cw' in mode:
+            return_val = float(self._ask(':FREQ?'))
+        elif 'sweep' in mode:
+            start = float(self._ask(':FREQ:STAR?'))
+            stop = float(self._ask(':FREQ:STOP?'))
+            step = float(self._ask(':SWE:STEP?'))
+            return_val = [start+step, stop, step]
+        elif 'list' in mode:
+            # Exclude first frequency entry, since that is a duplicate due to
+            # trigger issues if triggered from external sources, like NI card.
+            freq_list = self._ask(':LIST:FREQ?').strip().split(',')
+            if len(freq_list) > 1:
+                freq_list.pop()
+            return_val = np.array([float(freq) for freq in freq_list])
+        else:
+            self.log.error('Mode Unknown! Cannot determine Frequency!')
+        return return_val
 
     def set_frequency(self, freq):
         """ Sets the frequency of the microwave output.
@@ -379,29 +425,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         return 0
 
-    def get_limits(self):
-        """ Return the device-specific limits in a nested dictionary.
-          @return MicrowaveLimits: limits object
-        """
-        limits = MicrowaveLimits()
-        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST)
-
-        limits.min_frequency = self._FREQ_MIN
-        limits.max_frequency = self._FREQ_MAX
-
-        limits.min_power = self._POWER_MIN
-        limits.max_power = self._POWER_MAX
-
-        limits.list_minstep = 0.1
-        limits.list_maxstep = 6.4e9
-        limits.list_maxentries = self._MAX_LIST_ENTRIES
-
-        limits.sweep_minstep = 0.1
-        limits.sweep_maxstep = 10e9
-        limits.sweep_maxentries = 10e6
-
-        return limits
-
     def sweep_on(self):
         """ Switches on the sweep mode.
         @return int: error code (0:OK, -1:error)
@@ -418,3 +441,12 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         return -1
+
+    def _ask(self, question):
+        return self._gpib_connection.query(question)
+
+    def _write(self, command, wait=True):
+        statuscode = self._gpib_connection.write(command)
+        if wait:
+            self._gpib_connection.write('*WAI')
+return statuscode
