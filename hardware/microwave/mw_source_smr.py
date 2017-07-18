@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi Hardware module for Rohde and Schwary SMR20.
+This file contains the Qudi Hardware module for Rohde and Schwary SMR.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
     http://cdn.rohde-schwarz.com/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smr_1/smr_20-40.pdf
     """
 
-    _modclass = 'MicrowaveSMR20'
+    _modclass = 'MicrowaveSMR'
     _modtype = 'hardware'
 
     def on_activate(self):
@@ -63,14 +63,14 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.log.error('MicrowaveSMR20: did not find parameter '
-                        '>>gpib_address<< in configuration.')
+            self.log.error('MicrowaveSMR: did not find parameter '
+                           '"gpib_address" in configuration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
             self._gpib_timeout = 10*1000
-            self.log.error('MicrowaveSMR20: did not find >>gpib_timeout<< in '
+            self.log.error('MicrowaveSMR: did not find "gpib_timeout" in '
                            'configration. It will be set to {0} '
                            'seconds.'.format(self._gpib_timeout))
 
@@ -85,11 +85,11 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             self._gpib_connection.write_termination = "\r\n"
             self._gpib_connection.read_termination = None
 
-            self.log.info('MicrowaveSMR20: initialised and connected to '
-                        'hardware.')
+            self.log.info('MicrowaveSMR: initialised and connected to '
+                          'hardware.')
         except:
-             self.log.error('MicrowaveSMR20: could not connect to the GPIB '
-                         'address >>{0}<<.'.format(self._gpib_address))
+             self.log.error('MicrowaveSMR: could not connect to the GPIB '
+                            'address "{0}".'.format(self._gpib_address))
 
         self._gpib_connection.write('*WAI')
         self._FREQ_MAX = float(self._ask('FREQuency? MAX'))
