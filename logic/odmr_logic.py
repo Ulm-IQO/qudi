@@ -69,7 +69,7 @@ class ODMRLogic(GenericLogic):
         self.threadlock = Mutex()
 
     def on_activate(self):
-        """ 
+        """
         Initialisation performed during activation of the module.
         """
         # Get configuration
@@ -251,9 +251,9 @@ class ODMRLogic(GenericLogic):
     def set_trigger_pol(self, trigger_pol):
         """
         Set trigger polarity of external microwave trigger (for list and sweep mode).
-        
+
         @param object trigger_pol: one of [TriggerEdge.RISING, TriggerEdge.FALLING]
-        
+
         @return object: actually set trigger polarity returned from hardware
         """
         if self.getState() != 'locked':
@@ -349,7 +349,7 @@ class ODMRLogic(GenericLogic):
         @param float step: step frequency to set in Hz
         @param float power: mw power to set in dBm
 
-        @return float, float, float, float: current start_freq, current stop_freq, 
+        @return float, float, float, float: current start_freq, current stop_freq,
                                             current freq_step, current power
         """
         limits = self.get_hw_constraints()
@@ -374,7 +374,7 @@ class ODMRLogic(GenericLogic):
         return self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power
 
     def mw_cw_on(self):
-        """ 
+        """
         Switching on the mw source in cw mode.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
@@ -399,7 +399,7 @@ class ODMRLogic(GenericLogic):
         return mode, is_running
 
     def mw_sweep_on(self):
-        """ 
+        """
         Switching on the mw source in list/sweep mode.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
@@ -490,9 +490,9 @@ class ODMRLogic(GenericLogic):
         return 0
 
     def _stop_odmr_counter(self):
-        """ 
-        Stopping the ODMR counter. 
-        
+        """
+        Stopping the ODMR counter.
+
         @return int: error code (0:OK, -1:error)
         """
 
@@ -695,7 +695,7 @@ class ODMRLogic(GenericLogic):
         return list(self.fc.fit_list)
 
     def do_fit(self, fit_function=None, x_data=None, y_data=None):
-        """ 
+        """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
         if (x_data is None) or (y_data is None):
@@ -747,7 +747,8 @@ class ODMRLogic(GenericLogic):
         data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, :]
 
         parameters = OrderedDict()
-        parameters['Microwave Power (dBm)'] = self.mw_power
+        parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
+        parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
         parameters['Run Time (s)'] = self.run_time
         parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
         parameters['Start Frequency (Hz)'] = self.mw_start
@@ -912,7 +913,7 @@ class ODMRLogic(GenericLogic):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
 
-        @return 
+        @return
         """
         timeout = 30
         start_time = time.time()
