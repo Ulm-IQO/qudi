@@ -82,9 +82,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
     def _command_wait(self, command_str):
         """
-        Writes the command in command_str via GPIB and waits until the device has finished 
+        Writes the command in command_str via GPIB and waits until the device has finished
         processing it.
-        
+
         @param command_str: The command to be written
         """
         self._gpib_connection.write(command_str)
@@ -137,7 +137,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return limits
 
     def off(self):
-        """ 
+        """
         Switches off any microwave output.
         Must return AFTER the device is actually stopped.
 
@@ -161,11 +161,11 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return 0
 
     def get_status(self):
-        """ 
-        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and 
+        """
+        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
 
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False] 
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
         """
         is_running = bool(int(float(self._gpib_connection.query('OUTP:STAT?'))))
         mode = self._gpib_connection.query(':FREQ:MODE?').strip('\n').lower()
@@ -174,8 +174,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return mode, is_running
 
     def get_power(self):
-        """ 
-        Gets the microwave output power. 
+        """
+        Gets the microwave output power.
 
         @return float: the power set at the device in dBm
         """
@@ -187,9 +187,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             return float(self._gpib_connection.query(':POW?'))
 
     def get_frequency(self):
-        """ 
+        """
         Gets the frequency of the microwave output.
-        Returns single float value if the device is in cw mode. 
+        Returns single float value if the device is in cw mode.
         Returns list like [start, stop, step] if the device is in sweep mode.
         Returns list of frequencies if the device is in list mode.
 
@@ -210,8 +210,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return return_val
 
     def cw_on(self):
-        """ 
-        Switches on cw microwave output. 
+        """
+        Switches on cw microwave output.
         Must return AFTER the device is actually running.
 
         @return int: error code (0:OK, -1:error)
@@ -235,16 +235,16 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return 0
 
     def set_cw(self, frequency=None, power=None):
-        """ 
+        """
         Configures the device for cw-mode and optionally sets frequency and/or power
 
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
 
-        @return float, float, str: current frequency in Hz, current power in dBm, current mode
-
-        Interleave option is used for arbitrary waveform generator devices.
+        @return tuple(float, float, str): with the relation
+            current frequency in Hz,
+            current power in dBm,
+            current mode
         """
         mode, is_running = self.get_status()
         if is_running:
@@ -299,7 +299,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @param list frequency: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
 
-        @return list, float, str: current frequencies in Hz, current power in dBm, current mode
+        @return tuple(list, float, str):
+            current frequencies in Hz,
+            current power in dBm,
+            current mode
         """
         mode, is_running = self.get_status()
         if is_running:
@@ -343,7 +346,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return actual_freq, actual_power, mode
 
     def reset_listpos(self):
-        """ 
+        """
         Reset of MW list mode position to start (first frequency step)
 
         @return int: error code (0:OK, -1:error)
@@ -374,14 +377,14 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
-        """ 
-        Configures the device for sweep-mode and optionally sets frequency start/stop/step 
+        """
+        Configures the device for sweep-mode and optionally sets frequency start/stop/step
         and/or power
 
-        @return float, float, float, float, str: current start frequency in Hz, 
+        @return float, float, float, float, str: current start frequency in Hz,
                                                  current stop frequency in Hz,
                                                  current frequency step in Hz,
-                                                 current power in dBm, 
+                                                 current power in dBm,
                                                  current mode
         """
         mode, is_running = self.get_status()
@@ -412,7 +415,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
 
     def reset_sweeppos(self):
-        """ 
+        """
         Reset of MW sweep mode position to start (start frequency)
 
         @return int: error code (0:OK, -1:error)
