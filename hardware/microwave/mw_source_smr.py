@@ -2,20 +2,16 @@
 
 """
 This file contains the Qudi Hardware module for Rohde and Schwary SMR20.
-
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
-
 Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
-
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
@@ -32,10 +28,8 @@ from interface.microwave_interface import TriggerEdge
 
 class MicrowaveSMR20(Base, MicrowaveInterface):
     """ The hardware control for the device Rohde and Schwarz SMR 20.
-
     For additional information concerning the commands to communicate via the
     GPIB connection through visa, please have a look at:
-
     http://cdn.rohde-schwarz.com/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smr_1/smr_20-40.pdf
     """
 
@@ -52,29 +46,33 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.log.error('MicrowaveSMR20: did not find parameter '
-                        '>>gpib_address<< in configuration.')
+            self.log.error('MicrowaveSMR: did not find parameter '
+                           '"gpib_address" in configuration.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.log.error('MicrowaveSMR20: did not find >>gpib_timeout<< in '
-                        'configration. It will be set to {0} '
-                        'seconds.'.format(self._gpib_timeout))
+            self.log.error('MicrowaveSMR: did not find "gpib_timeout" in '
+                           'configuration. It will be set to {0} '
+                           'seconds.'.format(self._gpib_timeout))
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+            # such a stupid stuff, the timeout is specified here in ms not in
+            # seconds any more, take that into account.
+            self._gpib_connection = self.rm.open_resource(
+                self._gpib_address,
+                timeout=self._gpib_timeout*1000)
+
             #self._gpib_connection.term_chars = "\r\n"
 
-            self.log.info('MicrowaveSMR20: initialised and connected to '
-                        'hardware.')
+            self.log.info('MicrowaveSMR: initialised and connected to '
+                          'hardware.')
         except:
-             self.log.error('MicrowaveSMR20: could not connect to the GPIB '
-                         'address >>{0}<<.'.format(self._gpib_address))
+             self.log.error('MicrowaveSMR: could not connect to the GPIB '
+                            'address "{0}".'.format(self._gpib_address))
 
         # set manually the number of entries in a list, the explanation for that
         # procedure is in the function self.set_list.
@@ -97,7 +95,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def get_limits(self):
         """ Retrieve the limits of the device.
-
         @return: object MicrowaveLimits: Serves as a container for the limits
                                          of the microwave device.
         """
@@ -154,7 +151,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def on(self):
         """ Switches on any preconfigured microwave output.
-
         @return int: error code (0:OK, -1:error)
         """
         self._gpib_connection.write('*WAI')
@@ -165,7 +161,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def off(self):
         """ Switches off any microwave output.
-
         @return int: error code (0:OK, -1:error)
         """
 
@@ -179,7 +174,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def get_power(self):
         """ Gets the microwave output power.
-
         @return float: the power set at the device in dBm
         """
         self._gpib_connection.write('*WAI')
@@ -187,19 +181,18 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def set_power(self, power):
         """ Sets the microwave output power.
-
         @param float power: the power (in dBm) set for this device
-
         @return int: error code (0:OK, -1:error)
         """
 
+        # every time a single power is set, the CW mode is activated!
+        self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':POW {0:f};'.format(power))
         return 0
 
     def get_frequency(self):
         """ Gets the frequency of the microwave output.
-
         @return float: frequency (in Hz), which is currently set for this device
         """
 
@@ -208,12 +201,12 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def set_frequency(self, freq):
         """ Sets the frequency of the microwave output.
-
         @param float freq: the frequency (in Hz) set for this device
-
         @return int: error code (0:OK, -1:error)
         """
 
+        # every time a single frequency is set, the CW mode is activated!
+        self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':FREQ {0:e}'.format(freq))
         # {:e} meens a representation in float with exponential style
@@ -221,13 +214,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def set_cw(self, freq=None, power=None, useinterleave=None):
         """ Sets the MW mode to cw and additionally frequency and power
-
         @param float freq: frequency to set in Hz
         @param float power: power to set in dBm
         @param bool useinterleave: If this mode exists you can choose it.
-
         @return int: error code (0:OK, -1:error)
-
         Interleave option is used for arbitrary waveform generator devices.
         """
 
@@ -245,16 +235,14 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def set_list(self, freq=None, power=None):
         """ Sets the MW mode to list mode
-
         @param list freq: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
-
         @return int: error code (0:OK, -1:error)
         """
 
         error = 0
 
-        if self.set_cw(freq[0],power) != 0:
+        if self.set_cw(freq[0], power) != 0:
             self.log.error('The frequency list has an invalide first '
                     'frequency and power, which cannot be set.')
             error = -1
@@ -278,9 +266,15 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         # It seems that we have to set a DWEL for the device, but it is not so
         # clear why it is necessary. At least there was a hint in the manual for
-        # that:
+        # that and the instrument displays an error, when this parameter is not
+        # set in the list mode (even it should be set by default):
         self._gpib_connection.write(':SOUR:LIST:DWEL')
         self._gpib_connection.write('*WAI')
+
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':TRIG1:SLOP NEG')
 
 
         self._gpib_connection.write(':SOUR:LIST:DEL:ALL')
@@ -300,18 +294,12 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         self._gpib_connection.write(':SOUR:LIST:POW' + PowerString)
 
-        # It seems that we have to set a DWEL for the device, but it is not so
-        # clear why it is necessary. At least the instrument displays an error,
-        # when this parameter is not set in the list mode (even it should be
-        # set by default):
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':OUTP:AMOD FIX')
 
+
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':TRIG1:SLOP NEG')
-        self._gpib_connection.write('*WAI')
+        self.reset_listpos()
 
         N = int(np.round(float(self._gpib_connection.ask(':SOUR:LIST:FREQ:POIN?'))))
 
@@ -324,7 +312,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
-
         @return int: error code (0:OK, -1:error)
         """
         # self._gpib_connection.write('*WAI')
@@ -338,12 +325,13 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def list_on(self):
         """ Switches on the list mode.
-
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':LIST:LEAR')
-        self._gpib_connection.write('*WAI')
+        # self._gpib_connection.write(':LIST:LEAR')
+
         self._gpib_connection.write(':FREQ:MODE LIST')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':ABOR:LIST')
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':OUTP ON')
 
@@ -351,11 +339,8 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def turn_AM_on(self, depth):
         """ Turn on the Amplitude Modulation mode.
-
         @param float depth: modulation depth in percent (from 0 to 100%).
-
         @return int: error code (0:OK, -1:error)
-
         Set the Amplitude modulation based on an external DC signal source and
         switch on the device after configuration.
         """
@@ -369,7 +354,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def turn_AM_off(self):
         """ Turn off the Amlitude Modulation Mode.
-
         @return int: error code (0:OK, -1:error)
         """
 
@@ -380,10 +364,8 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
-
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
-
         @return int: error code (0:OK, -1:error)
         """
         #FIXME: make here the external trigger settings!
@@ -399,7 +381,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
-
           @return MicrowaveLimits: limits object
         """
         limits = MicrowaveLimits()
@@ -423,7 +404,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def sweep_on(self):
         """ Switches on the sweep mode.
-
         @return int: error code (0:OK, -1:error)
         """
         return -1
@@ -435,7 +415,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
     def reset_sweep(self):
         """ Reset of MW sweep position to start
-
         @return int: error code (0:OK, -1:error)
         """
         return -1
