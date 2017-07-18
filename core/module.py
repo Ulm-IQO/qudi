@@ -255,14 +255,14 @@ class ModuleMeta(type(QtCore.QObject)):
             if var.getter_function is None:
                 return self._statusVariables[var.name]
             else:
-                return var.getter_function(self._statusVariables[var.name])
+                return var.getter_function(self, self._statusVariables[var.name])
 
         def fset(self, value, var):
             # write value to dictionary
             if var.setter_function is None:
                 self._statusVariables[var.name] = value
             else:
-                self._statusVariables[var.name] = var.setter_function(value)
+                self._statusVariables[var.name] = var.setter_function(self, value)
             # and save it immediately in a file if requested
             if var.save == StatusVarSave.immediately:
                 self.save_status_variables()
