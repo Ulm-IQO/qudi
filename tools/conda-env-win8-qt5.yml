@@ -76,7 +76,7 @@ dependencies:
   - jupyter-client==4.4.0
   - jupyter-console==5.0.0
   - jupyter-core==4.2.1
-  - lmfit==0.9.5
+  - lmfit==0.9.6
   - plumbum==1.6.3
   - prompt-toolkit==1.0.9
   - pydaqmx==1.3.2
