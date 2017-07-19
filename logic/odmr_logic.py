@@ -47,7 +47,12 @@ class ODMRLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
     taskrunner = Connector(interface='TaskRunner')
 
-    _mw_scanmode = ConfigOption('scanmode', 'LIST', missing='warn')
+    # config option
+    mw_scanmode = ConfigOption(
+                    'scanmode',
+                    'LIST',
+                    missing='warn',
+                    converter=lambda x: MicrowaveMode[x.upper()])
 
     clock_frequency = StatusVar('clock_frequency', 200)
     cw_mw_frequency = StatusVar('cw_mw_frequency', 2870e6)
@@ -100,16 +105,6 @@ class ODMRLogic(GenericLogic):
         # theoretically this can be changed, but the current counting scheme will not support that
         self.mw_trigger_pol = TriggerEdge.RISING
         self.set_trigger_pol(self.mw_trigger_pol)
-
-        # Get scanmode from config. Currently only sweep and list is allowed
-        if 'sweep' in self._mw_scanmode.lower():
-            self.mw_scanmode = MicrowaveMode.SWEEP
-        elif 'list' in self._mw_scanmode.lower():
-            self.mw_scanmode = MicrowaveMode.LIST
-        else:
-            self.mw_scanmode = MicrowaveMode.LIST
-            self.log.error('Specified scanmode "{0}" not valid. Choose "list" or "sweep".\n'
-                           'Falling back to list mode.'.format(self._mw_scanmode))
 
         # Elapsed measurement time and number of sweeps
         self.elapsed_time = 0.0
