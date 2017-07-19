@@ -103,7 +103,8 @@ class ConfigOption:
         module initalisation.
     """
 
-    def __init__(self, name=None, default=None, *, var_name=None, missing='nothing'):
+    def __init__(self, name=None, default=None, *, var_name=None, missing='nothing',
+                    setter=None, checker=None, converter=None):
         """ Create a ConfigOption object.
 
             @param name: identifier of the option in the configuration file
@@ -113,6 +114,9 @@ class ConfigOption:
                 if you know what you are doing!
             @param missing: action to take when the option is not set. 'nothing' does nothing,
                 'warn' logs a warning, 'error' logs an error and prevents the module from loading
+            @param setter: setter function for complex config option behaviour
+            @param checker: static function that checks if value is ok
+            @param converter: static function that forces type interpretation
         """
         self.missing = MissingOption[missing]
         self.var_name = var_name
@@ -122,6 +126,9 @@ class ConfigOption:
             self.name = name
 
         self.default = default
+        self.setter_function = setter
+        self.checker = checker
+        self.converter = converter
 
     def copy(self, **kwargs):
         """ Create a new instance of ConfigOption with copied values and update
@@ -133,8 +140,41 @@ class ConfigOption:
         newargs['default'] = copy.copy(self.default)
         newargs['var_name'] = copy.copy(self.var_name)
         newargs['missing'] = copy.copy(self.missing.name)
+        newargs['setter'] = self.setter_function
+        newargs['checker'] = self.checker
+        newargs['converter'] = self.converter
         newargs.update(kwargs)
         return ConfigOption(**newargs)
+
+    def check(self, value):
+        """ If checker function set, check value. Else assume everything is ok.
+        """
+        if callable(self.checker):
+            return self.checker(value)
+        else:
+            return True
+
+    def convert(self, value):
+        """ If converter function set, convert value. Needs to raise exception on error.
+
+            @param value: value to convert (or not)
+
+            @return: converted value (or passthrough)
+        """
+        if callable(self.converter):
+            return self.converter(value)
+        else:
+            return value
+
+    def setter(self, func):
+        """ This is the decorator for declaring a setter function for this StatusVar.
+
+            @param func: getter function for this StatusVar
+            @return: return the original function so this can be used as a decorator
+        """
+        if callable(func):
+            self.setter_function = func
+        return func
 
 
 class Connector:
@@ -341,7 +381,12 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                         'No variable >> {0} << configured, using default value {1} instead.'
                          ''.format(opt.name, opt.default))
                 cfg_val = opt.default
-            setattr(self, opt.var_name, cfg_val)
+            if opt.check(cfg_val):
+                converted_val = opt.convert(cfg_val)
+                if opt.setter_function is None:
+                    setattr(self, opt.var_name, converted_val)
+                else:
+                    opt.setter_function(self, converted_val)
 
         self._manager = manager
         self._name = name
