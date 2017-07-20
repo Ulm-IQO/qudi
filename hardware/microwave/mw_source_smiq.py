@@ -27,7 +27,7 @@ import visa
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -41,23 +41,13 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
     _modclass = 'MicrowaveSmiq'
     _modtype = 'hardware'
+    _gpib_address = ConfigOption('gpib_address', missing='error')
+    _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
-        # checking for the right configuration
-        config = self.getConfiguration()
-        if 'gpib_address' in config.keys():
-            self._gpib_address = config['gpib_address']
-        else:
-            self.log.error('Did not find >>gpib_address<< in configration.')
-
-        if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = int(config['gpib_timeout'])*1000
-        else:
-            self._gpib_timeout = 10*1000
-            self.log.warning('Did not find >>gpib_timeout<< in configration. '
-                             'Will set it to 10 seconds.')
-
+        self._gpib_timeout = self._gpib_timeout * 1000
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:

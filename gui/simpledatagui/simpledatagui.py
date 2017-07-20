@@ -20,13 +20,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
+import os
+
+from core.module import Connector
+from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
-import numpy as np
-import os
 
 
 class SimpleMainWindow(QtWidgets.QMainWindow):
@@ -50,14 +52,14 @@ class SimpleDataGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'simplelogic': 'SimpleDataLogic'}
+    simplelogic = Connector(interface='SimpleDataLogic')
 
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
