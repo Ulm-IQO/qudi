@@ -36,8 +36,8 @@ class PIDLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    controller = Connector(interface_name='PIDControllerInterface')
-    savelogic = Connector(interface_name='SaveLogic')
+    controller = Connector(interface='PIDControllerInterface')
+    savelogic = Connector(interface='SaveLogic')
 
     # status vars
     bufferLength = StatusVar('bufferlength', 1000)

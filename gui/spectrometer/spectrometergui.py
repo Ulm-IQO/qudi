@@ -49,7 +49,7 @@ class SpectrometerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    spectrumlogic1 = Connector(interface_name='SpectrumLogic')
+    spectrumlogic1 = Connector(interface='SpectrumLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

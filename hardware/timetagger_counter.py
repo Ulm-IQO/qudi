@@ -43,12 +43,9 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
     def on_activate(self):
         """ Start up TimeTagger interface
         """
-
         self._tagger = tt.createTimeTagger()
-
         self._count_frequency = 50  # Hz
 
-        config = self.getConfiguration()
         if self._sum_channels and self._channel_apd_1 is None:
             self.log.error('Cannot sum channels when only one apd channel given')
 

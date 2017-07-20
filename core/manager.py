@@ -42,7 +42,7 @@ from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
 from .remote import RemoteObjectManager
-from .module import BaseMixin
+from .module import BaseMixin, Connector
 
 
 class Manager(QtCore.QObject):
@@ -618,25 +618,33 @@ class Manager(QtCore.QObject):
                              'connected but is not declared in the module '
                              'class.'.format(c, base, mkey))
                 continue
-            if (not isinstance(connectors[c], OrderedDict)):
-                logger.error('{0}.{1}.{2}: Connector is no dictionary.'
+            # new-style connector
+            if isinstance(connectors[c], Connector):
+                pass
+            # legacy connector
+            elif isinstance(connectors[c], OrderedDict):
+                if ('class' not in connectors[c]):
+                    logger.error('{0}.{1}.{2}: No class key in connection declaration.'
+                        ''.format(c, base, mkey))
+                    continue
+                if (not isinstance(connectors[c]['class'], str)):
+                    logger.error('{0}.{1}.{2}: Value {3} for class key is not a string.'
+                        ''.format(c, base, mkey, connectors[c]['class']))
+                    continue
+                if ('object' not in connectors[c]):
+                    logger.error('{0}.{1}.{2}: No object key in connection declaration.'
+                        ''.format(c, base, mkey))
+                    continue
+                if (connectors[c]['object'] is not None):
+                    logger.warning('Connector {0}.{1}.{2} is already connected.'
+                        ''.format(c, base, mkey))
+                    continue
+                logger.warning('Connector {0} in {1}.{2} is a legacy connector.\n'
+                    'Use core.module.Connector to declare connectors.'
                     ''.format(c, base, mkey))
-                continue
-            if ('class' not in connectors[c]):
-                logger.error('{0}.{1}.{2}: No class key in connection declaration.'
+            else:
+                logger.error('{0}.{1}.{2}: Connector is no dictionary or Connector.'
                     ''.format(c, base, mkey))
-                continue
-            if (not isinstance(connectors[c]['class'], str)):
-                logger.error('{0}.{1}.{2}: Value {3} for class key is not a string.'
-                    ''.format(c, base, mkey, connectors[c]['class']))
-                continue
-            if ('object' not in connectors[c]):
-                logger.error('{0}.{1}.{2}: No object key in connection declaration.'
-                    ''.format(c, base, mkey))
-                continue
-            if (connectors[c]['object'] is not None):
-                logger.warning('Connector {0}.{1}.{2} is already connected.'
-                               ''.format(c, base, mkey))
                 continue
             if (not isinstance(connections[c], str)):
                 logger.error('Connector configuration {0}.{1}.{2} '
@@ -647,6 +655,9 @@ class Manager(QtCore.QObject):
                 logger.warning('Connector configuration {0}.{1}.{2} has '
                                'legacy format since it contains a dot.'
                                ''.format(base, mkey, c))
+                logger.error('{0}.{1}.{2}: Connector is no dictionary.'
+                    ''.format(c, base, mkey))
+                continue
                 destmod = connections[c].split('.')[0]
             else:
                 destmod = connections[c]
@@ -679,11 +690,27 @@ class Manager(QtCore.QObject):
             # Finally set the connection object
             logger.info('Connecting {0}.{1}.{2} to {3}.{4}'
                         ''.format(base, mkey, c, destbase, destmod))
-            connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
+            # new-style connector
+            if isinstance(connectors[c], Connector):
+                connectors[c].connect(self.tree['loaded'][destbase][destmod])
+            # legacy connector
+            elif isinstance(connectors[c], dict):
+                connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
+            else:
+                logger.error(
+                    'Connector {0} has wrong type even though we checked before.'
+                    ''.format(c))
 
         # check that all connectors are connected
         for c, v in self.tree['loaded'][base][mkey].connectors.items():
-            if (v['object'] is None):
+            # new-style connector
+            if isinstance(v, Connector) and v.obj is None:
+                logger.error('Connector {0} of module {1}.{2} is not '
+                             'connected. Connection not complete.'.format(
+                                 c, base, mkey))
+                return -1
+            # legacy connector
+            elif isinstance(v, dict) and v['object'] is None:
                 logger.error('Connector {0} of module {1}.{2} is not '
                              'connected. Connection not complete.'.format(
                                  c, base, mkey))

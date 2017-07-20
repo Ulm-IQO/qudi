@@ -38,8 +38,8 @@ class PulsedMasterLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    pulsedmeasurementlogic = Connector(interface_name='PulsedMeasurementLogic')
-    sequencegeneratorlogic = Connector(interface_name='SequenceGeneratorLogic')
+    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
+    sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     # config options
     direct_write = ConfigOption('direct_write', False, missing='warn')

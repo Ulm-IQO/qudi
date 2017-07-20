@@ -48,9 +48,6 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-
-        # checking for the right configuration
-        config = self.getConfiguration()
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:

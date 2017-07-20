@@ -223,8 +223,8 @@ class PoiManagerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    poimanagerlogic1 = Connector(interface_name='PoiManagerLogic')
-    confocallogic1 = Connector(interface_name='ConfocalLogic')
+    poimanagerlogic1 = Connector(interface='PoiManagerLogic')
+    confocallogic1 = Connector(interface='ConfocalLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

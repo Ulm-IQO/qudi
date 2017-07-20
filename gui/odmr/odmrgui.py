@@ -72,8 +72,8 @@ class ODMRGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    odmrlogic1 = Connector(interface_name='ODMRLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    odmrlogic1 = Connector(interface='ODMRLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartOdmrScan = QtCore.Signal()
     sigStopOdmrScan = QtCore.Signal()
@@ -148,7 +148,7 @@ class ODMRGui(GUIBase):
         self._mw.toolBar.addWidget(self._mw.clear_odmr_PushButton)
 
         # Get the image from the logic
-        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.odmr_plot_xy.transpose())
+        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.odmr_plot_xy, axisOrder='row-major')
         self.odmr_matrix_image.setRect(QtCore.QRectF(
                 self._odmr_logic.mw_start,
                 0,
@@ -482,14 +482,17 @@ class ODMRGui(GUIBase):
         # Update raw data matrix plot
         cb_range = self.get_matrix_cb_range()
         self.update_colorbar(cb_range)
-        self.odmr_matrix_image.setRect(QtCore.QRectF(odmr_data_x[0],
-                                                     0,
-                                                     np.abs(odmr_data_x[-1] - odmr_data_x[0]),
-                                                     odmr_matrix.shape[0]))
-        self.odmr_matrix_image.setImage(image=odmr_matrix.transpose(),
-                                        levels=(cb_range[0], cb_range[1]))
-
-        return
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                odmr_data_x[0],
+                0,
+                np.abs(odmr_data_x[-1] - odmr_data_x[0]),
+                odmr_matrix.shape[0])
+            )
+        self.odmr_matrix_image.setImage(
+            image=odmr_matrix,
+            axisOrder='row-major',
+            levels=(cb_range[0], cb_range[1]))
 
     def colorscale_changed(self):
         """

@@ -47,8 +47,8 @@ class NuclearOperationsGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    nuclearoperationslogic = Connector(interface_name='NuclearOperationsLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    nuclearoperationslogic = Connector(interface='NuclearOperationsLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     def on_activate(self):
         """

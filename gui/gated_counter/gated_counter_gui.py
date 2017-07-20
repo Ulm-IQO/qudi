@@ -54,8 +54,8 @@ class GatedCounterGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    gatedcounterlogic1 = Connector(interface_name='GatedCounterLogic')
-    traceanalysislogic1 = Connector(interface_name='TraceAnalysisLogic')
+    gatedcounterlogic1 = Connector(interface='GatedCounterLogic')
+    traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
 
 
     sigStartGatedCounter = QtCore.Signal()

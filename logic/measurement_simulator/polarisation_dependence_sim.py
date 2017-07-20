@@ -38,7 +38,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
     _modtype = 'hardware'
 
     # Connectors
-    counter1 = Connector(interface_name='SlowCounterInterface')
+    counter1 = Connector(interface='SlowCounterInterface')
 
     _move_signal = QtCore.Signal()
 
