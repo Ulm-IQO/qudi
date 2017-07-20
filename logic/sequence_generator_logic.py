@@ -20,15 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import importlib
+import inspect
 import numpy as np
-import pickle
 import os
+import pickle
+import sys
 import time
+
 from qtpy import QtCore
 from collections import OrderedDict
-import inspect
-import importlib
-import sys
+from core.module import StatusVar
 
 from logic.pulse_objects import PulseBlockElement
 from logic.pulse_objects import PulseBlock
@@ -60,6 +62,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     _modclass = 'sequencegeneratorlogic'
     _modtype = 'logic'
 
+    # status vars
+    activation_config = StatusVar(
+        'activation_config',
+        ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'])
+    laser_channel = StatusVar('laser_channel', 'd_ch1')
+    amplitude_dict = StatusVar(
+        'amplitude_dict',
+        OrderedDict({'a_ch1': 0.5, 'a_ch2': 0.5, 'a_ch3': 0.5, 'a_ch4': 0.5}))
+    sample_rate = StatusVar('sample_rate', 25e9)
+    waveform_format = StatusVar('waveform_format', 'wfmx')
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -77,11 +89,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
@@ -149,12 +161,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # IMPORTANT: THIS CONFIG DOES NOT REPRESENT THE ACTUAL SETTINGS ON THE HARDWARE
         self.analog_channels = 2
         self.digital_channels = 4
-        self.activation_config = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        self.laser_channel = 'd_ch1'
-        self.amplitude_dict = OrderedDict({'a_ch1': 0.5, 'a_ch2': 0.5, 'a_ch3': 0.5, 'a_ch4': 0.5})
-        self.sample_rate = 25e9
         # The file format for the sampled hardware-compatible waveforms and sequences
-        self.waveform_format = 'wfmx'  # can be 'wfmx', 'wfm' or 'fpga'
         self.sequence_format = 'seq'  # only .seq file format
 
         # a dictionary with all predefined generator methods and measurement sequence names
@@ -169,16 +176,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         self._attach_predefined_methods()
 
-        if 'activation_config' in self._statusVariables:
-            self.activation_config = self._statusVariables['activation_config']
-        if 'laser_channel' in self._statusVariables:
-            self.laser_channel = self._statusVariables['laser_channel']
-        if 'amplitude_dict' in self._statusVariables:
-            self.amplitude_dict = self._statusVariables['amplitude_dict']
-        if 'sample_rate' in self._statusVariables:
-            self.sample_rate = self._statusVariables['sample_rate']
-        if 'waveform_format' in self._statusVariables:
-            self.waveform_format = self._statusVariables['waveform_format']
         self.analog_channels = len([chnl for chnl in self.activation_config if 'a_ch' in chnl])
         self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
         self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
@@ -187,11 +184,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        self._statusVariables['activation_config'] = self.activation_config
-        self._statusVariables['laser_channel'] = self.laser_channel
-        self._statusVariables['amplitude_dict'] = self.amplitude_dict
-        self._statusVariables['sample_rate'] = self.sample_rate
-        self._statusVariables['waveform_format'] = self.waveform_format
+        return
 
     def _attach_predefined_methods(self):
         """
