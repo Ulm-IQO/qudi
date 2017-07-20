@@ -55,7 +55,7 @@ class VoltScanGui(GUIBase):
     
     ## declare connectors
     voltagescannerlogic1 = Connector(interface='VoltageScannerLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartScan = QtCore.Signal()
     sigStopScan = QtCore.Signal()
