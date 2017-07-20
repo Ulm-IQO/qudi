@@ -702,7 +702,8 @@ class ODMRLogic(GenericLogic):
         data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, :]
 
         parameters = OrderedDict()
-        parameters['Microwave Power (dBm)'] = self.mw_power
+        parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
+        parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
         parameters['Run Time (s)'] = self.run_time
         parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
         parameters['Start Frequency (Hz)'] = self.mw_start
