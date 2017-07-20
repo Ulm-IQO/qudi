@@ -63,7 +63,7 @@ class ODMRLogic(GenericLogic):
     mw_step = StatusVar('mw_step', 2e6)
     run_time = StatusVar('run_time', 60)
     number_of_lines = StatusVar('number_of_lines', 50)
-    fitcontainer = StatusVar('fits', None)
+    fc = StatusVar('fits', None)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -149,7 +149,7 @@ class ODMRLogic(GenericLogic):
         # Disconnect signals
         self.sigNextLine.disconnect()
 
-    @fitcontainer.setter
+    @fc.constructor
     def sv_set_fits(self, val):
         # Setup fit container
         fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
@@ -181,13 +181,13 @@ class ODMRLogic(GenericLogic):
             default_fits = OrderedDict()
             default_fits['1d'] = d1
             fc.load_from_dict(default_fits)
-        self.fc = fc
+        return fc
 
-    @fitcontainer.getter
-    def sv_get_fits(self):
+    @fc.representer
+    def sv_get_fits(self, val):
         """ save configured fits """
-        if len(self.fc.fit_list) > 0:
-            return self.fc.save_to_dict()
+        if len(val.fit_list) > 0:
+            return val.save_to_dict()
         else:
             return None
 
