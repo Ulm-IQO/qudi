@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 import okfrontpanel as ok
 import time
@@ -44,6 +44,9 @@ class OkFpgaPulser(Base, PulserInterface):
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
 
+    fpga_serial = ConfigOption('fpga_serial', missing='error')
+    _fpga_type = ConfigOption('fpga_type', 'XEM6310_LX150', missing='warn')
+ 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -65,18 +68,6 @@ class OkFpgaPulser(Base, PulserInterface):
             self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
                              'OkFpgaPulser as directory for the pulsed files!\nThe default home '
                              'directory\n{0}\nwill be taken instead.'.format(self.pulsed_file_dir))
-
-        if 'fpga_serial' in config.keys():
-            self.fpga_serial = config['fpga_serial']
-        else:
-            self.fpga_serial = ''
-            self.log.error('No parameter "fpga_serial" was specified in the config for FPGA pulse '
-                           'generator.')
-
-        if 'fpga_type' in config.keys():
-            self._fpga_type = config['fpga_type']
-        else:
-            self._fpga_type = 'XEM6310_LX150'
             self.log.warning(
                 'No parameter "fpga_type" specified in the config!\n'
                 'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'

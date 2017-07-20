@@ -19,47 +19,28 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
-import thirdparty.stuttgart_counter.TimeTagger as tt
-from core.base import Base
 import os
+import thirdparty.stuttgart_counter.TimeTagger as tt
+
+from core.module import Base, ConfigOption
+from interface.fast_counter_interface import FastCounterInterface
 
 
 class FastCounterFGAPiP3(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
 
+    # config options
+    _fpgacounter_serial = ConfigOption('fpgacounter_serial', missing='error')
+    _channel_apd_0 = ConfigOption('fpgacounter_channel_apd_0', 1, missing='warn')
+    _channel_apd_1 = ConfigOption('fpgacounter_channel_apd_1', 3, missing='warn')
+    _channel_detect = ConfigOption('fpgacounter_channel_detect', 2, missing='warn')
+    _channel_sequence = ConfigOption('fpgacounter_channel_sequence', 6, missing='warn')
+
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
-
-        config = self.getConfiguration()
-        if 'fpgacounter_serial' in config.keys():
-            self._fpgacounter_serial=config['fpgacounter_serial']
-        else:
-            self.log.warning('No serial number defined for fpga counter')
-
-        if 'fpgacounter_channel_apd_0' in config.keys():
-            self._channel_apd_0 = config['fpgacounter_channel_apd_0']
-        else:
-            self.log.warning('No apd0 channel defined for fpga counter')
-
-        if 'fpgacounter_channel_apd_1' in config.keys():
-            self._channel_apd_1 = config['fpgacounter_channel_apd_1']
-        else:
-            self.log.warning('No apd1 channel defined for fpga counter')
-
-        if 'fpgacounter_channel_detect' in config.keys():
-            self._channel_detect = config['fpgacounter_channel_detect']
-        else:
-            self.log.warning('No no detect channel defined for fpga counter')
-
-        if 'fpgacounter_channel_sequence' in config.keys():
-            self._channel_sequence = config['fpgacounter_channel_sequence']
-        else:
-            self.log.warning('No sequence channel defined for fpga counter')
-
         tt._Tagger_setSerial(self._fpgacounter_serial)
         thirdpartypath = os.path.join(self.get_main_dir(), 'thirdparty')
         bitfilepath = os.path.join(thirdpartypath, 'stuttgart_counter', 'TimeTaggerController.bit')
@@ -70,7 +51,10 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         self._bin_width = 1
         self._record_length = int(4000)
 
-        self.configure(self._bin_width*1e-9,self._record_length*1e-9,self._number_of_gates)
+        self.configure(
+            self._bin_width * 1e-9,
+            self._record_length * 1e-9,
+            self._number_of_gates)
 
         self.statusvar = 0
 
