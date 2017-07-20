@@ -35,9 +35,9 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     _modtype = 'hardware'
 
     # connectors
-    fitlogic = Connector(interface_name='FitLogic')
-    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
-    spectrometer1 = Connector(interface_name='SpectrometerInterface')
+    fitlogic = Connector(interface='FitLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    spectrometer1 = Connector(interface='SpectrometerInterface')
 
     # config options
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')

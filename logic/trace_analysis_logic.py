@@ -39,9 +39,9 @@ class TraceAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    counterlogic1 = Connector(interface_name='CounterLogic')
-    savelogic = Connector(interface_name='SaveLogic')
-    fitlogic = Connector(interface_name='FitLogic')
+    counterlogic1 = Connector(interface='CounterLogic')
+    savelogic = Connector(interface='SaveLogic')
+    fitlogic = Connector(interface='FitLogic')
 
     sigHistogramUpdated = QtCore.Signal()
 

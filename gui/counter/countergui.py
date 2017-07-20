@@ -56,7 +56,7 @@ class CounterGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    counterlogic1 = Connector(interface_name='CounterLogic')
+    counterlogic1 = Connector(interface='CounterLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()

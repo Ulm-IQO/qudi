@@ -32,7 +32,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _modtype = 'hardware'
 
     # connectors
-    fitlogic = Connector(interface_name='FitLogic')
+    fitlogic = Connector(interface='FitLogic')
 
     # config options
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')

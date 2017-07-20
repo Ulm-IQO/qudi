@@ -37,8 +37,8 @@ class OptimizerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
-    fitlogic = Connector(interface_name='FitLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    fitlogic = Connector(interface='FitLogic')
 
     # declare status vars
     _clock_frequency = StatusVar('clock_frequency', 50)

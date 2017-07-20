@@ -62,13 +62,13 @@ class NuclearOperationsLogic(GenericLogic):
     # declare connectors
     #TODO: Use rather the task runner instead directly the module!
 
-    sequencegenerationlogic = Connector(interface_name='SequenceGenerationLogic')
-    traceanalysislogic = Connector(interface_name='TraceAnalysisLogic')
-    gatedcounterlogic = Connector(interface_name='CounterLogic')
-    odmrlogic = Connector(interface_name='ODMRLogic')
-    optimizerlogic = Connector(interface_name='OptimizerLogic')
-    scannerlogic = Connector(interface_name='ScannerLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    sequencegenerationlogic = Connector(interface='SequenceGenerationLogic')
+    traceanalysislogic = Connector(interface='TraceAnalysisLogic')
+    gatedcounterlogic = Connector(interface='CounterLogic')
+    odmrlogic = Connector(interface='ODMRLogic')
+    optimizerlogic = Connector(interface='OptimizerLogic')
+    scannerlogic = Connector(interface='ScannerLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     # status vars
     electron_rabi_periode = StatusVar('electron_rabi_periode', 1800e-9) # in s

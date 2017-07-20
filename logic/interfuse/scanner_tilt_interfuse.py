@@ -32,7 +32,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     _modclass = 'ScannerTiltInterfuse'
     _modtype = 'interfuse'
 
-    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

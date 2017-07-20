@@ -34,7 +34,7 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
         Shows a silicon vacancy spectrum at liquid helium temperatures.
     """
 
-    fitlogic = Connector(interface_name='FitLogic')
+    fitlogic = Connector(interface='FitLogic')
 
     def on_activate(self):
         """ Activate module.

@@ -40,13 +40,13 @@ class PulsedMeasurementLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    pulseanalysislogic = Connector(interface_name='PulseAnalysisLogic')
-    pulseextractionlogic = Connector(interface_name='PulseExtractionLogic')
-    fitlogic = Connector(interface_name='FitLogic')
-    savelogic = Connector(interface_name='SaveLogic')
-    fastcounter = Connector(interface_name='FastCounterInterface')
-    microwave = Connector(interface_name='MWInterface')
-    pulsegenerator = Connector(interface_name='PulserInterface')
+    pulseanalysislogic = Connector(interface='PulseAnalysisLogic')
+    pulseextractionlogic = Connector(interface='PulseExtractionLogic')
+    fitlogic = Connector(interface='FitLogic')
+    savelogic = Connector(interface='SaveLogic')
+    fastcounter = Connector(interface='FastCounterInterface')
+    microwave = Connector(interface='MWInterface')
+    pulsegenerator = Connector(interface='PulserInterface')
 
     # status vars
     fast_counter_record_length = StatusVar(default=3.e-6)

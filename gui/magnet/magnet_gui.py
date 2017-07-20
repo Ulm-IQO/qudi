@@ -166,8 +166,8 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    magnetlogic1 = Connector(interface_name='MagnetLogic')
-    savelogic = Connector(interface_name='SaveLogic')
+    magnetlogic1 = Connector(interface='MagnetLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     # status var
     _alignment_2d_cb_label = StatusVar('alignment_2d_cb_GraphicsView_text', 'Fluorescence')

@@ -267,7 +267,7 @@ class AutomationLogic(GenericLogic):
     _modclass = 'AutomationLogic'
     _modtype = 'logic'
     
-    taskrunner = Connector(interface_name='TaskRunner')
+    taskrunner = Connector(interface='TaskRunner')
 
     sigRepeat = QtCore.Signal()
 

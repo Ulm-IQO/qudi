@@ -69,15 +69,15 @@ class MagnetLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    magnetstage = Connector(interface_name='MagnetInterface')
-    optimizerlogic = Connector(interface_name='OptimizerLogic')
-    counterlogic = Connector(interface_name='CounterLogic')
-    odmrlogic = Connector(interface_name='ODMRLogic')
-    savelogic = Connector(interface_name='SaveLogic')
-    scannerlogic = Connector(interface_name='ScannerLogic')
-    traceanalysis = Connector(interface_name='TraceAnalysisLogic')
-    gatedcounterlogic = Connector(interface_name='GatedCounterLogic')
-    sequencegeneratorlogic = Connector(interface_name='SequenceGeneratorLogic')
+    magnetstage = Connector(interface='MagnetInterface')
+    optimizerlogic = Connector(interface='OptimizerLogic')
+    counterlogic = Connector(interface='CounterLogic')
+    odmrlogic = Connector(interface='ODMRLogic')
+    savelogic = Connector(interface='SaveLogic')
+    scannerlogic = Connector(interface='ScannerLogic')
+    traceanalysis = Connector(interface='TraceAnalysisLogic')
+    gatedcounterlogic = Connector(interface='GatedCounterLogic')
+    sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     align_2d_axis0_range = StatusVar('align_2d_axis0_range', 10e-3)
     align_2d_axis0_step = StatusVar('align_2d_axis0_step', 1e-3)
@@ -196,12 +196,6 @@ class MagnetLogic(GenericLogic):
         """
         self._magnet_device = self.get_connector('magnetstage')
         self._save_logic = self.get_connector('savelogic')
-
-        self.log.debug('The following configuration was found.')
-        # checking for the right configuration
-        config = self.getConfiguration()
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!

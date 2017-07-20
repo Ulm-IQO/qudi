@@ -185,9 +185,9 @@ class ConfocalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    confocallogic1 = Connector(interface_name='ConfocalLogic')
-    savelogic = Connector(interface_name='SaveLogic')
-    optimizerlogic1 = Connector(interface_name='OptimizerLogic')
+    confocallogic1 = Connector(interface='ConfocalLogic')
+    savelogic = Connector(interface='SaveLogic')
+    optimizerlogic1 = Connector(interface='OptimizerLogic')
 
     # config options for gui
     fixed_aspect_ratio_xy = ConfigOption('fixed_aspect_ratio_xy', True)

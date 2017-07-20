@@ -47,8 +47,8 @@ class LaserScannerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    confocalscanner1 = Connector(interface_name='ConfocalScannerInterface')
-    savelogic = Connector(interface_name='SaveLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    savelogic = Connector(interface='SaveLogic')
 
     scan_range = StatusVar('scan_range', [-10, 10])
     number_of_repeats = StatusVar(default=10)
