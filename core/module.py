@@ -35,13 +35,13 @@ class StatusVar:
         and saved after deactivation.
     """
 
-    def __init__(self, name=None, default=None, *, var_name=None, setter=None, getter=None):
+    def __init__(self, name=None, default=None, *, var_name=None, constructor=None, representer=None):
         """
             @param name: identifier of the status variable when stored
             @param default: default value for the status variable when a
                 saved version is not present
-            @param setter: setter function for variable, do loading type checks or conversion here
-            @param getter: getter function for status variable, do saving conversion here
+            @param constructor: constructor function for variable, do loading type checks or conversion here
+            @param representer: representer function for status variable, do saving conversion here
             @param var_name: name of the variable inside a running module. Only set this
                 if you know what you are doing!
         """
@@ -51,8 +51,8 @@ class StatusVar:
         else:
             self.name = name
 
-        self.setter_function = setter
-        self.getter_function = getter
+        self.constructor_function = constructor
+        self.representer_function = representer
         self.default = default
 
     def copy(self, **kwargs):
@@ -63,30 +63,30 @@ class StatusVar:
         newargs = {}
         newargs['name'] = copy.copy(self.name)
         newargs['default'] = copy.copy(self.default)
-        newargs['setter'] = self.setter_function
-        newargs['getter'] = self.getter_function
+        newargs['constructor'] = self.constructor_function
+        newargs['representer'] = self.representer_function
         newargs['var_name'] = copy.copy(self.var_name)
         newargs.update(kwargs)
         return StatusVar(**newargs)
 
-    def setter(self, func):
-        """ This is the decorator for declaring a setter function for this StatusVar.
+    def constructor(self, func):
+        """ This is the decorator for declaring constructor function for this StatusVar.
 
-            @param func: getter function for this StatusVar
+            @param func: constructor function for this StatusVar
             @return: return the original function so this can be used as a decorator
         """
         if callable(func):
-            self.setter_function = func
+            self.constructor_function = func
         return func
 
-    def getter(self, func):
-        """ This is the decorator for declaring a getter function for this StatusVar.
+    def representer(self, func):
+        """ This is the decorator for declaring a representer function for this StatusVar.
 
-            @param func: getter function for this StatusVar
+            @param func: representer function for this StatusVar
             @return: return the original function so this can be used as a decorator
         """
         if callable(func):
-            self.getter_function = func
+            self.representer_function = func
         return func
 
 
@@ -104,7 +104,7 @@ class ConfigOption:
     """
 
     def __init__(self, name=None, default=None, *, var_name=None, missing='nothing',
-                    setter=None, checker=None, converter=None):
+                    constructor=None, checker=None, converter=None):
         """ Create a ConfigOption object.
 
             @param name: identifier of the option in the configuration file
@@ -114,7 +114,7 @@ class ConfigOption:
                 if you know what you are doing!
             @param missing: action to take when the option is not set. 'nothing' does nothing,
                 'warn' logs a warning, 'error' logs an error and prevents the module from loading
-            @param setter: setter function for complex config option behaviour
+            @param constructor: constructor function for complex config option behaviour
             @param checker: static function that checks if value is ok
             @param converter: static function that forces type interpretation
         """
@@ -126,7 +126,7 @@ class ConfigOption:
             self.name = name
 
         self.default = default
-        self.setter_function = setter
+        self.constructor_function = constructor
         self.checker = checker
         self.converter = converter
 
@@ -140,7 +140,7 @@ class ConfigOption:
         newargs['default'] = copy.copy(self.default)
         newargs['var_name'] = copy.copy(self.var_name)
         newargs['missing'] = copy.copy(self.missing.name)
-        newargs['setter'] = self.setter_function
+        newargs['constructor'] = self.constructor_function
         newargs['checker'] = self.checker
         newargs['converter'] = self.converter
         newargs.update(kwargs)
@@ -166,14 +166,14 @@ class ConfigOption:
         else:
             return value
 
-    def setter(self, func):
-        """ This is the decorator for declaring a setter function for this StatusVar.
+    def constructor(self, func):
+        """ This is the decorator for declaring a constructor function for this ConfigOption.
 
-            @param func: getter function for this StatusVar
+            @param func: constructor function for this ConfigOption
             @return: return the original function so this can be used as a decorator
         """
         if callable(func):
-            self.setter_function = func
+            self.constructor_function = func
         return func
 
 
@@ -383,10 +383,10 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                 cfg_val = opt.default
             if opt.check(cfg_val):
                 converted_val = opt.convert(cfg_val)
-                if opt.setter_function is None:
+                if opt.constructor_function is None:
                     setattr(self, opt.var_name, converted_val)
                 else:
-                    opt.setter_function(self, converted_val)
+                    setattr(self, opt.var_name, opt.constructor_function(self, converted_val))
 
         self._manager = manager
         self._name = name
@@ -404,10 +404,10 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
             sv = self._statusVariables
             svar = sv[var.name] if var.name in sv else var.default
 
-            if var.setter_function is None:
+            if var.constructor_function is None:
                 setattr(self, var.var_name, svar)
             else:
-                var.setter_function(self, svar)
+                setattr(self, var.var_name, var.constructor_function(self, svar))
 
         # activate
         self.on_activate()
@@ -424,11 +424,13 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         finally:
             # save status vars even if deactivation failed
             for vname, var in self._stat_vars.items():
-                if var.getter_function is None:
-                    if hasattr(self, var.var_name):
+                if hasattr(self, var.var_name):
+                    if var.representer_function is None:
                         self._statusVariables[var.name] = getattr(self, var.var_name)
-                else:
-                    self._statusVariables[var.name] = var.getter_function(self)
+                    else:
+                        self._statusVariables[var.name] = var.representer_function(
+                                                            self,
+                                                            getattr(self, var.var_name))
 
     def _build_event(self, event):
         """
