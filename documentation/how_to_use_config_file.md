@@ -78,58 +78,30 @@ module.Class: 'ni_card.NICard'
 which will determine that the module will be found in the trunk folder in the
 folder structure:
 
-    \trunk\hardware\ni_card.py
+    hardware/ni_card.py
 
 where the class `NICard` should be situated within the file `ni_card.py`.
 
-Within the construction class, connectors ( `_in` and `_out`) must be declared.
-These connectors will allow other modules to attach to it
-(via the `_in` connectors) and/or allow the specific module to be connected to
-something else (via the `_out` connectors).
+## Connectors
 
-Therefore, gui modules have by definition **only `_in` connectors**, since
-different logic outputs (`_out` connectors) can be 'plugged' into the gui. Due
-to the same idea, hardware modules can **only have `_out` connectors**, which have
-to be 'plugged' into logic modules. As a result, the logic modules can have
-both, `_in` or `_out` connectors.
+A connector is a way for the Qudi manager to give a module access to other modules.
 
-The connector is defined as follows:
-Within a class, the connector is saved in a dictionary type, e.g.
+The general rule for this is that logic modules can only have a connector that gives access
+to hardware modules or other logic modules and GUI modules can only access logic modules.
+
+To create a Connector, declare it as a class variable in the module like this:
 
 ```python
 class <classname2>(...):
 ...
-    _in  = {'<keyword_in1>' : '<itemname1>'}
-    _out = {'<keyword_out2>': '<itemname2>'}
+    <connector name> = Connector(interface_name='<InterfaceForThisConnector>')
+    <another connector name> = Connector(interface_name='<InterfaceForTheOtherConnector>')
 ```
 
-meaning that it has a `<keyword>` and an `<item>`. Only the `<keywords>` for
-the `_in` connector will appear in the `connect` attribute of the `<identifier-other>`
-module. (See above in the configuration example).
-To this `_in` connectors you can plug in other modules, which are represented by an
-`<identifier-other>`. After the `<identifier-other>` the keyword `<keyword-out3>`
-from the module with the `_out` connector, has to follow.
-
-
-Note that `<keyword_out3>` has to be declared as `_out` connector in the class
-`<classname>` like:
+A reference to the connected module can then be obtained at runtime by:
 
 ```python
-class <classname>(...):
-    ...
-    _out = { '<keyword_out1>' : '<itemname3>'}
+<connected module> = self.get_connector('<connector name>')
+<antother connected module> = self.get_connector('<another connector name>')
 ```
-
-Consequently the class `<classname2>` has to have the `_in` connector definition
-like stated above.
-
-The names `<itemname>`, `<itemname2>` and `<itemname3>` can be chosen freely,
-but for consistency reasons, we have chosen the following definition:
-
-* `_out` connectors of the hardware classes should have the name of the interfaces through
-which you can access that hardware object as their itemnames,
-e.g. for a microwave source this would be `'MicrowaveInterface'`.
-* Consequently, the itemnames of `_in` connectors in the logic files should also have interface names.
-* The itemnames of the `_out` connectors in the Logic should be called after the present logic classname.
-* The itemnames of the `_in` connector in the GUI should be called after the logic class, which should be attached to it.
 

@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base, Connector, ConfigOption
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -33,29 +33,17 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     """
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
+
     # connectors
-    _connectors = {
-        'fitlogic': 'FitLogic',
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'spectrometer1': 'SpectrometerInterface'
-    }
+    fitlogic = Connector(interface='FitLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    spectrometer1 = Connector(interface='SpectrometerInterface')
+
+    # config options
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
-        else:
-            self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
-
 
         # Internal parameters
         self._line_length = None

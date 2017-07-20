@@ -24,7 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 from qtpy import QtCore
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.wavemeter_interface import WavemeterInterface
 from core.util.mutex import Mutex
 
@@ -74,6 +74,9 @@ class WavemeterDummy(Base, WavemeterInterface):
     _modclass = 'WavemeterDummy'
     _modtype = 'hardware'
 
+    # config opts
+    _measurement_timing = ConfigOption('measurement_timing', 10.)
+
     sig_handle_timer = QtCore.Signal(bool)
 
     def __init__(self, config, **kwargs):
@@ -85,14 +88,6 @@ class WavemeterDummy(Base, WavemeterInterface):
         # the current wavelength read by the wavemeter in nm (vac)
         self._current_wavelength = 700.0
         self._current_wavelength2 = 700.0
-
-        # time between two measurement points of the wavemeter in milliseconds
-        if 'measurement_timing' in config.keys():
-            self._measurement_timing = config['measurement_timing']
-        else:
-            self._measurement_timing = 10.
-            self.log.warning('No measurement_timing configured, '
-                    'using {} instead.'.format(self._measurement_timing))
 
     def on_activate(self):
         """ Activate module.
@@ -136,7 +131,7 @@ class WavemeterDummy(Base, WavemeterInterface):
 
         self.run()
         # actually start the wavemeter
-        self.log.error('starting Wavemeter')
+        self.log.warning('starting Wavemeter')
 
         # start the measuring thread
         self.sig_handle_timer.emit(True)
