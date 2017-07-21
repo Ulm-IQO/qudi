@@ -218,32 +218,14 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
     # =================== General Methods ==========================================
 
-
-    def _temperature_change(self, new_temp):
-        """
-        Changes parameters in attocubes to keep requirements like stepsize and scan speed
-        constant for different temperatures
-        :param float new_temp: the new temperature of the setup
-        :return: error code (0: OK, -1:error)
-        """
-        # if a temperature change happened the capacitance of the attocubes changed and need to be
-        # remeasured
-        axis = self.get_stepper_axes()
-        for i in self._attocube_axis.keys():  # get all axis names
-            if axis[self._attocube_axis[i]]:  # check it the axis actually exists
-                self._measure_capacitance(i)
-        pass
-        # Todo: This needs to make a certain kind of change, as this then depends on
-        # temperature. also maybe method name is not appropriate
-
-    def change_step_size(self, axis, stepsize, temp):
+    def change_step_size(self, axis, step_size, temp):
         """Changes the step size of the attocubes according to a list give in the config file
         @param str  axis: axis  for which steps size is to be changed
-        @param float stepsize: The wanted stepsize in nm
+        @param float step_size: The wanted stepsize in nm
         @param float temp: The estimated temperature of the attocubes
 
         @return: float, float : Actual stepsize and used temperature"""
-        voltage = stepsize
+        voltage = step_size
         # Todo here needs to be a conversion done
         self.set_step_amplitude(axis, voltage)
         pass
@@ -344,83 +326,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 self.log.error("The value of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
                     self._axis_frequency[axis], axis, self._frequency_range[0], self._frequency_range[1]))
             return self._axis_frequency[axis]
-        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
-        return -1
-
-    def _measure_capacitance(self, axis):
-        """ Measures the attocube capacitance for a given axis
-
-        @param str axis: the axis for which the frequency is to be checked
-        @return float: the capacitance of the axis in F, -1 for error
-        """
-        if axis in self._attocube_axis.keys():
-            result = self.set_axis_mode(axis, "ground")  # for any capacitance measurement the mode
-            # needs to be set to gnd before
-            if result == -1:
-                return -1
-            command = "setm {} ".format(self._attocube_axis[axis]) + "cap"
-            result = self._send_cmd(command)  # measure
-            if result == -1:
-                return -1
-            command = "capw {}".format(self._attocube_axis[axis])
-            result = self._send_cmd(command, read=True)
-            if result[0] == -1:
-                return -1
-            if len(result[1]) < 2:
-                wait = True
-            elif len(result[1]) > 3:
-                wait = False
-            elif "nF" in result[1][3]:
-                wait = False
-            else:
-                try:
-                    answer = self.tn.read_until("nF", timeout=4)
-                    wait = False
-                except:
-                    # Todo something sensible needs to come here
-                    self.log.warning("capacitance measurement was off, timeouts did not act as "
-                                     "expected. Program will pause for 10 seconds for attocubes to recover")
-                    time.sleep(10)
-                    wait = True
-            if wait:
-                self.tn.read_until("nF", timeout=4)
-            # now read out the capactitance from the hardware
-            return self._get_capacitance(axis)
-        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
-        return -1
-
-    def _get_capacitance(self, axis):
-        """ Reads the  saved attocube capacitance for a given axis from the hardware
-
-        @param str axis: the axis for which the frequency is to be checked
-        @return float: the capacitance of the axis in F, -1 for error
-        """
-        if axis in self._attocube_axis.keys():
-            command = "getc {}".format(self._attocube_axis[axis])
-            result = self._send_cmd(command, read=True)
-            if result[0] == -1:
-                return -1
-            cap_line = result[1][-3].split()
-            if cap_line[-1] == "nF":
-                power = 1e-9
-            elif cap_line[-1] == "uF":
-                # TODO check if this is really called like this in the attocube response when
-                # possible
-                power = 1e-6
-            elif cap_line[-1] == "mF":
-                power = 1e-3
-                self.log.warning("Something is wrong with the attocubes.\n The saved "
-                                 "capacitance value is {}, which is out of a normal range.\n "
-                                 "Check the setup, redo the capacitance measurement!".format(
-                    cap_line[-2:]))
-            else:
-                self.log.error("Something is wrong with the attocubes.\n The saved "
-                               "capacitance value is {}, which is out of a normal range.\n "
-                               "Check the setup, redo the capacitance measurement!".format(
-                    cap_line[-2:]))
-                return -1
-            self._axis_capacitance[axis] = float(cap_line[-2]) * power
-            return self._axis_capacitance[axis]
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
 
@@ -552,6 +457,100 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
 
+    def _temperature_change(self, new_temp):
+        """
+        Changes parameters in attocubes to keep requirements like stepsize and scan speed
+        constant for different temperatures
+        :param float new_temp: the new temperature of the setup
+        :return: error code (0: OK, -1:error)
+        """
+        # if a temperature change happened the capacitance of the attocubes changed and need to be
+        # remeasured
+        axis = self.get_stepper_axes()
+        for i in self._attocube_axis.keys():  # get all axis names
+            if axis[self._attocube_axis[i]]:  # check it the axis actually exists
+                self._measure_capacitance(i)
+        pass
+        # Todo: This needs to make a certain kind of change, as this then depends on
+        # temperature. also maybe method name is not appropriate
+
+    def _measure_capacitance(self, axis):
+        """ Measures the attocube capacitance for a given axis
+
+        @param str axis: the axis for which the frequency is to be checked
+        @return float: the capacitance of the axis in F, -1 for error
+        """
+        if axis in self._attocube_axis.keys():
+            result = self.set_axis_mode(axis, "ground")  # for any capacitance measurement the mode
+            # needs to be set to gnd before
+            if result == -1:
+                return -1
+            command = "setm {} ".format(self._attocube_axis[axis]) + "cap"
+            result = self._send_cmd(command)  # measure
+            if result == -1:
+                return -1
+            command = "capw {}".format(self._attocube_axis[axis])
+            result = self._send_cmd(command, read=True)
+            if result[0] == -1:
+                return -1
+            if len(result[1]) < 2:
+                wait = True
+            elif len(result[1]) > 3:
+                wait = False
+            elif "nF" in result[1][3]:
+                wait = False
+            else:
+                try:
+                    answer = self.tn.read_until("nF", timeout=4)
+                    wait = False
+                except:
+                    # Todo something sensible needs to come here
+                    self.log.warning("capacitance measurement was off, timeouts did not act as "
+                                     "expected. Program will pause for 10 seconds for attocubes to recover")
+                    time.sleep(10)
+                    wait = True
+            if wait:
+                self.tn.read_until("nF", timeout=4)
+            # now read out the capactitance from the hardware
+            return self._get_capacitance(axis)
+        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+        return -1
+
+    def _get_capacitance(self, axis):
+        """ Reads the  saved attocube capacitance for a given axis from the hardware
+
+        @param str axis: the axis for which the frequency is to be checked
+        @return float: the capacitance of the axis in F, -1 for error
+        """
+        if axis in self._attocube_axis.keys():
+            command = "getc {}".format(self._attocube_axis[axis])
+            result = self._send_cmd(command, read=True)
+            if result[0] == -1:
+                return -1
+            cap_line = result[1][-3].split()
+            if cap_line[-1] == "nF":
+                power = 1e-9
+            elif cap_line[-1] == "uF":
+                # TODO check if this is really called like this in the attocube response when
+                # possible
+                power = 1e-6
+            elif cap_line[-1] == "mF":
+                power = 1e-3
+                self.log.warning("Something is wrong with the attocubes.\n The saved "
+                                 "capacitance value is {}, which is out of a normal range.\n "
+                                 "Check the setup, redo the capacitance measurement!".format(
+                    cap_line[-2:]))
+            else:
+                self.log.error("Something is wrong with the attocubes.\n The saved "
+                               "capacitance value is {}, which is out of a normal range.\n "
+                               "Check the setup, redo the capacitance measurement!".format(
+                    cap_line[-2:]))
+                return -1
+            self._axis_capacitance[axis] = float(cap_line[-2]) * power
+            return self._axis_capacitance[axis]
+        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+        return -1
+
     def _get_all_hardwaresettings(self):
         axis = self.get_stepper_axes()
         for i in self._attocube_axis.keys():  # get all axis names
@@ -604,28 +603,28 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self.log.warning('Attocube Device does not need to be reset.')
         pass
 
-    def set_position_range(self, myrange=None):
+    def set_position_range(self, my_range=None):
         """ Sets the physical range of the scanner.
 
-        @param float [3][2] myrange: array of 3 ranges with an array containing
+        @param float [3][2] my_range: array of 3 ranges with an array containing
                                      lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
-        if myrange is None:
-            myrange = [[0, 5000], [0, 5000], [0, 5000]]
+        if my_range is None:
+            my_range = [[0, 5000], [0, 5000], [0, 5000]]
 
-        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray,)):
+        if not isinstance(my_range, (frozenset, list, set, tuple, np.ndarray,)):
             self.log.error('Given range is no array type.')
             return -1
 
-        if len(myrange) != 3:
+        if len(my_range) != 3:
             self.log.error(
                 'Given range should have dimension 3, but has {0:d} instead.'
-                ''.format(len(myrange)))
+                ''.format(len(my_range)))
             return -1
 
-        for pos in myrange:
+        for pos in my_range:
             if len(pos) != 2:
                 self.log.error(
                     'Given range limit {1:d} should have dimension 2, but has {0:d} instead.'
@@ -636,34 +635,34 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                     'Given range limit {0:d} has the wrong order.'.format(pos))
                 return -1
 
-        self._position_range = myrange
+        self._position_range = my_range
         return 0
 
-    def set_voltage_range_stepper(self, myrange=None):
+    def set_voltage_range_stepper(self, my_range=None):
         """ Sets the voltage range of the attocubes.
 
-        @param float [2] myrange: array containing lower and upper limit
+        @param float [2] my_range: array containing lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
-        if myrange is None:
-            myrange = [0, 60.]
+        if my_range is None:
+            my_range = [0, 60.]
 
-        if not isinstance(myrange, (frozenset, list, set, tuple, np.ndarray,)):
+        if not isinstance(my_range, (frozenset, list, set, tuple, np.ndarray,)):
             self.log.error('Given range is no array type.')
             return -1
 
-        if len(myrange) != 2:
+        if len(my_range) != 2:
             self.log.error(
                 'Given range should have dimension 2, but has {0:d} instead.'
-                ''.format(len(myrange)))
+                ''.format(len(my_range)))
             return -1
 
-        if myrange[0] > myrange[1]:
-            self.log.error('Given range limit {} has the wrong order.'.format(myrange))
+        if my_range[0] > my_range[1]:
+            self.log.error('Given range limit {} has the wrong order.'.format(my_range))
             return -1
 
-        self._voltage_range_stepper = myrange
+        self._voltage_range_stepper = my_range
         return 0
 
     def get_voltage_range_stepper(self):
@@ -710,7 +709,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
           value.
           If you only care about the number of axes and not the assignment and names 
           use get_stepper_axes
-          On error, return an empty list.
         """
         return self._attocube_axis
 
