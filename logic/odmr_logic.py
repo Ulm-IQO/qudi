@@ -31,7 +31,6 @@ import matplotlib.pyplot as plt
 import lmfit
 
 from logic.generic_logic import GenericLogic
-from logic.fit_logic import FitContainer
 from core.util.mutex import Mutex
 from core.module import Connector, ConfigOption, StatusVar
 
@@ -48,7 +47,12 @@ class ODMRLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
     taskrunner = Connector(interface='TaskRunner')
 
-    _mw_scanmode = ConfigOption('scanmode', 'LIST', missing='warn')
+    # config option
+    mw_scanmode = ConfigOption(
+                    'scanmode',
+                    'LIST',
+                    missing='warn',
+                    converter=lambda x: MicrowaveMode[x.upper()])
 
     clock_frequency = StatusVar('clock_frequency', 200)
     cw_mw_frequency = StatusVar('cw_mw_frequency', 2870e6)
@@ -59,7 +63,7 @@ class ODMRLogic(GenericLogic):
     mw_step = StatusVar('mw_step', 2e6)
     run_time = StatusVar('run_time', 60)
     number_of_lines = StatusVar('number_of_lines', 50)
-    fitcontainer = StatusVar('fits', None)
+    fc = StatusVar('fits', None)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -86,9 +90,6 @@ class ODMRLogic(GenericLogic):
         self._save_logic = self.get_connector('savelogic')
         self._taskrunner = self.get_connector('taskrunner')
 
-        # load fits
-        self.fc = self.fitcontainer
-
         # Get hardware constraints
         limits = self.get_hw_constraints()
 
@@ -104,16 +105,6 @@ class ODMRLogic(GenericLogic):
         # theoretically this can be changed, but the current counting scheme will not support that
         self.mw_trigger_pol = TriggerEdge.RISING
         self.set_trigger_pol(self.mw_trigger_pol)
-
-        # Get scanmode from config. Currently only sweep and list is allowed
-        if 'sweep' in self._mw_scanmode.lower():
-            self.mw_scanmode = MicrowaveMode.SWEEP
-        elif 'list' in self._mw_scanmode.lower():
-            self.mw_scanmode = MicrowaveMode.LIST
-        else:
-            self.mw_scanmode = MicrowaveMode.LIST
-            self.log.error('Specified scanmode "{0}" not valid. Choose "list" or "sweep".\n'
-                           'Falling back to list mode.'.format(self._mw_scanmode))
 
         # Elapsed measurement time and number of sweeps
         self.elapsed_time = 0.0
@@ -157,11 +148,9 @@ class ODMRLogic(GenericLogic):
         self._mw_device.off()
         # Disconnect signals
         self.sigNextLine.disconnect()
-        # save fit container
-        self.fitcontainer = self.fc
 
-    @fitcontainer.getter
-    def sv_get_fits(self, val):
+    @fc.constructor
+    def sv_set_fits(self, val):
         # Setup fit container
         fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
         fc.set_units(['Hz', 'c/s'])
@@ -194,13 +183,11 @@ class ODMRLogic(GenericLogic):
             fc.load_from_dict(default_fits)
         return fc
 
-    @fitcontainer.setter
-    def sv_set_fits(self, value):
+    @fc.representer
+    def sv_get_fits(self, val):
         """ save configured fits """
-        if not isinstance(value, FitContainer):
-            raise Exception('Invalid type for status variable.')
-        if len(value.fit_list) > 0:
-            return value.save_to_dict()
+        if len(val.fit_list) > 0:
+            return val.save_to_dict()
         else:
             return None
 
