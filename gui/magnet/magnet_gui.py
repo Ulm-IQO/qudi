@@ -20,21 +20,23 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
-import numpy as np
-import pyqtgraph as pg
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
 import datetime
+import numpy as np
+import os
+import pyqtgraph as pg
+import pyqtgraph.exporters
+from qtpy import uic
 
-from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
+from core.module import Connector, StatusVar
+from core.util.units import get_unit_prefix_dict
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from core.util.units import get_unit_prefix_dict
+from gui.guibase import GUIBase
+from gui.guiutils import ColorBar
+from qtpy import QtCore
+from qtpy import QtWidgets
 from qtwidgets.scientific_spinbox import ScienDSpinBox
-import pyqtgraph.exporters
+
 
 class CrossROI(pg.ROI):
 
@@ -164,17 +166,16 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'magnetlogic1': 'MagnetLogic',
-           'savelogic': 'SaveLogic'}
+    magnetlogic1 = Connector(interface='MagnetLogic')
+    savelogic = Connector(interface='SaveLogic')
+
+    # status var
+    _alignment_2d_cb_label = StatusVar('alignment_2d_cb_GraphicsView_text', 'Fluorescence')
+    _alignment_2d_cb_units = StatusVar('alignment_2d_cb_GraphicsView_units', 'counts/s')
+
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self._continue_2d_fluorescence_alignment = False
 
@@ -186,8 +187,6 @@ class MagnetGui(GUIBase):
         self._save_logic = self.get_connector('savelogic')
 
         self._mw = MagnetMainWindow()
-
-        config = self.getConfiguration()
 
         # create all the needed control elements. They will manage the
         # connection with each other themselves. Note some buttons are also
@@ -218,12 +217,12 @@ class MagnetGui(GUIBase):
        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.move_rel_DockWidget)
        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(3), self._mw.move_abs_DockWidget)
         self.set_default_view_main_window()
-        arr01 = self._magnet_logic.get_2d_data_matrix()[:, :].transpose()
+        raw_data_2d = self._magnet_logic.get_2d_data_matrix()
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
-        ini_pos_x_crosshair = len(arr01) / 2
-        ini_pos_y_crosshair = len(arr01) / 2
+        ini_pos_x_crosshair = len(raw_data_2d) / 2
+        ini_pos_y_crosshair = len(raw_data_2d) / 2
 
         # After a movement command, the device should not block the program, at
         # least on the hardware level. That meant that the dll (or whatever
@@ -269,7 +268,10 @@ class MagnetGui(GUIBase):
         self._set_vel_display_axis0()
         self._set_vel_display_axis1()
 
-        self._2d_alignment_ImageItem = pg.ImageItem(self._magnet_logic.get_2d_data_matrix())
+        self._2d_alignment_ImageItem = pg.ImageItem(
+            image=self._magnet_logic.get_2d_data_matrix())
+          #  axisOrder='row-major')
+
         axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
         self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0[0],
                                                            axis1[0],
@@ -328,18 +330,9 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_GraphicsView.addItem(self.hline_magnet)
         self._mw.alignment_2d_GraphicsView.addItem(self.vline_magnet)
 
-        if 'alignment_2d_cb_GraphicsView_text' in self._statusVariables:
-            textlabel = self._statusVariables['alignment_2d_cb_GraphicsView_text']
-
-        else:
-            textlabel = 'Fluorescence'
-
-        if 'alignment_2d_cb_GraphicsView_units' in self._statusVariables:
-            units = self._statusVariables['alignment_2d_cb_GraphicsView_units']
-        else:
-            units = 'counts/s'
-
-        self._mw.alignment_2d_cb_GraphicsView.setLabel('right', textlabel, units=units)
+        self._mw.alignment_2d_cb_GraphicsView.setLabel('right',
+            self._alignment_2d_cb_label,
+            units=self._alignment_2d_cb_units)
 
 
         #FIXME: that should be actually set in the logic
@@ -522,8 +515,8 @@ class MagnetGui(GUIBase):
         """ Deactivate the module properly.
         """
         self._statusVariables['measurement_type'] = self.measurement_type
-        self._statusVariables['alignment_2d_cb_GraphicsView_text'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
-        self._statusVariables['alignment_2d_cb_GraphicsView_units'] =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
+        self._alignment_2d_cb_label =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
+        self._alignment_2d_cb_units = self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
 
 
         self._mw.close()

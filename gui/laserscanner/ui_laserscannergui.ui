@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1074</width>
-    <height>664</height>
+    <width>750</width>
+    <height>589</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -19,51 +19,73 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
+     <layout class="QGridLayout" name="plotGridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="traceLabel">
+        <property name="text">
+         <string>Trace</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="retraceLabel">
+        <property name="text">
+         <string>Retrace</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="PlotWidget" name="voltscan_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="PlotWidget" name="voltscan2_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="PlotWidget" name="voltscan_matrix_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="PlotWidget" name="voltscan_matrix2_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="3" column="10" rowspan="2" colspan="2">
-       <widget class="PlotWidget" name="voltscan_cb_ViewWidget">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="10">
-       <widget class="QLabel" name="label_10">
-        <property name="maximumSize">
-         <size>
-          <width>30</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="10">
-       <widget class="QLabel" name="label_11">
-        <property name="maximumSize">
-         <size>
-          <width>30</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="10" colspan="2">
+      <item row="4" column="0" colspan="2">
        <widget class="QSpinBox" name="voltscan_cb_min_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
         <property name="maximum">
          <number>999999999</number>
         </property>
@@ -72,13 +94,13 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="10" colspan="2">
+      <item row="0" column="0" colspan="2">
        <widget class="QSpinBox" name="voltscan_cb_max_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="minimum">
          <number>0</number>
@@ -91,24 +113,8 @@
         </property>
        </widget>
       </item>
-      <item row="8" column="10" colspan="2">
-       <widget class="QRadioButton" name="voltscan_cb_manual_RadioButton">
-        <property name="text">
-         <string>Manual</string>
-        </property>
-        <attribute name="buttonGroup">
-         <string notr="true">buttonGroup</string>
-        </attribute>
-       </widget>
-      </item>
-      <item row="2" column="11">
+      <item row="1" column="1">
        <widget class="QSpinBox" name="voltscan_cb_high_centile_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>50</width>
-          <height>16777215</height>
-         </size>
-        </property>
         <property name="maximum">
          <number>100</number>
         </property>
@@ -117,30 +123,46 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0" rowspan="5" colspan="10">
-       <widget class="PlotWidget" name="voltscan_matrix_ViewWidget">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>1</horstretch>
-          <verstretch>1</verstretch>
-         </sizepolicy>
+      <item row="3" column="0">
+       <widget class="QLabel" name="percentLabel1">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0" rowspan="3" colspan="10">
-       <widget class="PlotWidget" name="voltscan_ViewWidget">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>1</horstretch>
-          <verstretch>1</verstretch>
-         </sizepolicy>
+      <item row="1" column="0">
+       <widget class="QLabel" name="percentLabel2">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
-      <item row="7" column="10" colspan="2">
+      <item row="6" column="0" colspan="2">
+       <widget class="QRadioButton" name="voltscan_cb_manual_RadioButton">
+        <property name="text">
+         <string>Man&amp;ual</string>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
+       </widget>
+      </item>
+      <item row="5" column="0" colspan="2">
        <widget class="QRadioButton" name="voltscan_cb_centiles_RadioButton">
         <property name="text">
-         <string>Centiles</string>
+         <string>&amp;Centiles</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -150,16 +172,20 @@
         </attribute>
        </widget>
       </item>
-      <item row="5" column="11">
+      <item row="3" column="1">
        <widget class="QSpinBox" name="voltscan_cb_low_centile_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>50</width>
-          <height>16777215</height>
-         </size>
-        </property>
         <property name="maximum">
          <number>100</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="PlotWidget" name="voltscan_cb_ViewWidget">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -172,7 +198,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1074</width>
+     <width>750</width>
      <height>21</height>
     </rect>
    </property>
@@ -185,7 +211,7 @@
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
-     <string>&amp;Options</string>
+     <string>O&amp;ptions</string>
     </property>
     <addaction name="action_Settings"/>
    </widget>
@@ -207,76 +233,65 @@
    <addaction name="separator"/>
    <addaction name="action_Save"/>
   </widget>
-  <widget class="QDockWidget" name="odmr_control_DockWidget">
+  <widget class="QDockWidget" name="scan_control_DockWidget">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
    <property name="minimumSize">
     <size>
-     <width>500</width>
-     <height>140</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>500</width>
+     <width>701</width>
      <height>140</height>
     </size>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_3">
+   <widget class="QWidget" name="controlDockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_11">
      <item row="0" column="0">
-      <layout class="QGridLayout" name="gridLayout_9">
+      <layout class="QGridLayout" name="controlGridLayout">
+       <item row="0" column="4">
+        <widget class="QLabel" name="resLabel">
+         <property name="text">
+          <string>Values per scan:</string>
+         </property>
+        </widget>
+       </item>
        <item row="2" column="2">
-        <widget class="QLabel" name="label_4">
+        <widget class="QLabel" name="stopLabel">
          <property name="text">
-          <string>Step (V) :</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="3">
-        <widget class="QLineEdit" name="step_freq_InputWidget">
-         <property name="maximumSize">
-          <size>
-           <width>50</width>
-           <height>16777215</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Start (V) :</string>
+          <string>Stop:</string>
          </property>
         </widget>
        </item>
        <item row="2" column="4">
-        <widget class="QLabel" name="label_5">
+        <widget class="QLabel" name="speedLabel">
          <property name="text">
-          <string>Stop (V) :</string>
+          <string>Speed:</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="start_freq_InputWidget">
-         <property name="minimumSize">
-          <size>
-           <width>75</width>
-           <height>0</height>
-          </size>
+       <item row="0" column="2">
+        <widget class="QLabel" name="scannedLabel">
+         <property name="text">
+          <string>Scanned lines</string>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>75</width>
-           <height>16777215</height>
-          </size>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="linesLabel">
+         <property name="text">
+          <string>Lines</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="startLabel">
+         <property name="text">
+          <string>Start :</string>
          </property>
         </widget>
        </item>
@@ -287,49 +302,85 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
-        <widget class="QLabel" name="label_8">
+       <item row="0" column="3">
+        <widget class="QLCDNumber" name="elapsed_lines_DisplayWidget"/>
+       </item>
+       <item row="2" column="6">
+        <widget class="QLabel" name="constLabel">
          <property name="text">
-          <string>Elapsed Time [s] :</string>
+          <string>Constant voltage:</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="3">
-        <widget class="QLCDNumber" name="elapsed_time_DisplayWidget"/>
+       <item row="2" column="1">
+        <widget class="ScienDSpinBox" name="startDoubleSpinBox">
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="minimum">
+          <double>-99.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="ScienDSpinBox" name="stopDoubleSpinBox">
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="minimum">
+          <double>-99.000000000000000</double>
+         </property>
+        </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QLineEdit" name="runtime_InputWidget">
-         <property name="enabled">
-          <bool>true</bool>
+        <widget class="QSpinBox" name="linesSpinBox">
+         <property name="minimum">
+          <number>1</number>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>50</width>
-           <height>16777215</height>
-          </size>
+         <property name="maximum">
+          <number>999999</number>
          </property>
         </widget>
        </item>
        <item row="2" column="5">
-        <widget class="QLineEdit" name="stop_freq_InputWidget">
-         <property name="minimumSize">
-          <size>
-           <width>75</width>
-           <height>0</height>
-          </size>
+        <widget class="ScienDSpinBox" name="speedDoubleSpinBox">
+         <property name="suffix">
+          <string>V/s</string>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>75</width>
-           <height>16777215</height>
-          </size>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="maximum">
+          <double>9999.989999999999782</double>
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Runtime [s] :</string>
+       <item row="2" column="7">
+        <widget class="ScienDSpinBox" name="constDoubleSpinBox">
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="minimum">
+          <double>-99.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="5">
+        <widget class="QSpinBox" name="resolutionSpinBox">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>999999</number>
          </property>
         </widget>
        </item>
@@ -387,17 +438,30 @@
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
   </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
+  <tabstop>linesSpinBox</tabstop>
+  <tabstop>resolutionSpinBox</tabstop>
+  <tabstop>startDoubleSpinBox</tabstop>
+  <tabstop>stopDoubleSpinBox</tabstop>
+  <tabstop>speedDoubleSpinBox</tabstop>
+  <tabstop>constDoubleSpinBox</tabstop>
   <tabstop>voltscan_cb_max_InputWidget</tabstop>
   <tabstop>voltscan_cb_high_centile_InputWidget</tabstop>
-  <tabstop>voltscan_cb_ViewWidget</tabstop>
   <tabstop>voltscan_cb_low_centile_InputWidget</tabstop>
   <tabstop>voltscan_cb_min_InputWidget</tabstop>
   <tabstop>voltscan_cb_centiles_RadioButton</tabstop>
   <tabstop>voltscan_cb_manual_RadioButton</tabstop>
-  <tabstop>voltscan_matrix_ViewWidget</tabstop>
   <tabstop>voltscan_ViewWidget</tabstop>
+  <tabstop>voltscan2_ViewWidget</tabstop>
+  <tabstop>voltscan_matrix_ViewWidget</tabstop>
+  <tabstop>voltscan_matrix2_ViewWidget</tabstop>
+  <tabstop>voltscan_cb_ViewWidget</tabstop>
  </tabstops>
  <resources/>
  <connections>

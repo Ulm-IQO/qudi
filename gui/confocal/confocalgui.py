@@ -20,20 +20,21 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-from qtpy import QtGui
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
-import time
 import os
+import pyqtgraph as pg
+import time
 
+from core.module import Connector, ConfigOption, StatusVar
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitParametersWidget
+from qtpy import QtCore
+from qtpy import QtGui
+from qtpy import QtWidgets
+from qtpy import uic
 
 class CrossROI(pg.ROI):
 
@@ -184,30 +185,27 @@ class ConfocalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'confocallogic1': 'ConfocalLogic',
-           'savelogic': 'SaveLogic',
-           'optimizerlogic1': 'OptimizerLogic'
-           }
+    confocallogic1 = Connector(interface='ConfocalLogic')
+    savelogic = Connector(interface='SaveLogic')
+    optimizerlogic1 = Connector(interface='OptimizerLogic')
 
+    # config options for gui
+    fixed_aspect_ratio_xy = ConfigOption('fixed_aspect_ratio_xy', True)
+    fixed_aspect_ratio_depth = ConfigOption('fixed_aspect_ratio_depth', True)
+    image_x_padding = ConfigOption('image_x_padding', 0.02)
+    image_y_padding = ConfigOption('image_y_padding', 0.02)
+    image_z_padding = ConfigOption('image_z_padding', 0.02)
+
+    # status var
+    adjust_cursor_roi = StatusVar(default=True)
+    slider_small_step = StatusVar(default=10e-9)    # initial value in meter
+    slider_big_step = StatusVar(default=100e-9)     # initial value in meter
+
+    # signals
     sigStartOptimizer = QtCore.Signal(list, str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
-        self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
-        self.image_x_padding = config['image_x_padding']
-        self.image_y_padding = config['image_y_padding']
-        self.image_z_padding = config['image_z_padding']
-
-        self.slider_small_step = 10e-9         # initial value in meter
-        self.slider_big_step = 100e-9          # initial value in meter
 
     def on_activate(self):
         """ Initializes all needed UI files and establishes the connectors.
@@ -248,23 +246,20 @@ class ConfocalGui(GUIBase):
         self.depth_channel = 0
         self.opt_channel = 0
 
-        # Get the image for the display from the logic. Transpose the received
-        # matrix to get the proper scan. The graphig widget displays vector-
-        # wise the lines and the lines are normally columns, but in our
-        # measurement we scan rows per row. That's why it has to be transposed.
-        arr01 = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
-        arr02 = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
+        # Get the image for the display from the logic
+        raw_data_xy = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
+        raw_data_depth = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
-        ini_pos_x_crosshair = len(arr01) / 2
-        ini_pos_y_crosshair = len(arr01) / 2
-        ini_pos_z_crosshair = len(arr02) / 2
+        ini_pos_x_crosshair = len(raw_data_xy) / 2
+        ini_pos_y_crosshair = len(raw_data_xy) / 2
+        ini_pos_z_crosshair = len(raw_data_depth) / 2
 
 
         # Load the images for xy and depth in the display:
-        self.xy_image = pg.ImageItem(arr01)
-        self.depth_image = pg.ImageItem(arr02)
+        self.xy_image = pg.ImageItem(image=raw_data_xy, axisOrder='row-major')
+        self.depth_image = pg.ImageItem(image=raw_data_depth, axisOrder='row-major')
 
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -288,7 +283,8 @@ class ConfocalGui(GUIBase):
         ###################################################################
         # Load the image for the optimizer tab
         self.xy_refocus_image = pg.ImageItem(
-            self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel].transpose())
+            image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
+            axisOrder='row-major')
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
                 self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
@@ -737,9 +733,6 @@ class ConfocalGui(GUIBase):
         self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self._sd.hardware_switch.clicked.connect(self.switch_hardware)
 
-        if 'adjust_cursor_roi' in self._statusVariables:
-            self.adjust_cursor_roi = self._statusVariables['adjust_cursor_roi']
-
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
 
@@ -774,7 +767,6 @@ class ConfocalGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._statusVariables['adjust_cursor_roi'] = self.adjust_cursor_roi
         self._mw.close()
         return 0
 
@@ -1564,7 +1556,7 @@ class ConfocalGui(GUIBase):
         """
         self.xy_image.getViewBox().updateAutoRange()
 
-        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
+        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
 
         cb_range = self.get_xy_cb_range()
 
@@ -1585,7 +1577,7 @@ class ConfocalGui(GUIBase):
 
         self.depth_image.getViewBox().enableAutoRange()
 
-        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
+        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
         cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -1600,7 +1592,7 @@ class ConfocalGui(GUIBase):
         """Refreshes the xy image, the crosshair and the colorbar. """
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
-        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel].transpose()
+        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel]
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
         if np.max(xy_optimizer_image) != 0:

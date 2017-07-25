@@ -26,7 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 import time
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -40,28 +40,18 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
 
+    _gpib_address = ConfigOption('gpib_address', missing='error')
+    _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # checking for the right configuration
-        config = self.getConfiguration()
-        if 'gpib_address' in config.keys():
-            self._gpib_address = config['gpib_address']
-        else:
-            self.log.error('Did not find >>gpib_address<< in configration.')
-
-        if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = int(config['gpib_timeout'])
-        else:
-            self._gpib_timeout = 10
-            self.log.warning('Did not find >>gpib_timeout<< in configration. '
-                             'I will set it to 10 seconds.')
-
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout*1000)
+            self._gpib_connection = self.rm.open_resource(
+                self._gpib_address,
+                timeout=self._gpib_timeout*1000)
         except:
             self.log.error('Could not connect to the GPIB address >>{}<<.'
                            ''.format(self._gpib_address))

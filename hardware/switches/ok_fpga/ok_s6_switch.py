@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import os
 import okfrontpanel as ok
-from core.base import Base
+from core.module import Base, ConfigOption
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
 
@@ -41,21 +41,12 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     _modclass = 'HardwareSwitchFpga'
     _modtype = 'hardware'
 
+    # config options
+    _serial = ConfigOption('fpga_serial', missing='error')
+
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
-
-        config = self.getConfiguration()
-
-        if 'fpga_serial' in config.keys():
-            self._serial = config['fpga_serial']
-        else:
-            self.log.error('No parameter "fpga_serial" specified in the config! Set the '
-                           'serial number for the currently used fpga counter!\nOpen the Opal '
-                           'Kelly Frontpanel to obtain the serial number of the connected FPGA.\n'
-                           'Do not forget to close the Frontpanel before starting the Qudi program.'
-                           )
-
         # Create an instance of the Opal Kelly FrontPanel. The Frontpanel is a
         # c dll which was wrapped with SWIG for Windows type systems to be
         # accessed with python 3.4. You have to ensure to use the python 3.4
