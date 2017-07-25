@@ -26,7 +26,7 @@ import os
 import numpy as np
 
 from interface.pulser_interface import PulserInterface
-from core.base import Base
+from core.module import Base
 from core.util.mutex import Mutex
 
 
