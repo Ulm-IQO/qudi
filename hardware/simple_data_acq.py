@@ -33,6 +33,7 @@ class SimpleAcq(Base, SimpleDataInterface):
 
     resource = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
     baudrate = ConfigOption('baudrate', 115200, missing='warn')
+    channels = ConfigOption('channels', 1, missing='warn')
 
     def on_activate(self):
         """ Activate module.
@@ -53,13 +54,19 @@ class SimpleAcq(Base, SimpleDataInterface):
             @return int: vaue form serial port
         """
         try:
-            return int(self.my_instrument.read_raw().decode('utf-8').rstrip().split()[1])
+            return list(
+                map(
+                    int,
+                    self.my_instrument.read_raw().decode('utf-8').rstrip().split()[
+                        0:self.getChannels()
+                    ])
+            )
         except:
-            return 0
+            return [0] * self.getChannels()
 
     def getChannels(self):
         """ Number of channels.
 
             @return int: number of channels
         """
-        return 1
+        return self.channels
