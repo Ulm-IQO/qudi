@@ -22,9 +22,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 
 from core.module import Base, ConfigOption
+from interface.simple_data_interface import SimpleDataInterface
 
 
-class MatisseDuePID(Base):
+class MatisseDuePID(Base, SimpleDataInterface):
     """ Read human readable numbers from serial port.
     """
     _modclass = 'simple'
@@ -34,7 +35,6 @@ class MatisseDuePID(Base):
     control_resource = ConfigOption('control_interface', 'ASRL2::INSTR', missing='warn')
     data_baudrate = ConfigOption('data_baudrate', 115200, missing='warn')
     control_baudrate = ConfigOption('control_baudrate', 9600, missing='warn')
-    channels = ConfigOption('channels', 1, missing='warn')
 
     def on_activate(self):
         """ Activate module.
@@ -44,10 +44,12 @@ class MatisseDuePID(Base):
         self.control_instr = self.rm.open_resource(
             self.control_resource,
             baud_rate=self.control_baudrate,
+            read_termination='\r\n',
             write_termination='\n')
         self.data_instr = self.rm.open_resource(
             self.data_resource,
             baud_rate=self.data_baudrate,
+            read_termination='\r\n',
             write_termination='\n')
 
         r = self.control_instr.query('*IDN?').rstrip().split(',')
@@ -56,7 +58,7 @@ class MatisseDuePID(Base):
     def on_deactivate(self):
         """ Deactivate module.
         """
-        self.control_instr.write(':P 0')
+        self.set_data_output(0)
         self.control_instr.close()
         self.data_instr.close()
         self.rm.close()
@@ -100,7 +102,62 @@ class MatisseDuePID(Base):
     def get_pos(self):
         return int(self.control_instr.query(':SOUR:VOLT?'))
 
+    def get_data_output(self):
+        return int(self.control_instr.query(':P?'))
+
+    def set_data_output(self, out):
+        self.control_instr.write(':P {0}'.format(out))
+        return self.get_data_output()
+
     def get_cavity(self):
         vals = list(map(int, self.control_instr.query(':MEAS:VAL?').rstrip().split(' ')))
         stats = list(map(int, self.control_instr.read().rstrip().split(' ')))
         return vals, stats
+
+    def pid_get_p(self, mode):
+        return float(self.control_instr.query(':PID:{0}:KP?'.format(mode)))
+
+    def pid_get_i(self, mode):
+        return float(self.control_instr.query(':PID:{0}:KI?'.format(mode)))
+
+    def pid_get_d(self, mode):
+        return float(self.control_instr.query(':PID:{0}:KD?'.format(mode)))
+
+    def pid_get_setpoint(self, mode):
+        return float(self.control_instr.query(':PID:{0}:SP?'.format(mode)))
+
+    def pid_get_cv(self, mode):
+        return float(self.control_instr.query(':PID:{0}:CV?'.format(mode)))
+
+    def pid_set_p(self, mode, value):
+        return float(self.control_instr.query(':PID:{0}:KP {1}'.format(mode, value)))
+
+    def pid_set_i(self, mode, value):
+        return float(self.control_instr.query(':PID:{0}:KP {1}'.format(mode, value)))
+
+    def pid_set_d(self, mode, value):
+        return float(self.control_instr.query(':PID:{0}:KP {1}'.format(mode, value)))
+
+    def pid_set_setpoint(self, mode, value):
+        return float(self.control_instr.query(':PID:{0}:SP {1}'.format(mode, value)))
+
+    def getData(self):
+        """ Read one value from serial port.
+
+            @return int: vaue form serial port
+        """
+        try:
+            return list(
+                map(
+                    int,
+                    self.data_instr.read_raw().decode('utf-8').rstrip().split()[2:3])
+            )
+        except:
+            return [0] * 1
+
+    def getChannels(self):
+        """ Number of channels.
+
+            @return int: number of channels
+        """
+        return 1
