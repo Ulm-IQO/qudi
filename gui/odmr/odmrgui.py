@@ -280,7 +280,7 @@ class ODMRGui(GUIBase):
         self.reject_settings()
 
         # Show the Main ODMR GUI:
-        self._show()
+        self.show()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -334,12 +334,11 @@ class ODMRGui(GUIBase):
         self._mw.close()
         return 0
 
-    def _show(self):
+    def show(self):
         """Make window visible and put it above all other windows. """
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
-        return
 
     def _menu_settings(self):
         """ Open the settings menu """
