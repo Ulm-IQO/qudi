@@ -820,6 +820,8 @@ class ConfocalLogic(GenericLogic):
                     self.depth_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
                 self.signal_depth_image_updated.emit()
             else:
+                #self.log.error(self._scan_counter)
+                #self.log.error(line_counts)
                 self.xy_image[self._scan_counter, :, 3:3 + s_ch] = line_counts
                 self.signal_xy_image_updated.emit()
 
