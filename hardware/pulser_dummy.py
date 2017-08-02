@@ -24,7 +24,7 @@ import os
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -40,12 +40,6 @@ class PulserDummy(Base, PulserInterface):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
 
         self.log.info('Dummy Pulser: I will simulate an AWG :) !')
 

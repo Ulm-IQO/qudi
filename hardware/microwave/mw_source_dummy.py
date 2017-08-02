@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import random
 
-from core.base import Base
+from core.module import Base
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -36,15 +36,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     """
     _modclass = 'MicrowaveDummy'
     _modtype = 'mwsource'
-
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info("{0}: {1}".format(key,config[key]))
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.

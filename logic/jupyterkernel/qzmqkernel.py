@@ -157,22 +157,22 @@ class QZMQKernel(QtCore.QObject):
         self.iopub_socket = self.ctx.socket(zmq.PUB)
         self.config["iopub_port"] = self.bind(self.iopub_socket, self.connection, self.config["iopub_port"])
         self.iopub_stream = QZMQStream(self.iopub_socket)
-        self.iopub_stream.sigMsgRecvd.connect(self.iopub_handler)
+        self.iopub_stream.sigMsgRecvd.connect(self.iopub_handler, QtCore.Qt.QueuedConnection)
         # Control:
         self.control_socket = self.ctx.socket(zmq.ROUTER)
         self.config["control_port"] = self.bind(self.control_socket, self.connection, self.config["control_port"])
         self.control_stream = QZMQStream(self.control_socket)
-        self.control_stream.sigMsgRecvd.connect(self.control_handler)
+        self.control_stream.sigMsgRecvd.connect(self.control_handler, QtCore.Qt.QueuedConnection)
         # Stdin:
         self.stdin_socket = self.ctx.socket(zmq.ROUTER)
         self.config["stdin_port"] = self.bind(self.stdin_socket, self.connection, self.config["stdin_port"])
         self.stdin_stream = QZMQStream(self.stdin_socket)
-        self.stdin_stream.sigMsgRecvd.connect(self.stdin_handler)
+        self.stdin_stream.sigMsgRecvd.connect(self.stdin_handler, QtCore.Qt.QueuedConnection)
         # Shell:
         self.shell_socket = self.ctx.socket(zmq.ROUTER)
         self.config["shell_port"] = self.bind(self.shell_socket, self.connection, self.config["shell_port"])
         self.shell_stream = QZMQStream(self.shell_socket)
-        self.shell_stream.sigMsgRecvd.connect(self.shell_handler)
+        self.shell_stream.sigMsgRecvd.connect(self.shell_handler, QtCore.Qt.QueuedConnection)
 
         logging.debug("Config: %s" % json.dumps(self.config))
 
