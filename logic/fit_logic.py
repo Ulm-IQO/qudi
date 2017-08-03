@@ -401,11 +401,11 @@ class FitContainer(QtCore.QObject):
         fit_x = np.linspace(start=x_data[0],
                             stop=x_data[-1],
                             num=int(len(x_data) * self.fit_granularity_fact))
+        fit_y = np.zeros(fit_x.shape)   # to prevent ambiguous return value
 
         add_params = {}
         if self.current_fit != 'No Fit':
             add_params = self.fit_dict[self.current_fit]['parameters'].copy()
-            # the custom names are always put in the dictionary
 
             for param_name, usage in self.fit_dict[self.current_fit]['parameterUse'].items():
                 if not bool(usage):
@@ -424,16 +424,14 @@ class FitContainer(QtCore.QObject):
             result = self.fit_dict[self.current_fit]['make_fit'](
                 estimator=self.fit_dict[self.current_fit]['estimator'],
                 **kwargs)
-
         elif self.current_fit == 'No Fit':
-            fit_y = np.zeros(fit_x.shape)
-
+            pass
         else:
-            self.fit_logic.log.warning(
-                'The Fit Function "{0}" is not implemented to be used in the ODMR Logic. '
-                'Correct that! Fit Call will be skipped and Fit Function will be set to '
-                '"No Fit".'.format(self.current_fit))
-
+            self.fit_logic.log.warning('The Fit Function "{0}" is not '
+                                       'implemented to be used in the Fit '
+                                       'Logic. Correct that! Fit Call will be '
+                                       'skipped and Fit Function will be set '
+                                       'to "No Fit".'.format(self.current_fit))
             self.current_fit = 'No Fit'
 
         if self.current_fit != 'No Fit':
