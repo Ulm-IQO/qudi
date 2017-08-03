@@ -31,6 +31,7 @@ from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
+from core.module import Connector, ConfigOption, StatusVar
 
 
 class OldConfigFileError(Exception):
@@ -255,10 +256,13 @@ class ConfocalLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'savelogic': 'SaveLogic'
-        }
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    savelogic = Connector(interface='SaveLogic')
+
+    # status vars
+    _clock_frequency = StatusVar('clock_frequency', 500)
+    return_slowness = StatusVar(default=50)
+    max_history_length = StatusVar(default=10)
 
     # signals
     signal_start_scanning = QtCore.Signal(str)
@@ -283,12 +287,6 @@ class ConfocalLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
         #locking for thread safety
         self.threadlock = Mutex()
 
@@ -306,17 +304,6 @@ class ConfocalLogic(GenericLogic):
         self._scanning_device = self.get_connector('confocalscanner1')
         self._save_logic = self.get_connector('savelogic')
 
-        #default values for clock frequency and slowness
-        #slowness: steps during retrace line
-        if 'clock_frequency' in self._statusVariables:
-            self._clock_frequency = self._statusVariables['clock_frequency']
-        else:
-            self._clock_frequency = 500
-        if 'return_slowness' in self._statusVariables:
-            self.return_slowness = self._statusVariables['return_slowness']
-        else:
-            self.return_slowness = 50
-
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
@@ -324,24 +311,20 @@ class ConfocalLogic(GenericLogic):
 
         # restore here ...
         self.history = []
-        if 'max_history_length' in self._statusVariables:
-                self.max_history_length = self._statusVariables['max_history_length']
-                for i in reversed(range(1, self.max_history_length)):
-                    try:
-                        new_history_item = ConfocalHistoryEntry(self)
-                        new_history_item.deserialize(
-                            self._statusVariables['history_{0}'.format(i)])
-                        self.history.append(new_history_item)
-                    except KeyError:
-                        pass
-                    except OldConfigFileError:
-                        self.log.warning(
-                            'Old style config file detected. History {0} ignored.'.format(i))
-                    except:
-                        self.log.warning(
-                                'Restoring history {0} failed.'.format(i))
-        else:
-            self.max_history_length = 10
+        for i in reversed(range(1, self.max_history_length)):
+            try:
+                new_history_item = ConfocalHistoryEntry(self)
+                new_history_item.deserialize(
+                    self._statusVariables['history_{0}'.format(i)])
+                self.history.append(new_history_item)
+            except KeyError:
+                pass
+            except OldConfigFileError:
+                self.log.warning(
+                    'Old style config file detected. History {0} ignored.'.format(i))
+            except:
+                self.log.warning(
+                        'Restoring history {0} failed.'.format(i))
         try:
             new_state = ConfocalHistoryEntry(self)
             new_state.deserialize(self._statusVariables['history_0'])
@@ -366,9 +349,6 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._statusVariables['clock_frequency'] = self._clock_frequency
-        self._statusVariables['return_slowness'] = self.return_slowness
-        self._statusVariables['max_history_length'] = self.max_history_length
         closing_state = ConfocalHistoryEntry(self)
         closing_state.snapshot(self)
         self.history.append(closing_state)

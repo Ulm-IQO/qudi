@@ -305,7 +305,6 @@ def make_sinedoublewithtwoexpdecay_model(self, prefix=None):
     @return tuple: (object model, object params), for more description see in
                    the method make_baresine_model.
     """
-
     if prefix is None:
         add_text = ''
     else:
@@ -316,10 +315,10 @@ def make_sinedoublewithtwoexpdecay_model(self, prefix=None):
 
     constant_model, params = self.make_constant_model(prefix=prefix)
 
-    two_sine_exp_decay_offset = sine_exp_decay_model1 + sine_exp_decay_model2 + constant_model
-    params = two_sine_exp_decay_offset.make_params()
+    sinedoublewithtwoexpdecay = sine_exp_decay_model1 + sine_exp_decay_model2 + constant_model
+    params = sinedoublewithtwoexpdecay.make_params()
 
-    return two_sine_exp_decay_offset, params
+    return sinedoublewithtwoexpdecay, params
 
 #############################################
 # Sum of three individual Sinus with offset #
@@ -866,6 +865,7 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None,
 
     return result
 
+
 def estimate_sinedouble(self, x_axis, data, params):
     """ Provides an estimator for initial values of two sines with offset fitting.
 
@@ -995,8 +995,7 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
 # Sum of two individual Sinus exponential decays (and offset) #
 ###############################################################
 
-def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None,
-                                       add_params=None):
+def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None): #Problem with stderr: x.stderr will always be 0 for this model
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
 

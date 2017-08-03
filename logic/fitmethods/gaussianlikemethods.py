@@ -301,7 +301,7 @@ def make_twoDgaussian_model(self, prefix=None):
 # 1D Gaussian with flat offset    #
 ###################################
 
-def make_gaussian_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_gaussian_fit(self, x_axis, data, estimator, units=['arb. unit', 'arb. unit'], add_params=None):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -446,9 +446,8 @@ def estimate_gaussian_dip(self, x_axis, data, params):
 # 1D Gaussian with linear inclined offset    #
 ##############################################
 
-def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=['arb. unit', 'arb. unit'], add_params=None):
     """ Perform a 1D gaussian peak fit with linear offset on the provided data.
-
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
     @param method estimator: Pointer to the estimator method
@@ -456,7 +455,6 @@ def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=None, add
     @param Parameters or dict add_params: optional, additional parameters of
                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
                 which will be used instead of the values from the estimator.
-
     @return object model: lmfit.model.ModelFit object, all parameters
                           provided about the fitting, like: success,
                           initial fitting values, best fitting values, data
@@ -555,7 +553,7 @@ def make_gaussiandouble_fit(self, x_axis, data, estimator,
                           with best fit with given axis,...
     """
     if units is None:
-        units = ['fucking units', 'other fucking units']
+        units = ['arb. unit', 'arb. unit']
 
     model, params = self.make_multiplegaussianoffset_model(no_of_functions=2)
 
