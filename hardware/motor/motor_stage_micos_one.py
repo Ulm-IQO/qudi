@@ -286,7 +286,6 @@ class MotorStageMicosOne(Base, MotorInterface):
         # return 0
 
 
-
     def abort(self):
         """Stops movement of the stage
 

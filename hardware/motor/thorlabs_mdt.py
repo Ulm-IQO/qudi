@@ -68,7 +68,7 @@ class PiezoController(serial.Serial):
         if axis not in ["x", "y", "z"]:
             self.close_connection()
             raise RuntimeError("%s axis is not in (x,y,z)" % axis)
-        self.cmd("{}r?".format(axis))
+
         voltage = self.response()
         return voltage
     
