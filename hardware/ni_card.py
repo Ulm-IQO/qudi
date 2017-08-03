@@ -138,7 +138,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _modtype = 'NICard'
     _modclass = 'hardware'
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Starts up the NI Card at activation.
 
         @param object e: Event class object from Fysom.

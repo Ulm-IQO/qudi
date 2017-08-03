@@ -564,7 +564,7 @@ class NOVAStage(Base, MotorInterface):
     error_code[11] = 'Server start error'
     error_code[12] = 'Bad DLL image'
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialize instance variables and connect to hardware as configured.
 
         @param object e: Event class object from Fysom.
@@ -652,9 +652,9 @@ class NOVAStage(Base, MotorInterface):
                                'coincides with the label given in the config.'.format(label))
                 # self.log.error(limits_dict)
 
-        self.custom_activation(e)
+        self.custom_activation()
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -662,7 +662,7 @@ class NOVAStage(Base, MotorInterface):
         """
         pass
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Disconnect from hardware and clean up.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -673,9 +673,9 @@ class NOVAStage(Base, MotorInterface):
             # set velocity to 0
             self._axis_dict[label_axis].abort()
         self.novadll.close(self.eepromid, byref(self.error))
-        self.custom_deactivation(e)
+        self.custom_deactivation()
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -928,7 +928,7 @@ class NOVAOneAxisStage(NOVAStage):
     # connectors
     _out = {'novamotor': 'MotorInterface'}
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -975,7 +975,7 @@ class NOVAOneAxisStage(NOVAStage):
         #     # preciser than the backward:
         #     self._axis_dict[label_axis].set_backlash(backlash_correction)
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -1051,7 +1051,7 @@ class NOVATwoAxisStage(NOVAStage):
     # connectors
     _out = {'novamotor': 'MotorInterface'}
 
-    def custom_activation(self, e):
+    def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed
@@ -1093,7 +1093,7 @@ class NOVATwoAxisStage(NOVAStage):
         #     # preciser than the backward:
         #     self._axis_dict[label_axis].set_backlash(backlash_correction)
 
-    def custom_deactivation(self, e):
+    def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
 
         @param object e: Event class object from Fysom. A more detailed

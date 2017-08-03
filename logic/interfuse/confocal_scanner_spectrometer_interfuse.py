@@ -34,10 +34,10 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic',
+    _connectors = {'fitlogic': 'FitLogic',
            'confocalscanner1': 'ConfocalScannerInterface',
            'spectrometer1': 'SpectrometerInterface'}
-    _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
+
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -66,13 +66,13 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._scanner_hw = self.get_in_connector('confocalscanner1')
-        self._spectrometer_hw = self.get_in_connector('spectrometer1')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._scanner_hw = self.get_connector('confocalscanner1')
+        self._spectrometer_hw = self.get_connector('spectrometer1')
 
 
     def on_deactivate(self, e):

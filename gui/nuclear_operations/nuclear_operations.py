@@ -63,7 +63,7 @@ class NuclearOperationsGui(GUIBase):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
 
-    def initUI(self, e=None):
+    def initUI(self):
         """ Definition, configuration and initialisation of the ODMR GUI.
 
         @param object e: Fysom.event object from Fysom class.

@@ -70,7 +70,7 @@ class MotorStageMicosOne(Base, MotorInterface):
             self.log.info('{0}: {1}'.format(key, config[key]))
 
 
-    def on_activate(self, e):
+    def on_activate(self):
 
 
         # ALEX COMMENT: Why are the values stored? In general that is not a
@@ -239,6 +239,7 @@ class MotorStageMicosOne(Base, MotorInterface):
         #               You have either to restructure the axis call and find
         #               out how to block any signal until the stage is not
         #               finished with the movement. Maybe you have also to
+        #               increase the visa timeout number, because if the device
         #               increase the visa timeout number, because if the device
         #               does not react on a command after the timeout an error
         #               will be raised by the visa protocol itself!

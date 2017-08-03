@@ -34,10 +34,9 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic',
+    _connectors = {'fitlogic': 'FitLogic',
            'confocalscanner1': 'ConfocalScannerInterface',
-           'magnetinterface': 'MagnetInterface'}
-    _out = {'motorscanner': 'ConfocalScannerInterface'}
+                   'magnetinterface': 'MagnetInterface'}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -67,13 +66,13 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._confocal_hw = self.get_in_connector('confocalscanner1')
-        self._motor_hw = self.get_in_connector('magnetinterface')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._confocal_hw = self.get_connector('confocalscanner1')
+        self._motor_hw = self.get_connector('magnetinterface')
 
 
         #have to add these tilt variables for the logic to not give error
@@ -124,7 +123,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         #check if this needs micrometres!
 
-        #self.log.info('Scan range is {0}'.format(position_range))
+        #self.log.error('Scan range is {0}'.format(self.position_range))
 
         return self.position_range
 
@@ -227,7 +226,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
 
-        @return float[]: current position in (x, y, z, a).
+        @return float[]: current position in (x, y, z).
         """
         position_dict = self._motor_hw.get_pos()
         position_vect = []
@@ -240,8 +239,8 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
                 position_vect.append(position_dict[k])
         #y, z, x
         #Add random a channel
-        position_vect.append(0)
-        #self.log.info('Current position in (x,y,z,a) is {0}'.format(position_vect))
+        #position_vect.append(0)
+        #self.log.info('Current position in (x,y,z) is {0}'.format(position_vect))
         return position_vect
 
     def set_up_line(self, length=100):
@@ -256,7 +255,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         return 0
 
 
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path = None, pixel_clock = False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
@@ -303,7 +302,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         for i in range(self._line_length):
             coords = line_path[:, i]
 
-
+            #self.log.info('x is {0} and y is {1}'.format(coords[0],coords[1]))
             if len(coords) == 2: #  xy scan
                 self.scanner_set_position(x=coords[0], y=coords[1])
 

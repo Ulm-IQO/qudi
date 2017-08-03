@@ -63,6 +63,8 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.current_z = (self.z_range[0] + self.z_range[1]) / 2
         self.current_a = 0.0
 
+
+
         # Sets the size of the image to the maximal scanning range
         self.image_x_range = self.x_range
         self.image_y_range = self.y_range
@@ -632,6 +634,8 @@ class ConfocalLogic(GenericLogic):
         if a is not None:
             self._current_a = a
 
+        #self.log.info(y)
+
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
             return -1
@@ -651,7 +655,7 @@ class ConfocalLogic(GenericLogic):
 
         for i, ch in enumerate(self.get_scanner_axes()):
             pos_dict[ch_array[i]] = pos_array[i]
-
+        self.log.info(self._current_y)
         self._scanning_device.scanner_set_position(**pos_dict)
         return 0
 

@@ -94,7 +94,7 @@ class CounterLogic(GenericLogic):
         self._counting_mode = 'continuous'
 
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -106,8 +106,8 @@ class CounterLogic(GenericLogic):
                          has happen.
         """
         # Connect to hardware and save logic
-        self._counting_device = self.get_in_connector('counter1')
-        self._save_logic = self.get_in_connector('savelogic')
+        self._counting_device = self.get_connector('counter1')
+        self._save_logic = self.get_connector('savelogic')
 
         constraints = self.get_hardware_constraints()
         number_of_detectors = constraints.max_detectors

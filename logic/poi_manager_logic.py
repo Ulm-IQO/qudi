@@ -280,6 +280,7 @@ class PoiManagerLogic(GenericLogic):
 
         if position is None:
             position = self._confocal_logic.get_position()
+        self.log.info('{0}'.format(position))
         if len(position) != 3:
             self.log.error('Given position is not 3-dimensional.'
                            'Please pass POIManager a 3-dimensional position to set a POI.')

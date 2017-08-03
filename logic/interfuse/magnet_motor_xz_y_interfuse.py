@@ -48,12 +48,10 @@ class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _in = {'motorstage_xz': 'MotorInterface',
+    _connectors = {'motorstage_xz': 'MotorInterface',
            'motorstage_y': 'MotorInterface'}
 
-    # And as a result, you will have an out connector, which is compatible to a
-    # magnet interface, and which can be plug in to an appropriated magnet logic
-    _out = {'magnetstage': 'MagnetInterface'}
+
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -63,7 +61,7 @@ class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
         # whether movement commands are passed to the hardware.
         self._magnet_idle = False
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -74,8 +72,8 @@ class MagnetMotorXZYInterfuse(GenericLogic, MagnetInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-        self._motor_device_xz = self.get_in_connector('motorstage_xz')
-        self._motor_device_y = self.get_in_connector('motorstage_y')
+        self._motor_device_xz = self.get_connector('motorstage_xz')
+        self._motor_device_y = self.get_connector('motorstage_y')
 
 
 
