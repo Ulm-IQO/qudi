@@ -192,7 +192,7 @@ class ThreadManager(QtCore.QAbstractTableModel):
         elif orientation != QtCore.Qt.Horizontal:
             return None
         else:
-            return self.header[section]
+            return self.headers[section]
 
 class ThreadItem(QtCore.QObject):
     """ This class represents a QThread.

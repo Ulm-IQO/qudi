@@ -24,15 +24,9 @@ import time
 import os
 import numpy as np
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.fast_counter_interface import FastCounterInterface
 
-
-class InterfaceImplementationError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
 
 class FastCounterDummy(Base, FastCounterInterface):
     """This is the Interface class to define the controls for the simple
@@ -41,26 +35,20 @@ class FastCounterDummy(Base, FastCounterInterface):
     _modclass = 'fastcounterinterface'
     _modtype = 'hardware'
 
+    # config option
+    _gated = ConfigOption('gated', False, missing='warn')
+    trace_path = ConfigOption('load_trace', None)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
 
-        if 'gated' in config.keys():
-            self._gated = config['gated']
-        else:
-            self._gated = False
-            self.log.warning('No parameter "gated" was specified in the '
-                        'config. The default configuration gated={0} will be '
-                        'taken instead.'.format(self._gated))
-
-        if 'load_trace' in config.keys():
-            self.trace_path = config['load_trace']
-        else:
+        if self.trace_path is None:
             self.trace_path = os.path.join(
                 self.get_main_dir(),
                 'tools',

@@ -29,7 +29,7 @@ import ctypes   # is a foreign function library for Python. It provides C
                 # in pure Python.
 
 from interface.wavemeter_interface import WavemeterInterface
-from core.base import Base
+from core.module import Base, ConfigOption
 from core.util.mutex import Mutex
 
 
@@ -80,6 +80,10 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     _modclass = 'HighFinesseWavemeter'
     _modtype = 'hardware'
 
+    # config options
+    _measurement_timing = ConfigOption('measurement_timing', 10.)
+
+    # signals
     sig_handle_timer = QtCore.Signal(bool)
 
     #############################################
@@ -101,16 +105,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self.threadlock = Mutex()
 
         # the current wavelength read by the wavemeter in nm (vac)
-        self._current_wavelength=0.0
-        self._current_wavelength2=0.0
-
-        # time between two measurement points of the wavemeter in milliseconds
-        if 'measurement_timing' in config.keys():
-            self._measurement_timing=config['measurement_timing']
-        else:
-            self._measurement_timing = 10.
-            self.log.warning('No measurement_timing configured, '\
-                        'using {} instead.'.format(self._measurement_timing))
+        self._current_wavelength = 0.0
+        self._current_wavelength2 = 0.0
 
 
     def on_activate(self):

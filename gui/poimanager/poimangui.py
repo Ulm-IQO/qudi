@@ -20,18 +20,19 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
-import time
 import os
+import pyqtgraph as pg
+import time
 
+from core.module import Connector
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
@@ -222,18 +223,11 @@ class PoiManagerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'poimanagerlogic1': 'PoiManagerLogic',
-           'confocallogic1': 'ConfocalLogic'
-           }
+    poimanagerlogic1 = Connector(interface='PoiManagerLogic')
+    confocallogic1 = Connector(interface='ConfocalLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Initializes the overall GUI, and establishes the connectors.
@@ -303,10 +297,10 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Get the image for the display from the logic:
-        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
+        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3]
 
         # Load the image in the display:
-        self.roi_map_image = pg.ImageItem(self.roi_xy_image_data)
+        self.roi_map_image = pg.ImageItem(image=self.roi_xy_image_data, axisOrder='row-major')
         self.roi_map_image.setRect(
             QtCore.QRectF(
                 self._confocal_logic.image_x_range[0],
@@ -536,8 +530,8 @@ class PoiManagerGui(GUIBase):
 
     def _redraw_roi_image(self):
 
-        # the image data is the fluorescence part, transposed for appropriate plotting
-        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
+        # the image data is the fluorescence part
+        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3]
 
         # Also get the x and y range limits and hold them locally
         self.roi_map_xmin = np.min(self._poi_manager_logic.roi_map_data[:, :, 0])

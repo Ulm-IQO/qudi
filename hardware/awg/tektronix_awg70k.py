@@ -30,7 +30,7 @@ from ftplib import FTP
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -41,20 +41,18 @@ class AWG70K(Base, PulserInterface):
     _modclass = 'awg70k'
     _modtype = 'hardware'
 
+    # config options
+    visa_address = ConfigOption('awg_visa_address', missing='error')
+    ip_address = ConfigOption('awg_ip_address', missing='error')
+    ftp_root_directory = ConfigOption('ftp_root_dir', 'C:\\inetpub\\ftproot', missing='warn')
+
+    user = ConfigOption('ftp_login', 'anonymous', missing='warn')
+    passwd = ConfigOption('ftp_passwd', 'anonymous@', missing='warn')
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         config = self.getConfiguration()
-
-        if 'awg_visa_address' in config.keys():
-            self.visa_address = config['awg_visa_address']
-        else:
-            self.log.error('This is AWG: Did not find >>awg_visa_address<< in configuration.')
-
-        if 'awg_ip_address' in config.keys():
-            self.ip_address = config['awg_ip_address']
-        else:
-            self.log.error('This is AWG: Did not find >>awg_visa_address<< in configuration.')
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -73,23 +71,8 @@ class AWG70K(Base, PulserInterface):
                              'default home directory\n{0}\nwill be taken instead.'
                              ''.format(self.pulsed_file_dir))
 
-        if 'ftp_root_dir' in config.keys():
-            self.ftp_root_directory = config['ftp_root_dir']
-        else:
-            self.ftp_root_directory = 'C:\\inetpub\\ftproot'
-            self.log.warning('No parameter "ftp_root_dir" was specified in the config for '
-                             'tektronix_awg70k as directory for the FTP server root on the AWG!\n'
-                             'The default root directory\n{0}\nwill be taken instead.'
-                             ''.format(self.ftp_root_directory))
-
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
         self.asset_directory = 'waves'
-
-        self.user = 'anonymous'
-        self.passwd = 'anonymous@'
-        if 'ftp_login' in config.keys() and 'ftp_passwd' in config.keys():
-            self.user = config['ftp_login']
-            self.passwd = config['ftp_passwd']
 
         # connect ethernet socket and FTP
         self._rm = visa.ResourceManager()

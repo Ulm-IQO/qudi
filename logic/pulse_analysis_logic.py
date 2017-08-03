@@ -19,12 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
-import os
 import importlib
 import inspect
-from logic.generic_logic import GenericLogic
+import numpy as np
+import os
+
 from collections import OrderedDict
+from core.module import StatusVar
+from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
 
@@ -34,35 +36,19 @@ class PulseAnalysisLogic(GenericLogic):
     _modclass = 'PulseAnalysisLogic'
     _modtype = 'logic'
 
+    # status vars
+    current_method = StatusVar('current_method', 'mean_norm')
+    signal_start_bin = StatusVar('signal_start_bin', 0)
+    signal_end_bin = StatusVar('signal_end_bin', 200)
+    norm_start_bin = StatusVar('norm_start_bin', 300)
+    norm_end_bin = StatusVar('norm_end_bin', 400)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        self.signal_start_bin = 0
-        self.signal_end_bin = 200
-        self.norm_start_bin = 300
-        self.norm_end_bin = 400
-        self.current_method = 'mean_norm'
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # recall saved variables from file
-        if 'current_method' in self._statusVariables:
-            self.current_method = self._statusVariables['current_method']
-        if 'signal_start_bin' in self._statusVariables:
-            self.signal_start_bin = self._statusVariables['signal_start_bin']
-        if 'signal_end_bin' in self._statusVariables:
-            self.signal_end_bin = self._statusVariables['signal_end_bin']
-        if 'norm_start_bin' in self._statusVariables:
-            self.norm_start_bin = self._statusVariables['norm_start_bin']
-        if 'norm_end_bin' in self._statusVariables:
-            self.norm_end_bin = self._statusVariables['norm_end_bin']
 
         self.analysis_methods = OrderedDict()
         filename_list = []
@@ -93,12 +79,6 @@ class PulseAnalysisLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        # Save variables to file
-        self._statusVariables['current_method'] = self.current_method
-        self._statusVariables['signal_start_bin'] = self.signal_start_bin
-        self._statusVariables['signal_end_bin'] = self.signal_end_bin
-        self._statusVariables['norm_start_bin'] = self.norm_start_bin
-        self._statusVariables['norm_end_bin'] = self.norm_end_bin
         return
 
     def analyze_data(self, laser_data):

@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.process_interface import ProcessInterface
 from core.util.mutex import Mutex
 
@@ -34,6 +34,10 @@ class TSYS01SPI(Base, ProcessInterface):
     """
     _modclass = 'TSYS01'
     _modtype = 'hardware'
+
+    # config opts
+    bus = ConfigOption('bus', 0, missing='warn')
+    device = ConfigOption('device', 0, missing='warn')
 
     # commands to chip (constants)
     READ_ADC  = 0x00
@@ -50,10 +54,6 @@ class TSYS01SPI(Base, ProcessInterface):
     def on_activate(self):
         """ Activate module.
         """
-        config = self.getConfiguration()
-        print(config)
-        self.bus = config['bus']
-        self.device = config['device']
         self.rom = []
         self.spi = spidev.SpiDev()
         self.spi.open(self.bus, self.device)

@@ -119,7 +119,16 @@ def make_decayexponential_model(self, prefix=None):
     """
 
     bare_exp_model, params = self.make_bareexponentialdecay_model(prefix=prefix)
+
+
+
+
     amplitude_model, params = self.make_amplitude_model(prefix=prefix)
+
+
+
+
+
     constant_model, params = self.make_constant_model(prefix=prefix)
 
     exponentialdecay_model = amplitude_model * bare_exp_model + constant_model
@@ -188,7 +197,29 @@ def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_par
         result = exponentialdecay.fit(data, x=x_axis, params=params)
         self.log.warning('The exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
+
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  #create result string for gui
+
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}                               #amplitude
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                    'error': result.params['lifetime'].stderr,
+                                    'unit': units[0]}                               #lifetime
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                    'error': result.params['offset'].stderr,
+                                    'unit': units[1]}                               #offset
+
+    result.result_str_dict = result_str_dict
+
     return result
+
 
 def estimate_decayexponential(self, x_axis, data, params):
     """ Estimation of the initial values for an exponential decay function.
@@ -222,6 +253,7 @@ def estimate_decayexponential(self, x_axis, data, params):
     if data_level.min() <= 0:
         data_level = data_level - data_level.min()
 
+ 
     # remove all the data that can be smaller than or equals to std.
     # when the data is smaller than std, it is beyond resolution
     # which is not helpful to our fitting.
@@ -231,31 +263,24 @@ def estimate_decayexponential(self, x_axis, data, params):
 
     # values and bound of parameter.
     ampl = data[-max(1, int(len(x_axis) / 10)):].std()
-    min_lifetime = 2 * (x_axis[1]-x_axis[0])
+    min_lifetime = 2 * (x_axis[1] - x_axis[0])
 
     try:
         data_level_log = np.log(data_level[0:i])
 
         # linear fit, see linearmethods.py
-        linear_result = self.make_linear_fit(axis=x_axis[0:i],
-                                             data=data_level_log,
-                                             add_parameters=None)
-        params['lifetime'].set(value=-1/linear_result.params['slope'].value,
-                               min=min_lifetime)
+        linear_result = self.make_linear_fit(x_axis=x_axis[0:i], data=data_level_log, estimator=self.estimate_linear)
+        params['lifetime'].set(value=-1/linear_result.params['slope'].value, min=min_lifetime)
 
         # amplitude can be positive of negative
         if data[0] < data[-1]:
-            params['amplitude'].set(value=-np.exp(linear_result.params['offset'].value),
-                                    max=-ampl)
+            params['amplitude'].set(value=-np.exp(linear_result.params['offset'].value), max=-ampl)
         else:
-            params['amplitude'].set(value=np.exp(linear_result.params['offset'].value),
-                                    min=ampl)
+            params['amplitude'].set(value=np.exp(linear_result.params['offset'].value), min=ampl)
     except:
-        self.log.error('Lifetime too small in estimate_exponentialdecay, '
-                     'beyond resolution!')
+        self.log.exception('Lifetime too small in estimate_exponentialdecay, beyond resolution!')
 
-        params['lifetime'].set(value=x_axis[i]-x_axis[0],
-                               min=min_lifetime)
+        params['lifetime'].set(value=x_axis[i]-x_axis[0], min=min_lifetime)
         params['amplitude'].set(value=data_level[0])
 
     params['offset'].set(value=offset)
@@ -294,6 +319,30 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
         result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
         self.log.warning('The double exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  #create result string for gui
+
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}                               #amplitude
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                    'error': result.params['lifetime'].stderr,
+                                    'unit': units[0]}                               #lifetime
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                    'error': result.params['offset'].stderr,
+                                    'unit': units[1]}                               #offset
+
+    result_str_dict['Beta'] = {'value': result.params['beta'].value,
+                                    'error': result.params['beta'].stderr,
+                                    'unit': ''}                               #Beta (exponent of exponential exponent)
+
+    result.result_str_dict = result_str_dict
+
     return result
 
 def estimate_decayexponentialstretched(self, x_axis, data, params):

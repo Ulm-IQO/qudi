@@ -55,93 +55,97 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     _modtype = 'interface'
 
     @abc.abstractmethod
-    def on(self):
-        """ Switches on any preconfigured microwave output.
+    def off(self):
+        """
+        Switches off any microwave output.
+        Must return AFTER the device is actually stopped.
 
         @return int: error code (0:OK, -1:error)
         """
         pass
 
     @abc.abstractmethod
-    def off(self):
-        """ Switches off any microwave output.
+    def get_status(self):
+        """
+        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
+        the output state (stopped, running)
 
-        @return int: error code (0:OK, -1:error)
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
         """
         pass
 
     @abc.abstractmethod
     def get_power(self):
-        """ Gets the microwave output power.
-
-        @return float: the power set at the device in dBm
         """
-        pass
+        Gets the microwave output power for the currently active mode.
 
-    @abc.abstractmethod
-    def set_power(self, power=0.):
-        """ Sets the microwave output power.
-
-        @param float power: the power (in dBm) set for this device
-
-        @return int: error code (0:OK, -1:error)
+        @return float: the output power in dBm
         """
         pass
 
     @abc.abstractmethod
     def get_frequency(self):
-        """ Gets the frequency of the microwave output.
+        """
+        Gets the frequency of the microwave output.
+        Returns single float value if the device is in cw mode.
+        Returns list like [start, stop, step] if the device is in sweep mode.
+        Returns list of frequencies if the device is in list mode.
 
-        @return float: frequency (in Hz), which is currently set for this device
+        @return [float, list]: frequency(s) currently set for this device in Hz
         """
         pass
 
     @abc.abstractmethod
-    def set_frequency(self, freq=0.):
-        """ Sets the frequency of the microwave output.
-
-        @param float freq: the frequency (in Hz) set for this device
+    def cw_on(self):
+        """
+        Switches on cw microwave output.
+        Must return AFTER the device is actually running.
 
         @return int: error code (0:OK, -1:error)
         """
         pass
 
     @abc.abstractmethod
-    def set_cw(self, freq=None, power=None, useinterleave=None):
-        """ Sets the MW mode to cw and additionally frequency and power
+    def set_cw(self, frequency=None, power=None):
+        """
+        Configures the device for cw-mode and optionally sets frequency and/or power
 
-        @param float freq: frequency to set in Hz
+        @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
 
-        @return int: error code (0:OK, -1:error)
-
-        Interleave option is used for arbitrary waveform generator devices.
-        """
-        pass
-
-    @abc.abstractmethod
-    def set_list(self, freq=None, power=None):
-        """ Sets the MW mode to list mode
-
-        @param list freq: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def reset_listpos(self):
-        """ Reset of MW List Mode position to start from first given frequency
-
-        @return int: error code (0:OK, -1:error)
+        @return tuple(float, float, str): with the relation
+            current frequency in Hz,
+            current power in dBm,
+            current mode
         """
         pass
 
     @abc.abstractmethod
     def list_on(self):
-        """ Switches on the list mode.
+        """
+        Switches on the list mode microwave output.
+        Must return AFTER the device is actually running.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_list(self, frequency=None, power=None):
+        """
+        Configures the device for list-mode and optionally sets frequencies and/or power
+
+        @param list frequency: list of frequencies in Hz
+        @param float power: MW power of the frequency list in dBm
+
+        @return list, float, str: current frequencies in Hz, current power in dBm, current mode
+        """
+        pass
+
+    @abc.abstractmethod
+    def reset_listpos(self):
+        """
+        Reset of MW list mode position to start (first frequency step)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -156,14 +160,23 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_sweep(self, start, stop, step, power):
-        """ Sweep from frequency start to frequency sto pin steps of width stop with power.
+    def set_sweep(self, start=None, stop=None, step=None, power=None):
+        """
+        Configures the device for sweep-mode and optionally sets frequency start/stop/step
+        and/or power
+
+        @return float, float, float, float, str: current start frequency in Hz,
+                                                 current stop frequency in Hz,
+                                                 current frequency step in Hz,
+                                                 current power in dBm,
+                                                 current mode
         """
         pass
 
     @abc.abstractmethod
-    def reset_sweep(self):
-        """ Reset of MW sweep position to start
+    def reset_sweeppos(self):
+        """
+        Reset of MW sweep mode position to start (start frequency)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -173,10 +186,9 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
 
-        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
-                        falling edge)
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
 
-        @return int: error code (0:OK, -1:error)
+        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
         """
         pass
 

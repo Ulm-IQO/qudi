@@ -263,9 +263,9 @@ def ungated_threshold(self, count_data):
 
     # Check if the number of lasers matches the number of remaining index groups
     if self.number_of_lasers != len(consecutive_indices):
-        self.warning('Pulse extraction method "ungated_threshold" failed. Found number of laser '
-                     'pulses {0:d} does not match the required number of {1:d}'
-                     ''.format(len(consecutive_indices), self.number_of_lasers))
+        self.log.warning('Pulse extraction method "ungated_threshold" failed. Found number of laser'
+                         ' pulses {0:d} does not match the required number of {1:d}'
+                         ''.format(len(consecutive_indices), self.number_of_lasers))
         return return_dict
 
     # determine max length of laser pulse and initialize laser array
