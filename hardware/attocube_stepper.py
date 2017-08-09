@@ -66,15 +66,47 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         # handle all the parameters given by the config
         self._attocube_axis = {}  # dictionary contains the axes and the specific controller
+        self._attocube_axis_range = {}  # dictionary contains the axes stepping range
+        default_range = [0, 5]
+        if "position_feedback" in config.keys():
+            self._position_feedback = config['position_feedback']
+        else:
+            self.log.warning(
+                "As it is not specified if attocubes have position feedback not position feedback is assumed")
+            self._position_feedback = False
         if 'x' in config.keys():
             self._attocube_axis["x"] = config['x']
+            if 'x_range' in config.keys():
+                if float(config['x_range'][0]) < float(config['x_range'][1]):
+                    self._attocube_axis_range["x"] = [float(config['x_range'][0]),
+                                                      float(config['x_range'][1])]
+                else:
+                    self.log.warning(
+                        'Configuration ({}) of x_range incorrect, taking [0,5] instead.'
+                        ''.format(config['x_range']))
+                    self._attocube_axis_range["x"] = default_range
+            else:
+                self.log.warning('No x_range configured taking [0,5] instead.')
+                self._attocube_axis_range["x"] = default_range
         else:
             self.log.error(
                 'No axis "x" found in configuration!\n'
-                'Assign to that parameter an appropriated channel sorting!')
+                'The "x" axis it not accessible this way!')
 
         if 'y' in config.keys():
             self._attocube_axis["y"] = config['y']
+            if 'y_range' in config.keys():
+                if float(config['y_range'][0]) < float(config['y_range'][1]):
+                    self._attocube_axis_range["y"] = [float(config['y_range'][0]),
+                                                      float(config['y_range'][1])]
+                else:
+                    self.log.warning(
+                        'Configuration ({}) of y_range incorrect, taking [0,5] instead.'
+                        ''.format(config['y_range']))
+                    self._attocube_axis_range["y"] = default_range
+            else:
+                self.log.warning('No y_range configured taking [0,5] instead.')
+                self._attocube_axis_range["y"] = default_range
         else:
             self.log.error(
                 'No axis "y" found in configuration!\n'
@@ -82,11 +114,24 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'z' in config.keys():
             self._attocube_axis["z"] = config['z']
+            if 'z_range' in config.keys():
+                if float(config['z_range'][0]) < float(config['z_range'][1]):
+                    self._attocube_axis_range["z"] = [float(config['z_range'][0]),
+                                                      float(config['z_range'][1])]
+                else:
+                    self.log.warning(
+                        'Configuration ({}) of z_range incorrect, taking [0,5] instead.'
+                        ''.format(config['z_range']))
+                    self._attocube_axis_range["z"] = default_range
+            else:
+                self.log.warning('No z_range configured taking [0,5] instead.')
+                self._attocube_axis_range["z"] = default_range
         else:
             self.log.error(
                 'No axis "z" found in configuration!\n'
                 'Assign to that parameter an appropriated channel sorting!')
 
+        # Todo: This needs to be updated to a dictionary for each axis
         if 'voltage_range_stepper' in config.keys():
             if float(config['voltage_range_stepper'][0]) < float(
                     config['voltage_range_stepper'][1]):
@@ -281,7 +326,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                         self._axis_amplitude[axis] >
                         self._voltage_range_stepper[1]):
                 self.log.error(
-                    "The value of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
+                    "The voltage of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
                         self._axis_amplitde[axis], axis, self._voltage_range_stepper[0],
                         self._voltage_range_stepper[1]))
             return self._axis_amplitude[axis]
@@ -628,39 +673,53 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self.log.warning('Attocube Device does not need to be reset.')
         pass
 
-    def set_position_range(self, my_range=None):
-        """ Sets the physical range of the scanner.
+    def get_position_feedback(self):
+        """Checks if the hardware is a closed loop hardware with position feedback
+        return bool: if True the hardware has a position feedback"""
+        # Todo: This needs to be programmed axis specific and done in the nidaq when a concept for differentiating
+        # between different controllers has been established
+        return self._position_feedback
 
-        @param float [3][2] my_range: array of 3 ranges with an array containing
-                                     lower and upper limit
+    def get_position_range_stepper(self, axis):
+        """ Returns the physical range of the stepper.
+
+        @return dict: key: axis name as sting (e.g. "x"), value the stepper range in mm
+        """
+        if axis not in self._attocube_axis.keys():
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+            return -1
+        return self._attocube_axis_range[axis]
+
+    def set_position_range_stepper(self, axis, my_range=None):
+        """ Sets the physical range of the stepper.
+
+        @param str axis: the axis for which the range is to be changed
+        @param float [2] my_range: 2 value float array containing the new lower and upper limit
 
         @return int: error code (0:OK, -1:error)
         """
+        if axis not in self._attocube_axis.keys():
+            self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+            return -1
         if my_range is None:
-            my_range = [[0, 5000], [0, 5000], [0, 5000]]
+            my_range = [0, 5]
 
         if not isinstance(my_range, (frozenset, list, set, tuple, np.ndarray,)):
             self.log.error('Given range is no array type.')
             return -1
 
-        if len(my_range) != 3:
+        if len(my_range) != 2:
             self.log.error(
-                'Given range should have dimension 3, but has {0:d} instead.'
+                'Given range should have dimension 2, but has {0:d} instead.'
                 ''.format(len(my_range)))
             return -1
 
-        for pos in my_range:
-            if len(pos) != 2:
-                self.log.error(
-                    'Given range limit {1:d} should have dimension 2, but has {0:d} instead.'
-                    ''.format(len(pos), pos))
-                return -1
-            if pos[0] > pos[1]:
-                self.log.error(
-                    'Given range limit {0:d} has the wrong order.'.format(pos))
-                return -1
+        if my_range[0] > my_range[1]:
+            self.log.error(
+                'Given range limit {0:d} has the wrong order.'.format(my_range))
+            return -1
 
-        self._position_range = my_range
+        self._attocube_axis_range[axis] = my_range
         return 0
 
     def set_amplitude_range_stepper(self, my_range=None):

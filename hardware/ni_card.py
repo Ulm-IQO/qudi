@@ -32,10 +32,11 @@ from interface.slow_counter_interface import CountingMode
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 from interface.finite_counter_interface import FiniteCounterInterface
+from interface.analog_reader_interface import AnalogReaderInterface
 
 
 class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface,
-             FiniteCounterInterface):
+             FiniteCounterInterface, AnalogReaderInterface):
     """ stable: Kay Jahnke, Alexander Stark
 
     A National Instruments device that can count and control microvave generators.
@@ -2391,7 +2392,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
     # ================ End FiniteCounterInterface Commands =======================
 
-    # ================ Start Analogue Voltage Input Interface Commands  =======================
+    # ================ Start AnalogReaderInterface Commands  =======================
 
     def set_up_analogue_voltage_reader(self, analogue_channel):
         """Initializes task for reading a single analogue input voltage.
@@ -2836,7 +2837,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._analog_clock_status = False
         return self.close_clock(scanner=True)
 
-        # ================ Finish Analogue Voltage Input Interface Commands  =======================
+        # ================ End AnalogReaderInterface Commands  =======================
 
 
 class SlowGatedNICard(NICard):

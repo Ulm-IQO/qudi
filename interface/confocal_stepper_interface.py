@@ -82,6 +82,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @abc.abstractmethod
     def get_step_freq(self, axis):
         """ Reads the step frequency for a specific axis from the device
 
@@ -100,6 +101,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @abc.abstractmethod
     def get_axis_mode(self, axis):
         """ Checks the mode for a specific axis
 
@@ -152,9 +154,9 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         @return list(str): list of axis dictionary
 
         Example:
-          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible 
+          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible
           value.
-          If you only care about the number of axes and not the assignment and names 
+          If you only care about the number of axes and not the assignment and names
           use get_stepper_axes
           On error, return an empty list.
         """
@@ -166,7 +168,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         in one off 2 directions
 
         @param str axis: axis to be moved, can only be part of dictionary axes
-        @param bool mode: Sets mode of stepper. True: Stepping, False: Continuous 
+        @param bool mode: Sets mode of stepper. True: Stepping, False: Continuous
         @param bool direction: True for one, False for other movement direction
         @param int steps: number of steps to be moved, ignore for continuous mode
         @return int:  error code (0: OK, -1:error)
@@ -184,10 +186,10 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def stop_all_attocube_motion(self):
         """Stops any motion of the steppers
-        @return 0 
+        @return 0
         """
         pass
-		
+
     @abc.abstractmethod
     def get_amplitude_range_stepper(self):
         """Returns the current possible stepping voltage range of the stepping device for all axes
@@ -195,12 +197,36 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-	@abc.abstractmethod
-	def get_freq_range_stepper(self):
-		"""Returns the current possible frequency range of the stepping device for all axes
-		@return dict: key[axis], value[list of range]
-		"""
+    @abc.abstractmethod
+    def get_freq_range_stepper(self):
+        """Returns the current possible frequency range of the stepping device for all axes
+        @return dict: key[axis], value[list of range]
+        """
         pass
-		
+
+    @abc.abstractmethod
+    def get_position_feedback(self):
+        """Checks if the hardware is a closed loop hardware with position feedback
+        return bool: if True the hardware has a position feedback"""
+        pass
+
+    @abc.abstractmethod
+    def get_position_range_stepper(self, axis):
+        """ Returns the physical range of the stepper.
+
+        @return dict: key: axis name as sting (e.g. "x"), value the stepper range in mm
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_position_range_stepper(self, axis, my_range=None):
+        """ Sets the physical range of the stepper.
+
+        @param str axis: the axis for which the range is to be changed
+        @param float [2] my_range: 2 value float array containing the new lower and upper limit
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
 
 	
