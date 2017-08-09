@@ -188,19 +188,19 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 		
+    @abc.abstractmethod
+    def get_amplitude_range_stepper(self):
+        """Returns the current possible stepping voltage range of the stepping device for all axes
+        @return list: voltage range of scanner
+        """
+        pass
+
 	@abc.abstractmethod
-	def get_amplitude_range_stepper():
-		"""Returns the current possible stepping voltage range of the stepping device for all axes
-		@return list: voltage range of scanner
-		"""
-		pass
-		
-	@abc.abstractmethod
-	def get_freq_range_stepper():
+	def get_freq_range_stepper(self):
 		"""Returns the current possible frequency range of the stepping device for all axes
 		@return dict: key[axis], value[list of range]
 		"""
-
+        pass
 		
 
 	
