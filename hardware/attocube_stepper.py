@@ -352,6 +352,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 return self._send_cmd(command)
             self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
             return -1
+        self.log.info("No frequency was given so the step frequency was not changed.")
+        return 0
 
     def get_step_freq(self, axis):
         """ Checks the step frequency for a specific axis
@@ -382,15 +384,14 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             else:
                 frequency_line = result[1][-3].split()
             self._axis_frequency[axis] = float(frequency_line[-2])
-            if (self._frequency_range[0] > self._axis_frequency[axis] or self._axis_frequency[
-                axis] >
-                self._frequency_range[1]):
+            if (self._frequency_range[axis][0] > self._axis_frequency[axis] or self._axis_frequency[axis] >
+                self._frequency_range[axis][1]):
                 self.log.error(
                     "The value of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
-                        self._axis_frequency[axis], axis, self._frequency_range[0],
-                        self._frequency_range[1]))
+                        self._axis_frequency[axis], axis, self._frequency_range[axis][0],
+                        self._frequency_range[axis][1]))
             return self._axis_frequency[axis]
-        self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
+        self.log.error("axis {} not in list of possible axes {}".format(axis, self._attocube_axis))
         return -1
 
     def set_axis_mode(self, axis, mode):

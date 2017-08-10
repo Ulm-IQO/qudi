@@ -111,7 +111,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_voltage_range_stepper(self, myrange=None):
+    def set_amplitude_range_stepper(self, myrange=None):
         """ Sets the voltage range of the attocubes.
 
         @param float [2] myrange: array containing lower and upper limit

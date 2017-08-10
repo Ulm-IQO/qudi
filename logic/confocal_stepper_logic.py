@@ -169,7 +169,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         else:
             return 0
 
-    def set_stepper_frequency(self, axis, frequency):
+    def set_stepper_frequency(self, axis, frequency= None):
         """
         Sets the stepping frequency for a specific axis to frequency
 
@@ -193,12 +193,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     return -1
                 else:
                     self._step_freq[axis] = frequency
-                    return self._stepping_device.set_step_amplitude(axis, frequency)
+                    return self._stepping_device.set_step_freq(axis, frequency)
             else:
                 self.log.warning("No amplitude given so value can not be changed")
                 return -1
-
-        return self._stepping_device.set_step_freq(axis, frequency)
+        else:
+            self.log.info("No frequency was given so the step frequency was not changed.")
+            return 0
 
     def get_stepper_frequency(self, axis):
         freq = self._stepping_device.get_step_freq(axis)
@@ -210,7 +211,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._step_freq[axis] = freq
         return freq
 
-    def set_stepper_amplitude(self, axis, amplitude):
+    def set_stepper_amplitude(self, axis, amplitude = None):
         """
         Sets the stepping amplitude for a specific axis to amplitude
 
@@ -233,14 +234,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.step_amplitude[axis] = amplitude
                 return self._stepping_device.set_step_amplitude(axis, amplitude)
         else:
-            self.log.warning("No amplitude given so value can not be changed")
+            self.log.info("No amplitude given so value can not be changed")
             return -1
 
     def get_freq_range(self):
         """Returns the current possible frequency range of the stepping device for all axes
         @return dict: key[axis], value[list of range]
         """
-        return self.get_freq_range_stepper()
+        return self._stepping_device._frequency_range
 
     def get_stepper_amplitude(self, axis):
         amp = self._stepping_device.get_step_amplitude(axis)
