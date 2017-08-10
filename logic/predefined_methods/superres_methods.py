@@ -60,14 +60,11 @@ def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2
     pi2_element = self._get_mw_element(pi_length_2, 0.0, mw_channel, False, mw_amp_2, mw_freq_2,
                                        0.0)
 
-    laser_dummy_element = self._get_idle_element(laser_length, 0.0, False)
-
     # Create element lists for Superres PulseBlock
     # Dummy block
     element_list_0 = []
     element_list_0.append(pi0_element)
-    #element_list_0.append(laser_element)
-    element_list_0.append(laser_dummy_element)
+    element_list_0.append(laser_element)
     element_list_0.append(waiting_element)
     # pi pulse 1 block
     element_list_1 = []
