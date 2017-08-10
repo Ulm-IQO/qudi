@@ -1699,25 +1699,6 @@
        </property>
       </widget>
      </item>
-     <item row="7" column="2">
-      <widget class="QPushButton" name="read_hardware_pushButton">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>150</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Get Hardware Values</string>
-       </property>
-      </widget>
-     </item>
      <item row="5" column="6">
       <widget class="QPushButton" name="clean_z_axis_pushButton">
        <property name="maximumSize">
@@ -1997,25 +1978,6 @@
        </property>
       </widget>
      </item>
-     <item row="7" column="3">
-      <widget class="QPushButton" name="update_hardware_pushButton">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>100</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string> Update Hardware</string>
-       </property>
-      </widget>
-     </item>
      <item row="5" column="3">
       <widget class="QSpinBox" name="z_frequency_spinBox">
        <property name="sizePolicy">
@@ -2146,6 +2108,50 @@
       <widget class="Line" name="line_5">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="3" rowspan="2">
+      <widget class="QPushButton" name="update_hardware_pushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string> Update Hardware</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="2" rowspan="2">
+      <widget class="QPushButton" name="read_hardware_pushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>10</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>150</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Get Hardware Values</string>
        </property>
       </widget>
      </item>
