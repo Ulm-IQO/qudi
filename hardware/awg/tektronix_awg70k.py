@@ -1200,12 +1200,17 @@ class AWG70K(Base, PulserInterface):
 
         # Fill in sequence information
         for step in range(num_steps):
-            self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+            self.awg.write('SLIS:SEQ:STEP{0}:WINP "{1}", {2}'.format(step + 1, sequence_name,
                                                                      trig_dict[sequence_params[step]['trigger_wait']]))
+
             if sequence_params[step]['event_jump_to'] <= 0:
                 jumpto = 'NEXT'
+                self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+                                                                         trig_dict[0]))
             else:
                 jumpto = str(sequence_params[step]['event_jump_to'])
+                self.awg.write('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+                                                                         trig_dict[1]))
             self.awg.write('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
                                                                      sequence_name, jumpto))
             if sequence_params[step]['repetitions'] <= 0:

@@ -1003,7 +1003,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # unlock module
         self.unlock()
         self.sigSampleSequenceComplete.emit(sequence_name, sequence_param_dict_list)
-        return
+        return sequence_name, sequence_param_dict_list
 
     #---------------------------------------------------------------------------
     #                    END sequence/block sampling
