@@ -45,7 +45,7 @@ General Pulse Creation Procedure:
 def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2=1.0e-7,
                           mw_freq_1=2.77e9, mw_freq_2=2.97e9, mw_amp_1=0.1, mw_amp_2=0.1,
                           mw_channel='a_ch1', laser_length=3.0e-7, channel_amp=1.0,
-                          wait_time=1.5e-6):
+                          wait_time=1.5e-6, pixel_clock=300.0):
     """
 
     """
@@ -60,11 +60,14 @@ def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2
     pi2_element = self._get_mw_element(pi_length_2, 0.0, mw_channel, False, mw_amp_2, mw_freq_2,
                                        0.0)
 
+    laser_dummy_element = self._get_idle_element(laser_length, 0.0, False)
+
     # Create element lists for Superres PulseBlock
     # Dummy block
     element_list_0 = []
     element_list_0.append(pi0_element)
-    element_list_0.append(laser_element)
+    #element_list_0.append(laser_element)
+    element_list_0.append(laser_dummy_element)
     element_list_0.append(waiting_element)
     # pi pulse 1 block
     element_list_1 = []
@@ -99,11 +102,15 @@ def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2
     self.save_ensemble(name + '_pi2', pi2_ensemble)
 
     # Create sequence out of the ensembles
+    pixel_dwell_time = 1 / pixel_clock
+    single_run_length = max(pi_length_1, pi_length_2) + laser_length + wait_time
+    reps = int(0.95 * pixel_dwell_time // single_run_length)
+
     seq_param_list = []
-    seq_param_init = {'repetitions': 0, 'trigger_wait': 1, 'go_to': 0, 'event_jump_to': 3}
-    seq_param = {'repetitions': 0, 'trigger_wait': 0, 'go_to': 0, 'event_jump_to': 0}
-    seq_param_last = {'repetitions': 0, 'trigger_wait': 0, 'go_to': 0, 'event_jump_to': 2}
-    seq_param_list.append((dummy_ensemble, seq_param_init))
+    #seq_param_init = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 0, 'event_jump_to': 0}
+    seq_param = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 0, 'event_jump_to': 0}
+    seq_param_last = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 1, 'event_jump_to': 0}
+    #seq_param_list.append((dummy_ensemble, seq_param_init))
     seq_param_list.append((dummy_ensemble, seq_param))
     seq_param_list.append((pi1_ensemble, seq_param))
     seq_param_list.append((pi2_ensemble, seq_param_last))
