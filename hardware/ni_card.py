@@ -163,6 +163,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._line_length = None
         self._odmr_length = None
         self._gated_counter_daq_task = None
+        self._analog_clock_status = False
 
         # used as a default for expected maximum counts
         self._max_counts = 3e7
@@ -191,12 +192,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         # handle all the parameters given by the config
         if 'ai_x_1' in config.keys():
-            self._analogue_input_channels["x_1"] = config['ai_x_1']
+            self._analogue_input_channels["x"] = config['ai_x_1']
             if 'ai_range_x_1' in config.keys():
                 if float(config['ai_range_x_1'][0]) < float(config['ai_range_x_1'][1]):
                     vlow = float(config['ai_range_x_1'][0])
                     vhigh = float(config['ai_range_x_1'][1])
-                    self._ai_voltage_range["x_1"] = [vlow, vhigh]
+                    self._ai_voltage_range["x"] = [vlow, vhigh]
                 else:
                     self.log.warning(
                         'Configuration ({0}) of ai_range_x_1 incorrect, taking [0 , '
@@ -206,12 +207,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'No ai_range_x_1 configured, taking [0, 2] instead.')
 
         if 'ai_y_1' in config.keys():
-            self._analogue_input_channels["y_1"] = config['ai_y_1']
+            self._analogue_input_channels["y"] = config['ai_y_1']
             if 'ai_range_y_1' in config.keys():
                 if float(config['ai_range_y_1'][0]) < float(config['ai_range_y_1'][1]):
                     vlow = float(config['ai_range_y_1'][0])
                     vhigh = float(config['ai_range_y_1'][1])
-                    self._ai_voltage_range["y_1"] = [vlow, vhigh]
+                    self._ai_voltage_range["y"] = [vlow, vhigh]
                 else:
                     self.log.warning(
                         'Configuration ({0}) of ai_range_y_1 incorrect, taking [0 , '
@@ -221,12 +222,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'No ai_range_y_1 configured, taking [0, 2] instead.')
 
         if 'ai_z_1' in config.keys():
-            self._analogue_input_channels["z_1"] = config['ai_z_1']
+            self._analogue_input_channels["z"] = config['ai_z_1']
             if 'ai_range_z_1' in config.keys():
                 if float(config['ai_range_z_1'][0]) < float(config['ai_range_z_1'][1]):
                     vlow = float(config['ai_range_z_1'][0])
                     vhigh = float(config['ai_range_z_1'][1])
-                    self._ai_voltage_range["z_1"] = [vlow, vhigh]
+                    self._ai_voltage_range["z"] = [vlow, vhigh]
                 else:
                     self.log.warning(
                         'Configuration ({0}) of ai_range_z_1 incorrect, taking [0 , '
@@ -2533,7 +2534,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         return 0
 
     def add_analogue_reader_channel_to_measurement(self, analogue_channel_orig,
-                                                   analogue_channel):
+                                                   analogue_channels):
         """
         This function adds additional channels to an already existing analogue reader task.
         Thereby many channels can be measured, read and stopped simultaneously.
@@ -2542,7 +2543,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         @param string analogue_channel_orig: the representative name of the analogue channel
                                     task to which this channel is to be added
-        @param List(string) analogue_channel: The new channels to be added to the task
+        @param List(string) analogue_channels: The new channels to be added to the task
 
         @return int: error code (0:OK, -1:error)
         """
@@ -2551,7 +2552,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error("The given analogue input task channel{} to which the channel was to "
                            "be added did not exist.".format(analogue_channel_orig))
             return -1
-        for channel in analogue_channel:
+        # check variable type
+        if not isinstance(analogue_channels, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Channels are not given in array type.')
+            return -1
+
+        for channel in analogue_channels:
             if channel not in self._analogue_input_channels.keys():
                 self.log.error("The given analogue input channel {} is not defined. Please define the "
                                "input channel".format(channel))
@@ -2572,38 +2578,40 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 analogue_channel_orig))
             return -1
 
-        if self._scanner_clock_daq_task is None:
+        # check if clock is running in case clock is needed (samples >1)
+        if self._scanner_clock_daq_task is None and self._analogue_input_samples[analogue_channel_orig]!= 1:
             self.log.error('No clock running, call set_up_clock before starting the analogue '
                            'reader.')
             return -1
 
-        try:  # Creates a channel to measure a voltage and adds it to task:
-            daq.DAQmxCreateAIVoltageChan(
-                # define to which task to connect this function
-                task,
-                # use this analogue input channel
-                self._analogue_input_channels[analogue_channel],
-                # name to assign to it
-                "Analogue Voltage Reader {}".format(analogue_channel),
-                # the analogue onput read mode (rse, nres or diff)
-                daq.DAQmx_Val_Diff,
-                # the minimum input voltage expected
-                self._ai_voltage_range[analogue_channel][0],
-                # the minimum input voltage expected
-                self._ai_voltage_range[analogue_channel][1],  # Todo: check type
-                # the units in which the voltage is to be measured is volt
-                daq.DAQmx_Val_Volts,
-                # must be None unless units is set to "DAQmx_Val_FromCustomScale"
-                None)
-            # add an "additional" task to the task list for this channel so it can be checked if
-            # channel is configured.
-            self._analogue_input_daq_tasks[analogue_channel] = task
-        except:
-            self.log.exception('Error while setting up analogue voltage reader for channel'
-                               '{}.'.format(analogue_channel))
-            return -1
-        # add sample number for this channel
-        self._analogue_input_samples[analogue_channel] = self._analogue_input_samples[analogue_channel_orig]
+        for channel in analogue_channels:
+            try:  # Creates a channel to measure a voltage and adds it to task:
+                daq.DAQmxCreateAIVoltageChan(
+                    # define to which task to connect this function
+                    task,
+                    # use this analogue input channel
+                    self._analogue_input_channels[channel],
+                    # name to assign to it
+                    "Analogue Voltage Reader {}".format(channel),
+                    # the analogue onput read mode (rse, nres or diff)
+                    daq.DAQmx_Val_Diff,
+                    # the minimum input voltage expected
+                    self._ai_voltage_range[channel][0],
+                    # the minimum input voltage expected
+                    self._ai_voltage_range[channel][1],  # Todo: check type
+                    # the units in which the voltage is to be measured is volt
+                    daq.DAQmx_Val_Volts,
+                    # must be None unless units is set to "DAQmx_Val_FromCustomScale"
+                    None)
+                # add an "additional" task to the task list for this channel so it can be checked if
+                # channel is configured.
+                self._analogue_input_daq_tasks[channel] = task
+            except:
+                self.log.exception('Error while setting up analogue voltage reader for channel'
+                                   '{}.'.format(channel))
+                return -1
+            # add sample number for this channel
+            self._analogue_input_samples[channel] = self._analogue_input_samples[analogue_channel_orig]
         return 0
 
     # Todo: Add option to keep track of the result per channel as with a dictinoary it might change for every channel
@@ -2626,15 +2634,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         # around the set_up_clock. However if a clock might already be configured for a different
         # task, this might not be a problem for the programmer, so he can call the function
         # anyway but set set_up to False and the function does nothing.
+        if clock_frequency is None:
+            clock_frequency = self._analogue_clock_frequency
+        else:
+            self._analogue_clock_frequency = clock_frequency
         if not set_up:
             # this exists, so that one can "set up" the clock that is used in parallel in the
             # code but not in reality and serves readability in the logic code
             return 0
 
-        if clock_frequency is None:
-            clock_frequency = self._analogue_clock_frequency
-        else:
-            self._analogue_clock_frequency = clock_frequency
         # Todo: Check if this divided by 2 is sensible
         return self.set_up_clock(
             clock_frequency=clock_frequency / 2,  # because it will be multiplied by 2 in the setup
@@ -2693,6 +2701,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return np.array, int:The photon counts per second (array) and the amount of samples read (int). For
                                 error array with length 2 and entry -1, 0
         """
+        # check variable type
+        if not isinstance(analogue_channels, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Channels are not given in array type.')
+            return -1
+
         # test if the analogue channel is configured for all channels given
         error = False
         if analogue_channels[0] in self._analogue_input_samples.keys():

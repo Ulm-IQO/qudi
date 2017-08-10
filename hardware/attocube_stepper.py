@@ -681,15 +681,17 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # between different controllers has been established
         return self._position_feedback
 
-    def get_position_range_stepper(self, axis):
+    def get_position_range_stepper(self, axis_name):
         """ Returns the physical range of the stepper.
+
+        @param str axis_name: the axis for which the range is to be checked
 
         @return dict: key: axis name as sting (e.g. "x"), value the stepper range in mm
         """
-        if axis not in self._attocube_axis.keys():
+        if axis_name not in self._attocube_axis.keys():
             self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
             return -1
-        return self._attocube_axis_range[axis]
+        return self._attocube_axis_range[axis_name]
 
     def set_position_range_stepper(self, axis, my_range=None):
         """ Sets the physical range of the stepper.

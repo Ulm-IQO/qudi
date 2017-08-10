@@ -200,7 +200,7 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def get_freq_range_stepper(self):
         """Returns the current possible frequency range of the stepping device for all axes
-        @return dict: key[axis], value[list of range]
+        @return List
         """
         pass
 
@@ -211,8 +211,10 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_position_range_stepper(self, axis):
+    def get_position_range_stepper(self, axis_name):
         """ Returns the physical range of the stepper.
+
+        @param str axis_name: the axis for which the range is to be checked
 
         @return dict: key: axis name as sting (e.g. "x"), value the stepper range in mm
         """

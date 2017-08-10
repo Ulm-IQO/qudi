@@ -25,8 +25,8 @@ from core.util.interfaces import InterfaceMetaclass
 
 
 class AnalogReaderInterface(metaclass=InterfaceMetaclass):
-    """ This is the Interface class to define the controls for the simple
-    analog input hardware.
+    """ This is the Interface class to define the controls for a simple
+    analogue input hardware with single or multiple channels.
     """
 
     _modtype = 'AnalogReaderInterface'
@@ -50,7 +50,7 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def set_up_analogue_voltage_reader(self, analogue_channel):
-        """Initalizes task for reading an a single anologue input voltage.
+        """Initializes task for reading an a single analogue input voltage.
 
         @param string analogue_channel: the representative name of the analogue channel for
                                         which the task is created
@@ -63,8 +63,8 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
     def set_up_analogue_voltage_reader_scanner(self, samples,
                                                analogue_channel,
                                                clock_channel=None):
-        """Initalizes task for reading an analogue input voltage with the Nidaq for a finite
-        number of sampels at a given frequency.
+        """Initializes task for reading an analogue input voltage for a finite
+        number of samples at a given frequency.
 
         It reads a differentially connected voltage from the analogue inputs. For every period of
         time (given by the frequency) it reads the voltage at the analogue channel.
@@ -79,18 +79,17 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def add_analogue_reader_channel_to_measurement(self, samples, analogue_channel_orig,
-                                                   analogue_channel):
+    def add_analogue_reader_channel_to_measurement(self, analogue_channel_orig,
+                                                   analogue_channels):
         """
         This function adds additional channels to an already existing analogue reader task.
         Thereby many channels can be measured, read and stopped simultaneously.
         For this method another method needed to setup a task already.
         Use e.g. set_up_analogue_voltage_reader_scanner
 
-        @param int samples: Defines how many values are to be measured for this channel
         @param string analogue_channel_orig: the representative name of the analogue channel
                                     task to which this channel is to be added
-        @param string analogue_channel: The new channel to be added to the task
+        @param List(string) analogue_channels: The new channels to be added to the task
 
         @return int: error code (0:OK, -1:error)
         """
@@ -111,16 +110,14 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_analogue_voltage_reader(self, analogue_channels, samples):
+    def get_analogue_voltage_reader(self, analogue_channels):
         """"
-        Returns the last voltages read by the analog input reader
+        Returns the last voltages read by the analogue input reader
 
         @param  List(string) analogue_channels: the representative name of the analogue channels
                                         for which channels are read.
                                         The first list element must be the one for which the
                                         task was created
-        @param  int samples: How many values are to be read, choose one if the task started
-                                was "set_up_analogue_voltage_reader"
 
         @return np.array samples:The photon counts per second and the amount of samples read. For
         error array with length 1 and entry -1
