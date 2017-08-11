@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -34,6 +34,9 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
     _modclass = 'MicrowaveSRSSG'
     _modtype = 'hardware'
+
+    _gpib_address = ConfigOption('gpib_address', missing='error')
+    _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -56,8 +59,9 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+            self._gpib_connection = self.rm.open_resource(
+                self._gpib_address,
+                timeout=self._gpib_timeout)
         except:
             self.log.error('Could not connect to the GPIB address "{}". Check '
                            'whether address exists and reload '

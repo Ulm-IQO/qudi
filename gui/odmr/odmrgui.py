@@ -20,19 +20,20 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
 import os
+import pyqtgraph as pg
 
+from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
-from core.util import units
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 
 class ODMRMainWindow(QtWidgets.QMainWindow):
@@ -71,8 +72,8 @@ class ODMRGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'odmrlogic1': 'ODMRLogic',
-           'savelogic': 'SaveLogic'}
+    odmrlogic1 = Connector(interface='ODMRLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartOdmrScan = QtCore.Signal()
     sigStopOdmrScan = QtCore.Signal()
@@ -92,12 +93,6 @@ class ODMRGui(GUIBase):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -153,7 +148,7 @@ class ODMRGui(GUIBase):
         self._mw.toolBar.addWidget(self._mw.clear_odmr_PushButton)
 
         # Get the image from the logic
-        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.odmr_plot_xy.transpose())
+        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.odmr_plot_xy, axisOrder='row-major')
         self.odmr_matrix_image.setRect(QtCore.QRectF(
                 self._odmr_logic.mw_start,
                 0,
@@ -264,6 +259,8 @@ class ODMRGui(GUIBase):
         self.sigRuntimeChanged.connect(self._odmr_logic.set_runtime, QtCore.Qt.QueuedConnection)
         self.sigNumberOfLinesChanged.connect(self._odmr_logic.set_matrix_line_number,
                                              QtCore.Qt.QueuedConnection)
+        self.sigClockFreqChanged.connect(self._odmr_logic.set_clock_frequency,
+                                         QtCore.Qt.QueuedConnection)
         self.sigSaveMeasurement.connect(self._odmr_logic.save_odmr_data, QtCore.Qt.QueuedConnection)
 
         # Update signals coming from logic:
@@ -285,7 +282,7 @@ class ODMRGui(GUIBase):
         self.reject_settings()
 
         # Show the Main ODMR GUI:
-        self._show()
+        self.show()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -313,6 +310,7 @@ class ODMRGui(GUIBase):
         self.sigMwSweepParamsChanged.disconnect()
         self.sigRuntimeChanged.disconnect()
         self.sigNumberOfLinesChanged.disconnect()
+        self.sigClockFreqChanged.disconnect()
         self.sigSaveMeasurement.disconnect()
         self._mw.odmr_cb_manual_RadioButton.clicked.disconnect()
         self._mw.odmr_cb_centiles_RadioButton.clicked.disconnect()
@@ -339,12 +337,11 @@ class ODMRGui(GUIBase):
         self._mw.close()
         return 0
 
-    def _show(self):
+    def show(self):
         """Make window visible and put it above all other windows. """
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
-        return
 
     def _menu_settings(self):
         """ Open the settings menu """
@@ -410,7 +407,7 @@ class ODMRGui(GUIBase):
         return
 
     def update_status(self, mw_mode, is_running):
-        """ 
+        """
         Update the display for a change in the microwave status (mode and output).
 
         @param str mw_mode: is the microwave output active?
@@ -487,14 +484,17 @@ class ODMRGui(GUIBase):
         # Update raw data matrix plot
         cb_range = self.get_matrix_cb_range()
         self.update_colorbar(cb_range)
-        self.odmr_matrix_image.setRect(QtCore.QRectF(odmr_data_x[0],
-                                                     0,
-                                                     np.abs(odmr_data_x[-1] - odmr_data_x[0]),
-                                                     odmr_matrix.shape[0]))
-        self.odmr_matrix_image.setImage(image=odmr_matrix.transpose(),
-                                        levels=(cb_range[0], cb_range[1]))
-
-        return
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                odmr_data_x[0],
+                0,
+                np.abs(odmr_data_x[-1] - odmr_data_x[0]),
+                odmr_matrix.shape[0])
+            )
+        self.odmr_matrix_image.setImage(
+            image=odmr_matrix,
+            axisOrder='row-major',
+            levels=(cb_range[0], cb_range[1]))
 
     def colorscale_changed(self):
         """
@@ -507,16 +507,16 @@ class ODMRGui(GUIBase):
         return
 
     def update_colorbar(self, cb_range):
-        """ 
+        """
         Update the colorbar to a new range.
-        
+
         @param list cb_range: List or tuple containing the min and max values for the cb range
         """
         self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
         return
 
     def get_matrix_cb_range(self):
-        """ 
+        """
         Determines the cb_min and cb_max values for the matrix plot
         """
         matrix_image = self.odmr_matrix_image.image

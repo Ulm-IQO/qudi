@@ -48,7 +48,14 @@ else:
 argv = [sys.executable, '-m', 'core'] + sys.argv[1:]
 
 while True:
-    process = subprocess.Popen(argv, close_fds=False, env=myenv, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, shell=False)
+    process = subprocess.Popen(
+        argv,
+        close_fds=False,
+        env=myenv,
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+        shell=False)
     if sys.platform == 'win32':
         # Attach the interrupt event to the Popen objet so it can be used later.
         process.win32_interrupt_event = interrupt_event

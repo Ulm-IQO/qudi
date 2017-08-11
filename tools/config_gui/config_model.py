@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Dummy implementation for simple data acquisition.
-
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -19,29 +17,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
-import time
+from qtpy import QtCore, QtGui, QtWidgets, uic
+from core.util.models import DictTableModel
 
-from core.module import Base
-from interface.simple_data_interface import SimpleDataInterface
-
-
-class SimpleDummy(Base, SimpleDataInterface):
-    """
-    """
-    _modclass = 'simple'
-    _modtype = 'hardware'
-
-    def on_activate(self):
-        pass
-
-    def on_deactivate(self):
-        pass
-
-    def getData(self):
-        time.sleep(0.1)
-        return [int(np.random.poisson(5)), int(np.random.poisson(10)), int(np.random.poisson(30))]
-
-    def getChannels(self):
-        time.sleep(0.1)
-        return 3
+class ModuleConfigModel(DictTableModel):
+    pass

@@ -26,7 +26,7 @@ import os
 import time
 
 from interface.fast_counter_interface import FastCounterInterface
-from core.base import Base
+from core.module import Base, ConfigOption
 import okfrontpanel as ok
 from core.util.mutex import Mutex
 
@@ -48,14 +48,27 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     _modclass = 'FastCounterFPGAQO'
     _modtype = 'hardware'
 
+    _serial = ConfigOption('fpgacounter_serial', missing='error')
+    # 'No parameter "fpgacounter_serial" specified in the config! Set the '
+    # 'serial number for the currently used fpga counter!\n'
+    # 'Open the Opal Kelly Frontpanel to obtain the serial number of the '
+    # 'connected FPGA.\nDo not forget to close the Frontpanel before starting '
+    # 'the Qudi program.')
+
+    _fpga_type = ConfigOption('fpga_type', 'XEM6310_LX150', missing='warn')
+    # 'No parameter "fpga_type" specified in the config!\n'
+    # 'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
+    # 'Taking the type "{0}" as default.'.format(self._fpga_type))
+
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self.threadlock = Mutex()
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
         self._internal_clock_hz = 950e6     # that is a fixed number, 950MHz
         self.statusvar = -1                 # fast counter state
@@ -130,25 +143,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
-
         config = self.getConfiguration()
-
-        if 'fpgacounter_serial' in config.keys():
-            self._serial = config['fpgacounter_serial']
-        else:
-            self.log.error('No parameter "fpgacounter_serial" specified in the config! Set the '
-                           'serial number for the currently used fpga counter!\n'
-                           'Open the Opal Kelly Frontpanel to obtain the serial number of the '
-                           'connected FPGA.\nDo not forget to close the Frontpanel before starting '
-                           'the Qudi program.')
-
-        if 'fpga_type' in config.keys():
-            self._fpga_type = config['fpga_type']
-        else:
-            self._fpga_type = 'XEM6310_LX150'
-            self.log.warning('No parameter "fpga_type" specified in the config!\n'
-                             'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
-                             'Taking the type "{0}" as default.'.format(self._fpga_type))
 
         self._switching_voltage = {1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5}
         for key in config.keys():
