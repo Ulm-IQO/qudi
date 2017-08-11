@@ -23,10 +23,11 @@ top-level directory of this distribution and at
 
 import abc
 from qtpy.QtCore import QObject
+from core.module import ModuleMeta
 
 QObjectMeta = type(QObject)
 
-class InterfaceMetaclass(QObjectMeta, abc.ABCMeta):
+class InterfaceMetaclass(ModuleMeta, abc.ABCMeta):
     """
     Metaclass for interfaces.
     """

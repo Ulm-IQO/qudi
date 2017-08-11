@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from collections import OrderedDict
 import time
 
-from core.base import Base
+from core.module import Base
 from interface.motor_interface import MotorInterface
 
 class MotorAxisDummy:
@@ -41,7 +41,7 @@ class MotorDummy(Base, MotorInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():

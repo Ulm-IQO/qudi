@@ -21,19 +21,20 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-from collections import OrderedDict
-from datetime import datetime
+import logging
+import math
 import numpy as np
 import re
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
-import math
 import time
-import logging
 
-from logic.generic_logic import GenericLogic
+from collections import OrderedDict
+from core.module import Connector
 from core.util.mutex import Mutex
+from datetime import datetime
+from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class PoI:
@@ -179,12 +180,11 @@ class PoiManagerLogic(GenericLogic):
     """
     _modclass = 'poimanagerlogic'
     _modtype = 'logic'
+
     # declare connectors
-    _connectors = {
-        'optimizer1': 'OptimizerLogic',
-        'scannerlogic': 'ConfocalLogic',
-        'savelogic': 'SaveLogic',
-    }
+    optimizer1 = Connector(interface='OptimizerLogic')
+    scannerlogic = Connector(interface='ConfocalLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     signal_timer_updated = QtCore.Signal()
     signal_poi_updated = QtCore.Signal()
@@ -196,12 +196,6 @@ class PoiManagerLogic(GenericLogic):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
 
         self.roi_name = ''
         self.poi_list = dict()
