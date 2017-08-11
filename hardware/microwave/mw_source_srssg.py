@@ -33,28 +33,25 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
     """ Hardware control class to controls SRS SG390 devices.  """
 
     _modclass = 'MicrowaveSRSSG'
-    _modtype = 'interface'
+    _modtype = 'hardware'
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
 
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.log.error(
-                'This is MW SRS SG: did not find >>gpib_address<< in '
-                'configration.')
+            self.log.error('No configuration value set for "gpib_address"! '
+                           'Enter a valid GPIB address.')
 
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
             self._gpib_timeout = 10*1000
-            self.log.error(
-                'This is MW SRS SG: did not find >>gpib_timeout<< in '
-                'configration. I will set it to 10 seconds.')
+            self.log.error('No "gpib_timeout" was set in the configration. '
+                           'Timeout will be set to 10 seconds.')
 
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
@@ -62,20 +59,40 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            self.log.error(
-                'This is MW SRS SG: could not connect to the GPIB '
-                'address >>{}<<.'.format(self._gpib_address))
+            self.log.error('Could not connect to the GPIB address "{}". Check '
+                           'whether address exists and reload '
+                           'module!'.format(self._gpib_address))
             raise
 
-        self.log.info('MW SRS SG initialised and connected to hardware.')
-        self.model = self._gpib_connection.query('*IDN?').split(',')[1]
+        message = self._gpib_connection.query('*IDN?').strip().split(',')
+        self._BRAND = message[0]
+        self._MODEL = message[1]
+        self._SERIALNUMBER = message[2]
+        self._FIRMWARE_VERSION = message[3]
+
+        self.log.info('Load the device model "{0}" from "{1}" with the serial'
+                      'number "{2}" and the firmware version "{3}" '
+                      'successfully.'.format(self._MODEL, self._BRAND,
+                                             self._SERIALNUMBER,
+                                             self._FIRMWARE_VERSION))
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
 
+        self.off()
         self._gpib_connection.close()
         self.rm.close()
+
+    def cw_on(self):
+        return 0
+
+    def get_status(self):
+        return 'cw', False
+
+
+    def reset_sweeppos(self):
+        pass
 
     def get_limits(self):
         limits = MicrowaveLimits()
@@ -99,11 +116,11 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         limits.sweep_maxstep = 6.4e9
         limits.sweep_maxentries = 10001
 
-        if self.model == 'SG392':
+        if self._MODEL == 'SG392':
             limits.max_frequency = 2.025e9
-        elif self.model == 'SG394':
+        elif self._MODEL == 'SG394':
             limits.max_frequency = 4.050e9
-        elif self.model == 'SG396':
+        elif self._MODEL == 'SG396':
             limits.max_frequency = 6.075e9
         else:
             self.log.warning('Model string unknown, hardware limits may be wrong.')
@@ -183,10 +200,9 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         """
         error = 0
 
-        # set the type
-        #FIXME: not sure here:
-        self._gpib_connection.write('MODL 5')
-        # and the subtype
+        # disable modulation:
+        self._gpib_connection.write('MODL 0')
+        # and the subtype (analog,)
         self._gpib_connection.write('STYP 0')
 
         if freq is not None:
@@ -214,11 +230,31 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         #FIXME: catch the list number better:
         num_freq = len(freq)
 
-        self._gpib_connection.write('LSTC {0:d}'.format(num_freq))
+        self._gpib_connection.ask('LSTC? {0:d}'.format(num_freq))
 
 
         for index, entry in enumerate(freq):
             self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,N,N,N,N,N,N,N,N'.format(index, entry, power))
+
+        # the commands contains 15 entries, which are related to the following
+        # commands (in brackets the explanation):
+        #
+        #   '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15'
+        #
+        #   1=FREQ (frequency)
+        #   2=PHAS (phase)
+        #   3=AMPL (Amplitude of LF (BNC output))
+        #   4=OFSL (Offset of LF (BNC output))
+        #   5=AMPR
+        #   6=DISP
+        #   7=MODL/ENBL/ENBR
+        #   8=TYPE
+        #   9=MFNC ()
+        #     SFNC ()
+        # ...
+
+        # for entry in freq:
+        #     self._gpib_connection.write('{0:e},N,N,N,{1:f},N,N,N,N,N,N,N,N,N,N'.format(entry, power))
 
         # enable the created list:
         self._gpib_connection.write('LSTE 1')
