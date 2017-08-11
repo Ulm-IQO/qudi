@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
+    <width>1038</width>
     <height>727</height>
    </rect>
   </property>
@@ -18,6 +18,19 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <spacer name="horizontalSpacer">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>5</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="sizePolicy">
@@ -197,8 +210,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>946</width>
-     <height>30</height>
+     <width>1038</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -248,7 +261,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>550</width>
+     <width>650</width>
      <height>150</height>
     </size>
    </property>
@@ -271,77 +284,11 @@
     <layout class="QGridLayout" name="gridLayout_11">
      <item row="1" column="0">
       <layout class="QGridLayout" name="gridLayout_9">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Runtime:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Power:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="4">
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>Mode :</string>
-         </property>
-        </widget>
-       </item>
+       <property name="leftMargin">
+        <number>8</number>
+       </property>
        <item row="0" column="3">
-        <widget class="QLCDNumber" name="elapsed_time_DisplayWidget"/>
-       </item>
-       <item row="0" column="2">
-        <widget class="QLabel" name="label_8">
-         <property name="text">
-          <string>Elapsed Time (s) :</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Frequency:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="5">
-        <widget class="QComboBox" name="mode_ComboBox"/>
-       </item>
-       <item row="3" column="4">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Stop :</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Start:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="2">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Step:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0" colspan="6">
-        <widget class="Line" name="line">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="runtime_DoubleSpinBox">
+        <widget class="ScienDSpinBox" name="cw_power_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -355,14 +302,55 @@
           </size>
          </property>
          <property name="suffix">
-          <string>s</string>
+          <string>dBm</string>
+         </property>
+         <property name="decimals">
+          <number>5</number>
+         </property>
+         <property name="minimum">
+          <double>-1000.000000000000000</double>
          </property>
          <property name="maximum">
-          <double>10000000.000000000000000</double>
+          <double>100.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item row="3" column="3">
+       <item row="4" column="1">
+        <widget class="ScienDSpinBox" name="sweep_power_DoubleSpinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="suffix">
+          <string>dBm</string>
+         </property>
+         <property name="decimals">
+          <number>5</number>
+         </property>
+         <property name="minimum">
+          <double>-1000.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Power :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="3">
         <widget class="ScienDSpinBox" name="step_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -393,7 +381,53 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="2" column="1">
+        <widget class="QDoubleSpinBox" name="runtime_DoubleSpinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="suffix">
+          <string>s</string>
+         </property>
+         <property name="maximum">
+          <double>10000000.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Start :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QLCDNumber" name="elapsed_time_DisplayWidget">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="4">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Stop :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
         <widget class="ScienDSpinBox" name="start_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -424,7 +458,31 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="5">
+       <item row="2" column="5">
+        <widget class="QLCDNumber" name="elapsed_sweeps_DisplayWidget">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Step :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Elapsed Time (s) :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="5">
         <widget class="ScienDSpinBox" name="stop_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -436,6 +494,12 @@
           <size>
            <width>100</width>
            <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
           </size>
          </property>
          <property name="suffix">
@@ -452,8 +516,22 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="ScienDSpinBox" name="frequency_DoubleSpinBox">
+       <item row="3" column="0" colspan="6">
+        <widget class="Line" name="line">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Runtime:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="ScienDSpinBox" name="cw_frequency_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -486,31 +564,43 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="3">
-        <widget class="ScienDSpinBox" name="power_DoubleSpinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
+       <item row="0" column="2">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>CW Power :</string>
          </property>
-         <property name="maximumSize">
+        </widget>
+       </item>
+       <item row="2" column="4">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Elapsed Sweeps :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>CW Frequency :</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="6">
+        <widget class="Line" name="line_2">
+         <property name="minimumSize">
           <size>
-           <width>100</width>
-           <height>16777215</height>
+           <width>0</width>
+           <height>0</height>
           </size>
          </property>
-         <property name="suffix">
-          <string>dBm</string>
+         <property name="lineWidth">
+          <number>1</number>
          </property>
-         <property name="decimals">
-          <number>5</number>
+         <property name="midLineWidth">
+          <number>0</number>
          </property>
-         <property name="minimum">
-          <double>-1000.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>100.000000000000000</double>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -605,6 +695,18 @@
    </attribute>
    <addaction name="action_Save"/>
   </widget>
+  <widget class="QToolBar" name="cw_ToolBar">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_toggle_cw"/>
+  </widget>
   <action name="action_Settings">
    <property name="icon">
     <iconset>
@@ -677,6 +779,23 @@
     <string>Fit settings</string>
    </property>
   </action>
+  <action name="action_toggle_cw">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-start.png</normaloff>
+     <normalon>../../artwork/icons/oxygen/22x22/media-playback-stop.png</normalon>
+     <activeon>../../artwork/icons/oxygen/22x22/media-playback-stop.png</activeon>../../artwork/icons/oxygen/22x22/media-playback-start.png</iconset>
+   </property>
+   <property name="text">
+    <string>toggle_cw</string>
+   </property>
+   <property name="toolTip">
+    <string>toggle microwave CW output</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -697,9 +816,6 @@
  </customwidgets>
  <tabstops>
   <tabstop>runtime_DoubleSpinBox</tabstop>
-  <tabstop>frequency_DoubleSpinBox</tabstop>
-  <tabstop>power_DoubleSpinBox</tabstop>
-  <tabstop>mode_ComboBox</tabstop>
   <tabstop>start_freq_DoubleSpinBox</tabstop>
   <tabstop>step_freq_DoubleSpinBox</tabstop>
   <tabstop>stop_freq_DoubleSpinBox</tabstop>

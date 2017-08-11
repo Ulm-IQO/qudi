@@ -19,25 +19,25 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from collections import OrderedDict
 from cycler import cycler
+import datetime
+import inspect
 import logging
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 import sys
-import inspect
 import time
-import datetime
-import numpy as np
 
-from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
+from collections import OrderedDict
+from core.module import ConfigOption
 from core.util import units
-import matplotlib.pyplot as plt
-# Use the PDF backend to attach metadata
+from core.util.mutex import Mutex
+from logic.generic_logic import GenericLogic
 from matplotlib.backends.backend_pdf import PdfPages
-# Use Pillow (active fork from PIL) to attach metadata to PNG files
 from PIL import Image
 from PIL import PngImagePlugin
+
 
 class DailyLogHandler(logging.FileHandler):
     """
@@ -105,7 +105,6 @@ class DailyLogHandler(logging.FileHandler):
             super().emit(record)
 
 
-
 class FunctionImplementationError(Exception):
 
     def __init__(self, value):
@@ -124,30 +123,37 @@ class SaveLogic(GenericLogic):
     _modclass = 'savelogic'
     _modtype = 'logic'
 
+    _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
+    _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
+    log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')
+
     # Matplotlib style definition for saving plots
-    mpl_qd_style = {'axes.prop_cycle': cycler('color', ['#1f17f4',
-                                                        '#ffa40e',
-                                                        '#ff3487',
-                                                        '#008b00',
-                                                        '#17becf',
-                                                        '#850085'
-                                                        ]
-                                              ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
-                    'axes.edgecolor': '0.3',
-                    'xtick.color': '0.3',
-                    'ytick.color': '0.3',
-                    'axes.labelcolor': 'black',
-                    'font.size': '14',
-                    'lines.linewidth': '2',
-                    'figure.figsize': '12, 6',
-                    'lines.markeredgewidth': '0',
-                    'lines.markersize': '5',
-                    'axes.spines.right': True,
-                    'axes.spines.top': True,
-                    'xtick.minor.visible': True,
-                    'ytick.minor.visible': True,
-                    'savefig.dpi': '180'
-                    }
+    mpl_qd_style = {
+        'axes.prop_cycle': cycler(
+            'color',
+            ['#1f17f4',
+            '#ffa40e',
+            '#ff3487',
+            '#008b00',
+            '#17becf',
+            '#850085'
+            ]
+            ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
+        'axes.edgecolor': '0.3',
+        'xtick.color': '0.3',
+        'ytick.color': '0.3',
+        'axes.labelcolor': 'black',
+        'font.size': '14',
+        'lines.linewidth': '2',
+        'figure.figsize': '12, 6',
+        'lines.markeredgewidth': '0',
+        'lines.markersize': '5',
+        'axes.spines.right': True,
+        'axes.spines.top': True,
+        'xtick.minor.visible': True,
+        'ytick.minor.visible': True,
+        'savefig.dpi': '180'
+        }
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -155,52 +161,31 @@ class SaveLogic(GenericLogic):
         # locking for thread safety
         self.lock = Mutex()
 
-        self.log.info('The following configuration was found.')
-
         # name of active POI, default to empty string
         self.active_poi_name = ''
 
         # Some default variables concerning the operating system:
         self.os_system = None
-        self.default_unix_data_dir = 'Data'
-        self.default_win_data_dir = 'C:/Data/'
 
         # Chech which operation system is used and include a case if the
         # directory was not found in the config:
         if sys.platform in ('linux', 'darwin'):
             self.os_system = 'unix'
-            if 'unix_data_directory' in config:
-                self.data_dir = config['unix_data_directory']
-            else:
-                self.data_dir = self.default_unix_data_dir
-
+            self.data_dir = self._unix_data_dir
         elif 'win32' in sys.platform or 'AMD64' in sys.platform:
             self.os_system = 'win'
-            if 'win_data_directory' in config.keys():
-                self.data_dir = config['win_data_directory']
-            else:
-                self.data_dir = self.default_win_data_dir
+            self.data_dir = self._win_data_dir
         else:
-            self.log.error('Identify the operating system.')
+            raise Exception('Identify the operating system.')
 
         # start logging into daily directory?
-        if 'log_into_daily_directory' in config.keys():
-            if not isinstance(config['log_into_daily_directory'], bool):
-                self.log.warning('log entry in configuration is not a '
-                        'boolean. Falling back to default setting: False.')
+        if not isinstance(self.log_into_daily_directory, bool):
+                self.log.warning(
+                    'log entry in configuration is not a '
+                    'boolean. Falling back to default setting: False.')
                 self.log_into_daily_directory = False
-            else:
-                self.log_into_daily_directory = config[
-                        'log_into_daily_directory']
-        else:
-            self.log.warning('Configuration has no entry log. Falling back '
-                    'to default setting: False.')
-            self.log_into_daily_directory = False
-        self._daily_loghandler = None
 
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+        self._daily_loghandler = None
 
     def on_activate(self):
         """ Definition, configuration and initialisation of the SaveLogic.
@@ -572,78 +557,6 @@ class SaveLogic(GenericLogic):
                            comments=comments)
         return
 
-    def save_array_as_xml(self):
-        """ Save data in xml conding. """
-        pass
-#        if as_xml:
-#
-#            root = ET.Element(module_name)  # which class wanted to access the save
-#                                            # function
-#
-#            para = ET.SubElement(root, 'Parameters')
-#
-#            if parameters != None:
-#                for element in parameters:
-#                    ET.SubElement(para, element).text = parameters[element]
-#
-#            data_xml = ET.SubElement(root, 'data')
-#
-#            for entry in data:
-#
-#                dimension_data_array = len(np.shape(data[entry]))
-#
-#                # filter out the events which has only a single trace:
-#                if dimension_data_array == 1:
-#
-#                    value = ET.SubElement(data_xml, entry)
-#
-#                    for list_element in data[entry]:
-#
-#                        ET.SubElement(value, 'value').text = str(list_element)
-#
-#                elif dimension_data_array == 2:
-#
-#                    dim_list_entry = len(np.shape(data[entry][0]))
-#                    length_list_entry = np.shape(data[entry][0])[0]
-#                    if (dim_list_entry == 1) and (np.shape(data[entry][0])[0] == 2):
-#
-#                        # get from the keyword, which should be within the string
-#                        # separated by the delimiter ',' the description for the
-#                        # values:
-#                        try:
-#                            axis1 = entry.split(',')[0]
-#                            axis2 = entry.split(',')[1]
-#                        except:
-#                            print('Enter a commaseparated description for the given values!!!')
-#                            print('like:  dict_data[\'Frequency (MHz), Signal (arb. u.)\'] = 2d_list ')
-#                            print('But your data will be saved.')
-#
-#                            axis1 = str(entry)
-#                            axis2 = 'value2'
-#
-#                        for list_element in data[entry]:
-#
-#                            element = ET.SubElement(data_xml, 'value' ).text = str(list_element)
-##
-##                            ET.SubElement(element, str(axis1)).text = str(list_element[0])
-##                            ET.SubElement(element, str(axis2)).text = str(list_element[1])
-#
-#                    elif (dim_list_entry == 1):
-#
-#                        for list_element in data[entry]:
-#
-#                            row = ET.SubElement(data_xml, 'row')
-#
-#                            for sub_element in list_element:
-#
-#                                ET.SubElement(row, 'value').text = str(sub_element)
-#
-#
-#
-#            #write to file:
-#            tree = ET.ElementTree(root)
-#            tree.write('output.xml', pretty_print=True, xml_declaration=True)
-
     def get_daily_directory(self):
         """
         Creates the daily directory.
@@ -662,17 +575,6 @@ class SaveLogic(GenericLogic):
         # First check if the directory exists and if not then the default
         # directory is taken.
         if not os.path.exists(self.data_dir):
-                if self.data_dir != '':
-                    self.log.warning('The specified Data Directory in the '
-                            'config file does not exist. Using default '
-                            'instead.')
-                if self.os_system == 'unix':
-                    self.data_dir = self.default_unix_data_dir
-                elif self.os_system == 'win':
-                    self.data_dir = self.default_win_data_dir
-                else:
-                    self.log.error('Identify the operating system.')
-
                 # Check if the default directory does exist. If yes, there is
                 # no need to create it, since it will overwrite the existing
                 # data there.

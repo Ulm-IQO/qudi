@@ -19,24 +19,28 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import logging
 import core.logger
+import logging
+import numpy as np
+import os
+
+from collections import OrderedDict
+from core.module import StatusVar
+from .errordialog import ErrorDialog
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
 from qtpy.QtGui import QPalette
 from qtpy.QtWidgets import QWidget
+
 try:
     from qtconsole.inprocess import QtInProcessKernelManager
 except ImportError:
     from IPython.qt.inprocess import QtInProcessKernelManager
+
 try:
     from git import Repo
 except:
     pass
-from collections import OrderedDict
-from .errordialog import ErrorDialog
-import numpy as np
-import os
 
 try:
     import pyqtgraph as pg
@@ -59,6 +63,11 @@ class ManagerGui(GUIBase):
       It supports module loading, reloading, logging and other
       administrative tasks.
     """
+
+    # status vars
+    consoleFontSize = StatusVar('console_font_size', 10)
+
+    # signals
     sigStartAll = QtCore.Signal()
     sigStartModule = QtCore.Signal(str, str)
     sigReloadModule = QtCore.Signal(str, str)
@@ -297,8 +306,7 @@ Go, play.
 """.format(banner_modules)
         self._mw.consolewidget.banner = banner
         # font size
-        if 'console_font_size' in self._statusVariables:
-            self.consoleSetFontSize(self._statusVariables['console_font_size'])
+        self.consoleSetFontSize(self.consoleFontSize)
         # settings
         self._csd = ConsoleSettingsDialog()
         self._csd.accepted.connect(self.consoleApplySettings)
@@ -347,11 +355,7 @@ Go, play.
     def consoleKeepSettings(self):
         """ Write old values into config dialog.
         """
-        if 'console_font_size' in self._statusVariables:
-            self._csd.fontSizeBox.setProperty(
-                'value', self._statusVariables['console_font_size'])
-        else:
-            self._csd.fontSizeBox.setProperty('value', 10)
+        self._csd.fontSizeBox.setProperty('value', self.consoleFontSize)
 
     def consoleApplySettings(self):
         """ Apply values from config dialog to console.
@@ -360,7 +364,7 @@ Go, play.
 
     def consoleSetFontSize(self, fontsize):
         self._mw.consolewidget.font_size = fontsize
-        self._statusVariables['console_font_size'] = fontsize
+        self.consoleFontSize = fontsize
         self._mw.consolewidget.reset_font()
 
     def updateConfigWidgets(self):
