@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.process_control_interface import ProcessControlInterface
 from core.util.mutex import Mutex
 
@@ -34,6 +34,9 @@ class PiPWM(Base, ProcessControlInterface):
     _modclass = 'ProcessControlInterface'
     _modtype = 'hardware'
 
+    channel = ConfigOption('channel', 0, missing='warn')
+    freq = ConfigOption('frequency', 100)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -43,16 +46,8 @@ class PiPWM(Base, ProcessControlInterface):
     def on_activate(self):
         """ Activate module.
         """
-        config = self.getConfiguration()
-
-        if 'channel' in config:
-            channel = config['channel']
-        else:
-            channel = 0
-            self.log.warning('PWN channel not set, using 0')
-
         # pin mapping
-        if channel == 0:
+        if self.channel == 0:
             self.inapin = 5
             self.inbpin = 22
             self.pwmpin = 24
@@ -71,11 +66,6 @@ class PiPWM(Base, ProcessControlInterface):
             self.dibpin = 6
             self.fanpin = 13
 
-        if 'frequency' in config:
-            self.freq = config['frequency']
-        else:
-            self.freq = 100
-            self.log.warning('Frequency not set, using 100Hz.')
         self.setupPins()
         self.startPWM()
 

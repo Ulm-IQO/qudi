@@ -19,14 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-import time
-import random
 import numpy as np
+import random
+import time
 
-from core.base import Base
-from interface.slow_counter_interface import SlowCounterInterface
+from core.module import Base, Connector
 from interface.motor_interface import MotorInterface
+from interface.slow_counter_interface import SlowCounterInterface
+from qtpy import QtCore
 
 
 class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
@@ -38,7 +38,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
     _modtype = 'hardware'
 
     # Connectors
-    _connectors = {'counter1': 'SlowCounterInterface'}
+    counter1 = Connector(interface='SlowCounterInterface')
 
     _move_signal = QtCore.Signal()
 

@@ -20,10 +20,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
+from qtpy.QtCore import QObject
+from core.module import BaseMixin
 import warnings
 
-class GUIBase(Base):
+
+class GUIBaseMixin(BaseMixin):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
     _modclass = 'GUIBase'
@@ -40,3 +42,7 @@ class GUIBase(Base):
     def restoreWindowPos(self, window):
         if 'pos_x' in self._statusVariables and 'pos_y' in self._statusVariables:
             window.move(self._statusVariables['pos_x'],  self._statusVariables['pos_y'])
+
+
+class GUIBase(QObject, GUIBaseMixin):
+    pass

@@ -25,7 +25,7 @@ import time
 
 from collections import OrderedDict
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
 class MotorStagePI(Base, MotorInterface):
@@ -36,6 +36,40 @@ class MotorStagePI(Base, MotorInterface):
     _modclass = 'MotorStagePI'
     _modtype = 'hardware'
 
+    _com_port_pi_xyz = ConfigOption('com_port_pi_xyz', 'ASRL1::INSTR', missing='warn')
+    _pi_xyz_baud_rate = ConfigOption('pi_xyz_baud_rate', 9600, missing='warn')
+    _pi_xyz_timeout = ConfigOption('pi_xyz_timeout', 1000, missing='warn')
+    _pi_xyz_term_char = ConfigOption('pi_xyz_term_char', '\n', missing='warn')
+    _first_axis_label = ConfigOption('pi_first_axis_label', 'x', missing='warn')
+    _second_axis_label = ConfigOption('pi_second_axis_label', 'y', missing='warn')
+    _third_axis_label = ConfigOption('pi_third_axis_label', 'z', missing='warn')
+    _first_axis_ID = ConfigOption('pi_first_axis_ID', '1', missing='warn')
+    _second_axis_ID = ConfigOption('pi_second_axis_ID', '2', missing='warn')
+    _third_axis_ID = ConfigOption('pi_third_axis_ID', '3', missing='warn')
+
+    _min_first = ConfigOption('pi_first_min', -0.1, missing='warn')
+    _max_first = ConfigOption('pi_first_max', 0.1, missing='warn')
+    _min_second = ConfigOption('pi_second_min', -0.1, missing='warn')
+    _max_second = ConfigOption('pi_second_max', 0.1, missing='warn')
+    _min_third = ConfigOption('pi_third_min', -0.1, missing='warn')
+    _max_third = ConfigOption('pi_third_max', 0.1, missing='warn')
+
+    step_first_axis = ConfigOption('pi_first_axis_step', 1e-7, missing='warn')
+    step_second_axis = ConfigOption('pi_second_axis_step', 1e-7, missing='warn')
+    step_third_axis = ConfigOption('pi_third_axis_step', 1e-7, missing='warn')
+
+    _vel_min_first = ConfigOption('vel_first_min', 1e-5, missing='warn')
+    _vel_max_first = ConfigOption('vel_first_max', 5e-2, missing='warn')
+    _vel_min_second = ConfigOption('vel_second_min', 1e-5, missing='warn')
+    _vel_max_second = ConfigOption('vel_second_max', 5e-2, missing='warn')
+    _vel_min_third = ConfigOption('vel_third_min', 1e-5, missing='warn')
+    _vel_max_third = ConfigOption('vel_third_max', 5e-2, missing='warn')
+
+    _vel_step_first = ConfigOption('vel_first_axis_step', 1e-5, missing='warn')
+    _vel_step_second = ConfigOption('vel_second_axis_step', 1e-5, missing='warn')
+    _vel_step_third = ConfigOption('vel_third_axis_step', 1e-5, missing='warn')
+
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -44,215 +78,12 @@ class MotorStagePI(Base, MotorInterface):
         """ Initialisation performed during activation of the module.
         @return: error code
         """
-        # Read configs from config-file
-        config = self.getConfiguration()
-
-        # get the right com-ports from config
-        if 'com_port_pi_xyz' in config.keys():
-            self._com_port_pi_xyz = config['com_port_pi_xyz']
-        else:
-            self.log.error('No parameter "com_port_pi_xyz" found in config.\n'
-                    'Cannot connect to motorized stage!')
-
-        # get the the right baud rates from config
-        if 'pi_xyz_baud_rate' in config.keys():
-            self._pi_xyz_baud_rate = config['pi_xyz_baud_rate']
-        else:
-            self._pi_xyz_baud_rate = 9600
-            self.log.warning('No parameter "pi_xyz_baud_rate" found in '
-                    'config!\nTaking the baud rate {0} ')
-
-        # get the the right timeouts from config
-        if 'pi_xyz_timeout' in config.keys():
-            self._pi_xyz_timeout = config['pi_xyz_timeout']
-        else:
-            self._pi_xyz_timeout = 1000    # timeouts are given in millisecond in new pyvisa version
-            self.log.warning('No parameter "pi_xyz_timeout" found in '
-                    'config!\n'
-                    'Setting the timeout to {0} '
-                    'instead.'.format(self._pi_xyz_timeout))
-
-
-        # get the the right term_chars from config
-        if 'pi_xyz_term_char' in config.keys():
-            self._pi_xyz_term_char = config['pi_xyz_term_char']
-        else:
-            self._pi_xyz_term_char = '\n'
-            self.log.warning('No parameter "pi_xyz_term_char" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._pi_xyz_term_char))
-
-        #axis definition:
-        if 'pi_first_axis_label' in config.keys():
-            self._first_axis_label = config['pi_first_axis_label']
-        else:
-            self._first_axis_label = 'x'
-            self.log.warning('No parameter "pi_first_axis_label" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._first_axis_label))
-        if 'pi_second_axis_label' in config.keys():
-            self._second_axis_label = config['pi_second_axis_label']
-        else:
-            self._second_axis_label = 'y'
-            self.log.warning('No parameter "pi_second_axis_label" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._second_axis_label))
-        if 'pi_third_axis_label' in config.keys():
-            self._third_axis_label = config['pi_third_axis_label']
-        else:
-            self._third_axis_label = 'z'
-            self.log.warning('No parameter "pi_third_axis_label" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._third_axis_label))
-
-        if 'pi_first_axis_ID' in config.keys():
-            self._first_axis_ID = config['pi_first_axis_ID']
-        else:
-            self._first_axis_ID = '1'
-            self.log.warning('No parameter "pi_first_axis_ID" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._first_axis_ID))
-        if 'pi_second_axis_ID' in config.keys():
-            self._second_axis_ID = config['pi_second_axis_ID']
-        else:
-            self._second_axis_ID = '2'
-            self.log.warning('No parameter "pi_second_axis_ID" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._second_axis_ID))
-        if 'pi_third_axis_ID' in config.keys():
-            self._third_axis_ID = config['pi_third_axis_ID']
-        else:
-            self._third_axis_ID = '3'
-            self.log.warning('No parameter "pi_third_axis_ID" found in '
-                    'config!\nTaking the term_char {0} '
-                    'instead.'.format(self._third_axis_ID))
-
-
         self.rm = visa.ResourceManager()
-        self._serial_connection_xyz = self.rm.open_resource(resource_name=self._com_port_pi_xyz,
-                                                            baud_rate=self._pi_xyz_baud_rate,
-                                                            timeout=self._pi_xyz_timeout)
+        self._serial_connection_xyz = self.rm.open_resource(
+            resource_name=self._com_port_pi_xyz,
+            baud_rate=self._pi_xyz_baud_rate,
+            timeout=self._pi_xyz_timeout)
 
-        # Should be in config I guess
-
-        # setting the ranges of the axes - PI uses units of 10nm. Thus in order to convert to meters
-        # a multiplication with 1e7 is necessary
-        if 'pi_first_min' in config.keys():
-            self._min_first = config['pi_first_min']
-        else:
-            self._min_first = -0.1
-            self.log.warning('No parameter "pi_first_min" found in config!\n'
-                    'Taking -0.1m instead.')
-        if 'pi_first_max' in config.keys():
-            self._max_first = config['pi_first_max']
-        else:
-            self._max_first = 0.1
-            self.log.warning('No parameter "pi_first_max" found in config!\n'
-                    'Taking 0.1m instead.')
-        if 'pi_second_min' in config.keys():
-            self._min_second = config['pi_second_min']
-        else:
-            self._min_second = -0.1
-            self.log.warning('No parameter "pi_second_min" found in config!\n'
-                    'Taking -0.1m instead.')
-        if 'pi_second_max' in config.keys():
-            self._max_second = config['pi_second_max']
-        else:
-            self._max_second = 0.1
-            self.log.warning('No parameter "pi_second_max" found in config!\n'
-                    'Taking 0.1m instead.')
-        if 'pi_third_min' in config.keys():
-            self._min_third = config['pi_third_min']
-        else:
-            self._min_z = -0.1
-            self.log.warning('No parameter "pi_third_min" found in config!\n'
-                    'Taking -0.1m instead.')
-        if 'pi_third_max' in config.keys():
-            self._max_third = config['pi_third_max']
-        else:
-            self._max_third = 0.1
-            self.log.warning('No parameter "pi_third_max" found in config!\n'
-                    'Taking 0.1m instead.')
-
-        if 'pi_first_axis_step' in config.keys():
-            self.step_first_axis = config['pi_first_axis_step']
-        else:
-            self.step_first_axis = 1e-7
-            self.log.warning('No parameter "pi_first_axis_step" found in config!\n'
-                    'Taking 10nm instead.')
-
-        if 'pi_second_axis_step' in config.keys():
-            self.step_second_axis = config['pi_second_axis_step']
-        else:
-            self.step_second_axis = 1e-7
-            self.log.warning('No parameter "pi_second_axis_step" found in config!\n'
-                    'Taking 10nm instead.')
-
-        if 'pi_third_axis_step' in config.keys():
-            self.step_third_axis = config['pi_third_axis_step']
-        else:
-            self.step_third_axis = 1e-7
-            self.log.warning('No parameter "pi_third_axis_step" found in config!\n'
-                    'Taking 10nm instead.')
-
-
-        if 'vel_first_min' in config.keys():
-            self._vel_min_first = config['vel_first_min']
-        else:
-            self._vel_min_first = 1e-5
-            self.log.warning('No parameter "vel_first_min" found in config!\n'
-                             'Taking 1e-5m/s instead.')
-        if 'vel_first_max' in config.keys():
-            self._vel_max_first = config['vel_first_max']
-        else:
-            self._vel_max_first = 5e-2
-            self.log.warning('No parameter "vel_first_max" found in config!\n'
-                             'Taking 5e-2m/s instead.')
-        if 'vel_second_min' in config.keys():
-            self._vel_min_second = config['vel_second_min']
-        else:
-            self._vel_min_second = 1e-5
-            self.log.warning('No parameter "vel_second_min" found in config!\n'
-                             'Taking 1e-5m/s instead.')
-        if 'vel_second_max' in config.keys():
-            self._vel_max_second = config['vel_second_max']
-        else:
-            self._vel_max_second = 5e-2
-            self.log.warning('No parameter "vel_second_max" found in config!\n'
-                             'Taking 5e-2m/s instead.')
-        if 'vel_third_min' in config.keys():
-            self._vel_min_third = config['vel_third_min']
-        else:
-            self._vel_min_z = 1e-5
-            self.log.warning('No parameter "vel_third_min" found in config!\n'
-                             'Taking 1e-5m instead.')
-        if 'vel_third_max' in config.keys():
-            self._vel_max_third = config['vel_third_max']
-        else:
-            self._vel_max_third = 5e-2
-            self.log.warning('No parameter "vel_third_max" found in config!\n'
-                             'Taking 5e-2m/s instead.')
-
-        if 'vel_first_axis_step' in config.keys():
-            self._vel_step_first = config['vel_first_axis_step']
-        else:
-            self._vel_step_first = 1e-5
-            self.log.warning('No parameter "vel_first_axis_step" found in config!\n'
-                             'Taking 1e-5m/s instead.')
-
-        if 'vel_second_axis_step' in config.keys():
-            self._vel_step_second = config['vel_second_axis_step']
-        else:
-            self._vel_step_second = 1e-5
-            self.log.warning('No parameter "vel_second_axis_step" found in config!\n'
-                             'Taking 1e-5m/s instead.')
-
-        if 'vel_third_axis_step' in config.keys():
-            self._vel_step_third = config['vel_third_axis_step']
-        else:
-            self._vel_step_third = 1e-5
-            self.log.warning('No parameter "vel_third_axis_step" found in config!\n'
-                             'Taking 1e-5m/s instead.')
         return 0
 
 

@@ -40,7 +40,7 @@ def get_unit_prefix_dict():
         'f': 1e-15,
         'p': 1e-12,
         'n': 1e-9,
-        'micro': 1e-6,
+        'µ': 1e-6,
         'm': 1e-3,
         '': 1,
         'k': 1e3,

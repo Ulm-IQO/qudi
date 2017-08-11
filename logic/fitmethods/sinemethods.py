@@ -276,7 +276,6 @@ def make_sinedoublewithtwoexpdecay_model(self, prefix=None):
     @return tuple: (object model, object params), for more description see in
                    the method make_baresine_model.
     """
-
     if prefix is None:
         add_text = ''
     else:
@@ -287,10 +286,10 @@ def make_sinedoublewithtwoexpdecay_model(self, prefix=None):
 
     constant_model, params = self.make_constant_model(prefix=prefix)
 
-    two_sine_exp_decay_offset = sine_exp_decay_model1 + sine_exp_decay_model2 + constant_model
-    params = two_sine_exp_decay_offset.make_params()
+    sinedoublewithtwoexpdecay = sine_exp_decay_model1 + sine_exp_decay_model2 + constant_model
+    params = sinedoublewithtwoexpdecay.make_params()
 
-    return two_sine_exp_decay_offset, params
+    return sinedoublewithtwoexpdecay, params
 
 #############################################
 # Sum of three individual Sinus with offset #
@@ -662,6 +661,33 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
         self.log.error('The sineexponentialdecayoffset fit did not work.\n'
                      'Error message: {0}'.format(result.message))
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()
+
+    result_str_dict['Period'] = {'value': 1./result.params['frequency'].value,
+                                 'error': 1./result.params['frequency'].stderr,
+                                 'unit': units[0]}
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}
+    result_str_dict['Phase'] = {'value': result.params['phase'].value,
+                                'error': result.params['phase'].stderr,
+                                'unit': 'deg'}
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                 'error': result.params['lifetime'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['Beta'] = {'value': result.params['beta'].value,
+                                   'error': result.params['beta'].stderr,
+                                   'unit': ''}
+
+    result.result_str_dict = result_str_dict
 
     return result
 
@@ -786,6 +812,34 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
         self.log.error('The sineexponentialdecay fit did not work.\n'
                      'Error message: {0}'.format(result.message))
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()
+
+    result_str_dict['Period'] = {'value': 1./result.params['frequency'].value,
+                                 'error': 1./result.params['frequency'].stderr,
+                                 'unit': units[0]}
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}
+    result_str_dict['Phase'] = {'value': result.params['phase'].value,
+                                'error': result.params['phase'].stderr,
+                                'unit': 'deg'}
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                 'error': result.params['lifetime'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['Beta'] = {'value': result.params['beta'].value,
+                                   'error': result.params['beta'].stderr,
+                                   'unit': ''}
+
+    result.result_str_dict = result_str_dict
+
     return result
 
 def estimate_sinestretchedexponentialdecay(self, x_axis, data, params):
@@ -842,7 +896,43 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
                        'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    result_str_dict['Period 1'] = {'value': 1. / result.params['s1_frequency'].value,
+                                   'error': 1. / result.params['s1_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': 1. / result.params['s2_frequency'].value,
+                                   'error': 1. / result.params['s2_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['s1_amplitude'].value,
+                                      'error': result.params['s1_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
+                                      'error': result.params['s2_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
+                                  'error': result.params['s1_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
+                                  'error': result.params['s2_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
+
     return result
+
 
 def estimate_sinedouble(self, x_axis, data, params):
     """ Provides an estimator for initial values of two sines with offset fitting.
@@ -917,6 +1007,45 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                 'Error message: {}'.format(str(result.message)))
         result = two_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    result_str_dict['Period 1'] = {'value': 1. / result.params['s1_frequency'].value,
+                                   'error': 1. / result.params['s1_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': 1. / result.params['s2_frequency'].value,
+                                   'error': 1. / result.params['s2_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['s1_amplitude'].value,
+                                      'error': result.params['s1_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
+                                      'error': result.params['s2_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
+                                  'error': result.params['s1_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
+                                  'error': result.params['s2_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                 'error': result.params['lifetime'].stderr,
+                                 'unit': units[0]}
+
+    result.result_str_dict = result_str_dict
+
     return result
 
 def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
@@ -972,7 +1101,7 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
 # Sum of two individual Sinus exponential decays (and offset) #
 ###############################################################
 
-def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None, add_params=None): #Problem with stderr: x.stderr will always be 0 for this model
     """ Perform a two sine with two exponential decay and offset fit on the
         provided data.
 
@@ -1001,6 +1130,41 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
         self.log.warning('The sinedoublewithtwoexpdecay fit did not work. '
                 'Error message: {}'.format(str(result.message)))
         result = two_sine_two_exp_decay_offset.fit(data, x=x_axis, params=params)
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    result_str_dict['Period 1'] = {'value': 1. / result.params['e1_frequency'].value,
+                                                                      'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': 1. / result.params['e2_frequency'].value,
+                                                                     'unit': units[0]}
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['e1_amplitude'].value,
+                                                                            'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['e2_amplitude'].value,
+                                                                           'unit': units[1]}
+
+    result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
+                                                                    'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': result.params['e2_phase'].value,
+                                                                    'unit': 'deg'}
+
+    result_str_dict['Lifetime 1'] = {'value': result.params['e1_lifetime'].value,
+                                                                  'unit': units[0]}
+
+    result_str_dict['Lifetime 2'] = {'value': result.params['e1_lifetime'].value,
+                                                                  'unit': units[0]}
+
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                                                  'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
 
     return result
 
@@ -1087,6 +1251,53 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
                        'Error message: {}'.format(str(result.message)))
         result = two_sine_offset.fit(data, x=x_axis, params=params)
 
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    result_str_dict['Period 1'] = {'value': 1. / result.params['s1_frequency'].value,
+                                   'error': 1. / result.params['s1_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': 1. / result.params['s2_frequency'].value,
+                                   'error': 1. / result.params['s2_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 3'] = {'value': 1. / result.params['s3_frequency'].value,
+                                   'error': 1. / result.params['s3_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['s1_amplitude'].value,
+                                      'error': result.params['s1_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
+                                      'error': result.params['s2_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 3'] = {'value': result.params['s3_amplitude'].value,
+                                      'error': result.params['s3_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
+                                  'error': result.params['s1_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
+                                  'error': result.params['s2_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 3'] = {'value': result.params['s3_phase'].value,
+                                  'error': result.params['s3_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
+
     return result
 
 def estimate_sinetriple(self, x_axis, data, params):
@@ -1167,6 +1378,57 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
         self.log.warning('The sinetriplewithexpdecay fit did not work. '
                        'Error message: {}'.format(str(result.message)))
         result = three_sine_exp_decay_offset.fit(data, x=x_axis, params=params)
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    result_str_dict['Period 1'] = {'value': 1. / result.params['s1_frequency'].value,
+                                  'error': 1. / result.params['s1_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': 1. / result.params['s2_frequency'].value,
+                                   'error': 1. / result.params['s2_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 3'] = {'value': 1. / result.params['s3_frequency'].value,
+                                   'error': 1. / result.params['s3_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['s1_amplitude'].value,
+                                      'error': result.params['s1_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
+                                      'error': result.params['s2_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 3'] = {'value': result.params['s3_amplitude'].value,
+                                      'error': result.params['s3_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
+                                  'error': result.params['s1_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
+                                  'error': result.params['s2_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 3'] = {'value': result.params['s3_phase'].value,
+                                  'error': result.params['s3_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
+                                 'error': result.params['lifetime'].stderr,
+                                 'unit': units[0]}
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
 
     return result
 
@@ -1265,6 +1527,65 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
         self.log.warning('The twosinetwoexpdecayoffset fit did not work. '
                 'Error message: {}'.format(str(result.message)))
         result = three_sine_three_exp_decay_offset.fit(data, x=x_axis, params=params)
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui or OrderedDict()
+
+    result_str_dict['Period 1'] = {'value': 1. / result.params['e1_frequency'].value,
+                                   'error': 1. / result.params['e1_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 2'] = {'value': 1. / result.params['e2_frequency'].value,
+                                   'error': 1. / result.params['e2_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Period 3'] = {'value': 1. / result.params['e3_frequency'].value,
+                                   'error': 1. / result.params['e3_frequency'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Amplitude 1'] = {'value': result.params['e1_amplitude'].value,
+                                      'error': result.params['e1_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 2'] = {'value': result.params['e2_amplitude'].value,
+                                      'error': result.params['e2_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Amplitude 3'] = {'value': result.params['e3_amplitude'].value,
+                                      'error': result.params['e3_amplitude'].stderr,
+                                      'unit': units[1]}
+
+    result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
+                                  'error': result.params['e1_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 2'] = {'value': result.params['e2_phase'].value,
+                                  'error': result.params['e2_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Phase 3'] = {'value': result.params['e3_phase'].value,
+                                  'error': result.params['e3_phase'].stderr,
+                                  'unit': 'deg'}
+
+    result_str_dict['Lifetime 1'] = {'value': result.params['e1_lifetime'].value,
+                                   'error': result.params['e1_lifetime'].stderr,
+                                   'unit': units[0]}
+
+    result_str_dict['Lifetime 2'] = {'value': result.params['e2_lifetime'].value,
+                                     'error': result.params['e2_lifetime'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Lifetime 3'] = {'value': result.params['e3_lifetime'].value,
+                                     'error': result.params['e3_lifetime'].stderr,
+                                     'unit': units[0]}
+
+    result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result.result_str_dict = result_str_dict
 
     return result
 

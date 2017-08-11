@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.simple_laser_interface import SimpleLaserInterface
 from interface.simple_laser_interface import ControlMode
 from interface.simple_laser_interface import ShutterState
@@ -46,24 +46,15 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
     _modclass = 'lqlaser'
     _modtype = 'hardware'
 
+    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
+    maxpower = ConfigOption('maxpower', 0.250, missing='warn')
+    psu_type = ConfigOption('psu', 'SMD6000', missing='warn')
+
     def on_activate(self):
         """ Activate module.
         """
-        config = self.getConfiguration()
-        if 'psu' in config:
-            self.psu = PSUTypes[config['psu']]
-        else:
-            self.log.error('No laser PSU type given, this will not work.')
-
-        if 'interface' in config:
-            self.connect_laser(config['interface'])
-        else:
-            self.log.error('No port given, this will not work.')
-
-        if 'maxpower' in config:
-            self.maxpower = config['maxpower']
-        else:
-            self.maxpower = 0.250
+        self.psu = PSUTypes[self.psu_type]
+        self.connect_laser(self.serial_interface)
 
     def on_deactivate(self):
         """ Deactivate module.
