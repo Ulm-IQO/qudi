@@ -793,6 +793,17 @@ class Manager(QtCore.QObject):
                         defined_module['module.Class'])
 
                     modObj = self.importModule(base, module_name)
+
+                    # Ensure that the namespace of a module is reloaded before 
+                    # instantiation. That will not harm anything.
+                    # Even if the import is successful an error might occur 
+                    # during instantiation. E.g. in an abc metaclass, 
+                    # methods might be missing in a derived interface file.
+                    # Reloading the namespace will prevent the need to restart 
+                    # Qudi, if a module instantiation was not successful upon 
+                    # load.
+                    importlib.reload(modObj)  # keep the namespace of module up to date
+
                     self.configureModule(modObj, base, class_name, key, defined_module)
                     if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
                         if self.rm is None:
