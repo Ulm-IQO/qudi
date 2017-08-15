@@ -2678,7 +2678,7 @@ def exponentialdecay_testing():
     #generation of data for testing
     x_axis = np.linspace(1, 51, 20)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
-    mod, params = qudi_fitting.make_exponentialdecayoffset_model()
+    mod, params = qudi_fitting.make_decayexponential_model()
     print('Parameters of the model', mod.param_names,
           ' with the independet variable', mod.independent_vars)
 
@@ -2689,8 +2689,9 @@ def exponentialdecay_testing():
               params['lifetime'].value,'\n', 'offset', params['offset'].value)
 
     data_noisy = (mod.eval(x=x_axis, params=params)
-                      + 10* np.random.normal(size=x_axis.shape))
-    result = qudi_fitting.make_exponentialdecayoffset_fit(x_axis=x_axis, data=data_noisy, add_parameters=None)
+                      + 5* np.random.normal(size=x_axis.shape))
+    result = qudi_fitting.make_decayexponential_fit(x_axis=x_axis, data=data_noisy, 
+                                                    estimator=qudi_fitting.estimate_decayexponential, add_params=None)
     data = data_noisy
     offset = data[-max(1,int(len(x_axis)/10)):].mean()
 
@@ -2703,17 +2704,18 @@ def exponentialdecay_testing():
         if data_level[i] <= data_level.std():
             break
     print(i)
-    try:
-        data_level_log = np.log(data_level[0:i])
-        linear_result = qudi_fitting.make_linear_fit(axis=x_axis[0:i], data=data_level_log, add_parameters=None)
-        plt.plot(x_axis[0:i], data_level_log, 'ob')
-        plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
-        plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
-        plt.show()
-    except:#
-        plt.plot(x_axis, np.log(data_level), 'or')
-        plt.show()
-        print("linear fitting poorly conditioned")
+#    try:
+    data_level_log = np.log(data_level[0:i])
+    linear_result = qudi_fitting.make_linear_fit(x_axis=x_axis[0:i], data=data_level_log, 
+                                                 estimator=qudi_fitting.estimate_linear, add_params=None)
+    plt.plot(x_axis[0:i], data_level_log, 'ob')
+    plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
+    plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
+    plt.show()
+#    except:#
+#        plt.plot(x_axis, np.log(data_level), 'or')
+#        plt.show()
+#        print("linear fitting poorly conditioned")
     plt.plot(x_axis, data_noisy, 'ob')
     plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
     print(result.fit_report())
@@ -4123,7 +4125,7 @@ if __name__ == "__main__":
 #    double_poissonian_testing()
 #    double_poissonian_testing_data() # needs a selected file for data input
 #    bareexponentialdecay_testing()
-#    exponentialdecay_testing()
+    exponentialdecay_testing()
 #
 #    sineexponentialdecay_testing()
 #    sineexponentialdecay_testing_data() # needs a selected file for data input
@@ -4142,7 +4144,7 @@ if __name__ == "__main__":
 #    two_sine_exp_decay_offset_testing()
 #    two_sine_exp_decay_offset_testing2()
 #    two_sine_two_exp_decay_offset_testing()
-    two_sine_two_exp_decay_offset_testing2()
+#    two_sine_two_exp_decay_offset_testing2()
 #    three_sine_offset_testing()
 #    three_sine_offset_testing2()
 #    three_sine_exp_decay_offset_testing()
