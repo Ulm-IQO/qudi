@@ -3587,7 +3587,7 @@ def two_sine_two_exp_decay_offset_testing2():
     data = ampl1 * np.sin(2*np.pi*freq1*x_axis +phase1)*np.exp(-(x_axis/lifetime1))  +ampl2 * np.sin(2*np.pi*freq2*x_axis +phase2)*np.exp(-(x_axis/lifetime2)) + offset
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1
 
-    result = qudi_fitting.make_sinedoublewithtwoexpdecay_fit(x_axis=x_axis, data=noisy_data)
+    result = qudi_fitting.make_sinedoublewithtwoexpdecay_fit(x_axis=x_axis, data=noisy_data, estimator=qudi_fitting.estimate_sinedoublewithtwoexpdecay)
 
     plt.figure()
     plt.plot(x_axis, result.best_fit,'-', label='fit')
@@ -4109,11 +4109,11 @@ if __name__ == "__main__":
 #    double_lorentzpeak_testing2()
 #    double_lorentzian_fixedsplitting_testing()
 #    N14_testing()
-    N14_testing2()
+#    N14_testing2()
 #    N14_testing_data()
 #    N14_testing_data2()
 #    N15_testing()
-    N15_testing2()
+#    N15_testing2()
 #    powerfluorescence_testing()
 #    sine_testing()
 #    sine_testing2()
@@ -4142,7 +4142,7 @@ if __name__ == "__main__":
 #    two_sine_exp_decay_offset_testing()
 #    two_sine_exp_decay_offset_testing2()
 #    two_sine_two_exp_decay_offset_testing()
-#    two_sine_two_exp_decay_offset_testing2()
+    two_sine_two_exp_decay_offset_testing2()
 #    three_sine_offset_testing()
 #    three_sine_offset_testing2()
 #    three_sine_exp_decay_offset_testing()
