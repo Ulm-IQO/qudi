@@ -666,9 +666,22 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
 
     result_str_dict = dict()
 
-    result_str_dict['Period'] = {'value': 1./result.params['frequency'].value,
-                                 'error': 1./result.params['frequency'].stderr,
-                                 'unit': units[0]}
+    if np.isclose(result.params['frequency'].value, 0.0):
+        period = 0.0
+    else:
+        period = 1./result.params['frequency'].value
+
+    if np.isclose(result.params['frequency'].stderr, 0.0):
+        period_err = 0.0
+    else:
+        period_err = 1./result.params['frequency'].stderr
+
+    result_str_dict['Period'] = {'value': period,
+                                 'error': period_err,
+                                 'unit': '1/'+units[0]}
+    result_str_dict['Frequency'] = {'value': result.params['frequency'].value,
+                                    'error': result.params['frequency'].stderr,
+                                    'unit': units[0]}
     result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
                                     'error': result.params['amplitude'].stderr,
                                     'unit': units[1]}
