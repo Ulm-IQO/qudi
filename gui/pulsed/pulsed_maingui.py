@@ -1297,6 +1297,14 @@ class PulsedMeasurementGui(GUIBase):
         # set boundaries
         self._pe.extract_param_conv_std_dev_slider.setRange(1, 200)
         self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
+        self._pa.ana_param_x_axis_start_ScienDSpinBox.setRange(0, 1.0e99)
+        self._pa.ana_param_x_axis_inc_ScienDSpinBox.setRange(0, 1.0e99)
+        self._pa.ana_param_num_laser_pulse_SpinBox.setRange(1, 1e6)
+        self._pa.ana_param_record_length_SpinBox.setRange(0, 1.0e99)
+        self._pa.time_param_ana_periode_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_power_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pe.extract_param_threshold_SpinBox.setRange(1, 2**31)
 
         # ---------------------------------------------------------------------
         #                         Connect signals
