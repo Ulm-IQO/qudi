@@ -483,8 +483,18 @@ def estimate_sinewithoutoffset(self, x_axis, data, params):
     # appearing peaks.
     dft_x, dft_y = compute_dft(x_axis, data, zeropad_num=1)
 
-    stepsize = x_axis[1]-x_axis[0]  # for frequency axis
-    frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
+    stepsize = x_axis[1] - x_axis[0]  # for frequency axis
+
+    # remove the zero values so that it is still possible to take
+    # the logarithm. The logarithm acts as a non linear filter
+    # which decrease the noise in the dft and enhances the
+    # prominent frequencies.
+    indicies = np.where(dft_y > 0.0)
+
+    dft_x_red = dft_x[indicies]
+    dft_y_red = dft_y[indicies]
+
+    frequency_max = np.abs(dft_x_red[np.log(dft_y_red).argmax()])
 
     # find minimal distance to the next meas point in the corresponding time value>
     diff_array = np.ediff1d(x_axis)
