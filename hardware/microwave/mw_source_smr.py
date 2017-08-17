@@ -24,7 +24,7 @@ import visa
 import numpy as np
 import time
 
-from core.base import Base
+from core.module import Base
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -132,9 +132,10 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         """ Deinitialisation performed during deactivation of the module.
         """
 
-        self.off()  # turn the device off in case it is running
-        self._gpib_connection.close()   # close the gpib connection
-        self.rm.close()                 # close the resource manager
+        # self.off()  # turn the device off in case it is running
+        # self._gpib_connection.close()   # close the gpib connection
+        # self.rm.close()                 # close the resource manager
+        return
 
     def get_limits(self):
         """ Retrieve the limits of the device.
@@ -171,18 +172,18 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         if not is_running:
             return 0
 
+        self._write(':OUTP OFF')
+
         if mode == 'list':
             self._write(':FREQ:MODE CW')
 
-        self._write(':OUTP OFF')
-
         # check whether
-        while int(float(self._ask('OUTP:STAT?'))) != 0:
+        while int(float(self._ask('OUTP:STAT?').strip())) != 0:
             time.sleep(0.2)
 
-        if mode == 'list':
-            self._write(':LIST:LEARN')
-            self._write(':FREQ:MODE LIST')
+        # if mode == 'list':
+        #     self._write(':LIST:LEARN')
+        #     self._write(':FREQ:MODE LIST')
         return 0
 
 
@@ -364,9 +365,11 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         # This needs to be done due to stupid design of the list mode
         # (sweep is better).
-        self.cw_on()
         self._write(':LIST:LEARN')
         self._write(':FREQ:MODE LIST')
+
+        self._write(':OUTP:STAT ON')
+        # self.cw_on()
         dummy, is_running = self.get_status()
         while not is_running:
             time.sleep(0.2)
@@ -437,7 +440,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
             # delete all list entries and create/select a new list
             self._write(':SOUR:LIST:DEL:ALL')
-            self._write(":SOUR:LIST:SEL 'ODMR'")
+            self._write(':SOUR:LIST:SEL "LIST1"')
 
             FreqString = ''
             PowerString = ''
@@ -609,6 +612,8 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         return 0
 
+    def trigger(self):
+        self._write(':TRIG')
 
     def reset_device(self):
         """ Resets the device and sets the default values."""
