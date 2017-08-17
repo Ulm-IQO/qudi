@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import visa
+import time
 
 from core.module import Base, ConfigOption
 from interface.microwave_interface import MicrowaveInterface
@@ -37,6 +38,9 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+
+    _internal_mode = 'cw' # list and sweep might also be possible, but start
+                          # always with that
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -84,19 +88,19 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         """ Deinitialisation performed during deactivation of the module.
         """
 
-        self.off()
-        self._gpib_connection.close()
-        self.rm.close()
+        # self.off()
+        # self._gpib_connection.close()
+        # self.rm.close()
+        return
 
     def cw_on(self):
+        self._internal_mode = 'cw'
+        self.on()
         return 0
 
     def get_status(self):
-        return 'cw', False
-
-
-    def reset_sweeppos(self):
-        pass
+        is_running = bool(int(self._gpib_connection.ask('ENBR?').strip()))
+        return self._internal_mode, is_running
 
     def get_limits(self):
         limits = MicrowaveLimits()
@@ -191,16 +195,17 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
         return 0
 
-    def set_cw(self, freq=None, power=None, useinterleave=None):
-        """ Sets the MW mode to cw and additionally frequency and power
+    def set_cw(self, frequency=None, power=None, useinterleave=None):
+        """
+        Configures the device for cw-mode and optionally sets frequency and/or power
 
-        @param float freq: frequency to set in Hz
+        @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
 
-        @return int: error code (0:OK, -1:error)
-
-        Interleave option is used for arbitrary waveform generator devices.
+        @return tuple(float, float, str): with the relation
+            current frequency in Hz,
+            current power in dBm,
+            current mode
         """
         error = 0
 
@@ -209,17 +214,21 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         # and the subtype (analog,)
         self._gpib_connection.write('STYP 0')
 
-        if freq is not None:
-            error = self.set_frequency(freq)
-        else:
-            return -1
-        if power is not None:
-            error = self.set_power(power)
-        else:
-            return -1
-        return error
+        if frequency is not None:
+            error = self.set_frequency(frequency)
 
-    def set_list(self, freq=None, power=None):
+        set_freq = self.get_frequency()
+
+        if power is not None:
+            error = self.set_power(power) | error
+
+        set_power = self.get_power()
+
+        self._internal_mode = 'cw'
+
+        return set_freq, set_power, self._internal_mode
+
+    def set_list(self, frequency=None, power=None):
         """ Sets the MW mode to list mode
 
         @param list freq: list of frequencies in Hz
@@ -232,12 +241,12 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self._gpib_connection.write('LSTD')
 
         #FIXME: catch the list number better:
-        num_freq = len(freq)
+        num_freq = len(frequency)
 
         self._gpib_connection.ask('LSTC? {0:d}'.format(num_freq))
 
 
-        for index, entry in enumerate(freq):
+        for index, entry in enumerate(frequency):
             self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,N,N,N,N,N,N,N,N'.format(index, entry, power))
 
         # the commands contains 15 entries, which are related to the following
@@ -262,6 +271,13 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
         # enable the created list:
         self._gpib_connection.write('LSTE 1')
+        self._internal_mode = 'list'    # since if now the device is switched on
+                                        # the list will be used.
+
+        curr_freq = self.get_frequency()
+        curr_power = self.get_power()
+
+        return curr_freq, curr_power, self._internal_mode
 
     def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
@@ -270,12 +286,14 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         """
 
         self._gpib_connection.write('LSTR')
+        return 0
 
     def list_on(self):
         """ Switches on the list mode.
 
         @return int: error code (0:OK, -1:error)
         """
+        self._internal_mode = 'list'
         return self.on()
 
     def sweep_on(self):
@@ -283,6 +301,7 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self._internal_mode = 'sweep'
         return self.on()
 
     def set_sweep(self, start, stop, step, power):
@@ -303,13 +322,20 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         mod_type = 5 # blank
         mod_func = 3 # blank
         self._gpib_connection.write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,{3},{4},{5:e},{6:e},N,N,N,N'.format(index, start, power, mod_type, mod_func, rate, sweep_length))
+        self._internal_mode = 'sweep'
 
-    def reset_sweep(self):
+        self.log.error('This was never tested!')
+
+        return start, stop, step, power, self._internal_mode
+
+    def reset_sweeppos(self):
         """ Reset of MW sweep position to start
 
         @return int: error code (0:OK, -1:error)
         """
+        self._internal_mode = 'sweep'
         return self.reset_listpos()
+
 
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
@@ -321,5 +347,21 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         """
 
         #FIXME: that method is not used propertly. For now this
+        self.log.warning('No external trigger channel can be set in this '
+                         'hardware. Method will be skipped.')
+        return 0
+
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        Ensure that the Frequency was set when the function returns.
+        """
         # serves as a software trigger
         self._gpib_connection.write('*TRG')
+        # Check whether all pending operation are successful and finished:
+        self._gpib_connection.ask('*OPC?')
+        self._gpib_connection.ask('*OPC?')
+        # while not bool(int(self._gpib_connection.ask('*OPC?').strip())):
+        #     pass
+        time.sleep(0.008)
+
