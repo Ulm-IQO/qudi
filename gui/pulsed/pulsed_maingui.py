@@ -886,6 +886,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def load_block_in_editor(self, block_obj):
         self.block_editor.load_pulse_block(block_obj)
+        if block_obj is not None:
+            self._pg.curr_block_name_LineEdit.setText(block_obj.name)
         return
 
     def load_ensemble_in_editor(self, ensemble_obj, ensemble_params):
@@ -902,6 +904,8 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.curr_ensemble_bins_SpinBox.setValue(0)
             self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
+        if ensemble_obj is not None:
+            self._pg.curr_ensemble_name_LineEdit.setText(ensemble_obj.name)
         return
 
     def load_sequence_in_editor(self, sequence_obj, sequence_params):
@@ -916,6 +920,8 @@ class PulsedMeasurementGui(GUIBase):
             self._sg.curr_sequence_length_DSpinBox.setValue(0.0)
             self._sg.curr_sequence_bins_SpinBox.setValue(0)
             self._sg.curr_sequence_size_DSpinBox.setValue(0.0)
+        if sequence_obj is not None:
+            self._sg.curr_sequence_name_LineEdit.setText(sequence_obj.name)
         return
 
     def update_block_dict(self, block_dict):
