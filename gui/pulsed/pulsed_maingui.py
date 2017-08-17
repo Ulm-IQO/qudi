@@ -943,6 +943,16 @@ class PulsedMeasurementGui(GUIBase):
         @param ensemble_dict:
         @return:
         """
+        # Check if an ensemble has been added. In that case set the current index to the new one.
+        # In all other cases try to maintain the current item and if it was removed, set the first.
+        text_to_set = None
+        if len(ensemble_dict) == self._pg.gen_ensemble_ComboBox.count() + 1:
+            for key in ensemble_dict:
+                if self._pg.gen_ensemble_ComboBox.findText(key) == -1:
+                    text_to_set = key
+        else:
+            text_to_set = self._pg.gen_ensemble_ComboBox.currentText()
+
         self.sequence_editor.set_ensemble_dict(ensemble_dict)
         # block signals
         self._pg.gen_ensemble_ComboBox.blockSignals(True)
@@ -952,6 +962,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_ensemble_ComboBox.addItems(list(ensemble_dict))
         self._pg.saved_ensembles_ComboBox.clear()
         self._pg.saved_ensembles_ComboBox.addItems(list(ensemble_dict))
+        if text_to_set is not None:
+            index = self._pg.gen_ensemble_ComboBox.findText(text_to_set)
+            if index != -1:
+                self._pg.gen_ensemble_ComboBox.setCurrentIndex(index)
         # unblock signals
         self._pg.gen_ensemble_ComboBox.blockSignals(False)
         self._pg.saved_ensembles_ComboBox.blockSignals(False)
@@ -963,6 +977,16 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_dict:
         @return:
         """
+        # Check if a sequence has been added. In that case set the current index to the new one.
+        # In all other cases try to maintain the current item and if it was removed, set the first.
+        text_to_set = None
+        if len(sequence_dict) == self._sg.gen_sequence_ComboBox.count() + 1:
+            for key in sequence_dict:
+                if self._sg.gen_sequence_ComboBox.findText(key) == -1:
+                    text_to_set = key
+        else:
+            text_to_set = self._sg.gen_sequence_ComboBox.currentText()
+
         # block signals
         self._sg.gen_sequence_ComboBox.blockSignals(True)
         self._sg.saved_sequences_ComboBox.blockSignals(True)
@@ -971,6 +995,10 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.gen_sequence_ComboBox.addItems(list(sequence_dict))
         self._sg.saved_sequences_ComboBox.clear()
         self._sg.saved_sequences_ComboBox.addItems(list(sequence_dict))
+        if text_to_set is not None:
+            index = self._sg.gen_sequence_ComboBox.findText(text_to_set)
+            if index != -1:
+                self._sg.gen_sequence_ComboBox.setCurrentIndex(index)
         # unblock signals
         self._sg.gen_sequence_ComboBox.blockSignals(False)
         self._sg.saved_sequences_ComboBox.blockSignals(False)
