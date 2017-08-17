@@ -259,6 +259,8 @@ class ODMRGui(GUIBase):
         self.sigRuntimeChanged.connect(self._odmr_logic.set_runtime, QtCore.Qt.QueuedConnection)
         self.sigNumberOfLinesChanged.connect(self._odmr_logic.set_matrix_line_number,
                                              QtCore.Qt.QueuedConnection)
+        self.sigClockFreqChanged.connect(self._odmr_logic.set_clock_frequency,
+                                         QtCore.Qt.QueuedConnection)
         self.sigSaveMeasurement.connect(self._odmr_logic.save_odmr_data, QtCore.Qt.QueuedConnection)
 
         # Update signals coming from logic:
@@ -308,6 +310,7 @@ class ODMRGui(GUIBase):
         self.sigMwSweepParamsChanged.disconnect()
         self.sigRuntimeChanged.disconnect()
         self.sigNumberOfLinesChanged.disconnect()
+        self.sigClockFreqChanged.disconnect()
         self.sigSaveMeasurement.disconnect()
         self._mw.odmr_cb_manual_RadioButton.clicked.disconnect()
         self._mw.odmr_cb_centiles_RadioButton.clicked.disconnect()
