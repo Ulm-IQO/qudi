@@ -228,27 +228,78 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
 
             for index, entry in enumerate(frequency):
-                self._write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,N,N,N,N,N,N,N,N'.format(index, entry, power))
+                self._write('LSTP {0:d},{1:e},N,N,N,{2:f},N,N,N,N,N,N,N,N,N,N'
+                            ''.format(index, entry, power))
 
-            # the commands contains 15 entries, which are related to the following
-            # commands (in brackets the explanation):
+            # the commands contains 15 entries, which are related to the
+            # following commands (in brackets the explanation), if parameter is
+            # specified as 'N', then it will be left unchanged.
             #
             #   '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15'
             #
-            #   1=FREQ (frequency)
-            #   2=PHAS (phase)
-            #   3=AMPL (Amplitude of LF (BNC output))
-            #   4=OFSL (Offset of LF (BNC output))
-            #   5=AMPR
-            #   6=DISP
-            #   7=MODL/ENBL/ENBR
-            #   8=TYPE
-            #   9=MFNC ()
-            #     SFNC ()
-            # ...
-
-            # for entry in freq:
-            #     self._gpib_connection.write('{0:e},N,N,N,{1:f},N,N,N,N,N,N,N,N,N,N'.format(entry, power))
+            #   Position explanation:
+            #
+            #   1 = FREQ (frequency in exponential representation: e.g. 1.45e9)
+            #   2 = PHAS (phase in degree as float, e.g.45.0 )
+            #   3 = AMPL (Amplitude of LF in dBm as float, BNC output, e.g. -45.0)
+            #   4 = OFSL (Offset of LF in Volt as float, BNC output, e.g. 0.02)
+            #   5 = AMPR (Amplitude of RF in dBm as float, Type N output, e.g. -45.0)
+            #   6 = DISP (set the Front panel display type as integer)
+            #           0: Modulation Type
+            #           1: Modulation Function
+            #           2: Frequency
+            #           3: Phase
+            #           4: Modulation Rate or Period
+            #           5: Modulation Deviation or Duty Cycle
+            #           6: RF Type N Amplitude
+            #           7: BNC Amplitude
+            #           10: BNC Offset
+            #           13: I Offset
+            #           14: Q Offset
+            #   7 = Enable/Disable modulation by an integer number, with the
+            #       following bit meaning:
+            #           Bit 0: MODL (Enable modulation)
+            #           Bit 1: ENBL (Disable LF, BNC output)
+            #           Bit 2: ENBR (Disable RF, Type N output)
+            #           Bit 3:  -   (Disable Clock output)
+            #           Bit 4:  -   (Disable HF, RF doubler output)
+            #   8 = TYPE (Modulation type, integer number with the meaning)
+            #           0: AM/ASK   (amplitude modulation)
+            #           1: FM/FSK   (frequency modulation)
+            #           2: ΦM/PSK   (phase modulation)
+            #           3: Sweep
+            #           4: Pulse
+            #           5: Blank
+            #           7: QAM (quadrature amplitude modulation)
+            #           8: CPM (continuous phase modulation)
+            #           9: VSB (vestigial/single sideband modulation)
+            #   9 = Modulation function, integer number. Note that not all
+            #       values are valid in all modulation modes. In brackets
+            #       behind the possible modulation functions are denoted with
+            #       the meaning: MFNC = AM/FM/ΦM,  SFNC = Sweep,
+            #                    PFNC = Pulse/Blank, QFNC = IQ
+            #           0: Sine                 MFNC, SFNC,       QFNC
+            #           1: Ramp                 MFNC, SFNC,       QFNC
+            #           2: Triangle             MFNC, SFNC,       QFNC
+            #           3: Square               MFNC,       PFNC, QFNC
+            #           4: Phase noise          MFNC,       PFNC, QFNC
+            #           5: External             MFNC, SFNC, PFNC, QFNC
+            #           6: Sine/Cosine                            QFNC
+            #           7: Cosine/Sine                            QFNC
+            #           8: IQ Noise                               QFNC
+            #           9: PRBS symbols                           QFNC
+            #           10: Pattern (16 bits)                     QFNC
+            #           11: User waveform       MFNC, SFNC, PFNC, QFNC
+            #  10 = RATE/SRAT/(PPER, RPER)
+            #       Modulation rate in frequency as float, e.g. 20.4 (for 20.4kHz)
+            #       with the meaning
+            #  11 = (ADEP, ANDP)/(FDEV, FNDV)/(PDEV, PNDV)/SDEV/PWID
+            #       Modulation deviation in percent as float (e.g. 90.0 for 90%
+            #       modulation depth)
+            #  12 = Amplitude of clock output
+            #  13 = Offset of clock output
+            #  14 = Amplitude of HF (RF doubler output)
+            #  15 = Offset of rear DC
 
             # enable the created list:
             self._write('LSTE 1')
@@ -320,7 +371,6 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        #FIXME: that method is not used propertly. For now this
         self.log.warning('No external trigger channel can be set in this '
                          'hardware. Method will be skipped.')
         return 0
@@ -378,6 +428,12 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self._write('FREQ {0:e}'.format(freq))
         return 0
 
+    def reset_device(self):
+        """ Resets the device and sets the default values."""
+        self._write('*RST')
+        self._write('ENBR 0')   # turn off Type N output
+        self._write('ENBL 0')   # turn off BNC output
+
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
 
@@ -388,6 +444,6 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         # Check whether all pending operation are successful and finished:
         self._ask('*OPC?')
 
-        time.sleep(self._FREQ_SWITCH_SPEED) # that is the switching speed
+        time.sleep(self._FREQ_SWITCH_SPEED)     # that is the switching speed
         return
 

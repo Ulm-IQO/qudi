@@ -555,11 +555,11 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         Set the Amplitude modulation based on an external DC signal source and
         switch on the device after configuration.
         """
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write('AM:SOUR EXT')
-        self._gpib_connection.write('AM:EXT:COUP DC')
-        self._gpib_connection.write('AM {0:f}'.format(float(depth)))
-        self._gpib_connection.write('AM:STAT ON')
+
+        self._write('AM:SOUR EXT')
+        self._write('AM:EXT:COUP DC')
+        self._write('AM {0:f}'.format(float(depth)))
+        self._write('AM:STAT ON')
 
         return 0
 
@@ -569,19 +569,22 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':AM:STAT OFF')
+        self._write(':AM:STAT OFF')
 
         return 0
 
     def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        Ensure that the Frequency was set when the function returns.
+        """
         self._write(':TRIG')
 
     def reset_device(self):
         """ Resets the device and sets the default values."""
-        self._gpib_connection.write(':SYSTem:PRESet')
-        self._gpib_connection.write('*RST')
-        self._gpib_connection.write(':OUTP OFF')
+        self._write(':SYSTem:PRESet')
+        self._write('*RST')
+        self._write(':OUTP OFF')
 
         return 0
 
