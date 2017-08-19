@@ -661,6 +661,8 @@ class PulsedMeasurementLogic(GenericLogic):
         #       and how the used thread principle was used in this method (or
         #       will be use in another method).
         self.sigMeasurementRunningUpdated.emit(True, False)
+        if self.show_laser_index > self.number_of_lasers:
+            self.set_laser_to_show(0, self.show_raw_data)
         if stashed_raw_data_tag == '':
             stashed_raw_data_tag = None
         with self.threadlock:
