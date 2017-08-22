@@ -88,8 +88,20 @@ class ScaledFloat(float):
             exponent = -8
         if exponent > 8:
             exponent = 8
-        prefix = 'yzafpnum kMGTPEZY'
+        prefix = 'yzafpnµm kMGTPEZY'
         return prefix[8 + exponent].strip()
+
+    @property
+    def scale_val(self):
+        """ Returns the scale value which can be used to devide the actual value
+
+        Examples
+        --------
+        m: 1e-3
+        M: 1e6
+        """
+        scale_str = self.scale
+        return get_unit_prefix_dict()[scale_str]
 
     def __format__(self, fmt):
         """
