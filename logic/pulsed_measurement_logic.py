@@ -1073,7 +1073,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Do not include fit curve if there is no fit calculated.
         if max(self.signal_plot_y_fit) > 0:
-            ax1.plot(self.signal_plot_x_fit, self.signal_plot_y_fit,
+            x_axis_fit_scaled = self.signal_plot_x_fit / scaled_float.scale_val
+            ax1.plot(x_axis_fit_scaled, self.signal_plot_y_fit,
                      color=colors[2], marker='None', linewidth=1.5,
                      label='fit data trace 1')
 
