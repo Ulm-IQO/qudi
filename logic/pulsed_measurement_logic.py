@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
+from core.util.units import ScaledFloat
 from logic.generic_logic import GenericLogic
 
 
@@ -1033,23 +1034,63 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.conv_std_dev
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
+
+        # extract the possible colors from the colorscheme:
+        prop_cycle = self._save_logic.mpl_qd_style['axes.prop_cycle']
+        colors = {}
+        for i, color_setting in enumerate(prop_cycle):
+            colors[i] = color_setting['color']
+
+        # scale the x_axis for plotting
+        max_val = np.max(self.signal_plot_x)
+        scaled_float = ScaledFloat(max_val)
+        counts_prefix = scaled_float.scale
+        x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
+
+
         fig, ax1 = plt.subplots()
         if with_error:
-            ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y, yerr=self.measuring_error_plot_y, fmt='-o')
-            if self.alternating:
-                ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y2, yerr=self.measuring_error_plot_y2, fmt='-s')
-        else:
-            ax1.plot(self.signal_plot_x, self.signal_plot_y)
-            if self.alternating:
-                ax1.plot(self.signal_plot_x, self.signal_plot_y2)
-        ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-        ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
-        ax1.set_ylabel('norm. sig (a.u.)')
-        fig.tight_layout()
+            ax1.errorbar(x=x_axis_scaled, y=self.signal_plot_y,
+                         yerr=self.measuring_error_plot_y, fmt='-o',
+                         linestyle=':', linewidth=0.5, color=colors[0],
+                         ecolor=colors[1], capsize=2, capthick=0.7,
+                         label='data trace 1')
 
-        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters, fmt='%.15e',
-                                   filepath=filepath, filelabel=filelabel, delimiter='\t',
-                                   plotfig=fig)
+            if self.alternating:
+                ax1.errorbar(x=x_axis_scaled, y=self.signal_plot_y2,
+                             yerr=self.measuring_error_plot_y2, fmt='-D',
+                             linestyle=':', linewidth=0.5, color=colors[3],
+                             ecolor=colors[4],  capsize=2, capthick=0.7,
+                             label='data trace 2')
+
+        else:
+            ax1.plot(x_axis_scaled, self.signal_plot_y, '-o', color=colors[0],
+                     linestyle=':', linewidth=0.5)
+
+            if self.alternating:
+                ax1.plot(x_axis_scaled, self.signal_plot_y2, '-o',
+                         color=colors[3], linestyle=':', linewidth=0.5)
+
+        # Do not include fit curve if there is no fit calculated.
+        if max(self.signal_plot_y_fit) > 0:
+            ax1.plot(self.signal_plot_x_fit, self.signal_plot_y_fit,
+                     color=colors[2], marker='None', linewidth=1.5,
+                     label='fit data trace 1')
+
+        #FIXME: no plot for the alternating graph, use for that graph colors[5]
+        # ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
+
+        ax1.set_xlabel('controlled variable (' + counts_prefix + controlled_val_unit + ')')
+        ax1.set_ylabel('norm. sig (a.u.)')
+
+        fig.tight_layout()
+        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                   mode="expand", borderaxespad=0.)
+
+        self._save_logic.save_data(data, timestamp=timestamp,
+                                   parameters=parameters, fmt='%.15e',
+                                   filepath=filepath, filelabel=filelabel,
+                                   delimiter='\t', plotfig=fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####
