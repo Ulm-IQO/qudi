@@ -1287,32 +1287,32 @@ class PulsedMeasurementGui(GUIBase):
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image)
-        self.signal_image2 = pg.PlotDataItem(pen=palette.c3)
+        self.signal_image2 = pg.PlotDataItem(pen=palette.c4)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image2)
         self._pa.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the fit of the data in the main pulse analysis display:
-        self.fit_image = pg.PlotDataItem(pen=palette.c2)
+        self.fit_image = pg.PlotDataItem(pen=palette.c3)
         self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
 
         # Configure the errorbars of the data in the main pulse analysis display:
         self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
-                                                       top=0., bottom=0., pen=palette.c1)
+                                                       top=0., bottom=0., pen=palette.c2)
         self.signal_image_error_bars2 = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
-                                                        top=0., bottom=0., pen=palette.c3)
+                                                        top=0., bottom=0., pen=palette.c5)
 
         # Configure the second pulse analysis display:
         self.second_plot_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
-        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c3)
+        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c4)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the lasertrace plot display:
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
-        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3))
+        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
-        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3))
+        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
         self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
         self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
