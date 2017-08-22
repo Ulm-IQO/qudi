@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 from lmfit.models import Model
+import numpy as np
 
 
 ################################################################################
@@ -107,10 +108,6 @@ def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add
 
     result = mod_final.fit(data, x=x_axis, params=params)
 
-    self.log.error(
-        'The Powerfluorescence fit did not work. Here the fit '
-        'result message:\n {0}'.format(result.message))
-
     return result
 
 
@@ -131,6 +128,23 @@ def estimate_hyperbolicsaturation(self, x_axis, data, params):
 
     error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
 
-    # TODO: some estimated values should be input here
+    x_axis_half = x_axis[len(x_axis)//2:]
+    data_half = data[len(x_axis)//2:]
+
+    results_lin = self.make_linear_fit(x_axis=x_axis_half, data=data_half,
+                                           estimator=self.estimate_linear)
+
+    est_slope = results_lin.params['slope'].value
+    est_offset = data.min()
+
+    data_red = data - est_slope*x_axis - est_offset
+    est_I_sat = np.mean(data_red[len(data_red)//2:])
+    est_P_sat = est_I_sat/2
+
+    params['I_sat'].value = est_I_sat
+    params['slope'].value = est_slope
+    params['offset'].value = est_offset
+    params['P_sat'].value = est_P_sat
+
 
     return error, params
