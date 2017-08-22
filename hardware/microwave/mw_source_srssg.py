@@ -40,7 +40,7 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
     _internal_mode = 'cw'   # list and sweep might also be possible, but start
-                            # always with that
+                            # always with cw
 
     _FREQ_SWITCH_SPEED = 0.008  # Frequency switching speed in s
 
@@ -75,15 +75,24 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
                                              self._FIRMWARE_VERSION))
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
-        """
+        """ Deinitialisation performed during deactivation of the module."""
 
+        #FIXME: This has to be here but will cause an error, since hardware
+        #       modules are deactivated first, calling off() method in the logic
+        #       module deactivation will through an error if gpib connection is
+        #       closed already.
         # self.off()
         # self._gpib_connection.close()
         # self.rm.close()
         return
 
     def cw_on(self):
+        """
+        Switches on cw microwave output.
+        Must return AFTER the device is actually running.
+
+        @return int: error code (0:OK, -1:error)
+        """
         self._internal_mode = 'cw'
         self.on()
         return 0
@@ -141,10 +150,18 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
     def off(self):
         """ Switches off any microwave output.
+        Must return AFTER the device is actually stopped.
 
         @return int: error code (0:OK, -1:error)
         """
         self._write('ENBR 0')
+
+        # check whether device has stopped
+        dummy, is_running = self.get_status()
+        while is_running:
+            time.sleep(0.1)
+            dummy, is_running = self.get_status()
+
         return 0
 
     def get_power(self):
@@ -405,6 +422,12 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
         self._write('ENBR 1')
+
+        dummy, is_running = self.get_status()
+        while not is_running:
+            time.sleep(0.1)
+            dummy, is_running = self.get_status()
+
         return 0
 
     def set_power(self, power=0.):
