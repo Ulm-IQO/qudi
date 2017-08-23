@@ -24,7 +24,7 @@ import visa
 import numpy as np
 import time
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -46,6 +46,9 @@ class MicrowaveSMR(Base, MicrowaveInterface):
     _modclass = 'MicrowaveSMR'
     _modtype = 'hardware'
 
+    _gpib_address = ConfigOption('gpib_address', missing='error')
+    _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
 
@@ -57,30 +60,14 @@ class MicrowaveSMR(Base, MicrowaveInterface):
                                     # the device should stay at one list entry.
                                     # here dwell time can be between 10ms and 5s
 
-        # checking for the right configuration
-        config = self.getConfiguration()
-
-        if 'gpib_address' in config.keys():
-            self._gpib_address = config['gpib_address']
-        else:
-            self.log.error('MicrowaveSMR: did not find parameter '
-                           '"gpib_address" in configuration.')
-
-        if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = int(config['gpib_timeout'])*1000
-        else:
-            self._gpib_timeout = 10*1000
-            self.log.error('MicrowaveSMR: did not find "gpib_timeout" in '
-                           'configration. It will be set to {0} '
-                           'seconds.'.format(self._gpib_timeout))
-
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
             # such a stupid stuff, the timeout is specified here in ms not in
             # seconds any more, take that into account.
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+            self._gpib_connection = self.rm.open_resource(
+                                        self._gpib_address,
+                                        timeout=self._gpib_timeout*1000)
 
             self._gpib_connection.write_termination = "\r\n"
             self._gpib_connection.read_termination = None
@@ -91,7 +78,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
              self.log.error('MicrowaveSMR: could not connect to the GPIB '
                             'address "{0}".'.format(self._gpib_address))
 
-        self._gpib_connection.write('*WAI')
         self._FREQ_MAX = float(self._ask('FREQuency? MAX'))
         self._FREQ_MIN = float(self._ask('FREQuency? MIN'))
         self._POWER_MAX = float(self._ask('POWER? MAX'))
@@ -109,13 +95,15 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         # [free, occupied] and the sum of that is the total list entries.
         max_list_entries = self._ask('SOUR:LIST:FREE?')
         self._MAX_LIST_ENTRIES = sum([int(entry) for entry in max_list_entries.strip().split(',')])
+
         # FIXME: Not quite sure about this:
         self._MAX_SWEEP_ENTRIES = 10001
 
         # extract the options from the device:
         message = self._ask('*OPT?').strip().split(',')
-        self.OPTIONS = [entry for entry in message if entry != '0']
+        self._OPTIONS = [entry for entry in message if entry != '0']
 
+        # get the info from the device:
         message = self._ask('*IDN?').strip().split(',')
         self._BRAND = message[0]
         self._MODEL = message[1]
@@ -132,9 +120,10 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         """ Deinitialisation performed during deactivation of the module.
         """
 
-        self.off()  # turn the device off in case it is running
-        self._gpib_connection.close()   # close the gpib connection
-        self.rm.close()                 # close the resource manager
+        # self.off()  # turn the device off in case it is running
+        # self._gpib_connection.close()   # close the gpib connection
+        # self.rm.close()                 # close the resource manager
+        return
 
     def get_limits(self):
         """ Retrieve the limits of the device.
@@ -171,20 +160,16 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         if not is_running:
             return 0
 
+        self._write(':OUTP OFF')
+
         if mode == 'list':
             self._write(':FREQ:MODE CW')
 
-        self._write(':OUTP OFF')
-
         # check whether
-        while int(float(self._ask('OUTP:STAT?'))) != 0:
+        while int(float(self._ask('OUTP:STAT?').strip())) != 0:
             time.sleep(0.2)
 
-        if mode == 'list':
-            self._write(':LIST:LEARN')
-            self._write(':FREQ:MODE LIST')
         return 0
-
 
     def get_status(self):
         """ Get the current status of the MW source, i.e. the mode
@@ -192,6 +177,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
         """
+
         is_running = bool(int(self._ask('OUTP:STAT?')))
         mode = self._ask(':FREQ:MODE?').strip().lower()
 
@@ -206,8 +192,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         return mode, is_running
 
-
-
     def get_power(self):
         """ Gets the microwave output power.
 
@@ -217,29 +201,14 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         mode, dummy = self.get_status()
 
         if 'list' in mode:
-
             pow_list = self._ask(':LIST:POW?').strip().split(',')
+
+            # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
+            #FIXME: Correct that as soon as possible in the interface!!!
             return np.array([float(pow) for pow in pow_list])
 
         else:
             return float(self._ask(':POW?'))
-
-
-    def _set_power(self, power):
-        """ Sets the microwave output power.
-
-        @param float power: the power (in dBm) set for this device
-
-        @return float: actual power set (in dBm)
-        """
-
-        # every time a single power is set, the CW mode is activated!
-        self._write(':FREQ:MODE CW')
-        self._write('*WAI')
-        self._write(':POW {0:f};'.format(power))
-        actual_power = self.get_power()
-        return actual_power
-
 
     def get_frequency(self):
         """  Gets the frequency of the microwave output.
@@ -250,6 +219,9 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         Returns list like [start, stop, step] if the device is in sweep mode.
         Returns list of frequencies if the device is in list mode.
         """
+
+        # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
+        # FIXME: Correct that as soon as possible in the interface!!!
 
         mode, is_running = self.get_status()
 
@@ -270,21 +242,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         else:
             self.log.error('Mode Unknown! Cannot determine Frequency!')
         return return_val
-
-    def _set_frequency(self, freq):
-        """ Sets the frequency of the microwave output.
-
-        @param float freq: the frequency (in Hz) set for this device
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        # every time a single frequency is set, the CW mode is activated!
-        self._write(':FREQ:MODE CW')
-        self._write('*WAI')
-        self._write(':FREQ {0:e}'.format(freq))
-        # {:e} meens a representation in float with exponential style
-        return 0
 
     def cw_on(self):
         """ Switches on cw microwave output.
@@ -310,7 +267,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             time.sleep(0.2)
             dummy, is_running = self.get_status()
         return 0
-
 
     def set_cw(self, frequency=None, power=None):
         """
@@ -353,7 +309,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # self._gpib_connection.write(':LIST:LEAR')
 
         current_mode, is_running = self.get_status()
         if is_running:
@@ -362,25 +317,15 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             else:
                 self.off()
 
-        # This needs to be done due to stupid design of the list mode
-        # (sweep is better).
-        self.cw_on()
         self._write(':LIST:LEARN')
         self._write(':FREQ:MODE LIST')
+
+        self._write(':OUTP:STAT ON')
         dummy, is_running = self.get_status()
         while not is_running:
             time.sleep(0.2)
             dummy, is_running = self.get_status()
         return 0
-
-        # self._gpib_connection.write(':FREQ:MODE LIST')
-        # self._gpib_connection.write('*WAI')
-        # self._gpib_connection.write(':ABOR:LIST')
-        # self._gpib_connection.write('*WAI')
-        # self._gpib_connection.write(':OUTP ON')
-        #
-        # return 0
-
 
     def set_list(self, frequency=None, power=None):
         """
@@ -395,13 +340,6 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             current mode
         """
 
-        # error = 0
-        #
-        # if self.set_cw(frequency[0], power) != 0:
-        #     self.log.error('The frequency list has an invalide first '
-        #             'frequency and power, which cannot be set.')
-        #     error = -1
-
         mode, is_running = self.get_status()
         if is_running:
             self.off()
@@ -413,16 +351,12 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         # extreme annoying bug. Therefore catch too long lists.
 
         if len(frequency) > self._MAX_LIST_ENTRIES:
-            self.log.error('The frequency list exceeds the hardware '
-                    'limitation of {0} list entries. Aborting creation of a '
-                    'list due to potential overwrite of the firmware on the '
-                    'device.'.format(self._MAX_LIST_ENTRIES))
+            self.log.error('The frequency list exceeds the hardware limitation '
+                           'of {0} list entries. Aborting creation of a list '
+                           'due to potential overwrite of the firmware on the '
+                           'device.'.format(self._MAX_LIST_ENTRIES))
 
         else:
-
-            # Cant change list parameters if in list mode
-            if mode != 'cw':
-                self.set_cw()
 
             self._write(':SOUR:LIST:MODE STEP')
 
@@ -437,7 +371,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
             # delete all list entries and create/select a new list
             self._write(':SOUR:LIST:DEL:ALL')
-            self._write(":SOUR:LIST:SEL 'ODMR'")
+            self._write(':SOUR:LIST:SEL "LIST1"')
 
             FreqString = ''
             PowerString = ''
@@ -454,24 +388,25 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
             # Apply settings in hardware
             self._write(':LIST:LEARN')
-            # If there are timeout  problems after this command, update the smiq  firmware to > 5.90
-            # as there was a problem with excessive wait times after issuing :LIST:LEARN over a
-            # GPIB connection in firmware 5.88
+            # If there are timeout problems after this command, update the smiq
+            # firmware to > 5.90 as there was a problem with excessive wait
+            # times after issuing :LIST:LEARN over a GPIB connection in
+            # firmware 5.88.
             self._write(':FREQ:MODE LIST')
-
 
             N = int(np.round(float(self._ask(':SOUR:LIST:FREQ:POIN?'))))
 
             if N != len(frequency):
-                self.log.error('The input Frequency list does not corresponds to '
-                        'the generated List from the SMR20.')
+                self.log.error('The input Frequency list does not corresponds '
+                               'to the generated List from the SMR20.')
 
         actual_freq = self.get_frequency()
         actual_power_list = self.get_power() # in list mode we get a power list!
+        # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
+        # FIXME: Ahh this is so shitty with the return value!!!
         actual_power = actual_power_list[0]
         mode, dummy = self.get_status()
         return actual_freq, actual_power, mode
-
 
     def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
@@ -578,7 +513,37 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         else:
             return TriggerEdge.RISING
 
-    ## ======== Non interface commands: ========
+    # ================== Non interface commands: ==================
+
+    def _set_power(self, power):
+        """ Sets the microwave output power.
+
+        @param float power: the power (in dBm) set for this device
+
+        @return float: actual power set (in dBm)
+        """
+
+        # every time a single power is set, the CW mode is activated!
+        self._write(':FREQ:MODE CW')
+        self._write('*WAI')
+        self._write(':POW {0:f};'.format(power))
+        actual_power = self.get_power()
+        return actual_power
+
+    def _set_frequency(self, freq):
+        """ Sets the frequency of the microwave output.
+
+        @param float freq: the frequency (in Hz) set for this device
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        # every time a single frequency is set, the CW mode is activated!
+        self._write(':FREQ:MODE CW')
+        self._write('*WAI')
+        self._write(':FREQ {0:e}'.format(freq))
+        # {:e} means a representation in float with exponential style
+        return 0
 
     def turn_AM_on(self, depth):
         """ Turn on the Amplitude Modulation mode.
@@ -590,11 +555,11 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         Set the Amplitude modulation based on an external DC signal source and
         switch on the device after configuration.
         """
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write('AM:SOUR EXT')
-        self._gpib_connection.write('AM:EXT:COUP DC')
-        self._gpib_connection.write('AM {0:f}'.format(float(depth)))
-        self._gpib_connection.write('AM:STAT ON')
+
+        self._write('AM:SOUR EXT')
+        self._write('AM:EXT:COUP DC')
+        self._write('AM {0:f}'.format(float(depth)))
+        self._write('AM:STAT ON')
 
         return 0
 
@@ -604,17 +569,22 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':AM:STAT OFF')
+        self._write(':AM:STAT OFF')
 
         return 0
 
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        Ensure that the Frequency was set when the function returns.
+        """
+        self._write(':TRIG')
 
     def reset_device(self):
         """ Resets the device and sets the default values."""
-        self._gpib_connection.write(':SYSTem:PRESet')
-        self._gpib_connection.write('*RST')
-        self._gpib_connection.write(':OUTP OFF')
+        self._write(':SYSTem:PRESet')
+        self._write('*RST')
+        self._write(':OUTP OFF')
 
         return 0
 
