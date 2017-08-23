@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 
 from qtpy.QtCore import QObject
 from urllib.parse import urlparse
-from rpyc.utils.server import ThreadedServer
-from rpyc.utils.authenticators import SSLAuthenticator
 import ssl
 from .util.models import DictTableModel, ListTableModel
 import rpyc
+from rpyc.utils.server import ThreadedServer
+from rpyc.utils.authenticators import SSLAuthenticator
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
