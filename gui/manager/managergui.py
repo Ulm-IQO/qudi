@@ -163,14 +163,18 @@ class ManagerGui(GUIBase):
         # thread widget
         self._mw.threadWidget.threadListView.setModel(self._manager.tm)
         # remote widget
-        self._mw.remoteWidget.hostLabel.setText('URL:')
-        self._mw.remoteWidget.portLabel.setText(
-            'rpyc://{0}:{1}/'.format(self._manager.rm.host,
-                                     self._manager.rm.server.port))
-        self._mw.remoteWidget.remoteModuleListView.setModel(
-            self._manager.rm.remoteModules)
-        self._mw.remoteWidget.sharedModuleListView.setModel(
-            self._manager.rm.sharedModules)
+        if (self._manager.remote_server):
+            self._mw.remoteWidget.hostLabel.setText('URL:')
+            self._mw.remoteWidget.portLabel.setText(
+                'rpyc://{0}:{1}/'.format(self._manager.rm.host,
+                                         self._manager.rm.server.port))
+            self._mw.remoteWidget.remoteModuleListView.setModel(
+                self._manager.rm.remoteModules)
+            self._mw.remoteWidget.sharedModuleListView.setModel(
+                self._manager.rm.sharedModules)
+        else:
+            # hide remote menu item when no remote server was started
+            self._mw.actionRemoteView.setVisible(False)
 
         self._mw.configDisplayDockWidget.hide()
         self._mw.remoteDockWidget.hide()
