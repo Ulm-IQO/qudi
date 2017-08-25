@@ -31,7 +31,7 @@ from interface.pulser_interface import PulserInterface
 from collections import OrderedDict
 
 
-class NIPulser(Base, PulserInterface):
+class NationalInstrumentsPulser(Base, PulserInterface):
     """ Pulse generator using NI-DAQmx
     """
 
