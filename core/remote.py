@@ -34,17 +34,13 @@ rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
 class RemoteObjectManager(QObject):
-    """ This shares modules with other computers and is resonsible
+    """ This shares modules with other computers and is responsible
         for obtaining modules shared by other computer.
     """
-    def __init__(self, manager, hostname, port, certfile=None, keyfile=None):
+    def __init__(self, manager, **kwargs):
         """ Handle sharing and getting shared modules.
         """
-        super().__init__()
-        self.host = hostname
-        self.port = port
-        self.certfile = certfile
-        self.keyfile = keyfile
+        super().__init__(**kwargs)
         self.tm = manager.tm
         self.manager = manager
         self.remoteModules = ListTableModel()
@@ -101,28 +97,28 @@ class RemoteObjectManager(QObject):
                         return None
         return RemoteModuleService
 
-    def createServer(self):
+    def createServer(self, hostname, port, certfile=None, keyfile=None):
         """ Start the rpyc modules server on a given port.
 
           @param int port: port where the server should be running
         """
         thread = self.tm.newThread('rpyc-server')
-        if self.certfile is not None and self.keyfile is not None:
+        if certfile is not None and keyfile is not None:
             self.server = RPyCServer(
                 self.makeRemoteService(),
-                self.host,
-                self.port,
-                keyfile=self.keyfile,
-                certfile=self.certfile)
+                hostname,
+                port,
+                keyfile=keyfile,
+                certfile=certfile)
         else:
-            if self.host != 'localhost':
+            if hostname != 'localhost':
                 logger.warning('Remote connection not secured! Use a certificate!')
-            self.server = RPyCServer(self.makeRemoteService(), self.host, self.port)
+            self.server = RPyCServer(self.makeRemoteService(), hostname, port)
         self.server.moveToThread(thread)
         thread.started.connect(self.server.run)
         thread.start()
         logger.info('Started module server at {0} on port {1}'
-                ''.format(self.host, self.port))
+                    ''.format(hostname, port))
 
     def stopServer(self):
         """ Stop the remote module server.
@@ -211,6 +207,7 @@ class RPyCServer(QObject):
                 port=self.port,
                 protocol_config={'allow_all_attrs': True})
         self.server.start()
+
 
 class RemoteModule:
     """ This class represents a module on a remote computer and holds a reference to it.
