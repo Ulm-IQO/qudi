@@ -38,6 +38,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     A National Instruments device that can count and control microvave generators.
 
+    !!!!!! NI USB 63XX, NI PCIe 63XX and NI PXIe 63XX DEVICES ONLY !!!!!!
+
     Basic procedure how the NI card is configurated:
       * At first you have to define a channel, where the APD clicks will be
         received. That can be any PFI input, which is specified to record TTL
@@ -139,20 +141,34 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _modclass = 'hardware'
 
     # config options
+    _photon_sources = ConfigOption('photon_sources', missing='error')
+
+    # slow counter
     _clock_channel = ConfigOption('clock_channel', missing='error')
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
-    _scanner_clock_channel = ConfigOption('scanner_clock_channel')
+    _counter_channels = ConfigOption('counter_channels', missing='error')
+
+    # confocal scanner
+    _scanner_clock_channel = ConfigOption('scanner_clock_channel', missing='warn')
     _scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
+    _scanner_ao_channels = ConfigOption('scanner_ao_channels', missing='error')
+    _scanner_ai_channels = ConfigOption('scanner_ai_channels', missing='warn')
+    _scanner_counter_channels = ConfigOption('scanner_counter_channels', missing='error')
+    _scanner_voltage_ranges = ConfigOption('scanner_voltage_ranges', missing='error')
+    _scanner_position_ranges = ConfigOption('scanner_position_ranges', missing='error')
+
+    # odmr
+    _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
+
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
     _samples_number = ConfigOption('samples_number', 50, missing='warn')
-    _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
     # used as a default for expected maximum counts
     _max_counts = ConfigOption('max_counts', 3e7)
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', 10)
-    _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn')
+    _counting_edge_rising = ConfigOption('counting_edge_rising', True)
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
