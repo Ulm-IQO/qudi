@@ -756,7 +756,7 @@ class Manager(QtCore.QObject):
         if 'module.Class' in defined_module:
             if 'remote' in defined_module:
                 if self.rm is None:
-                    logger.error('Remote functionality not working, check your log.')
+                    logger.error('Remote module functionality disabled. Rpyc not installed.')
                     return -1
                 if not isinstance(defined_module['remote'], str):
                     logger.error('Remote URI of {0} module {1} not a string.'.format(base, key))
@@ -790,10 +790,14 @@ class Manager(QtCore.QObject):
                     modObj = self.importModule(base, module_name)
                     self.configureModule(modObj, base, class_name, key, defined_module)
                     if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
+                        if self.rm is None:
+                            logger.error('Remote module sharing functionality disabled. Rpyc not'
+                                         ' installed.')
+                            return 1
                         if not self.remote_server:
                             logger.error('Remote module sharing does not work '
-                                         'as server startup failed earlier, check '
-                                         'your log.')
+                                         'as no server configured or server startup failed earlier.'
+                                         ' Check your configuration and log.')
                             return 1
                         self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
