@@ -914,7 +914,7 @@ class Manager(QtCore.QObject):
         try:
             module.setStatusVariables(self.loadStatusVariables(base, name))
             # start main loop for qt objects
-            if base == 'logic':
+            if module.is_module_threaded:
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
