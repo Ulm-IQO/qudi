@@ -762,7 +762,12 @@ class Manager(QtCore.QObject):
                     logger.error('Remote URI of {0} module {1} not a string.'.format(base, key))
                     return -1
                 try:
-                    instance = self.rm.getRemoteModuleUrl(defined_module['remote'])
+                    certfile = defined_module.get('certfile', None)
+                    keyfile = defined_module.get('keyfile', None)
+                    instance = self.rm.getRemoteModuleUrl(
+                        defined_module['remote'],
+                        certfile=certfile,
+                        keyfile=keyfile)
                     logger.info('Remote module {0} loaded as {1}.{2}.'
                                 ''.format(defined_module['remote'], base, key))
                     with self.lock:
