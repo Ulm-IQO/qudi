@@ -29,7 +29,8 @@ import matplotlib.pyplot as plt
 from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
-from core.util.units import ScaledFloat
+from core.util import units
+from core.util.units import create_formatted_output
 from logic.generic_logic import GenericLogic
 
 
@@ -1056,7 +1057,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # scale the x_axis for plotting
         max_val = np.max(self.signal_plot_x)
-        scaled_float = ScaledFloat(max_val)
+        scaled_float = units.ScaledFloat(max_val)
         counts_prefix = scaled_float.scale
         x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
 
@@ -1090,6 +1091,45 @@ class PulsedMeasurementLogic(GenericLogic):
             ax1.plot(x_axis_fit_scaled, self.signal_plot_y_fit,
                      color=colors[2], marker='None', linewidth=1.5,
                      label='fit data trace 1')
+
+            # add then the fit result to the plot:
+            entries_per_col = 24
+            fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
+
+            entry_list = fit_res.split('\n')
+            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+            offset = 0.02
+            mult_fact = 0.011
+
+            is_first_column = True
+            shift = offset
+
+            for column in chunks:
+
+                max_length = max(column, key=len)
+
+                column_text = ''
+
+                for entry in column:
+                    column_text += entry + '\n'
+
+                column_text = column_text[:-1]
+
+                if is_first_column:
+                    column_text = 'Fit results:\n' + column_text
+                else:
+                    column_text = '\n' + column_text
+
+                ax1.text(1.00 + shift, 0.99, column_text,
+                         verticalalignment='top',
+                         horizontalalignment='left',
+                         transform=ax1.transAxes,
+                         fontsize=12)
+
+                shift += mult_fact * len(max_length)
+
+                is_first_column = False
 
         #FIXME: no plot for the alternating graph, use for that graph colors[5]
         # ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
