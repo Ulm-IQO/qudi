@@ -1093,33 +1093,41 @@ class PulsedMeasurementLogic(GenericLogic):
                      label='fit data trace 1')
 
             # add then the fit result to the plot:
+
+            # Parameters for the text plot:
+            # The position of the text annotation is controlled with the
+            # relative offset in x direction and the relative length factor
+            # rel_len_fac of the longest entry in one column
+            rel_offset = 0.02
+            rel_len_fac = 0.011  #
             entries_per_col = 24
+
+            # create the formated fit text:
             fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
 
+            # do reverse processing to get each entry in a list
             entry_list = fit_res.split('\n')
+            # slice the entry_list in entries_per_col
             chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
-            offset = 0.02
-            mult_fact = 0.011
-
-            is_first_column = True
-            shift = offset
+            is_first_column = True  # first entry should contain
+            shift = rel_offset
 
             for column in chunks:
 
-                max_length = max(column, key=len)
-
+                max_length = max(column, key=len)   # get the longest entry
                 column_text = ''
 
                 for entry in column:
                     column_text += entry + '\n'
 
-                column_text = column_text[:-1]
+                column_text = column_text[:-1]  # remove the last new line
 
+                heading = '\n'
                 if is_first_column:
-                    column_text = 'Fit results:\n' + column_text
-                else:
-                    column_text = '\n' + column_text
+                    heading = 'Fit results:\n'
+
+                column_text = heading + '\n' + column_text
 
                 ax1.text(1.00 + shift, 0.99, column_text,
                          verticalalignment='top',
@@ -1127,12 +1135,13 @@ class PulsedMeasurementLogic(GenericLogic):
                          transform=ax1.transAxes,
                          fontsize=12)
 
-                shift += mult_fact * len(max_length)
+                # the shift in position of the text is a linear function
+                # which depends on the longest entry in the column
+                shift += rel_len_fac * len(max_length)
 
                 is_first_column = False
 
-        #FIXME: no plot for the alternating graph, use for that graph colors[5]
-        # ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
+        #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
 
         ax1.set_xlabel('controlled variable (' + counts_prefix + controlled_val_unit + ')')
         ax1.set_ylabel('norm. sig (arb.u.)')
@@ -1149,6 +1158,7 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save raw data timetrace                      ####
         #####################################################################
+
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_raw_timetrace'
         else:
