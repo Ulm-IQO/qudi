@@ -146,10 +146,12 @@ class RemoteObjectManager(QObject):
             logger.error('Module {0} was not shared.'.format(name))
         self.sharedModules.pop(name)
 
-    def getRemoteModuleUrl(self, url):
+    def getRemoteModuleUrl(self, url, certfile=None, keyfile=None):
         """ Get a remote module via its URL.
 
           @param str url: URL pointing to a module hosted b a remote server
+          @param str certfile: filename of certificate or None if SSL is not used
+          @param str keyfile: filename of key or None if SSL is not used
 
           @return object: remote module
         """
@@ -157,16 +159,18 @@ class RemoteObjectManager(QObject):
         name = parsed.path.replace('/', '')
         return self.getRemoteModule(parsed.hostname, parsed.port, name)
 
-    def getRemoteModule(self, host, port, name):
+    def getRemoteModule(self, host, port, name, certfile=None, keyfile=None):
         """ Get a remote module via its host, port and name.
 
           @param str host: host that the remote module server is running on
           @param int port: port that the remote module server is listening on
           @param str name: unique name of the remote module
+          @param str certfile: filename of certificate or None if SSL is not used
+          @param str keyfile: filename of key or None if SSL is not used
 
           @return object: remote module
         """
-        module = RemoteModule(host, port, name)
+        module = RemoteModule(host, port, name, certfile=certfile, keyfile=keyfile)
         self.remoteModules.append(module)
         return module.module
 
