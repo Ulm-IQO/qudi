@@ -30,7 +30,6 @@ from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
-from core.util.units import create_formatted_output
 from logic.generic_logic import GenericLogic
 
 
@@ -59,7 +58,7 @@ class PulsedMeasurementLogic(GenericLogic):
     use_ext_microwave = StatusVar(default=False)
     current_channel_config_name = StatusVar(default='')
     sample_rate = StatusVar(default=25e9)
-    analogue_amplitude =  StatusVar(default=dict())
+    analogue_amplitude = StatusVar(default=dict())
     interleave_on = StatusVar(default=False)
     timer_interval = StatusVar(default=5)
     alternating = StatusVar(default=False)
@@ -155,6 +154,12 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fc = None  # Fit container
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
+
+        # for fourier transform:
+        self.zeropad = 0
+        self.psd = False
+        self.window = 'none'
+        self.base_corr = True
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -975,7 +980,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
-                              with_error=True):
+                              with_error=True, save_ft=False):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str controlled_val_unit: unit of the x axis of the plot
@@ -1062,20 +1067,24 @@ class PulsedMeasurementLogic(GenericLogic):
         x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
 
         # Create the figure object
-        fig, ax1 = plt.subplots()
+        if save_ft:
+            fig, (ax1, ax2) = plt.subplots(2,1)
+        else:
+            fig, ax1 = plt.subplots()
+
         if with_error:
             ax1.errorbar(x=x_axis_scaled, y=self.signal_plot_y,
                          yerr=self.measuring_error_plot_y, fmt='-o',
                          linestyle=':', linewidth=0.5, color=colors[0],
-                         ecolor=colors[1], capsize=2, capthick=0.7,
-                         label='data trace 1')
+                         ecolor=colors[1], capsize=3, capthick=0.9,
+                         elinewidth=1.2, label='data trace 1')
 
             if self.alternating:
                 ax1.errorbar(x=x_axis_scaled, y=self.signal_plot_y2,
                              yerr=self.measuring_error_plot_y2, fmt='-D',
                              linestyle=':', linewidth=0.5, color=colors[3],
-                             ecolor=colors[4],  capsize=2, capthick=0.7,
-                             label='data trace 2')
+                             ecolor=colors[4],  capsize=3, capthick=0.7,
+                             elinewidth=1.2, label='data trace 2')
 
         else:
             ax1.plot(x_axis_scaled, self.signal_plot_y, '-o', color=colors[0],
@@ -1123,9 +1132,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 column_text = column_text[:-1]  # remove the last new line
 
-                heading = '\n'
+                heading = ''
                 if is_first_column:
-                    heading = 'Fit results:\n'
+                    heading = 'Fit results:'
 
                 column_text = heading + '\n' + column_text
 
@@ -1140,6 +1149,29 @@ class PulsedMeasurementLogic(GenericLogic):
                 shift += rel_len_fac * len(max_length)
 
                 is_first_column = False
+
+        # handle the save of the fourier Transform
+        if save_ft:
+
+            # scale the x_axis for plotting
+            max_val = np.max(self.signal_fft_x)
+            scaled_float = units.ScaledFloat(max_val)
+            x_axis_prefix = scaled_float.scale
+            x_axis_ft_scaled = self.signal_fft_x / scaled_float.scale_val
+
+            ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
+                     linestyle=':', linewidth=0.5, color=colors[0])
+
+            if controlled_val_unit == 's':
+                inverse_cont_var = 'Hz'
+            elif controlled_val_unit == 'Hz':
+                inverse_cont_var = 's'
+            else:
+                inverse_cont_var = '(1/{0})'.format(controlled_val_unit)
+
+            ax2.set_xlabel('Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')')
+            ax2.set_ylabel('Fourier amplitude (arb.u.)')
+
 
         #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
 
@@ -1185,63 +1217,32 @@ class PulsedMeasurementLogic(GenericLogic):
         return filepath
 
     def _compute_fft(self):
-        """ Computing the fourier transform of the data.
+        """ Computing the fourier transform of the data. """
 
-        @return tuple (fft_x, fft_y):
-                    fft_x: the frequencies for the FT
-                    fft_y: the FT spectrum
-
-        Pay attention that the return values of the FT have only half of the
-        entries compared to the used signal input.
-
-        In general, a window function should be applied to the time domain data
-        before calculating the FT, to reduce spectral leakage. The Hann window
-        for instance is almost never a bad choice. Use it like:
-            y_ft = np.fft.fft(y_signal * np.hanning(len(y_signal)))
-
-        Keep always in mind the relation for the Fourier transform:
-            T = delta_t * N_samples
-        where delta_t is the distance between the time points and N_samples are
-        the amount of points in the time domain. Consequently the sample rate is
-            f_samplerate = T / N_samples
-
-        Keep in mind that the FT returns value from 0 to f_samplerate, or
-        equivalently -f_samplerate/2 to f_samplerate/2.
-
-
-        """
         # Do sanity checks:
         if len(self.signal_plot_x) < 2:
-            self.log.debug('FFT of measurement could not be calculated. Only one data point.')
+            self.log.debug('FFT of measurement could not be calculated. Only '
+                           'one data point.')
             self.signal_fft_x = np.zeros(1)
             self.signal_fft_y = np.zeros(1)
             self.signal_fft_y2 = np.zeros(1)
             return
-        # Make a baseline correction to avoid a constant offset near zero frequencies:
-        corrected_y = self.signal_plot_y - np.mean(self.signal_plot_y)
-        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
-        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
-        # aliasing effects). Therefore take the half of the values for the display.
-        middle = int((len(corrected_y) + 1) // 2)
-        # The absolute values contain the fourier transformed y values
-        self.signal_fft_y = np.abs(np.fft.fft(corrected_y))[:middle]
-        # Do the same for second data array if measurement sequence is alternating
-        if self.alternating:
-            corrected_y2 = self.signal_plot_y2 - np.mean(self.signal_plot_y2)
-            self.signal_fft_y2 = np.abs(np.fft.fft(corrected_y2))[:middle]
 
-        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
-        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
-        # aliasing effects). Therefore take the half of the values for the display.
-        middle = int((len(corrected_y)+1)//2)
-        # sample spacing of x_axis, if x is a time axis than it corresponds to a timestep:
-        #x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
-        # FIXME: Calculate the proper frequency values for non-uniform spacing of signal_plot_x
-        x_spacing = self.signal_plot_x[-1] - self.signal_plot_x[-2]
-        # use the helper function of numpy to calculate the x_values for the fourier space.
-        # That function will handle an occuring devision by 0:
-        self.signal_fft_x = np.abs(np.fft.fftfreq(len(corrected_y), d=x_spacing))[:middle]
+        if self.alternating:
+            x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+                self.signal_plot_x,
+                self.signal_plot_y2,
+                zeropad_num=0)
+
+        self.signal_fft_x, self.signal_fft_y = units.compute_ft(
+            self.signal_plot_x,
+            self.signal_plot_y,
+            zeropad_num=self.zeropad,
+            window=self.window,
+            base_corr=self.base_corr,
+            psd=self.psd)
         return
+
 
     def do_fit(self, fit_method, x_data=None, y_data=None):
         """Performs the chosen fit on the measured data.
@@ -1252,6 +1253,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return float array pulsed_fit_y: Array containing the y-values of the fit
         @return dict fit_result: a dictionary containing the fit result
         """
+
         # Set current fit
         self.fc.set_current_fit(fit_method)
 
