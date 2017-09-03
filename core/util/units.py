@@ -20,6 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+from scipy import signal
 try:
     import pyqtgraph.functions as fn
 except:
@@ -414,37 +415,100 @@ def in_range(value, lower_limit, upper_limit):
     return value
 
 
-def compute_dft(x_val, y_val, zeropad_num=0):
-    """ Compute the Discrete fourier Transform
+def get_ft_windows():
+    pass
+
+def compute_ft(x_val, y_val, zeropad_num=0, window='none', base_corr=True, psd=False):
+    """ Compute the Discrete fourier Transform of the power spectral density
 
     @param numpy.array x_val: 1D array
     @param numpy.array y_val: 1D array of same size as x_val
-    @param int zeropad_num: zeropadding (adding zeros to the end of the array).
-                            zeropad_num >= 0, the size of the array, which is
-                            add to the end of the y_val before performing the
-                            dft. The resulting array will have the length
+    @param int zeropad_num: optional, zeropadding (adding zeros to the end of
+                            the array). zeropad_num >= 0, the size of the array
+                            which is add to the end of the y_val before
+                            performing the Fourier Transform (FT). The
+                            resulting array will have the length
                                 (len(y_val)/2)*(zeropad_num+1)
                             Note that zeropadding will not change or add more
                             information to the dft, it will solely interpolate
-                            between the dft_y values.
+                            between the dft_y values (corresponds to a Sinc
+                            interpolation method).
+                            Set zeropad_num=1 to obtain output arrays which
+                            have the same size as the input arrays.
+                            Default is zeropad_num=0.
+    @param bool psd: optional, select whether the Discrete Fourier Transform or
+                     the Power Spectral Density (PSD, which is just the FT of
+                     the absolute square of the y-values) should be computed.
+                     Default is psd=False.
 
     @return: tuple(dft_x, dft_y):
                 be aware that the return arrays' length depend on the zeropad
                 number like
                     len(dft_x) = len(dft_y) = (len(y_val)/2)*(zeropad_num+1)
 
+    Pay attention that the return values of the FT have only half of the
+    entries compared to the used signal input.
 
+    In general, a window function should be applied on the time domain data
+    before calculating the FT, to reduce spectral leakage. The Hann window for
+    instance is almost never a bad choice. Use it like:
+        y_ft = np.fft.fft(y_signal * np.hanning(len(y_signal)))
+
+    Keep always in mind that the relation for the Fourier transform:
+        T = delta_t * N_samples
+    where delta_t is the distance between the time points and N_samples are the
+    amount of points in the time domain. Consequently the sample rate is
+        f_samplerate = T / N_samples
+
+    Keep also in mind that the FT returns value from 0 to f_samplerate, or
+        equivalently -f_samplerate/2 to f_samplerate/2.
+
+    Difference between PSD and DFT:
+    The power spectral density (PSD) describes how the power of your signal is
+    distributed over frequency whilst the DFT shows the spectral content of
+    your signal, i.e. the amplitude and phase of harmonics in your signal.
     """
+
+    avail_windows = {'none': np.ones, 'hamming': signal.hamming,
+                     'hann': signal.hann, 'blackman': signal.blackman,
+                     'triang': signal.triang, 'flattop': signal.flattop}
+    ampl_window_norm = {'none': 1.0, 'hamming': 1.0/0.54, 'hann': 1.0/0.5,
+                        'blackman': 1.0/0.42, 'triang': 1.0/0.5, 'flattop': 1.0/0.2156}
 
     x_val = np.array(x_val)
     y_val = np.array(y_val)
 
-    corrected_y = y_val - y_val.mean()
-    # The absolute values contain the fourier transformed y values
+    # Make a baseline correction to avoid a constant offset near zero
+    # frequencies. Offset of the y_val from mean corresponds to half the value
+    # at fft_y[0].
+    corrected_y = y_val
+    if base_corr:
+        corrected_y = y_val - y_val.mean()
 
+    ampl_norm_fact = 1.0
+    # apply window to data to account for spectral leakage:
+    if window in avail_windows:
+        window_val = avail_windows[window](len(y_val))
+        corrected_y = corrected_y * window_val
+        # to get the correct amplitude in the amplitude spectrum
+        ampl_norm_fact = ampl_window_norm[window]
+
+    # zeropad for sinc interpolation:
     zeropad_arr = np.zeros(len(corrected_y)*(zeropad_num+1))
     zeropad_arr[:len(corrected_y)] = corrected_y
+
+    # Get the amplitude values from the fourier transformed y values.
     fft_y = np.abs(np.fft.fft(zeropad_arr))
+
+    # Power spectral density (PSD) or just amplitude spectrum of fourier signal:
+    pow = 1.0
+    if psd:
+        pow = 2.0
+
+    # The factor 2 accounts for the fact that just the half of the spectrum was
+    # taken. The ampl_norm_fact is the normalization factor due to the applied
+    # window function (the offset value in the window function):
+    fft_y = ((2/len(y_val)) * fft_y * ampl_norm_fact)**pow
 
     # Due to the sampling theorem you can only identify frequencies at half
     # of the sample rate, therefore the FT contains an almost symmetric
