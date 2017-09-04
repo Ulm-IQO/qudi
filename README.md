@@ -26,7 +26,6 @@ User and code documentation about Qudi is located at http://ulm-iqo.github.io/qu
 [![Build Status](https://travis-ci.org/Ulm-IQO/qudi.svg?branch=master)](https://travis-ci.org/Ulm-IQO/qudi)
 [![Build status](https://ci.appveyor.com/api/projects/status/ma1a125b31cbl6tu/branch/master?svg=true)](https://ci.appveyor.com/project/InstituteforQuantumOptics/qudi/branch/master)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Ulm-IQO/qudi/?branch=master)
-[![Code Issues](https://www.quantifiedcode.com/api/v1/project/d31724e4b9704732ac1f508c7de1999d/badge.svg)](https://www.quantifiedcode.com/app/project/d31724e4b9704732ac1f508c7de1999d)
 
 ## Collaboration
 For development-related questions and discussion, please use the [qudi-dev mailing list](http://www.freelists.org/list/qudi-dev).
