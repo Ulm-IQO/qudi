@@ -60,9 +60,6 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     _modclass = 'PulseBlasterESRPRO'
     _modtype = 'hardware'
 
-    # declare connectors
-    _out = {'PulseBlasterESRPRO': 'PulserInterface'}
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
