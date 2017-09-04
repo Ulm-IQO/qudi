@@ -150,10 +150,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     # confocal scanner
     _scanner_clock_channel = ConfigOption('scanner_clock_channel', missing='warn')
-    _scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')
+    _default_scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _scanner_ao_channels = ConfigOption('scanner_ao_channels', missing='error')
-    _scanner_ai_channels = ConfigOption('scanner_ai_channels', missing='warn')
+    _scanner_ai_channels = ConfigOption('scanner_ai_channels', missing='info')
     _scanner_counter_channels = ConfigOption('scanner_counter_channels', missing='error')
     _scanner_voltage_ranges = ConfigOption('scanner_voltage_ranges', missing='error')
     _scanner_position_ranges = ConfigOption('scanner_position_ranges', missing='error')
@@ -163,7 +163,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
-    _samples_number = ConfigOption('samples_number', 50, missing='warn')
+    _default_samples_number = ConfigOption('samples_number', 50, missing='warn')
     # used as a default for expected maximum counts
     _max_counts = ConfigOption('max_counts', 3e7)
     # timeout for the Read or/and write process in s
@@ -186,202 +186,18 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         config = self.getConfiguration()
 
-        self._scanner_ao_channels = []
         self._voltage_range = []
         self._position_range = []
         self._current_position = []
-        self._counter_channels = []
-        self._scanner_counter_channels = []
-        self._photon_sources = []
-        self._scanner_ai_ch = []
 
         # handle all the parameters given by the config
-        if 'scanner_x_ao' in config.keys():
-            self._scanner_ao_channels.append(config['scanner_x_ao'])
-            self._current_position.append(0)
-            self._position_range.append([0, 100e-6])
-            self._voltage_range.append([-10, 10])
-            if 'scanner_y_ao' in config.keys():
-                self._scanner_ao_channels.append(config['scanner_y_ao'])
-                self._current_position.append(0)
-                self._position_range.append([0, 100e-6])
-                self._voltage_range.append([-10, 10])
-                if 'scanner_z_ao' in config.keys():
-                    self._scanner_ao_channels.append(config['scanner_z_ao'])
-                    self._current_position.append(0)
-                    self._position_range.append([0, 100e-6])
-                    self._voltage_range.append([-10, 10])
-                    if 'scanner_a_ao' in config.keys():
-                        self._scanner_ao_channels.append(config['scanner_a_ao'])
-                        self._current_position.append(0)
-                        self._position_range.append([0, 100e-6])
-                        self._voltage_range.append([-10, 10])
+        self._current_position = np.zeros(len(self._scanner_ao_channels)
 
-        if len(self._scanner_ao_channels) < 1:
-            self.log.error(
-                'Not enough scanner channels found in the configuration!\n'
-                'Be sure to start with scanner_x_ao\n'
-                'Assign to that parameter an appropriate channel from your NI Card, '
-                'otherwise you cannot control the analog channels!')
+        if len(self._scanner_ao_channels) < len(self._scanner_voltage_ranges):
+            self.log.error('less _scanner_voltage_ranges than _scanner_ao_channels')
 
-        if 'scanner_ai_channels' in config.keys():
-            if isinstance(config['scanner_ai_channels'], list):
-                self._scanner_ai_ch = config['scanner_ai_channels']
-            elif isinstance(config['scanner_ai_channels'], str):
-                self._sacanner_ai_ch = [config['scanner_ai_channels']]
-
-        if 'photon_source' in config.keys():
-            self._photon_sources.append(config['photon_source'])
-            n = 2
-            while 'photon_source{0}'.format(n) in config.keys():
-                self._photon_sources.append(config['photon_source{0}'.format(n)])
-                n += 1
-        else:
-            self.log.error(
-                'No parameter "photon_source" configured.\n'
-                'Assign to that parameter an appropriated channel from your NI Card!')
-
-        if 'counter_channel' in config.keys():
-            self._counter_channels.append(config['counter_channel'])
-            n = 2
-            while 'counter_channel{0}'.format(n) in config.keys():
-                self._counter_channels.append(config['counter_channel{0}'.format(n)])
-                n += 1
-        else:
-            self.log.error(
-                'No parameter "counter_channel" configured.\n'
-                'Assign to that parameter an appropriate channel from your NI Card!')
-
-        if 'scanner_counter_channel' in config.keys():
-            self._scanner_counter_channels.append(config['scanner_counter_channel'])
-            n = 2
-            while 'scanner_counter_channel{0}'.format(n) in config.keys():
-                self._scanner_counter_channels.append(
-                    config['scanner_counter_channel{0}'.format(n)])
-                n += 1
-        else:
-            self.log.error(
-                'No parameter "scanner_counter_channel" configured.\n'
-                'Assign to that parameter an appropriate channel from your NI Card!')
-
-        if self._counting_edge_rising:
-            self._counting_edge = daq.DAQmx_Val_Rising
-        else:
-            self._counting_edge = daq.DAQmx_Val_Falling
-
-        if 'x_range' in config.keys() and len(self._position_range) > 0:
-            if float(config['x_range'][0]) < float(config['x_range'][1]):
-                self._position_range[0] = [float(config['x_range'][0]),
-                                           float(config['x_range'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of x_range incorrect, taking [0,100e-6] instead.'
-                    ''.format(config['x_range']))
-        else:
-            if len(self._position_range) > 0:
-                self.log.warning('No x_range configured taking [0,100e-6] instead.')
-
-        if 'y_range' in config.keys() and len(self._position_range) > 1:
-            if float(config['y_range'][0]) < float(config['y_range'][1]):
-                self._position_range[1] = [float(config['y_range'][0]),
-                                           float(config['y_range'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of y_range incorrect, taking [0,100e-6] instead.'
-                    ''.format(config['y_range']))
-        else:
-            if len(self._position_range) > 1:
-                self.log.warning('No y_range configured taking [0,100e-6] instead.')
-
-        if 'z_range' in config.keys() and len(self._position_range) > 2:
-            if float(config['z_range'][0]) < float(config['z_range'][1]):
-                self._position_range[2] = [float(config['z_range'][0]),
-                                           float(config['z_range'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of z_range incorrect, taking [0,100e-6] instead.'
-                    ''.format(config['z_range']))
-        else:
-            if len(self._position_range) > 2:
-                self.log.warning('No z_range configured taking [0,100e-6] instead.')
-
-        if 'a_range' in config.keys() and len(self._position_range) > 3:
-            if float(config['a_range'][0]) < float(config['a_range'][1]):
-                self._position_range[3] = [float(config['a_range'][0]),
-                                           float(config['a_range'][1])]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of a_range incorrect, taking [0,100e-6] instead.'
-                    ''.format(config['a_range']))
-        else:
-            if len(self._position_range) > 3:
-                self.log.warning('No a_range configured taking [0,100e-6] instead.')
-
-        if 'voltage_range' in config.keys():
-            if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
-                vlow = float(config['voltage_range'][0])
-                vhigh = float(config['voltage_range'][1])
-                self._voltage_range = [
-                    [vlow, vhigh], [vlow, vhigh], [vlow, vhigh], [vlow, vhigh]
-                    ][0:len(self._voltage_range)]
-            else:
-                self.log.warning(
-                    'Configuration ({}) of voltage_range incorrect, taking [-10,10] instead.'
-                    ''.format(config['voltage_range']))
-        else:
-            self.log.warning('No voltage_range configured, taking [-10,10] instead.')
-
-        if 'x_voltage_range' in config.keys() and len(self._voltage_range) > 0:
-            if float(config['x_voltage_range'][0]) < float(config['x_voltage_range'][1]):
-                vlow = float(config['x_voltage_range'][0])
-                vhigh = float(config['x_voltage_range'][1])
-                self._voltage_range[0] = [vlow, vhigh]
-            else:
-                self.log.warning(
-                    'Configuration ({0}) of x_voltage_range incorrect, taking [-10, 10] instead.'
-                    ''.format(config['x_voltage_range']))
-        else:
-            if 'voltage_range' not in config.keys():
-                self.log.warning('No x_voltage_range configured, taking [-10, 10] instead.')
-
-        if 'y_voltage_range' in config.keys() and len(self._voltage_range) > 1:
-            if float(config['y_voltage_range'][0]) < float(config['y_voltage_range'][1]):
-                vlow = float(config['y_voltage_range'][0])
-                vhigh = float(config['y_voltage_range'][1])
-                self._voltage_range[1] = [vlow, vhigh]
-            else:
-                self.log.warning(
-                    'Configuration ({0}) of y_voltage_range incorrect, taking [-10, 10] instead.'
-                    ''.format(config['y_voltage_range']))
-        else:
-            if 'voltage_range' not in config.keys():
-                self.log.warning('No y_voltage_range configured, taking [-10, 10] instead.')
-
-        if 'z_voltage_range' in config.keys() and len(self._voltage_range) > 2:
-            if float(config['z_voltage_range'][0]) < float(config['z_voltage_range'][1]):
-                vlow = float(config['z_voltage_range'][0])
-                vhigh = float(config['z_voltage_range'][1])
-                self._voltage_range[2] = [vlow, vhigh]
-            else:
-                self.log.warning(
-                    'Configuration ({0}) of z_voltage_range incorrect, taking [-10, 10] instead.'
-                    ''.format(config['z_voltage_range']))
-        else:
-            if 'voltage_range' not in config.keys():
-                self.log.warning('No z_voltage_range configured, taking [-10, 10] instead.')
-
-        if 'a_voltage_range' in config.keys() and len(self._voltage_range) > 3:
-            if float(config['a_voltage_range'][0]) < float(config['a_voltage_range'][1]):
-                vlow = float(config['a_voltage_range'][0])
-                vhigh = float(config['a_voltage_range'][1])
-                self._voltage_range[3] = [vlow, vhigh]
-            else:
-                self.log.warning(
-                    'Configuration ({0}) of a_voltage_range incorrect, taking [-10, 10] instead.'
-                    ''.format(config['a_voltage_range']))
-        else:
-            if 'voltage_range' not in config.keys():
-                self.log.warning('No a_voltage_range configured taking [-10, 10] instead.')
+        if len(self._scanner_ao_channels) < len(self._scanner_position_ranges):
+            self.log.error('less _scanner_position_ranges than _scanner_ao_channels')
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
@@ -1296,7 +1112,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     # Maximum expected clock frequency
                     self._scanner_clock_frequency,
                     # Generate sample on falling edge
-                    daq.DAQmx_Val_Falling,
+                    daq.DAQmx_Val_Rising,
                     # generate finite number of samples
                     daq.DAQmx_Val_FiniteSamps,
                     # number of samples to generate
