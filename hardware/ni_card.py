@@ -1809,7 +1809,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 # add to this task
                 self._gated_counter_daq_task,
                 # use this counter
-                self._counter_channel,
+                self._counter_channels[0],
                 # name you assign to it
                 'Gated Counting Task',
                 # expected minimum value
@@ -1825,15 +1825,15 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # Set the pulses to counter self._counter_channel
             daq.DAQmxSetCIPulseWidthTerm(
                 self._gated_counter_daq_task,
-                self._counter_channel,
+                self._counter_channels[0],
                 self._gate_in_channel)
 
             # Set the timebase for width measurement as self._photon_source, i.e.
             # define the source of ticks for the counter as self._photon_source.
             daq.DAQmxSetCICtrTimebaseSrc(
                 self._gated_counter_daq_task,
-                self._counter_channel,
-                self._photon_source)
+                self._counter_channels[0],
+                self._photon_sources[0])
 
             # set timing to continuous
             daq.DAQmxCfgImplicitTiming(
@@ -1909,7 +1909,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             timeout = self._RWTimeout
 
         # Count data will be written here
-        _gated_count_data = np.empty([2,samples], dtype=np.uint32)
+        _gated_count_data = np.empty([1, samples], dtype=np.uint32)
 
         # Number of samples which were read will be stored here
         n_read_samples = daq.int32()
@@ -1942,9 +1942,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # Chops the array or read sample to the length that it exactly returns
             # acquired data and not more
             if read_available_samples:
-                return _gated_count_data[0][:n_read_samples.value], n_read_samples.value
+                return _gated_count_data[0][:n_read_samples.value]
             else:
-                return _gated_count_data
+                return _gated_count_data[0]
         except:
             self.log.exception('Error while reading gated count data.')
             return np.array([-1])
