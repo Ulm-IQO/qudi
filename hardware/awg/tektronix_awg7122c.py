@@ -28,7 +28,7 @@ import re
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -39,21 +39,14 @@ class AWG7122C(Base, PulserInterface):
     _modclass = 'awg7122c'
     _modtype = 'hardware'
 
+    # config options
+    ip_address = ConfigOption('awg_IP_address', missing='error')
+    port = ConfigOption('awg_port', missing='error')
+    ftp_path = ConfigOption('awg_ftp_path', missing='error')
+    _timeout = ConfigOption('timeout', 10, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        if 'awg_IP_address' in config.keys():
-            self.ip_address = config['awg_IP_address']
-        else:
-            self.log.error('No IP address parameter "awg_IP_address" found '
-                    'in the config for the AWG7122C! Correct that!')
-
-        if 'awg_port' in config.keys():
-            self.port = config['awg_port']
-        else:
-            self.log.error('No port parameter "awg_port" found in the config '
-                    'for the AWG5002C! Correct that!')
 
         if 'default_sample_rate' in config.keys():
             self.sample_rate = config['default_sample_rate']
@@ -62,19 +55,6 @@ class AWG7122C(Base, PulserInterface):
                     'the config for the AWG7122C! The maximum sample rate is '
                     'used instead.')
             self.sample_rate = self.get_constraints().sample_rate.max
-
-        if 'awg_ftp_path' in config.keys():
-            self.ftp_path = config['awg_ftp_path']
-        else:
-            self.log.error('No parameter "awg_ftp_path" found in the config '
-                    'for the AWG7122C! State the FTP folder of this device!')
-
-        if 'timeout' in config.keys():
-            self._timeout = config['timeout']
-        else:
-            self.log.warning('No parameter "timeout" found in the config for '
-                    'the AWG7122C! Take a default value of 10s.')
-            self._timeout = 10
 
         self.connected = False
 

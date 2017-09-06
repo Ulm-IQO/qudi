@@ -19,12 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
+import os
 import pyqtgraph as pg
+
+from core.module import Connector
+from gui.colordefs import QudiPalettePale as palette
+from gui.guibase import GUIBase
 from qtpy import QtWidgets
 from qtpy import uic
-import os
 
 
 class SpectrometerWindow(QtWidgets.QMainWindow):
@@ -47,17 +49,10 @@ class SpectrometerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'spectrumlogic1': 'SpectrumLogic'
-           }
+    spectrumlogic1 = Connector(interface='SpectrumLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.

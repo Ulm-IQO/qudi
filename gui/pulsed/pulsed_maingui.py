@@ -20,29 +20,30 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import datetime
+import inspect
+import numpy as np
+import os
+import pyqtgraph as pg
+import re
+
+
+from collections import OrderedDict
+from core.module import Connector, StatusVar
+from core.util import units
+from core.util.mutex import Mutex
+from gui.colordefs import QudiPalettePale as palette
+from gui.colordefs import QudiPalette as palettedark
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
+from gui.guibase import GUIBase
+from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
+#from gui.pulsed.pulse_editor import PulseEditor
+from logic.sampling_functions import SamplingFunctions
 from qtpy import QtGui
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-import numpy as np
-import os
-from collections import OrderedDict
-import pyqtgraph as pg
-import re
-import inspect
-import datetime
-
-
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
-from gui.colordefs import QudiPalette as palettedark
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
-#from gui.pulsed.pulse_editor import PulseEditor
-from core.util.mutex import Mutex
-from core.util import units
-from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
-from logic.sampling_functions import SamplingFunctions
-from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 
 
 #FIXME: Display the Pulse
@@ -156,17 +157,27 @@ class PulsedMeasurementGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'pulsedmasterlogic': 'PulsedMasterLogic',
-           'savelogic': 'SaveLogic'}
+    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
+    savelogic = Connector(interface='SaveLogic')
+
+    # status var
+    _ana_param_x_axis_name_text = StatusVar('ana_param_x_axis_name_LineEdit', 'Tau')
+    _ana_param_x_axis_unit_text = StatusVar('ana_param_x_axis_unit_LineEdit', 's')
+    _ana_param_y_axis_name_text = StatusVar('ana_param_y_axis_name_LineEdit', 'Normalized Signal')
+    _ana_param_y_axis_unit_text = StatusVar('ana_param_y_axis_unit_LineEdit', '')
+    _ana_param_second_plot_x_axis_name_text = StatusVar('ana_param_second_plot_x_axis_name_LineEdit', 'Frequency')
+    _ana_param_second_plot_x_axis_unit_text = StatusVar('ana_param_second_plot_x_axis_unit_LineEdit', 'Hz')
+    _ana_param_second_plot_y_axis_name_text = StatusVar('ana_param_second_plot_y_axis_name_LineEdit', 'Ft Signal')
+    _ana_param_second_plot_y_axis_unit_text = StatusVar('ana_param_second_plot_y_axis_unit_LineEdit', '')
+
+    _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
+    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', '')
+
+    _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
+    _functions_to_show = StatusVar('functions_to_show', [])
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{}: {}'.format(key,config[key]))
 
     def on_activate(self):
         """ Initialize, connect and configure the pulsed measurement GUI.
@@ -237,25 +248,15 @@ class PulsedMeasurementGui(GUIBase):
             self.generator_settings_changed, QtCore.Qt.QueuedConnection)
         self._gs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_generator_settings)
-        # Here the names of all function to show are stored
-        self._functions_to_show = []
 
         # here are all the names of the predefined methods are saved.
         self._predefined_methods_list = []
-        # here all names of the chosen predefined methods are saved
-        self._predefined_methods_to_show = []
         # create a config for the predefined methods:
         self._pm_cfg = PredefinedMethodsConfigDialog()
         self._pm_cfg.accepted.connect(self.apply_predefined_methods_config)
         self._pm_cfg.rejected.connect(self.keep_former_predefined_methods_config)
         self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_predefined_methods_config)
-
-
-        if 'predefined_methods_to_show' in self._statusVariables:
-            self._predefined_methods_to_show = self._statusVariables['predefined_methods_to_show']
-        if 'functions_to_show' in self._statusVariables:
-            self._functions_to_show = self._statusVariables['functions_to_show']
 
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
@@ -270,9 +271,6 @@ class PulsedMeasurementGui(GUIBase):
     def _deactivate_generator_settings_ui(self):
         """ Disconnects the configuration of the Settings for the 'Pulse Generator' Tab.
         """
-        self._statusVariables['predefined_methods_to_show'] = self._predefined_methods_to_show
-        self._statusVariables['functions_to_show'] = self._functions_to_show
-
         self._gs.accepted.disconnect()
         self._gs.rejected.disconnect()
         self._gs.sampled_file_format_comboBox.currentIndexChanged.disconnect()
@@ -888,6 +886,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def load_block_in_editor(self, block_obj):
         self.block_editor.load_pulse_block(block_obj)
+        if block_obj is not None:
+            self._pg.curr_block_name_LineEdit.setText(block_obj.name)
         return
 
     def load_ensemble_in_editor(self, ensemble_obj, ensemble_params):
@@ -904,6 +904,8 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.curr_ensemble_bins_SpinBox.setValue(0)
             self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
+        if ensemble_obj is not None:
+            self._pg.curr_ensemble_name_LineEdit.setText(ensemble_obj.name)
         return
 
     def load_sequence_in_editor(self, sequence_obj, sequence_params):
@@ -918,6 +920,8 @@ class PulsedMeasurementGui(GUIBase):
             self._sg.curr_sequence_length_DSpinBox.setValue(0.0)
             self._sg.curr_sequence_bins_SpinBox.setValue(0)
             self._sg.curr_sequence_size_DSpinBox.setValue(0.0)
+        if sequence_obj is not None:
+            self._sg.curr_sequence_name_LineEdit.setText(sequence_obj.name)
         return
 
     def update_block_dict(self, block_dict):
@@ -939,6 +943,16 @@ class PulsedMeasurementGui(GUIBase):
         @param ensemble_dict:
         @return:
         """
+        # Check if an ensemble has been added. In that case set the current index to the new one.
+        # In all other cases try to maintain the current item and if it was removed, set the first.
+        text_to_set = None
+        if len(ensemble_dict) == self._pg.gen_ensemble_ComboBox.count() + 1:
+            for key in ensemble_dict:
+                if self._pg.gen_ensemble_ComboBox.findText(key) == -1:
+                    text_to_set = key
+        else:
+            text_to_set = self._pg.gen_ensemble_ComboBox.currentText()
+
         self.sequence_editor.set_ensemble_dict(ensemble_dict)
         # block signals
         self._pg.gen_ensemble_ComboBox.blockSignals(True)
@@ -948,6 +962,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_ensemble_ComboBox.addItems(list(ensemble_dict))
         self._pg.saved_ensembles_ComboBox.clear()
         self._pg.saved_ensembles_ComboBox.addItems(list(ensemble_dict))
+        if text_to_set is not None:
+            index = self._pg.gen_ensemble_ComboBox.findText(text_to_set)
+            if index != -1:
+                self._pg.gen_ensemble_ComboBox.setCurrentIndex(index)
         # unblock signals
         self._pg.gen_ensemble_ComboBox.blockSignals(False)
         self._pg.saved_ensembles_ComboBox.blockSignals(False)
@@ -959,6 +977,16 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_dict:
         @return:
         """
+        # Check if a sequence has been added. In that case set the current index to the new one.
+        # In all other cases try to maintain the current item and if it was removed, set the first.
+        text_to_set = None
+        if len(sequence_dict) == self._sg.gen_sequence_ComboBox.count() + 1:
+            for key in sequence_dict:
+                if self._sg.gen_sequence_ComboBox.findText(key) == -1:
+                    text_to_set = key
+        else:
+            text_to_set = self._sg.gen_sequence_ComboBox.currentText()
+
         # block signals
         self._sg.gen_sequence_ComboBox.blockSignals(True)
         self._sg.saved_sequences_ComboBox.blockSignals(True)
@@ -967,6 +995,10 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.gen_sequence_ComboBox.addItems(list(sequence_dict))
         self._sg.saved_sequences_ComboBox.clear()
         self._sg.saved_sequences_ComboBox.addItems(list(sequence_dict))
+        if text_to_set is not None:
+            index = self._sg.gen_sequence_ComboBox.findText(text_to_set)
+            if index != -1:
+                self._sg.gen_sequence_ComboBox.setCurrentIndex(index)
         # unblock signals
         self._sg.gen_sequence_ComboBox.blockSignals(False)
         self._sg.saved_sequences_ComboBox.blockSignals(False)
@@ -1117,22 +1149,14 @@ class PulsedMeasurementGui(GUIBase):
         self._as.rejected.connect(self.keep_former_analysis_settings)
         self._as.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
 
-        if 'ana_param_x_axis_name_LineEdit' in self._statusVariables:
-            self._as.ana_param_x_axis_name_LineEdit.setText(self._statusVariables['ana_param_x_axis_name_LineEdit'])
-        if 'ana_param_x_axis_unit_LineEdit' in self._statusVariables:
-            self._as.ana_param_x_axis_unit_LineEdit.setText(self._statusVariables['ana_param_x_axis_unit_LineEdit'])
-        if 'ana_param_y_axis_name_LineEdit' in self._statusVariables:
-            self._as.ana_param_y_axis_name_LineEdit.setText(self._statusVariables['ana_param_y_axis_name_LineEdit'])
-        if 'ana_param_y_axis_unit_LineEdit' in self._statusVariables:
-            self._as.ana_param_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_y_axis_unit_LineEdit'])
-        if 'ana_param_second_plot_x_axis_name_LineEdit' in self._statusVariables:
-            self._as.ana_param_second_plot_x_axis_name_LineEdit.setText(self._statusVariables['ana_param_second_plot_x_axis_name_LineEdit'])
-        if 'ana_param_second_plot_x_axis_unit_LineEdit' in self._statusVariables:
-            self._as.ana_param_second_plot_x_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_x_axis_unit_LineEdit'])
-        if 'ana_param_second_plot_y_axis_name_LineEdit' in self._statusVariables:
-            self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_name_LineEdit'])
-        if 'ana_param_second_plot_y_axis_unit_LineEdit' in self._statusVariables:
-            self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'])
+        self._as.ana_param_x_axis_name_LineEdit.setText(self._ana_param_x_axis_name_text)
+        self._as.ana_param_x_axis_unit_LineEdit.setText(self._ana_param_x_axis_unit_text)
+        self._as.ana_param_y_axis_name_LineEdit.setText(self._ana_param_y_axis_name_text)
+        self._as.ana_param_y_axis_unit_LineEdit.setText(self._ana_param_y_axis_unit_text)
+        self._as.ana_param_second_plot_x_axis_name_LineEdit.setText(self._ana_param_second_plot_x_axis_name_text)
+        self._as.ana_param_second_plot_x_axis_unit_LineEdit.setText(self._ana_param_second_plot_x_axis_unit_text)
+        self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._ana_param_second_plot_y_axis_name_text)
+        self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._ana_param_second_plot_y_axis_unit_text)
         self._as.ana_param_couple_settings_checkBox.setChecked(self._pulsed_master_logic.couple_generator_hw)
         self.update_analysis_settings()
         return
@@ -1140,38 +1164,41 @@ class PulsedMeasurementGui(GUIBase):
     def _deactivate_analysis_settings_ui(self):
         """ Disconnects the configuration of the Settings for 'Analysis' Tab.
         """
-        self._statusVariables['ana_param_x_axis_name_LineEdit'] = self._as.ana_param_x_axis_name_LineEdit.text()
-        self._statusVariables['ana_param_x_axis_unit_LineEdit'] = self._as.ana_param_x_axis_unit_LineEdit.text()
-        self._statusVariables['ana_param_y_axis_name_LineEdit'] = self._as.ana_param_y_axis_name_LineEdit.text()
-        self._statusVariables['ana_param_y_axis_unit_LineEdit'] = self._as.ana_param_y_axis_unit_LineEdit.text()
-        self._statusVariables['ana_param_second_plot_x_axis_name_LineEdit'] = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
-        self._statusVariables['ana_param_second_plot_x_axis_unit_LineEdit'] = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
-        self._statusVariables['ana_param_second_plot_y_axis_name_LineEdit'] = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
-        self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'] = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+        # FIXME: disconnect something
         return
 
     def update_analysis_settings(self):
         """ Apply the new settings """
+        self._ana_param_x_axis_name_text = self._as.ana_param_x_axis_name_LineEdit.text()
+        self._ana_param_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
+        self._ana_param_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
+        self._ana_param_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
+        self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+        self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+        self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+        self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+
         self._pa.pulse_analysis_PlotWidget.setLabel(
             axis='bottom',
-            text=self._as.ana_param_x_axis_name_LineEdit.text(),
-            units=self._as.ana_param_x_axis_unit_LineEdit.text())
+            text=self._ana_param_x_axis_name_text,
+            units=self._ana_param_x_axis_unit_text)
         self._pa.pulse_analysis_PlotWidget.setLabel(
             axis='left',
-            text=self._as.ana_param_y_axis_name_LineEdit.text(),
-            units=self._as.ana_param_y_axis_unit_LineEdit.text())
+            text=self._ana_param_y_axis_name_text,
+            units=self._ana_param_y_axis_unit_text)
         self._pa.pulse_analysis_second_PlotWidget.setLabel(
             axis='bottom',
-            text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
-            units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
+            text=self._ana_param_second_plot_x_axis_name_text,
+            units=self._ana_param_second_plot_x_axis_unit_text)
         self._pa.pulse_analysis_second_PlotWidget.setLabel(
             axis='left',
-            text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
-            units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
+            text=self._ana_param_second_plot_y_axis_name_text,
+            units=self._ana_param_second_plot_y_axis_unit_text)
         self._pe.measuring_error_PlotWidget.setLabel(
             axis='bottom',
-            text=self._as.ana_param_x_axis_name_LineEdit.text(),
-            units=self._as.ana_param_x_axis_unit_LineEdit.text())
+            text=self._ana_param_x_axis_name_text,
+            units=self._ana_param_x_axis_unit_text)
+
         couple_settings = self._as.ana_param_couple_settings_checkBox.isChecked()
         self._pulsed_master_logic.couple_generator_hw = couple_settings
         if couple_settings:
@@ -1185,8 +1212,8 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.gen_sample_freq_DSpinBox.setEnabled(True)
             self._pg.gen_activation_config_ComboBox.setEnabled(True)
         # FIXME: Not very elegant
-        self._pulsed_master_logic._measurement_logic.fc.set_units([self._as.ana_param_x_axis_unit_LineEdit.text(),
-                                                                   self._as.ana_param_y_axis_unit_LineEdit.text()])
+        self._pulsed_master_logic._measurement_logic.fc.set_units(
+            [self._ana_param_x_axis_unit_text, self._ana_param_y_axis_unit_text])
         return
 
     def keep_former_analysis_settings(self):
@@ -1245,11 +1272,9 @@ class PulsedMeasurementGui(GUIBase):
     def _activate_analysis_ui(self):
         """ Initialize, connect and configure the 'Analysis' Tab.
         """
-        if 'ana_param_errorbars_CheckBox' in self._statusVariables:
-            self._pa.ana_param_errorbars_CheckBox.setChecked(self._statusVariables['ana_param_errorbars_CheckBox'])
-        if 'second_plot_ComboBox_text' in self._statusVariables:
-            index = self._pa.second_plot_ComboBox.findText(self._statusVariables['second_plot_ComboBox_text'])
-            self._pa.second_plot_ComboBox.setCurrentIndex(index)
+        self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
+        index = self._pa.second_plot_ComboBox.findText(self._second_plot_ComboBox_text)
+        self._pa.second_plot_ComboBox.setCurrentIndex(index)
 
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
@@ -1306,6 +1331,14 @@ class PulsedMeasurementGui(GUIBase):
         # set boundaries
         self._pe.extract_param_conv_std_dev_slider.setRange(1, 200)
         self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
+        self._pa.ana_param_x_axis_start_ScienDSpinBox.setRange(0, 1.0e99)
+        self._pa.ana_param_x_axis_inc_ScienDSpinBox.setRange(0, 1.0e99)
+        self._pa.ana_param_num_laser_pulse_SpinBox.setRange(1, 1e6)
+        self._pa.ana_param_record_length_SpinBox.setRange(0, 1.0e99)
+        self._pa.time_param_ana_periode_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_power_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pe.extract_param_threshold_SpinBox.setRange(1, 2**31-1)
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -1405,8 +1438,8 @@ class PulsedMeasurementGui(GUIBase):
         """
         self.measurement_run_stop_clicked(False)
 
-        self._statusVariables['ana_param_errorbars_CheckBox'] = self._pa.ana_param_errorbars_CheckBox.isChecked()
-        self._statusVariables['second_plot_ComboBox_text'] = self._pa.second_plot_ComboBox.currentText()
+        self._ana_param_errorbars = self._pa.ana_param_errorbars_CheckBox.isChecked()
+        self._second_plot_ComboBox_text = self._pa.second_plot_ComboBox.currentText()
 
         # disconnect signals
         self._pulsed_master_logic.sigSignalDataUpdated.disconnect()

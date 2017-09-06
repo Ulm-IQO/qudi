@@ -23,7 +23,9 @@ import os
 import importlib
 import inspect
 import numpy as np
+
 from collections import OrderedDict
+from core.module import StatusVar
 from logic.generic_logic import GenericLogic
 
 
@@ -34,38 +36,26 @@ class PulseExtractionLogic(GenericLogic):
     _modclass = 'PulseExtractionLogic'
     _modtype = 'logic'
 
+    conv_std_dev = StatusVar(default=10.0)
+    count_treshold = StatusVar(default=10)
+    threshold_tolerance_bins = StatusVar(default=20)
+    min_laser_length = StatusVar(default=200)
+    #self.number_of_lasers = StatusVar(default=50)
+    current_method = StatusVar(default='conv_deriv')
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
-        self.conv_std_dev = 10.0
         self.number_of_lasers = 50
-        self.count_treshold = 10
-        self.threshold_tolerance_bins = 20
-        self.min_laser_length = 200
-        self.current_method = 'conv_deriv'
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # recall saved variables from file
-        if 'conv_std_dev' in self._statusVariables:
-            self.conv_std_dev = self._statusVariables['conv_std_dev']
-        if 'count_treshold' in self._statusVariables:
-            self.count_treshold = self._statusVariables['count_treshold']
-        if 'threshold_tolerance_bins' in self._statusVariables:
-            self.threshold_tolerance_bins = self._statusVariables['threshold_tolerance_bins']
-        if 'min_laser_length' in self._statusVariables:
-            self.min_laser_length = self._statusVariables['min_laser_length']
-        #if 'number_of_lasers' in self._statusVariables:
-        #    self.number_of_lasers = self._statusVariables['number_of_lasers']
-        if 'current_method' in self._statusVariables:
-            self.current_method = self._statusVariables['current_method']
-
         self.gated_extraction_methods = OrderedDict()
         self.ungated_extraction_methods = OrderedDict()
         self.extraction_methods = OrderedDict()
@@ -101,13 +91,6 @@ class PulseExtractionLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        # Save variables to file
-        self._statusVariables['conv_std_dev'] = self.conv_std_dev
-        self._statusVariables['count_treshold'] = self.count_treshold
-        self._statusVariables['threshold_tolerance_bins'] = self.threshold_tolerance_bins
-        self._statusVariables['min_laser_length'] = self.min_laser_length
-        #self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        self._statusVariables['current_method'] = self.current_method
         return
 
     def extract_laser_pulses(self, count_data, is_gated=False):

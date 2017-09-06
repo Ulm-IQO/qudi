@@ -26,7 +26,7 @@ import os
 
 import PyDAQmx as daq
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface
 from collections import OrderedDict
 
@@ -38,8 +38,7 @@ class NIPulser(Base, PulserInterface):
     _modtype = 'PulserInterface'
     _modclass = 'hardware'
 
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
+    self.device = ConfigOption('device', 'Dev0', missing='warn')
 
     def on_activate(self):
         """ Activate module
@@ -62,11 +61,6 @@ class NIPulser(Base, PulserInterface):
                 'No parameter "pulsed_file_dir" was specified in the config for NIPulser '
                 'as directory for the pulsed files!\nThe default home directory\n{0}\n'
                 'will be taken instead.'.format(self.pulsed_file_dir))
-
-        if 'device' in config.keys():
-            self.device = config['device']
-        else:
-            self.device = 'Dev0'
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
