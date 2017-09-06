@@ -151,17 +151,17 @@ class GatedCounterLogic(GenericLogic):
             filelabel = 'gated_counter_trace_' + tag
 
         # prepare the data in a dict or in an OrderedDict:
-        header = 'gate index'
+        data = OrderedDict()
+        data['gate index'] = np.arange(self.countdata.shape[1])
         if self.countdata.shape[0] == 1:
-            header = header + ', signal (#counts)'
+            data['signal (#counts)'] = self.countdata[0]
         else:
             for i in range(1, self.countdata.shape[0] + 1):
-                header = header + ', signal{0:d} (#counts)'.format(i)
+                data['signal{0:d} (#counts)'.format(i)] = self.countdata[i-1]
 
-        data = {header: self.countdata}
         fig = self.draw_figure()
 
-        self._save_logic.save_data(data, parameters=parameters,  filelabel=filelabel, plotfig=fig)
+        self._save_logic.save_data(data, fmt='%d', parameters=parameters,  filelabel=filelabel, plotfig=fig)
         self.log.info('Gated counter data saved.')
         return
 
