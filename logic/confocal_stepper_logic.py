@@ -36,6 +36,27 @@ from core.util.mutex import Mutex
 # Todo make a confocal stepper History class for this logic as exists in confocal logic. This is neede for restarting and
 # for back and forward movement in images
 
+def truncate(f, n):
+    """Truncates/pads a float f to n decimal places without rounding"""
+    # necessary to avoid floating point conversion errors
+    s = '{}'.format(f)
+    if 'e' in s or 'E' in s:
+        return '{0:.{1}f}'.format(f, n)
+    i, p, d = s.partition('.')
+    return float('.'.join([i, (d + '0' * n)[:n]]))
+
+
+def in_range(x, min, max):
+    """Checks if given value is within a range
+
+    @param float x: value to be checked
+    @param float min: lower limit
+    @param float max: upper limit
+    @return bool: true if x lies within [min,max]
+    """
+    return (min is None or min <= x) and (max is None or max >= x)
+
+
 class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     """
     This is the Logic class for confocal stepping.
@@ -46,7 +67,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     _connectors = {
         'confocalstepper1': 'ConfocalStepperInterface',
         'savelogic': 'SaveLogic',
-        'confocalcounter': 'FiniteCounterInterface'
+        'confocalcounter': 'FiniteCounterInterface',
+        'analoguereader': 'AnalogReaderInterface'
     }
 
     # Todo: add connectors and QTCore Signals
@@ -69,10 +91,21 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     signal_history_event = QtCore.Signal()
 
-    # Todo: For steppers with hardware realtime info like res readout of attocubes clock synchronisation and readout needs to be written
-    # Therefore a new interface (ConfocalReadInterface o.ä.) needs to be made
+    # Todo: For steppers with hardware real-time info like res readout of attocubes clock synchronisation and readout needs to be written
+    # Therefore a new interface (ConfocalReadInterface or similar.) needs to be made
 
-
+    class Axis(object):
+        def __init__(self, name, hardware):
+            self.name = name
+            self.step_amplitude = None
+            self.step_freq = None
+            self.mode = None
+            self.steps_direction = 50
+            self.hardware = hardware
+            self.voltage_range = []
+            self.absolute_position = None
+            self.feedback_precision_volt = None
+            self.feedback_precision_position = None
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -89,23 +122,35 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Connectors
         self._stepping_device = self.get_connector('confocalstepper1')
         self._counting_device = self.get_connector('confocalcounter')
+        self._position_feedback_device = self.get_connector('analoguereader')
         self._save_logic = self.get_connector('savelogic')
-
-
 
         # Initialises hardware values
         self.axis = self.get_stepper_axes_use()
+        # first steps to get a to a better handling of axes parameters
+
         self.step_amplitude = dict()
         self._step_freq = dict()
         self._stepper_mode = dict()
+        self.axis_class = dict()
+
+        self.closed_loop_hardware = self._stepping_device.get_position_feedback()
+        if self.closed_loop_hardware:
+            self.step_range = {}
         # Todo: Add Offset dictionary and update all offset uses accordingly.
-        for i in self.axis:
+        for i in self.axis.keys():
+            self.axis_class[i] = self.Axis(i, self._stepping_device)
             # Todo: Add error check here or in method else it tries to write non existing value into itself
             self.step_amplitude[i] = self.get_stepper_amplitude(i)
-            self._step_freq[i] = self.get_stepper_frequency(i)
+            self.axis_class[i].step_freq = self.get_stepper_frequency(i)
             # Todo: write method that enquires stepping device mode
             self._stepper_mode[i] = self.get_stepper_mode(i)
-
+            if self.closed_loop_hardware:
+                self.step_range[i] = self.get_position_range_stepper(i)
+                self.axis_class[i].voltage_range = self.get_feedback_voltage_range(i)
+                self.get_position([i])
+                self.axis_class[i].feedback_precision_volt, self.axis_class[
+                    i].feedback_precision_position = self.calculate_precision_feedback(i)
         # Initialise step image constraints
         self._scan_axes = "xy"
         self._inverted_scan = False
@@ -169,14 +214,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         else:
             return 0
 
-    def set_stepper_frequency(self, axis, frequency= None):
+    def set_stepper_frequency(self, axis, frequency=None):
         """
         Sets the stepping frequency for a specific axis to frequency
 
-        :param axis: The axis for the desired frequency
-        :param frequency: desired frequency
+        @param str axis: The axis for the desired frequency
+        @param float frequency: desired frequency
 
-        :return int: error code (0:OK, -1:error)
+        @return int: error code (0:OK, -1:error)
         """
 
         # checks if stepper is still running
@@ -192,7 +237,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         'be adjusted to stay in the given range.'.format(frequency))
                     return -1
                 else:
-                    self._step_freq[axis] = frequency
+                    self.axis_class[axis].step_freq = frequency
                     return self._stepping_device.set_step_freq(axis, frequency)
             else:
                 self.log.warning("No amplitude given so value can not be changed")
@@ -205,20 +250,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         freq = self._stepping_device.get_step_freq(axis)
         if freq == -1:
             self.log.warning("The Stepping device could not read out the frequency")
-            return self._step_freq
+            return self.axis_class[axis].step_freq
         # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
         # this is better
-        self._step_freq[axis] = freq
+        self.axis_class[axis].step_freq = freq
         return freq
 
-    def set_stepper_amplitude(self, axis, amplitude = None):
+    def set_stepper_amplitude(self, axis, amplitude=None):
         """
         Sets the stepping amplitude for a specific axis to amplitude
 
-        :param axis: The axis for the desired frequency
-        :param amplitude: desired amplitude (V)
+        @param str axis: The axis for the desired frequency
+        @param float amplitude: desired amplitude (V)
 
-        :return int: error code (0:OK, -1:error)
+        @return int: error code (0:OK, -1:error)
         """
         # checks if stepper is still running
         if self.getState() == 'locked':
@@ -241,7 +286,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """Returns the current possible frequency range of the stepping device for all axes
         @return dict: key[axis], value[list of range]
         """
-        return self._stepping_device._frequency_range
+        return self._stepping_device.get_freq_range_stepper()
 
     def get_stepper_amplitude(self, axis):
         amp = self._stepping_device.get_step_amplitude(axis)
@@ -262,8 +307,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def set_mode_stepping(self, axis):
         """Sets the mode of the stepping device to stepping for the specified axis
 
-        :param axis: The axis for which the mode is to be set
-        :return int: error code (0:OK, -1:error)
+        @param str axis: The axis for which the mode is to be set
+        @return int: error code (0:OK, -1:error)
         """
         self._stepper_mode[axis] = "stepping"
         return self._stepping_device.set_axis_mode(axis, "stepping")
@@ -271,8 +316,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def set_mode_ground(self, axis):
         """Sets the mode of the stepping device to grounded for the specified axis
 
-        :param axis: The axis for which the mode is to be set
-        :return int: error code (0:OK, -1:error)
+        @param str axis: The axis for which the mode is to be set
+        @return int: error code (0:OK, -1:error)
         """
         self._stepper_mode[axis] = "ground"
         return self._stepping_device.set_axis_mode(axis, "ground")
@@ -280,8 +325,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def get_stepper_mode(self, axis):
         """Gets the mode of the stepping device for the specified axis
 
-        :param axis: The axis for which the mode is to be set
-        :return int: error code (0:OK, -1:error)
+        @param str axis: The axis for which the mode is to be set
+
+        @return int: error code (0:OK, -1:error)
         """
         mode = self._stepping_device.get_axis_mode(axis)
         if mode == -1:
@@ -290,31 +336,34 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._stepper_mode[axis] = mode
             return mode
 
-    def _check_freq(self, axis):
+    def _check_freq(self, axis_name):
         """ Checks if the frequency in te device is the same as set by the program
         If the frequencies are different the frequency in the device is changed to the set
         frequency
 
+        @param str axis_name: The axis for which the frequency should be checked
+
         @return int: error code (0:OK, -1:error)
         """
-        freq = self._stepping_device.get_step_freq(axis)
+        freq = self._stepping_device.get_step_freq(axis_name)
         if freq == -1:
             return -1
-        elif freq != self._step_freq[axis]:
+        elif freq != self.axis_class[axis_name].step_freq:
             self.log.warning(
                 "The device has different frequency of {} then the set frequency {}. "
-                "The frequency will be changed to the set frequency".format(freq,
-                                                                            self._step_freq[axis]))
+                "The frequency will be changed to the set frequency".format(freq, self.axis_class[axis_name].step_freq))
             # checks if stepper is still running
             if self.getState() == 'locked':
                 self.log.warning("The stepper is still running")
                 return -1
-            return self.set_stepper_frequency(axis, self._step_freq[axis])
+            return self.set_stepper_frequency(axis_name, self.axis_class[axis_name].step_freq)
         return 0
 
     def _check_amplitude(self, axis):
-        """ Checks if the voltage in te device is the same as set by the program
+        """ Checks if the voltage in the device is the same as set by the program
         If the voltages are different the voltage in the device is changed to the set voltage
+
+        @param str axis: The axis for which the amplitude is to be checked
 
         @return int: error code (0:OK, -1:error)
         """
@@ -334,8 +383,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         return 0
 
     def _check_mode(self, axis):
-        """ Checks if the voltage in te device is the same as set by the program
+        """ Checks if the voltage in the device is the same as set by the program
         If the voltages are different the voltage in the device is changed to the set voltage
+
+        @param str axis: The axis for which the mode should be checked
 
         @return int: error code (0:OK, -1:error)
         """
@@ -366,18 +417,172 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return retval
         return 0
 
+    def get_position_range_stepper(self, axis_name):
+        """Gets the total possible position range of the device axis
+
+        @param str axis_name: the axis for which the range is to be checked
+
+        @ return list: min and max possible voltage in feedback for given axis"""
+        return self._stepping_device.get_position_range_stepper(axis_name)
+
     def get_stepper_axes_use(self):
         """ Find out how the axes of the stepping device are named.
 
-        @return list(str): list of axis dictionary
+        @return dict: {axis_name:axis_id}
 
         Example:
-          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible
+          For 3D confocal microscopy in Cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible
           value.
           If you only care about the number of axes and not the assignment and names
           use get_stepper_axes
         """
         return self._stepping_device.get_stepper_axes_use()
+
+    ################################# Stepper Position Control Methods #######################################
+
+    def calculate_precision_feedback(self, axis_name):
+        """Calculates the position feedback devices precision for a given axis
+
+        @param str axis_name: The name of the axis for which the precision is to be calculated
+
+        @return List(float): precision of the feedback device in (volt, position)  (-1.0 for error)
+        """
+        if axis_name not in self.axis.keys():
+            self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
+            return -1
+
+        voltage_range = self.axis_class[axis_name].voltage_range
+
+        # the NIDAQ has a resolution of res and only use 95% of the range giving the following voltage resolution.
+        # If any other device might be used one day this needs to be passed as a variable
+        precision_voltage = ((voltage_range[1] - voltage_range[0]) / (
+            2 ** self._position_feedback_device.get_ai_resolution())) * 1.05
+        precision_voltage = float(truncate(precision_voltage, 6))
+        # Todo: the position voltage should also be calculated depending on the readout and the value given by the
+        # stepper. This is only a short time solution
+        precision_position = 2e-4
+        return precision_voltage, precision_position
+
+    def get_feedback_voltage_range(self, axis_name):
+        """Gets the voltage range of the position feedback device that can be converted to positions
+
+        @axis_name The axis for which the voltage range is retrieved
+
+        @ return list: min and max possible voltage in feedback for given axis"""
+        return self._position_feedback_device._ai_voltage_range[axis_name]
+
+    def get_position(self, axes):
+        """Measures the current position of the hardware axes of the stepper
+
+        @ List(str) axes: List of strings for which the hardware positions are to be measured
+
+        @ return List : positions the hardware in mm ordered by the axes ordering or error value [-1]
+        """
+        # test if hardware has absolute position reading
+        if not self.closed_loop_hardware:
+            self.log.info(
+                "This method can not be used on this hardware and these axis as the hardware has not position feedback")
+            return [-1]
+
+        # check passed axes value
+        if not isinstance(axes, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('An empty list of axes was given.')
+            return [-1]
+
+        # read voltages from resistive read out for position feedback
+        if self._position_feedback_device.set_up_analogue_voltage_reader(axes[0]) < 0:
+            return [-1]
+        self._position_feedback_device.lock()
+        # if more than one axis is read add additional readout channels
+        if len(axes) > 1:
+            if 0 > self._position_feedback_device.add_analogue_reader_channel_to_measurement(axes[0], axes[1:]):
+                self._position_feedback_device.unlock()
+                self._position_feedback_device.close_analogue_voltage_reader(axes[0])
+                return [-1]
+
+        voltage_result = self._position_feedback_device.get_analogue_voltage_reader(axes)
+        self._position_feedback_device.unlock()
+        # close position feedback reader
+        if 0 > self._position_feedback_device.close_analogue_voltage_reader(axes[0]):
+            self.log.error("It was not possible to close the analog voltage reader")
+            return [-1]
+        if voltage_result[1] == 0:
+            self.log.warning("Reading the voltage for position feedback failed")
+            return [-1]
+
+        # convert voltage to position
+        position_result = []
+        for counter in range(len(axes)):
+            position = self.convert_voltage_to_position(axes[counter], voltage_result[0][counter])
+            position_result.append(position)
+            self.axis_class[axes[counter]].absolute_position = position
+
+        return position_result
+
+    def convert_position_to_voltage(self, axis_name, position):
+        """Converts a position to a voltage for a resistive readout of the axis
+
+        @param str axis_name: The axis for which the voltage is to be converted to a position
+        @param float position: The position that is to be converted into a voltage
+
+        @return float: voltage (rounded), error for -1.0
+        """
+        if axis_name not in self.axis.keys():
+            self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
+            return -1
+        if not isinstance(position, (float, int)):
+            type_variable = type(position)
+            self.log.error(
+                "A wrong variable type was passed. The position must be an integer or float but a %s was given",
+                type_variable)
+            return -1.0
+
+        voltage_range = self.axis_class[axis_name].voltage_range
+        step_range = self.step_range[axis_name]
+        if not in_range(position, step_range[0], step_range[1]):
+            self.log.warning(
+                "The position (%s) you are trying to convert lies without the physical range of your axis (%s)",
+                position, step_range)
+
+        v_range = voltage_range[1] - voltage_range[0]
+        s_range = step_range[1] - step_range[0]
+        result = ((position - step_range[0]) * v_range / s_range) + voltage_range[0]
+
+        precision = self.axis_class[axis_name].feedback_precision_volt
+        # adjust result to possible resolution of analog_input
+        return int(result / precision) * precision
+
+    def convert_voltage_to_position(self, axis_name, voltage):
+        """Converts a voltage from a resistive readout into a position of the axis
+
+        @param str axis_name: The axis for which the voltage is to be converted to a position
+        @param float voltage: The voltage that is to be converted into a position
+        @return float: position (in rounded to the fourth digit), error for -1.0
+        """
+        if not isinstance(voltage, (float, int)):
+            type_variable = type(voltage)
+            self.log.error(
+                "A wrong variable type was passed. The voltage must be an integer or float but a %s was given",
+                type_variable)
+            return -1.0
+        if axis_name not in self.axis.keys():
+            self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
+            return -1
+
+        voltage_range = self.axis_class[axis_name].voltage_range
+        step_range = self.step_range[axis_name]
+        if not in_range(voltage, voltage_range[0], voltage_range[1]):
+            self.log.warning(
+                "The voltage (%s) you are trying to convert lies without the physical range of your axis (%s)",
+                voltage, voltage_range)
+
+        v_range = voltage_range[1] - voltage_range[0]
+        s_range = step_range[1] - step_range[0]
+        result = ((voltage - voltage_range[0]) * s_range / v_range) + step_range[0]
+        # the precision of readout of the attocubes so far is 200nn (4th digit).
+        # Todo: add this precision to config (attocube)
+        result = truncate(result, 4)
+        return result
 
     ################################# Stepper Scan Methods #######################################
 
@@ -466,7 +671,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # initialize counting device
         self._counting_device.lock()
         clock_status = self._counting_device.set_up_finite_counter_clock(
-            clock_frequency=self._step_freq[self._first_scan_axis])
+            clock_frequency=self.axis_class[self._first_scan_axis].step_freq)
         if clock_status < 0:
             self._counting_device.unlock()
             self.unlock()
@@ -498,6 +703,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.kill_counter()
             return -1
         self._stepping_device.lock()
+        self.time = np.zeros((self._steps_scan_second_line, 2))
+        self.time_back = np.zeros((self._steps_scan_second_line, 2))
 
         self.signal_step_lines_next.emit(True)
 
@@ -508,7 +715,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        # Todo: Make sure attocube axis are set back to gnd if deemed sensible
+        # Todo: Make sure attocube axis are set back to ground if deemed sensible
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
@@ -535,102 +742,165 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         pass
 
-    def move_to_position(self, x=None, y=None, z=None):
+    def move_to_position(self, position, accuracy=None):
         """Moving the stepping device (approximately) to the desired new position from the GUI.
 
-        @param int x: if defined, position in x-direction (steps)
-        @param int y: if defined, position in y-direction (steps)
-        @param int z: if defined, position in z-direction (steps)
+        @param dict position: Dictionary {axis_name, new_position}. optimisation_accuracy
+                                is the lowest first accuracy the algorithm will use for the first optimisation steps.
+                                Choosing this big makes the algorithm faster, small makes it move less if new position
+                                is close to old one
+        @param int accuracy: describes the maximum amount of steps made in one movement to reach desired new position.
+                                Default None
 
         @return int: error code (0:OK, -1:error)
         """
+        if accuracy is not None:
+            if not isinstance(accuracy, int) or accuracy <= 0:
+                self.log.error("The optimisation accuracy must be an integer >0.\n The value passed was %s", accuracy)
+        else:
+            # Todo: generate a variable that makes accuracy a class variable
+            # that is to be set here adn that can be changed from the GUI
+            accuracy = 1
 
-        self.log.info("Movement of attocubes to an absolute position no possible for steppers.\n"
-                      "The position moved to is the given of amount of steps, not a physical "
-                      "given range away")
-        # Check if freq and voltage are set as set in GUI
+        # test if hardware has absolute position reading
+        if not self.closed_loop_hardware:
+            self.log.info(
+                "This method can not be used on this hardware and these axis as the hardware has not position feedback")
+            return -1
 
-        if x is not None and int(x) != self._current_x:
-            # check freq and amplitude
-            status_freq = self._check_freq("x")
-            status_amp = self._check_amplitude("x")
-            if status_amp < 0:
-                self.log.error("A stepping is not possible, as the amplitude in the system and "
-                               "the amp. in the gui are different for the x axis.Please check")
-                return -1
-            if status_freq < 0:
-                self.log.error("A stepping is not possible, as the frequency in the system and "
-                               "the freq. in the gui are different for the x axis.Please check")
-                return -1
+        # check passed axes value
+        if not isinstance(position, dict):
+            self.log.error('A wrong variable type for position was given. It must be a dictionary')
+            return -1
 
-            x = int(x)
-            # check the direction of the movement
-            out = True
-            x_steps = x - self._current_x
-            if x_steps < 0:
-                out = False
-            return_value = self._stepping_device.move_attocube("x", True, out, steps=abs(x_steps))
-            self._current_x = x
-            if return_value == -1:
-                return return_value
+        return_value = 0
+        for key, value in position.items():
+            if key not in self.axis.keys():
+                self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", key)
+                continue
+            if not in_range(value, self.step_range[key][0], self.step_range[key][1]):
+                self.log.error("%s lies without the steppers range for axis %s", value, key)
+                continue
 
-        if y is not None and int(y) != self._current_y:
-            # check freq and amplitude
-            status_freq = self._check_freq("y")
-            status_amp = self._check_amplitude("y")
-            if status_amp < 0:
-                self.log.error("A stepping is not possible, as the amplitude in the system and "
-                               "the amp. in the gui are different for the y axis.Please check")
-                return -1
-            if status_freq < 0:
-                self.log.error("A stepping is not possible, as the frequency in the system and "
-                               "the freq. in the gui are different for the y axis.Please check")
-                return -1
+            if abs(self.axis_class[key].absolute_position - value) <= self.axis_class[
+                    key].feedback_precision_volt:  # check if position differs from actual hardware position
 
-            y = int(y)
-            # check the direction of the movement
-            out = True
-            y_steps = y - self._current_y
-            if y_steps < 0:
-                out = False
-            return_value = self._stepping_device.move_attocube("y", True, out, steps=abs(y_steps))
-            self._current_y = y
-            if return_value == -1:
-                return return_value
+                # Todo: Maybe it makes sense to open option to change freq and amplitude
+                # actually move to the wanted position using an optimisation algorithm
+                if 0 > self.optimize_position(key, value, accuracy):
+                    self.log.warning("Moving attocube to desired position failed.")
+                    return_value = -1
 
-        if z is not None and int(z) != self._current_z:
-            # check freq and amplitude
-            status_freq = self._check_freq("z")
-            status_amp = self._check_amplitude("z")
-            if status_amp < 0:
-                self.log.error("A stepping is not possible, as the amplitude in the system and "
-                               "the amp. in the gui are different for the z axis.Please check")
-                return -1
-            if status_freq < 0:
-                self.log.error("A stepping is not possible, as the frequency in the system and "
-                               "the freq. in the gui are different for the z axis.Please check")
-                return -1
+        # Todo: implement moving for hardware without feedback with amount of steps:
+        # self.log.info("Movement of attocubes to an absolute position no possible for steppers.\n"
+        #              "The position moved to is the given of amount of steps, not a physical "
+        #              "given range away")
+        return return_value
 
-            z = int(z)
-            # check the direction of the movement
-            out = True
-            z_steps = z - self._current_z
-            if z_steps < 0:
-                out = False
-            return_value = self._stepping_device.move_attocube("z", True, out, steps=abs(z_steps))
-            self._current_z = z
-            return return_value
-        self.log.warning("No movement was defined or necessary")
-        return 0
+    def optimize_position(self, axis_name, position, steps=1):
+        """ Algorithms that uses an searching algorithm to move to the given position
 
-    def get_position(self):
-        """ Get position from stepping device.
-
-        @return list: with three entries x, y and z denoting the current
-                      position in meters
+        @param axis_name: the name of the axis for which the position is to be changed
+        @param position: The position the attocube axis should be moved
+        @param int steps: The maximum used amount of steps to reach the desired position in one movement
+        @return int: error code (0:OK, -1:error)
         """
-        pass
-        # Todo this only works with position feedback hardware. Not sure if should be kept, as not possible for half the steppers
+
+        # check if hardware can do optimisation
+        if not self.closed_loop_hardware:
+            self.log.warning(
+                "This algorithm only works with position feedback. Please use another algorithm to get to "
+                "the desired position")
+
+        # check feasibility of passed values
+        if not isinstance(steps, int) or steps <= 0:
+            self.log.error("The movement accuracy steps has to be given as an integer!")
+            return -1
+        if axis_name not in self.axis.keys():
+            self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
+            return -1
+        if not in_range(position, self.step_range[axis_name][0], self.step_range[axis_name][1]):
+            self.log.error("%s lies without the steppers range", position)
+            return -1
+
+        # check if optimisation is necessary
+        precision = self.axis_class[axis_name].feedback_precision_position
+        if abs(self.axis_class[axis_name].absolute_position - position) <= precision:
+            return 0
+
+        direction = self.axis_class[axis_name].absolute_position < position  # find movement direction
+        # check freq and amplitude
+        status_freq = self._check_freq(axis_name)
+        status_amp = self._check_amplitude(axis_name)
+        status_mode = self.set_mode_stepping(axis_name)
+        if status_amp + status_freq + status_mode < 0:
+            return -1
+
+        # Initialise position readout:
+        if self._position_feedback_device.set_up_analogue_voltage_reader(axis_name) < 0:
+            return -1
+        self._position_feedback_device.lock()
+        # todo: kill counter
+        # --- Do optimisation ---
+        # convert to hardware voltage for faster execution.
+        desired_voltage = self.convert_position_to_voltage(axis_name, position)
+        counter = 0
+
+        # Todo: distance feature
+        # distance = 0 This will be necessary to take care of the fact, that the stepper moves not equal steps sizes in
+        # up and down direction (Feature for later)
+        sleep = steps / self.axis_class[axis_name].step_freq
+        while counter < 20:  # do max 5 optimisation cycles per accuracy step
+            # move attocubes with given accuracy(steps)
+            if 0 > self._stepping_device.move_attocube(axis_name, True, direction, steps=steps):
+                self.log.error("Moving the attocubes failed")
+                self._position_feedback_device.unlock()
+                self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+                return -1
+            time.sleep(sleep)
+            # compare new position to desired one
+            result = self._position_feedback_device.get_analogue_voltage_reader([axis_name])
+            if result[1] == 0:
+                self._position_feedback_device.unlock()
+                self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+                self.log.error("reading the axis voltage failed")
+                return -1
+            voltage_result = result[0][0]
+
+            # update position and leave algorithm if position was reached.
+            if abs(voltage_result - desired_voltage) < precision:  # comparing floats
+                error = self.convert_voltage_to_position(axis_name, voltage_result)
+                if error != -1.0:
+                    self.axis_class[axis_name].absolute_position = error
+                    error = 0
+                else:
+                    error = -1
+                self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+                self._position_feedback_device.unlock()
+                return error
+            # check if direction movement has to changed
+            if direction:
+                if voltage_result < desired_voltage:
+                    continue
+            else:
+                if voltage_result > desired_voltage:
+                    continue
+            # half the step size to go back
+            if steps > 1:
+                steps = int(steps / 2)
+                sleep = steps / self.axis_class[axis_name].step_freq
+            else:
+                counter += 1
+            direction = not direction
+
+        position_result = self.convert_voltage_to_position(axis_name, voltage_result)
+        self.log.info("The best position that could be reached with the given freq. and voltage of the stepper has"
+                      " been reached. \n It is %s, while the desired value was %s. If a higher accuracy is desired"
+                      " please reduce the step voltage and redo the process.", position_result, position)
+        self.axis_class[axis_name].absolute_position = position_result
+        self._position_feedback_device.unlock()
+        self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+        return 0
 
     def _step_line(self, direction):
         """Stepping a line
@@ -639,7 +909,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return bool: If true scan was in up direction, if false scan was in down direction
         """
-        # Todo: Make sure how to implement the threadlocking here correctly.
+        # Todo: Make sure how to implement the thread locking here correctly.
 
         # Todo: Think about the question whether we actually step the same amount of steps as we
         # count or is we might be off by one, as we are not counting when moving up on in "y"
@@ -675,7 +945,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return
 
         if self._step_counter == 0:
-            # Todo: Right now only square images possible. Needs to be update.
             self.stepping_raw_data = np.zeros(
                 (self._steps_scan_second_line, self._steps_scan_first_line))
             self.stepping_raw_data_back = np.zeros(
@@ -712,10 +981,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def _step_and_count(self, mainaxis, secondaxis, direction=True, steps=1):
         """
 
-        @param str axis: Axis for which the stepping should take place
+        @param str mainaxis: name of the fast axis of the step scan
+        @param str secondaxis: name of the slow axis of the step scan
         @param bool direction: direction of stepping (up: True or down: False)
         @param int steps: amount of steps, default 1
-        @return np.array: acquired data in counts/s or error value -1
+        @return np.array: acquired data in counts/s or error value [-1],[]
         """
         # added, that the stepper now scans back and forth
 
@@ -744,7 +1014,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # sensible
 
                 time.sleep(
-                    steps / self._step_freq[mainaxis])  # wait till stepping finished for readout
+                    steps / self.axis_class[mainaxis].step_freq)  # wait till stepping finished for readout
                 result = self._counting_device.get_finite_counts()
                 retval = 0
                 a = self._counting_device.stop_finite_counter()
@@ -777,7 +1047,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     self.log.error("moving of attocube failed")
                     return [-1], []
                 time_back3 = time.time()
-                time.sleep(steps / self._step_freq[mainaxis])
+                time.sleep(steps / self.axis_class[mainaxis].step_freq)
                 result_back = self._counting_device.get_finite_counts()
 
                 # move on line up
@@ -803,7 +1073,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         self.log.error("moving of attocube failed (offset)")
                         return [-1], []
                     else:
-                        time.sleep(steps_offset / self._step_freq[self._first_scan_axis])
+                        time.sleep(steps_offset / self.axis_class[self._first_scan_axis].step_freq)
                 else:
                     if self._step_counter == 0:
                         self.log.warning("No offset used.")
@@ -856,7 +1126,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     ##################################### Handle Data ########################################
 
     def initialize_image(self):
-        """Initalization of the image.
+        """Initialization of the image.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -879,26 +1149,26 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         filepath = self._save_logic.get_path_for_module('ConfocalStepper')
         timestamp = datetime.datetime.now()
-        # Prepare the metadata parameters (common to both saved files):
+        # Prepare the meta data parameters (common to both saved files):
         parameters = OrderedDict()
 
         self._get_scan_axes()
         parameters['First Axis'] = self._first_scan_axis
         parameters['First Axis Steps'] = self._steps_scan_first_line
-        parameters['First Axis Frequency'] = self._step_freq[self._first_scan_axis]
+        parameters['First Axis Frequency'] = self.axis_class[self._first_scan_axis].step_freq
         parameters['First Axis Amplitude'] = self.step_amplitude[self._first_scan_axis]
         parameters[
-            'First Axis Offset (%)'] = self._off_set_x  # Todo: this needs to be specfied specifially for x
+            'First Axis Offset (%)'] = self._off_set_x  # Todo: this needs to be specified specifically for x
         parameters['First Axis Offset steps'] = round(
-            self._off_set_x * self._steps_scan_first_line)  # Todo: this needs to be specfied specifially for x
+            self._off_set_x * self._steps_scan_first_line)  # Todo: this needs to be specified specifically for x
         parameters['First Axis Offset Direction'] = \
             self._first_scan_axis if self._off_set_direction else '-' + self._first_scan_axis
 
         parameters['Second Axis'] = self._second_scan_axis
-        # Todo: Update when square images are not necessary anymore
+        # Todo: Update when square images are not necessary any more
         parameters['Second Axis Steps'] = self._steps_scan_first_line
         # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
-        parameters['Second Axis Frequency'] = self._step_freq[self._second_scan_axis]
+        parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.step_amplitude[self._second_scan_axis]
 
         # parameters['XY Image at z position (m)'] = self._current_z
