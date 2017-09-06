@@ -186,8 +186,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             self._port = self._port_default
             self.log.warning('No port configured taking standard instead.')
 
-        # connect ethernet socket and FTP
-        # Todo: Add a loop here which tries connecting sveral times and olny throws error after failing x times.
+        # connect Ethernet socket and FTP
+        # Todo: Add a loop here which tries connecting several times and only throws error after failing x times.
         counter = 0
         self.connected = False
         self.tn = telnetlib.Telnet(self._host, self._port)
@@ -238,11 +238,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
         self.tn.read_eager()  # disregard old print outs
         self.tn.write(full_cmd)  # send command
-        # any response ends with ">" from the attocube. Therefor connection waits until this happened
+        # any response ends with ">" from the attocube. Therefore connection waits until this happened
         try:
             value_binary = self.tn.read_until(b">", timeout=1)
         except:
-            self.log.error("timeout of telnet connection attocube did not respond")
+            self.log.error("time out of telnet connection attocube did not respond")
             return -1
         value = value_binary.decode().split("\r\n")  # transform into string and split at linefeed
         if value[-2] == "ERROR":
@@ -277,10 +277,10 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
     def change_step_size(self, axis, step_size, temp):
         """Changes the step size of the attocubes according to a list give in the config file
         @param str  axis: axis  for which steps size is to be changed
-        @param float step_size: The wanted stepsize in nm
+        @param float step_size: The wanted step size in nm
         @param float temp: The estimated temperature of the attocubes
 
-        @return: float, float : Actual stepsize and used temperature"""
+        @return: float, float : Actual step size and used temperature"""
         voltage = step_size
         # Todo here needs to be a conversion done
         self.set_step_amplitude(axis, voltage)
@@ -529,10 +529,10 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
     def _temperature_change(self, new_temp):
         """
-        Changes parameters in attocubes to keep requirements like stepsize and scan speed
+        Changes parameters in attocubes to keep requirements like step size and scan speed
         constant for different temperatures
-        :param float new_temp: the new temperature of the setup
-        :return: error code (0: OK, -1:error)
+        @param float new_temp: the new temperature of the setup
+        @return int: error code (0: OK, -1:error)
         """
         # if a temperature change happened the capacitance of the attocubes changed and need to be
         # remeasured
@@ -576,7 +576,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                     wait = False
                 except:
                     # Todo something sensible needs to come here
-                    self.log.warning("capacitance measurement was off, timeouts did not act as "
+                    self.log.warning("capacitance measurement was off, time-outs did not act as "
                                      "expected. Program will pause for 10 seconds for attocubes to recover")
                     time.sleep(10)
                     wait = True
@@ -635,7 +635,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
             else:
                 self.log.error("axis {} was specified as number {} on ANC300\n  but this axis "
-                               "doesn´t exist in the ANC300".format(i, self._attocube_axis[i]))
+                               "doesn't exist in the ANC300".format(i, self._attocube_axis[i]))
                 return -1
         else:
             return 0
@@ -662,7 +662,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 self._axis_capacitance[i] = 0
             else:
                 self.log.error("axis {} was specified as number {} on ANC300\n  but this axis "
-                               "doesn´t exist in the ANC300".format(i, self._attocube_axis[i]))
+                               "doesn't exist in the ANC300".format(i, self._attocube_axis[i]))
 
     # =================== ConfocalStepperInterface Commands ========================
     def reset_hardware(self):
@@ -810,7 +810,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         @return list(str): list of axis dictionary
 
         Example:
-          For 3D confocal microscopy in cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible 
+          For 3D confocal microscopy in Cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible 
           value.
           If you only care about the number of axes and not the assignment and names 
           use get_stepper_axes
