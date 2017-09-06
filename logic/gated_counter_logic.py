@@ -232,7 +232,7 @@ class GatedCounterLogic(GenericLogic):
             # Start data reader loop
             self.sigCountStatusChanged.emit(True, True)
             self.sigCountDataNext.emit()
-            return
+        return
 
     def stop_count(self):
         """ Set a flag to request stopping counting.
@@ -272,29 +272,29 @@ class GatedCounterLogic(GenericLogic):
                     self._process_data_finite_gated()
                     self.sigCountDataUpdated.emit(self.countdata, self.already_counted_samples)
 
-            # call this again from event loop
-            self.sigCountDataNext.emit()
+                # call this again from event loop
+                self.sigCountDataNext.emit()
         return
 
     def _process_data_finite_gated(self):
         """
         Processes the raw data from the gated counting device.
         """
-        if (self.already_counted_samples + self.rawdata[0].size) > self._number_of_gates:
+        if (self.already_counted_samples + self._databuffer[0].size) > self._number_of_gates:
             needed_counts = self._number_of_gates - self.already_counted_samples
             for i in range(self.countdata.shape[0]):
-                self.countdata[i][0:needed_counts] = self.rawdata[i][0:needed_counts]
+                self.countdata[i][0:needed_counts] = self._databuffer[i][0:needed_counts]
                 self.countdata[i] = np.roll(self.countdata[i], -needed_counts)
             self.already_counted_samples += needed_counts
             self.stopRequested = True
         else:
             for i in range(self.countdata.shape[0]):
                 # replace the first part of the array with the new data:
-                self.countdata[i][0:self.rawdata[i].size] = self.rawdata[i]
+                self.countdata[i][0:self._databuffer[i].size] = self._databuffer[i]
                 # roll the array by the amount of data it had been inserted:
-                self.countdata[i] = np.roll(self.countdata[i], -self.rawdata[i].size)
+                self.countdata[i] = np.roll(self.countdata[i], -self._databuffer[i].size)
                 # increment the index counter:
-            self.already_counted_samples += self.rawdata[0].size
+            self.already_counted_samples += self._databuffer[0].size
         return
 
     def _stop_count_wait(self, timeout=5.0):
