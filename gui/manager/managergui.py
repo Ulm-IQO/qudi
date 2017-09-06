@@ -163,14 +163,21 @@ class ManagerGui(GUIBase):
         # thread widget
         self._mw.threadWidget.threadListView.setModel(self._manager.tm)
         # remote widget
-        self._mw.remoteWidget.hostLabel.setText('URL:')
-        self._mw.remoteWidget.portLabel.setText(
-            'rpyc://{0}:{1}/'.format(self._manager.rm.host,
-                                     self._manager.rm.server.port))
-        self._mw.remoteWidget.remoteModuleListView.setModel(
-            self._manager.rm.remoteModules)
-        self._mw.remoteWidget.sharedModuleListView.setModel(
-            self._manager.rm.sharedModules)
+        # hide remote menu item if rpyc is not available
+        self._mw.actionRemoteView.setVisible(self._manager.rm is not None)
+        if (self._manager.rm is not None):
+            self._mw.remoteWidget.remoteModuleListView.setModel(self._manager.rm.remoteModules)
+            if (self._manager.remote_server):
+                self._mw.remoteWidget.hostLabel.setText('Server URL:')
+                self._mw.remoteWidget.portLabel.setText(
+                    'rpyc://{0}:{1}/'.format(self._manager.rm.server.host,
+                                             self._manager.rm.server.port))
+                self._mw.remoteWidget.sharedModuleListView.setModel(
+                    self._manager.rm.sharedModules)
+            else:
+                self._mw.remoteWidget.hostLabel.setVisible(False)
+                self._mw.remoteWidget.portLabel.setVisible(False)
+                self._mw.remoteWidget.sharedModuleListView.setVisible(False)
 
         self._mw.configDisplayDockWidget.hide()
         self._mw.remoteDockWidget.hide()

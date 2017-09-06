@@ -3,19 +3,20 @@
 # Do not use this list to install Qudi for normal use. Check the Installation page to see how to do that.
 [Installation page with full install instructions](@ref installation)
 
-These package have to be installed in order to run Qudi (easily installed with Anaconda console: pip install "packagename"):
+These package have to be or can be installed to run Qudi (easily installed with Anaconda console: pip install "packagename"):
 
 | Package  | Minimum Version | URL  | Needed by |
 | ------------- | ---------- | ------------------------------------------- | ----------- |
-| Fysom         | 2.1        | https://pypi.python.org/pypi/fysom          | all         |
-| qtpy          | 1.1.2      | https://pypi.python.org/pypi/qtpy           | all         |
-| RPyC          | 3.3.0      | https://pypi.python.org/pypi/rpyc           | all         |
-| ruamel.yaml   | 0.11       | https://pypi.python.org/pypi/ruamel.yaml    | all         |
+| Fysom         | 2.1.4      | https://pypi.python.org/pypi/fysom          | core         |
+| Qt5           | 5.6        | https://www.riverbankcomputing.com/software/pyqt/download5 | core |
+| qtpy          | 1.1.2      | https://pypi.python.org/pypi/qtpy           | core         |
+| ruamel.yaml   | 0.11       | https://pypi.python.org/pypi/ruamel.yaml    | core         |
+| RPyC          | 3.3.0      | https://pypi.python.org/pypi/rpyc           | core (optional) |
 | pyqtgraph     | 0.10.0     | http://www.pyqtgraph.org/                   | Lots        |
 | pyvisa        | 1.8        | https://pypi.python.org/pypi/PyVISA         | Lots        |
 | lmfit         | 0.9.2      | https://pypi.python.org/pypi/lmfit/         | fitlogic    |
 | jupyter       | 1.0.0      | https://pypi.python.org/pypi/jupyter        | Manager gui, Notebook features|
-| git           | 2.0.0      | https://pypi.python.org/pypi/GitPython      | Manager GUI |
+| git           | 2.0.0      | https://pypi.python.org/pypi/GitPython      | Manager GUI (optional) |
 | PyDAQmx       | 1.3.2      | https://pypi.python.org/pypi/PyDAQmx        | NI card     |
 | hdf5storage   | ???        | https://pypi.python.org/pypi/hdf5storage    | awg70k      |
 | comtypes      | 1.1        | https://pypi.python.org/pypi/comtypes       | winspec_spectrometer (hardware) |
