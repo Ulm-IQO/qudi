@@ -110,16 +110,6 @@ class GatedCounterGui(GUIBase):
 
         # setting the x axis length correctly
         self._gp.setXRange(0, self._counter_logic._number_of_gates)
-        self._mw.hist_bins_SpinBox.setRange(1, self._counter_logic._number_of_gates)
-        # that is also the default value of the histogram method in logic
-        # important: the set of a value should not trigger a redrawn of the
-        # current empty histogram, which is at the start of the program.
-        self._mw.hist_bins_SpinBox.setValue(self._counter_logic._histogram_bins)
-
-        # set up the slider with the values of the logic:
-        self._mw.hist_bins_Slider.setRange(1, self._counter_logic._number_of_gates)
-        self._mw.hist_bins_Slider.setSingleStep(1)
-        self._mw.hist_bins_Slider.setValue(self._counter_logic._histogram_bins)
 
         # Progress display
         self._mw.progress_lcdDisplay.display(0)
@@ -138,8 +128,6 @@ class GatedCounterGui(GUIBase):
         # connect now a reaction on a change of the various input widgets:
         self._mw.count_length_SpinBox.editingFinished.connect(self.count_length_changed)
         self._mw.count_per_readout_SpinBox.editingFinished.connect(self.count_per_readout_changed)
-        self._mw.hist_bins_Slider.valueChanged.connect(self.histogram_bins_changed)
-        self._mw.hist_bins_SpinBox.valueChanged.connect(self.histogram_bins_changed)
 
         # starting the physical measurement:
         self.sigStartGatedCounter.connect(self._counter_logic.start_count,
@@ -172,8 +160,6 @@ class GatedCounterGui(GUIBase):
 
         self._mw.count_length_SpinBox.editingFinished.disconnect()
         self._mw.count_per_readout_SpinBox.editingFinished.disconnect()
-        self._mw.hist_bins_Slider.valueChanged.disconnect()
-        self._mw.hist_bins_SpinBox.valueChanged.disconnect()
 
         self.sigStartGatedCounter.disconnect()
         self.sigStopGatedCounter.disconnect()
@@ -256,16 +242,6 @@ class GatedCounterGui(GUIBase):
         self.sigSettingsChanged.emit({'samples_per_read': self._mw.count_per_readout_SpinBox.value()})
         return
 
-    def histogram_bins_changed(self, num_bins):
-        """
-        This method is executed by both events, the valueChanged of the SpinBox and value changed
-        in the Slider.
-
-        @param int num_bins: Number of bins to be set in the histogram.
-        """
-        self.sigSettingsChanged.emit({'histogram_bins': num_bins})
-        return
-
     def update_count_settings(self, settings=None):
         """
         Updates the GUI upon a change of settings in the logic.
@@ -280,9 +256,6 @@ class GatedCounterGui(GUIBase):
             self._mw.hist_bins_SpinBox.setRange(1, settings['number_of_gates'])
         if 'samples_per_read' in settings:
             self._mw.count_per_readout_SpinBox.setValue(settings['samples_per_read'])
-        if 'histogram_bins' in settings:
-            self._mw.hist_bins_SpinBox.setValue(settings['histogram_bins'])
-            self._mw.hist_bins_Slider.setValue(settings['histogram_bins'])
         return
 
     def update_count_data(self, count_trace, histogram, histogram_bins, counted_gates):

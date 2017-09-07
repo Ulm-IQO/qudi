@@ -35,7 +35,7 @@ class GatedCounterLogic(GenericLogic):
     """
     This logic module gathers from a gated hardware counting device.
     """
-    sigCountDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, int)
+    sigCountDataUpdated = QtCore.Signal(np.ndarray, list, list, int)
     sigCountSettingsChanged = QtCore.Signal(dict)
     sigCountStatusChanged = QtCore.Signal(bool, bool)
 
@@ -50,7 +50,6 @@ class GatedCounterLogic(GenericLogic):
 
     # status vars
     _number_of_gates = StatusVar('number_of_gates', 100)
-    _histogram_bins = StatusVar('histogram_bins', 100)
     _samples_per_read = StatusVar('samples_per_read', 5)
 
     def __init__(self, config, **kwargs):
@@ -71,18 +70,16 @@ class GatedCounterLogic(GenericLogic):
         self._counting_device = self.get_connector('counter1')
         self._save_logic = self.get_connector('savelogic')
 
-        self._counting_mode = CountingMode['FINITE_GATED']
-
         # initialize data arrays
         self.countdata = np.zeros([len(self._counting_device.get_counter_channels()),
-                                   self._number_of_gates])
-        self.histogram = np.zeros([len(self._counting_device.get_counter_channels()),
-                                   self._histogram_bins])
-        self.histogram_bin_array = np.zeros([len(self._counting_device.get_counter_channels()),
-                                             self._histogram_bins + 1])
+                                   self._number_of_gates], dtype=int)
+        self.histogram = [np.zeros(self._number_of_gates, dtype=int) for i, ch in
+                          enumerate(self._counting_device.get_counter_channels())]
+        self.histogram_bin_array = [np.zeros(self._number_of_gates, dtype=int) for i, ch in
+                                    enumerate(self._counting_device.get_counter_channels())]
         self._databuffer = np.zeros([len(self._counting_device.get_counter_channels()),
                                      self._samples_per_read])
-        self.already_counted_samples = 0  # For gated counting
+        self.already_counted_samples = 0
 
         # Flag to stop the loop
         self.stopRequested = False
@@ -132,9 +129,6 @@ class GatedCounterLogic(GenericLogic):
         if 'samples_per_read' in settings:
             self._samples_per_read = settings['samples_per_read']
             return_dict['samples_per_read'] = self._samples_per_read
-        if 'histogram_bins' in settings:
-            self._histogram_bins = settings['histogram_bins']
-            return_dict['histogram_bins'] = self._histogram_bins
 
         # if the counter was running, restart it
         if restart:
@@ -159,11 +153,6 @@ class GatedCounterLogic(GenericLogic):
                                  '{1:d}).\nSetting "samples_per_read" to "number_of_gates".'
                                  ''.format(self._samples_per_read, self._number_of_gates))
                 self.set_counter_settings(settings={'samples_per_read': self._number_of_gates})
-            if self._histogram_bins > self._number_of_gates:
-                self.log.warning('Number of histogram bins larger than number of gates. ({0:d} > '
-                                 '{1:d}).\nSetting "histogram_bins" to "number_of_gates".'
-                                 ''.format(self._histogram_bins, self._number_of_gates))
-                self.set_counter_settings(settings={'histogram_bins': self._histogram_bins})
 
             # Lock module
             if self.getState() != 'locked':
@@ -181,11 +170,11 @@ class GatedCounterLogic(GenericLogic):
 
             # initialising the data arrays
             self.countdata = np.zeros([len(self._counting_device.get_counter_channels()),
-                                       self._number_of_gates])
-            self.histogram = np.zeros([len(self._counting_device.get_counter_channels()),
-                                       self._histogram_bins])
-            self.histogram_bin_array = np.zeros([len(self._counting_device.get_counter_channels()),
-                                                 self._histogram_bins + 1])
+                                       self._number_of_gates], dtype=int)
+            self.histogram = [np.zeros(self._number_of_gates, dtype=int) for i, ch in
+                              enumerate(self._counting_device.get_counter_channels())]
+            self.histogram_bin_array = [np.zeros(self._number_of_gates, dtype=int) for i, ch in
+                                        enumerate(self._counting_device.get_counter_channels())]
             self._databuffer = np.zeros([len(self._counting_device.get_counter_channels()),
                                          self._samples_per_read])
             # initialize the sample index for gated counting
@@ -263,7 +252,7 @@ class GatedCounterLogic(GenericLogic):
 
         # Create histogram
         for i in range(self.countdata.shape[0]):
-            self.histogram[i], self.histogram_bin_array[i] = np.histogram(self.countdata[i], bins=self._histogram_bins, range=(0, np.max(self.countdata[i])))
+            self.histogram[i], self.histogram_bin_array[i] = np.histogram(self.countdata[i], bins=np.arange(np.max(self.countdata[i])+1))
         return
 
     def save_data(self, tag=''):
@@ -300,14 +289,15 @@ class GatedCounterLogic(GenericLogic):
             filelabel = 'gated_counter_histogram_' + tag
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data['counts'] = self.histogram_bin_array[0][:-1]
-        if self.histogram.shape[0] == 1:
+        if len(self.histogram) == 1:
+            data['counts'] = self.histogram_bin_array[0][:-1]
             data['occurences'] = self.histogram[0]
         else:
-            for i in range(1, self.histogram.shape[0] + 1):
-                data['occurences{0:d}'.format(i)] = self.histogram[i - 1]
+            for i, histo in enumerate(self.histogram):
+                data['counts{0:d}'.format(i+1)] = self.histogram_bin_array[i][:-1]
+                data['occurences{0:d}'.format(i+1)] = histo
 
-        self._save_logic.save_data(data, filelabel=filelabel)
+        self._save_logic.save_data(data, fmt='%d', filelabel=filelabel)
 
         self.log.info('Gated counter data saved.')
         return
