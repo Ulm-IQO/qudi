@@ -252,7 +252,7 @@ class GatedCounterLogic(GenericLogic):
 
         # Create histogram
         for i in range(self.countdata.shape[0]):
-            self.histogram[i], self.histogram_bin_array[i] = np.histogram(self.countdata[i], bins=np.arange(np.max(self.countdata[i])+1))
+            self.histogram[i], self.histogram_bin_array[i] = np.histogram(self.countdata[i][-self.already_counted_samples:], bins=np.arange(np.max(self.countdata[i])+1))
         return
 
     def save_data(self, tag=''):

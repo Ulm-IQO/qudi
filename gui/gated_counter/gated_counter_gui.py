@@ -216,9 +216,13 @@ class GatedCounterGui(GUIBase):
         if is_running:
             self._mw.start_counter_Action.setEnabled(False)
             self._mw.stop_counter_Action.setEnabled(True)
+            self._mw.count_length_SpinBox.setEnabled(False)
+            self._mw.count_per_readout_SpinBox.setEnabled(False)
         else:
             self._mw.start_counter_Action.setEnabled(True)
             self._mw.stop_counter_Action.setEnabled(False)
+            self._mw.count_length_SpinBox.setEnabled(True)
+            self._mw.count_per_readout_SpinBox.setEnabled(True)
         return
 
     def save_clicked(self):
