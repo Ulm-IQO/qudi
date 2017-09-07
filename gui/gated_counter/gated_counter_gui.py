@@ -252,8 +252,6 @@ class GatedCounterGui(GUIBase):
         if 'number_of_gates' in settings:
             self._mw.count_length_SpinBox.setValue(settings['number_of_gates'])
             self._gp.setXRange(0, settings['number_of_gates'])
-            self._mw.hist_bins_Slider.setRange(1, settings['number_of_gates'])
-            self._mw.hist_bins_SpinBox.setRange(1, settings['number_of_gates'])
         if 'samples_per_read' in settings:
             self._mw.count_per_readout_SpinBox.setValue(settings['samples_per_read'])
         return
