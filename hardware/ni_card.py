@@ -146,6 +146,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
     _scanner_clock_channel = ConfigOption('scanner_clock_channel')
     _scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')
+    _finite_clock_frequency = ConfigOption('finite_clock_frequency', 100, missing='warn')
+    _analogue_clock_frequency = ConfigOption('analogue_input_clock_frequency', 100, missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
@@ -156,6 +158,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', 10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn')
+    _ai_resolution = ConfigOption('ai_resolution', 16, missing='warn')
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
@@ -172,8 +175,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._gated_counter_daq_task = None
         self._analog_clock_status = False
 
-        self._finite_clock_frequency_default = 100  # in Hz
-        self._analogue_clock_frequency_default = 100  # in Hz
         self._analogue_input_samples = {}
 
         config = self.getConfiguration()
@@ -187,7 +188,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._counter_channels = []
         self._scanner_counter_channels = []
         self._photon_sources = []
-        self._ai_resolution = 0;
 
         # handle all the parameters given by the config
         if 'ai_x_1' in config.keys():
@@ -249,13 +249,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             else:
                 self.log.warning(
                     'No ai_range_z_2 configured, taking [0, 2] instead.')
-
-        if 'ai_resolution' in config.keys():
-            # round because this is the amount of bits and it must be an integer
-            self._ai_resolution = round(config['ai_resolution'])
-        else:
-            self.log.info('No Nidaq resolution was specified. Taking a standard value of 16 bits instead')
-            self._ai_resolution = 16
 
         if 'scanner_x_ao' in config.keys():
             self._scanner_ao_channels.append(config['scanner_x_ao'])
@@ -319,24 +312,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'No parameter "scanner_counter_channel" configured.\n'
                 'Assign to that parameter an appropriate channel from your NI Card!')
 
-        if self._counting_edge_rising:
-            self._counting_edge = daq.DAQmx_Val_Rising
-        else:
-            self._counting_edge = daq.DAQmx_Val_Falling
-
-        if 'finite_clock_frequency' in config.keys():
-            self._finite_clock_frequency = config['finite_clock_frequency']
-        else:
-            self._finite_clock_frequency = self._finite_clock_frequency_default
-            self.log.warning('No finite counter clock frequency configured, taking {} Hz '
-                             'instead'.format(self._finite_clock_frequency_default))
-
-        if 'analogue_input_clock_frequency' in config.keys():
-            self._analogue_clock_frequency = config['analogue_input_clock_frequency']
-        else:
-            self._analogue_clock_frequency = self._analogue_clock_frequency_default
-            self.log.warning('No analogue input clock frequency configured, taking {} Hz '
-                             'instead'.format(self._analogue_clock_frequency_default))
         if 'x_range' in config.keys() and len(self._position_range) > 0:
             if float(config['x_range'][0]) < float(config['x_range'][1]):
                 self._position_range[0] = [float(config['x_range'][0]),
@@ -2802,4 +2777,3 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """"Returns the resolution of the analog input of the NIDAQ in bits
         @return int: input bit resolution """
         return self._ai_resolution
-

@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import telnetlib
 import time
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.confocal_stepper_interface import ConfocalStepperInterface
 import numpy as np
 
@@ -34,6 +34,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
     _modtype = 'AttoCubeStepper'
     _modclass = 'hardware'
+
+    _host = ConfigOption('host', missing='error')
+    tmp = ConfigOption('password', b"123456", missing='warn')
+    _port = ConfigOption('port', 7230, missing='warn')
+    _position_feedback = ConfigOption('position_feedback', False, missing='warn')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -53,8 +58,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # Todo: voltage range should be defined for each axis, the same for frequency
         self._voltage_range_stepper_default = [0, 60]
         self._frequency_range_default = [0, 10000]
-        self._password_default = b"123456"
-        self._port_default = 7230
+
         # Todo this needs to be update with checking every time it is started.
 
         # Todo get rid of all fine/coarse definition stuff, only step voltage will remain
@@ -68,12 +72,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self._attocube_axis = {}  # dictionary contains the axes and the specific controller
         self._attocube_axis_range = {}  # dictionary contains the axes stepping range
         default_range = [0, 5]
-        if "position_feedback" in config.keys():
-            self._position_feedback = config['position_feedback']
-        else:
-            self.log.warning(
-                "As it is not specified if attocubes have position feedback not position feedback is assumed")
-            self._position_feedback = False
+
         if 'x' in config.keys():
             self._attocube_axis["x"] = config['x']
             if 'x_range' in config.keys():
@@ -168,30 +167,14 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 self._frequency_range[axis] = [int(config['frequency_range'][0]),
                                                int(config['frequency_range'][1])]
 
-        if 'password' in config.keys():
-            self._password = str(config['password']).encode('ascii')
-        else:
-            self._password = self._password_default
-            self.log.warning('No password configured taking standard instead.')
-
-        if 'host' in config.keys():
-            self._host = str(config['host'])
-        else:
-            self.log.error('No IP address configured taking standard instead.\n'
-                           'Assign to that parameter an appropriated IP address!')
-
-        if 'port' in config.keys():
-            self._port = config['port']
-        else:
-            self._port = self._port_default
-            self.log.warning('No port configured taking standard instead.')
-
         # connect Ethernet socket and FTP
         # Todo: Add a loop here which tries connecting several times and only throws error after failing x times.
         counter = 0
         self.connected = False
         self.tn = telnetlib.Telnet(self._host, self._port)
         self.tn.open(self._host, self._port)
+        self._password = str(self.tmp).encode('ascii')
+        del self.tmp
         while not self.connected:
             if counter > 7:
                 self.log.error('Connection to attocube could not be established.\n'
