@@ -121,6 +121,9 @@ class GatedCounterGui(GUIBase):
         self._mw.hist_bins_Slider.setSingleStep(1)
         self._mw.hist_bins_Slider.setValue(self._counter_logic._histogram_bins)
 
+        # Progress display
+        self._mw.progress_lcdDisplay.display(0)
+
         # Setting default parameters
         self._mw.count_length_SpinBox.setValue(self._counter_logic._number_of_gates)
         self._mw.count_per_readout_SpinBox.setValue(self._counter_logic._samples_per_read)
@@ -210,6 +213,7 @@ class GatedCounterGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter. """
         self._mw.start_counter_Action.setEnabled(False)
+        self._mw.progress_lcdDisplay.display(0)
         self.sigStartGatedCounter.emit()
         return
 
@@ -292,6 +296,7 @@ class GatedCounterGui(GUIBase):
         self._trace1.setData(x=np.arange(0, count_trace[0].size), y=count_trace[0])
         self._histoplot1.setData(x=histogram_bins[0], y=histogram[0], stepMode=True, fillLevel=0,
                                  brush=palettedark.c1)
+        self._mw.progress_lcdDisplay.display(counted_gates)
         return
 
     def fit_clicked(self):

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>653</width>
+    <width>726</width>
     <height>411</height>
    </rect>
   </property>
@@ -21,7 +21,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>653</width>
+     <width>726</width>
      <height>21</height>
     </rect>
    </property>
@@ -278,6 +278,16 @@ Threshold</string>
            <width>0</width>
            <height>90</height>
           </size>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLCDNumber" name="progress_lcdDisplay"/>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Elapsed gates:</string>
          </property>
         </widget>
        </item>
