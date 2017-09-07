@@ -89,7 +89,7 @@ class GatedCounterGui(GUIBase):
         self.set_default_view_main_window()
 
         self._gp = self._mw.gated_count_trace_PlotWidget
-        self._gp.setLabel('left', 'Counts', units='counts/s')
+        self._gp.setLabel('left', 'Counts', units='counts')
         self._gp.setLabel('bottom', 'Number of Gates', units='#')
 
         # Create an empty plot curve to be filled later, set its pen
@@ -98,7 +98,7 @@ class GatedCounterGui(GUIBase):
 
         self._hp = self._mw.histogram_PlotWidget
         self._hp.setLabel('left', 'Occurrences', units='#')
-        self._hp.setLabel('bottom', 'Counts', units='counts/s')
+        self._hp.setLabel('bottom', 'Counts', units='counts')
 
         self._histoplot1 = pg.PlotCurveItem()
         self._histoplot1.setPen(palette.c1)
@@ -114,11 +114,12 @@ class GatedCounterGui(GUIBase):
         # that is also the default value of the histogram method in logic
         # important: the set of a value should not trigger a redrawn of the
         # current empty histogram, which is at the start of the program.
-        self._mw.hist_bins_SpinBox.setValue(50)
+        self._mw.hist_bins_SpinBox.setValue(self._counter_logic._histogram_bins)
 
         # set up the slider with the values of the logic:
         self._mw.hist_bins_Slider.setRange(1, self._counter_logic._number_of_gates)
         self._mw.hist_bins_Slider.setSingleStep(1)
+        self._mw.hist_bins_Slider.setValue(self._counter_logic._histogram_bins)
 
         # Setting default parameters
         self._mw.count_length_SpinBox.setValue(self._counter_logic._number_of_gates)
@@ -280,24 +281,18 @@ class GatedCounterGui(GUIBase):
             self._mw.hist_bins_Slider.setValue(settings['histogram_bins'])
         return
 
-    def update_count_data(self, count_trace, counted_gates):
+    def update_count_data(self, count_trace, histogram, histogram_bins, counted_gates):
         """
         Updates the data plots and the progress display.
 
         @param numpy.ndarray count_trace: The counts per gate
+        @param numpy.ndarray histogram: The histogram of the count trace
         @param int counted_gates: The number of already counted gates
         """
         self._trace1.setData(x=np.arange(0, count_trace[0].size), y=count_trace[0])
+        self._histoplot1.setData(x=histogram_bins[0], y=histogram[0], stepMode=True, fillLevel=0,
+                                 brush=palettedark.c1)
         return
-
-    # def update_histogram(self):
-    #     """ Update procedure for the histogram to display the new data. """
-    #
-    #     self._histoplot1.setData(x=self._trace_analysis.hist_data[0],
-    #                              y=self._trace_analysis.hist_data[1],
-    #                              stepMode=True, fillLevel=0,
-    #                              brush=palettedark.c1)
-
 
     def fit_clicked(self):
         """ Do the configured fit and show it in the sum plot """

@@ -35,7 +35,7 @@ class GatedCounterLogic(GenericLogic):
     """
     This logic module gathers from a gated hardware counting device.
     """
-    sigCountDataUpdated = QtCore.Signal(np.ndarray, int)
+    sigCountDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, int)
     sigCountSettingsChanged = QtCore.Signal(dict)
     sigCountStatusChanged = QtCore.Signal(bool, bool)
 
@@ -50,6 +50,7 @@ class GatedCounterLogic(GenericLogic):
 
     # status vars
     _number_of_gates = StatusVar('number_of_gates', 100)
+    _histogram_bins = StatusVar('histogram_bins', 100)
     _samples_per_read = StatusVar('samples_per_read', 5)
 
     def __init__(self, config, **kwargs):
@@ -75,6 +76,10 @@ class GatedCounterLogic(GenericLogic):
         # initialize data arrays
         self.countdata = np.zeros([len(self._counting_device.get_counter_channels()),
                                    self._number_of_gates])
+        self.histogram = np.zeros([len(self._counting_device.get_counter_channels()),
+                                   self._histogram_bins])
+        self.histogram_bin_array = np.zeros([len(self._counting_device.get_counter_channels()),
+                                             self._histogram_bins + 1])
         self._databuffer = np.zeros([len(self._counting_device.get_counter_channels()),
                                      self._samples_per_read])
         self.already_counted_samples = 0  # For gated counting
@@ -127,6 +132,9 @@ class GatedCounterLogic(GenericLogic):
         if 'samples_per_read' in settings:
             self._samples_per_read = settings['samples_per_read']
             return_dict['samples_per_read'] = self._samples_per_read
+        if 'histogram_bins' in settings:
+            self._histogram_bins = settings['histogram_bins']
+            return_dict['histogram_bins'] = self._histogram_bins
 
         # if the counter was running, restart it
         if restart:
@@ -151,6 +159,11 @@ class GatedCounterLogic(GenericLogic):
                                  '{1:d}).\nSetting "samples_per_read" to "number_of_gates".'
                                  ''.format(self._samples_per_read, self._number_of_gates))
                 self.set_counter_settings(settings={'samples_per_read': self._number_of_gates})
+            if self._histogram_bins > self._number_of_gates:
+                self.log.warning('Number of histogram bins larger than number of gates. ({0:d} > '
+                                 '{1:d}).\nSetting "histogram_bins" to "number_of_gates".'
+                                 ''.format(self._histogram_bins, self._number_of_gates))
+                self.set_counter_settings(settings={'histogram_bins': self._histogram_bins})
 
             # Lock module
             if self.getState() != 'locked':
@@ -169,6 +182,10 @@ class GatedCounterLogic(GenericLogic):
             # initialising the data arrays
             self.countdata = np.zeros([len(self._counting_device.get_counter_channels()),
                                        self._number_of_gates])
+            self.histogram = np.zeros([len(self._counting_device.get_counter_channels()),
+                                       self._histogram_bins])
+            self.histogram_bin_array = np.zeros([len(self._counting_device.get_counter_channels()),
+                                                 self._histogram_bins + 1])
             self._databuffer = np.zeros([len(self._counting_device.get_counter_channels()),
                                          self._samples_per_read])
             # initialize the sample index for gated counting
@@ -215,7 +232,9 @@ class GatedCounterLogic(GenericLogic):
                     self.stopRequested = True
                 else:
                     self._process_data_finite_gated()
-                    self.sigCountDataUpdated.emit(self.countdata, self.already_counted_samples)
+                    self.sigCountDataUpdated.emit(self.countdata, self.histogram,
+                                                  self.histogram_bin_array,
+                                                  self.already_counted_samples)
 
                 # call this again from event loop
                 self.sigCountDataNext.emit()
@@ -225,6 +244,7 @@ class GatedCounterLogic(GenericLogic):
         """
         Processes the raw data from the gated counting device.
         """
+        # Get count trace
         if (self.already_counted_samples + self._databuffer[0].size) > self._number_of_gates:
             needed_counts = self._number_of_gates - self.already_counted_samples
             for i in range(self.countdata.shape[0]):
@@ -240,6 +260,10 @@ class GatedCounterLogic(GenericLogic):
                 self.countdata[i] = np.roll(self.countdata[i], -self._databuffer[i].size)
                 # increment the index counter:
             self.already_counted_samples += self._databuffer[0].size
+
+        # Create histogram
+        for i in range(self.countdata.shape[0]):
+            self.histogram[i], self.histogram_bin_array[i] = np.histogram(self.countdata[i], bins=self._histogram_bins, range=(0, np.max(self.countdata[i])))
         return
 
     def save_data(self, tag=''):
@@ -267,8 +291,24 @@ class GatedCounterLogic(GenericLogic):
                 data['signal{0:d} (#counts)'.format(i)] = self.countdata[i-1]
 
         fig = self.draw_figure()
-
         self._save_logic.save_data(data, fmt='%d', parameters=parameters,  filelabel=filelabel, plotfig=fig)
+
+
+        if tag == '':
+            filelabel = 'gated_counter_histogram'
+        else:
+            filelabel = 'gated_counter_histogram_' + tag
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data['counts'] = self.histogram_bin_array[0][:-1]
+        if self.histogram.shape[0] == 1:
+            data['occurences'] = self.histogram[0]
+        else:
+            for i in range(1, self.histogram.shape[0] + 1):
+                data['occurences{0:d}'.format(i)] = self.histogram[i - 1]
+
+        self._save_logic.save_data(data, filelabel=filelabel)
+
         self.log.info('Gated counter data saved.')
         return
 
