@@ -135,61 +135,6 @@ class GatedCounterLogic(GenericLogic):
         self.sigCountSettingsChanged.emit(return_dict)
         return return_dict
 
-    def save_data(self, tag=''):
-        """ Save the counter trace data and writes it to a file.
-
-        @param str tag: user-definable tag which will be added to the filename upon save
-        """
-        # write the parameters:
-        parameters = OrderedDict()
-        parameters['Number of gates/samples (#)'] = self._number_of_gates
-        parameters['Number of samples per read command (#)'] = self._samples_per_read
-
-        if tag == '':
-            filelabel = 'gated_counter_trace'
-        else:
-            filelabel = 'gated_counter_trace_' + tag
-
-        # prepare the data in a dict or in an OrderedDict:
-        data = OrderedDict()
-        data['gate index'] = np.arange(self.countdata.shape[1])
-        if self.countdata.shape[0] == 1:
-            data['signal (#counts)'] = self.countdata[0]
-        else:
-            for i in range(1, self.countdata.shape[0] + 1):
-                data['signal{0:d} (#counts)'.format(i)] = self.countdata[i-1]
-
-        fig = self.draw_figure()
-
-        self._save_logic.save_data(data, fmt='%d', parameters=parameters,  filelabel=filelabel, plotfig=fig)
-        self.log.info('Gated counter data saved.')
-        return
-
-    def draw_figure(self):
-        """ Draw figure to save with data file.
-
-        @return: fig: a matplotlib figure object to be saved to file.
-        """
-        y_data = self.countdata[0]
-        x_data = np.arange(self.countdata[0].size, dtype=int)
-
-        # Scale count values using SI prefix
-        prefix = ['', 'k', 'M', 'G']
-        prefix_index = 0
-        while np.max(y_data) > 1000:
-            y_data = y_data / 1000
-            prefix_index += 1
-
-        # Use qudi style
-        plt.style.use(self._save_logic.mpl_qd_style)
-
-        # Create figure
-        fig, ax = plt.subplots()
-        ax.plot(x_data, y_data, linestyle='-', linewidth=0.5)
-        ax.set_xlabel('Gate index (#)')
-        ax.set_ylabel('Fluorescence (' + prefix[prefix_index] + 'counts)')
-        return fig
-
     def start_count(self):
         """
         This is called externally and starts the counting loop.
@@ -230,7 +175,7 @@ class GatedCounterLogic(GenericLogic):
             self.already_counted_samples = 0
 
             # Start data reader loop
-            self.sigCountStatusChanged.emit(True, True)
+            self.sigCountStatusChanged.emit(True, False)
             self.sigCountDataNext.emit()
         return
 
@@ -296,6 +241,61 @@ class GatedCounterLogic(GenericLogic):
                 # increment the index counter:
             self.already_counted_samples += self._databuffer[0].size
         return
+
+    def save_data(self, tag=''):
+        """ Save the counter trace data and writes it to a file.
+
+        @param str tag: user-definable tag which will be added to the filename upon save
+        """
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Number of gates/samples (#)'] = self._number_of_gates
+        parameters['Number of samples per read command (#)'] = self._samples_per_read
+
+        if tag == '':
+            filelabel = 'gated_counter_trace'
+        else:
+            filelabel = 'gated_counter_trace_' + tag
+
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data['gate index'] = np.arange(self.countdata.shape[1])
+        if self.countdata.shape[0] == 1:
+            data['signal (#counts)'] = self.countdata[0]
+        else:
+            for i in range(1, self.countdata.shape[0] + 1):
+                data['signal{0:d} (#counts)'.format(i)] = self.countdata[i-1]
+
+        fig = self.draw_figure()
+
+        self._save_logic.save_data(data, fmt='%d', parameters=parameters,  filelabel=filelabel, plotfig=fig)
+        self.log.info('Gated counter data saved.')
+        return
+
+    def draw_figure(self):
+        """ Draw figure to save with data file.
+
+        @return: fig: a matplotlib figure object to be saved to file.
+        """
+        y_data = self.countdata[0]
+        x_data = np.arange(self.countdata[0].size, dtype=int)
+
+        # Scale count values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_index = 0
+        while np.max(y_data) > 1000:
+            y_data = y_data / 1000
+            prefix_index += 1
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+        ax.plot(x_data, y_data, linestyle='-', linewidth=0.5)
+        ax.set_xlabel('Gate index (#)')
+        ax.set_ylabel('Fluorescence (' + prefix[prefix_index] + 'counts)')
+        return fig
 
     def _stop_count_wait(self, timeout=5.0):
         """

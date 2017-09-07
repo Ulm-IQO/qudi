@@ -229,3 +229,28 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
         self.log.warning('slowcounterdummy>close_clock')
         return 0
+
+    def set_up_gated_counter(self, buffer_length):
+        """
+        Sets up gated counter tasks.
+        """
+        self.log.warning('slowcounterdummy>set_up_gated_counter')
+        time.sleep(0.2)
+        return 0
+
+    def close_gated_counter(self):
+        """
+        Close gated counter tasks.
+        """
+        self.log.warning('slowcounterdummy>close_gated_counter')
+        time.sleep(0.1)
+        return 0
+
+    def get_gated_counts(self, samples):
+        """
+        Get counts from gated counter.
+        @param samples:
+        """
+        count_data = np.array([self._simulate_counts(samples) + i * self.mean_signal for i, ch in enumerate(self.get_counter_channels())])
+        time.sleep(1 / self._clock_frequency * samples)
+        return count_data
