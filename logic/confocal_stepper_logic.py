@@ -33,9 +33,11 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
 
-# Todo make a confocal stepper History class for this logic as exists in confocal logic. This is neede for restarting and
+# Todo make a confocal stepper History class for this logic as exists in confocal logic. This is needed for restarting and
 # for back and forward movement in images
 
+
+# Todo: better threading as it can still kill everything as nidaq is unsedd from to many places in a not error checked way.
 def truncate(f, n):
     """Truncates/pads a float f to n decimal places without rounding"""
     # necessary to avoid floating point conversion errors
@@ -94,8 +96,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     # Todo: For steppers with hardware real-time info like res readout of attocubes clock synchronisation and readout needs to be written
     # Therefore a new interface (ConfocalReadInterface or similar.) needs to be made
 
-    class Axis(object):
-        def __init__(self, name, hardware):
+    class Axis:
+        # Todo: I am not sure fi this inheritance is sensible (Generic logic)
+        def __init__(self, name, hardware, closed_loop, log):
             self.name = name
             self.step_amplitude = None
             self.step_freq = None
@@ -103,9 +106,230 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.steps_direction = 50
             self.hardware = hardware
             self.voltage_range = []
+            self.step_range = []
             self.absolute_position = None
             self.feedback_precision_volt = None
             self.feedback_precision_position = None
+            self.closed_loop_hardware = closed_loop
+            self.log = log
+
+            # initialise values
+            self.get_position_range_stepper()
+            self.get_stepper_frequency()
+            self.get_stepper_amplitude()
+            self.get_stepper_mode()
+
+        def _check_freq(self):
+            """ Checks if the frequency in te device is the same as set by the program
+            If the frequencies are different the frequency in the device is changed to the set
+            frequency
+
+            @return int: error code (0:OK, -1:error)
+            """
+            freq = self.hardware.get_step_freq(self.name)
+            if freq == -1:
+                return -1
+            elif freq != self.step_freq:
+                self.log.warning(
+                    "The device has different frequency of {} then the set frequency {}. "
+                    "The frequency will be changed to the set frequency".format(freq,
+                                                                                self.step_freq))
+                # checks if stepper is still running
+                # if self.getState() == 'locked':
+                #    self.log.warning("The stepper is still running")
+                #    return -1
+                return self.set_stepper_frequency(self.step_freq)
+            return 0
+
+        def _check_amplitude(self):
+            """ Checks if the voltage in te device is the same as set by the program
+            If the voltages are different the voltage in the device is changed to the set voltage
+
+            @return int: error code (0:OK, -1:error)
+            """
+
+            amp = self.hardware.get_step_amplitude(self.name)
+            if amp == -1:
+                return -1
+            elif amp != self.step_amplitude:
+                self.log.warning(
+                    "The device has different voltage of {} then the set voltage {}. "
+                    "The voltage will be changed to the set voltage".format(amp, self.step_amplitude))
+                # checks if stepper is still running
+                # if self.getState() == 'locked':
+                #    self.log.warning("The stepper is still running")
+                #    return -1
+                return self.set_stepper_amplitude(self.step_amplitude)
+            return 0
+
+        def _check_mode(self):
+            """ Checks if the voltage in the device is the same as set by the program
+            If the voltages are different the voltage in the device is changed to the set voltage
+
+            @param str axis: The axis for which the mode should be checked
+
+            @return int: error code (0:OK, -1:error)
+            """
+            mode = self.hardware.get_axis_mode(self.name)
+            if mode == -1:
+                return -1
+            elif mode != self.mode:
+                self.log.warning(
+                    "The device has different mode ({}) compared the assumed mode {}. "
+                    "The mode of the device will be changed to the programs mode".format(mode, self.mode))
+                # checks if stepper is still running
+                if False:  # self.getState() == 'locked':
+                    #    self.log.warning("The stepper is still running")
+                    return -1
+                else:
+                    if self.mode == "ground":
+                        retval = self.set_mode_ground()
+                    elif self.mode == "stepping":
+                        retval = self.set_mode_stepping()
+                    else:
+                        self.log.error(
+                            "The mode set by the program %s does not exist or can not be accessed by this program.\n"
+                            "Please change it to one of the possible modes", self.mode)
+                        retval = -1
+                    return retval
+            return 0
+
+        def set_stepper_frequency(self, frequency=None):
+            """
+            Sets the stepping frequency for a specific axis to frequency
+
+            @param str axis: The axis for the desired frequency
+            @param float frequency: desired frequency
+
+            @return int: error code (0:OK, -1:error)
+            """
+
+            # checks if stepper is still running
+            # if self.getState() == 'locked':
+            #    return -1
+
+            if frequency is not None:
+                if frequency is not None:
+                    range_f = self.get_freq_range()[self.name]
+                    if frequency < range_f[0] or frequency > range_f[1]:
+                        self.log.error(
+                            'Voltages {0} exceed the limit, the positions have to '
+                            'be adjusted to stay in the given range.'.format(frequency))
+                        return -1
+                    else:
+                        self.step_freq = frequency
+                        return self.hardware.set_step_freq(self.name, frequency)
+                else:
+                    self.log.warning("No amplitude given so value can not be changed")
+                    return -1
+            else:
+                self.log.info("No frequency was given so the step frequency was not changed.")
+                return 0
+
+        def get_stepper_frequency(self):
+            freq = self.hardware.get_step_freq(self.name)
+            if freq == -1:
+                self.log.warning("The Stepping device could not read out the frequency")
+                return self.step_freq
+            # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
+            # this is better
+            self.step_freq = freq
+            return freq
+
+        def set_stepper_amplitude(self, amplitude=None):
+            """
+            Sets the stepping amplitude for a specific axis to amplitude
+
+            @param str axis: The axis for the desired frequency
+            @param float amplitude: desired amplitude (V)
+
+            @return int: error code (0:OK, -1:error)
+            """
+            # checks if stepper is still running
+            # if self.getState() == 'locked':
+            #    return -1
+            if amplitude is not None:
+                range_a = self.get_amplitude_range()
+                if amplitude < range_a[0] or amplitude > range_a[1]:
+                    self.log.error(
+                        'Voltages {0} exceed the limit, the positions have to '
+                        'be adjusted to stay in the given range.'.format(amplitude))
+                    return -1
+                else:
+                    self.step_amplitude = amplitude
+                    return self.hardware.set_step_amplitude(self.name, amplitude)
+            else:
+                self.log.info("No amplitude given so value can not be changed")
+                return 0
+
+        def get_stepper_amplitude(self):
+            amp = self.hardware.get_step_amplitude(self.name)
+            if amp == -1:
+                self.log.warning("The Stepping device could not read out the amplitude")
+                return self.step_amplitude
+            # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
+            # this is better
+            self.step_amplitude = amp
+            return amp
+
+        def get_freq_range(self):
+            """Returns the current possible frequency range of the stepping device for all axes
+            @return dict: key[axis], value[list of range]
+            """
+            return self.hardware.get_freq_range_stepper()
+
+        def get_amplitude_range(self):
+            """Returns the current possible stepping voltage range of the stepping device for all axes
+            @return list: voltage range of scanner
+            """
+            return self.hardware.get_amplitude_range_stepper()
+
+        def set_mode_stepping(self):
+            """Sets the mode of the stepping device to stepping for the specified axis
+
+            @param str axis: The axis for which the mode is to be set
+            @return int: error code (0:OK, -1:error)
+            """
+            retval = self.hardware.set_axis_mode(self.name, "stepping")
+            if retval < 0:
+                return retval
+            self.mode = "stepping"
+            return retval
+
+        def set_mode_ground(self):
+            """Sets the mode of the stepping device to grounded for the specified axis
+
+            @param str axis: The axis for which the mode is to be set
+            @return int: error code (0:OK, -1:error)
+            """
+            retval = self.hardware.set_axis_mode(self.name, "ground")
+            if retval < 0:
+                return retval
+            self.mode = "ground"
+            return retval
+
+        def get_stepper_mode(self):
+            """Gets the mode of the stepping device for the specified axis
+
+            @param str axis: The axis for which the mode is to be set
+
+            @return int: error code (0:OK, -1:error)
+            """
+            mode = self.hardware.get_axis_mode(self.name)
+            if mode == -1:
+                return mode
+            else:
+                self.mode = mode
+                return mode
+
+        def get_position_range_stepper(self):
+            """Gets the total possible position range of the device axis
+
+            @param str axis_name: the axis for which the range is to be checked
+
+            @ return list: min and max possible voltage in feedback for given axis"""
+            self.step_range = self.hardware.get_position_range_stepper(self.name)
+            return self.step_range
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -129,28 +353,21 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.axis = self.get_stepper_axes_use()
         # first steps to get a to a better handling of axes parameters
 
-        self.step_amplitude = dict()
-        self._step_freq = dict()
-        self._stepper_mode = dict()
         self.axis_class = dict()
-
         self.closed_loop_hardware = self._stepping_device.get_position_feedback()
-        if self.closed_loop_hardware:
-            self.step_range = {}
+
         # Todo: Add Offset dictionary and update all offset uses accordingly.
         for i in self.axis.keys():
-            self.axis_class[i] = self.Axis(i, self._stepping_device)
+            closed_loop = self._stepping_device.get_position_feedback()
+            self.axis_class[i] = self.Axis(i, self._stepping_device, closed_loop, self.log)
             # Todo: Add error check here or in method else it tries to write non existing value into itself
-            self.step_amplitude[i] = self.get_stepper_amplitude(i)
-            self.axis_class[i].step_freq = self.get_stepper_frequency(i)
-            # Todo: write method that enquires stepping device mode
-            self._stepper_mode[i] = self.get_stepper_mode(i)
-            if self.closed_loop_hardware:
-                self.step_range[i] = self.get_position_range_stepper(i)
+            if closed_loop:
+                self.axis_class[i].get_position_range_stepper()
                 self.axis_class[i].voltage_range = self.get_feedback_voltage_range(i)
                 self.get_position([i])
                 self.axis_class[i].feedback_precision_volt, self.axis_class[
                     i].feedback_precision_position = self.calculate_precision_feedback(i)
+
         # Initialise step image constraints
         self._scan_axes = "xy"
         self._inverted_scan = False
@@ -213,217 +430,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
         else:
             return 0
-
-    def set_stepper_frequency(self, axis, frequency=None):
-        """
-        Sets the stepping frequency for a specific axis to frequency
-
-        @param str axis: The axis for the desired frequency
-        @param float frequency: desired frequency
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        # checks if stepper is still running
-        if self.getState() == 'locked':
-            return -1
-
-        if frequency is not None:
-            if frequency is not None:
-                range_f = self.get_freq_range()[axis]
-                if frequency < range_f[0] or frequency > range_f[1]:
-                    self.log.error(
-                        'Voltages {0} exceed the limit, the positions have to '
-                        'be adjusted to stay in the given range.'.format(frequency))
-                    return -1
-                else:
-                    self.axis_class[axis].step_freq = frequency
-                    return self._stepping_device.set_step_freq(axis, frequency)
-            else:
-                self.log.warning("No amplitude given so value can not be changed")
-                return -1
-        else:
-            self.log.info("No frequency was given so the step frequency was not changed.")
-            return 0
-
-    def get_stepper_frequency(self, axis):
-        freq = self._stepping_device.get_step_freq(axis)
-        if freq == -1:
-            self.log.warning("The Stepping device could not read out the frequency")
-            return self.axis_class[axis].step_freq
-        # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
-        # this is better
-        self.axis_class[axis].step_freq = freq
-        return freq
-
-    def set_stepper_amplitude(self, axis, amplitude=None):
-        """
-        Sets the stepping amplitude for a specific axis to amplitude
-
-        @param str axis: The axis for the desired frequency
-        @param float amplitude: desired amplitude (V)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        # checks if stepper is still running
-        if self.getState() == 'locked':
-            return -1
-        if amplitude is not None:
-            range_a = self.get_amplitude_range()
-            if amplitude < range_a[0] or amplitude > range_a[1]:
-                self.log.error(
-                    'Voltages {0} exceed the limit, the positions have to '
-                    'be adjusted to stay in the given range.'.format(amplitude))
-                return -1
-            else:
-                self.step_amplitude[axis] = amplitude
-                return self._stepping_device.set_step_amplitude(axis, amplitude)
-        else:
-            self.log.info("No amplitude given so value can not be changed")
-            return -1
-
-    def get_freq_range(self):
-        """Returns the current possible frequency range of the stepping device for all axes
-        @return dict: key[axis], value[list of range]
-        """
-        return self._stepping_device.get_freq_range_stepper()
-
-    def get_stepper_amplitude(self, axis):
-        amp = self._stepping_device.get_step_amplitude(axis)
-        if amp == -1:
-            self.log.warning("The Stepping device could not read out the amplitude")
-            return self.step_amplitude
-        # Todo. The error handling in the methods in the stepper is not good yet and this needs to be adapted the moment
-        # this is better
-        self.step_amplitude[axis] = amp
-        return amp
-
-    def get_amplitude_range(self):
-        """Returns the current possible stepping voltage range of the stepping device for all axes
-        @return list: voltage range of scanner
-        """
-        return self._stepping_device.get_amplitude_range_stepper()
-
-    def set_mode_stepping(self, axis):
-        """Sets the mode of the stepping device to stepping for the specified axis
-
-        @param str axis: The axis for which the mode is to be set
-        @return int: error code (0:OK, -1:error)
-        """
-        self._stepper_mode[axis] = "stepping"
-        return self._stepping_device.set_axis_mode(axis, "stepping")
-
-    def set_mode_ground(self, axis):
-        """Sets the mode of the stepping device to grounded for the specified axis
-
-        @param str axis: The axis for which the mode is to be set
-        @return int: error code (0:OK, -1:error)
-        """
-        self._stepper_mode[axis] = "ground"
-        return self._stepping_device.set_axis_mode(axis, "ground")
-
-    def get_stepper_mode(self, axis):
-        """Gets the mode of the stepping device for the specified axis
-
-        @param str axis: The axis for which the mode is to be set
-
-        @return int: error code (0:OK, -1:error)
-        """
-        mode = self._stepping_device.get_axis_mode(axis)
-        if mode == -1:
-            return mode
-        else:
-            self._stepper_mode[axis] = mode
-            return mode
-
-    def _check_freq(self, axis_name):
-        """ Checks if the frequency in te device is the same as set by the program
-        If the frequencies are different the frequency in the device is changed to the set
-        frequency
-
-        @param str axis_name: The axis for which the frequency should be checked
-
-        @return int: error code (0:OK, -1:error)
-        """
-        freq = self._stepping_device.get_step_freq(axis_name)
-        if freq == -1:
-            return -1
-        elif freq != self.axis_class[axis_name].step_freq:
-            self.log.warning(
-                "The device has different frequency of {} then the set frequency {}. "
-                "The frequency will be changed to the set frequency".format(freq, self.axis_class[axis_name].step_freq))
-            # checks if stepper is still running
-            if self.getState() == 'locked':
-                self.log.warning("The stepper is still running")
-                return -1
-            return self.set_stepper_frequency(axis_name, self.axis_class[axis_name].step_freq)
-        return 0
-
-    def _check_amplitude(self, axis):
-        """ Checks if the voltage in the device is the same as set by the program
-        If the voltages are different the voltage in the device is changed to the set voltage
-
-        @param str axis: The axis for which the amplitude is to be checked
-
-        @return int: error code (0:OK, -1:error)
-        """
-        amp = self._stepping_device.get_step_amplitude(axis)
-        if amp == -1:
-            return -1
-        elif amp != self.step_amplitude[axis]:
-            self.log.warning(
-                "The device has different voltage of {} then the set voltage {}. "
-                "The voltage will be changed to the set voltage".format(amp,
-                                                                        self.step_amplitude[axis]))
-            # checks if stepper is still running
-            if self.getState() == 'locked':
-                self.log.warning("The stepper is still running")
-                return -1
-            return self.set_stepper_amplitude(axis, self.step_amplitude[axis])
-        return 0
-
-    def _check_mode(self, axis):
-        """ Checks if the voltage in the device is the same as set by the program
-        If the voltages are different the voltage in the device is changed to the set voltage
-
-        @param str axis: The axis for which the mode should be checked
-
-        @return int: error code (0:OK, -1:error)
-        """
-        mode = self._stepping_device.get_axis_mode(axis)
-        if mode == -1:
-            return -1
-        elif mode != self._stepper_mode[axis]:
-            self.log.warning(
-                "The device has different mode ({}) compared the assumed mode {}. "
-                "The mode of the device will be changed to the programs mode".format(mode,
-                                                                                     self._stepper_mode[
-                                                                                         axis]))
-            # checks if stepper is still running
-            if self.getState() == 'locked':
-                self.log.warning("The stepper is still running")
-                return -1
-            else:
-                if self._stepper_mode[axis] == "ground":
-                    retval = self.set_mode_ground(axis)
-                elif self._stepper_mode[axis] == "stepping":
-                    retval = self.set_mode_stepping(axis)
-                else:
-                    self.log.error(
-                        "The mode set by the program {} does not exist or can not be accessed by this program.\n"
-                        "Please change it to one of the possible modes".format(
-                            self._stepper_mode[axis]))
-                    retval = -1
-                return retval
-        return 0
-
-    def get_position_range_stepper(self, axis_name):
-        """Gets the total possible position range of the device axis
-
-        @param str axis_name: the axis for which the range is to be checked
-
-        @ return list: min and max possible voltage in feedback for given axis"""
-        return self._stepping_device.get_position_range_stepper(axis_name)
 
     def get_stepper_axes_use(self):
         """ Find out how the axes of the stepping device are named.
@@ -492,7 +498,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # read voltages from resistive read out for position feedback
         if self._position_feedback_device.set_up_analogue_voltage_reader(axes[0]) < 0:
             return [-1]
-        self._position_feedback_device.lock()
+        try:
+            self._position_feedback_device.lock()
+        except:
+            self.log.warning("Position feedback device is already in use for another task")
+            self._position_feedback_device.close_analogue_voltage_reader(axes[0])
+            return -1
         # if more than one axis is read add additional readout channels
         if len(axes) > 1:
             if 0 > self._position_feedback_device.add_analogue_reader_channel_to_measurement(axes[0], axes[1:]):
@@ -538,7 +549,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1.0
 
         voltage_range = self.axis_class[axis_name].voltage_range
-        step_range = self.step_range[axis_name]
+        step_range = self.axis_class[axis_name].step_range
         if not in_range(position, step_range[0], step_range[1]):
             self.log.warning(
                 "The position (%s) you are trying to convert lies without the physical range of your axis (%s)",
@@ -570,7 +581,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         voltage_range = self.axis_class[axis_name].voltage_range
-        step_range = self.step_range[axis_name]
+        step_range = self.axis_class[axis_name].step_range
         if not in_range(voltage, voltage_range[0], voltage_range[1]):
             self.log.warning(
                 "The voltage (%s) you are trying to convert lies without the physical range of your axis (%s)",
@@ -657,13 +668,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         # Check the parameters of the stepper device
-        freq_status = self._check_freq(self._first_scan_axis)
-        amp_status = self._check_amplitude(self._second_scan_axis)
+        freq_status = self.axis_class[self._first_scan_axis]._check_freq()
+        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
         if freq_status < 0 or amp_status < 0:
             self.unlock()
             return -1
-        freq_status = self._check_freq(self._first_scan_axis)
-        amp_status = self._check_amplitude(self._second_scan_axis)
+        freq_status = self.axis_class[self._second_scan_axis]._check_freq()
+        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
         if freq_status < 0 or amp_status < 0:
             self.unlock()
             return -1
@@ -687,18 +698,18 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         # check axis status
-        if self._stepper_mode[self._first_scan_axis] != "stepping":
-            axis_status1 = self.set_mode_stepping(self._first_scan_axis)
+        if self.axis_class[self._first_scan_axis].mode != "stepping":
+            axis_status1 = self.axis_class[self._first_scan_axis].set_mode_stepping()
         else:
-            axis_status1 = self._check_mode(self._first_scan_axis)
-        if self._stepper_mode[self._second_scan_axis] != "stepping":
-            axis_status2 = self.set_mode_stepping(self._second_scan_axis)
+            axis_status1 = self.axis_class[self._first_scan_axis]._check_mode()
+        if self.axis_class[self._second_scan_axis].mode != "stepping":
+            axis_status2 = self.axis_class[self._second_scan_axis].set_mode_stepping()
         else:
-            axis_status2 = self._check_mode(self._second_scan_axis)
+            axis_status2 = self.axis_class[self._second_scan_axis]._check_mode()
         if axis_status1 < 0 or axis_status2 < 0:
             # Todo: is this really sensible here?
-            self.set_mode_ground(self._first_scan_axis)
-            self.set_mode_ground(self._second_scan_axis)
+            self.axis_class[self._first_scan_axis].set_mode_ground()
+            self.axis_class[self._second_scan_axis].set_mode_ground()
             self.unlock()
             self.kill_counter()
             return -1
@@ -729,13 +740,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         self.lock()
         # Check the parameters of the stepper device
-        freq_status = self._check_freq(self._first_scan_axis)
-        amp_status = self._check_amplitude(self._second_scan_axis)
+        freq_status = self.axis_class[self._first_scan_axis]._check_freq()
+        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
         if freq_status < 0 or amp_status < 0:
             self.unlock()
             return -1
-        freq_status = self._check_freq(self._first_scan_axis)
-        amp_status = self._check_amplitude(self._second_scan_axis)
+        freq_status = self.axis_class[self._first_scan_axis]._check_freq()
+        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
         if freq_status < 0 or amp_status < 0:
             self.unlock()
             return -1
@@ -778,17 +789,17 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if key not in self.axis.keys():
                 self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", key)
                 continue
-            if not in_range(value, self.step_range[key][0], self.step_range[key][1]):
+            if not in_range(value, self.axis_class[key].step_range[0], self.axis_class[key].step_range[1]):
                 self.log.error("%s lies without the steppers range for axis %s", value, key)
                 continue
 
-            if abs(self.axis_class[key].absolute_position - value) <= self.axis_class[
-                    key].feedback_precision_volt:  # check if position differs from actual hardware position
+            if abs(self.axis_class[key].absolute_position - value) >= self.axis_class[
+                    key].feedback_precision_position:  # check if position differs from actual hardware position
 
                 # Todo: Maybe it makes sense to open option to change freq and amplitude
                 # actually move to the wanted position using an optimisation algorithm
                 if 0 > self.optimize_position(key, value, accuracy):
-                    self.log.warning("Moving attocube to desired position failed.")
+                    self.log.warning("Moving attocube to desired position failed for axis %s.", key)
                     return_value = -1
 
         # Todo: implement moving for hardware without feedback with amount of steps:
@@ -819,7 +830,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if axis_name not in self.axis.keys():
             self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
             return -1
-        if not in_range(position, self.step_range[axis_name][0], self.step_range[axis_name][1]):
+        if not in_range(position, self.axis_class[axis_name].step_range[0], self.axis_class[axis_name].step_range[1]):
             self.log.error("%s lies without the steppers range", position)
             return -1
 
@@ -830,9 +841,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         direction = self.axis_class[axis_name].absolute_position < position  # find movement direction
         # check freq and amplitude
-        status_freq = self._check_freq(axis_name)
-        status_amp = self._check_amplitude(axis_name)
-        status_mode = self.set_mode_stepping(axis_name)
+        status_freq = self.axis_class[axis_name]._check_freq()
+        status_amp = self.axis_class[axis_name]._check_amplitude()
+        status_mode = self.axis_class[axis_name].set_mode_stepping()
         if status_amp + status_freq + status_mode < 0:
             return -1
 
@@ -1156,7 +1167,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['First Axis'] = self._first_scan_axis
         parameters['First Axis Steps'] = self._steps_scan_first_line
         parameters['First Axis Frequency'] = self.axis_class[self._first_scan_axis].step_freq
-        parameters['First Axis Amplitude'] = self.step_amplitude[self._first_scan_axis]
+        parameters['First Axis Amplitude'] = self.axis_class[self._first_scan_axis].step_amplitude
         parameters[
             'First Axis Offset (%)'] = self._off_set_x  # Todo: this needs to be specified specifically for x
         parameters['First Axis Offset steps'] = round(
@@ -1169,7 +1180,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Second Axis Steps'] = self._steps_scan_first_line
         # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
-        parameters['Second Axis Amplitude'] = self.step_amplitude[self._second_scan_axis]
+        parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
 
         # parameters['XY Image at z position (m)'] = self._current_z
         # Todo: add starting "x" "y" position
