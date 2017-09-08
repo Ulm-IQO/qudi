@@ -65,6 +65,13 @@ class PulsedMeasurementLogic(GenericLogic):
     show_raw_data = StatusVar(default=False)
     show_laser_index = StatusVar(default=0)
 
+    # fourier transform status var:
+    zeropad = StatusVar(default=0)
+    psd = StatusVar(default=False)
+    window = StatusVar(default='none')
+    base_corr = StatusVar(default=True)
+    save_ft = StatusVar(default=True)
+
     # signals
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
                                          np.ndarray, np.ndarray, np.ndarray,
@@ -154,12 +161,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fc = None  # Fit container
         self.signal_plot_x_fit = np.arange(10, dtype=float)
         self.signal_plot_y_fit = np.zeros(len(self.signal_plot_x_fit), dtype=float)
-
-        # for fourier transform:
-        self.zeropad = 0
-        self.psd = False
-        self.window = 'none'
-        self.base_corr = True
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -980,7 +981,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
-                              with_error=True, save_ft=False):
+                              with_error=True, save_ft=None):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str controlled_val_unit: unit of the x axis of the plot
@@ -1066,9 +1067,13 @@ class PulsedMeasurementLogic(GenericLogic):
         counts_prefix = scaled_float.scale
         x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
 
+        # if nothing is specified, then take the local settings
+        if save_ft is None:
+            save_ft = self.save_ft
+
         # Create the figure object
         if save_ft:
-            fig, (ax1, ax2) = plt.subplots(2,1)
+            fig, (ax1, ax2) = plt.subplots(2, 1)
         else:
             fig, ax1 = plt.subplots()
 
@@ -1108,18 +1113,22 @@ class PulsedMeasurementLogic(GenericLogic):
             # relative offset in x direction and the relative length factor
             # rel_len_fac of the longest entry in one column
             rel_offset = 0.02
-            rel_len_fac = 0.011  #
+            rel_len_fac = 0.011
             entries_per_col = 24
 
-            # create the formated fit text:
-            fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
-
+            # create the formatted fit text:
+            if hasattr(self.fc.current_fit_result, 'result_str_dict'):
+                fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
+            else:
+                self.log.warning('The fit container does not contain any data '
+                                 'from the fit! Apply the fit once again.')
+                fit_res = ''
             # do reverse processing to get each entry in a list
             entry_list = fit_res.split('\n')
             # slice the entry_list in entries_per_col
             chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
-            is_first_column = True  # first entry should contain
+            is_first_column = True  # first entry should contain header or \n
             shift = rel_offset
 
             for column in chunks:
@@ -1162,6 +1171,7 @@ class PulsedMeasurementLogic(GenericLogic):
             ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
                      linestyle=':', linewidth=0.5, color=colors[0])
 
+            # since no ft units are provided, make a small work around:
             if controlled_val_unit == 's':
                 inverse_cont_var = 'Hz'
             elif controlled_val_unit == 'Hz':
