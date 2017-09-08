@@ -1285,9 +1285,24 @@ class PulsedMeasurementGui(GUIBase):
         self._fsd.applySettings()
 
         # Configure the main pulse analysis display:
-        self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
+        self.signal_image = pg.PlotDataItem(np.array(range(10)),
+                                            np.zeros(10),
+                                            pen=pg.mkPen(palette.c1,
+                                                         style=QtCore.Qt.DotLine),
+                                            style=QtCore.Qt.DotLine,
+                                            symbol='o',
+                                            symbolPen=palette.c1,
+                                            symbolBrush=palette.c1,
+                                            symbolSize=7)
+
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image)
-        self.signal_image2 = pg.PlotDataItem(pen=palette.c4)
+        self.signal_image2 = pg.PlotDataItem(pen=pg.mkPen(palette.c4,
+                                                          style=QtCore.Qt.DotLine),
+                                             style=QtCore.Qt.DotLine,
+                                             symbol='o',
+                                             symbolPen=palette.c4,
+                                             symbolBrush=palette.c4,
+                                             symbolSize=7)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image2)
         self._pa.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
