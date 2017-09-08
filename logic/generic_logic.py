@@ -28,6 +28,7 @@ class GenericLogic(Base):
     """
     _modclass = 'GenericLogic'
     _modtype = 'logic'
+    _threaded = True
 
     def __init__(self, **kwargs):
         """ Initialzize a logic module.

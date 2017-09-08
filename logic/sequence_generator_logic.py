@@ -346,7 +346,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.saved_pulse_blocks[name] = block
         self._save_blocks_to_file()
         self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
-        self.sigCurrentBlockUpdated.emit(self.current_block)
         return
 
     def load_block(self, name):
@@ -436,7 +435,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.saved_pulse_block_ensembles[name] = ensemble
         self._save_ensembles_to_file()
         self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
-        self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
         return
 
     def load_ensemble(self, name):
@@ -538,7 +536,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.saved_pulse_sequences[name] = sequence
         self._save_sequences_to_file()
         self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-        self.sigCurrentSequenceUpdated.emit(self.current_sequence)
+        return
 
     def load_sequence(self, name):
         """

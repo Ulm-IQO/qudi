@@ -35,13 +35,16 @@ import importlib
 from qtpy import QtCore
 from . import config
 
-from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from .util.modules import toposort, isBase
 from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
-from .remote import RemoteObjectManager
+# try to import RemoteObjectManager. Might fail if rpyc is not installed.
+try:
+    from .remote import RemoteObjectManager
+except ImportError:
+    RemoteObjectManager = None
 from .module import BaseMixin, Connector
 
 
@@ -99,7 +102,7 @@ class Manager(QtCore.QObject):
         self.currentDir = None
         self.baseDir = None
         self.alreadyQuit = False
-        self.remoteServer = True
+        self.remote_server = False
 
         try:
             # Initialize parent class QObject
@@ -130,35 +133,59 @@ class Manager(QtCore.QObject):
             self.configDir = os.path.dirname(config_file)
             self.readConfig(config_file)
 
-            # Create remote module server
-            try:
-                if 'serverport' in self.tree['global']:
-                    remotePort = self.tree['global']['serverport']
-                    logger.info('Remote port is configured to {0}'.format(remotePort))
-                else:
-                    remotePort = 12345
-                    logger.info('Remote port is the standard {0}'.format(remotePort))
-                serveraddress = 'localhost'
-                if 'serveraddress' in self.tree['global']:
-                    serveraddress = self.tree['global']['serveraddress']
-                if 'certfile' in self.tree['global']:
-                    certfile = self.tree['global']['certfile']
-                else:
-                    certfile = None
-                if 'keyfile' in self.tree['global']:
-                    keyfile = self.tree['global']['keyfile']
-                else:
-                    keyfile = None
-                self.rm = RemoteObjectManager(
-                    self,
-                    serveraddress,
-                    remotePort,
-                    certfile=certfile,
-                    keyfile=keyfile)
-                self.rm.createServer()
-            except:
-                self.remoteServer = False
-                logger.exception('Remote server could not be started.')
+            # check first if remote support is enabled and if so create RemoteObjectManager
+            if (RemoteObjectManager is None):
+                logger.error('Remote modules disabled. Rpyc not installed.')
+                self.rm = None
+            else:
+                self.rm = RemoteObjectManager(self)
+                # Create remote module server if specified in config file
+                if ('module_server' in self.tree['global']):
+                    if (not isinstance(self.tree['global']['module_server'], dict)):
+                        logger.error('"module_server" entry in "global" section of configuration'
+                                     ' file is not a dictionary.')
+                    else:
+                        # new style
+                        try:
+                            server_address = self.tree['global']['module_server'].get(
+                                'address',
+                                'localhost')
+                            server_port = self.tree['global']['module_server'].get(
+                                'port', 12345)
+                            certfile = self.tree['global']['module_server'].get(
+                                'certfile', None)
+                            keyfile = self.tree['global']['module_server'].get('keyfile', None)
+                            self.rm.createServer(server_address, server_port, certfile, keyfile)
+                            # successfully started remote server
+                            logger.info('Started server rpyc://{0}:{1}'.format(server_address,
+                                                                               server_port))
+                            self.remote_server = True
+                        except:
+                            logger.exception('Rpyc server could not be started.')
+                elif ('serveraddress' in self.tree['global']):
+                    logger.warning('Deprecated remote server settings. Please update to new '
+                                   'style. See documentation.')
+                    server_address = self.tree['global']['serveraddress']
+                    try:
+                        if 'serverport' in self.tree['global']:
+                            remote_port = self.tree['global']['serverport']
+                            logger.info('Remote port is configured to {0}'.format(remote_port))
+                        else:
+                            remote_port = 12345
+                            logger.info('Remote port is the standard {0}'.format(remote_port))
+                        if 'certfile' in self.tree['global']:
+                            certfile = self.tree['global']['certfile']
+                        else:
+                            certfile = None
+                        if 'keyfile' in self.tree['global']:
+                            keyfile = self.tree['global']['keyfile']
+                        else:
+                            keyfile = None
+                        self.rm.createServer(server_address, remote_port, certfile, keyfile)
+                        # successfully started remote server
+                        self.remote_server = True
+                    except:
+                        logger.exception('Remote server could not be started.')
 
             logger.info('Qudi started.')
 
@@ -728,16 +755,21 @@ class Manager(QtCore.QObject):
         defined_module = self.tree['defined'][base][key]
         if 'module.Class' in defined_module:
             if 'remote' in defined_module:
-                if not self.remoteServer:
-                    logger.error('Remote functionality not working, check your log.')
+                if self.rm is None:
+                    logger.error('Remote module functionality disabled. Rpyc not installed.')
                     return -1
                 if not isinstance(defined_module['remote'], str):
                     logger.error('Remote URI of {0} module {1} not a string.'.format(base, key))
                     return -1
                 try:
-                    instance = self.rm.getRemoteModuleUrl(defined_module['remote'])
-                    logger.info('Remote module {0} loaded as .{1}.{2}.'
-                        ''.format(defined_module['remote'], base, key))
+                    certfile = defined_module.get('certfile', None)
+                    keyfile = defined_module.get('keyfile', None)
+                    instance = self.rm.getRemoteModuleUrl(
+                        defined_module['remote'],
+                        certfile=certfile,
+                        keyfile=keyfile)
+                    logger.info('Remote module {0} loaded as {1}.{2}.'
+                                ''.format(defined_module['remote'], base, key))
                     with self.lock:
                         if isBase(base):
                             self.tree['loaded'][base][key] = instance
@@ -763,10 +795,14 @@ class Manager(QtCore.QObject):
                     modObj = self.importModule(base, module_name)
                     self.configureModule(modObj, base, class_name, key, defined_module)
                     if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
-                        if not self.remoteServer:
+                        if self.rm is None:
+                            logger.error('Remote module sharing functionality disabled. Rpyc not'
+                                         ' installed.')
+                            return 1
+                        if not self.remote_server:
                             logger.error('Remote module sharing does not work '
-                                         'as server startup failed earlier, check '
-                                         'your log.')
+                                         'as no server configured or server startup failed earlier.'
+                                         ' Check your configuration and log.')
                             return 1
                         self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
@@ -789,7 +825,7 @@ class Manager(QtCore.QObject):
         """
         defined_module = self.tree['defined'][base][key]
         if 'remote' in defined_module:
-            if not self.remoteServer:
+            if self.rm is None:
                 logger.error('Remote functionality not working, check your log.')
                 return -1
             if not isinstance(defined_module['remote'], str):
@@ -905,7 +941,7 @@ class Manager(QtCore.QObject):
         if module.getState() != 'deactivated' and (
                 self.isModuleDefined(base, name)
                 and 'remote' in self.tree['defined'][base][name]
-                and self.remoteServer):
+                and self.remote_server):
             logger.debug('No need to activate remote module {0}.{1}.'.format(base, name))
             return
         if module.getState() != 'deactivated':
@@ -914,7 +950,7 @@ class Manager(QtCore.QObject):
         try:
             module.setStatusVariables(self.loadStatusVariables(base, name))
             # start main loop for qt objects
-            if base == 'logic':
+            if module.is_module_threaded:
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
