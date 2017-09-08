@@ -1104,7 +1104,7 @@ class PulsedMeasurementLogic(GenericLogic):
             x_axis_fit_scaled = self.signal_plot_x_fit / scaled_float.scale_val
             ax1.plot(x_axis_fit_scaled, self.signal_plot_y_fit,
                      color=colors[2], marker='None', linewidth=1.5,
-                     label='fit data trace 1')
+                     label='fit: {0}'.format(self.fc.current_fit))
 
             # add then the fit result to the plot:
 
