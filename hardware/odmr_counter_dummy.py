@@ -130,7 +130,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_lorentziandouble_model()
+        lorentians, params = self._fit_logic.make_lorentziandouble_model()
 
         sigma = 3.
 
@@ -148,7 +148,9 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self.unlock()
 
-        return count_data
+        ret = np.empty((1, len(count_data)))
+        ret[0] = count_data
+        return ret
 
 
     def close_odmr(self):
@@ -172,3 +174,10 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         self.log.info('ODMRCounterDummy>close_odmr_clock')
 
         return 0
+
+    def get_odmr_channels(self):
+        """ Return a list of channel names.
+
+        @return list(str): channels recorded during ODMR measurement
+        """
+        return ['ch1']
