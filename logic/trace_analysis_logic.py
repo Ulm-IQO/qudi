@@ -400,13 +400,15 @@ class TraceAnalysisLogic(GenericLogic):
             self.debug_lifetime_y = time_hist_high[0][indices]
             para = dict()
             para['offset'] = {"value": 0.0, "vary": False}
-            result = self._fit_logic.make_exponentialdecayoffset_fit(time_hist_high[1][indices],
-                                                               time_hist_high[0][indices], add_params=para)
+            result = self._fit_logic.make_decayexponential_fit(time_hist_high[1][indices],
+                                                               time_hist_high[0][indices],
+                                                               self._fit_logic.estimate_decayexponential,
+                                                               add_params=para)
             bright_liftime = result.params['lifetime']
             # for debug purposes give also the results back of the fits for now
             lifetime_dict['result_bright'] = result
             # also give back the data used for the fit
-            lifetime_dict['bright_raw'] =  np.array([time_hist_high[1][indices],time_hist_high[0][indices]])
+            lifetime_dict['bright_raw'] = np.array([time_hist_high[1][indices],time_hist_high[0][indices]])
 
             # get lifetime of dark state
             time_hist_low = np.histogram(time_array_low, bins=num_bins)
@@ -416,8 +418,10 @@ class TraceAnalysisLogic(GenericLogic):
             values = np.array([val[1] for val in vals])
             # positive axis
             mirror_axis = -time_hist_low[1][indices]
-            result = self._fit_logic.make_exponentialdecayoffset_fit(mirror_axis,
-                                                               values, add_params=para)
+            result = self._fit_logic.make_decayexponential_fit(mirror_axis,
+                                                               values,
+                                                               self._fit_logic.estimate_decayexponential,
+                                                               add_params=para)
             dark_liftime = result.params['lifetime']
             lifetime_dict['result_dark'] = result
 
@@ -509,8 +513,9 @@ class TraceAnalysisLogic(GenericLogic):
             return self.do_no_fit()
 
         else:
-            result = self._fit_logic.make_twogausspeakoffset_fit(x_axis=axis,
-                                                                 data=data)
+            result = self._fit_logic.make_gaussiandouble_fit(axis,
+                                                             data,
+                                                             self._fit_logic.estimate_gaussiandouble_peak)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -814,7 +819,7 @@ class TraceAnalysisLogic(GenericLogic):
                 return amp * np.exp(-(counts - mean) ** 2 / (2 * stdv ** 2)) / (stdv * np.sqrt(2 * np.pi))
 
             try:
-                result = self._fit_logic.make_twogausspeakoffset_fit(x_axis, y_data)
+                result = self._fit_logic.make_gaussiandouble_fit(x_axis, y_data, self._fit_logic.estimate_gaussiandouble_peak)
                 # calculating the threshold
                 # NOTE the threshold is taken as the intersection of the two gaussians, while this should give
                 # a good approximation I doubt it is mathematical exact.
