@@ -80,10 +80,12 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         elif arch == ('64bit', 'WindowsPE'):
             libname = 'spinapi64.dll'
         elif arch == ('32bit', 'ELF'):
-            folderpath = os.path.join(self.get_main_dir(), 'hardware', 'SpinCore')
+            folderpath = os.path.join(self.get_main_dir(), 'hardware',
+                                      'SpinCore')
             libname = os.path.join(folderpath, 'libspinapi.so')
         elif arch == ('64bit', 'ELF'):
-            folderpath = os.path.join(self.get_main_dir(), 'hardware', 'SpinCore')
+            folderpath = os.path.join(self.get_main_dir(), 'hardware',
+                                      'SpinCore')
             libname = os.path.join(folderpath, 'libspinapi64.so')
 
         # In Windows load the spinapi library file spinapi.dll from the folder
@@ -108,16 +110,14 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     def check(self, func_val):
         """ Check routine for the received error codes.
 
-        @param func_val int: return error code of the called function.
+        @param int func_val: return error code of the called function.
 
         @return int: pass the error code further so that other functions have
                      the possibility to use it.
 
         Each called function in the dll has an 32-bit return integer, which
         indicates, whether the function was called and finished successfully
-        (then func_val = 0) or if any error has occured (func_val < 0). The
-        errorcode, which corresponds to the return value can be looked up in
-        the file 'errorcodes.h'.
+        (then func_val = 0) or if any error has occured (func_val < 0).
         """
 
         if not func_val == 0:
@@ -131,9 +131,9 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     def get_error_string(self):
         """ Return the most recent error string.
 
-        @return string: A string describing the last error is returned. A
-                        string containing "No Error" is returned if the last
-                        function call was successfull.
+        @return str: A string describing the last error is returned. A string
+                     containing "No Error" is returned if the last function call
+                     was successfull.
 
         Anytime a function (such as pb_init(), pb_start_programming(), etc.)
         encounters an error, this function will return a description of what
@@ -141,10 +141,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         """
         self._dll.pb_get_error.restype = ctypes.c_char_p
 
-            # The output value of this function is as decladed above a pointer
-            # to an address where the received data is stored as characters
-            # (8bit per char). Use the decode method to convert a char to a
-            # string.
+        # The output value of this function is as declared above a pointer
+        # to an address where the received data is stored as characters
+        # (8bit per char). Use the decode method to convert a char to a
+        # string.
         return self._dll.pb_get_error().decode()
 
     def count_boards(self):
@@ -158,7 +158,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         self._dll.pb_count_boards.restype = ctypes.c_int
         return self._dll.pb_count_boards()
 
-    def select_board(self,board_num=0):
+    def select_board(self, board_num=0):
         """ Select the proper SpinCore card, if multiple are present.
 
         @param int board_num: Specifies which board to select. Counting starts
@@ -173,10 +173,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         """
 
         # check whether the input is an integer
-        if not isinstance( board_num, int ):
-            self.log.error('PulseBlaster cannot choose a board, since an integer '
-                        'type was expected, but the following value was '
-                        'passed:\n{0}'.format(board_num))
+        if not isinstance(board_num, int):
+            self.log.error('PulseBlaster cannot choose a board, since an '
+                           'integer type was expected, but the following value '
+                           'was passed:\n{0}'.format(board_num))
         self.check(self._dll.pb_select_board(board_num))
 
     def get_version(self):
@@ -198,9 +198,9 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         firmware_id = self._dll.pb_get_firmware_id()
 
-        if firmware_id == 0 :
+        if firmware_id == 0:
             self.log.info('Retrieving the Firmware ID is not a feature of this '
-                        'board')
+                          'board')
 
         return firmware_id
 
@@ -293,7 +293,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         """
         return self.check(self._dll.pb_stop_programming())
 
-    def set_core_clock(self,clock_freq):
+    def set_core_clock(self, clock_freq):
         """Tell the library what clock frequency the board uses.
 
         @param int clock_freq: Frequency of the clock in MHz.
@@ -367,7 +367,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         length = ctypes.c_double(length)
 
-        self.check(self._dll.pb_inst_pbonly(flags,inst,inst_data,length))
+        self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
+
 
     def get_status(self):
         """Read status from the board.
@@ -405,12 +406,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         return self._dll.pb_read_status()
 
-
     # =========================================================================
     # Below all the higher level routines are situated which use the
     # wrapped routines as a basis to perform the desired task.
     # =========================================================================
-
 
     def write_pulse_form(self, sequence_list, clock_freq=500.0, loop=True):
         """ The higher level function, which creates the actual sequences.
@@ -433,10 +432,11 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         #self.lock()
 
         if clock_freq > self.FREQ_MAX:
-            self.log.warning('The maximal value for the clock frequency for the '
-                        'PulseBlaster card is {0}MHz, but a value of {1} was '
-                        'passed. The clock is set to maximal sampling '
-                        'frequency.'.format(self.FREQ_MAX, clock_freq))
+            self.log.warning('The maximal value for the clock frequency for '
+                             'the PulseBlaster card is {0}MHz, but a value of '
+                             '{1} was passed. The clock is set to maximal '
+                             'sampling '
+                             'frequency.'.format(self.FREQ_MAX, clock_freq))
             clock_freq = 500
 
         self.set_core_clock(clock_freq)
@@ -448,10 +448,11 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         # go through each pulse in the sequence and write it to the
         # PulseBlaster.
         for pulse in sequence_list[1:]:
-            num  = self._convert_inst_to_pulse(pulse['active_channels'], pulse['length'] )
+            num  = self._convert_inst_to_pulse(pulse['active_channels'],
+                                               pulse['length'])
             if num > 4094: # =(2**12 -2)
-                self.log.error('Error in PulseCreation: Command {0} exceeds the '
-                            'maximal number of commands'.format(num))
+                self.log.error('Error in PulseCreation: Command {0} exceeds '
+                               'the maximal number of commands'.format(num))
 
         active_channels = sequence_list[-1]['active_channels']
 
@@ -490,9 +491,9 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         residual = length % self.GRAN_MIN
         if residual != 0:
             self.log.warning('The length of the pulse does not fulfil the '
-                        'granularity of {0}ns. The length is rounded to a '
-                        'number, devidable by the granuality! {1}ns were '
-                        'dropped.'.format(self.GRAN_MIN, residual))
+                             'granularity of {0}ns. The length is rounded to a '
+                             'number, devidable by the granuality! {1}ns were '
+                             'dropped.'.format(self.GRAN_MIN, residual))
         length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
 
         if length <= 256: # pulses are written in 8 bit words. Save memory if
@@ -500,12 +501,11 @@ class PulseBlasterESRPRO(Base, PulserInterface):
             num = self._write_pulse(channel_bitmask, inst=0, inst_data=None,
                                     length=length*self.GRAN_MIN)
 
-        elif length> 256:
+        elif length > 256:
             # reducing the length of the pulses by repeating them.
             # Try to factorizd successively, in order to reducing the total
             # length of the pulse form. Put the subtracted amount into an
             # additional short command if necessary.
-
 
             remaining_time = length
             i = 4
@@ -526,12 +526,12 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                                                 inst_data=factor,
                                                 length=value*self.GRAN_MIN)
                     else:
-                        self.log.error('Error in PulseCreation: Loop counts are '
-                                    '{0} in LONG_DELAY instruction and '
-                                    'exceedes the maximal possible value of '
-                                    '2^20+1 = 1048576.\n'
-                                    'Repeat PulseCreation with different '
-                                    'parameters!'.format(factor))
+                        self.log.error('Error in PulseCreation: Loop counts '
+                                       'are {0} in LONG_DELAY instruction and '
+                                       'exceedes the maximal possible value of '
+                                       '2^20+1 = 1048576.\n'
+                                       'Repeat PulseCreation with different '
+                                       'parameters!'.format(factor))
 
                     if i > 4:
                         self._write_pulse(channel_bitmask, inst=0,
@@ -611,3 +611,6 @@ class PulseBlasterESRPRO(Base, PulserInterface):
             div -= 1
         return 1, number
 
+    # =========================================================================
+    # Below the pulser interface implementation.
+    # =========================================================================
