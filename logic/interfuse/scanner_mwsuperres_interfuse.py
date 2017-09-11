@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
+from core.module import Connector
 import copy
 import numpy as np
 import time
@@ -31,9 +32,9 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
     _modclass = 'ScannerMwsuperresInterfuse'
     _modtype = 'interfuse'
 
-    _connectors = {'confocalscanner1': 'ConfocalScannerInterface',
-                   'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-                   'sequencegeneratorlogic': 'SequenceGeneratorLogic'}
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
+    sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
