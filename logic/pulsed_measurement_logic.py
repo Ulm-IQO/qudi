@@ -1093,11 +1093,12 @@ class PulsedMeasurementLogic(GenericLogic):
 
         else:
             ax1.plot(x_axis_scaled, self.signal_plot_y, '-o', color=colors[0],
-                     linestyle=':', linewidth=0.5)
+                     linestyle=':', linewidth=0.5, label='data trace 1')
 
             if self.alternating:
                 ax1.plot(x_axis_scaled, self.signal_plot_y2, '-o',
-                         color=colors[3], linestyle=':', linewidth=0.5)
+                         color=colors[3], linestyle=':', linewidth=0.5,
+                         label='data trace 2')
 
         # Do not include fit curve if there is no fit calculated.
         if max(self.signal_plot_y_fit) > 0:
@@ -1169,7 +1170,8 @@ class PulsedMeasurementLogic(GenericLogic):
             x_axis_ft_scaled = self.signal_fft_x / scaled_float.scale_val
 
             ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
-                     linestyle=':', linewidth=0.5, color=colors[0])
+                     linestyle=':', linewidth=0.5, color=colors[0],
+                     label='FT of data trace 1')
 
             # since no ft units are provided, make a small work around:
             if controlled_val_unit == 's':
@@ -1181,7 +1183,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
             ax2.set_xlabel('Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')')
             ax2.set_ylabel('Fourier amplitude (arb.u.)')
-
+            ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                       mode="expand", borderaxespad=0.)
 
         #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
 
@@ -1189,8 +1192,10 @@ class PulsedMeasurementLogic(GenericLogic):
         ax1.set_ylabel('norm. sig (arb.u.)')
 
         fig.tight_layout()
-        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                    mode="expand", borderaxespad=0.)
+        # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #            mode="expand", borderaxespad=0.)
 
         self._save_logic.save_data(data, timestamp=timestamp,
                                    parameters=parameters, fmt='%.15e',
