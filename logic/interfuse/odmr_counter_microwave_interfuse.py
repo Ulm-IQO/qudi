@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware file to control SRS SG devices.
+This file contains the Qudi interfuse between ODMR Logic and MW/Slow Counter HW.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,17 +28,21 @@ from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import TriggerEdge
 
-class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface, MicrowaveInterface):
-    """ Interfuse to enable a software trigger of the microwave source but still
-        having a hardware timed counter.
+class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
+                                    MicrowaveInterface):
+    """
+    Interfuse to enable a software trigger of the microwave source but still
+    having a hardware timed counter.
 
+    This interfuse connects the ODMR logic with a slowcounter and a microwave
+    device.
     """
 
     _modclass = 'ODMRCounterMicrowaveInterfuse'
     _modtype = 'interfuse'
 
-    odmrcounter = Connector(interface='ODMRCounterInterface')
-    microwave = Connector(interface='mwsourceinterface')
+    slowcounter = Connector(interface='SlowCounterInterface')
+    microwave = Connector(interface='MicrowaveInterface')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -46,7 +50,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface, Microwav
     def on_activate(self):
         """ Initialisation performed during activation of the module."""
         self._mw_device = self.get_connector('microwave')
-        self._odmr_counter = self.get_connector('odmrcounter')
+        self._sc_device = self.get_connector('slowcounter') # slow counter device
         pass
 
     def on_deactivate(self):
@@ -64,7 +68,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface, Microwav
 
         @return int: error code (0:OK, -1:error)
         """
-        return self._odmr_counter.set_up_clock(clock_frequency=clock_frequency,
+        return self._sc_device.set_up_clock(clock_frequency=clock_frequency,
                                                    clock_channel=clock_channel)
 
 
@@ -84,7 +88,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface, Microwav
         @return int: error code (0:OK, -1:error)
         """
 
-        return self._odmr_counter.set_up_counter(counter_channels=counter_channel,
+        return self._sc_device.set_up_counter(counter_channels=counter_channel,
                                                 sources=photon_source,
                                                 clock_channel=clock_channel,
                                                 counter_buffer=None)
@@ -113,7 +117,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface, Microwav
         # self.trigger()
         for i in range(length):
             self.trigger()
-            counts[i] = self._odmr_counter.get_counter(samples=1)[0]
+            counts[i] = self._sc_device.get_counter(samples=1)[0]
         self.trigger()
         return counts
 
@@ -122,14 +126,14 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface, Microwav
 
         @return int: error code (0:OK, -1:error)
         """
-        return self._odmr_counter.close_counter()
+        return self._sc_device.close_counter()
 
     def close_odmr_clock(self):
         """ Close the odmr and clean up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-        return self._odmr_counter.close_clock()
+        return self._sc_device.close_clock()
 
 
     ### ----------- Microwave interface commands -----------
