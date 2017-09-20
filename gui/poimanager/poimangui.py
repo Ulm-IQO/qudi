@@ -597,7 +597,7 @@ class PoiManagerGui(GUIBase):
     def delete_last_point(self):
         """ Delete the last track position of a chosen poi. """
 
-        self._poi_manager_logic.delete_last_point(poikey=self._poi_manager_logic.active_poi.get_key())
+        self._poi_manager_logic.delete_last_position(poikey=self._poi_manager_logic.active_poi.get_key())
 
     def delete_poi(self):
         """ Delete the active poi from the list of managed points. """
@@ -733,7 +733,8 @@ class PoiManagerGui(GUIBase):
         elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
             anchor_key = self._mw.offset_anchor_ComboBox.itemData(
                 self._mw.offset_anchor_ComboBox.currentIndex())
-            self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key(), anchorkey=anchor_key)
+            self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key(),
+                                                 anchorkey=anchor_key)
 
     def toggle_follow(self):
         if self._mw.goto_poi_after_update_checkBox.isChecked():
