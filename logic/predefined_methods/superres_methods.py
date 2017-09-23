@@ -105,8 +105,8 @@ def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2
 
     seq_param_list = []
     #seq_param_init = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 0, 'event_jump_to': 0}
-    seq_param = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 0, 'event_jump_to': 0}
-    seq_param_last = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 1, 'event_jump_to': 0}
+    seq_param = {'repetitions': 0, 'trigger_wait': 0, 'go_to': 0, 'event_jump_to': 0}
+    seq_param_last = {'repetitions': 0, 'trigger_wait': 0, 'go_to': 1, 'event_jump_to': 1}
     #seq_param_list.append((dummy_ensemble, seq_param_init))
     seq_param_list.append((dummy_ensemble, seq_param))
     seq_param_list.append((pi1_ensemble, seq_param))

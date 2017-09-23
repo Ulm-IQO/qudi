@@ -33,8 +33,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
     _modtype = 'interfuse'
 
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
-    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
-    sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
+    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -51,8 +50,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
                          had happened.
         """
         self._scanning_device = self.get_connector('confocalscanner1')
-        self._pulsed_measurement = self.get_connector('pulsedmeasurementlogic')
-        self._sequence_generator = self.get_connector('sequencegeneratorlogic')
+        self._pulsed_master = self.get_connector('pulsedmasterlogic')
 
         # For tilt correction
         self.tilt_variable_ax = 1
@@ -159,26 +157,40 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         # Set up pulse sequence
         if self.superres_scanmode:
             # generate pulse sequence
-            self._sequence_generator.generate_superres_seq(name='Superres',
-                                                           pi_length_1=self.pi_pulse_lengths[0],
-                                                           pi_length_2=self.pi_pulse_lengths[1],
-                                                           mw_freq_1=self.mw_frequencies[0],
-                                                           mw_freq_2=self.mw_frequencies[1],
-                                                           mw_amp_1=self.mw_amplitudes[0],
-                                                           mw_amp_2=self.mw_amplitudes[1],
-                                                           mw_channel=self.mw_channel,
-                                                           pixel_clock=self._scanning_device._scanner_clock_frequency)
+            self._pulsed_master.delete_sequence('Superres')
+            time.sleep(1)
+            self._pulsed_master.generate_predefined_sequence('superres_seq',
+                                                             ['Superres',
+                                                              self.pi_pulse_lengths[0],
+                                                              self.pi_pulse_lengths[1],
+                                                              self.mw_frequencies[0],
+                                                              self.mw_frequencies[1],
+                                                              self.mw_amplitudes[0],
+                                                              self.mw_amplitudes[1],
+                                                              self.mw_channel,
+                                                              3.0e-7,
+                                                              1.0,
+                                                              1.5e-6,
+                                                              self._scanning_device._scanner_clock_frequency])
             # Sample pulse sequence
-            seq_name, seq_params = self._sequence_generator.sample_pulse_sequence('Superres')
+            self._pulsed_master.sample_sequence('Superres', True)
+            while self._pulsed_master.status_dict['sauplo_sequence_busy']:
+                time.sleep(0.5)
+            # seq_name, seq_params = self._sequence_generator.sample_pulse_sequence('Superres')
             # Upload all waveforms and sequence files
-            self._pulsed_measurement.upload_asset('Superres_dummy')
-            self._pulsed_measurement.upload_asset('Superres_pi1')
-            self._pulsed_measurement.upload_asset('Superres_pi2')
-            #self._pulsed_measurement.upload_asset('Superres')
-            self._pulsed_measurement.direct_write_sequence(seq_name, seq_params)
+            # self._pulsed_master.upload_ensemble('Superres_dummy')
+            # self._pulsed_master.upload_ensemble('Superres_pi1')
+            # self._pulsed_master.upload_ensemble('Superres_pi2')
+            # self._pulsed_measurement.direct_write_sequence(seq_name, seq_params)
             # Load sequence into channels
-            self._pulsed_measurement.load_asset('Superres')
-            self._pulsed_measurement._pulse_generator_device.awg.write('TRIG:SEQ:SLOP NEG')
+            # self._pulsed_master.load_asset_into_channels('Superres')
+            # self._pulsed_measurement._pulse_generator_device.awg.write('TRIG:SEQ:SLOP NEG')
+
+            # Switch on pulse generator output
+            # self._pulsed_master.toggle_pulse_generator(True)
+            # while not self._pulsed_master.status_dict['pulser_running']:
+            #     time.sleep(0.5)
+            print('Superres Scanner set up!')
 
         return self._scanning_device.set_up_scanner(counter_channel, photon_source, clock_channel,
                                                     scanner_ao_channels)
@@ -253,9 +265,9 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         # apply superresolution mode
         if self.superres_scanmode:
             # Switch on pulse sequence
-            # if not self._pulsed_measurement._pulse_generator_device._is_output_on():
-            self._pulsed_measurement.pulse_generator_on()
-            # time.sleep(0.1)
+            self._pulsed_master.toggle_pulse_generator(True)
+            while not self._pulsed_master.status_dict['pulser_running']:
+                time.sleep(0.2)
             # always sample 3 times the same position
             #line_path = np.repeat(line_path, 3, axis=1)
             tmp_return = self._scanning_device.scan_line(line_path, True)
@@ -265,8 +277,9 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             linescan_return[:, 2] = tmp_return[2::3, 0]
             # Switch off pulse sequence (to reset the sequence)
             # self._pulsed_measurement._pulse_generator_device.awg.write('SOURCE1:JUMP:FORCE 1')
-            self._pulsed_measurement.pulse_generator_off()
-            # time.sleep(0.1)
+            self._pulsed_master.toggle_pulse_generator(False)
+            while self._pulsed_master.status_dict['pulser_running']:
+                time.sleep(0.2)
         else:
             linescan_return = self._scanning_device.scan_line(line_path, pixel_clock)
 
@@ -277,8 +290,11 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # Switch off pulse sequence
-        self._pulsed_measurement.pulse_generator_off()
+        if self.superres_scanmode:
+            # Switch off pulse sequence
+            self._pulsed_master.toggle_pulse_generator(False)
+            while self._pulsed_master.status_dict['pulser_running']:
+                time.sleep(0.2)
         return self._scanning_device.close_scanner()
 
     def close_scanner_clock(self, power=0):
