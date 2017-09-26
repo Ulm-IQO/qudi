@@ -161,15 +161,21 @@ class PoI:
 
         return np.array(self._position_time_trace)
 
-    def delete_last_position(self):  # TODO:Rename to delete_last_position
+    def delete_last_position(self, empty_array_completely=False):
         """ Delete the last position in the history.
+        @param bool empty_array_completely: If _position_time_trace can be deleted completely
+                                            this variable is set to True if not the last value
+                                            will not be deleted
 
         @return float[4]: the position just deleted.
         """
-
-        if len(self._position_time_trace) > 0:
+        # do not delete initial position
+        if len(self._position_time_trace) > 1:
+            return self._position_time_trace.pop()
+        elif empty_array_completely:
             return self._position_time_trace.pop()
         else:
+            self.log.error('Position was not deleted, initial point of history reached.')
             return [-1., -1., -1., -1.]
 
 
@@ -268,7 +274,11 @@ class PoiManagerLogic(GenericLogic):
         # If there are only 2 POIs (sample and crosshair) then the newly added POI needs to start the sample drift logging.
         if len(self.poi_list) == 2:
             self.poi_list['sample']._creation_time = time.time()
-            self.poi_list['sample'].delete_last_position()
+            # When the poimanager is activated the 'sample' poi is created because it is needed
+            # from the beginning for various functionalities. If the tracking of the sample is started it has
+            # to be reset such that this first point is deleted here
+            # Probably this can be solved a lot nicer.
+            self.poi_list['sample'].delete_last_position(empty_array_completely=True)
             self.poi_list['sample'].add_position_to_history(position=[0, 0, 0])
             self.poi_list['sample'].set_coords_in_sample(coords=[0, 0, 0])
 
@@ -335,6 +345,23 @@ class PoiManagerLogic(GenericLogic):
 
         # TODO: Find a way to return a list of POI keys sorted in order of the POI names.
 
+    def delete_last_position(self, poikey=None):
+        """ Delete the last position in the history.
+
+        @param string poikey: the key of the poi
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if poikey is not None and poikey in self.poi_list.keys():
+            self.poi_list[poikey].delete_last_position()
+            self.poi_list['sample'].delete_last_position()
+            self.signal_poi_updated.emit()
+            return 0
+        else:
+            self.log.error('The last position of given POI ({0}) could not be deleted.'.format(
+                poikey))
+            return -1
+
     def delete_poi(self, poikey=None):
         """ Completely deletes the whole given poi.
 
@@ -359,6 +386,8 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             self.signal_poi_deleted.emit(poikey)
             return 0
+        elif poikey is None:
+            self.log.warning('No POI for deletion specified.')
         else:
             self.log.error('X. The given POI ({0}) does not exist.'.format(
                 poikey))
@@ -628,8 +657,9 @@ class PoiManagerLogic(GenericLogic):
     def reset_roi(self):
 
         del self.poi_list
-
         self.poi_list = dict()
+
+        self.active_poi = None
 
         self.roi_name = ''
 

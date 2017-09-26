@@ -597,7 +597,7 @@ class PoiManagerGui(GUIBase):
     def delete_last_point(self):
         """ Delete the last track position of a chosen poi. """
 
-        self._poi_manager_logic.delete_last_point(poikey=self._poi_manager_logic.active_poi.get_key())
+        self._poi_manager_logic.delete_last_position(poikey=self._poi_manager_logic.active_poi.get_key())
 
     def delete_poi(self):
         """ Delete the active poi from the list of managed points. """
@@ -733,7 +733,8 @@ class PoiManagerGui(GUIBase):
         elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
             anchor_key = self._mw.offset_anchor_ComboBox.itemData(
                 self._mw.offset_anchor_ComboBox.currentIndex())
-            self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key(), anchorkey=anchor_key)
+            self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key(),
+                                                 anchorkey=anchor_key)
 
     def toggle_follow(self):
         if self._mw.goto_poi_after_update_checkBox.isChecked():
@@ -923,21 +924,21 @@ class PoiManagerGui(GUIBase):
     def ref_a_at_crosshair(self):
         """ Set the newpos for ref A from the current crosshair position. """
         # TODO: get the range for these spinboxes from the hardware scanner range!
-        self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
-        self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
-        self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
+        self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0]*1e6)
+        self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1]*1e6)
+        self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2]*1e6)
 
     def ref_b_at_crosshair(self):
         """ Set the newpos for ref B from the current crosshair position. """
-        self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
-        self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
-        self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
+        self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0]*1e6)
+        self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1]*1e6)
+        self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2]*1e6)
 
     def ref_c_at_crosshair(self):
         """ Set the newpos for ref C from the current crosshair position. """
-        self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
-        self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
-        self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
+        self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0]*1e6)
+        self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1]*1e6)
+        self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2]*1e6)
 
     def do_roi_reorientation(self):
         """Pass the old and new positions of refs A, B, C to PoiManager Logic to reorient every POI in the ROI.
@@ -973,7 +974,7 @@ class PoiManagerGui(GUIBase):
                                  self._rrd.ref_c_y_pos_DoubleSpinBox.value(),
                                  self._rrd.ref_c_z_pos_DoubleSpinBox.value()])
 
-        return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos
+        return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos*1e-6, ref_b_newpos*1e-6, ref_c_newpos*1e-6
 
     def reset_reorientation_dialog(self):
         """ Reset all the values in the reorient roi dialog. """
