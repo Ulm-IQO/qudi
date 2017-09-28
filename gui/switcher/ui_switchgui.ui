@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -15,7 +14,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+    <item column="0" row="0">
      <widget class="QScrollArea" name="scrollArea">
       <property name="widgetResizable">
        <bool>true</bool>
@@ -47,11 +46,11 @@
     <property name="title">
      <string>Menu</string>
     </property>
-    <addaction name="actionClose"/>
+    <addaction name="actionClose" />
    </widget>
-   <addaction name="menuMenu"/>
+   <addaction name="menuMenu" />
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <action name="actionClose">
    <property name="icon">
     <iconset>
@@ -62,7 +61,7 @@
    </property>
   </action>
  </widget>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>actionClose</sender>

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>ScanWindow</class>
  <widget class="QMainWindow" name="ScanWindow">
@@ -15,8 +14,8 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0" colspan="2">
-     <widget class="PlotWidget" name="plotWidget"/>
+    <item colspan="2" column="0" row="0">
+     <widget class="PlotWidget" name="plotWidget" />
     </item>
    </layout>
   </widget>
@@ -33,17 +32,17 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="save_spectrum_Action"/>
-    <addaction name="actionClose"/>
+    <addaction name="save_spectrum_Action" />
+    <addaction name="actionClose" />
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="actionReset_to_default_view"/>
+    <addaction name="actionReset_to_default_view" />
    </widget>
-   <addaction name="menuLaserscan"/>
-   <addaction name="menuView"/>
+   <addaction name="menuLaserscan" />
+   <addaction name="menuView" />
   </widget>
   <widget class="QToolBar" name="measure_ToolBar">
    <property name="enabled">
@@ -58,10 +57,10 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="rec_single_spectrum_Action"/>
-   <addaction name="start_diff_spec_Action"/>
-   <addaction name="stop_diff_spec_Action"/>
-   <addaction name="resume_diff_spec_Action"/>
+   <addaction name="rec_single_spectrum_Action" />
+   <addaction name="start_diff_spec_Action" />
+   <addaction name="stop_diff_spec_Action" />
+   <addaction name="resume_diff_spec_Action" />
   </widget>
   <widget class="QToolBar" name="file_ToolBar">
    <property name="windowTitle">
@@ -73,7 +72,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="save_spectrum_Action"/>
+   <addaction name="save_spectrum_Action" />
   </widget>
   <action name="actionClose">
    <property name="icon">
@@ -136,7 +135,7 @@
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>actionClose</sender>
